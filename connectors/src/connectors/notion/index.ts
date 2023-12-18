@@ -326,8 +326,26 @@ export async function cleanupNotionConnector(
       transaction: transaction,
     });
 
+    await deleteNangoConnection(connector.connectionId);
+
     return new Ok(undefined);
   });
+}
+
+async function deleteNangoConnection(connectionId: NangoConnectionId) {
+  if (!NANGO_NOTION_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+  const nangoRes = await nangoDeleteConnection(
+    connectionId,
+    NANGO_NOTION_CONNECTOR_ID
+  );
+  if (nangoRes.isErr()) {
+    logger.error(
+      { err: nangoRes.error },
+      "Error deleting connection from Nango"
+    );
+  }
 }
 
 export async function retrieveNotionConnectorPermissions({

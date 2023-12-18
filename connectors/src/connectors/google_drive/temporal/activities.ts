@@ -22,6 +22,7 @@ import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 import { CreationAttributes, literal, Op } from "sequelize";
 
+import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -36,12 +37,10 @@ import {
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
 
-import { registerWebhook } from "../lib";
-
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
-const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
+export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
 };
@@ -361,6 +360,30 @@ async function syncOneFile(
       }
       if (typeof res.data === "string") {
         documentContent = res.data;
+      } else if (
+        typeof res.data === "object" ||
+        typeof res.data === "number" ||
+        typeof res.data === "boolean" ||
+        typeof res.data === "bigint"
+      ) {
+        // In case the contents returned by the file export matches a JS type,
+        // we need to convert it
+        //  e.g. a google presentation with just the number
+        // 1 in it, the export will return the number 1 instead of a string
+        documentContent = res.data?.toString();
+      } else {
+        logger.error(
+          {
+            connectorId: connectorId,
+            documentId,
+            fileMimeType: file.mimeType,
+            fileId: file.id,
+            title: file.name,
+            resDataTypeOf: typeof res.data,
+            type: "export",
+          },
+          "Unexpected GDrive export response type"
+        );
       }
     } catch (e) {
       logger.error(
@@ -430,6 +453,19 @@ async function syncOneFile(
           return false;
         }
         documentContent = Buffer.from(res.data).toString("utf-8");
+      } else {
+        logger.error(
+          {
+            connectorId: connectorId,
+            documentId,
+            fileMimeType: file.mimeType,
+            fileId: file.id,
+            title: file.name,
+            resDataTypeOf: typeof res.data,
+            type: "download",
+          },
+          "Unexpected GDrive export response type"
+        );
       }
     } else if (file.mimeType === "application/pdf") {
       const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
@@ -478,6 +514,16 @@ async function syncOneFile(
   );
 
   if (documentContent === undefined) {
+    logger.error(
+      {
+        connectorId: connectorId,
+        documentId,
+        fileMimeType: file.mimeType,
+        fileId: file.id,
+        title: file.name,
+      },
+      "documentContent is undefined"
+    );
     throw new Error("documentContent is undefined");
   }
   const tags = [`title:${file.name}`];

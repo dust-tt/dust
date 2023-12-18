@@ -16,6 +16,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import {
+  AgentConfigurationScope,
   ConnectorProvider,
   DataSourceType,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -55,6 +56,7 @@ import {
   SPIRIT_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
+import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -153,6 +155,7 @@ type AssistantBuilderState = {
   databaseQueryConfiguration: AssistantBuilderDatabaseQueryConfiguration | null;
   handle: string | null;
   description: string | null;
+  scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string | null;
   avatarUrl: string | null;
   generationSettings: {
@@ -175,6 +178,7 @@ export type AssistantBuilderInitialState = {
   databaseQueryConfiguration: AssistantBuilderState["databaseQueryConfiguration"];
   handle: string;
   description: string;
+  scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string;
   avatarUrl: string;
   generationSettings: {
@@ -183,6 +187,11 @@ export type AssistantBuilderInitialState = {
   } | null;
 };
 
+export const BUILDER_FLOWS = [
+  "workspace_assistants",
+  "personal_assistants",
+] as const;
+export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderProps = {
   user: UserType;
   owner: WorkspaceType;
@@ -193,6 +202,7 @@ type AssistantBuilderProps = {
   dustApps: AppType[];
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
+  flow: BuilderFlow;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -205,6 +215,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   dustAppConfiguration: null,
   databaseQueryConfiguration: null,
   handle: null,
+  scope: "private",
   description: null,
   instructions: null,
   avatarUrl: null,
@@ -240,15 +251,19 @@ export default function AssistantBuilder({
   dustApps,
   initialBuilderState,
   agentConfigurationId,
+  flow,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
   );
+  const defaultScope =
+    flow === "workspace_assistants" ? "workspace" : "private";
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>({
     ...DEFAULT_ASSISTANT_STATE,
+    scope: initialBuilderState?.scope ?? defaultScope,
     generationSettings: {
       ...DEFAULT_ASSISTANT_STATE.generationSettings,
       modelSettings:
@@ -363,6 +378,7 @@ export default function AssistantBuilder({
           initialBuilderState.databaseQueryConfiguration,
         handle: initialBuilderState.handle,
         description: initialBuilderState.description,
+        scope: initialBuilderState.scope ?? "private",
         instructions: initialBuilderState.instructions,
         avatarUrl: initialBuilderState.avatarUrl,
         generationSettings: initialBuilderState.generationSettings ?? {
@@ -561,7 +577,7 @@ export default function AssistantBuilder({
           type: "retrieval_configuration",
           query:
             builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
-          timeframe:
+          relativeTimeFrame:
             builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
               ? {
                   duration: builderState.timeFrame.value,
@@ -620,7 +636,7 @@ export default function AssistantBuilder({
         pictureUrl: builderState.avatarUrl,
         description: builderState.description.trim(),
         status: "active",
-        scope: "workspace",
+        scope: builderState.scope,
         action: actionParam,
         generation: {
           prompt: builderState.instructions.trim(),
@@ -790,14 +806,18 @@ export default function AssistantBuilder({
             <AppLayoutSimpleCloseTitle
               title="Create an assistant"
               onClose={async () => {
-                await router.push(`/w/${owner.sId}/builder/assistants`);
+                if (flow === "workspace_assistants")
+                  await router.push(`/w/${owner.sId}/builder/assistants`);
+                else await router.push(`/w/${owner.sId}/assistant/assistants`);
               }}
             />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
               title="Edit an Assistant"
               onCancel={async () => {
-                await router.push(`/w/${owner.sId}/builder/assistants`);
+                if (flow === "workspace_assistants")
+                  await router.push(`/w/${owner.sId}/builder/assistants`);
+                else await router.push(`/w/${owner.sId}/assistant/assistants`);
               }}
               onSave={
                 submitEnabled
@@ -805,9 +825,14 @@ export default function AssistantBuilder({
                       setIsSavingOrDeleting(true);
                       submitForm()
                         .then(async () => {
-                          await router.push(
-                            `/w/${owner.sId}/builder/assistants`
-                          );
+                          if (flow === "workspace_assistants")
+                            await router.push(
+                              `/w/${owner.sId}/builder/assistants`
+                            );
+                          else
+                            await router.push(
+                              `/w/${owner.sId}/assistant/assistants`
+                            );
                           setIsSavingOrDeleting(false);
                         })
                         .catch((e) => {
@@ -900,7 +925,17 @@ export default function AssistantBuilder({
               </div>
             </div>
           </div>
-
+          <TeamSharingSection
+            owner={owner}
+            initialScope={initialBuilderState?.scope ?? defaultScope}
+            newScope={builderState.scope}
+            setNewScope={(
+              scope: Exclude<AgentConfigurationScope, "global">
+            ) => {
+              setEdited(true);
+              setBuilderState((state) => ({ ...state, scope }));
+            }}
+          />
           <div className="mt-8 flex w-full flex-row items-start">
             <div className="flex w-full flex-col gap-4">
               <div className="text-2xl font-bold text-element-900">
@@ -953,62 +988,63 @@ export default function AssistantBuilder({
             <div className="text-2xl font-bold text-element-900">
               Data Sources & Actions
             </div>
-            {configurableDataSources.length === 0 && (
-              <ContentMessage title="You don't have any active data source or connection">
-                <div className="flex flex-col gap-y-3">
-                  <div>
-                    Assistants can incorporate existing company data and
-                    knowledge to formulate answers.
+            {configurableDataSources.length === 0 &&
+              Object.keys(builderState.dataSourceConfigurations).length ===
+                0 && (
+                <ContentMessage title="You don't have any active data source">
+                  <div className="flex flex-col gap-y-3">
+                    <div>
+                      Assistants can incorporate existing company data and
+                      knowledge to formulate answers.
+                    </div>
+                    <div>
+                      There are two types of data sources:{" "}
+                      <strong>Folders</strong> (Files you can upload) and{" "}
+                      <strong>Connections</strong> (Automatically synchronized
+                      with platforms like Notion, Slack, ...).
+                    </div>
+                    {(() => {
+                      switch (owner.role) {
+                        case "admin":
+                          return (
+                            <div>
+                              <strong>
+                                Visit the "Connections" and "Folders" sections
+                                in the Assistants panel to add new data sources.
+                              </strong>
+                            </div>
+                          );
+                        case "builder":
+                          return (
+                            <div>
+                              <strong>
+                                Only Admins can activate Connections.
+                                <br />
+                                You can add Data Sources by visiting "Folders"
+                                in the Assistants panel.
+                              </strong>
+                            </div>
+                          );
+                        case "user":
+                          return (
+                            <div>
+                              <strong>
+                                Only Admins and Builders can activate
+                                Connections or create Folders.
+                              </strong>
+                            </div>
+                          );
+                        case "none":
+                          return <></>;
+                        default:
+                          ((x: never) => {
+                            throw new Error("Unkonwn role " + x);
+                          })(owner.role);
+                      }
+                    })()}
                   </div>
-                  <div>
-                    There are two types of knowledge sources:{" "}
-                    <strong>Data Sources</strong> (Files you can upload) and{" "}
-                    <strong>Connections</strong> (Automatically synchronized
-                    with platforms like Notion, Slack, ...).
-                  </div>
-                  {(() => {
-                    switch (owner.role) {
-                      case "admin":
-                        return (
-                          <div>
-                            <strong>
-                              Visit the "Data Sources" and "Connections"
-                              sections in your workspace admin panel to add new
-                              sources of knowledge.
-                            </strong>
-                          </div>
-                        );
-                      case "builder":
-                        return (
-                          <div>
-                            <strong>
-                              Only Admins can activate Connections.
-                              <br />
-                              You can Data Sources by visiting "Data Source" in
-                              your workspace admin panel.
-                            </strong>
-                          </div>
-                        );
-                      case "user":
-                        return (
-                          <div>
-                            <strong>
-                              Only Admins and Builders can activate Connections
-                              and Data Sources.
-                            </strong>
-                          </div>
-                        );
-                      case "none":
-                        return <></>;
-                      default:
-                        ((x: never) => {
-                          throw new Error("Unkonwn role " + x);
-                        })(owner.role);
-                    }
-                  })()}
-                </div>
-              </ContentMessage>
-            )}
+                </ContentMessage>
+              )}
             <div>
               You can ask the assistant to perform actions before answering,
               like{" "}
@@ -1247,18 +1283,21 @@ export default function AssistantBuilder({
 
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
-              {slackDataSource && (
-                <SlackIntegration
-                  slackDataSource={slackDataSource}
-                  owner={owner}
-                  onSave={(channels) => {
-                    setEdited(true);
-                    setSelectedSlackChannels(channels);
-                  }}
-                  existingSelection={selectedSlackChannels}
-                  assistantHandle={builderState.handle ?? undefined}
-                />
-              )}
+              {slackDataSource &&
+                ["builder", "admin"].includes(owner.role) &&
+                builderState.scope !== "private" &&
+                initialBuilderState?.scope !== "private" && (
+                  <SlackIntegration
+                    slackDataSource={slackDataSource}
+                    owner={owner}
+                    onSave={(channels) => {
+                      setEdited(true);
+                      setSelectedSlackChannels(channels);
+                    }}
+                    existingSelection={selectedSlackChannels}
+                    assistantHandle={builderState.handle ?? undefined}
+                  />
+                )}
             </div>
           </div>
 
@@ -1388,7 +1427,9 @@ function SlackIntegration({
             }}
             expandable={false}
             fullySelected={false}
-            filterPermission="none"
+            // Write are the channels we're in. Builders can get write but cannot get "none"
+            // (reserved to admins).
+            filterPermission="write"
           />
         </Page>
       </Modal>

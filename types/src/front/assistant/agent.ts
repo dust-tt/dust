@@ -1,4 +1,4 @@
-import { DatabaseQueryConfigurationType } from "../../front/assistant/actions/database";
+import { DatabaseQueryConfigurationType } from "../../front/assistant/actions/database_query";
 import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { SupportedModel } from "../../front/lib/assistant";
@@ -103,7 +103,7 @@ export type AgentsGetViewType =
   | "all"
   | "workspace"
   | "published"
-  | "dust"
+  | "global"
   | "super_user";
 
 export type AgentConfigurationType = {

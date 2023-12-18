@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use axum::{
     extract,
     response::Json,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use dust::{
@@ -89,6 +89,19 @@ impl WorkerState {
         self._core_request("DELETE").await
     }
 
+    async fn invalidate_database(&self, database_id: &str) {
+        // Terminate (invalidate) the DB if it exists.
+        let mut registry = self.registry.lock().await;
+        match registry.get(database_id) {
+            Some(_) => {
+                // Removing the DB from the registry will destroy the SQLite connection and hence the
+                // in-memory DB.
+                registry.remove(database_id);
+            }
+            None => (),
+        }
+    }
+
     async fn cleanup_inactive_databases(&self) {
         let mut registry = self.registry.lock().await;
         registry.retain(|_, entry| entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION);
@@ -151,16 +164,16 @@ struct DbQueryPayload {
 }
 
 async fn db_query(
-    extract::Path(db_id): extract::Path<String>,
+    extract::Path(database_id): extract::Path<String>,
     extract::Json(payload): Json<DbQueryPayload>,
     extract::Extension(state): extract::Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let database = {
         let mut registry = state.registry.lock().await;
         let entry = registry
-            .entry(db_id.clone())
+            .entry(database_id.clone())
             .or_insert_with(|| DatabaseEntry {
-                database: Arc::new(Mutex::new(SqliteDatabase::new(db_id))),
+                database: Arc::new(Mutex::new(SqliteDatabase::new(database_id))),
                 last_accessed: Instant::now(),
             });
         entry.last_accessed = Instant::now();
@@ -201,6 +214,35 @@ async fn db_query(
     }
 }
 
+async fn delete_database_rows(
+    extract::Path(database_id): extract::Path<String>,
+    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    state.invalidate_database(&database_id).await;
+
+    match state
+        .databases_store
+        .delete_database_rows(&database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to delete database rows",
+            Some(e),
+        ),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true
+                })),
+            }),
+        ),
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct DatabasesRowsUpsertPayload {
     rows: Vec<DatabaseRow>,
@@ -212,18 +254,7 @@ async fn databases_rows_upsert(
     extract::Json(payload): extract::Json<DatabasesRowsUpsertPayload>,
     extract::Extension(state): extract::Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    // Terminate (invalidate) the DB if it exists.
-    {
-        let mut registry = state.registry.lock().await;
-        match registry.get(&database_id) {
-            Some(_) => {
-                // Removing the DB from the registry will destroy the SQLite connection and hence the
-                // in-memory DB.
-                registry.remove(&database_id);
-            }
-            None => (),
-        }
-    };
+    state.invalidate_database(&database_id).await;
 
     let truncate = match payload.truncate {
         Some(v) => v,
@@ -292,9 +323,37 @@ async fn databases_rows_list(
     }
 }
 
-async fn databases_row_retrieve(
+async fn databases_table_rows_delete(
     extract::Path((database_id, table_id)): extract::Path<(String, String)>,
-    extract::Path(row_id): extract::Path<String>,
+    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    state.invalidate_database(&database_id).await;
+
+    match state
+        .databases_store
+        .delete_database_table_rows(&database_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to delete database rows",
+            Some(e),
+        ),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_row_retrieve(
+    extract::Path((database_id, table_id, row_id)): extract::Path<(String, String, String)>,
     extract::Extension(state): extract::Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     match state
@@ -314,6 +373,35 @@ async fn databases_row_retrieve(
                 error: None,
                 response: Some(json!({
                     "row": row,
+                })),
+            }),
+        ),
+    }
+}
+
+async fn databases_row_delete(
+    extract::Path((database_id, table_id, row_id)): extract::Path<(String, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    state.invalidate_database(&database_id).await;
+
+    match state
+        .databases_store
+        .delete_database_row(&database_id, &table_id, &row_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to delete database row",
+            Some(e),
+        ),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "success": true
                 })),
             }),
         ),
@@ -348,6 +436,7 @@ fn main() {
 
         let router = Router::new()
             .route("/databases/:database_id", post(db_query))
+            .route("/databases/:database_id", delete(delete_database_rows))
             .route(
                 "/databases/:database_id/tables/:table_id/rows",
                 post(databases_rows_upsert),
@@ -357,8 +446,16 @@ fn main() {
                 get(databases_rows_list),
             )
             .route(
+                "/databases/:database_id/tables/:table_id/rows",
+                delete(databases_table_rows_delete),
+            )
+            .route(
                 "/databases/:database_id/tables/:table_id/rows/:row_id",
                 get(databases_row_retrieve),
+            )
+            .route(
+                "/databases/:database_id/tables/:table_id/rows/:row_id",
+                delete(databases_row_delete),
             )
             .layer(
                 TraceLayer::new_for_http()

@@ -227,6 +227,7 @@ export default function AssistantNew({
               onUpdate={async () => {
                 await mutateAgentConfigurations();
               }}
+              flow="personal"
             />
           )}
           {!conversation ? (
@@ -270,6 +271,7 @@ export default function AssistantNew({
                                   await mutateAgentConfigurations();
                                 }}
                                 variant="home"
+                                flow="personal"
                               />
                             </a>
                           ))}

@@ -26,8 +26,16 @@ export function isDatabaseQueryActionType(
   return arg.type === "database_query_action";
 }
 
-// TODO DAPH DATABASE ACTION
 export type DatabaseQueryActionType = {
   id: ModelId;
   type: "database_query_action";
+  dataSourceWorkspaceId: string;
+  dataSourceId: string;
+  databaseId: string;
+  params: {
+    [key: string]: string | number | boolean;
+  };
+  output: {
+    [key: string]: string | number | boolean;
+  } | null;
 };

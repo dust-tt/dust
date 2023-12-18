@@ -182,7 +182,7 @@ export async function createOrUpgradeAgentConfiguration(
     actionConfig = await createAgentActionConfiguration(auth, {
       type: "retrieval_configuration",
       query: action.query,
-      timeframe: action.timeframe,
+      relativeTimeFrame: action.relativeTimeFrame,
       topK: action.topK,
       dataSources: action.dataSources,
     });

@@ -6,11 +6,12 @@ import {
   AgentActionType,
   AgentMessageType,
 } from "../../../../front/assistant/conversation";
+import { DatabaseQueryParamsEvent } from "../../../../front/lib/api/assistant/actions/database_query";
 import {
   DustAppRunBlockEvent,
   DustAppRunParamsEvent,
 } from "../../../../front/lib/api/assistant/actions/dust_app_run";
-import { RetrievalParamsEvent } from "./actions/retrieval";
+import { RetrievalParamsEvent } from "../../../../front/lib/api/assistant/actions/retrieval";
 
 // Event sent when an agent error occured before we have a agent message in the database.
 export type AgentMessageErrorEvent = {
@@ -39,7 +40,8 @@ export type AgentErrorEvent = {
 export type AgentActionEvent =
   | RetrievalParamsEvent
   | DustAppRunParamsEvent
-  | DustAppRunBlockEvent;
+  | DustAppRunBlockEvent
+  | DatabaseQueryParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

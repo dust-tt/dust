@@ -222,6 +222,13 @@ pub trait Store {
         data_source_id: &str,
         database_id: &str,
     ) -> Result<()>;
+    async fn delete_database_table(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+    ) -> Result<()>;
     // LLM Cache
     async fn llm_cache_get(
         &self,

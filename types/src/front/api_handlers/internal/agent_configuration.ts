@@ -10,7 +10,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("list"),
     t.literal("workspace"),
     t.literal("published"),
-    t.literal("dust"),
+    t.literal("global"),
     t.literal("super_user"),
     t.literal("all"),
     t.undefined,
@@ -40,7 +40,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
           t.literal("auto"),
           t.literal("none"),
         ]),
-        timeframe: t.union([
+        relativeTimeFrame: t.union([
           t.literal("auto"),
           t.literal("none"),
           t.type({
@@ -84,18 +84,25 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         databaseId: t.string,
       }),
     ]),
-    generation: t.type({
-      prompt: t.string,
-      // enforce that the model is a supported model
-      // the modelId and providerId are checked together, so
-      // (gpt-4, anthropic) won't pass
-      model: new t.Type<SupportedModel>(
-        "SupportedModel",
-        isSupportedModel,
-        (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
-        t.identity
-      ),
-      temperature: t.number,
-    }),
+    generation: t.union([
+      t.null,
+      t.type({
+        prompt: t.string,
+        // enforce that the model is a supported model
+        // the modelId and providerId are checked together, so
+        // (gpt-4, anthropic) won't pass
+        model: new t.Type<SupportedModel>(
+          "SupportedModel",
+          isSupportedModel,
+          (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+          t.identity
+        ),
+        temperature: t.number,
+      }),
+    ]),
   }),
 });
+
+export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
+  typeof PostOrPatchAgentConfigurationRequestBodySchema
+>;

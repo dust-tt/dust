@@ -16,11 +16,11 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { AgentDatabaseQueryAction } from "@app/lib/models/assistant/actions/database_query";
+import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-
-import { AgentDustAppRunAction } from "./actions/dust_app_run";
 
 export class Conversation extends Model<
   InferAttributes<Conversation>,
@@ -249,6 +249,10 @@ export class AgentMessage extends Model<
     AgentDustAppRunAction["id"]
   > | null;
 
+  declare agentDatabaseQueryActionId: ForeignKey<
+    AgentDatabaseQueryAction["id"]
+  > | null;
+
   // Not a relation as global agents are not in the DB
   // needs both sId and version to uniquely identify the agent configuration
   declare agentConfigurationId: string;
@@ -310,12 +314,17 @@ AgentMessage.init(
     sequelize: front_sequelize,
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
-        if (
-          agentMessage.agentRetrievalActionId &&
-          agentMessage.agentDustAppRunActionId
-        ) {
+        const actionsTypes: (keyof AgentMessage)[] = [
+          "agentRetrievalActionId",
+          "agentDustAppRunActionId",
+          "agentDatabaseQueryActionId",
+        ];
+        const nonNullActionTypes = actionsTypes.filter(
+          (field) => agentMessage[field] != null
+        );
+        if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "agentRetrievalActionId and AgentDustAppRunActionId must be exclusive"
+            "Only one of agentRetrievalActionId, agentDustAppRunActionId, or agentDatabaseQueryActionId can be set"
           );
         }
       },
@@ -337,6 +346,13 @@ AgentDustAppRunAction.hasOne(AgentMessage, {
 });
 AgentMessage.belongsTo(AgentDustAppRunAction, {
   foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
+});
+AgentDatabaseQueryAction.hasOne(AgentMessage, {
+  foreignKey: { name: "agentDatabaseQueryActionId", allowNull: true }, // null = no Database Query action set for this Agent
+  onDelete: "CASCADE",
+});
+AgentMessage.belongsTo(AgentDatabaseQueryAction, {
+  foreignKey: { name: "agentDatabaseQueryActionId", allowNull: true }, // null = no Database Query action set for this Agent
 });
 
 export class ContentFragment extends Model<

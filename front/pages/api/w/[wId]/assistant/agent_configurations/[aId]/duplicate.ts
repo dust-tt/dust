@@ -1,9 +1,4 @@
-import {
-  AgentConfigurationType,
-  isDatabaseQueryConfiguration,
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
-} from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -80,40 +75,8 @@ async function handler(
           pictureUrl: agentConfiguration.pictureUrl,
           status: "active",
           scope: "private",
-          generation: {
-            prompt: agentConfiguration.generation.prompt,
-            model: agentConfiguration.generation.model,
-            temperature: agentConfiguration.generation.temperature,
-          },
-          action: (() => {
-            if (isRetrievalConfiguration(agentConfiguration.action)) {
-              return {
-                type: "retrieval_configuration",
-                query: agentConfiguration.action.query,
-                timeframe: agentConfiguration.action.relativeTimeFrame,
-                topK: agentConfiguration.action.topK,
-                dataSources: agentConfiguration.action.dataSources,
-              };
-            } else if (isDustAppRunConfiguration(agentConfiguration.action)) {
-              return {
-                type: "dust_app_run_configuration",
-                appWorkspaceId: agentConfiguration.action.appWorkspaceId,
-                appId: agentConfiguration.action.appId,
-              };
-            } else if (
-              isDatabaseQueryConfiguration(agentConfiguration.action)
-            ) {
-              return {
-                type: "database_query_configuration",
-                dataSourceWorkspaceId:
-                  agentConfiguration.action.dataSourceWorkspaceId,
-                databaseId: agentConfiguration.action.databaseId,
-                dataSourceId: agentConfiguration.action.dataSourceId,
-              };
-            } else {
-              return null;
-            }
-          })(),
+          generation: agentConfiguration.generation,
+          action: agentConfiguration.action,
         },
       });
       return res.status(200).json({ agentConfiguration: duplicated });

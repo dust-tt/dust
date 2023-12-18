@@ -13,7 +13,7 @@ type GetDatabaseResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatabaseResponseBody>
+  res: NextApiResponse<GetDatabaseResponseBody | { success: true }>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -63,10 +63,9 @@ async function handler(
       },
     });
   }
-
+  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "GET":
-      const coreAPI = new CoreAPI(logger);
       const databaseRes = await coreAPI.getDatabase({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
@@ -91,12 +90,39 @@ async function handler(
 
       return res.status(200).json({ database });
 
+    case "DELETE":
+      const deleteRes = await coreAPI.deleteDatabase({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        databaseId,
+      });
+      if (deleteRes.isErr()) {
+        logger.error(
+          {
+            dataSourcename: dataSource.name,
+            workspaceId: owner.id,
+            error: deleteRes.error,
+          },
+          "Failed to delete database."
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to delete database.",
+          },
+        });
+      }
+
+      return res.status(200).json({ success: true });
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or DELETE is expected.",
         },
       });
   }
