@@ -29,7 +29,7 @@ pub mod providers {
     pub mod cohere;
     pub mod embedder;
     pub mod llm;
-    pub mod mistralai;
+    pub mod mistral;
     pub mod openai;
 
     pub mod provider;
