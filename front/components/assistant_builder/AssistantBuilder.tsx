@@ -15,7 +15,11 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import {
+  ConnectorProvider,
+  DataSourceType,
+  MISTRAL_SMALL_MODEL_CONFIG,
+} from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
@@ -75,6 +79,7 @@ const usedModelConfigs = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
 ];
 
 // Actions
