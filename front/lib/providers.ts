@@ -112,14 +112,23 @@ export const serviceProviders: ServiceProvider[] = [
 export async function checkProvider(
   owner: WorkspaceType,
   providerId: string,
-  config: object
+  config: object,
+  usePost = false
 ): Promise<GetProvidersCheckResponseBody> {
   try {
-    const result = await fetch(
-      `/api/w/${
-        owner.sId
-      }/providers/${providerId}/check?config=${JSON.stringify(config)}`
-    );
+    const result = !usePost
+      ? await fetch(
+          `/api/w/${
+            owner.sId
+          }/providers/${providerId}/check?config=${JSON.stringify(config)}`
+        )
+      : await fetch(`/api/w/${owner.sId}/providers/${providerId}/check`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ config }),
+        });
     return await result.json();
   } catch (e: any) {
     return { ok: false, error: e.message };

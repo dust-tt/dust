@@ -16,4 +16,5 @@ export type CredentialsType = {
   SERPER_API_KEY?: string;
   BROWSERLESS_API_KEY?: string;
   GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON?: string;
+  GOOGLE_VERTEX_AI_ENDPOINT?: string;
 };

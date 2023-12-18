@@ -380,6 +380,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                         case "textsynth":
                           setTextSynthOpen(true);
                           break;
+                        case "google_vertex_ai":
+                          setGoogleVertexAIOpen(true);
+                          break;
                       }
                     }}
                     label={

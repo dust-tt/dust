@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
-use hyper::Uri;
 use hyper_tls::HttpsConnector;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -91,26 +90,26 @@ impl Provider for GoogleVertexAiProvider {
     }
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        panic!("TODO")
+        Box::new(GoogleVertexAiLLM::new(id))
     }
 
-    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
+    fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
         panic!("TODO")
     }
 }
 
 pub struct GoogleVertexAiLLM {
     id: String,
-    uri: Uri,
+    uri: Option<String>,
     service_account_json: Option<String>,
 }
 
 impl GoogleVertexAiLLM {
-    pub fn new(id: String, uri: Uri, service_account_json: Option<String>) -> Self {
+    pub fn new(id: String) -> Self {
         GoogleVertexAiLLM {
             id,
-            uri,
-            service_account_json,
+            uri: None,
+            service_account_json: None,
         }
     }
 
@@ -133,6 +132,12 @@ impl LLM for GoogleVertexAiLLM {
             None => Err(anyhow!(
                 "GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON not found in credentials"
             ))?,
+        }
+        match credentials.get("GOOGLE_VERTEX_AI_ENDPOINT") {
+            Some(uri) => {
+                self.uri = Some(uri.clone());
+            }
+            None => Err(anyhow!("GOOGLE_VERTEX_AI_URI not found in credentials"))?,
         }
         Ok(())
     }
@@ -160,14 +165,15 @@ impl LLM for GoogleVertexAiLLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
-        frequency_penalty: Option<f32>,
-        presence_penalty: Option<f32>,
+        _frequency_penalty: Option<f32>,
+        _presence_penalty: Option<f32>,
         top_p: Option<f32>,
-        top_logprobs: Option<i32>,
-        extras: Option<Value>,
+        _top_logprobs: Option<i32>,
+        _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(self.service_account_json.is_some());
+        assert!(self.uri.is_some());
         assert!(n == 1);
 
         if let Some(m) = max_tokens {
@@ -180,6 +186,12 @@ impl LLM for GoogleVertexAiLLM {
         let api_key =
             get_access_token(self.service_account_json.as_ref().unwrap().as_str()).await?;
 
+        let uri = format!(
+            "{}/publishers/google/models/{}:streamGenerateContent?alt=sse",
+            self.uri.clone().unwrap(),
+            self.id()
+        );
+
         let c = match event_sender {
             Some(_) => {
                 if n > 1 {
@@ -188,7 +200,7 @@ impl LLM for GoogleVertexAiLLM {
                     ))?;
                 }
                 streamed_completion(
-                    self.uri.clone(),
+                    uri,
                     api_key,
                     prompt,
                     max_tokens,
@@ -205,7 +217,7 @@ impl LLM for GoogleVertexAiLLM {
             }
             None => {
                 completion(
-                    self.uri.clone(),
+                    uri,
                     api_key,
                     prompt,
                     max_tokens,
@@ -242,25 +254,25 @@ impl LLM for GoogleVertexAiLLM {
 
     async fn chat(
         &self,
-        messages: &Vec<ChatMessage>,
-        functions: &Vec<ChatFunction>,
-        function_call: Option<String>,
-        temperature: f32,
-        top_p: Option<f32>,
-        n: usize,
-        stop: &Vec<String>,
-        mut max_tokens: Option<i32>,
-        presence_penalty: Option<f32>,
-        frequency_penalty: Option<f32>,
-        extras: Option<Value>,
-        event_sender: Option<UnboundedSender<Value>>,
+        _messages: &Vec<ChatMessage>,
+        _functions: &Vec<ChatFunction>,
+        _function_call: Option<String>,
+        _temperature: f32,
+        _top_p: Option<f32>,
+        _n: usize,
+        _stop: &Vec<String>,
+        mut _max_tokens: Option<i32>,
+        _presence_penalty: Option<f32>,
+        _frequency_penalty: Option<f32>,
+        _extras: Option<Value>,
+        _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
         Err(anyhow!("TODO"))
     }
 }
 
 pub async fn streamed_completion(
-    uri: Uri,
+    uri: String,
     api_key: String,
     prompt: &str,
     max_tokens: Option<i32>,
@@ -338,7 +350,6 @@ pub async fn streamed_completion(
                     println!("UNEXPECTED COMMENT");
                 }
                 Some(es::SSE::Event(e)) => {
-                    let s = e.data.as_str();
                     let completion: Completion = serde_json::from_str(e.data.as_str())?;
                     if completion.candidates.len() != 1 {
                         Err(anyhow!(
@@ -424,7 +435,7 @@ pub async fn streamed_completion(
 }
 
 pub async fn completion(
-    uri: Uri,
+    uri: String,
     api_key: String,
     prompt: &str,
     max_tokens: Option<i32>,

@@ -280,6 +280,11 @@ async function handler(
           });
           return;
 
+        case "google_vertex_ai":
+          return res.status(200).json({
+            models: [{ id: "gemini-pro" }],
+          });
+
         default:
           return apiError(req, res, {
             status_code: 404,

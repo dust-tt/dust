@@ -22,7 +22,7 @@ export default function GoogleVertexAISetup({
   const { mutate } = useSWRConfig();
 
   const [serviceAccount, setServiceAccount] = useState(
-    config ? config.api_key : ""
+    config ? config.service_account : ""
   );
   const [endpoint, setEndpoint] = useState(config ? config.endpoint : "");
   const [testSuccessful, setTestSuccessful] = useState(false);
@@ -47,10 +47,15 @@ export default function GoogleVertexAISetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    const check = await checkProvider(owner, "google_vertex_ai", {
-      service_account: serviceAccount,
-      endpoint,
-    });
+    const check = await checkProvider(
+      owner,
+      "google_vertex_ai",
+      {
+        service_account: serviceAccount,
+        endpoint,
+      },
+      true
+    );
 
     if (!check.ok) {
       setTestError(check.error);
