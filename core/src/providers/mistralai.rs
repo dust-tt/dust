@@ -105,7 +105,7 @@ struct Error {
 
 impl Error {
     pub fn message(&self) -> String {
-        format!("MistralAIAPIError: [{:?}] {}", self._type, self.message,)
+        format!("MistralAIError: [{:?}] {}", self._type, self.message,)
     }
 
     pub fn retryable(&self) -> bool {
@@ -242,7 +242,7 @@ impl MistralAILLM {
                                         }
                                         Err(_) => {
                                             Err(anyhow!(
-                                                "MistralAIAPIError: failed parsing streamed \
+                                                "MistralAIError: failed parsing streamed \
                                                      completion from Mistral AI err={} data={}",
                                                 err,
                                                 e.data.as_str(),
@@ -543,8 +543,6 @@ impl LLM for MistralAILLM {
         };
 
         // TODO(flav): Handle `extras`.
-
-        utils::error(&format!("-- In chat with {:?}", event_sender));
 
         let c = match event_sender {
             Some(_) => {

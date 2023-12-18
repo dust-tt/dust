@@ -68,7 +68,6 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
 } as const;
 
 export const MISTRAL_7B_INSTRUCT_MODEL_ID = "mistral_7B_instruct" as const;
-export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
 
 export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   providerId: "textsynth",
@@ -79,15 +78,6 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   largeModel: false,
 } as const;
 
-export const MISTRAL_SMALL_MODEL_CONFIG = {
-  providerId: "mistral_ai",
-  modelId: MISTRAL_SMALL_MODEL_ID,
-  displayName: "Mistral Small",
-  contextSize: 32768,
-  recommendedTopK: 16,
-  largeModel: false,
-};
-
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
@@ -96,7 +86,6 @@ export const SUPPORTED_MODEL_CONFIGS = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
 ] as const;
 
 // this creates a union type of all the {providerId: string, modelId: string}
