@@ -43,6 +43,7 @@ export const getServerSideProps: GetServerSideProps<{
   databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
+  duplicateAssistant: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -191,6 +192,7 @@ export const getServerSideProps: GetServerSideProps<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  const duplicateAssistant = context.query.copy === "true";
   return {
     props: {
       user,
@@ -205,6 +207,7 @@ export const getServerSideProps: GetServerSideProps<{
       databaseQueryConfiguration: databaseQueryConfiguration,
       agentConfiguration: config,
       flow,
+      duplicateAssistant,
     },
   };
 };
@@ -222,6 +225,7 @@ export default function EditAssistant({
   databaseQueryConfiguration,
   agentConfiguration,
   flow,
+  duplicateAssistant,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
@@ -276,11 +280,13 @@ export default function EditAssistant({
         dataSourceConfigurations,
         dustAppConfiguration,
         databaseQueryConfiguration,
-        scope: agentConfiguration.scope,
-        handle: agentConfiguration.name,
+        scope: duplicateAssistant ? "private" : agentConfiguration.scope,
+        handle: duplicateAssistant
+          ? `${agentConfiguration.name}-Copy`
+          : agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet
-        avatarUrl: agentConfiguration.pictureUrl,
+        avatarUrl: duplicateAssistant ? null : agentConfiguration.pictureUrl,
         generationSettings: agentConfiguration.generation
           ? {
               modelSettings: agentConfiguration.generation.model,
@@ -288,7 +294,8 @@ export default function EditAssistant({
             }
           : null,
       }}
-      agentConfigurationId={agentConfiguration.sId}
+      agentConfigurationId={duplicateAssistant ? null : agentConfiguration.sId}
+      forceEnableSave={duplicateAssistant ? true : false}
     />
   );
 }

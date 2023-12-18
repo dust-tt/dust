@@ -4,18 +4,20 @@ import {
   CheckCircleIcon,
   Dialog,
   Icon,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import Link from "next/link";
 import { useState } from "react";
 
 export function TeamSharingSection({
   owner,
+  agentConfigurationId,
   initialScope,
   newScope,
   setNewScope,
 }: {
   owner: WorkspaceType;
+  agentConfigurationId: string;
   initialScope: AgentConfigurationScope;
   newScope: Exclude<AgentConfigurationScope, "global">;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
@@ -99,9 +101,6 @@ export function TeamSharingSection({
         <CreateDuplicateDialog
           show={showCreateDuplicateDialog}
           onClose={() => setShowCreateDuplicateDialog(false)}
-          createDuplicate={function (): void {
-            throw new Error("Function not implemented.");
-          }}
         />
         <div className="text-lg font-bold text-element-900">Team sharing</div>
         <div className="flex items-center gap-3">
@@ -112,15 +111,16 @@ export function TeamSharingSection({
             private version.
           </div>
           <div>
-            <Tooltip label="Coming soon: you can create a duplicate to tweak your own, private version">
+            <Link
+              href={`/w/${owner.sId}/builder/assistants/${agentConfigurationId}?flow=personal_assistants&copy=true`}
+            >
               <Button
                 variant="secondary"
                 size="sm"
                 label="Create a duplicate"
                 onClick={() => setShowCreateDuplicateDialog(true)}
-                disabled={true}
               />
-            </Tooltip>
+            </Link>
           </div>
         </div>
       </div>
@@ -248,11 +248,9 @@ function WorkspaceRemoveDialog({
 function CreateDuplicateDialog({
   show,
   onClose,
-  createDuplicate,
 }: {
   show: boolean;
   onClose: () => void;
-  createDuplicate: () => void;
 }) {
   return (
     <Dialog
@@ -262,7 +260,6 @@ function CreateDuplicateDialog({
       validateLabel="Ok"
       validateVariant="primary"
       onValidate={async () => {
-        createDuplicate();
         onClose();
       }}
     >

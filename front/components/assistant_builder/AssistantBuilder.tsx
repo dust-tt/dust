@@ -178,7 +178,7 @@ export type AssistantBuilderInitialState = {
   description: string;
   scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
@@ -201,6 +201,7 @@ type AssistantBuilderProps = {
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
   flow: BuilderFlow;
+  forceEnableSave?: boolean;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -250,6 +251,7 @@ export default function AssistantBuilder({
   initialBuilderState,
   agentConfigurationId,
   flow,
+  forceEnableSave,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -300,6 +302,14 @@ export default function AssistantBuilder({
     { available: boolean; url: string }[]
   >([]);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (forceEnableSave === true) {
+      // We only want to interfer in the first render, and let the component
+      // manage the state after that.
+      setEdited(forceEnableSave);
+    }
+  }, [forceEnableSave]);
 
   useEffect(() => {
     if (agentConfigurations?.length) {
@@ -923,17 +933,20 @@ export default function AssistantBuilder({
               </div>
             </div>
           </div>
-          <TeamSharingSection
-            owner={owner}
-            initialScope={initialBuilderState?.scope ?? defaultScope}
-            newScope={builderState.scope}
-            setNewScope={(
-              scope: Exclude<AgentConfigurationScope, "global">
-            ) => {
-              setEdited(true);
-              setBuilderState((state) => ({ ...state, scope }));
-            }}
-          />
+          {agentConfigurationId && (
+            <TeamSharingSection
+              owner={owner}
+              agentConfigurationId={agentConfigurationId}
+              initialScope={initialBuilderState?.scope ?? defaultScope}
+              newScope={builderState.scope}
+              setNewScope={(
+                scope: Exclude<AgentConfigurationScope, "global">
+              ) => {
+                setEdited(true);
+                setBuilderState((state) => ({ ...state, scope }));
+              }}
+            />
+          )}
           <div className="mt-8 flex w-full flex-row items-start">
             <div className="flex w-full flex-col gap-4">
               <div className="text-2xl font-bold text-element-900">
