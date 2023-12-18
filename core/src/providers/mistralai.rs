@@ -514,20 +514,18 @@ impl LLM for MistralAILLM {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("MISTRAL_AI_API_KEY") {
+        match credentials.get("MISTRAL_API_KEY") {
             Some(api_key) => {
                 self.api_key = Some(api_key.clone());
             }
-            None => {
-                match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_AI_API_KEY")).await? {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `MISTRAL_AI_API_KEY` is not set."
-                    ))?,
+            None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
                 }
-            }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `MISTRAL_API_KEY` is not set."
+                ))?,
+            },
         }
         Ok(())
     }
@@ -675,7 +673,7 @@ impl Provider for MistralAIProvider {
         utils::info("Setting up Mistral AI:");
         utils::info("");
         utils::info(
-            "To use Mistral AI's models, you must set the environment variable `MISTRAL_AI_API_KEY`.",
+            "To use Mistral AI's models, you must set the environment variable `MISTRAL_API_KEY`.",
         );
         // TODO(flav): Update the link.
         // utils::info("Your API key can be found at `https://platform.openai.com/account/api-keys`.");

@@ -277,8 +277,8 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         owner={owner}
         open={mistalAIOpen}
         setOpen={setMistralAiOpen}
-        enabled={configs["mistral_ai"] ? true : false}
-        config={configs["mistral_ai"] ? configs["mistral_ai"] : null}
+        enabled={configs["mistral"] ? true : false}
+        config={configs["mistral"] ? configs["mistral"] : null}
       />
       <TextSynthSetup
         owner={owner}
@@ -353,7 +353,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                         case "openai":
                           setOpenAIOpen(true);
                           break;
-                        case "mistral_ai":
+                        case "mistral":
                           setMistralAiOpen(true);
                           break;
                         case "cohere":

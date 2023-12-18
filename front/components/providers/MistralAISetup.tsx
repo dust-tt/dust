@@ -37,7 +37,7 @@ export default function MistralAISetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    const check = await checkProvider(owner, "mistral_ai", { api_key: apiKey });
+    const check = await checkProvider(owner, "mistral", { api_key: apiKey });
 
     if (!check.ok) {
       setTestError(check.error);
@@ -52,7 +52,7 @@ export default function MistralAISetup({
 
   const handleEnable = async () => {
     setEnableRunning(true);
-    const res = await fetch(`/api/w/${owner.sId}/providers/mistral_ai`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/mistral`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -70,7 +70,7 @@ export default function MistralAISetup({
   };
 
   const handleDisable = async () => {
-    const res = await fetch(`/api/w/${owner.sId}/providers/mistral_ai`, {
+    const res = await fetch(`/api/w/${owner.sId}/providers/mistral`, {
       method: "DELETE",
     });
     await res.json();

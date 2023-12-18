@@ -36,8 +36,8 @@ export const credentialsFromProviders = (
       case "anthropic":
         credentials["ANTHROPIC_API_KEY"] = config.api_key;
         break;
-      case "mistral_ai":
-        credentials["MISTRAL_AI_API_KEY"] = config.api_key;
+      case "mistral":
+        credentials["MISTRAL_API_KEY"] = config.api_key;
         break;
       case "textsynth":
         credentials["TEXTSYNTH_API_KEY"] = config.api_key;

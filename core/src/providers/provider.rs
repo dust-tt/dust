@@ -36,7 +36,7 @@ impl ToString for ProviderID {
             ProviderID::AI21 => String::from("ai21"),
             ProviderID::AzureOpenAI => String::from("azure_openai"),
             ProviderID::Anthropic => String::from("anthropic"),
-            ProviderID::MistralAI => String::from("mistral_ai"),
+            ProviderID::MistralAI => String::from("mistral"),
             ProviderID::TextSynth => String::from("textsynth"),
         }
     }
@@ -51,10 +51,10 @@ impl FromStr for ProviderID {
             "ai21" => Ok(ProviderID::AI21),
             "azure_openai" => Ok(ProviderID::AzureOpenAI),
             "anthropic" => Ok(ProviderID::Anthropic),
-            "mistral_ai" => Ok(ProviderID::MistralAI),
+            "mistral" => Ok(ProviderID::MistralAI),
             "textsynth" => Ok(ProviderID::TextSynth),
             _ => Err(ParseError::with_message(
-                "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai, mistral_ai)",
+                "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai, mistral)",
             ))?,
         }
     }
