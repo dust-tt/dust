@@ -110,7 +110,7 @@ impl GoogleVertexAiLLM {
         }
     }
 
-    pub fn model_endpoint(&self) -> Result<String> {
+    fn model_endpoint(&self) -> Result<String> {
         match self.uri {
             Some(ref uri) => Ok(format!(
                 "{}/publishers/google/models/{}:streamGenerateContent?alt=sse",
@@ -120,7 +120,7 @@ impl GoogleVertexAiLLM {
         }
     }
 
-    pub async fn access_token(&self) -> Result<String> {
+    async fn access_token(&self) -> Result<String> {
         match self.service_account_json {
             None => Err(anyhow!("Service account JSON not set")),
             Some(ref service_account_json) => {
