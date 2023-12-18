@@ -162,16 +162,30 @@ impl LLM for GoogleVertexAiLLM {
         temperature: f32,
         n: usize,
         stop: &Vec<String>,
-        _frequency_penalty: Option<f32>,
-        _presence_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
         top_p: Option<f32>,
-        _top_logprobs: Option<i32>,
+        top_logprobs: Option<i32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
         assert!(self.service_account_json.is_some());
         assert!(self.uri.is_some());
         assert!(n == 1);
+
+        if frequency_penalty.is_some() {
+            Err(anyhow!(
+                "Frequency penalty not supported by Google Vertex AI"
+            ))?;
+        }
+        if presence_penalty.is_some() {
+            Err(anyhow!(
+                "Presence penalty not supported by Google Vertex AI"
+            ))?;
+        }
+        if top_logprobs.is_some() {
+            Err(anyhow!("Top logprobs not supported by Google Vertex AI"))?;
+        }
 
         if let Some(m) = max_tokens {
             if m == -1 {
@@ -234,15 +248,15 @@ impl LLM for GoogleVertexAiLLM {
     async fn chat(
         &self,
         messages: &Vec<ChatMessage>,
-        _functions: &Vec<ChatFunction>,
-        _function_call: Option<String>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
         stop: &Vec<String>,
         mut max_tokens: Option<i32>,
-        _presence_penalty: Option<f32>,
-        _frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
@@ -254,6 +268,22 @@ impl LLM for GoogleVertexAiLLM {
             if m == -1 {
                 max_tokens = None;
             }
+        }
+
+        if functions.len() > 0 || function_call.is_some() {
+            Err(anyhow!(
+                "Functions on Google Vertex AI are not implemented yet."
+            ))?;
+        }
+        if frequency_penalty.is_some() {
+            Err(anyhow!(
+                "Frequency penalty not supported by Google Vertex AI"
+            ))?;
+        }
+        if presence_penalty.is_some() {
+            Err(anyhow!(
+                "Presence penalty not supported by Google Vertex AI"
+            ))?;
         }
 
         let api_key =
