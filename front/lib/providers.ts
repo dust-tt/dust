@@ -70,6 +70,14 @@ export const modelProviders: ModelProvider[] = [
     chat: true,
     embed: false,
   },
+  {
+    providerId: "google_vertex_ai",
+    name: "Google Vertex AI",
+    built: true,
+    enabled: false,
+    chat: true,
+    embed: false,
+  },
 ];
 
 type ServiceProvider = {

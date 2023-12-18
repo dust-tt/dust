@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
@@ -10,6 +11,18 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
+use yup_oauth2::{ServiceAccountAuthenticator, ServiceAccountKey};
+
+use crate::{providers::llm::Tokens, run::Credentials, utils};
+
+use super::{
+    embedder::Embedder,
+    llm::{ChatFunction, ChatMessage, LLMChatGeneration, LLMGeneration, LLM},
+    provider::{Provider, ProviderID},
+    tiktoken::tiktoken::{
+        cl100k_base_singleton, decode_async, encode_async, tokenize_async, CoreBPE,
+    },
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +57,208 @@ pub struct Completion {
     usage_metadata: Option<UsageMetadata>,
 }
 
+pub struct GoogleVertexAiProvider {}
+
+impl GoogleVertexAiProvider {
+    pub fn new() -> Self {
+        GoogleVertexAiProvider {}
+    }
+}
+
+#[async_trait]
+impl Provider for GoogleVertexAiProvider {
+    fn id(&self) -> ProviderID {
+        ProviderID::GoogleVertexAi
+    }
+
+    fn setup(&self) -> Result<()> {
+        utils::info("Setting up Google Vertex AI provider");
+        utils::info("");
+        utils::info(
+            "To use Google Vertex AI's models, you must set the environment variable `GOOGLE_VERTEX_AI_KEY`.",
+        );
+        utils::info("Your API key can be found at `https://platform.openai.com/account/api-keys`.");
+        utils::info("");
+        utils::info(
+            "Once ready you can check your setup with `dust provider test google_vertex_ai`",
+        );
+
+        Ok(())
+    }
+
+    async fn test(&self) -> Result<()> {
+        Err(anyhow!("TODO"))
+    }
+
+    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
+        panic!("TODO")
+    }
+
+    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
+        panic!("TODO")
+    }
+}
+
+pub struct GoogleVertexAiLLM {
+    id: String,
+    uri: Uri,
+    service_account_json: Option<String>,
+}
+
+impl GoogleVertexAiLLM {
+    pub fn new(id: String, uri: Uri, service_account_json: Option<String>) -> Self {
+        GoogleVertexAiLLM {
+            id,
+            uri,
+            service_account_json,
+        }
+    }
+
+    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+        cl100k_base_singleton()
+    }
+}
+
+#[async_trait]
+impl LLM for GoogleVertexAiLLM {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        match credentials.get("GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON") {
+            Some(service_account_json) => {
+                self.service_account_json = Some(service_account_json.clone());
+            }
+            None => Err(anyhow!(
+                "GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON not found in credentials"
+            ))?,
+        }
+        Ok(())
+    }
+
+    fn context_size(&self) -> usize {
+        8192
+    }
+
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        encode_async(self.tokenizer(), text).await
+    }
+
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(self.tokenizer(), text).await
+    }
+
+    async fn generate(
+        &self,
+        prompt: &str,
+        mut max_tokens: Option<i32>,
+        temperature: f32,
+        n: usize,
+        stop: &Vec<String>,
+        frequency_penalty: Option<f32>,
+        presence_penalty: Option<f32>,
+        top_p: Option<f32>,
+        top_logprobs: Option<i32>,
+        extras: Option<Value>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<LLMGeneration> {
+        assert!(self.service_account_json.is_some());
+        assert!(n == 1);
+
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                let tokens = self.encode(prompt).await?;
+                max_tokens = Some((self.context_size() - tokens.len()) as i32);
+            }
+        }
+
+        let api_key =
+            get_access_token(self.service_account_json.as_ref().unwrap().as_str()).await?;
+
+        let c = match event_sender {
+            Some(_) => {
+                if n > 1 {
+                    return Err(anyhow!(
+                        "Generating multiple variations in streaming mode is not supported."
+                    ))?;
+                }
+                streamed_completion(
+                    self.uri.clone(),
+                    api_key,
+                    prompt,
+                    max_tokens,
+                    temperature,
+                    stop,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    None,
+                    event_sender,
+                )
+                .await?
+            }
+            None => {
+                completion(
+                    self.uri.clone(),
+                    api_key,
+                    prompt,
+                    max_tokens,
+                    temperature,
+                    stop,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    None,
+                )
+                .await?
+            }
+        };
+
+        Ok(LLMGeneration {
+            created: utils::now(),
+            provider: ProviderID::GoogleVertexAi.to_string(),
+            model: self.id().clone(),
+            completions: vec![Tokens {
+                text: c.candidates[0].content.parts[0].text.clone(),
+                tokens: Some(vec![]),
+                logprobs: Some(vec![]),
+                top_logprobs: None,
+            }],
+            prompt: Tokens {
+                text: prompt.to_string(),
+                tokens: Some(vec![]),
+                logprobs: Some(vec![]),
+                top_logprobs: None,
+            },
+        })
+    }
+
+    async fn chat(
+        &self,
+        messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        mut max_tokens: Option<i32>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
+        extras: Option<Value>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<LLMChatGeneration> {
+        Err(anyhow!("TODO"))
+    }
+}
+
 pub async fn streamed_completion(
     uri: Uri,
     api_key: String,
@@ -52,7 +267,7 @@ pub async fn streamed_completion(
     temperature: f32,
     stop: &Vec<String>,
     top_p: f32,
-    top_k: usize,
+    top_k: Option<usize>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<Completion> {
     let https = HttpsConnector::new();
@@ -124,9 +339,35 @@ pub async fn streamed_completion(
                 }
                 Some(es::SSE::Event(e)) => {
                     let s = e.data.as_str();
-                    println!("DATA: {}", s);
-                    let completion = serde_json::from_str(e.data.as_str())?;
-                    println!("COMPLETION: {:?}", completion);
+                    let completion: Completion = serde_json::from_str(e.data.as_str())?;
+                    if completion.candidates.len() != 1 {
+                        Err(anyhow!(
+                            "Unexpected number of candidates: {}",
+                            completion.candidates.len()
+                        ))?;
+                    }
+                    if completion.candidates[0].content.parts.len() != 1 {
+                        Err(anyhow!(
+                            "Unexpected number of parts: {}",
+                            completion.candidates[0].content.parts.len()
+                        ))?;
+                    }
+
+                    match event_sender.as_ref() {
+                        Some(sender) => {
+                            let text = completion.candidates[0].content.parts[0].text.clone();
+                            if (text.len() > 0) && (text != prompt) {
+                                let _ = sender.send(json!({
+                                    "type": "tokens",
+                                    "content": {
+                                        "text": text,
+                                    }
+                                }));
+                            }
+                        }
+                        _ => (),
+                    }
+
                     completions.lock().push(completion);
                 }
                 None => {
@@ -143,11 +384,81 @@ pub async fn streamed_completion(
         }
     }
 
-    let _prompt_len = prompt.chars().count();
+    let mut completion = Completion {
+        candidates: vec![Candidate {
+            content: Content {
+                role: String::from("model"),
+                parts: vec![Part {
+                    text: String::from(""),
+                }],
+            },
+            finish_reason: None,
+        }],
+        usage_metadata: Some(UsageMetadata {
+            prompt_token_count: 0,
+            candidates_token_count: 0,
+            total_token_count: 0,
+        }),
+    };
 
-    match event_sender.as_ref() {
-        _ => (),
+    completions.lock().iter().for_each(|c| {
+        completion.candidates[0].content.parts[0].text.push_str(
+            c.candidates[0]
+                .content
+                .parts
+                .iter()
+                .map(|p| p.text.as_str())
+                .collect::<Vec<&str>>()
+                .join(" ")
+                .as_str(),
+        );
+        if c.candidates[0].finish_reason.is_some() {
+            completion.candidates[0].finish_reason = c.candidates[0].finish_reason.clone();
+        }
+        if c.usage_metadata.is_some() {
+            completion.usage_metadata = c.usage_metadata.clone();
+        }
+    });
+
+    Ok(completion)
+}
+
+pub async fn completion(
+    uri: Uri,
+    api_key: String,
+    prompt: &str,
+    max_tokens: Option<i32>,
+    temperature: f32,
+    stop: &Vec<String>,
+    top_p: f32,
+    top_k: Option<usize>,
+) -> Result<Completion> {
+    streamed_completion(
+        uri,
+        api_key,
+        prompt,
+        max_tokens,
+        temperature,
+        stop,
+        top_p,
+        top_k,
+        None,
+    )
+    .await
+}
+
+pub async fn get_access_token(service_account_json: &str) -> Result<String> {
+    let service_account_key: ServiceAccountKey = serde_json::from_str(service_account_json)?;
+
+    let auth = ServiceAccountAuthenticator::builder(service_account_key)
+        .build()
+        .await?;
+
+    let scopes = &["https://www.googleapis.com/auth/cloud-platform"];
+    let token = auth.token(scopes).await?;
+
+    match token.token() {
+        Some(t) => Ok(t.into()),
+        None => Err(anyhow!("Error getting access token from Google")),
     }
-
-    Err(anyhow!("TODO MERGE COMPLETIONS"))
 }
