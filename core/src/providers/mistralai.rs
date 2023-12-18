@@ -3,7 +3,7 @@ use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLM
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
 use crate::run::Credentials;
-use crate::utils::{self};
+use crate::utils::{self, now};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -87,10 +87,10 @@ struct ChatDelta {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ChatChunk {
     pub choices: Vec<ChatDelta>,
-    pub created: u64,
+    pub created: Option<u64>,
     pub id: String,
     pub model: String,
-    pub object: String,
+    pub object: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -315,10 +315,12 @@ impl MistralAILLM {
                         finish_reason: None,
                     })
                     .collect::<Vec<_>>(),
-                created: f.created,
+                // The `created` timestamp is absent in the initial stream chunk (in ms), defaulting to the current time (in seconds).
+                created: f.created.map(|s| s * 1000).unwrap_or_else(now),
                 id: f.id.clone(),
                 model: f.model,
-                object: f.object.clone(),
+                // The `object` field defaults to "start" when not present in the initial stream chunk.
+                object: f.object.unwrap_or(String::from("start")),
                 usage: None,
             };
 
