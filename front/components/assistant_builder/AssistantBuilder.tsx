@@ -27,6 +27,7 @@ import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
   SupportedModel,
 } from "@dust-tt/types";
 import { TimeframeUnit } from "@dust-tt/types";
@@ -80,6 +81,7 @@ const usedModelConfigs = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
 ];
 
 // Actions

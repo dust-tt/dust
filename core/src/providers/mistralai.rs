@@ -627,7 +627,7 @@ impl LLM for MistralAILLM {
 
         Ok(LLMChatGeneration {
             created: utils::now(),
-            provider: ProviderID::MistralAI.to_string(),
+            provider: ProviderID::Mistral.to_string(),
             model: self.id.clone(),
             completions: c
                 .choices
@@ -651,19 +651,19 @@ impl LLM for MistralAILLM {
         _extras: Option<Value>,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMGeneration> {
-        panic!("Not implemented!");
+        unimplemented!();
     }
 }
-pub struct MistralAIProvider {}
+pub struct MistralProvider {}
 
-impl MistralAIProvider {
+impl MistralProvider {
     pub fn new() -> Self {
-        MistralAIProvider {}
+        MistralProvider {}
     }
 }
 
 #[async_trait]
-impl Provider for MistralAIProvider {
+impl Provider for MistralProvider {
     fn id(&self) -> ProviderID {
         ProviderID::OpenAI
     }
@@ -720,6 +720,6 @@ impl Provider for MistralAIProvider {
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
-        panic!("Not implemented!");
+        unimplemented!()
     }
 }
