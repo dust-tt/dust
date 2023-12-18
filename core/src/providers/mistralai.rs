@@ -1,5 +1,5 @@
 use crate::providers::embedder::Embedder;
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
 use crate::run::Credentials;
@@ -22,7 +22,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
-use super::llm::ChatFunction;
+use super::llm::{ChatFunction, ChatMessage as BaseChatMessage};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -43,6 +43,20 @@ impl From<MistralAIChatMessageRole> for ChatMessageRole {
     }
 }
 
+impl TryFrom<ChatMessageRole> for MistralAIChatMessageRole {
+    type Error = anyhow::Error;
+
+    fn try_from(value: ChatMessageRole) -> Result<Self, Self::Error> {
+        match value {
+            ChatMessageRole::Assistant => Ok(MistralAIChatMessageRole::Assistant),
+            ChatMessageRole::System => Ok(MistralAIChatMessageRole::System),
+            ChatMessageRole::User => Ok(MistralAIChatMessageRole::User),
+            // Handle other cases that are not supported
+            _ => Err(anyhow!("Role not supported by Mistral AI")),
+        }
+    }
+}
+
 impl ToString for MistralAIChatMessageRole {
     fn to_string(&self) -> String {
         match self {
@@ -53,11 +67,31 @@ impl ToString for MistralAIChatMessageRole {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct ChatMessage {
+    pub content: Option<String>,
+    pub role: MistralAIChatMessageRole,
+}
+
+impl TryFrom<BaseChatMessage> for ChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(value: BaseChatMessage) -> Result<Self, Self::Error> {
+        let mistral_role = MistralAIChatMessageRole::try_from(value.role)
+            .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
+
+        Ok(ChatMessage {
+            content: value.content,
+            role: mistral_role,
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ChatChoice {
     pub finish_reason: Option<String>,
     pub index: usize,
-    pub message: ChatMessage,
+    pub message: BaseChatMessage,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -94,7 +128,7 @@ struct ChatChunk {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Error {
+struct APIError {
     #[serde(alias = "type")]
     pub _type: Option<String>,
     pub code: Option<String>,
@@ -103,7 +137,7 @@ struct Error {
     pub param: Option<String>,
 }
 
-impl Error {
+impl APIError {
     pub fn message(&self) -> String {
         format!("MistralAIError: [{:?}] {}", self._type, self.message,)
     }
@@ -135,6 +169,21 @@ impl MistralAILLM {
 
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!("https://api.mistral.ai/v1/chat/completions",).parse::<Uri>()?)
+    }
+
+    fn to_mistral_messages(
+        &self,
+        messages: &Vec<BaseChatMessage>,
+    ) -> Result<Vec<ChatMessage>, anyhow::Error> {
+        let mistral_messages: Result<Vec<ChatMessage>, _> = messages
+            .iter()
+            .cloned()
+            .map(ChatMessage::try_from)
+            .collect();
+
+        // If mistral_messages is Err, the error will be returned from the function.
+        // If it's Ok, the inner Vec<ChatMessage> will be returned.
+        mistral_messages
     }
 
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
@@ -220,7 +269,7 @@ impl MistralAILLM {
                             let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
                                 Ok(c) => c,
                                 Err(err) => {
-                                    let error: Result<Error, _> =
+                                    let error: Result<APIError, _> =
                                         serde_json::from_str(e.data.as_str());
                                     match error {
                                         Ok(error) => {
@@ -305,7 +354,7 @@ impl MistralAILLM {
                     .choices
                     .iter()
                     .map(|c| ChatChoice {
-                        message: ChatMessage {
+                        message: BaseChatMessage {
                             content: Some("".to_string()),
                             function_call: None,
                             name: None,
@@ -431,7 +480,7 @@ impl MistralAILLM {
         let mut completion: ChatCompletion = match serde_json::from_slice(c) {
             Ok(c) => Ok(c),
             Err(_) => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: APIError = serde_json::from_slice(c)?;
                 match error.retryable() {
                     true => Err(ModelError {
                         message: error.message(),
@@ -504,7 +553,7 @@ impl LLM for MistralAILLM {
 
     async fn chat(
         &self,
-        messages: &Vec<ChatMessage>,
+        messages: &Vec<BaseChatMessage>,
         functions: &Vec<ChatFunction>,
         function_call: Option<String>,
         temperature: f32,
@@ -544,13 +593,15 @@ impl LLM for MistralAILLM {
 
         // TODO(flav): Handle `extras`.
 
+        let mistral_messages = self.to_mistral_messages(messages)?;
+
         let c = match event_sender {
             Some(_) => {
                 self.streamed_chat_completion(
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
                     Some(self.id.clone()),
-                    messages,
+                    &mistral_messages,
                     temperature,
                     match top_p {
                         Some(t) => t,
@@ -566,7 +617,7 @@ impl LLM for MistralAILLM {
                     self.chat_uri()?,
                     self.api_key.clone().unwrap(),
                     Some(self.id.clone()),
-                    messages,
+                    &mistral_messages,
                     temperature,
                     match top_p {
                         Some(t) => t,
