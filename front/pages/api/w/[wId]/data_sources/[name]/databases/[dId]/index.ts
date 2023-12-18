@@ -61,6 +61,30 @@ async function handler(
   }
   const coreAPI = new CoreAPI(logger);
   switch (req.method) {
+    case "GET":
+      const databaseRes = await coreAPI.getDatabase({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        databaseId,
+      });
+      if (databaseRes.isErr()) {
+        logger.error({
+          dataSourcename: dataSource.name,
+          workspaceId: owner.id,
+          error: databaseRes.error,
+        });
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to get database.",
+          },
+        });
+      }
+
+      const { database } = databaseRes.value;
+
+      return res.status(200).json({ database });
     case "DELETE":
       const deleteRes = await coreAPI.deleteDatabase({
         projectId: dataSource.dustAPIProjectId,
@@ -92,7 +116,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, DELETE is expected.",
+          message:
+            "The method passed is not supported, GET or DELETE is expected.",
         },
       });
   }

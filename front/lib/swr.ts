@@ -1,4 +1,8 @@
-import { AgentsGetViewType, DataSourceType } from "@dust-tt/types";
+import {
+  AgentsGetViewType,
+  CoreAPIDatabase,
+  DataSourceType,
+} from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
@@ -531,6 +535,30 @@ export function useDatabases({
     isDatabasesLoading: !error && !data,
     isDatabasesError: error,
     mutateDatabases: mutate,
+  };
+}
+
+export function useDatabase({
+  workspaceId,
+  dataSourceName,
+  databaseId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  databaseId?: string;
+}) {
+  const databaseFetcher: Fetcher<{ database: CoreAPIDatabase }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}`,
+    databaseFetcher
+  );
+
+  return {
+    database: data ? data.database : null,
+    isDatabaseLoading: !error && !data,
+    isDatabaseError: error,
+    mutateDatabase: mutate,
   };
 }
 
