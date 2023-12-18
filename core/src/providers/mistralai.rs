@@ -43,10 +43,10 @@ impl From<MistralAIChatMessageRole> for ChatMessageRole {
     }
 }
 
-impl TryFrom<ChatMessageRole> for MistralAIChatMessageRole {
+impl TryFrom<&ChatMessageRole> for MistralAIChatMessageRole {
     type Error = anyhow::Error;
 
-    fn try_from(value: ChatMessageRole) -> Result<Self, Self::Error> {
+    fn try_from(value: &ChatMessageRole) -> Result<Self, Self::Error> {
         match value {
             ChatMessageRole::Assistant => Ok(MistralAIChatMessageRole::Assistant),
             ChatMessageRole::System => Ok(MistralAIChatMessageRole::System),
@@ -73,15 +73,15 @@ struct ChatMessage {
     pub role: MistralAIChatMessageRole,
 }
 
-impl TryFrom<BaseChatMessage> for ChatMessage {
+impl TryFrom<&BaseChatMessage> for ChatMessage {
     type Error = anyhow::Error;
 
-    fn try_from(value: BaseChatMessage) -> Result<Self, Self::Error> {
-        let mistral_role = MistralAIChatMessageRole::try_from(value.role)
+    fn try_from(value: &BaseChatMessage) -> Result<Self, Self::Error> {
+        let mistral_role = MistralAIChatMessageRole::try_from(&value.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
         Ok(ChatMessage {
-            content: value.content,
+            content: value.content.clone(),
             role: mistral_role,
         })
     }
@@ -175,11 +175,8 @@ impl MistralAILLM {
         &self,
         messages: &Vec<BaseChatMessage>,
     ) -> Result<Vec<ChatMessage>, anyhow::Error> {
-        let mistral_messages: Result<Vec<ChatMessage>, _> = messages
-            .iter()
-            .cloned()
-            .map(ChatMessage::try_from)
-            .collect();
+        let mistral_messages: Result<Vec<ChatMessage>, _> =
+            messages.iter().map(|m| ChatMessage::try_from(m)).collect();
 
         // If mistral_messages is Err, the error will be returned from the function.
         // If it's Ok, the inner Vec<ChatMessage> will be returned.
