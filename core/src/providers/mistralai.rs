@@ -634,7 +634,7 @@ impl Provider for MistralAIProvider {
         // TODO(flav): Update the link.
         // utils::info("Your API key can be found at `https://platform.openai.com/account/api-keys`.");
         utils::info("");
-        utils::info("Once ready you can check your setup with `dust provider test mistralai`");
+        utils::info("Once ready you can check your setup with `dust provider test mistral_ai`");
 
         Ok(())
     }

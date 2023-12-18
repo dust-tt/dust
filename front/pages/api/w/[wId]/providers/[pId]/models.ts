@@ -219,7 +219,7 @@ async function handler(
           res.status(200).json({ models: anthropic_models });
           return;
 
-        case "mistralai":
+        case "mistral_ai":
           const mistralModelRes = await fetch(
             "https://api.mistral.ai/v1/models",
             {

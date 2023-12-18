@@ -80,7 +80,7 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
 } as const;
 
 export const MISTRAL_SMALL_MODEL_CONFIG = {
-  providerId: "mistralai",
+  providerId: "mistral_ai",
   modelId: MISTRAL_SMALL_MODEL_ID,
   displayName: "Mistral Small",
   contextSize: 32768,

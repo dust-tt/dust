@@ -155,7 +155,7 @@ async function handler(
           }
           return;
 
-        case "mistralai":
+        case "mistral_ai":
           const mistralModelsRes = await fetch(
             "https://api.mistral.ai/v1/models",
             {

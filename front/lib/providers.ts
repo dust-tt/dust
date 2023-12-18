@@ -55,7 +55,7 @@ export const modelProviders: ModelProvider[] = [
     embed: false,
   },
   {
-    providerId: "mistralai",
+    providerId: "mistral_ai",
     name: "Mistral AI",
     built: true,
     enabled: false,
