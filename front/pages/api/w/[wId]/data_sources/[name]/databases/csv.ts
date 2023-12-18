@@ -360,19 +360,7 @@ async function rowsFromCsv(
   for (let i = 0; i < nbRows; i++) {
     const record = header.reduce((acc, h) => {
       const parsedValues = parsedValuesByCol[h];
-      if (!parsedValues) {
-        throw new Error(
-          `Unreachable: could not find value for column ${h} at row ${i}`
-        );
-      }
-      const value = parsedValues[i];
-      if (value === undefined) {
-        throw new Error(
-          `Unreachable: could not find value for column ${h} at row ${i}`
-        );
-      }
-
-      acc[h] = value;
+      acc[h] = parsedValues && parsedValues[i] ? parsedValues[i] : "";
       return acc;
     }, {} as Record<string, RowValue>);
 
