@@ -1,7 +1,7 @@
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
+use crate::providers::tiktoken::tiktoken::{p50k_base_singleton, CoreBPE};
 use crate::run::Credentials;
 use crate::utils::{self, now};
 use anyhow::{anyhow, Result};
@@ -184,8 +184,7 @@ impl MistralAILLM {
     }
 
     fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
-        // TODO(flav): Pending further insights into Mistral tokenizer behavior.
-        return cl100k_base_singleton();
+        return p50k_base_singleton();
     }
 
     async fn streamed_chat_completion(
