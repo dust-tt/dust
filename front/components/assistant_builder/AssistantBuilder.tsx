@@ -1437,8 +1437,8 @@ function SlackIntegration({
       </div>
       <div className="text-sm text-element-700">
         You can set this assistant as the default assistant on a selection of
-        your Slack workspace channels. {assistantName} will answer by default
-        when the @Dust Slack bot is mentioned in
+        your Slack public channels. {assistantName} will answer by default when
+        the @Dust Slack bot is mentioned in
         {!existingSelection.length
           ? " these channels."
           : " the channels selected below:"}
