@@ -5,7 +5,6 @@ import {
   Cog6ToothIcon,
   ContentMessage,
   ContextItem,
-  DropdownMenu,
   InformationCircleIcon,
   Modal,
   Page,
@@ -31,6 +30,7 @@ import { useContext, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -38,7 +38,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const {
   GA_TRACKING_ID = "",

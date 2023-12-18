@@ -7,8 +7,6 @@ import {
 } from "@dust-tt/sparkle";
 import { ConnectorProvider } from "@dust-tt/types";
 
-import { isDevelopment } from "@app/lib/development";
-
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
   {
