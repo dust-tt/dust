@@ -97,7 +97,7 @@ export const topNavigation = ({
       id: "assistants",
       label: "Assistants",
       icon: RobotIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
+      href: `/w/${owner.sId}/assistant/assistants`,
       current: current === "assistants",
       sizing: "hug",
       hasSeparator: true,
@@ -109,7 +109,7 @@ export const topNavigation = ({
       icon: Cog6ToothIcon,
       href:
         owner.role === "admin"
-          ? `/w/${owner.sId}/workspace`
+          ? `/w/${owner.sId}/members`
           : `/w/${owner.sId}/a`,
       current: current === "admin",
       sizing: "hug",
@@ -170,18 +170,7 @@ export const subNavigationAssistants = ({
 }) => {
   const nav: SidebarNavigation[] = [];
 
-  const assistantMenus: SparkleAppLayoutNavigation[] = [
-    {
-      id: "workspace_assistants",
-      label: "Workspace Assistants",
-      icon: RobotSharedIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
-      current: current === "workspace_assistants",
-      subMenuLabel:
-        current === "workspace_assistants" ? subMenuLabel : undefined,
-      subMenu: current === "workspace_assistants" ? subMenu : undefined,
-    },
-  ];
+  const assistantMenus: SparkleAppLayoutNavigation[] = [];
 
   if (owner.role === "builder" || owner.role === "admin") {
     assistantMenus.push({
@@ -195,6 +184,16 @@ export const subNavigationAssistants = ({
       subMenu: current === "personal_assistants" ? subMenu : undefined,
     });
   }
+
+  assistantMenus.push({
+    id: "workspace_assistants",
+    label: "Workspace Assistants",
+    icon: RobotSharedIcon,
+    href: `/w/${owner.sId}/builder/assistants`,
+    current: current === "workspace_assistants",
+    subMenuLabel: current === "workspace_assistants" ? subMenuLabel : undefined,
+    subMenu: current === "workspace_assistants" ? subMenu : undefined,
+  });
 
   nav.push({
     id: "assistants",
@@ -258,6 +257,15 @@ export const subNavigationAdmin = ({
       variant: "secondary",
       menus: [
         {
+          id: "members",
+          label: "Members",
+          icon: UsersIcon,
+          href: `/w/${owner.sId}/members`,
+          current: current === "members",
+          subMenuLabel: current === "members" ? subMenuLabel : undefined,
+          subMenu: current === "members" ? subMenu : undefined,
+        },
+        {
           id: "workspace",
           label: "Workspace",
           icon: PlanetIcon,
@@ -274,15 +282,6 @@ export const subNavigationAdmin = ({
           current: current === "subscription",
           subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
           subMenu: current === "subscription" ? subMenu : undefined,
-        },
-        {
-          id: "members",
-          label: "Members",
-          icon: UsersIcon,
-          href: `/w/${owner.sId}/members`,
-          current: current === "members",
-          subMenuLabel: current === "members" ? subMenuLabel : undefined,
-          subMenu: current === "members" ? subMenu : undefined,
         },
       ],
     });
