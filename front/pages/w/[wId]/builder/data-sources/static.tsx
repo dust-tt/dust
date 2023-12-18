@@ -14,13 +14,12 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { classNames } from "@app/lib/utils";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
