@@ -22,6 +22,7 @@ import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 import { CreationAttributes, literal, Op } from "sequelize";
 
+import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -36,12 +37,10 @@ import {
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
 
-import { registerWebhook } from "../lib";
-
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
-const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
+export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
 };
