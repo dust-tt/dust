@@ -70,12 +70,14 @@ class MATH extends Dataset {
 
   instructions(): string {
     return (
-      `Given a set of 4 input numbers, find a mathematical expression using each number` +
-      ` only once that symbolically evaluates to 24 (Game of 24).` +
-      ` The available operators are [+,-,*,/]` +
-      ` (the division operator / is the symbolic division (eg: 2/(3-5/2) = 2/(1/2) = 4)).` +
-      ` The answer should be a valid solution expression without space` +
-      ` (eg: \`(6+1+1)*3\` or \`12/(1-1/2)\`).`
+      `Find a solution to the provided mathematical problem below.` +
+      ` The solution is a unique mathematical expression presented in a LaTeX '\\boxed' directive` +
+      ` (eg: \\boxed{4} or \\boxed{3\\pi}). Formatting instructions:` +
+      ` fractions should be represented in the LaTeX form \\frac{a}{b} (not \\frac12),` +
+      ` units should not be included,` +
+      ` square roots should be presented in the LaTeX form \\sqrt{c} (not \\sqrt2),` +
+      ` all spaces and non critical parentheses or formatting should be stripped,` +
+      ` rational numbers should be presented with a leading 0.`
     );
   }
 
