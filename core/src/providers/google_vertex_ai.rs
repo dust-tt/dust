@@ -12,7 +12,11 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use yup_oauth2::{ServiceAccountAuthenticator, ServiceAccountKey};
 
-use crate::{providers::llm::Tokens, run::Credentials, utils};
+use crate::{
+    providers::llm::{ChatMessageRole, Tokens},
+    run::Credentials,
+    utils,
+};
 
 use super::{
     embedder::Embedder,
@@ -192,46 +196,28 @@ impl LLM for GoogleVertexAiLLM {
             self.id()
         );
 
-        let c = match event_sender {
-            Some(_) => {
-                if n > 1 {
-                    return Err(anyhow!(
-                        "Generating multiple variations in streaming mode is not supported."
-                    ))?;
-                }
-                streamed_completion(
-                    uri,
-                    api_key,
-                    prompt,
-                    max_tokens,
-                    temperature,
-                    stop,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    None,
-                    event_sender,
-                )
-                .await?
-            }
-            None => {
-                completion(
-                    uri,
-                    api_key,
-                    prompt,
-                    max_tokens,
-                    temperature,
-                    stop,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    None,
-                )
-                .await?
-            }
-        };
+        let c = streamed_chat_completion(
+            uri,
+            api_key,
+            &vec![Content {
+                role: String::from("USER"),
+                parts: vec![Part {
+                    text: String::from(prompt),
+                }],
+            }],
+            &vec![],
+            None,
+            temperature,
+            stop,
+            max_tokens,
+            match top_p {
+                Some(t) => t,
+                None => 1.0,
+            },
+            None,
+            event_sender,
+        )
+        .await?;
 
         Ok(LLMGeneration {
             created: utils::now(),
@@ -254,36 +240,138 @@ impl LLM for GoogleVertexAiLLM {
 
     async fn chat(
         &self,
-        _messages: &Vec<ChatMessage>,
+        messages: &Vec<ChatMessage>,
         _functions: &Vec<ChatFunction>,
         _function_call: Option<String>,
-        _temperature: f32,
-        _top_p: Option<f32>,
-        _n: usize,
-        _stop: &Vec<String>,
-        mut _max_tokens: Option<i32>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        mut max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
         _extras: Option<Value>,
-        _event_sender: Option<UnboundedSender<Value>>,
+        event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        Err(anyhow!("TODO"))
+        assert!(self.service_account_json.is_some());
+        assert!(self.uri.is_some());
+        assert!(n == 1);
+
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                max_tokens = None;
+            }
+        }
+
+        let api_key =
+            get_access_token(self.service_account_json.as_ref().unwrap().as_str()).await?;
+
+        let uri = format!(
+            "{}/publishers/google/models/{}:streamGenerateContent?alt=sse",
+            self.uri.clone().unwrap(),
+            self.id()
+        );
+
+        let c = streamed_chat_completion(
+            uri,
+            api_key,
+            &messages
+                .iter()
+                .map(|m| Content {
+                    role: match m.role {
+                        ChatMessageRole::Assistant | ChatMessageRole::Function => {
+                            String::from("MODEL")
+                        }
+                        _ => String::from("USER"),
+                    },
+                    parts: vec![Part {
+                        text: match m.role {
+                            ChatMessageRole::System => format!(
+                                "SYSTEM: {}\n",
+                                m.content.clone().unwrap_or(String::from(""))
+                            ),
+                            _ => m.content.clone().unwrap_or(String::from("")),
+                        },
+                    }],
+                })
+                .collect::<Vec<Content>>(),
+            &vec![],
+            None,
+            temperature,
+            stop,
+            max_tokens,
+            match top_p {
+                Some(t) => t,
+                None => 1.0,
+            },
+            None,
+            event_sender,
+        )
+        .await?;
+
+        Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::GoogleVertexAi.to_string(),
+            model: self.id().clone(),
+            completions: vec![ChatMessage {
+                name: None,
+                function_call: None,
+                role: ChatMessageRole::Assistant,
+                content: Some(c.candidates[0].content.parts[0].text.clone()),
+            }],
+        })
     }
 }
 
-pub async fn streamed_completion(
+pub async fn streamed_chat_completion(
     uri: String,
     api_key: String,
-    prompt: &str,
-    max_tokens: Option<i32>,
+    messages: &Vec<Content>,
+    _functions: &Vec<ChatFunction>,
+    _function_call: Option<String>,
     temperature: f32,
     stop: &Vec<String>,
+    max_tokens: Option<i32>,
     top_p: f32,
     top_k: Option<usize>,
     event_sender: Option<UnboundedSender<Value>>,
 ) -> Result<Completion> {
     let https = HttpsConnector::new();
     let url = uri.to_string();
+
+    // Squash messages for the same role.
+    // Gemini doesn't allow multiple messages from the same role in a row.
+    let messages: Vec<Content> = messages
+        .iter()
+        .fold(
+            Vec::<Content>::new(),
+            |mut acc: Vec<Content>, m: &Content| {
+                match acc.last_mut() {
+                    Some(last) if last.role == m.role => {
+                        last.parts.push(Part {
+                            text: m.parts[0].text.clone(),
+                        });
+                    }
+                    _ => {
+                        acc.push(m.clone());
+                    }
+                }
+                acc
+            },
+        )
+        .iter()
+        .map(|m| Content {
+            role: m.role.clone(),
+            parts: vec![Part {
+                text: m
+                    .parts
+                    .iter()
+                    .map(|p| p.text.clone())
+                    .collect::<Vec<String>>()
+                    .join(" "),
+            }],
+        })
+        .collect::<Vec<Content>>();
 
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
         Ok(builder) => builder,
@@ -309,12 +397,7 @@ pub async fn streamed_completion(
     };
 
     let body = json!({
-        "contents": vec![json!({
-            "role": "user",
-            "parts": {
-                "text": prompt,
-            }
-        })],
+        "contents": vec![json!(messages)],
         "generation_config": {
             "temperature": temperature,
             "topP": top_p,
@@ -367,7 +450,7 @@ pub async fn streamed_completion(
                     match event_sender.as_ref() {
                         Some(sender) => {
                             let text = completion.candidates[0].content.parts[0].text.clone();
-                            if (text.len() > 0) && (text != prompt) {
+                            if text.len() > 0 {
                                 let _ = sender.send(json!({
                                     "type": "tokens",
                                     "content": {
@@ -398,7 +481,7 @@ pub async fn streamed_completion(
     let mut completion = Completion {
         candidates: vec![Candidate {
             content: Content {
-                role: String::from("model"),
+                role: String::from("MODEL"),
                 parts: vec![Part {
                     text: String::from(""),
                 }],
@@ -432,30 +515,6 @@ pub async fn streamed_completion(
     });
 
     Ok(completion)
-}
-
-pub async fn completion(
-    uri: String,
-    api_key: String,
-    prompt: &str,
-    max_tokens: Option<i32>,
-    temperature: f32,
-    stop: &Vec<String>,
-    top_p: f32,
-    top_k: Option<usize>,
-) -> Result<Completion> {
-    streamed_completion(
-        uri,
-        api_key,
-        prompt,
-        max_tokens,
-        temperature,
-        stop,
-        top_p,
-        top_k,
-        None,
-    )
-    .await
 }
 
 pub async fn get_access_token(service_account_json: &str) -> Result<String> {
