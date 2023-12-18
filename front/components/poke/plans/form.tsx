@@ -341,7 +341,6 @@ export const Field: React.FC<FieldProps> = ({
               }
               setEditingPlan({ ...editingPlan, [fieldName]: x });
             }}
-            disabled={!isEditing || disabled}
           />
         );
       case "select":
