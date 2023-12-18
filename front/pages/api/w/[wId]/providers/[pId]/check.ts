@@ -41,8 +41,18 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      const config = JSON.parse(req.query.config as string);
+    case "POST":
+      const config = req.body.config;
+
+      if (!config) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The config is missing.",
+          },
+        });
+      }
 
       switch (req.query.pId) {
         case "openai":
@@ -263,30 +273,7 @@ async function handler(
           }
           return;
 
-        default:
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "provider_not_found",
-              message: "The provider you're trying to check was not found.",
-            },
-          });
-      }
-
-    case "POST":
-      switch (req.query.pId) {
         case "google_vertex_ai":
-          const config = req.body.config;
-
-          if (!config) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "The config is missing.",
-              },
-            });
-          }
           const { service_account: serviceAccountJson, endpoint } = config;
           if (!serviceAccountJson) {
             return apiError(req, res, {
@@ -331,7 +318,7 @@ async function handler(
               maxOutputTokens: 1,
             },
           };
-          const testRes = await fetch(testUrl, {
+          const r = await fetch(testUrl, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${accessToken.token}`,
@@ -339,11 +326,11 @@ async function handler(
             },
             body: JSON.stringify(testRequestBody),
           });
-          if (!testRes.ok) {
-            const err = await testRes.json();
+          if (!r.ok) {
+            const err = await r.json();
             return res.status(400).json({ ok: false, error: err.error });
           }
-          await testRes.json();
+          await r.json();
           return res.status(200).json({ ok: true });
 
         default:
@@ -361,11 +348,9 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET or POST is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
-      break;
   }
 }
 

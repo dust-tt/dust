@@ -47,15 +47,10 @@ export default function GoogleVertexAISetup({
   const runTest = async () => {
     setTestRunning(true);
     setTestError("");
-    const check = await checkProvider(
-      owner,
-      "google_vertex_ai",
-      {
-        service_account: serviceAccount,
-        endpoint,
-      },
-      true
-    );
+    const check = await checkProvider(owner, "google_vertex_ai", {
+      service_account: serviceAccount,
+      endpoint,
+    });
 
     if (!check.ok) {
       setTestError(check.error);
