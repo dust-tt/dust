@@ -19,7 +19,6 @@ import {
   AgentConfigurationScope,
   ConnectorProvider,
   DataSourceType,
-  MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
