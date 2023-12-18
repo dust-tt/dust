@@ -7,6 +7,7 @@ import {
   ContextItem,
   DropdownMenu,
   InformationCircleIcon,
+  Modal,
   Page,
   Popup,
 } from "@dust-tt/sparkle";
@@ -26,7 +27,7 @@ import Nango from "@nangohq/frontend";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
@@ -37,6 +38,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const {
   GA_TRACKING_ID = "",
@@ -242,6 +244,108 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
+function ConfirmationModal({
+  dataSource,
+  show,
+  onClose,
+  onConfirm,
+}: {
+  dataSource: DataSourceIntegration;
+  show: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  return (
+    <Modal
+      isOpen={show}
+      title={`Connect ${dataSource.name}`}
+      onClose={onClose}
+      hasChanged={false}
+      variant="side-sm"
+    >
+      <div className="pt-8">
+        <Page.Vertical gap="lg" align="stretch">
+          <div className="flex flex-col gap-y-2">
+            <div className="grow text-sm font-medium text-element-800">
+              Important
+            </div>
+            <div className="text-sm font-normal text-element-700">
+              Resources shared with Dust will be made available to the entire
+              workspace{" "}
+              <span className="font-medium">
+                irrespective of their granular permissions
+              </span>{" "}
+              on {dataSource.name}.
+            </div>
+          </div>
+
+          {dataSource.limitations && (
+            <div className="flex flex-col gap-y-2">
+              <div className="grow text-sm font-medium text-element-800">
+                Limitations
+              </div>
+              <div className="text-sm font-normal text-element-700">
+                {dataSource.limitations}
+              </div>
+            </div>
+          )}
+
+          {dataSource.connectorProvider === "google_drive" && (
+            <>
+              <div className="flex flex-col gap-y-2">
+                <div className="grow text-sm font-medium text-element-800">
+                  Disclosure
+                </div>
+                <div className="text-sm font-normal text-element-700">
+                  Dust's use of information received from the Google APIs will
+                  adhere to{" "}
+                  <Link
+                    className="s-text-action-500"
+                    href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
+                  >
+                    Google API Services User Data Policy
+                  </Link>
+                  , including the Limited Use requirements.
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-y-2">
+                <div className="grow text-sm font-medium text-element-800">
+                  Notice on data processing
+                </div>
+                <div className="text-sm font-normal text-element-700">
+                  By connecting Google Drive, you acknowledge and agree that
+                  within your Google Drive, the data contained in the files and
+                  folders that you choose to synchronize with Dust will be
+                  transmitted to third-party entities, including but not limited
+                  to Artificial Intelligence (AI) model providers, for the
+                  purpose of processing and analysis. This process is an
+                  integral part of the functionality of our service and is
+                  subject to the terms outlined in our Privacy Policy and Terms
+                  of Service.
+                </div>
+              </div>
+            </>
+          )}
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="primary"
+              icon={CloudArrowLeftRightIcon}
+              onClick={() => {
+                setIsLoading(true);
+                onConfirm();
+              }}
+              disabled={isLoading}
+              label={isLoading ? "Connecting..." : "Acknowledge and Connect"}
+            />
+          </div>
+        </Page.Vertical>
+      </div>
+    </Modal>
+  );
+}
+
 export default function DataSourcesView({
   user,
   owner,
@@ -254,6 +358,8 @@ export default function DataSourcesView({
   nangoConfig,
   githubAppUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const sendNotification = useContext(SendNotificationsContext);
+
   const planConnectionsLimits = plan.limits.connections;
   const [localIntegrations, setLocalIntegrations] = useState(integrations);
 
@@ -264,6 +370,9 @@ export default function DataSourcesView({
     useState<ConnectorProvider | null>(null);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
     useState<ConnectorProvider | null>(null);
+  const [showConfirmConnection, setShowConfirmConnection] =
+    useState<DataSourceIntegration | null>(null);
+
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -292,6 +401,7 @@ export default function DataSourcesView({
         throw new Error(`Unknown provider ${provider}`);
       }
 
+      setShowConfirmConnection(null);
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
 
       const res = await fetch(
@@ -336,13 +446,18 @@ export default function DataSourcesView({
         }
       } else {
         const responseText = await res.text();
-        window.alert(
-          `Failed to enable ${provider} Data Source: ${responseText}`
-        );
+        sendNotification({
+          type: "error",
+          title: `Failed to enable connection (${provider})`,
+          description: `Got: ${responseText}`,
+        });
       }
     } catch (e) {
-      window.alert(`Failed to enable ${provider} data source`);
-      console.error(`Failed to enable ${provider} data source`, e);
+      setShowConfirmConnection(null);
+      sendNotification({
+        type: "error",
+        title: `Failed to enable connection (${provider})`,
+      });
     } finally {
       setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
     }
@@ -366,6 +481,19 @@ export default function DataSourcesView({
         current: "data_sources_managed",
       })}
     >
+      {showConfirmConnection && (
+        <ConfirmationModal
+          dataSource={showConfirmConnection}
+          show={true}
+          onClose={() => setShowConfirmConnection(null)}
+          onConfirm={async () => {
+            await handleEnableManagedDataSource(
+              showConfirmConnection.connectorProvider as ConnectorProvider,
+              showConfirmConnection.setupWithSuffix
+            );
+          }}
+        />
+      )}
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Connections"
@@ -402,6 +530,7 @@ export default function DataSourcesView({
                           isLoadingByProvider[
                             ds.connectorProvider as ConnectorProvider
                           ] || !isAdmin;
+
                         const onClick = async () => {
                           let isDataSourceAllowedInPlan: boolean;
 
@@ -435,11 +564,8 @@ export default function DataSourcesView({
                           }
 
                           if (isDataSourceAllowedInPlan && ds.isBuilt) {
-                            await handleEnableManagedDataSource(
-                              ds.connectorProvider as ConnectorProvider,
-                              ds.setupWithSuffix
-                            );
-                          } else if (isDataSourceAllowedInPlan && !ds.isBuilt) {
+                            setShowConfirmConnection(ds);
+                          } else if (!ds.isBuilt) {
                             setShowPreviewPopupForProvider(
                               ds.connectorProvider
                             );
@@ -450,6 +576,7 @@ export default function DataSourcesView({
                           }
                           return;
                         };
+
                         const label = !ds.isBuilt
                           ? "Preview"
                           : !isLoadingByProvider[
@@ -457,108 +584,20 @@ export default function DataSourcesView({
                             ] && !ds.fetchConnectorError
                           ? "Connect"
                           : "Connecting...";
+
                         if (!ds || !ds.connector) {
                           return (
-                            <>
-                              {ds.connectorProvider !== "google_drive" && (
-                                <Button
-                                  variant="primary"
-                                  icon={
-                                    ds.isBuilt
-                                      ? CloudArrowLeftRightIcon
-                                      : InformationCircleIcon
-                                  }
-                                  disabled={disabled}
-                                  onClick={onClick}
-                                  label={label}
-                                />
-                              )}
-                              {ds.connectorProvider === "google_drive" && (
-                                <DropdownMenu>
-                                  <DropdownMenu.Button>
-                                    <Button
-                                      variant="primary"
-                                      label={label}
-                                      disabled={disabled}
-                                      icon={
-                                        ds.isBuilt
-                                          ? CloudArrowLeftRightIcon
-                                          : InformationCircleIcon
-                                      }
-                                    />
-                                  </DropdownMenu.Button>
-                                  <DropdownMenu.Items
-                                    origin="topRight"
-                                    width={350}
-                                  >
-                                    <div className="flex flex-col gap-y-4 p-4">
-                                      <div className="flex flex-col gap-y-2">
-                                        <div className="grow text-sm font-medium text-element-800">
-                                          Important
-                                        </div>
-                                        <div className="text-sm font-normal text-element-700">
-                                          File and folders shared with Dust will
-                                          be made available to the entire
-                                          workspace irrespective of their
-                                          granular permissions on Google Drive.
-                                        </div>
-                                      </div>
-
-                                      <div className="flex flex-col gap-y-2">
-                                        <div className="grow text-sm font-medium text-element-800">
-                                          Disclosure
-                                        </div>
-                                        <div className="text-sm font-normal text-element-700">
-                                          Dust's use of information received
-                                          from the Google APIs will adhere to{" "}
-                                          <Link
-                                            className="s-text-action-500"
-                                            href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
-                                          >
-                                            Google API Services User Data Policy
-                                          </Link>
-                                          , including the Limited Use
-                                          requirements.
-                                        </div>
-                                      </div>
-
-                                      <div className="flex flex-col gap-y-2">
-                                        <div className="grow text-sm font-medium text-element-800">
-                                          Notice on data processing
-                                        </div>
-                                        <div className="text-sm font-normal text-element-700">
-                                          By connecting Google Drive, you
-                                          acknowledge and agree that within your
-                                          Google Drive, the data contained in
-                                          the files and folders that you choose
-                                          to synchronize with Dust will be
-                                          transmitted to third-party entities,
-                                          including but not limited to
-                                          Artificial Intelligence (AI) model
-                                          providers, for the purpose of
-                                          processing and analysis. This process
-                                          is an integral part of the
-                                          functionality of our service and is
-                                          subject to the terms outlined in our
-                                          Privacy Policy and Terms of Service.
-                                        </div>
-                                      </div>
-                                      <div className="flex justify-center">
-                                        <DropdownMenu.Button>
-                                          <Button
-                                            variant="secondary"
-                                            icon={CloudArrowLeftRightIcon}
-                                            disabled={disabled}
-                                            onClick={onClick}
-                                            label="Acknowledge and Connect"
-                                          />
-                                        </DropdownMenu.Button>
-                                      </div>
-                                    </div>
-                                  </DropdownMenu.Items>
-                                </DropdownMenu>
-                              )}
-                            </>
+                            <Button
+                              variant="primary"
+                              icon={
+                                ds.isBuilt
+                                  ? CloudArrowLeftRightIcon
+                                  : InformationCircleIcon
+                              }
+                              disabled={disabled}
+                              onClick={onClick}
+                              label={label}
+                            />
                           );
                         } else {
                           return (
@@ -659,12 +698,6 @@ export default function DataSourcesView({
                 <ContextItem.Description>
                   <div className="text-sm text-element-700">
                     {ds.description}
-                    {ds.limitations && (
-                      <div className="text-element-700">
-                        <span className="font-bold">Limitation</span>:{" "}
-                        {ds.limitations}
-                      </div>
-                    )}
                   </div>
                 </ContextItem.Description>
               </ContextItem>
