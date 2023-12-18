@@ -15,7 +15,7 @@ export type Test = {
 };
 
 export abstract class Dataset {
-  abstract readonly name: DatasetType;
+  abstract readonly dataset: DatasetType;
 
   abstract load(): Promise<void>;
 

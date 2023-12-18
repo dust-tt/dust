@@ -13,7 +13,7 @@ type ExampleMATH = {
 };
 
 class MATH extends Dataset {
-  readonly name = "MATH";
+  readonly dataset = "MATH";
   private train: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
   private test: ExampleMATH[] = [];
 

@@ -15,7 +15,7 @@ type Example24 = {
 };
 
 class Game24 extends Dataset {
-  readonly name = "Game24";
+  readonly dataset = "Game24";
   private train: Example24[] = [];
   private test: Example24[] = [];
 
