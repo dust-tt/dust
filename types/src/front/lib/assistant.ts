@@ -96,7 +96,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG
+  MISTRAL_SMALL_MODEL_CONFIG,
 ] as const;
 
 // this creates a union type of all the {providerId: string, modelId: string}

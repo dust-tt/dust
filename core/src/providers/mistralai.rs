@@ -457,6 +457,7 @@ impl MistralAILLM {
 
         Ok(completion)
     }
+}
 
 #[async_trait]
 impl LLM for MistralAILLM {
