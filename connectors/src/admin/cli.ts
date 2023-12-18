@@ -9,7 +9,12 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
-import { getDocumentId } from "@connectors/connectors/google_drive/temporal/activities";
+import {
+  MIME_TYPES_TO_EXPORT,
+  getAuthObject,
+  getDocumentId,
+  getDriveClient,
+} from "@connectors/connectors/google_drive/temporal/activities";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
@@ -23,6 +28,7 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
+import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -277,6 +283,45 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       return;
     }
+    case "check-file":
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      if (
+        !args.fileType ||
+        (args.fileType !== "document" && args.fileType !== "presentation")
+      ) {
+        throw new Error(
+          `Invalid or missing --fileType argument: ${args.fileType}`
+        );
+      }
+      const connectorId = args.connectorId;
+      const fileId = args.fileId;
+      console.log(`Checking gdrive file`);
+      const connector = await Connector.findByPk(connectorId);
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const authCredentials = await getAuthObject(connector.connectionId);
+      const drive = await getDriveClient(authCredentials);
+      const res = await drive.files.export({
+        fileId: fileId,
+        mimeType:
+          MIME_TYPES_TO_EXPORT[
+            args.fileType === "document"
+              ? "application/vnd.google-apps.document"
+              : "application/vnd.google-apps.presentation"
+          ],
+      });
+      console.log(`Status: ${res.status}`);
+      console.log(`Type: ${typeof res.data}`);
+      console.log(`Content:`);
+      console.log(res.data);
+      return;
+
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
       return;

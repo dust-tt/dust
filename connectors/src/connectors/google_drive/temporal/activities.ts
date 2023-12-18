@@ -41,7 +41,7 @@ import { registerWebhook } from "../lib";
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
-const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
+export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
 };
