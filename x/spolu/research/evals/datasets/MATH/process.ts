@@ -30,10 +30,10 @@ type Problem = {
 };
 
 async function processSplit(split: "train" | "test", size_per_level: number) {
-  let rng = seedrandom("MATH_DATASET");
+  const rng = seedrandom("MATH_DATASET");
 
   const splitDir = MATH_DIR + "/" + split;
-  let files: {
+  const files: {
     [type: string]: {
       type: string;
       number: string;
@@ -59,7 +59,7 @@ async function processSplit(split: "train" | "test", size_per_level: number) {
     files[t] = files[t].sort(() => rng() - 0.5);
   }
 
-  let problems: { [type: string]: { [level: number]: Problem[] } } = {};
+  const problems: { [type: string]: { [level: number]: Problem[] } } = {};
 
   for (const t of TYPES) {
     problems[t] = [];
@@ -101,7 +101,7 @@ async function processSplit(split: "train" | "test", size_per_level: number) {
     chunks.push(flat.slice(i, i + chunkSize));
   }
 
-  let out: Problem[] = [];
+  const out: Problem[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
     console.log(`Processing chunk ${i}/${chunks.length}...`);
@@ -171,4 +171,6 @@ const main = async () => {
   }
 };
 
-main();
+main()
+  .then(() => console.log("Done"))
+  .catch(console.error);

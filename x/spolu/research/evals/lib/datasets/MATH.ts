@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import seedrandom from "seedrandom";
+
 import { Dataset, Example, ProblemId, Test } from "../datasets";
 
 type ExampleMATH = {
@@ -26,8 +27,8 @@ class MATH extends Dataset {
     const examples = lines
       .slice(0, lines.length - 1)
       .map((line) => JSON.parse(line) as ExampleMATH);
-    let d: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
-    for (let e of examples) {
+    const d: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
+    for (const e of examples) {
       if (!d[e.type]) {
         d[e.type] = {};
       }
@@ -45,18 +46,18 @@ class MATH extends Dataset {
     const test = await this.loadFile("datasets/MATH/test.jsonl");
 
     this.test = [];
-    for (let type in test) {
-      for (let level in test[type]) {
+    for (const type in test) {
+      for (const level in test[type]) {
         this.test = this.test.concat(test[type][level]);
       }
     }
 
-    let rng = seedrandom("MATH_DATASET");
+    const rng = seedrandom("MATH_DATASET");
     this.test = this.test.sort(() => rng() - 0.5);
 
     let train_count = 0;
-    for (let type in train) {
-      for (let level in train[type]) {
+    for (const type in train) {
+      for (const level in train[type]) {
         train_count += train[type][level].length;
       }
     }
@@ -99,17 +100,17 @@ class MATH extends Dataset {
     count: number;
     iteration: number;
   }): Example[] {
-    let t = this.test.find((e) => e.name === problem);
+    const t = this.test.find((e) => e.name === problem);
     if (!t) {
       throw new Error(`Unknown problem [examples]: dataset=MATH id=${problem}`);
     }
     let examples: ExampleMATH[] = [];
-    for (let level in this.train[t.type]) {
+    for (const level in this.train[t.type]) {
       examples = examples.concat(this.train[t.type][level]);
     }
 
     // Shuffle differently for each call to examples.
-    let rng = seedrandom(`MATH_DATASET-${problem}-${iteration}`);
+    const rng = seedrandom(`MATH_DATASET-${problem}-${iteration}`);
     examples = examples.sort(() => rng() - 0.5);
 
     if (count > examples.length) {
@@ -128,7 +129,7 @@ class MATH extends Dataset {
   }
 
   async check({ test, answer }: { test: Test; answer: string }) {
-    let t = this.test.find((e) => e.name === test.id);
+    const t = this.test.find((e) => e.name === test.id);
     if (!t) {
       throw new Error(`Unknown problem [check]: dataset=MATH id=${test.id}`);
     }
@@ -137,7 +138,7 @@ class MATH extends Dataset {
   }
 }
 
-(async () => {
+async function main() {
   const d = new MATH();
   await d.load();
   const test = d.tests({ count: 1 });
@@ -151,4 +152,8 @@ class MATH extends Dataset {
       answer: "\\boxed{x \\in [-2,7]}",
     })
   );
-})();
+}
+
+main()
+  .then(() => console.log("Done"))
+  .catch(console.error);

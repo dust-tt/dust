@@ -59,4 +59,6 @@ const main = async () => {
   }
 };
 
-main();
+main()
+  .then(() => console.log("Done"))
+  .catch(console.error);

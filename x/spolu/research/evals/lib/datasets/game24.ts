@@ -1,7 +1,8 @@
-import { Dataset, Example, ProblemId, Test } from "../datasets";
 import * as fs from "fs";
-import { ConstantNode, OperatorNode, evaluate, parse } from "mathjs";
+import { ConstantNode, evaluate, OperatorNode, parse } from "mathjs";
 import seedrandom from "seedrandom";
+
+import { Dataset, Example, ProblemId, Test } from "../datasets";
 
 type Example24 = {
   problem: string;
@@ -28,8 +29,8 @@ class Game24 extends Dataset {
   } {
     const solution = problem.solutions[0];
     const node = parse(solution);
-    let formula: (string | number)[] = [];
-    node.traverse(function (node, _path, _parent) {
+    const formula: (string | number)[] = [];
+    node.traverse(function (node) {
       switch (node.type) {
         case "OperatorNode":
           formula.push((node as OperatorNode).op);
@@ -45,7 +46,7 @@ class Game24 extends Dataset {
     });
     // console.log(">> " + formula.join(" "));
 
-    let reasoning = [];
+    const reasoning = [];
     while (formula.length > 1) {
       // Find the first operator followed by numbers.
       let index = 0;
@@ -102,7 +103,7 @@ class Game24 extends Dataset {
     this.test = shuffled.slice(128, 256);
 
     this.train.forEach((e) => {
-      let { solution, reasoning } = this.build_reasoning({ problem: e });
+      const { solution, reasoning } = this.build_reasoning({ problem: e });
       e.solution = solution;
       e.reasoning = reasoning;
     });
@@ -140,7 +141,7 @@ class Game24 extends Dataset {
     iteration: number;
   }): Example[] {
     // Shuffle differently for each call to examples.
-    let rng = seedrandom(`GAME-24_DATASET-${problem}-${iteration}`);
+    const rng = seedrandom(`GAME-24_DATASET-${problem}-${iteration}`);
     let examples = [...this.train];
     examples = examples.sort(() => rng() - 0.5);
 
@@ -159,7 +160,7 @@ class Game24 extends Dataset {
     }));
   }
 
-  async check({ test: _test, answer }: { test: Test; answer: string }) {
+  async check({ answer }: { test: Test; answer: string }) {
     const result = evaluate(answer);
     if (result === 24) {
       return true;
@@ -168,7 +169,7 @@ class Game24 extends Dataset {
   }
 }
 
-(async () => {
+async function main() {
   const d = new Game24();
   await d.load();
   const train = d.examples({ problem: "", count: 8, iteration: 0 });
@@ -181,4 +182,8 @@ class Game24 extends Dataset {
       answer: train[0].answer,
     })
   );
-})();
+}
+
+main()
+  .then(() => console.log("Done"))
+  .catch(console.error);

@@ -5,6 +5,8 @@
   },
   "devDependencies": {
     "@types/minimist": "^1.2.2",
+    "@typescript-eslint/eslint-plugin": "^5.57.1",
+    "@typescript-eslint/parser": "^5.57.1",
     "typescript": "^5.1.6",
     "eslint": "^8.37.0",
     "eslint-config-prettier": "^8.8.0",
