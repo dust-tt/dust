@@ -1,5 +1,6 @@
 import {
   AgentConfiguration,
+  AgentDatabaseQueryAction,
   AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunAction,
@@ -69,6 +70,7 @@ async function main() {
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentDatabaseQueryConfiguration.sync({ alter: true });
+  await AgentDatabaseQueryAction.sync({ alter: true });
 
   await AgentGenerationConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
