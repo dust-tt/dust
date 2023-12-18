@@ -127,13 +127,10 @@ impl Error {
     pub fn message(&self) -> String {
         match self.error.internal_message {
             Some(ref msg) => format!(
-                "OpenAIAPIError: [{}] {} internal_message={}",
+                "OpenAIError: [{}] {} internal_message={}",
                 self.error._type, self.error.message, msg,
             ),
-            None => format!(
-                "OpenAIAPIError: [{}] {}",
-                self.error._type, self.error.message,
-            ),
+            None => format!("OpenAIError: [{}] {}", self.error._type, self.error.message,),
         }
     }
 
@@ -291,7 +288,7 @@ pub async fn streamed_completion(
                                     }
                                     Err(_) => {
                                         Err(anyhow!(
-                                            "OpenAIAPIError: failed parsing streamed \
+                                            "OpenAIError: failed parsing streamed \
                                                  completion from OpenAI err={} data={}",
                                             err,
                                             e.data.as_str(),
@@ -674,7 +671,7 @@ pub async fn streamed_chat_completion(
                                     }
                                     Err(_) => {
                                         Err(anyhow!(
-                                            "OpenAIAPIError: failed parsing streamed \
+                                            "OpenAIError: failed parsing streamed \
                                                  completion from OpenAI err={} data={}",
                                             err,
                                             e.data.as_str(),

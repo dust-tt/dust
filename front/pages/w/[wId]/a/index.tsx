@@ -16,6 +16,7 @@ import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
 import CohereSetup from "@app/components/providers/CohereSetup";
+import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
@@ -218,6 +219,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [ai21Open, setAI21Open] = useState(false);
   const [azureOpenAIOpen, setAzureOpenAIOpen] = useState(false);
   const [anthropicOpen, setAnthropicOpen] = useState(false);
+  const [mistalAIOpen, setMistralAiOpen] = useState(false);
   const [textSynthOpen, setTextSynthOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
@@ -270,6 +272,13 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setAnthropicOpen}
         enabled={configs["anthropic"] ? true : false}
         config={configs["anthropic"] ? configs["anthropic"] : null}
+      />
+      <MistralAISetup
+        owner={owner}
+        open={mistalAIOpen}
+        setOpen={setMistralAiOpen}
+        enabled={configs["mistral"] ? true : false}
+        config={configs["mistral"] ? configs["mistral"] : null}
       />
       <TextSynthSetup
         owner={owner}
@@ -343,6 +352,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                       switch (provider.providerId) {
                         case "openai":
                           setOpenAIOpen(true);
+                          break;
+                        case "mistral":
+                          setMistralAiOpen(true);
                           break;
                         case "cohere":
                           setCohereOpen(true);

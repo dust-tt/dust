@@ -29,7 +29,9 @@ pub mod providers {
     pub mod cohere;
     pub mod embedder;
     pub mod llm;
+    pub mod mistralai;
     pub mod openai;
+
     pub mod provider;
     pub mod tiktoken {
         pub mod tiktoken;

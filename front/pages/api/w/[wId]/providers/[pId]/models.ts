@@ -219,6 +219,46 @@ async function handler(
           res.status(200).json({ models: anthropic_models });
           return;
 
+        case "mistral":
+          const mistralModelRes = await fetch(
+            "https://api.mistral.ai/v1/models",
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${config.api_key}`,
+              },
+            }
+          );
+          if (!mistralModelRes.ok) {
+            const err = await mistralModelRes.json();
+            res.status(400).json({ error: err.error });
+          } else {
+            const models = await mistralModelRes.json();
+            const mList = models.data.map((m: any) => {
+              return { id: m.id as string };
+            }) as Array<{ id: string }>;
+
+            let f = [];
+            if (embed) {
+              f = mList.filter((m) => m.id === "mistral-embed");
+            } else {
+              f = mList.filter(
+                (m) => m.id.startsWith("mistral-") && !m.id.endsWith("-embed")
+              );
+            }
+            f.sort((a, b) => {
+              if (a.id < b.id) {
+                return -1;
+              }
+              if (a.id > b.id) {
+                return 1;
+              }
+              return 0;
+            });
+            res.status(200).json({ models: f });
+          }
+          return;
+
         case "textsynth":
           if (chat) {
             res.status(200).json({

@@ -155,6 +155,25 @@ async function handler(
           }
           return;
 
+        case "mistral":
+          const mistralModelsRes = await fetch(
+            "https://api.mistral.ai/v1/models",
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${config.api_key}`,
+              },
+            }
+          );
+          if (!mistralModelsRes.ok) {
+            const err = await mistralModelsRes.json();
+            res.status(400).json({ ok: false, error: err.error.code });
+          } else {
+            await mistralModelsRes.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
         case "textsynth":
           const testCompletion = await fetch(
             "https://api.textsynth.com/v1/engines/mistral_7B/completions",
