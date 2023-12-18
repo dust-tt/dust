@@ -46,6 +46,35 @@ pub struct Content {
     parts: Vec<Part>,
 }
 
+impl TryFrom<&ChatMessage> for Content {
+    type Error = anyhow::Error;
+
+    fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
+        Ok(Content {
+            role: match m.role {
+                ChatMessageRole::Assistant | ChatMessageRole::Function => String::from("MODEL"),
+                _ => String::from("USER"),
+            },
+            parts: vec![Part {
+                text: match m.role {
+                    ChatMessageRole::System => format!(
+                        "SYSTEM: {}\n",
+                        m.content.clone().unwrap_or(String::from(""))
+                    ),
+                    _ => match m.name {
+                        Some(ref name) => format!(
+                            "[name: {}]: {}",
+                            name,
+                            m.content.clone().unwrap_or(String::from(""))
+                        ),
+                        None => m.content.clone().unwrap_or(String::from("")),
+                    },
+                },
+            }],
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
@@ -322,24 +351,8 @@ impl LLM for GoogleVertexAiLLM {
             api_key,
             &messages
                 .iter()
-                .map(|m| Content {
-                    role: match m.role {
-                        ChatMessageRole::Assistant | ChatMessageRole::Function => {
-                            String::from("MODEL")
-                        }
-                        _ => String::from("USER"),
-                    },
-                    parts: vec![Part {
-                        text: match m.role {
-                            ChatMessageRole::System => format!(
-                                "SYSTEM: {}\n",
-                                m.content.clone().unwrap_or(String::from(""))
-                            ),
-                            _ => m.content.clone().unwrap_or(String::from("")),
-                        },
-                    }],
-                })
-                .collect::<Vec<Content>>(),
+                .map(|m| Content::try_from(m))
+                .collect::<Result<Vec<Content>>>()?,
             &vec![],
             None,
             temperature,
