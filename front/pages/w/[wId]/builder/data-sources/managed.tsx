@@ -330,13 +330,20 @@ function ConfirmationModal({
           <div className="flex justify-center pt-2">
             <Button
               variant="primary"
+              size="md"
               icon={CloudArrowLeftRightIcon}
               onClick={() => {
                 setIsLoading(true);
                 onConfirm();
               }}
               disabled={isLoading}
-              label={isLoading ? "Connecting..." : "Acknowledge and Connect"}
+              label={
+                isLoading
+                  ? "Connecting..."
+                  : dataSource.connectorProvider === "google_drive"
+                  ? "Acknowledge and Connect"
+                  : "Connect"
+              }
             />
           </div>
         </Page.Vertical>
@@ -564,7 +571,7 @@ export default function DataSourcesView({
 
                           if (isDataSourceAllowedInPlan && ds.isBuilt) {
                             setShowConfirmConnection(ds);
-                          } else if (!ds.isBuilt) {
+                          } else if (isDataSourceAllowedInPlan && !ds.isBuilt) {
                             setShowPreviewPopupForProvider(
                               ds.connectorProvider
                             );
