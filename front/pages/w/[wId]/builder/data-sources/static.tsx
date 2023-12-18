@@ -14,12 +14,12 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -154,22 +154,12 @@ export default function DataSourcesView({
             />
           </div>
         ) : (
-          <div
-            className={classNames(
-              "relative mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-            )}
-          >
-            <Button
-              disabled={readOnly}
-              size="sm"
-              label="Create a new Folder"
-              variant="primary"
-              icon={PlusIcon}
-              onClick={async () => {
-                await handleCreateDataSource();
-              }}
-            />
-          </div>
+          <EmptyCallToAction
+            label="Create a new Folder"
+            onClick={async () => {
+              await handleCreateDataSource();
+            }}
+          />
         )}
 
         <ContextItem.List>
