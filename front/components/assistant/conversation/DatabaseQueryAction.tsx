@@ -29,17 +29,17 @@ export default function DatabaseQueryAction({
     <>
       <div className="grid grid-cols-[auto,1fr] gap-2">
         <div className="grid-cols-auto grid items-center">
-          {!output || !query ? (
+          {!output ? (
             <div>
               <Spinner size="sm" />
             </div>
           ) : (
             <div className="text-xs font-bold text-element-600">
-              <span>Query Executed:</span>
+              <span>{query ? "Query Executed:" : "Result: "}</span>
             </div>
           )}
         </div>
-        {!!query && (
+        {!!output && (
           <div className="row-span-1 select-none">
             <div
               className="cursor-pointer"
@@ -48,7 +48,7 @@ export default function DatabaseQueryAction({
               }}
             >
               <Chip color="purple">
-                {query}
+                {query ? query : "No query generated, expand to see why"}
                 <Icon
                   visual={outputVisible ? ChevronDownIcon : ChevronRightIcon}
                   size="xs"
