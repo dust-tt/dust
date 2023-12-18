@@ -55,6 +55,14 @@ export const modelProviders: ModelProvider[] = [
     embed: false,
   },
   {
+    providerId: "mistralai",
+    name: "Mistral AI",
+    built: true,
+    enabled: false,
+    chat: true,
+    embed: false, // To enable once we support embeddings on Mistral AI.
+  },
+  {
     providerId: "textsynth",
     name: "TextSynth",
     built: true,
