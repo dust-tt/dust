@@ -4,7 +4,7 @@ use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::cohere::CohereProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
-use crate::providers::mistralai::MistralProvider;
+use crate::providers::mistral::MistralProvider;
 use crate::providers::openai::OpenAIProvider;
 use crate::providers::textsynth::TextSynthProvider;
 use crate::utils::ParseError;
