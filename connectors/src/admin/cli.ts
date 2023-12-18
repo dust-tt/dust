@@ -28,7 +28,6 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
-import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
