@@ -75,22 +75,15 @@ impl Provider for GoogleVertexAiProvider {
     }
 
     fn setup(&self) -> Result<()> {
-        utils::info("Setting up Google Vertex AI provider");
-        utils::info("");
-        utils::info(
-            "To use Google Vertex AI's models, you must set the environment variable `GOOGLE_VERTEX_AI_KEY`.",
-        );
-        utils::info("Your API key can be found at `https://platform.openai.com/account/api-keys`.");
-        utils::info("");
-        utils::info(
-            "Once ready you can check your setup with `dust provider test google_vertex_ai`",
-        );
+        utils::info("You cannot setup Google Vertex AI from the CLI, sorry.");
 
         Ok(())
     }
 
     async fn test(&self) -> Result<()> {
-        Err(anyhow!("TODO"))
+        Err(anyhow!(
+            "You cannot test Google Vertex AI from the CLI, sorry."
+        ))
     }
 
     fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
@@ -98,7 +91,7 @@ impl Provider for GoogleVertexAiProvider {
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
-        panic!("TODO")
+        unimplemented!()
     }
 }
 
