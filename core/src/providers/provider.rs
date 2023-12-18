@@ -28,6 +28,7 @@ pub enum ProviderID {
     Anthropic,
     MistralAI,
     TextSynth,
+    #[serde(rename = "google_vertex_ai")]
     GoogleVertexAi,
 }
 
