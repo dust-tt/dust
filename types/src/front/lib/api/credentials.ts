@@ -12,11 +12,11 @@ export const credentialsFromProviders = (
   providers: ProviderType[]
 ): CredentialsType => {
   const credentials: CredentialsType = {};
-
   providers.forEach((provider) => {
     const config = JSON.parse(provider.config) as {
-      api_key: string;
+      api_key?: string;
       endpoint?: string;
+      service_account?: string;
     };
 
     switch (provider.providerId) {
@@ -50,6 +50,11 @@ export const credentialsFromProviders = (
         break;
       case "browserlessapi":
         credentials["BROWSERLESS_API_KEY"] = config.api_key;
+        break;
+      case "google_vertex_ai":
+        credentials["GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON"] =
+          config.service_account;
+        credentials["GOOGLE_VERTEX_AI_ENDPOINT"] = config.endpoint;
         break;
     }
   });

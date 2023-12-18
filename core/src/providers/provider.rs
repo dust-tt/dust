@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 
+use super::google_vertex_ai::GoogleVertexAiProvider;
+
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderID {
@@ -26,6 +28,8 @@ pub enum ProviderID {
     Anthropic,
     MistralAI,
     TextSynth,
+    #[serde(rename = "google_vertex_ai")]
+    GoogleVertexAi,
 }
 
 impl ToString for ProviderID {
@@ -38,6 +42,7 @@ impl ToString for ProviderID {
             ProviderID::Anthropic => String::from("anthropic"),
             ProviderID::MistralAI => String::from("mistral"),
             ProviderID::TextSynth => String::from("textsynth"),
+            ProviderID::GoogleVertexAi => String::from("google_vertex_ai"),
         }
     }
 }
@@ -53,6 +58,7 @@ impl FromStr for ProviderID {
             "anthropic" => Ok(ProviderID::Anthropic),
             "mistral" => Ok(ProviderID::MistralAI),
             "textsynth" => Ok(ProviderID::TextSynth),
+            "google_vertex_ai" => Ok(ProviderID::GoogleVertexAi),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai, mistral)",
             ))?,
@@ -149,5 +155,6 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
         ProviderID::MistralAI => Box::new(MistralAIProvider::new()),
         ProviderID::TextSynth => Box::new(TextSynthProvider::new()),
+        ProviderID::GoogleVertexAi => Box::new(GoogleVertexAiProvider::new()),
     }
 }

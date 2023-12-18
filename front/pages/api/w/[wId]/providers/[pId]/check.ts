@@ -1,3 +1,4 @@
+import { GoogleAuth } from "google-auth-library";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -272,12 +273,96 @@ async function handler(
           });
       }
 
+    case "POST":
+      switch (req.query.pId) {
+        case "google_vertex_ai":
+          const config = req.body.config;
+
+          if (!config) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The config is missing.",
+              },
+            });
+          }
+          const { service_account: serviceAccountJson, endpoint } = config;
+          if (!serviceAccountJson) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The service account is missing.",
+              },
+            });
+          }
+          if (!endpoint) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The endpoint is missing.",
+              },
+            });
+          }
+
+          const serviceAccount = JSON.parse(serviceAccountJson);
+
+          const auth = new GoogleAuth({
+            scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+            credentials: {
+              client_email: serviceAccount.client_email,
+              private_key: serviceAccount.private_key,
+            },
+          });
+          const client = await auth.getClient();
+          const accessToken = await client.getAccessToken();
+          const testUrl = `${endpoint}/publishers/google/models/gemini-pro:streamGenerateContent`;
+          const testRequestBody = {
+            contents: {
+              role: "user",
+              parts: {
+                text: "Another one bites the ...",
+              },
+            },
+            generation_config: {
+              temperature: 0.5,
+              maxOutputTokens: 1,
+            },
+          };
+          const testRes = await fetch(testUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(testRequestBody),
+          });
+          if (!testRes.ok) {
+            const err = await testRes.json();
+            return res.status(400).json({ ok: false, error: err.error });
+          }
+          await testRes.json();
+          return res.status(200).json({ ok: true });
+
+        default:
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "provider_not_found",
+              message: "The provider you're trying to check was not found.",
+            },
+          });
+      }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
       break;
