@@ -31,6 +31,7 @@ import {
 } from "@app/components/assistant/AssistantActions";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   subNavigationAssistants,
@@ -39,7 +40,7 @@ import {
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { classNames, subFilter } from "@app/lib/utils";
+import { subFilter } from "@app/lib/utils";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -377,21 +378,11 @@ export default function PersonalAssistants({
                 ))}
               </ContextItem.List>
             ) : (
-              <div
-                className={classNames(
-                  "relative mt-4 flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-                )}
-              >
-                <Link
+              <div className="pt-2">
+                <EmptyCallToAction
                   href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-                >
-                  <Button
-                    size="sm"
-                    label="Create an Assistant"
-                    variant="primary"
-                    icon={PlusIcon}
-                  />
-                </Link>
+                  label="Create an Assistant"
+                />
               </div>
             )}
           </Page.Vertical>
