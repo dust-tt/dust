@@ -35,6 +35,8 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, filterAndSortAgents } from "@app/lib/utils";
 
+import Tiptap from "./InputBarTipTap";
+
 // AGENT MENTION
 
 function AgentMention({
@@ -193,6 +195,8 @@ function AgentListImpl(
 
 const AgentList = forwardRef(AgentListImpl);
 
+import { useCurrentEditor } from "@tiptap/react";
+
 function moveCursorToEnd(el: HTMLElement) {
   const range = document.createRange();
   const sel = window.getSelection();
@@ -295,35 +299,44 @@ export function AssistantInputBar({
 
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const { editor } = useCurrentEditor();
+
   const handleSubmit = async () => {
-    if (empty) {
-      return;
-    }
-    const contentEditable = document.getElementById("dust-input-bar");
+    // if (empty) {
+    //   return;
+    // }
+
+    console.log(">> result:", JSON.stringify(editor?.getJSON(), null, 2));
+
+    const contentEditable = document.getElementsByClassName("dust-input-bar");
+    console.log("> contentEditable:", contentEditable);
     if (contentEditable) {
       const mentions: MentionType[] = [];
       let content = "";
-      Array.from(contentEditable.childNodes).forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-          const agentConfigurationId = node.getAttribute(
-            "data-agent-configuration-id"
-          );
-          // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-          const agentName = node.getAttribute("data-agent-name");
 
-          if (agentConfigurationId && agentName) {
-            mentions.push({
-              configurationId: agentConfigurationId,
-            });
-            // Internal format for mentions is `:mention[agentName]{sId=agentConfigurationId}`.
-            content += `:mention[${agentName}]{sId=${agentConfigurationId}}`;
-          }
-        }
-        if (node.nodeType === Node.TEXT_NODE) {
-          content += node.textContent;
-        }
-      });
+      // Array.from(contentEditable.childNodes).forEach((node) => {
+      //   if (node.nodeType === Node.ELEMENT_NODE) {
+      //     // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+      //     const agentConfigurationId = node.getAttribute(
+      //       "data-agent-configuration-id"
+      //     );
+      //     // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
+      //     const agentName = node.getAttribute("data-agent-name");
+
+      //     if (agentConfigurationId && agentName) {
+      //       mentions.push({
+      //         configurationId: agentConfigurationId,
+      //       });
+      //       // Internal format for mentions is `:mention[agentName]{sId=agentConfigurationId}`.
+      //       content += `:mention[${agentName}]{sId=${agentConfigurationId}}`;
+      //     }
+      //   }
+      //   if (node.nodeType === Node.TEXT_NODE) {
+      //     content += node.textContent;
+      //   }
+      // });
+
+      // content += `:mention[${agentName}]{sId=${agentConfigurationId}}`;
 
       content = content.trim();
       content = content.replace(/\u200B/g, "");
@@ -345,7 +358,7 @@ export function AssistantInputBar({
       }
       setIsExpanded(false);
       onSubmit(content, mentions, contentFragment);
-      contentEditable.innerHTML = "";
+      // contentEditable.innerHTML = "";
       setContentFragmentFilename(undefined);
       setContentFragmentBody(undefined);
     }
@@ -464,21 +477,17 @@ export function AssistantInputBar({
     stickyMentionsTextContent,
     selectedAssistant,
   ]);
-  const contentEditableClasses = classNames(
-    "inline-block w-full",
-    "border-0 pr-1 py-3.5 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
-    "whitespace-pre-wrap font-normal"
-  );
+
   return (
     <>
-      <AgentList
+      {/* <AgentList
         owner={owner}
         visible={agentListVisible}
         filter={agentListFilter}
         ref={agentListRef}
         position={agentListPosition}
         conversationId={conversationId}
-      />
+      /> */}
 
       {generationContext.generatingMessageIds.length > 0 && (
         <div className="flex justify-center px-4 pb-4">
@@ -505,349 +514,7 @@ export function AssistantInputBar({
                 : ""
             )}
           >
-            <div className="relative flex flex-1 flex-col">
-              {/* Placeholder */}
-              <div
-                className={classNames(
-                  // This div is placeholder text for the contenteditable
-                  contentEditableClasses,
-                  "absolute -z-10 text-element-600 dark:text-element-600-dark",
-                  empty && !(contentFragmentFilename && contentFragmentBody)
-                    ? ""
-                    : "hidden"
-                )}
-              >
-                <div className="hidden lg:block">
-                  Ask a question or get some @help
-                </div>
-                <div className="block lg:hidden">Ask a question</div>
-              </div>
-
-              {contentFragmentFilename && contentFragmentBody && (
-                <div className="border-b border-structure-300/50 pb-3 pt-5">
-                  <Citation
-                    title={contentFragmentFilename}
-                    description={contentFragmentBody?.substring(0, 100)}
-                    onClose={() => {
-                      setContentFragmentBody(undefined);
-                      setContentFragmentFilename(undefined);
-                    }}
-                  />
-                </div>
-              )}
-
-              <div
-                className={classNames(
-                  contentEditableClasses,
-                  "scrollbar-hide",
-                  "overflow-y-auto",
-                  isExpanded
-                    ? "h-[60vh] max-h-[60vh] lg:h-[80vh] lg:max-h-[80vh]"
-                    : "max-h-64"
-                )}
-                contentEditable={true}
-                ref={inputRef}
-                id={"dust-input-bar"}
-                suppressContentEditableWarning={true}
-                onPaste={(e) => {
-                  e.preventDefault();
-
-                  // Get the plain text.
-                  const text = e.clipboardData.getData("text/plain");
-
-                  const selection = window.getSelection();
-                  if (!selection) {
-                    return;
-                  }
-                  const range = selection.getRangeAt(0);
-                  let node = range.endContainer;
-                  let offset = range.endOffset;
-
-                  if (
-                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-                    node.getAttribute &&
-                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-                    node.getAttribute("id") === "dust-input-bar"
-                  ) {
-                    const textNode = document.createTextNode("");
-                    node.appendChild(textNode);
-                    node = textNode;
-                    offset = 0;
-                  }
-
-                  if (
-                    node.parentNode &&
-                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-                    node.parentNode.getAttribute &&
-                    // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-                    node.parentNode.getAttribute("id") === "dust-input-bar"
-                  ) {
-                    // Inject the text at the cursor position.
-                    node.textContent =
-                      node.textContent?.slice(0, offset) +
-                      text +
-                      node.textContent?.slice(offset);
-                  }
-
-                  // Scroll to the end of the input
-                  if (inputRef.current) {
-                    setTimeout(() => {
-                      const element = inputRef.current;
-                      if (element) {
-                        element.scrollTop = element.scrollHeight;
-                      }
-                    }, 0);
-                  }
-
-                  // Move the cursor to the end of the paste.
-                  const newRange = document.createRange();
-                  newRange.setStart(node, offset + text.length);
-                  newRange.setEnd(node, offset + text.length);
-                  selection.removeAllRanges();
-                  selection.addRange(newRange);
-                }}
-                onKeyDown={(e) => {
-                  // We prevent the content editable from creating italics, bold and underline.
-                  if (e.ctrlKey || e.metaKey) {
-                    if (e.key === "u" || e.key === "b" || e.key === "i") {
-                      e.preventDefault();
-                    }
-                  }
-                  if (!e.shiftKey && e.key === "Enter") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    void handleSubmit();
-                  }
-                }}
-                onInput={() => {
-                  const selection = window.getSelection();
-                  if (
-                    selection &&
-                    selection.rangeCount !== 0 &&
-                    selection.isCollapsed
-                  ) {
-                    const range = selection.getRangeAt(0);
-                    const node = range.endContainer;
-                    const offset = range.endOffset;
-
-                    const lastOne = node.textContent
-                      ? node.textContent.slice(offset - 1, offset)
-                      : null;
-                    const preLastOne = node.textContent
-                      ? node.textContent.slice(offset - 2, offset - 1)
-                      : null;
-
-                    // Mention selection logic.
-
-                    if (
-                      lastOne === "@" &&
-                      (preLastOne === " " || preLastOne === "") &&
-                      node.textContent &&
-                      node.parentNode &&
-                      // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-                      node.parentNode.getAttribute &&
-                      // @ts-expect-error - parentNode is the contenteditable, it has a getAttribute.
-                      node.parentNode.getAttribute("id") === "dust-input-bar"
-                    ) {
-                      const mentionSelectNode = document.createElement("div");
-
-                      mentionSelectNode.style.display = "inline-block";
-                      mentionSelectNode.setAttribute("key", "mentionSelect");
-                      mentionSelectNode.className = "text-brand font-medium";
-                      mentionSelectNode.textContent = "@";
-                      mentionSelectNode.contentEditable = "false";
-
-                      const inputNode = document.createElement("span");
-                      inputNode.setAttribute("ignore", "none");
-                      inputNode.className = classNames(
-                        "min-w-0 px-0 py-0",
-                        "border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0",
-                        "text-brand font-medium"
-                      );
-                      inputNode.contentEditable = "true";
-
-                      mentionSelectNode.appendChild(inputNode);
-
-                      const beforeTextNode = document.createTextNode(
-                        node.textContent.slice(0, offset - 1)
-                      );
-                      const afterTextNode = document.createTextNode(
-                        node.textContent.slice(offset)
-                      );
-
-                      node.parentNode.replaceChild(beforeTextNode, node);
-
-                      beforeTextNode.parentNode?.insertBefore(
-                        afterTextNode,
-                        beforeTextNode.nextSibling
-                      );
-                      beforeTextNode.parentNode?.insertBefore(
-                        mentionSelectNode,
-                        afterTextNode
-                      );
-
-                      const rect = mentionSelectNode.getBoundingClientRect();
-                      const position = {
-                        left: Math.floor(rect.left) - 24,
-                        bottom:
-                          Math.floor(window.innerHeight - rect.bottom) + 32,
-                      };
-                      if (!isNaN(position.left) && !isNaN(position.bottom)) {
-                        setAgentListPosition(position);
-                      }
-
-                      setAgentListVisible(true);
-                      inputNode.focus();
-
-                      inputNode.onblur = () => {
-                        let selected = agentListRef.current?.selected();
-                        setAgentListVisible(false);
-                        setTimeout(() => {
-                          setAgentListFilter("");
-                          agentListRef.current?.reset();
-                        });
-
-                        if (inputNode.getAttribute("ignore") !== "none") {
-                          selected = null;
-                        }
-
-                        // console.log("SELECTED", selected);
-
-                        // We received a selected agent configration, recover the state of the
-                        // contenteditable and inject an AgentMention component.
-                        if (selected) {
-                          // Construct an AgentMention component and inject it as HTML.
-                          const mentionNode = getAgentMentionNode(selected);
-
-                          // This is mainly to please TypeScript.
-                          if (!mentionNode || !mentionSelectNode.parentNode) {
-                            return;
-                          }
-
-                          // Replace mentionSelectNode with mentionNode.
-                          mentionSelectNode.parentNode.replaceChild(
-                            mentionNode,
-                            mentionSelectNode
-                          );
-
-                          // Prepend a space to afterTextNode (this will be the space that comes after
-                          // the mention).
-                          afterTextNode.textContent = ` ${afterTextNode.textContent}`;
-
-                          // If afterTextNode is the last node add an invisible character to prevent a
-                          // Chrome bugish behaviour  ¯\_(ツ)_/¯
-                          if (afterTextNode.nextSibling === null) {
-                            afterTextNode.textContent = `${afterTextNode.textContent}\u200B`;
-                          }
-
-                          // Restore the cursor, taking into account the added space.
-                          range.setStart(afterTextNode, 1);
-                          range.setEnd(afterTextNode, 1);
-                          selection.removeAllRanges();
-                          selection.addRange(range);
-                        }
-
-                        // We didn't receive a selected agent configuration, restore the state of the
-                        // contenteditable and re-inject the content that was created during the
-                        // selection process into the contenteditable.
-                        if (!selected && mentionSelectNode.parentNode) {
-                          mentionSelectNode.parentNode.removeChild(
-                            mentionSelectNode
-                          );
-
-                          range.setStart(afterTextNode, 0);
-                          range.setEnd(afterTextNode, 0);
-                          selection.removeAllRanges();
-                          selection.addRange(range);
-
-                          // Insert the content of mentionSelectNode after beforeTextNode only if
-                          // we're not in ignore mode unless we are in ingnore mode (the user
-                          // backspaced into the @)
-                          if (
-                            inputNode.getAttribute("ignore") === "none" ||
-                            inputNode.getAttribute("ignore") === "space"
-                          ) {
-                            const newTextNode = document.createTextNode(
-                              (mentionSelectNode.textContent || "") +
-                                (inputNode.getAttribute("ignore") === "space"
-                                  ? " "
-                                  : "")
-                            );
-                            beforeTextNode.parentNode?.insertBefore(
-                              newTextNode,
-                              beforeTextNode.nextSibling
-                            );
-                          }
-                        }
-                      };
-
-                      // These are events on the small contentEditable that receives the user input
-                      // and drives the agent list selection.
-                      inputNode.onkeydown = (e) => {
-                        // console.log("KEYDOWN", e.key);
-                        if (e.key === "Escape") {
-                          agentListRef.current?.reset();
-                          inputNode.setAttribute("ignore", "escape");
-                          inputNode.blur();
-                          e.preventDefault();
-                        }
-                        if (e.key === "ArrowDown") {
-                          agentListRef.current?.next();
-                          e.preventDefault();
-                        }
-                        if (e.key === "ArrowUp") {
-                          agentListRef.current?.prev();
-                          e.preventDefault();
-                        }
-                        if (e.key === "Backspace") {
-                          if (inputNode.textContent === "") {
-                            agentListRef.current?.reset();
-                            inputNode.setAttribute("ignore", "backspace");
-                            inputNode.blur();
-                            e.preventDefault();
-                          }
-                        }
-                        if (e.key === " ") {
-                          if (agentListRef.current?.perfectMatch()) {
-                            inputNode.blur();
-                            e.preventDefault();
-                          } else {
-                            agentListRef.current?.reset();
-                            inputNode.setAttribute("ignore", "space");
-                            inputNode.blur();
-                            e.preventDefault();
-                          }
-                        }
-                        if (e.key === "Enter") {
-                          inputNode.blur();
-                          e.preventDefault();
-                        }
-                      };
-
-                      // These are the event that drive the selection of the the agent list, if we
-                      // have no more match we just blur to exit the selection process.
-                      inputNode.oninput = (e) => {
-                        const target = e.target as HTMLInputElement;
-                        // console.log("INPUT", target.textContent);
-                        setAgentListFilter(target.textContent || "");
-                        e.stopPropagation();
-                        setTimeout(() => {
-                          if (agentListRef.current?.noMatch()) {
-                            agentListRef.current?.reset();
-                            inputNode.blur();
-                          }
-                        });
-                      };
-                    }
-                  }
-                }}
-                // We aboslutely don't want any content in that div just below here. Do not add
-                // anyting to it.
-              ></div>
-              <div className="h-0 w-full">
-                {/* This div is a spacer to avoid having the text clash with the buttons */}
-              </div>
-            </div>
+            <Tiptap assistants={activeAgents} />
 
             <div className="flex flex-row items-end justify-between gap-2 self-stretch border-t border-structure-100 py-2 pr-2 sm:flex-col sm:border-0">
               <div className="flex gap-5 rounded-full border border-structure-100 px-4 py-2 sm:gap-3 sm:px-2">
@@ -971,6 +638,17 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
 }) {
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: conversationId ? { conversationId } : "list",
+  });
+
+  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
+  activeAgents.sort(compareAgentsForSort);
+
+  const filtered = filterAndSortAgents(activeAgents, "");
+  console.log(">> filtered:", filtered);
+
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
       <div className="mx-auto max-h-screen max-w-4xl pb-0 sm:pb-8">
