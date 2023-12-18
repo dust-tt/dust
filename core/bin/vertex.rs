@@ -1,4 +1,4 @@
-use dust::providers::vertex_ai::streamed_completion;
+use dust::providers::google_vertex_ai::streamed_completion;
 use hyper::Uri;
 
 const TOKEN: &str = "REDACTED";
