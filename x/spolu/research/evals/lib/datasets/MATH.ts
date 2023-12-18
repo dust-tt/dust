@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import seedrandom from "seedrandom";
 
-import { Dataset, Example, ProblemId, Test } from "../datasets";
+import { Dataset, Example, ProblemId, Test } from "@app/lib/datasets";
 
 type ExampleMATH = {
   problem: string;
@@ -12,7 +12,7 @@ type ExampleMATH = {
   reasoning: string[];
 };
 
-class MATH extends Dataset {
+export class MATH extends Dataset {
   readonly dataset = "MATH";
   private train: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
   private test: ExampleMATH[] = [];
@@ -69,9 +69,16 @@ class MATH extends Dataset {
   }
 
   instructions(): string {
+    return `Find a solution to the provided mathematical problem below.`;
+  }
+
+  reasoningStepInstructions(): string {
+    return `A reasoning step is one coherent step of mathematical reasoning it should held in one line.`;
+  }
+
+  answerInstructions(): string {
     return (
-      `Find a solution to the provided mathematical problem below.` +
-      ` The solution is a unique mathematical expression presented in a LaTeX '\\boxed' directive` +
+      ` The answer is a unique mathematical expression presented in a LaTeX '\\boxed' directive` +
       ` (eg: \\boxed{4} or \\boxed{3\\pi}). Formatting instructions:` +
       ` fractions should be represented in the LaTeX form \\frac{a}{b} (not \\frac12),` +
       ` units should not be included,` +
@@ -136,26 +143,30 @@ class MATH extends Dataset {
       throw new Error(`Unknown problem [check]: dataset=MATH id=${test.id}`);
     }
 
-    return t.answer === answer;
+    // remove spaces from answer
+    answer = answer.replace(/\s/g, "");
+    const truth = t.answer.replace(/\s/g, "");
+
+    return answer === truth;
   }
 }
 
-async function main() {
-  const d = new MATH();
-  await d.load();
-  const test = d.tests({ count: 1 });
-  const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
-
-  console.log(train[0]);
-
-  console.log(
-    await d.check({
-      test: { id: test[0].id, question: test[0].question },
-      answer: "\\boxed{x \\in [-2,7]}",
-    })
-  );
-}
-
-main()
-  .then(() => console.log("Done"))
-  .catch(console.error);
+// async function main() {
+//   const d = new MATH();
+//   await d.load();
+//   const test = d.tests({ count: 1 });
+//   const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
+//
+//   console.log(train[0]);
+//
+//   console.log(
+//     await d.check({
+//       test: { id: test[0].id, question: test[0].question },
+//       answer: "\\boxed{x \\in [-2,7]}",
+//     })
+//   );
+// }
+//
+// main()
+//   .then(() => console.log("Done"))
+//   .catch(console.error);
