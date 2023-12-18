@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BookOpenIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
@@ -160,6 +161,59 @@ export default function AssistantNew({
     }
   }, [shouldAnimateInput]);
 
+  const greetings = [
+    "Hey [Name]! 👋",
+    "Good to see you, [Name]! 😊",
+    "What's up, [Name]? 🙌",
+    "How's it going, [Name]? 🚀",
+    "Hiya, [Name]! 🌟",
+    "Yo [Name]! 😎",
+    "Welcome, [Name]! 🎉",
+    "Howdy, [Name]! 🤠",
+    "Greetings, [Name]! 🌈",
+    "Salutations, [Name]! 🎩",
+    "What's new, [Name]? 💌",
+    "How are you, [Name]? 🤗",
+    "Ahoy, [Name]! ⚓",
+    "Bonjour, [Name]! 🥖",
+    "Hola, [Name]! 🌮",
+    "Ciao, [Name]! 🍕",
+    "Namaste, [Name]! 🕉",
+    "Konnichiwa, [Name]! 🎌",
+    "Aloha, [Name]! 🌺",
+    "Hey there, [Name]! 💡",
+    "How's everything, [Name]? 📈",
+    "Good day, [Name]! 🌞",
+    "Welcome back, [Name]! 🔄",
+    "Long time no see, [Name]! ⏰",
+    "Great to meet you, [Name]! 🤝",
+    "Pleased to see you, [Name]! 😁",
+    "Cheers, [Name]! 🥂",
+    "Top of the morning, [Name]! 🍀",
+    "Happy to chat, [Name]! 💬",
+    "What's happening, [Name]? 🎈",
+    "How's life treating you, [Name]? 🎠",
+    "Missed you, [Name]! 💔",
+    "Glad you're here, [Name]! 📍",
+    "Smile, [Name]! 😄",
+    "Lookin' good, [Name]! 👍",
+    "What's cooking, [Name]? 🍳",
+    "How's the family, [Name]? 👨‍👩‍👧‍👦",
+    "Stay cool, [Name]! ❄️",
+    "Keep shining, [Name]! 💎",
+    "You're a star, [Name]! ⭐",
+    "Rise and shine, [Name]! 🌅",
+    "Keep it up, [Name]! 💪",
+    "Rock on, [Name]! 🤘",
+  ];
+
+  const userName = "Alice"; // Replace this with the actual user name variable
+
+  const getRandomGreeting = (name: string) => {
+    const randomIndex = Math.floor(Math.random() * greetings.length);
+    return greetings[randomIndex].replace("[Name]", name);
+  };
+
   return (
     <InputBarContext.Provider
       value={{ animate: shouldAnimateInput, selectedAssistant }}
@@ -199,18 +253,42 @@ export default function AssistantNew({
             />
           )}
           {!conversation ? (
-            <div className="flex h-full items-center">
+            <div className="flex h-full items-center pb-20">
               <div className="flex text-sm font-normal text-element-800">
                 <Page.Vertical gap="md" align="left">
                   {/* FEATURED AGENTS */}
                   <Page.Vertical gap="lg" align="left">
-                    <Page.SectionHeader title="How can I help you today?" />
+                    <Page.SectionHeader title={getRandomGreeting(userName)} />
+                    {!isBuilder && (
+                      <Link
+                        href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
+                      >
+                        <Button
+                          variant="primary"
+                          icon={BookOpenIcon}
+                          size="xs"
+                          label="Discover more in the Assistant Gallery"
+                        />
+                      </Link>
+                    )}
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <div className="flex w-full flex-col gap-2">
                         {isBuilder && (
-                          <div className="text-base font-bold text-element-800">
-                            Your assistant team
-                          </div>
+                          <>
+                            <div className="text-base font-bold text-element-800">
+                              Assistants
+                            </div>
+                            <Link
+                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
+                            >
+                              <Button
+                                variant="secondary"
+                                icon={BookOpenIcon}
+                                size="xs"
+                                label="Discover more in the Assistant Gallery"
+                              />
+                            </Link>
+                          </>
                         )}
                         <div
                           className={`grid grid-cols-2 gap-4 py-2 ${
@@ -246,16 +324,6 @@ export default function AssistantNew({
                         </div>
                         <Button.List isWrapping={true}>
                           <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
-                            >
-                              <Button
-                                variant="primary"
-                                icon={BookOpenIcon}
-                                size="xs"
-                                label="Discover more in the Assistant Gallery"
-                              />
-                            </Link>
                             <StartHelperConversationButton
                               content="@help, what can I use the assistants for?"
                               handleSubmit={handleSubmit}
@@ -272,36 +340,54 @@ export default function AssistantNew({
                           <div className="text-base font-bold text-element-800">
                             Data Sources
                           </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/w/${owner.sId}/builder/data-sources/managed`}
+                            >
+                              <Button
+                                variant="secondary"
+                                icon={CloudArrowLeftRightIcon}
+                                size="xs"
+                                label="Manage Connections"
+                              />
+                            </Link>
+                            <Link
+                              href={`/w/${owner.sId}/builder/data-sources/static`}
+                            >
+                              <Button
+                                variant="secondary"
+                                icon={FolderOpenIcon}
+                                size="xs"
+                                label={"Manage Folders"}
+                              />
+                            </Link>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
+                            />
+                          </div>
                           <div className="text-xs font-normal text-element-700">
                             Make assistants smarter by giving them access to
                             your company’s knowledge and data.
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
-                              <Link
-                                href={`/w/${owner.sId}/builder/data-sources/managed`}
-                              >
-                                <Button
-                                  variant="secondary"
-                                  icon={CloudArrowLeftRightIcon}
-                                  size="xs"
-                                  label="Manage Connections"
-                                />
-                              </Link>
-                              <Link
-                                href={`/w/${owner.sId}/builder/data-sources/static`}
-                              >
-                                <Button
-                                  variant="secondary"
-                                  icon={FolderOpenIcon}
-                                  size="xs"
-                                  label={"Manage Folders"}
-                                />
-                              </Link>
-
                               <StartHelperConversationButton
                                 content="@help, tell me about Data Sources"
-                                variant="tertiary"
                                 handleSubmit={handleSubmit}
                               />
                             </div>
@@ -339,7 +425,7 @@ export default function AssistantNew({
 function StartHelperConversationButton({
   content,
   handleSubmit,
-  variant = "secondary",
+  variant = "tertiary",
   size = "xs",
 }: {
   content: string;
