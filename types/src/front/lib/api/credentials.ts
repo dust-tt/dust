@@ -1,11 +1,12 @@
 import { CredentialsType, ProviderType } from "../../../front/provider";
 
 const {
-  DUST_MANAGED_OPENAI_API_KEY = "",
   DUST_MANAGED_ANTHROPIC_API_KEY = "",
-  DUST_MANAGED_TEXTSYNTH_API_KEY = "",
   DUST_MANAGED_AZURE_OPENAI_API_KEY = "",
   DUST_MANAGED_AZURE_OPENAI_ENDPOINT = "",
+  DUST_MANAGED_MISTRAL_AI_API_KEY = "",
+  DUST_MANAGED_OPENAI_API_KEY = "",
+  DUST_MANAGED_TEXTSYNTH_API_KEY = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -36,6 +37,9 @@ export const credentialsFromProviders = (
       case "anthropic":
         credentials["ANTHROPIC_API_KEY"] = config.api_key;
         break;
+      case "mistralai":
+        credentials["MISTRAL_AI_API_KEY"] = config.api_key;
+        break;
       case "textsynth":
         credentials["TEXTSYNTH_API_KEY"] = config.api_key;
         break;
@@ -55,10 +59,11 @@ export const credentialsFromProviders = (
 
 export const dustManagedCredentials = (): CredentialsType => {
   return {
-    OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
-    TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT: DUST_MANAGED_AZURE_OPENAI_ENDPOINT,
+    MISTRAL_AI_API_KEY: DUST_MANAGED_MISTRAL_AI_API_KEY,
+    OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
+    TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
   };
 };
