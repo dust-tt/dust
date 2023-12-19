@@ -1944,7 +1944,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<Vec<Database>> {
+    ) -> Result<(Vec<Database>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -1993,7 +1993,25 @@ impl Store for PostgresStore {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(databases)
+        let total = match limit_offset {
+            None => databases.len(),
+            Some(_) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT COUNT(*) FROM databases \
+                           INNER JOIN data_sources ON databases.data_source = data_sources.id \
+                           WHERE data_sources.project = $1 AND data_sources.data_source_id = $2",
+                    )
+                    .await?;
+                let t: i64 = c
+                    .query_one(&stmt, &[&project_id, &data_source_id])
+                    .await?
+                    .get(0);
+                t as usize
+            }
+        };
+
+        Ok((databases, total))
     }
 
     async fn assign_live_sqlite_worker_to_database(

@@ -88,9 +88,19 @@ export const MISTRAL_SMALL_MODEL_CONFIG = {
   largeModel: false,
 } as const;
 
+export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
+  providerId: "google_vertex_ai",
+  modelId: "gemini-pro",
+  displayName: "Gemini Pro",
+  contextSize: 8192,
+  recommendedTopK: 16,
+  largeModel: true,
+} as const;
+
 export const SUPPORTED_MODEL_CONFIGS = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,

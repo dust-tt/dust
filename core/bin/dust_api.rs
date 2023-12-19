@@ -1848,12 +1848,15 @@ async fn databases_list(
             "Failed to list databases",
             Some(e),
         ),
-        Ok(dbs) => (
+        Ok((dbs, total)) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
-                    "databases": dbs
+                    "databases": dbs,
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
                 })),
             }),
         ),
