@@ -21,8 +21,7 @@ import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-
-import { buildInitialState } from "./[aId]";
+import { buildInitialState } from "@app/pages/w/[wId]/builder/assistants/[aId]";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
