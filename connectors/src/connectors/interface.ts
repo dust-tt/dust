@@ -17,7 +17,6 @@ export type ConnectorUpdater = (
   connectorId: ModelId,
   params: {
     connectionId?: string | null;
-    defaultNewResourcePermission?: ConnectorPermission | null;
   }
 ) => Promise<Result<string, ConnectorsAPIErrorResponse>>;
 

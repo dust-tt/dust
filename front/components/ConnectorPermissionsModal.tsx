@@ -9,7 +9,6 @@ import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useConnectorDefaultNewResourcePermission } from "@app/lib/swr";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
 import { SendNotificationsContext } from "./sparkle/Notification";
@@ -40,22 +39,10 @@ export default function ConnectorPermissionsModal({
   const [saving, setSaving] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
-  const {
-    defaultNewResourcePermission,
-    isDefaultNewResourcePermissionLoading,
-    isDefaultNewResourcePermissionError,
-  } = useConnectorDefaultNewResourcePermission(owner, dataSource);
-
-  const [
-    automaticallyIncludeNewResources,
-    setAutomaticallyIncludeNewResources,
-  ] = useState<null | boolean>(null);
-
   function closeModal() {
     setOpen(false);
     setTimeout(() => {
       setUpdatedPermissionByInternalId({});
-      setAutomaticallyIncludeNewResources(null);
     }, 300);
   }
 
@@ -99,34 +86,6 @@ export default function ConnectorPermissionsModal({
         );
       }
 
-      if (automaticallyIncludeNewResources !== null) {
-        const newPermission = automaticallyIncludeNewResources
-          ? "read_write"
-          : "write";
-
-        if (newPermission !== defaultNewResourcePermission) {
-          const r = await fetch(
-            `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                defaultNewResourcePermission: newPermission,
-              }),
-            }
-          );
-
-          if (!r.ok) {
-            window.alert("An unexpected error occurred");
-          }
-
-          await mutate(
-            `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions/default`
-          );
-        }
-      }
       closeModal();
     } catch (e) {
       sendNotification({
@@ -148,43 +107,32 @@ export default function ConnectorPermissionsModal({
       saveLabel="Save"
       savingLabel="Saving..."
       isSaving={saving}
-      hasChanged={
-        !!Object.keys(updatedPermissionByInternalId).length ||
-        automaticallyIncludeNewResources !== null
-      }
+      hasChanged={!!Object.keys(updatedPermissionByInternalId).length}
       variant="full-screen"
     >
       <div className="mx-auto max-w-4xl text-left">
-        {!isDefaultNewResourcePermissionLoading &&
-        defaultNewResourcePermission ? (
-          <div className="flex flex-col pt-12">
-            <Page.Vertical align="stretch" gap="xl">
-              <Page.Header
-                title="Make available to the workspace"
-                description={`Selected resources will be accessible to all members of the workspace.`}
+        <div className="flex flex-col pt-12">
+          <Page.Vertical align="stretch" gap="xl">
+            <Page.Header
+              title="Make available to the workspace"
+              description={`Selected resources will be accessible to all members of the workspace.`}
+            />
+            <div className="mx-2 mb-16 w-full">
+              <PermissionTree
+                owner={owner}
+                dataSource={dataSource}
+                canUpdatePermissions={canUpdatePermissions}
+                onPermissionUpdate={({ internalId, permission }) => {
+                  setUpdatedPermissionByInternalId((prev) => ({
+                    ...prev,
+                    [internalId]: permission,
+                  }));
+                }}
+                showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
               />
-              <div className="mx-2 mb-16 w-full">
-                <PermissionTree
-                  owner={owner}
-                  dataSource={dataSource}
-                  canUpdatePermissions={canUpdatePermissions}
-                  onPermissionUpdate={({ internalId, permission }) => {
-                    setUpdatedPermissionByInternalId((prev) => ({
-                      ...prev,
-                      [internalId]: permission,
-                    }));
-                  }}
-                  showExpand={
-                    CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
-                  }
-                />
-              </div>
-            </Page.Vertical>
-          </div>
-        ) : null}
-        {isDefaultNewResourcePermissionError && (
-          <div className="text-red-300">An unexpected error occurred</div>
-        )}
+            </div>
+          </Page.Vertical>
+        </div>
       </div>
     </Modal>
   );

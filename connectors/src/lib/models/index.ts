@@ -12,7 +12,6 @@ import {
   ConnectorErrorType,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";
-import { ConnectorPermission } from "@connectors/types/resources";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
 if (!CONNECTORS_DATABASE_URI) {
@@ -45,8 +44,6 @@ export class Connector extends Model<
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
   declare lastGCTime: Date | null;
-
-  declare defaultNewResourcePermission: ConnectorPermission;
 }
 
 Connector.init(
@@ -117,11 +114,6 @@ Connector.init(
     lastGCTime: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
-    defaultNewResourcePermission: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "read_write",
     },
   },
   {

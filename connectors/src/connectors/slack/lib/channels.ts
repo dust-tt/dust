@@ -20,7 +20,7 @@ export type SlackChannelType = {
   agentConfigurationId: string | null;
 };
 
-export async function upsertSlackChannelInConnectorsDb({
+export async function updateSlackChannelInConnectorsDb({
   slackChannelId,
   slackChannelName,
   connectorId,
@@ -50,14 +50,8 @@ export async function upsertSlackChannelInConnectorsDb({
     });
 
     if (!channel) {
-      channel = await SlackChannel.create(
-        {
-          connectorId,
-          slackChannelId,
-          slackChannelName,
-          permission: connector.defaultNewResourcePermission,
-        },
-        { transaction }
+      throw new Error(
+        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
       );
     } else {
       if (channel.slackChannelName !== slackChannelName) {
