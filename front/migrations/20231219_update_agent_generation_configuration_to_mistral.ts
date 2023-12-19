@@ -1,4 +1,5 @@
 import { MISTRAL_SMALL_MODEL_ID } from "@dust-tt/types";
+import assert from "assert";
 import { QueryTypes, Sequelize } from "sequelize";
 
 // To be run from connectors with `FRONT_DATABASE_URI`.
@@ -13,29 +14,26 @@ async function main() {
     logging: false,
   });
 
-  const agentGenerationConfiguration =
+  const agentGenerationConfigurations =
     await front_sequelize.query<AgentGenerationConfigurationRow>(
       `SELECT id, "providerId", "modelId" from agent_generation_configurations WHERE "providerId" = 'textsynth' AND "modelId" = 'mistral_7B_instruct'`,
       { type: QueryTypes.SELECT }
     );
 
   console.log(
-    `Found ${agentGenerationConfiguration.length} agent generation configuration to process`
+    `Found ${agentGenerationConfigurations.length} agent generation configuration to process`
   );
 
-  const chunks = [];
-  for (let i = 0; i < agentGenerationConfiguration.length; i += 32) {
-    chunks.push(agentGenerationConfiguration.slice(i, i + 32));
-  }
+  assert(agentGenerationConfigurations.length < 100);
 
-  for (let i = 0; i < chunks.length; i++) {
-    console.log(`Processing chunk ${i}/${chunks.length}...`);
-    const chunk = chunks[i];
-    await Promise.all(
-      chunk.map(async (d) => {
-        return processAgentGenerationConfiguration(front_sequelize, d);
-      })
+  for (const [index, agentConfig] of Object.entries(
+    agentGenerationConfigurations
+  )) {
+    console.log(
+      `Processing row ${index}/${agentGenerationConfigurations.length}...`
     );
+
+    await processAgentGenerationConfiguration(front_sequelize, agentConfig);
   }
 }
 
