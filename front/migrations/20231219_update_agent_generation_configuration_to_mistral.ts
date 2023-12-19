@@ -43,12 +43,12 @@ async function processAgentGenerationConfiguration(
 ) {
   if (LIVE) {
     await front_sequelize.query(
-      `UPDATE agent_generation_configurations SET providerId = :providerId AND modelId = :modelId WHERE id = :id`,
+      `UPDATE agent_generation_configurations SET "providerId" = :providerId, "modelId" = :modelId WHERE id = :id`,
       {
         replacements: {
           id: agentConfig.id,
-          modelId: "mistral",
-          providerId: MISTRAL_SMALL_MODEL_ID,
+          modelId: MISTRAL_SMALL_MODEL_ID,
+          providerId: "mistral",
         },
       }
     );
