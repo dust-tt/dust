@@ -76,12 +76,23 @@ struct ChatMessage {
 impl TryFrom<&BaseChatMessage> for ChatMessage {
     type Error = anyhow::Error;
 
-    fn try_from(value: &BaseChatMessage) -> Result<Self, Self::Error> {
-        let mistral_role = MistralAIChatMessageRole::try_from(&value.role)
+    fn try_from(cm: &BaseChatMessage) -> Result<Self, Self::Error> {
+        let mistral_role = MistralAIChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
+        let meta_prompt = match cm.name.as_ref() {
+            Some(name) if mistral_role == MistralAIChatMessageRole::User => {
+                format!("[user: {}] ", name) // Include space here.
+            }
+            _ => String::from(""),
+        };
+
         Ok(ChatMessage {
-            content: value.content.clone(),
+            content: Some(format!(
+                "{}{}",
+                meta_prompt,
+                cm.content.clone().unwrap_or(String::from(""))
+            )),
             role: mistral_role,
         })
     }
