@@ -19,7 +19,7 @@ Dust assistants are AI-powered agents that employ frontier models like GPT-4 Tur
 - Frontier model assistants: Advanced large-scale models like @gpt4 and @claude surpass existing technologies from major AI developers (OpenAI, Google DeepMind, etc.), handling a variety of tasks such as text recognition, summarization, translation, and content generation.
 - Custom assistants: Tailored by Dust or in-house builders for niche needs, these can be enhanced or instructed specifically. They perform particular tasks, like @notion or @slack for interacting with synced documents, or aiding in SQL optimization, customer support, UX feedback, or specialized document creation.
 
-To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4/@claude offer direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
+To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4/@claude offers direct large language model access. Multiple assistants can be leveraged concurrently to tackle varied tasks.
 
 ### Conversation
 
@@ -89,13 +89,15 @@ In private channels, @dust can answer questions but won't synchronize messages.
 After installation, all workspace members can interact with @dust by:
 
 - Mentioning @dust in channels.
-- Inviting @dust to private channels.
+- Inviting @dust to private channels (data from private channels are not synchronized with Dust).
 - Starting a direct message with @dust.
-- For group DMs, [convert them to a private channel first](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel).
-- Users can interact with any other assistants via Slack by summoning @dust ~gpt4 Hello! if you want to interact with @gpt4 for example.
-- Builders can link a custom assistant to a Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`.
 
-To export your @dust conversation history in Slack, keep in mind that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Business+ or Enterprise Grid account on Slack.
+Advanced features to use the Dust Slackbot. 
+- If you want to add Dust to a group direct message, [convert them to a private channel first](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel).
+- Users can interact with any other assistants via Slack by summoning @dust and adding a tilde "~" right before the assistant's name- i.e., "@dust ~gpt4 Hello!" if you want to interact with @gpt4.
+- Builders can link a custom assistant to a **public** Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the public channel. To do this, go to `Admin` > `Assistants` > `Create` or `Edit` > `Slack Integration`. You can't link an assistant to a private channel. 
+
+To export your @dust conversation history in Slack, remember that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Slack Business+ or Enterprise Grid account.
 
 ## Data
 
@@ -105,23 +107,23 @@ To export your @dust conversation history in Slack, keep in mind that it's like 
 
 Connections are available only for paid plans.
 
-As an Admin, go to ️Admin > Connections > Select the desired Connection and click `Connect` > Authenticate your account and select the data you wish to synchronize with Dust.
+As an Admin, go to ️Admin > Connections > Select the desired Connection, click `Connect` > Authenticate your account, and select the data you wish to synchronize with Dust.
 
 ##Slack
 
-The admin needs to select the Slack channels you want to synchronize with Dust, the @dust bot will automatically join the selected channels. However, make sure that the Dust app is already installed and authorized in your workspace.
+The admin needs to select the Slack channels you want to synchronize with Dust; the @dust bot will automatically join the selected channels. However, make sure that the Dust app is already installed and authorized in your workspace.
 
 ##Notion
 
-To synchronize Notion pages, the admin can only select top level pages. To add lower level pages, the admin can use the search bar and select the desired pages. Notion API doesn’t allow navigation.
+To synchronize Notion pages, the admin can only select top-level pages. To add lower-level pages, the admin can use the search bar and select the desired pages. Notion API doesn’t allow navigation.
 
 **How to update Connections**
 
-As an admin, ️Admin > `Connections` > Select the desired Connection and click `Manage` > `Edit permissions` > Explore and either select or deselect the data you want to synchronize with Dust.
+As an admin, ️Admin > `Connections` > Select the desired Connection, click `Manage` > `Edit permissions` > Explore, and either select or deselect the data you want to synchronize with Dust.
 
 ### What are Connections' current limits?
 
-Slack: Dust doesn't take into account external files or content behind a URL.
+Slack: Dust doesn't take into account private channels, group direct messages, external files, or content behind a URL.
 Notion: Dust doesn't take into account external files or content behind a URL.
 Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
@@ -312,7 +314,7 @@ To use an assistant:
 - Type your message and mention the assistant with "@", or click the robot icon 🤖 in the message bar.
 - Always start with "@" when calling an assistant, or it won't respond.
 - In Slack, if enabled by your Admin, use the @dust assistant in the same way.
-- For the Dust Slackbot, type "@dust ~gpt4" and your question to engage with @gpt4.
+- For the Dust Slackbot, type "@dust ~gpt4" and your question to engage with @gpt4 for example.
 
 ### How do I talk to an assistant?
 
