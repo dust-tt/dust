@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import seedrandom from "seedrandom";
 
-import { Dataset, Example, ProblemId, Test } from "../datasets";
+import { Dataset, Example, ProblemId, Test } from "@app/lib/datasets";
 
 type ExampleMATH = {
   problem: string;
@@ -12,8 +12,8 @@ type ExampleMATH = {
   reasoning: string[];
 };
 
-class MATH extends Dataset {
-  readonly name = "MATH";
+export class MATH extends Dataset {
+  readonly dataset = "MATH";
   private train: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
   private test: ExampleMATH[] = [];
 
@@ -69,13 +69,22 @@ class MATH extends Dataset {
   }
 
   instructions(): string {
+    return `Find a solution to the provided mathematical problem below.`;
+  }
+
+  reasoningStepInstructions(): string {
+    return `A reasoning step is one coherent step of mathematical reasoning it should held in one line.`;
+  }
+
+  answerInstructions(): string {
     return (
-      `Given a set of 4 input numbers, find a mathematical expression using each number` +
-      ` only once that symbolically evaluates to 24 (Game of 24).` +
-      ` The available operators are [+,-,*,/]` +
-      ` (the division operator / is the symbolic division (eg: 2/(3-5/2) = 2/(1/2) = 4)).` +
-      ` The answer should be a valid solution expression without space` +
-      ` (eg: \`(6+1+1)*3\` or \`12/(1-1/2)\`).`
+      ` The answer is a unique mathematical expression presented in a LaTeX '\\boxed' directive` +
+      ` (eg: \\boxed{4} or \\boxed{3\\pi}). Formatting instructions:` +
+      ` fractions should be represented in the LaTeX form \\frac{a}{b} (not \\frac12),` +
+      ` units should not be included,` +
+      ` square roots should be presented in the LaTeX form \\sqrt{c} (not \\sqrt2),` +
+      ` all spaces and non critical parentheses or formatting should be stripped,` +
+      ` rational numbers should be presented with a leading 0.`
     );
   }
 
@@ -134,26 +143,30 @@ class MATH extends Dataset {
       throw new Error(`Unknown problem [check]: dataset=MATH id=${test.id}`);
     }
 
-    return t.answer === answer;
+    // remove spaces from answer
+    answer = answer.replace(/\s/g, "");
+    const truth = t.answer.replace(/\s/g, "");
+
+    return answer === truth;
   }
 }
 
-async function main() {
-  const d = new MATH();
-  await d.load();
-  const test = d.tests({ count: 1 });
-  const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
-
-  console.log(train[0]);
-
-  console.log(
-    await d.check({
-      test: { id: test[0].id, question: test[0].question },
-      answer: "\\boxed{x \\in [-2,7]}",
-    })
-  );
-}
-
-main()
-  .then(() => console.log("Done"))
-  .catch(console.error);
+// async function main() {
+//   const d = new MATH();
+//   await d.load();
+//   const test = d.tests({ count: 1 });
+//   const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
+//
+//   console.log(train[0]);
+//
+//   console.log(
+//     await d.check({
+//       test: { id: test[0].id, question: test[0].question },
+//       answer: "\\boxed{x \\in [-2,7]}",
+//     })
+//   );
+// }
+//
+// main()
+//   .then(() => console.log("Done"))
+//   .catch(console.error);

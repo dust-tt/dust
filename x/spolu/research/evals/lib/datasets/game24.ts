@@ -2,7 +2,7 @@ import * as fs from "fs";
 import { ConstantNode, evaluate, OperatorNode, parse } from "mathjs";
 import seedrandom from "seedrandom";
 
-import { Dataset, Example, ProblemId, Test } from "../datasets";
+import { Dataset, Example, ProblemId, Test } from "@app/lib/datasets";
 
 type Example24 = {
   problem: string;
@@ -14,8 +14,8 @@ type Example24 = {
   reasoning?: string[];
 };
 
-class Game24 extends Dataset {
-  readonly name = "Game24";
+export class Game24 extends Dataset {
+  readonly dataset = "Game24";
   private train: Example24[] = [];
   private test: Example24[] = [];
 
@@ -116,11 +116,24 @@ class Game24 extends Dataset {
   instructions(): string {
     return (
       `Given a set of 4 input numbers, find a mathematical expression using each number` +
-      ` only once that symbolically evaluates to 24 (Game of 24).` +
+      ` exactly once that symbolically evaluates to 24 (Game of 24).` +
       ` The available operators are [+,-,*,/]` +
-      ` (the division operator / is the symbolic division (eg: 2/(3-5/2) = 2/(1/2) = 4)).` +
-      ` The answer should be a valid solution expression without space` +
-      ` (eg: \`(6+1+1)*3\` or \`12/(1-1/2)\`).`
+      ` (the division operator / is the symbolic division (eg: 2/(3-5/2) = 2/(1/2) = 4)).`
+    );
+  }
+
+  reasoningStepInstructions(): string {
+    return (
+      `A reasoning step is one operation involving 2 numbers followed by the numbers left to form` +
+      ` 24 after that operation (eg: '10*7=70, left: 70 2 11').` +
+      ` There is always exactly 3 reasoning steps per question.`
+    );
+  }
+
+  answerInstructions(): string {
+    return (
+      `The answer should be a valid solution expression without space using each number` +
+      ` exactly once (eg: '(6+1)*5-11' or '(9-1)*9/3').`
     );
   }
 
@@ -160,30 +173,67 @@ class Game24 extends Dataset {
     }));
   }
 
-  async check({ answer }: { test: Test; answer: string }) {
+  async check({ test, answer }: { test: Test; answer: string }) {
+    const node = parse(answer);
+    const attempt: number[] = [];
+
+    node.traverse(function (node) {
+      switch (node.type) {
+        case "ConstantNode":
+          attempt.push((node as ConstantNode).value);
+          break;
+        default:
+          break;
+      }
+    });
+    if (attempt.length !== 4) {
+      return false;
+    }
+
+    const truth = test.question.split(" ").map((s) => parseInt(s));
+
+    const formulaSet = new Set(attempt);
+    const truthSet = new Set(truth);
+
+    if (formulaSet.size !== 4 || truthSet.size !== 4) {
+      return false;
+    }
+
+    for (const f of attempt) {
+      if (!truthSet.has(f)) {
+        return false;
+      }
+    }
+    for (const t of truth) {
+      if (!formulaSet.has(t)) {
+        return false;
+      }
+    }
+
     const result = evaluate(answer);
     if (result === 24) {
       return true;
     }
+
     return false;
   }
 }
 
-async function main() {
-  const d = new Game24();
-  await d.load();
-  const train = d.examples({ problem: "", count: 8, iteration: 0 });
-
-  console.log(train[0]);
-
-  console.log(
-    await d.check({
-      test: { id: train[0].id, question: train[0].question },
-      answer: train[0].answer,
-    })
-  );
-}
-
-main()
-  .then(() => console.log("Done"))
-  .catch(console.error);
+// async function main() {
+//   const d = new Game24();
+//   await d.load();
+//   const train = d.examples({ problem: "", count: 8, iteration: 0 });
+//
+//   console.log(train[0]);
+//
+//   console.log(
+//     await d.check({
+//       test: { id: train[0].id, question: train[0].question },
+//       answer: train[0].answer,
+//     })
+//   );
+// }
+//
+// main()
+//   .then(() => console.log("Done"))
+//   .catch(console.error);

@@ -70,6 +70,14 @@ export const modelProviders: ModelProvider[] = [
     chat: true,
     embed: false,
   },
+  {
+    providerId: "google_vertex_ai",
+    name: "Google Vertex AI",
+    built: true,
+    enabled: false,
+    chat: true,
+    embed: false,
+  },
 ];
 
 type ServiceProvider = {
@@ -108,9 +116,14 @@ export async function checkProvider(
 ): Promise<GetProvidersCheckResponseBody> {
   try {
     const result = await fetch(
-      `/api/w/${
-        owner.sId
-      }/providers/${providerId}/check?config=${JSON.stringify(config)}`
+      `/api/w/${owner.sId}/providers/${providerId}/check`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ config }),
+      }
     );
     return await result.json();
   } catch (e: any) {

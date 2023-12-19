@@ -1,4 +1,7 @@
-export type DatasetType = "MATH" | "Game24";
+// Make an array and then a type of the array
+
+export const ValidDatasetTypes = ["MATH", "Game24"] as const;
+export type DatasetType = (typeof ValidDatasetTypes)[number];
 
 export type ProblemId = string;
 
@@ -15,11 +18,13 @@ export type Test = {
 };
 
 export abstract class Dataset {
-  abstract readonly name: DatasetType;
+  abstract readonly dataset: DatasetType;
 
   abstract load(): Promise<void>;
 
   abstract instructions(): string;
+  abstract reasoningStepInstructions(): string;
+  abstract answerInstructions(): string;
 
   abstract tests({ count }: { count: number }): Test[];
 

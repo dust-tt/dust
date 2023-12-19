@@ -7,17 +7,20 @@
     "@types/minimist": "^1.2.2",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@typescript-eslint/parser": "^5.57.1",
-    "typescript": "^5.1.6",
     "eslint": "^8.37.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-unused-imports": "^2.0.0",
-    "prettier": "^2.8.7"
+    "prettier": "^2.8.7",
+    "typescript": "^5.1.6"
   },
   "dependencies": {
+    "@mistralai/mistralai": "^0.0.7",
     "@types/node": "^20.5.3",
     "@types/seedrandom": "^3.0.7",
     "mathjs": "^11.10.0",
-    "minimist": "^1.2.8"
+    "minimist": "^1.2.8",
+    "openai": "^4.23.0",
+    "p-queue": "^8.0.1"
   }
 }

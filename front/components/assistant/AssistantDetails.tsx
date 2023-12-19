@@ -6,9 +6,15 @@ import {
   DashIcon,
   Modal,
   PlusIcon,
+  ServerIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { AgentUserListStatus, ConnectorProvider } from "@dust-tt/types";
+import {
+  AgentUserListStatus,
+  ConnectorProvider,
+  DatabaseQueryConfigurationType,
+  isDatabaseQueryConfiguration,
+} from "@dust-tt/types";
 import {
   DustAppRunConfigurationType,
   isDustAppRunConfiguration,
@@ -24,7 +30,7 @@ import ReactMarkdown from "react-markdown";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useApp } from "@app/lib/swr";
+import { useApp, useDatabase } from "@app/lib/swr";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 import { DeleteAssistantDialog } from "./AssistantActions";
@@ -80,6 +86,14 @@ export function AssistantDetails({
           </div>
           <DataSourcesSection
             dataSourceConfigurations={assistant.action.dataSources}
+          />
+        </div>
+      ) : isDatabaseQueryConfiguration(assistant.action) ? (
+        <div className="flex flex-col gap-2">
+          <div className="text-lg font-bold text-element-800">Database</div>
+          <DatabaseQuerySection
+            databaseQueryConfig={assistant.action}
+            owner={owner}
           />
         </div>
       ) : null
@@ -181,6 +195,41 @@ function DustAppSection({
           <CommandLineIcon />
         </div>
         <div>{app ? app.name : ""}</div>
+      </div>
+    </div>
+  );
+}
+
+function DatabaseQuerySection({
+  owner,
+  databaseQueryConfig,
+}: {
+  owner: WorkspaceType;
+  databaseQueryConfig: DatabaseQueryConfigurationType;
+}) {
+  const { database } = useDatabase({
+    workspaceId: owner.sId,
+    dataSourceName: databaseQueryConfig.dataSourceId,
+    databaseId: databaseQueryConfig.databaseId,
+  });
+
+  if (database) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div>The following database is queried before answering:</div>
+        <div className="flex items-center gap-2 capitalize">
+          <div>
+            <ServerIcon />
+          </div>
+          <div>{database.name}</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        No database selected, please check the configuration of this Assistant!
       </div>
     </div>
   );

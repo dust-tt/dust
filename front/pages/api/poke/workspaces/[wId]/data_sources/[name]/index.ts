@@ -1,9 +1,11 @@
-import { ConnectorsAPI } from "@dust-tt/types";
+import { ConnectorProvider, ConnectorsAPI } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { sendGithubDeletionEmail } from "@app/lib/email";
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -111,6 +113,9 @@ async function handler(
         dustAPIProjectId,
       });
 
+      if (dataSource.connectorProvider)
+        await warnPostDeletion(auth, dataSource.connectorProvider);
+
       return res.status(200).json({ success: true });
 
     default:
@@ -121,6 +126,23 @@ async function handler(
           message: "The method passed is not supported, DELETE is expected.",
         },
       });
+  }
+}
+
+async function warnPostDeletion(
+  auth: Authenticator,
+  dataSourceProvider: ConnectorProvider
+) {
+  // if the datasource is Github, send an email inviting to delete the Github app
+  switch (dataSourceProvider) {
+    case "github":
+      // get admin emails
+      const adminEmails = (await getMembers(auth, "admin")).map((u) => u.email);
+      // send email to admins
+      for (const email of adminEmails) await sendGithubDeletionEmail(email);
+      break;
+    default:
+      break;
   }
 }
 

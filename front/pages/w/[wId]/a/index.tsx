@@ -16,6 +16,7 @@ import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
 import CohereSetup from "@app/components/providers/CohereSetup";
+import GoogleVertexAISetup from "@app/components/providers/GoogleVertexAISetup";
 import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
@@ -221,6 +222,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [anthropicOpen, setAnthropicOpen] = useState(false);
   const [mistalAIOpen, setMistralAiOpen] = useState(false);
   const [textSynthOpen, setTextSynthOpen] = useState(false);
+  const [googleVertexAIOpen, setGoogleVertexAIOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
@@ -242,36 +244,36 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         owner={owner}
         open={openAIOpen}
         setOpen={setOpenAIOpen}
-        enabled={configs["openai"] ? true : false}
-        config={configs["openai"] ? configs["openai"] : null}
+        enabled={!!configs["openai"]}
+        config={configs["openai"] ?? null}
       />
       <CohereSetup
         owner={owner}
         open={cohereOpen}
         setOpen={setCohereOpen}
-        enabled={configs["cohere"] ? true : false}
-        config={configs["cohere"] ? configs["cohere"] : null}
+        enabled={!!configs["cohere"]}
+        config={configs["cohere"] ?? null}
       />
       <AI21Setup
         owner={owner}
         open={ai21Open}
         setOpen={setAI21Open}
-        enabled={configs["ai21"] ? true : false}
-        config={configs["ai21"] ? configs["ai21"] : null}
+        enabled={!!configs["ai21"]}
+        config={configs["ai21"] ?? null}
       />
       <AzureOpenAISetup
         owner={owner}
         open={azureOpenAIOpen}
         setOpen={setAzureOpenAIOpen}
-        enabled={configs["azure_openai"] ? true : false}
-        config={configs["azure_openai"] ? configs["azure_openai"] : null}
+        enabled={!!configs["azure_openai"]}
+        config={configs["azure_openai"] ?? null}
       />
       <AnthropicSetup
         owner={owner}
         open={anthropicOpen}
         setOpen={setAnthropicOpen}
-        enabled={configs["anthropic"] ? true : false}
-        config={configs["anthropic"] ? configs["anthropic"] : null}
+        enabled={!!configs["anthropic"]}
+        config={configs["anthropic"] ?? null}
       />
       <MistralAISetup
         owner={owner}
@@ -284,29 +286,36 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         owner={owner}
         open={textSynthOpen}
         setOpen={setTextSynthOpen}
-        enabled={configs["textsynth"] ? true : false}
-        config={configs["textsynth"] ? configs["textsynth"] : null}
+        enabled={!!configs["textsynth"]}
+        config={configs["textsynth"] ?? null}
+      />
+      <GoogleVertexAISetup
+        owner={owner}
+        open={googleVertexAIOpen}
+        setOpen={setGoogleVertexAIOpen}
+        enabled={!!configs["google_vertex_ai"]}
+        config={configs["google_vertex_ai"] ?? null}
       />
       <SerpAPISetup
         owner={owner}
         open={serpapiOpen}
         setOpen={setSerpapiOpen}
-        enabled={configs["serpapi"] ? true : false}
-        config={configs["serpapi"] ? configs["serpapi"] : null}
+        enabled={!!configs["serpapi"]}
+        config={configs["serpapi"] ?? null}
       />
       <SerperSetup
         owner={owner}
         open={serperOpen}
         setOpen={setSerperOpen}
-        enabled={configs["serper"] ? true : false}
-        config={configs["serper"] ? configs["serper"] : null}
+        enabled={!!configs["serper"]}
+        config={configs["serper"] ?? null}
       />
       <BrowserlessAPISetup
         owner={owner}
         open={browserlessapiOpen}
         setOpen={setBrowserlessapiOpen}
-        enabled={configs["browserlessapi"] ? true : false}
-        config={configs["browserlessapi"] ? configs["browserlessapi"] : null}
+        enabled={!!configs["browserlessapi"]}
+        config={configs["browserlessapi"] ?? null}
       />
 
       <>
@@ -370,6 +379,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "textsynth":
                           setTextSynthOpen(true);
+                          break;
+                        case "google_vertex_ai":
+                          setGoogleVertexAIOpen(true);
                           break;
                       }
                     }}
