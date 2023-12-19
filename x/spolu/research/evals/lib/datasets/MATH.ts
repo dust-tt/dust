@@ -88,6 +88,14 @@ export class MATH extends Dataset {
     );
   }
 
+  maxTokens() {
+    return {
+      resaoningStep: 512,
+      reasoning: 3584,
+      answer: 64,
+    };
+  }
+
   tests({ count }: { count: number }): Test[] {
     if (count > this.test.length) {
       throw new Error(

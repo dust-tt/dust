@@ -10,6 +10,12 @@ export type ChatMessage = {
 export type ChatCompletion = {
   role: "assistant";
   content: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+  };
+  provider: ProviderType;
+  model: string;
 };
 
 export abstract class Model {
@@ -24,4 +30,33 @@ export abstract class Model {
     maxTokens?: number;
     temperature: number;
   }): Promise<ChatCompletion>;
+
+  async completionWithRetry({
+    messages,
+    maxTokens,
+    temperature,
+  }: {
+    messages: ChatMessage[];
+    maxTokens?: number;
+    temperature: number;
+  }): Promise<ChatCompletion> {
+    let completion;
+    try {
+      completion = await this.completion({
+        messages,
+        maxTokens,
+        temperature,
+      });
+    } catch (e) {
+      console.log(`Retrying completion: error=${e} sleep=3s`);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      completion = await this.completionWithRetry({
+        messages,
+        maxTokens,
+        temperature,
+      });
+    }
+
+    return completion;
+  }
 }
