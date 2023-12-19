@@ -92,13 +92,14 @@ export class Game24 extends Dataset {
   }
 
   async load() {
+    const rng = seedrandom("GAME24_DATASET");
     const data = await fs.promises.readFile("datasets/24/24.jsonl", "utf8");
     const lines = data.split("\n");
     const examples = lines
       .slice(900, 1156)
       .map((line) => JSON.parse(line) as Example24);
 
-    const shuffled = examples.sort(() => Math.random() - 0.5);
+    const shuffled = examples.sort(() => rng() - 0.5);
     this.train = shuffled.slice(0, 128);
     this.test = shuffled.slice(128, 256);
 
@@ -135,6 +136,14 @@ export class Game24 extends Dataset {
       `The answer should be a valid solution expression without space using each number` +
       ` exactly once (eg: '(6+1)*5-11' or '(9-1)*9/3').`
     );
+  }
+
+  maxTokens() {
+    return {
+      resaoningStep: 32,
+      reasoning: 32 * 3,
+      answer: 16,
+    };
   }
 
   tests({ count }: { count: number }): Test[] {

@@ -98,7 +98,7 @@ impl AnthropicLLM {
                         },
                         ChatMessageRole::Function => match cm.name.as_ref() {
                             Some(name) => format!("[function_result: {}] ", name),
-                            None => "[Function Result]".to_string(),
+                            None => "[function_result]".to_string(),
                         },
                     },
                     cm.content.as_ref().unwrap_or(&String::from("")).clone(),

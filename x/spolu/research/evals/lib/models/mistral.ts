@@ -30,6 +30,7 @@ export class MistralModel extends Model {
     maxTokens?: number;
     temperature: number;
   }): Promise<ChatCompletion> {
+    // console.log(`Completion: provider=${this.provider} model=${this.model}`);
     const completion = await this.client.chat({
       model: this.model,
       messages,
@@ -37,26 +38,32 @@ export class MistralModel extends Model {
       temperature,
     });
 
-    return completion.choices[0].message as ChatCompletion;
+    if (completion.object === "error") {
+      throw new Error(completion.message);
+    }
+    if (!completion.choices || completion.choices.length === 0) {
+      throw new Error(`Unexpected error: ${JSON.stringify(completion)}`);
+    }
+
+    const m = completion.choices[0].message;
+    if (m.content === null) {
+      throw new Error("Mistral returned null");
+    }
+
+    // console.log(`Received completion`);
+    // console.log(`----------------------`);
+    // console.log(completion);
+    // console.log(`----------------------`);
+
+    return {
+      role: "assistant",
+      content: m.content,
+      usage: {
+        promptTokens: completion.usage.prompt_tokens,
+        completionTokens: completion.usage.completion_tokens,
+      },
+      provider: this.provider,
+      model: this.model,
+    };
   }
 }
-
-// async function main() {
-//   const model = new MistralModel("mistral-tiny");
-//
-//   const c = await model.completion({
-//     messages: [
-//       {
-//         role: "user",
-//         content: "Hello, how are you?",
-//       },
-//     ],
-//     temperature: 1.0,
-//   });
-//
-//   console.log(c);
-// }
-//
-// main()
-//   .then(() => console.log("Done"))
-//   .catch(console.error);

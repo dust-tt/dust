@@ -35,32 +35,20 @@ export class OpenAIModel extends Model {
     });
 
     const m = completion.choices[0].message;
+
     if (m.content === null) {
       throw new Error("OpenAI returned null");
     }
+
     return {
       role: "assistant",
       content: m.content,
+      usage: {
+        promptTokens: completion.usage?.prompt_tokens || 0,
+        completionTokens: completion.usage?.completion_tokens || 0,
+      },
+      provider: this.provider,
+      model: this.model,
     };
   }
 }
-
-// async function main() {
-//   const model = new OpenAIModel("gpt-3.5-turbo");
-//
-//   const c = await model.completion({
-//     messages: [
-//       {
-//         role: "user",
-//         content: "Hello, how are you?",
-//       },
-//     ],
-//     temperature: 1.0,
-//   });
-//
-//   console.log(c);
-// }
-//
-// main()
-//   .then(() => console.log("Done"))
-//   .catch(console.error);

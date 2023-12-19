@@ -90,11 +90,13 @@ async function main() {
     model: m,
     dataset: d,
     tests: d.tests({ count: 32 }),
-    debug: true,
+    debug: process.env.DEBUG === "true",
   });
 
   console.log(
-    `Finished: check=${r.filter((x) => x.check).length} total=${r.length}`
+    `Finished run: algorithm=${algorithm} dataset=${dataset} ` +
+      `provider=${provider} model=${model} ` +
+      `check=${r.filter((x) => x.check).length} total=${r.length}`
   );
 }
 
