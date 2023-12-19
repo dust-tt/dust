@@ -86,7 +86,7 @@ impl TryFrom<&BaseChatMessage> for ChatMessage {
             },
             ChatMessageRole::Function => match cm.name.as_ref() {
                 Some(name) => format!("[function_result: {}] ", name), // Include space here.
-                None => "[Function Result]".to_string(),
+                None => "[function_result]".to_string(),
             },
             _ => String::from(""),
         };
