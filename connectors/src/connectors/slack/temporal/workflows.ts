@@ -61,12 +61,13 @@ export async function workspaceFullSync(
             connectorId,
             `${percentSync}%`
           );
+          i++;
           return await executeChild(syncOneChannel, {
             workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
             args: [connectorId, channelId, false, fromTs],
             memo: workflowInfo().memo,
           });
-          i++;
+          
         })
       );
     }
