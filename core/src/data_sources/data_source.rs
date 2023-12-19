@@ -1828,15 +1828,14 @@ impl DataSource {
         ));
 
         // Delete databases (concurrently).
-        let databases = store
+        let (databases, total) = store
             .list_databases(&self.project, &self.data_source_id, None)
             .await?;
         try_join_all(databases.iter().map(|db| db.delete(store.clone()))).await?;
 
         utils::done(&format!(
             "Deleted databases: data_source_id={} database_count={}",
-            self.data_source_id,
-            databases.len(),
+            self.data_source_id, total,
         ));
 
         // Delete data source and documents (SQL).

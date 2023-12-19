@@ -177,7 +177,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<Vec<Database>>;
+    ) -> Result<(Vec<Database>, usize)>;
     async fn assign_live_sqlite_worker_to_database(
         &self,
         project: &Project,
