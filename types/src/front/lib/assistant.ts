@@ -95,8 +95,8 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
-  // MISTRAL_7B_DEFAULT_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG
+  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
 ] as const;
 
 // this creates a union type of all the {providerId: string, modelId: string}
