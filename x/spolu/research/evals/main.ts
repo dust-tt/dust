@@ -13,6 +13,8 @@ import { Model, ProviderType, ValidProviderTypes } from "@app/lib/models";
 import { MistralModel, MistralModelType } from "@app/lib/models/mistral";
 import { OpenAIModel, OpenAIModelType } from "@app/lib/models/openai";
 
+import { CoTConsensus } from "./lib/algorithms/CoTConsensus";
+
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -79,6 +81,9 @@ async function main() {
     case "CoT":
       a = new CoT(d, m);
       break;
+    case "CoT-consensus":
+      a = new CoTConsensus(d, m);
+      break;
     default:
       ((x: never) => x)(algorithm);
   }
@@ -86,16 +91,16 @@ async function main() {
     throw new Error("Algorithm not found");
   }
 
-  const r = await a.run({
+  await a.run({
     tests: d.tests({ count: parseInt(process.env.TEST_COUNT || "8") }),
     concurrency: parseInt(process.env.RUN_CONCURRENCY || "4"),
     debug: process.env.DEBUG === "true",
   });
 
+  a.computeResults();
+
   console.log(
-    `Finished run: algorithm=${algorithm} dataset=${dataset} ` +
-      `provider=${provider} model=${model} ` +
-      `check=${r.filter((x) => x.check).length} total=${r.length}`
+    `Finished run: algorithm=${algorithm} dataset=${dataset} provider=${provider} model=${model}`
   );
 }
 

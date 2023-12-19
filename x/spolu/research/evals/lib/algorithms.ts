@@ -1,11 +1,11 @@
 import PQueue from "p-queue";
-import { Database, open, Statement } from "sqlite";
+import { Database, open } from "sqlite";
 import sqlite3 from "sqlite3";
 
 import { Dataset, ProblemId, Test } from "@app/lib/datasets";
 import { ChatCompletion, ChatQuery, hashQuery, Model } from "@app/lib/models";
 
-export const ValidAlgorithmTypes = ["CoT"] as const;
+export const ValidAlgorithmTypes = ["CoT", "CoT-consensus"] as const;
 export type AlgorithmType = (typeof ValidAlgorithmTypes)[number];
 
 export type TestResult = {
@@ -15,8 +15,6 @@ export type TestResult = {
 };
 
 export abstract class Algorithm {
-  abstract readonly algorithm: AlgorithmType;
-
   private history: {
     createdAt: number;
     runId: string;
@@ -36,6 +34,8 @@ export abstract class Algorithm {
     this.dataset = dataset;
     this.model = model;
   }
+
+  abstract algorithm(): AlgorithmType;
 
   async sqlite() {
     if (this._sqlite === null) {
@@ -62,7 +62,7 @@ export abstract class Algorithm {
   runId(): string {
     return `${this.model.provider}-${this.model.model()}-${
       this.dataset.dataset
-    }-${this.algorithm}`;
+    }-${this.algorithm()}`;
   }
 
   async storeCompletion({
@@ -78,10 +78,12 @@ export abstract class Algorithm {
   }) {
     const db = await this.sqlite();
 
-    void db.run(
+    const now = Date.now();
+
+    await db.run(
       "INSERT INTO store (created_at, run_id, test, query_hash, completion, is_check) VALUES (?, ?, ?, ?, ?, ?)",
       [
-        Date.now(),
+        now,
         this.runId(),
         test.id,
         hashQuery(query),
@@ -91,7 +93,7 @@ export abstract class Algorithm {
     );
 
     this.history.push({
-      createdAt: Date.now(),
+      createdAt: now,
       runId: this.runId(),
       test: test.id,
       queryHash: hashQuery(query),
@@ -155,9 +157,11 @@ export abstract class Algorithm {
   abstract runOne({
     test,
     debug,
+    iteration,
   }: {
     test: Test;
     debug?: boolean;
+    iteration?: number;
   }): Promise<TestResult>;
 
   async run({
@@ -185,4 +189,6 @@ export abstract class Algorithm {
 
     return results as TestResult[];
   }
+
+  abstract computeResults(): void;
 }

@@ -1,28 +1,35 @@
-import { Algorithm, TestResult } from "@app/lib/algorithms";
+import { Algorithm, AlgorithmType, TestResult } from "@app/lib/algorithms";
 import { Dataset, Test } from "@app/lib/datasets";
 import { ChatCompletion, ChatMessage, ChatQuery, Model } from "@app/lib/models";
 
 export class CoT extends Algorithm {
-  readonly algorithm = "CoT";
-
   readonly N_SHOT = 8;
   readonly TEMPERATURE = 0.7;
 
+  private results: TestResult[];
+
   constructor(dataset: Dataset, model: Model) {
     super(dataset, model);
+    this.results = [];
+  }
+
+  algorithm(): AlgorithmType {
+    return "CoT";
   }
 
   async runOne({
     test,
+    iteration,
     debug,
   }: {
     test: Test;
+    iteration?: number;
     debug?: boolean;
   }): Promise<TestResult> {
     const examples = this.dataset.examples({
       problem: test.id,
       count: this.N_SHOT,
-      iteration: 0,
+      iteration: iteration || 0,
     });
 
     // console.log(`Running test: id=${test.id} examples=${examples.length}`);
@@ -88,25 +95,28 @@ export class CoT extends Algorithm {
 
     const c = await this.runCompletion(query);
 
-    const finish = (
+    const finish = async (
       test: Test,
       completion: ChatCompletion,
       query: ChatQuery,
       check: boolean,
       answer: string
     ) => {
-      this.storeCompletion({
+      await this.storeCompletion({
         test,
         completion,
         query,
         check,
       });
       this.stats();
-      return {
+
+      const result: TestResult = {
         test,
         answer,
         check,
       };
+      this.results.push(result);
+      return result;
     };
 
     if (debug) {
@@ -116,13 +126,13 @@ export class CoT extends Algorithm {
     }
 
     if (!c.content || !c.content.includes("REASONING:")) {
-      return finish(test, c, query, false, "");
+      return await finish(test, c, query, false, "");
     }
 
     const content = c.content.split("REASONING:")[1].trim();
 
     if (!content.includes("ANSWER:")) {
-      return finish(test, c, query, false, "");
+      return await finish(test, c, query, false, "");
     }
 
     const reasoning = content.split("ANSWER:")[0].trim().split("\n");
@@ -142,6 +152,16 @@ export class CoT extends Algorithm {
       console.log("-------------------------");
     }
 
-    return finish(test, c, query, check, answer);
+    return await finish(test, c, query, check, answer);
+  }
+
+  computeResults(): void {
+    console.log(
+      `Result: algorithm=${this.algorithm} dataset=${this.dataset.dataset} ` +
+        `provider=${this.model.provider} model=${this.model.model()} ` +
+        `check=${this.results.filter((x) => x.check).length} total=${
+          this.results.length
+        }`
+    );
   }
 }
