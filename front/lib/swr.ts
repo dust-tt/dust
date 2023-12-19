@@ -511,6 +511,7 @@ export function useDatabases({
 
   return {
     databases: data ? data.databases : [],
+    total: data ? data.total : null,
     isDatabasesLoading: !error && !data,
     isDatabasesError: error,
     mutateDatabases: mutate,

@@ -14,3 +14,8 @@ export function isDevelopmentOrDustWorkspace(owner: WorkspaceType) {
     owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID
   );
 }
+
+export function isActivatedStructuredDB(owner: WorkspaceType) {
+  // We will manually add workspace ids here.
+  return isDevelopmentOrDustWorkspace(owner);
+}

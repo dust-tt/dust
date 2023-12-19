@@ -889,7 +889,14 @@ export class CoreAPI {
     dataSourceName: string;
     offset: number;
     limit: number;
-  }): Promise<CoreAPIResponse<{ databases: CoreAPIDatabase[] }>> {
+  }): Promise<
+    CoreAPIResponse<{
+      databases: CoreAPIDatabase[];
+      offset: number;
+      limit: number;
+      total: number;
+    }>
+  > {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases?offset=${offset}&limit=${limit}`,
       { method: "GET" }
