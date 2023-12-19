@@ -83,7 +83,6 @@ export async function createSlackConnector(
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
-          defaultNewResourcePermission: "read_write",
         },
         { transaction: t }
       );
@@ -121,10 +120,8 @@ export async function updateSlackConnector(
   connectorId: ModelId,
   {
     connectionId,
-    defaultNewResourcePermission,
   }: {
     connectionId?: string | null;
-    defaultNewResourcePermission?: ConnectorPermission | null;
   }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   if (!NANGO_SLACK_CONNECTOR_ID) {
@@ -229,10 +226,6 @@ export async function updateSlackConnector(
     }
 
     updateParams.connectionId = connectionId;
-  }
-
-  if (defaultNewResourcePermission) {
-    updateParams.defaultNewResourcePermission = defaultNewResourcePermission;
   }
 
   await c.update(updateParams);

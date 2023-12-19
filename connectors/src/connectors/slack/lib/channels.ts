@@ -55,7 +55,7 @@ export async function upsertSlackChannelInConnectorsDb({
           connectorId,
           slackChannelId,
           slackChannelName,
-          permission: connector.defaultNewResourcePermission,
+          permission: "read_write",
         },
         { transaction }
       );

@@ -1,7 +1,5 @@
 import { CONNECTOR_PROVIDERS, ConnectorProvider } from "@dust-tt/types";
 
-import { ConnectorPermission } from "@connectors/types/resources";
-
 export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
@@ -21,6 +19,4 @@ export type ConnectorType = {
   firstSyncProgress?: string;
   errorType?: string;
   errorMessage?: string;
-
-  defaultNewResourcePermission: ConnectorPermission;
 };
