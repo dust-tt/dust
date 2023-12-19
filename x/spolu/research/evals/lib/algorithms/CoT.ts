@@ -157,7 +157,7 @@ export class CoT extends Algorithm {
 
   computeResults(): void {
     console.log(
-      `Result: algorithm=${this.algorithm} dataset=${this.dataset.dataset} ` +
+      `Result: algorithm=${this.algorithm()} dataset=${this.dataset.dataset} ` +
         `provider=${this.model.provider} model=${this.model.model()} ` +
         `check=${this.results.filter((x) => x.check).length} total=${
           this.results.length

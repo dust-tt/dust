@@ -79,7 +79,9 @@ export class CoTConsensus extends CoT {
       }
 
       console.log(
-        `Result: algorithm=${this.algorithm} poolSize=${p} dataset=${this.dataset.dataset} ` +
+        `Result: algorithm=${this.algorithm()} poolSize=${p} dataset=${
+          this.dataset.dataset
+        } ` +
           `provider=${this.model.provider} model=${this.model.model()} ` +
           `check=${check} total=${total}`
       );

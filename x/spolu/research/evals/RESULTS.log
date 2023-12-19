@@ -29,4 +29,17 @@ Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-4-1106-previe
 Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-small check=39 total=128
 Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-medium check=49 total=128
 
+# CoT-Consensus total=128 pool=32
 
+## Game24
+
+## MATH
+
+Running stats: pass=1686 total=4096 rate=0.37/s promptTokensRate=833.350/s completionTokensRate=130.77/s promptTokensTotal=9267718 completionTokensTotal=802822
+Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=55 total=128
+Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=55 total=128
+Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=63 total=128
+Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=66 total=128
+Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=70 total=128
+Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=68 total=128
+Finished run: algorithm=CoT-consensus dataset=MATH provider=openai model=gpt-3.5-turbo-1106
