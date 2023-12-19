@@ -173,8 +173,6 @@ export abstract class Algorithm {
 
       console.log(
         `Final stats: ` +
-          `pass=${this.history.filter((x) => x.check).length} ` +
-          `total=${this.history.length} ` +
           `rate=${rate.toFixed(2)}/s` +
           `promptTokensRate=${promptTokensRate.toFixed(3)}/s ` +
           `completionTokensRate=${completionTokensRate.toFixed(2)}/s ` +
