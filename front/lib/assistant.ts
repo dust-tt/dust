@@ -39,7 +39,7 @@ export enum GLOBAL_AGENTS_SID {
   GPT35_TURBO = "gpt-3.5-turbo",
   CLAUDE = "claude-2",
   CLAUDE_INSTANT = "claude-instant-1",
-  // TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
+  //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
   // it interferes with the retrieval of ongoing conversations involving this agent.
   MISTRAL_SMALL = "mistral",
 }
