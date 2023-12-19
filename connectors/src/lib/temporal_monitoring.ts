@@ -84,7 +84,7 @@ export class ActivityInboundLogInterceptor
       if (
         maybeNangoError.code === "ERR_BAD_RESPONSE" &&
         maybeNangoError.status &&
-        [522, 502].includes(maybeNangoError.status)
+        [522, 502, 500].includes(maybeNangoError.status)
       ) {
         throw {
           __is_dust_error: true,
