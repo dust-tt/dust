@@ -9,10 +9,7 @@ import logger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
+import { ConnectorResource } from "@connectors/types/resources";
 
 const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 
@@ -43,7 +40,6 @@ export async function createIntercomConnector(
       workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
       workspaceId: dataSourceConfig.workspaceId,
       dataSourceName: dataSourceConfig.dataSourceName,
-      defaultNewResourcePermission: "read_write",
     });
     // @todo Daph lauch workflow await launchIntercomSyncWorkflow(connector.id);
     return new Ok(connector.id.toString());
@@ -57,13 +53,11 @@ export async function updateIntercomConnector(
   connectorId: ModelId,
   {
     connectionId,
-    newDefaultNewResourcePermission,
   }: {
     connectionId?: NangoConnectionId | null;
-    newDefaultNewResourcePermission?: ConnectorPermission | null;
   }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
-  console.log({ connectorId, connectionId, newDefaultNewResourcePermission });
+  console.log({ connectorId, connectionId });
   throw new Error("Not implemented");
 }
 

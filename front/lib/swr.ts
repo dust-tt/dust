@@ -24,7 +24,6 @@ import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources"
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
-import { GetManagedDataSourceDefaultNewResourcePermissionResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions/default";
 import { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
@@ -304,26 +303,6 @@ export function useConnectorBotEnabled({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     mutateBotEnabled: mutate,
-  };
-}
-
-export function useConnectorDefaultNewResourcePermission(
-  owner: WorkspaceType,
-  dataSource: DataSourceType
-) {
-  const defaultNewResourcePermissionFetcher: Fetcher<GetManagedDataSourceDefaultNewResourcePermissionResponseBody> =
-    fetcher;
-
-  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions/default`;
-
-  const { data, error } = useSWR(url, defaultNewResourcePermissionFetcher);
-
-  return {
-    defaultNewResourcePermission: data
-      ? data.default_new_resource_permission
-      : null,
-    isDefaultNewResourcePermissionLoading: !error && !data,
-    isDefaultNewResourcePermissionError: error,
   };
 }
 

@@ -23,10 +23,7 @@ import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
+import { ConnectorResource } from "@connectors/types/resources";
 
 import { ConnectorPermissionRetriever } from "../interface";
 import { getParents } from "./lib/parents";
@@ -63,7 +60,6 @@ export async function createNotionConnector(
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
-          defaultNewResourcePermission: "read_write",
         },
         { transaction }
       );
@@ -88,29 +84,12 @@ export async function updateNotionConnector(
   connectorId: ModelId,
   {
     connectionId,
-    newDefaultNewResourcePermission,
   }: {
     connectionId?: NangoConnectionId | null;
-    newDefaultNewResourcePermission?: ConnectorPermission | null;
   }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   if (!NANGO_NOTION_CONNECTOR_ID) {
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
-  if (newDefaultNewResourcePermission) {
-    logger.error(
-      { connectorId, newDefaultNewResourcePermission },
-      "Cannot change defaultNewResourcePermission of a Notion connector"
-    );
-
-    return new Err({
-      error: {
-        type: "connector_update_unauthorized",
-        message:
-          "Cannot change defaultNewResourcePermission of a Notion connector",
-      },
-    });
   }
 
   const c = await Connector.findOne({
