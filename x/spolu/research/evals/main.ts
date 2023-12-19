@@ -94,7 +94,9 @@ async function main() {
   });
 
   console.log(
-    `Finished: check=${r.filter((x) => x.check).length} total=${r.length}`
+    `Finished run: algorithm=${algorithm} dataset=${dataset} ` +
+      `provider=${provider} model=${model} ` +
+      `check=${r.filter((x) => x.check).length} total=${r.length}`
   );
 }
 
