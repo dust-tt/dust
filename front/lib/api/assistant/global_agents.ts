@@ -559,7 +559,7 @@ async function _getDustGlobalAgent(
     generation: {
       id: -1,
       prompt:
-        "Assist the user based on the retrieved data from their workspace.",
+        "Assist the user based on the retrieved data from their workspace. Keep your answers concise and straight to the point.",
       model:
         plan.code === FREE_TEST_PLAN_CODE
           ? {
