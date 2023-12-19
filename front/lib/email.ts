@@ -55,6 +55,22 @@ The Dust Team
   console.log("ACTIVATION KEY SENT", user.email);
 };
 
+export async function sendGithubDeletionEmail(email: string): Promise<void> {
+  const cancelMessage = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Github connection deleted - important information`,
+    html: `<p>Hello from Dust,</p>
+    <p>Your Dust connection to Github was deleted, along with all the related data on Dust servers.</p>
+    <p>You can now uninstall the Dust app from your Github account to revoke authorizations initially granted to Dust when you connected the Github account.</p>
+    <p>Please reply to this email if you have any questions.</p>
+    <p>The Dust team</p>`,
+  };
+  return sendEmail(email, cancelMessage);
+}
+
 /** Emails for cancelling / reactivating subscription */
 
 export async function sendCancelSubscriptionEmail(

@@ -430,7 +430,8 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(
         "\n\n...to fully scrub the customer data from our infra (GCS clean-up)."
       );
-
+      console.log(`WARNING: For Github datasource, the user may want to uninstall the app from Github
+      to revoke the authorization. If needed, send an email (cf template in lib/email.ts) `);
       return;
     }
 
