@@ -51,8 +51,7 @@ impl TryFrom<&ChatMessageRole> for MistralAIChatMessageRole {
             ChatMessageRole::Assistant => Ok(MistralAIChatMessageRole::Assistant),
             ChatMessageRole::System => Ok(MistralAIChatMessageRole::System),
             ChatMessageRole::User => Ok(MistralAIChatMessageRole::User),
-            // Handle other cases that are not supported
-            _ => Err(anyhow!("Role not supported by Mistral AI")),
+            ChatMessageRole::Function => Ok(MistralAIChatMessageRole::User),
         }
     }
 }
@@ -80,10 +79,15 @@ impl TryFrom<&BaseChatMessage> for ChatMessage {
         let mistral_role = MistralAIChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
-        let meta_prompt = match cm.name.as_ref() {
-            Some(name) if mistral_role == MistralAIChatMessageRole::User => {
-                format!("[user: {}] ", name) // Include space here.
-            }
+        let meta_prompt = match cm.role {
+            ChatMessageRole::User => match cm.name.as_ref() {
+                Some(name) => format!("[user: {}] ", name), // Include space here.
+                None => String::from(""),
+            },
+            ChatMessageRole::Function => match cm.name.as_ref() {
+                Some(name) => format!("[function_result: {}] ", name), // Include space here.
+                None => "[function_result]".to_string(),
+            },
             _ => String::from(""),
         };
 
