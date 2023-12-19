@@ -34,8 +34,8 @@ export function UserMessage({
       user={user}
       conversationId={conversation.sId}
       messageId={message.sId}
-      pictureUrl={message.context.profilePictureUrl}
-      name={message.context.fullName}
+      pictureUrl={user.image}
+      name={user.fullName}
       reactions={reactions}
       enableEmojis={true}
     >
