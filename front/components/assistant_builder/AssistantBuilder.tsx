@@ -180,7 +180,7 @@ export type AssistantBuilderInitialState = {
   description: string;
   scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
@@ -203,6 +203,7 @@ type AssistantBuilderProps = {
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
   flow: BuilderFlow;
+  defaultIsEdited?: boolean;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -252,6 +253,7 @@ export default function AssistantBuilder({
   initialBuilderState,
   agentConfigurationId,
   flow,
+  defaultIsEdited,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -261,17 +263,41 @@ export default function AssistantBuilder({
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
 
-  const [builderState, setBuilderState] = useState<AssistantBuilderState>({
-    ...DEFAULT_ASSISTANT_STATE,
-    scope: initialBuilderState?.scope ?? defaultScope,
-    generationSettings: {
-      ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings:
-        plan.code === FREE_TEST_PLAN_CODE
-          ? GPT_3_5_TURBO_MODEL_CONFIG
-          : GPT_4_TURBO_MODEL_CONFIG,
-    },
-  });
+  const [builderState, setBuilderState] = useState<AssistantBuilderState>(
+    initialBuilderState
+      ? {
+          actionMode: initialBuilderState.actionMode,
+          dataSourceConfigurations:
+            initialBuilderState.dataSourceConfigurations ?? {
+              ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
+            },
+          timeFrame: initialBuilderState.timeFrame ?? {
+            ...DEFAULT_ASSISTANT_STATE.timeFrame,
+          },
+          dustAppConfiguration: initialBuilderState.dustAppConfiguration,
+          databaseQueryConfiguration:
+            initialBuilderState.databaseQueryConfiguration,
+          handle: initialBuilderState.handle,
+          description: initialBuilderState.description,
+          scope: initialBuilderState.scope,
+          instructions: initialBuilderState.instructions,
+          avatarUrl: initialBuilderState.avatarUrl,
+          generationSettings: initialBuilderState.generationSettings ?? {
+            ...DEFAULT_ASSISTANT_STATE.generationSettings,
+          },
+        }
+      : {
+          ...DEFAULT_ASSISTANT_STATE,
+          scope: defaultScope,
+          generationSettings: {
+            ...DEFAULT_ASSISTANT_STATE.generationSettings,
+            modelSettings:
+              plan.code === FREE_TEST_PLAN_CODE
+                ? GPT_3_5_TURBO_MODEL_CONFIG
+                : GPT_4_TURBO_MODEL_CONFIG,
+          },
+        }
+  );
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
@@ -281,7 +307,7 @@ export default function AssistantBuilder({
 
   const [showDatabaseModal, setShowDatabaseModal] = useState(false);
 
-  const [edited, setEdited] = useState(false);
+  const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
@@ -361,32 +387,6 @@ export default function AssistantBuilder({
     agentConfigurations,
     builderState.avatarUrl,
   ]);
-
-  useEffect(() => {
-    if (initialBuilderState) {
-      setBuilderState({
-        actionMode: initialBuilderState.actionMode,
-        dataSourceConfigurations:
-          initialBuilderState.dataSourceConfigurations ?? {
-            ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
-          },
-        timeFrame: initialBuilderState.timeFrame ?? {
-          ...DEFAULT_ASSISTANT_STATE.timeFrame,
-        },
-        dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-        databaseQueryConfiguration:
-          initialBuilderState.databaseQueryConfiguration,
-        handle: initialBuilderState.handle,
-        description: initialBuilderState.description,
-        scope: initialBuilderState.scope ?? "private",
-        instructions: initialBuilderState.instructions,
-        avatarUrl: initialBuilderState.avatarUrl,
-        generationSettings: initialBuilderState.generationSettings ?? {
-          ...DEFAULT_ASSISTANT_STATE.generationSettings,
-        },
-      });
-    }
-  }, [initialBuilderState]);
 
   // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<
@@ -927,6 +927,7 @@ export default function AssistantBuilder({
           </div>
           <TeamSharingSection
             owner={owner}
+            agentConfigurationId={agentConfigurationId}
             initialScope={initialBuilderState?.scope ?? defaultScope}
             newScope={builderState.scope}
             setNewScope={(
