@@ -2,6 +2,7 @@ import {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   GenerationTokensEvent,
+  ModelId,
   UserMessageErrorEvent,
   UserMessageNewEvent,
   WorkspaceType,
@@ -38,6 +39,7 @@ import {
 } from "@dust-tt/types";
 import crypto from "crypto";
 import { Op, Transaction } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
@@ -58,6 +60,7 @@ import {
 } from "@app/lib/models";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
+import { redisClient } from "@app/lib/redis";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -1054,7 +1057,19 @@ export async function* postUserMessage(
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
-
+  if (agentMessages.length > 0) {
+    for (const agentMessage of agentMessages) {
+      // Can't use Promise.all() here because populating the data
+      // on the first time would result in a very likely race condition
+      // that would result in counting multiple time each message.
+      // We'll need to add a lock here.
+      await signalAgentUsage({
+        userId: context.username,
+        agentConfigurationId: agentMessage.configuration.sId,
+        messageId: agentMessage.id,
+      });
+    }
+  }
   yield {
     type: "user_message_new",
     created: Date.now(),
@@ -1998,4 +2013,95 @@ async function isMessagesLimitReached({
   });
 
   return messages.length === plan.limits.assistant.maxMessages;
+}
+
+async function signalAgentUsage({
+  userId,
+  agentConfigurationId,
+  messageId,
+}: {
+  userId: string;
+  agentConfigurationId: string;
+  messageId: ModelId;
+}) {
+  const rankingTTL = 60 * 60 * 24 * 30; // 30 days
+
+  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+  // One sorted set per agent for counting the number of times the agent has been used.
+  // score is: timestamp of each use of the agent
+  // value: random unique distinct value. Strong random generation not needed here.
+  const agentUsedCountKey = `agent_usage_count_${agentConfigurationId}`;
+
+  // One sorted set per agent for counting the number of users that have used the agent.
+  // score is: last timestamp of usage by a given user
+  // value: user_id
+  const agentUserCountKey = `agent_user_count_${agentConfigurationId}`;
+
+  async function signalInRedis(userId: string, timestamp: number) {
+    if (!redis) {
+      throw new Error("Unexpected `signalInRedis` without `redis`.");
+    }
+    await redis.zAdd(agentUsedCountKey, {
+      score: timestamp,
+      value: uuidv4(),
+    });
+    await redis.expire(agentUsedCountKey, rankingTTL);
+
+    await redis.zAdd(agentUserCountKey, {
+      score: timestamp,
+      value: userId,
+    });
+    await redis.expire(agentUserCountKey, rankingTTL);
+  }
+
+  try {
+    redis = await redisClient();
+    const existCount = await redis.exists([
+      agentUsedCountKey,
+      agentUserCountKey,
+    ]);
+    if (existCount !== 2) {
+      // We could not find the data in Redis, we need to populate it
+      // until the message we are actually trying to account for.
+      // We are subject to race conditions here, but it's not a big deal
+      // so lets not add complexity for now.
+      const mentions = await Mention.findAll({
+        where: {
+          agentConfigurationId: agentConfigurationId,
+          messageId: {
+            [Op.lt]: messageId,
+          },
+        },
+        include: [
+          {
+            model: Message,
+            required: true,
+            include: [
+              {
+                model: UserMessage,
+                as: "userMessage",
+                required: true,
+              },
+            ],
+          },
+        ],
+      });
+      for (const mention of mentions) {
+        // No need to promise.all() here, as one Redis connection can only execute one command
+        // at a time.
+        if (mention.message?.userMessage?.userContextUsername) {
+          await signalInRedis(
+            mention.message.userMessage.userContextUsername,
+            mention.createdAt.getTime()
+          );
+        }
+      }
+    }
+    // We already have the appropriate keys in redis, we can just add to it.
+    await signalInRedis(userId, new Date().getTime());
+  } finally {
+    if (redis) {
+      await redis.quit();
+    }
+  }
 }

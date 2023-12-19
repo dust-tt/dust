@@ -659,6 +659,7 @@ export class Mention extends Model<
   declare userId: ForeignKey<User["id"]> | null;
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
 
+  declare message: NonAttribute<Message>;
   declare user?: NonAttribute<User>;
 }
 
