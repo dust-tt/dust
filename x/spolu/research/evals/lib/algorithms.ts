@@ -154,6 +154,36 @@ export abstract class Algorithm {
     );
   }
 
+  finalStats() {
+    if (this.history.length > 1) {
+      const first = this.history[0];
+      const last = this.history[this.history.length - 1];
+      const duration = last.createdAt - first.createdAt;
+      const rate = this.history.length / (duration / 1000);
+      const completionTokensTotal = this.history.reduce(
+        (acc, x) => acc + x.completion.usage.completionTokens,
+        0
+      );
+      const promptTokensTotal = this.history.reduce(
+        (acc, x) => acc + x.completion.usage.promptTokens,
+        0
+      );
+      const completionTokensRate = completionTokensTotal / (duration / 1000);
+      const promptTokensRate = promptTokensTotal / (duration / 1000);
+
+      console.log(
+        `Final stats: ` +
+          `pass=${this.history.filter((x) => x.check).length} ` +
+          `total=${this.history.length} ` +
+          `rate=${rate.toFixed(2)}/s` +
+          `promptTokensRate=${promptTokensRate.toFixed(3)}/s ` +
+          `completionTokensRate=${completionTokensRate.toFixed(2)}/s ` +
+          `promptTokensTotal=${promptTokensTotal} ` +
+          `completionTokensTotal=${completionTokensTotal}`
+      );
+    }
+  }
+
   abstract runOne({
     test,
     debug,

@@ -35,7 +35,7 @@ Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-medium c
 
 ## MATH
 
-Running stats: pass=1686 total=4096 rate=0.37/s promptTokensRate=833.350/s completionTokensRate=130.77/s promptTokensTotal=9267718 completionTokensTotal=802822
+rate=3.33/s promptTokensRate=7484.167/s completionTokensRate=606.85/s promptTokensTotal=9267718 completionTokensTotal=802822
 Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=55 total=128
 Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=55 total=128
 Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=63 total=128

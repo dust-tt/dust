@@ -97,11 +97,11 @@ async function main() {
     debug: process.env.DEBUG === "true",
   });
 
-  a.computeResults();
-
   console.log(
     `Finished run: algorithm=${algorithm} dataset=${dataset} provider=${provider} model=${model}`
   );
+  a.computeResults();
+  a.finalStats();
 }
 
 main()
