@@ -78,6 +78,15 @@ export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   largeModel: false,
 } as const;
 
+export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
+  providerId: "google_vertex_ai",
+  modelId: "gemini-pro",
+  displayName: "Gemini Pro",
+  contextSize: 8192,
+  recommendedTopK: 16,
+  largeModel: true,
+} as const;
+
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
@@ -86,6 +95,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ] as const;
 
 // this creates a union type of all the {providerId: string, modelId: string}
