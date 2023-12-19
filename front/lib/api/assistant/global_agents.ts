@@ -10,7 +10,7 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
-  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { AgentConfigurationType, GlobalAgentStatus } from "@dust-tt/types";
 import { PlanType } from "@dust-tt/types";
@@ -240,7 +240,7 @@ async function _getClaudeGlobalAgent({
   };
 }
 
-async function _getMistralGlobalAgent({
+async function _getMistralSmallGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
@@ -248,11 +248,11 @@ async function _getMistralGlobalAgent({
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL,
+    sId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
     version: 0,
     versionAuthorId: null,
-    name: "mistral",
-    description: "Mistral latest model (7B Instruct, 4k context).",
+    name: "mistral-small",
+    description: "Mistral latest model (8x7B Instruct, 32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
@@ -261,8 +261,8 @@ async function _getMistralGlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: MISTRAL_7B_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: MISTRAL_7B_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
+        modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -642,8 +642,8 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.CLAUDE:
       agentConfiguration = await _getClaudeGlobalAgent({ settings, plan });
       break;
-    case GLOBAL_AGENTS_SID.MISTRAL:
-      agentConfiguration = await _getMistralGlobalAgent({ settings });
+    case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
+      agentConfiguration = await _getMistralSmallGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = await _getSlackGlobalAgent(auth, {
