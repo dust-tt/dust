@@ -135,10 +135,17 @@ export function SignUpDropDownButton({
               <br />
               Dust's{" "}
               <a
-                href="/terms"
+                href="https://dust-tt.notion.site/Personal-Use-Terms-of-Service-06b764049abc4d4a9d3434245b56c765"
                 className="cursor-pointer font-semibold text-action-400 transition-all duration-300 ease-out hover:text-action-400 hover:underline hover:underline-offset-4 active:text-action-600"
               >
-                terms and conditions
+                Terms of Use
+              </a>{" "}
+              and{" "}
+              <a
+                href="https://www.notion.so/dust-tt/Platform-Privacy-Policy-c75f1cd20df04c58872f6aa43f768d41"
+                className="cursor-pointer font-semibold text-action-400 transition-all duration-300 ease-out hover:text-action-400 hover:underline hover:underline-offset-4 active:text-action-600"
+              >
+                Privacy Policy
               </a>
               .
             </p>

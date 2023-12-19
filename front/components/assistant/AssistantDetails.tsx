@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  ClipboardIcon,
   CloudArrowDownIcon,
   CommandLineIcon,
   DashIcon,
@@ -25,6 +26,7 @@ import {
 } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
+import Link from "next/link";
 import { useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -261,6 +263,7 @@ function ButtonsSection({
     ["published", "workspace"].includes(agentConfiguration.scope) &&
     flow !== "workspace";
 
+  const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
   const [isAddingOrRemoving, setIsAddingOrRemoving] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -305,6 +308,20 @@ function ButtonsSection({
 
   return (
     <Button.List className="flex items-center justify-end gap-1">
+      <Link
+        href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+      >
+        <Button
+          label={isDuplicating ? "Duplicating..." : "Duplicate"}
+          disabled={isDuplicating}
+          variant="tertiary"
+          icon={ClipboardIcon}
+          size="xs"
+          onClick={async () => {
+            setIsDuplicating(true);
+          }}
+        />
+      </Link>
       {canAddRemoveList &&
         (agentConfiguration.userListStatus === "in-list" ? (
           <Button

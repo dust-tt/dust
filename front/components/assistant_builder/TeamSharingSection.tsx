@@ -4,18 +4,20 @@ import {
   CheckCircleIcon,
   Dialog,
   Icon,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 export function TeamSharingSection({
   owner,
+  agentConfigurationId,
   initialScope,
   newScope,
   setNewScope,
 }: {
   owner: WorkspaceType;
+  agentConfigurationId: string | null;
   initialScope: AgentConfigurationScope;
   newScope: Exclude<AgentConfigurationScope, "global">;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
@@ -25,6 +27,7 @@ export function TeamSharingSection({
     useState(false);
   const [showCreateDuplicateDialog, setShowCreateDuplicateDialog] =
     useState(false);
+  const router = useRouter();
 
   if (initialScope !== "private" && newScope === "private") {
     throw new Error("Cannot change scope back to private");
@@ -99,8 +102,10 @@ export function TeamSharingSection({
         <CreateDuplicateDialog
           show={showCreateDuplicateDialog}
           onClose={() => setShowCreateDuplicateDialog(false)}
-          createDuplicate={function (): void {
-            throw new Error("Function not implemented.");
+          createDuplicate={() => {
+            void router.push(
+              `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfigurationId}`
+            );
           }}
         />
         <div className="text-lg font-bold text-element-900">Team sharing</div>
@@ -111,17 +116,16 @@ export function TeamSharingSection({
             apply to everyone. You can create a duplicate to tweak your own,
             private version.
           </div>
-          <div>
-            <Tooltip label="Coming soon: you can create a duplicate to tweak your own, private version">
+          {agentConfigurationId && (
+            <div>
               <Button
                 variant="secondary"
                 size="sm"
                 label="Create a duplicate"
                 onClick={() => setShowCreateDuplicateDialog(true)}
-                disabled={true}
               />
-            </Tooltip>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
