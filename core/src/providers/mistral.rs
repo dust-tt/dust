@@ -80,10 +80,15 @@ impl TryFrom<&BaseChatMessage> for ChatMessage {
         let mistral_role = MistralAIChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
-        let meta_prompt = match cm.name.as_ref() {
-            Some(name) if mistral_role == MistralAIChatMessageRole::User => {
-                format!("[user: {}] ", name) // Include space here.
-            }
+        let meta_prompt = match cm.role {
+            ChatMessageRole::User => match cm.name.as_ref() {
+                Some(name) => format!("[user: {}] ", name), // Include space here.
+                None => String::from(""),
+            },
+            ChatMessageRole::Function => match cm.name.as_ref() {
+                Some(name) => format!("[function_result: {}] ", name), // Include space here.
+                None => "[Function Result]".to_string(),
+            },
             _ => String::from(""),
         };
 
