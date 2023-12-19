@@ -71,6 +71,7 @@ export const MISTRAL_7B_INSTRUCT_MODEL_ID = "mistral_7B_instruct" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
 
+// TODO(flav) Delete.
 export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   providerId: "textsynth",
   modelId: MISTRAL_7B_INSTRUCT_MODEL_ID,
