@@ -57,18 +57,6 @@ async function main() {
     throw new Error("Model not found");
   }
 
-  let a: Algorithm | null = null;
-  switch (algorithm) {
-    case "CoT":
-      a = new CoT();
-      break;
-    default:
-      ((x: never) => x)(algorithm);
-  }
-  if (!a) {
-    throw new Error("Algorithm not found");
-  }
-
   let d: Dataset | null = null;
   switch (dataset) {
     case "Game24":
@@ -86,10 +74,21 @@ async function main() {
 
   await d.load();
 
+  let a: Algorithm | null = null;
+  switch (algorithm) {
+    case "CoT":
+      a = new CoT(d, m);
+      break;
+    default:
+      ((x: never) => x)(algorithm);
+  }
+  if (!a) {
+    throw new Error("Algorithm not found");
+  }
+
   const r = await a.run({
-    model: m,
-    dataset: d,
-    tests: d.tests({ count: 32 }),
+    tests: d.tests({ count: parseInt(process.env.TEST_COUNT || "8") }),
+    concurrency: parseInt(process.env.RUN_CONCURRENCY || "4"),
     debug: process.env.DEBUG === "true",
   });
 

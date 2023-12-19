@@ -1,6 +1,6 @@
 import { Algorithm, TestResult } from "@app/lib/algorithms";
 import { Dataset, Test } from "@app/lib/datasets";
-import { ChatCompletion, ChatMessage, Model } from "@app/lib/models";
+import { ChatCompletion, ChatMessage, ChatQuery, Model } from "@app/lib/models";
 
 export class CoT extends Algorithm {
   readonly algorithm = "CoT";
@@ -8,22 +8,18 @@ export class CoT extends Algorithm {
   readonly N_SHOT = 8;
   readonly TEMPERATURE = 0.7;
 
-  constructor() {
-    super();
+  constructor(dataset: Dataset, model: Model) {
+    super(dataset, model);
   }
 
   async runOne({
-    model,
-    dataset,
     test,
     debug,
   }: {
-    model: Model;
-    dataset: Dataset;
     test: Test;
     debug?: boolean;
   }): Promise<TestResult> {
-    const examples = dataset.examples({
+    const examples = this.dataset.examples({
       problem: test.id,
       count: this.N_SHOT,
       iteration: 0,
@@ -34,12 +30,12 @@ export class CoT extends Algorithm {
     const messages: ChatMessage[] = [];
 
     let prompt = `INSTRUCTIONS:\n`;
-    prompt += ` ${dataset.instructions()}`;
+    prompt += ` ${this.dataset.instructions()}`;
     prompt += "\n\n";
     prompt += `Start by providing a REASONING consisting in multiple steps, using one line per step.`;
-    prompt += ` ${dataset.reasoningStepInstructions()}`;
+    prompt += ` ${this.dataset.reasoningStepInstructions()}`;
     prompt += ` Finally provide a final ANSWER.`;
-    prompt += ` ${dataset.answerInstructions()}`;
+    prompt += ` ${this.dataset.answerInstructions()}`;
     // prompt +=
     //   ` Do not perform multiple reasoning attempts per question,` +
     //   ` do not backtrack in your reasoning steps.`;
@@ -77,27 +73,33 @@ export class CoT extends Algorithm {
     // console.log(messages);
 
     let maxTokens: number | undefined = undefined;
-    const datasetMaxTokens = dataset.maxTokens();
+    const datasetMaxTokens = this.dataset.maxTokens();
     if (datasetMaxTokens.reasoning && datasetMaxTokens.answer) {
       maxTokens = datasetMaxTokens.reasoning + datasetMaxTokens.answer;
     }
 
-    const c = await model.completionWithRetry({
+    const query: ChatQuery = {
+      provider: this.model.provider,
+      model: this.model.model(),
       messages,
       temperature: this.TEMPERATURE,
       maxTokens,
-    });
+    };
+
+    const c = await this.runCompletion(query);
 
     const finish = (
       test: Test,
       completion: ChatCompletion,
+      query: ChatQuery,
       check: boolean,
       answer: string
     ) => {
       this.storeCompletion({
         test,
-        check,
         completion,
+        query,
+        check,
       });
       this.stats();
       return {
@@ -114,13 +116,13 @@ export class CoT extends Algorithm {
     }
 
     if (!c.content || !c.content.includes("REASONING:")) {
-      return finish(test, c, false, "");
+      return finish(test, c, query, false, "");
     }
 
     const content = c.content.split("REASONING:")[1].trim();
 
     if (!content.includes("ANSWER:")) {
-      return finish(test, c, false, "");
+      return finish(test, c, query, false, "");
     }
 
     const reasoning = content.split("ANSWER:")[0].trim().split("\n");
@@ -128,7 +130,7 @@ export class CoT extends Algorithm {
 
     let check = false;
     try {
-      check = await dataset.check({ test, answer });
+      check = await this.dataset.check({ test, answer });
     } catch (e) {
       // Nothing to do, check failed.
     }
@@ -140,6 +142,6 @@ export class CoT extends Algorithm {
       console.log("-------------------------");
     }
 
-    return finish(test, c, check, answer);
+    return finish(test, c, query, check, answer);
   }
 }

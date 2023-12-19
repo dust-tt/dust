@@ -1,7 +1,7 @@
 import PQueue from "p-queue";
 
 import { Dataset, ProblemId, Test } from "@app/lib/datasets";
-import { ChatCompletion, Model } from "@app/lib/models";
+import { ChatCompletion, ChatQuery, hashQuery, Model } from "@app/lib/models";
 
 export const ValidAlgorithmTypes = ["CoT"] as const;
 export type AlgorithmType = (typeof ValidAlgorithmTypes)[number];
@@ -12,37 +12,56 @@ export type TestResult = {
   check: boolean;
 };
 
-const CONCURRENCY = 4;
-
 export abstract class Algorithm {
   abstract readonly algorithm: AlgorithmType;
 
   private history: {
     createdAt: number;
+    runId: string;
     test: ProblemId;
+    queryHash: string;
     completion: ChatCompletion;
     check: boolean;
   }[];
 
-  constructor() {
+  protected dataset: Dataset;
+  protected model: Model;
+
+  constructor(dataset: Dataset, model: Model) {
     this.history = [];
+    this.dataset = dataset;
+    this.model = model;
+  }
+
+  runId(): string {
+    return `${this.model.provider}-${this.model.model()}-${
+      this.dataset.dataset
+    }-${this.algorithm}`;
   }
 
   storeCompletion({
     test,
+    query,
     completion,
     check,
   }: {
     test: Test;
-    check: boolean;
+    query: ChatQuery;
     completion: ChatCompletion;
+    check: boolean;
   }): void {
     this.history.push({
       createdAt: Date.now(),
+      runId: this.runId(),
       test: test.id,
+      queryHash: hashQuery(query),
       completion,
       check,
     });
+  }
+
+  async runCompletion(query: ChatQuery): Promise<ChatCompletion> {
+    return await this.model.completionWithRetry(query);
   }
 
   stats() {
@@ -84,37 +103,29 @@ export abstract class Algorithm {
   }
 
   abstract runOne({
-    model,
-    dataset,
     test,
     debug,
   }: {
-    model: Model;
-    dataset: Dataset;
     test: Test;
     debug?: boolean;
   }): Promise<TestResult>;
 
   async run({
-    model,
-    dataset,
     tests,
+    concurrency,
     debug,
   }: {
-    model: Model;
-    dataset: Dataset;
     tests: Test[];
+    concurrency: number;
     debug?: boolean;
   }): Promise<TestResult[]> {
     const queue = new PQueue({
-      concurrency: CONCURRENCY,
+      concurrency,
     });
 
     const results = (
       await Promise.all(
-        tests.map((test) =>
-          queue.add(() => this.runOne({ model, dataset, test, debug }))
-        )
+        tests.map((test) => queue.add(() => this.runOne({ test, debug })))
       )
     ).filter((x) => x);
 
