@@ -26,6 +26,12 @@ export abstract class Dataset {
   abstract reasoningStepInstructions(): string;
   abstract answerInstructions(): string;
 
+  abstract maxTokens(): {
+    resaoningStep: number | null;
+    reasoning: number | null;
+    answer: number | null;
+  };
+
   abstract tests({ count }: { count: number }): Test[];
 
   abstract examples({

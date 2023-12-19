@@ -1,6 +1,6 @@
 import { Algorithm, TestResult } from "@app/lib/algorithms";
 import { Dataset, Test } from "@app/lib/datasets";
-import { ChatMessage, Model } from "@app/lib/models";
+import { ChatCompletion, ChatMessage, Model } from "@app/lib/models";
 
 export class CoT extends Algorithm {
   readonly algorithm = "CoT";
@@ -28,6 +28,8 @@ export class CoT extends Algorithm {
       count: this.N_SHOT,
       iteration: 0,
     });
+
+    // console.log(`Running test: id=${test.id} examples=${examples.length}`);
 
     const messages: ChatMessage[] = [];
 
@@ -74,29 +76,51 @@ export class CoT extends Algorithm {
     // console.log(prompt);
     // console.log(messages);
 
-    const c = await model.completion({
-      messages,
-      temperature: this.TEMPERATURE,
-    });
-
-    if (!c.content.includes("REASONING:")) {
-      return {
-        test,
-        answer: "",
-        check: false,
-      };
+    let maxTokens: number | undefined = undefined;
+    const datasetMaxTokens = dataset.maxTokens();
+    if (datasetMaxTokens.reasoning && datasetMaxTokens.answer) {
+      maxTokens = datasetMaxTokens.reasoning + datasetMaxTokens.answer;
     }
 
-    // console.log(c.content);
+    const c = await model.completionWithRetry({
+      messages,
+      temperature: this.TEMPERATURE,
+      maxTokens,
+    });
+
+    const finish = (
+      test: Test,
+      completion: ChatCompletion,
+      check: boolean,
+      answer: string
+    ) => {
+      this.storeCompletion({
+        test,
+        check,
+        completion,
+      });
+      this.stats();
+      return {
+        test,
+        answer,
+        check,
+      };
+    };
+
+    if (debug) {
+      console.log("+++++++++++++++++++++++++");
+      console.log(c.content);
+      console.log("+++++++++++++++++++++++++");
+    }
+
+    if (!c.content || !c.content.includes("REASONING:")) {
+      return finish(test, c, false, "");
+    }
 
     const content = c.content.split("REASONING:")[1].trim();
 
     if (!content.includes("ANSWER:")) {
-      return {
-        test,
-        answer: "",
-        check: false,
-      };
+      return finish(test, c, false, "");
     }
 
     const reasoning = content.split("ANSWER:")[0].trim().split("\n");
@@ -110,16 +134,12 @@ export class CoT extends Algorithm {
     }
 
     if (debug) {
-      console.log("----------");
-      console.log(`REASONING:\n${reasoning.join("\n")}`);
+      console.log(`REASONING: ${reasoning.join(" ")}`);
       console.log(`ANSWER: ${answer}`);
       console.log(`CHECK: ${check}`);
+      console.log("-------------------------");
     }
 
-    return {
-      test,
-      answer,
-      check,
-    };
+    return finish(test, c, check, answer);
   }
 }

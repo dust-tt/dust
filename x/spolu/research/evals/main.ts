@@ -90,7 +90,7 @@ async function main() {
     model: m,
     dataset: d,
     tests: d.tests({ count: 32 }),
-    debug: true,
+    debug: process.env.DEBUG === "true",
   });
 
   console.log(
