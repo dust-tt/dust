@@ -64,7 +64,7 @@ export async function sendGithubDeletionEmail(email: string): Promise<void> {
     subject: `[Dust] Github connection deleted - important information`,
     html: `<p>Hello from Dust,</p>
     <p>Your Dust connection to Github was deleted, along with all the related data on Dust servers.</p>
-    <p>You can uninstall the Dust app from your Github account to revoke authorizations initially granted to Dust when you connected the Github account.</p>
+    <p>You can now uninstall the Dust app from your Github account to revoke authorizations initially granted to Dust when you connected the Github account.</p>
     <p>Please reply to this email if you have any questions.</p>
     <p>The Dust team</p>`,
   };
