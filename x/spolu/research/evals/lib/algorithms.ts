@@ -1,9 +1,11 @@
 import PQueue from "p-queue";
+import { Database, open } from "sqlite";
+import sqlite3 from "sqlite3";
 
 import { Dataset, ProblemId, Test } from "@app/lib/datasets";
-import { ChatCompletion, Model } from "@app/lib/models";
+import { ChatCompletion, ChatQuery, hashQuery, Model } from "@app/lib/models";
 
-export const ValidAlgorithmTypes = ["CoT"] as const;
+export const ValidAlgorithmTypes = ["CoT", "CoT-consensus"] as const;
 export type AlgorithmType = (typeof ValidAlgorithmTypes)[number];
 
 export type TestResult = {
@@ -12,37 +14,106 @@ export type TestResult = {
   check: boolean;
 };
 
-const CONCURRENCY = 4;
-
 export abstract class Algorithm {
-  abstract readonly algorithm: AlgorithmType;
-
   private history: {
     createdAt: number;
+    runId: string;
     test: ProblemId;
+    queryHash: string;
     completion: ChatCompletion;
     check: boolean;
   }[];
 
-  constructor() {
+  private _sqlite: Database | null = null;
+
+  protected dataset: Dataset;
+  protected model: Model;
+
+  constructor(dataset: Dataset, model: Model) {
     this.history = [];
+    this.dataset = dataset;
+    this.model = model;
   }
 
-  storeCompletion({
+  abstract algorithm(): AlgorithmType;
+
+  async sqlite() {
+    if (this._sqlite === null) {
+      this._sqlite = await open({
+        filename: `stores/${this.runId()}.sqlite`,
+        driver: sqlite3.Database,
+      });
+      // this._sqlite = new Database(`stores/${this.runId()}.sqlite`);
+      const query =
+        "CREATE TABLE IF NOT EXISTS store (" +
+        "id BIGSERIAL PRIMARY KEY, " +
+        "created_at INTEGER NOT NULL, " +
+        "run_id TEXT NOT NULL, " +
+        "test TEXT NOT NULL, " +
+        "query_hash TEXT NOT NULL, " +
+        "completion TEXT NOT NULL, " +
+        "is_check INTEGER NOT NULL" +
+        ")";
+      await this._sqlite.exec(query);
+    }
+    return this._sqlite;
+  }
+
+  runId(): string {
+    return `${this.model.provider}-${this.model.model()}-${
+      this.dataset.dataset
+    }-${this.algorithm()}`;
+  }
+
+  async storeCompletion({
     test,
+    query,
     completion,
     check,
   }: {
     test: Test;
-    check: boolean;
+    query: ChatQuery;
     completion: ChatCompletion;
-  }): void {
+    check: boolean;
+  }) {
+    const db = await this.sqlite();
+
+    const now = Date.now();
+
+    await db.run(
+      "INSERT INTO store (created_at, run_id, test, query_hash, completion, is_check) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        now,
+        this.runId(),
+        test.id,
+        hashQuery(query),
+        JSON.stringify(completion),
+        check ? 1 : 0,
+      ]
+    );
+
     this.history.push({
-      createdAt: Date.now(),
+      createdAt: now,
+      runId: this.runId(),
       test: test.id,
+      queryHash: hashQuery(query),
       completion,
       check,
     });
+  }
+
+  async runCompletion(query: ChatQuery): Promise<ChatCompletion> {
+    const db = await this.sqlite();
+
+    const result = await db.get(
+      "SELECT * FROM store WHERE run_id = ? AND query_hash = ?",
+      [this.runId(), hashQuery(query)]
+    );
+    if (result) {
+      return JSON.parse(result.completion);
+    }
+
+    return await this.model.completionWithRetry(query);
   }
 
   stats() {
@@ -83,38 +154,60 @@ export abstract class Algorithm {
     );
   }
 
+  finalStats() {
+    if (this.history.length > 1) {
+      const first = this.history[0];
+      const last = this.history[this.history.length - 1];
+      const duration = last.createdAt - first.createdAt;
+      const rate = this.history.length / (duration / 1000);
+      const completionTokensTotal = this.history.reduce(
+        (acc, x) => acc + x.completion.usage.completionTokens,
+        0
+      );
+      const promptTokensTotal = this.history.reduce(
+        (acc, x) => acc + x.completion.usage.promptTokens,
+        0
+      );
+      const completionTokensRate = completionTokensTotal / (duration / 1000);
+      const promptTokensRate = promptTokensTotal / (duration / 1000);
+
+      console.log(
+        `Final stats: ` +
+          `rate=${rate.toFixed(2)}/s` +
+          `promptTokensRate=${promptTokensRate.toFixed(3)}/s ` +
+          `completionTokensRate=${completionTokensRate.toFixed(2)}/s ` +
+          `promptTokensTotal=${promptTokensTotal} ` +
+          `completionTokensTotal=${completionTokensTotal}`
+      );
+    }
+  }
+
   abstract runOne({
-    model,
-    dataset,
     test,
     debug,
+    iteration,
   }: {
-    model: Model;
-    dataset: Dataset;
     test: Test;
     debug?: boolean;
+    iteration?: number;
   }): Promise<TestResult>;
 
   async run({
-    model,
-    dataset,
     tests,
+    concurrency,
     debug,
   }: {
-    model: Model;
-    dataset: Dataset;
     tests: Test[];
+    concurrency: number;
     debug?: boolean;
   }): Promise<TestResult[]> {
     const queue = new PQueue({
-      concurrency: CONCURRENCY,
+      concurrency,
     });
 
     const results = (
       await Promise.all(
-        tests.map((test) =>
-          queue.add(() => this.runOne({ model, dataset, test, debug }))
-        )
+        tests.map((test) => queue.add(() => this.runOne({ test, debug })))
       )
     ).filter((x) => x);
 
@@ -124,4 +217,6 @@ export abstract class Algorithm {
 
     return results as TestResult[];
   }
+
+  abstract computeResults(): void;
 }

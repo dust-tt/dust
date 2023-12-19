@@ -13,6 +13,8 @@ import { Model, ProviderType, ValidProviderTypes } from "@app/lib/models";
 import { MistralModel, MistralModelType } from "@app/lib/models/mistral";
 import { OpenAIModel, OpenAIModelType } from "@app/lib/models/openai";
 
+import { CoTConsensus } from "./lib/algorithms/CoTConsensus";
+
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -57,18 +59,6 @@ async function main() {
     throw new Error("Model not found");
   }
 
-  let a: Algorithm | null = null;
-  switch (algorithm) {
-    case "CoT":
-      a = new CoT();
-      break;
-    default:
-      ((x: never) => x)(algorithm);
-  }
-  if (!a) {
-    throw new Error("Algorithm not found");
-  }
-
   let d: Dataset | null = null;
   switch (dataset) {
     case "Game24":
@@ -86,18 +76,32 @@ async function main() {
 
   await d.load();
 
-  const r = await a.run({
-    model: m,
-    dataset: d,
-    tests: d.tests({ count: 32 }),
+  let a: Algorithm | null = null;
+  switch (algorithm) {
+    case "CoT":
+      a = new CoT(d, m);
+      break;
+    case "CoT-consensus":
+      a = new CoTConsensus(d, m);
+      break;
+    default:
+      ((x: never) => x)(algorithm);
+  }
+  if (!a) {
+    throw new Error("Algorithm not found");
+  }
+
+  await a.run({
+    tests: d.tests({ count: parseInt(process.env.TEST_COUNT || "8") }),
+    concurrency: parseInt(process.env.RUN_CONCURRENCY || "4"),
     debug: process.env.DEBUG === "true",
   });
 
   console.log(
-    `Finished run: algorithm=${algorithm} dataset=${dataset} ` +
-      `provider=${provider} model=${model} ` +
-      `check=${r.filter((x) => x.check).length} total=${r.length}`
+    `Finished run: algorithm=${algorithm} dataset=${dataset} provider=${provider} model=${model}`
   );
+  a.computeResults();
+  a.finalStats();
 }
 
 main()

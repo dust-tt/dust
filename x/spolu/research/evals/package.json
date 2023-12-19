@@ -18,9 +18,12 @@
     "@mistralai/mistralai": "^0.0.7",
     "@types/node": "^20.5.3",
     "@types/seedrandom": "^3.0.7",
+    "blake3": "^2.1.7",
     "mathjs": "^11.10.0",
     "minimist": "^1.2.8",
     "openai": "^4.23.0",
-    "p-queue": "^8.0.1"
+    "p-queue": "^8.0.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.6"
   }
 }

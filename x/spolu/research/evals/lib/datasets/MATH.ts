@@ -158,23 +158,3 @@ export class MATH extends Dataset {
     return answer === truth;
   }
 }
-
-// async function main() {
-//   const d = new MATH();
-//   await d.load();
-//   const test = d.tests({ count: 1 });
-//   const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
-//
-//   console.log(train[0]);
-//
-//   console.log(
-//     await d.check({
-//       test: { id: test[0].id, question: test[0].question },
-//       answer: "\\boxed{x \\in [-2,7]}",
-//     })
-//   );
-// }
-//
-// main()
-//   .then(() => console.log("Done"))
-//   .catch(console.error);
