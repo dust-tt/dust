@@ -68,12 +68,22 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
 } as const;
 
 export const MISTRAL_7B_INSTRUCT_MODEL_ID = "mistral_7B_instruct" as const;
+export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
 
 export const MISTRAL_7B_DEFAULT_MODEL_CONFIG = {
   providerId: "textsynth",
   modelId: MISTRAL_7B_INSTRUCT_MODEL_ID,
   displayName: "Mistral 7B",
   contextSize: 8192,
+  recommendedTopK: 16,
+  largeModel: false,
+} as const;
+
+export const MISTRAL_SMALL_MODEL_CONFIG = {
+  providerId: "mistral",
+  modelId: MISTRAL_SMALL_MODEL_ID,
+  displayName: "Mistral Small",
+  contextSize: 31500,
   recommendedTopK: 16,
   largeModel: false,
 } as const;
@@ -95,6 +105,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ] as const;
 
