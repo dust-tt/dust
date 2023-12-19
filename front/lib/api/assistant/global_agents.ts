@@ -252,7 +252,7 @@ async function _getMistralSmallGlobalAgent({
     version: 0,
     versionAuthorId: null,
     name: "mistral-small",
-    description: "Mistral latest model (8X7B Instruct, 32k context).",
+    description: "Mistral latest model (8x7B Instruct, 32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",

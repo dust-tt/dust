@@ -41,6 +41,7 @@ export enum GLOBAL_AGENTS_SID {
   CLAUDE_INSTANT = "claude-instant-1",
   //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
   // it interferes with the retrieval of ongoing conversations involving this agent.
+  // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
   MISTRAL_SMALL = "mistral",
 }
 
