@@ -7,6 +7,7 @@ import { SessionProvider } from "next-auth/react";
 import { MouseEvent, ReactNode } from "react";
 
 import { NotificationArea } from "@app/components/sparkle/Notification";
+import enableSafariAutoscrollBack from "@app/iosSafariAutoscrollBack";
 
 function NextLinkWrapper({
   href,
@@ -48,6 +49,7 @@ export default function App({
   Component,
   pageProps: { session, ...pageProps },
 }: AppProps) {
+  enableSafariAutoscrollBack();
   return (
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
       <SessionProvider session={session}>
