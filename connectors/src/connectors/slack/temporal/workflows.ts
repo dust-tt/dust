@@ -67,7 +67,6 @@ export async function workspaceFullSync(
             args: [connectorId, channelId, false, fromTs],
             memo: workflowInfo().memo,
           });
-          
         })
       );
     }
