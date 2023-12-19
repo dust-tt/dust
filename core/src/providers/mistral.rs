@@ -51,8 +51,7 @@ impl TryFrom<&ChatMessageRole> for MistralAIChatMessageRole {
             ChatMessageRole::Assistant => Ok(MistralAIChatMessageRole::Assistant),
             ChatMessageRole::System => Ok(MistralAIChatMessageRole::System),
             ChatMessageRole::User => Ok(MistralAIChatMessageRole::User),
-            // Handle other cases that are not supported
-            _ => Err(anyhow!("Role not supported by Mistral AI")),
+            ChatMessageRole::Function => Ok(MistralAIChatMessageRole::User),
         }
     }
 }
