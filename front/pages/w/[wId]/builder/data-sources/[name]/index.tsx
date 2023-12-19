@@ -17,7 +17,6 @@ import {
 } from "@dust-tt/sparkle";
 import {
   ConnectorProvider,
-  CoreAPIDatabase,
   DataSourceType,
   UserType,
   WorkspaceType,
@@ -36,7 +35,6 @@ import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
-import { DatabaseModal } from "@app/components/database/DatabaseModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
@@ -165,6 +163,12 @@ function StandardDataSourceView({
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState("Documents");
 
+  useEffect(() => {
+    if (router.query.tab === "databases") {
+      setCurrentTab("Databases");
+    }
+  }, [router.query.tab]);
+
   const isActivatedSDB = isActivatedStructuredDB(owner);
 
   return (
@@ -231,6 +235,7 @@ function StandardDataSourceView({
             owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
+            router={router}
           />
         )}
       </Page.Vertical>
@@ -425,10 +430,12 @@ function DatasourceDatabasesTabView({
   owner,
   readOnly,
   dataSource,
+  router,
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
   dataSource: DataSourceType;
+  router: ReturnType<typeof useRouter>;
 }) {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
@@ -444,10 +451,6 @@ function DatasourceDatabasesTabView({
   if (total !== null && offset + limit > total) {
     last = total;
   }
-
-  const [selectedDatabase, setSelectedDatabase] =
-    useState<CoreAPIDatabase | null>(null);
-  const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState(false);
 
   return (
     <>
@@ -500,7 +503,9 @@ function DatasourceDatabasesTabView({
                   icon={PlusIcon}
                   label="Add database"
                   onClick={() => {
-                    setIsDatabaseModalOpen(true);
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/databases/upsert`
+                    );
                   }}
                 />
               </div>
@@ -529,8 +534,13 @@ function DatasourceDatabasesTabView({
                       variant="secondary"
                       icon={PencilSquareIcon}
                       onClick={() => {
-                        setSelectedDatabase(db);
-                        setIsDatabaseModalOpen(true);
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/${
+                            dataSource.name
+                          }/databases/upsert?databaseId=${encodeURIComponent(
+                            db.database_id
+                          )}`
+                        );
                       }}
                       label="Edit"
                       labelVisible={false}
@@ -544,25 +554,14 @@ function DatasourceDatabasesTabView({
             <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
               <p>No databases found for this Folder.</p>
               <p className="mt-2">
-                You can add databases manually by clicking on the
-                &quot;Add&nbsp;database&quot; button.
+                Databases let you create assistants that can query structured
+                data from an uploaded CSV file. You can add databases manually
+                by clicking on the &quot;Add&nbsp;database&quot; button.
               </p>
             </div>
           ) : null}
         </div>
       </Page.Vertical>
-      <DatabaseModal
-        onClose={() => {
-          setIsDatabaseModalOpen(false);
-          setTimeout(() => {
-            setSelectedDatabase(null);
-          }, 500);
-        }}
-        isOpen={isDatabaseModalOpen}
-        database={selectedDatabase}
-        dataSource={dataSource}
-        workspaceId={owner.sId}
-      />
     </>
   );
 }

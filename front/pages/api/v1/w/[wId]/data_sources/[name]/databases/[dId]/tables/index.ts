@@ -1,4 +1,4 @@
-import { CoreAPI, CoreAPIDatabaseTable } from "@dust-tt/types";
+import { CoreAPI, CoreAPIDatabase, CoreAPIDatabaseTable } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,6 +12,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type ListDatabaseTablesResponseBody = {
+  database: CoreAPIDatabase;
   tables: CoreAPIDatabaseTable[];
 };
 
@@ -106,9 +107,9 @@ async function handler(
         });
       }
 
-      const { tables } = tablesRes.value;
+      const { database, tables } = tablesRes.value;
 
-      return res.status(200).json({ tables });
+      return res.status(200).json({ database, tables });
 
     case "POST":
       const bodyValidation = UpsertDatabaseTableRequestBodySchema.decode(

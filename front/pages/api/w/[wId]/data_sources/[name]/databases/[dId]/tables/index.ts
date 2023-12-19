@@ -103,9 +103,9 @@ async function handler(
         });
       }
 
-      const { tables } = tablesRes.value;
+      const { database, tables } = tablesRes.value;
 
-      return res.status(200).json({ tables });
+      return res.status(200).json({ database, tables });
 
     default:
       return apiError(req, res, {

@@ -986,7 +986,12 @@ export class CoreAPI {
     projectId: string;
     dataSourceName: string;
     databaseId: string;
-  }): Promise<CoreAPIResponse<{ tables: CoreAPIDatabaseTable[] }>> {
+  }): Promise<
+    CoreAPIResponse<{
+      database: CoreAPIDatabase;
+      tables: CoreAPIDatabaseTable[];
+    }>
+  > {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
       {
