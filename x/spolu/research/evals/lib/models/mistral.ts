@@ -26,9 +26,8 @@ export class MistralModel extends Model {
   }
 
   async completion(query: ChatQuery): Promise<ChatCompletion> {
-    // console.log(`Completion: provider=${this.provider} model=${this.model}`);
     const completion = await this.client.chat({
-      model: this.model,
+      model: this.model(),
       messages: query.messages,
       maxTokens: query.maxTokens,
       temperature: query.temperature,

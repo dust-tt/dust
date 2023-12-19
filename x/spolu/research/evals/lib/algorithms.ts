@@ -1,4 +1,6 @@
 import PQueue from "p-queue";
+import { Database, open, Statement } from "sqlite";
+import sqlite3 from "sqlite3";
 
 import { Dataset, ProblemId, Test } from "@app/lib/datasets";
 import { ChatCompletion, ChatQuery, hashQuery, Model } from "@app/lib/models";
@@ -24,6 +26,8 @@ export abstract class Algorithm {
     check: boolean;
   }[];
 
+  private _sqlite: Database | null = null;
+
   protected dataset: Dataset;
   protected model: Model;
 
@@ -33,13 +37,35 @@ export abstract class Algorithm {
     this.model = model;
   }
 
+  async sqlite() {
+    if (this._sqlite === null) {
+      this._sqlite = await open({
+        filename: `stores/${this.runId()}.sqlite`,
+        driver: sqlite3.Database,
+      });
+      // this._sqlite = new Database(`stores/${this.runId()}.sqlite`);
+      const query =
+        "CREATE TABLE IF NOT EXISTS store (" +
+        "id BIGSERIAL PRIMARY KEY, " +
+        "created_at INTEGER NOT NULL, " +
+        "run_id TEXT NOT NULL, " +
+        "test TEXT NOT NULL, " +
+        "query_hash TEXT NOT NULL, " +
+        "completion TEXT NOT NULL, " +
+        "is_check INTEGER NOT NULL" +
+        ")";
+      await this._sqlite.exec(query);
+    }
+    return this._sqlite;
+  }
+
   runId(): string {
     return `${this.model.provider}-${this.model.model()}-${
       this.dataset.dataset
     }-${this.algorithm}`;
   }
 
-  storeCompletion({
+  async storeCompletion({
     test,
     query,
     completion,
@@ -49,7 +75,21 @@ export abstract class Algorithm {
     query: ChatQuery;
     completion: ChatCompletion;
     check: boolean;
-  }): void {
+  }) {
+    const db = await this.sqlite();
+
+    void db.run(
+      "INSERT INTO store (created_at, run_id, test, query_hash, completion, is_check) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        Date.now(),
+        this.runId(),
+        test.id,
+        hashQuery(query),
+        JSON.stringify(completion),
+        check ? 1 : 0,
+      ]
+    );
+
     this.history.push({
       createdAt: Date.now(),
       runId: this.runId(),
@@ -61,6 +101,16 @@ export abstract class Algorithm {
   }
 
   async runCompletion(query: ChatQuery): Promise<ChatCompletion> {
+    const db = await this.sqlite();
+
+    const result = await db.get(
+      "SELECT * FROM store WHERE run_id = ? AND query_hash = ?",
+      [this.runId(), hashQuery(query)]
+    );
+    if (result) {
+      return JSON.parse(result.completion);
+    }
+
     return await this.model.completionWithRetry(query);
   }
 

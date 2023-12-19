@@ -1,3 +1,5 @@
+# CoT total=32
+
 Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=13 total=32
 Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-4-1106-preview check=23 total=32
 Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-small check=10 total=32
@@ -7,3 +9,24 @@ Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-3.5-turbo-110
 Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-4-1106-preview check=3 total=32
 Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-small check=0 total=32
 Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-medium check=0 total=32
+
+# CoT total=128
+
+## Game24
+
+Finished run: algorithm=CoT dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=2 total=128
+Finished run: algorithm=CoT dataset=Game24 provider=openai model=gpt-4-1106-preview check=5 total=128
+
+Finished run: algorithm=CoT dataset=Game24 provider=mistral model=mistral-small check=0 total=128
+Finished run: algorithm=CoT dataset=Game24 provider=mistral model=mistral-medium check=0 total=128
+
+## MATH
+
+Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=51 total=128
+Finished run: algorithm=CoT dataset=MATH provider=openai model=gpt-4-1106-preview check=88 total=128
+
+
+Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-small check=39 total=128
+Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-medium check=49 total=128
+
+

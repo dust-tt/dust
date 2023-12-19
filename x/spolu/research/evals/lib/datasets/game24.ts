@@ -227,22 +227,3 @@ export class Game24 extends Dataset {
     return false;
   }
 }
-
-// async function main() {
-//   const d = new Game24();
-//   await d.load();
-//   const train = d.examples({ problem: "", count: 8, iteration: 0 });
-//
-//   console.log(train[0]);
-//
-//   console.log(
-//     await d.check({
-//       test: { id: train[0].id, question: train[0].question },
-//       answer: train[0].answer,
-//     })
-//   );
-// }
-//
-// main()
-//   .then(() => console.log("Done"))
-//   .catch(console.error);
