@@ -88,14 +88,22 @@ export class ActivityInboundLogInterceptor
       if (
         maybeNangoError.code === "ERR_BAD_RESPONSE" &&
         maybeNangoError.status &&
-        [522, 502, 500].includes(maybeNangoError.status) &&
-        maybeNangoError.config?.url?.includes("api.nango.dev")
+        [522, 502, 500].includes(maybeNangoError.status)
       ) {
-        throw {
-          __is_dust_error: true,
-          message: `Got ${maybeNangoError.status} Bad Response from Nango`,
-          type: "nango_5xx_bad_response",
-        };
+        if (maybeNangoError.config?.url?.includes("nango")) {
+          throw {
+            __is_dust_error: true,
+            message: `Got ${maybeNangoError.status} Bad Response from Nango`,
+            type: "nango_5xx_bad_response",
+          };
+        } else {
+          this.logger.info(
+            {
+              raw_json_error: JSON.stringify(maybeNangoError, null, 2),
+            },
+            "Got 5xx Bad Response from external API"
+          );
+        }
       }
 
       if (err instanceof ExternalOauthTokenError) {
