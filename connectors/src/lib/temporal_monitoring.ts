@@ -80,15 +80,21 @@ export class ActivityInboundLogInterceptor
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
-      const maybeNangoError = err as { code?: string; status?: number };
+      const maybeNangoError = err as {
+        code?: string;
+        status?: number;
+        config?: { url?: string };
+      };
       if (
         maybeNangoError.code === "ERR_BAD_RESPONSE" &&
-        maybeNangoError.status === 522
+        maybeNangoError.status &&
+        [522, 502, 500].includes(maybeNangoError.status) &&
+        maybeNangoError.config?.url?.includes("api.nango.dev")
       ) {
         throw {
           __is_dust_error: true,
-          message: "Got 522 Bad Response from Nango",
-          type: "nango_522_bad_response",
+          message: `Got ${maybeNangoError.status} Bad Response from Nango`,
+          type: "nango_5xx_bad_response",
         };
       }
 
