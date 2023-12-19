@@ -20,7 +20,7 @@ use crate::{
 
 use super::{
     embedder::Embedder,
-    llm::{ChatFunction, ChatMessage, LLMChatGeneration, LLMGeneration, LLM},
+    llm::{ChatFunction, ChatFunctionCall, ChatMessage, LLMChatGeneration, LLMGeneration, LLM},
     provider::{Provider, ProviderID},
     tiktoken::tiktoken::{
         cl100k_base_singleton, decode_async, encode_async, tokenize_async, CoreBPE,
@@ -36,8 +36,54 @@ pub struct UsageMetadata {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VertexAiFunctionResponseContent {
+    name: String,
+    content: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VertexAiFunctionResponse {
+    name: String,
+    response: VertexAiFunctionResponseContent,
+}
+
+impl TryFrom<&ChatMessage> for VertexAiFunctionResponse {
+    type Error = anyhow::Error;
+
+    fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
+        Ok(VertexAiFunctionResponse {
+            name: m.name.clone().unwrap_or_default(),
+            response: VertexAiFunctionResponseContent {
+                name: String::from(""),
+                content: m.content.clone().unwrap_or_default(),
+            },
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VertexAiFunctionCall {
+    name: String,
+    args: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Part {
-    text: String,
+    text: Option<String>,
+    function_call: Option<VertexAiFunctionCall>,
+    function_response: Option<VertexAiFunctionResponse>,
+}
+
+impl TryFrom<&ChatFunctionCall> for VertexAiFunctionCall {
+    type Error = anyhow::Error;
+
+    fn try_from(f: &ChatFunctionCall) -> Result<Self, Self::Error> {
+        Ok(VertexAiFunctionCall {
+            name: f.name.clone(),
+            args: f.arguments.clone(),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -52,23 +98,37 @@ impl TryFrom<&ChatMessage> for Content {
     fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
         Ok(Content {
             role: match m.role {
-                ChatMessageRole::Assistant | ChatMessageRole::Function => String::from("MODEL"),
+                ChatMessageRole::Assistant => String::from("MODEL"),
+                ChatMessageRole::Function => match m.function_call {
+                    // Role "function" is reserved for function responses.
+                    None => String::from("FUNCTION"),
+                    // Function calls are done as role "model".
+                    Some(_) => String::from("MODEL"),
+                },
                 _ => String::from("USER"),
             },
             parts: vec![Part {
                 text: match m.role {
-                    ChatMessageRole::System => format!(
-                        "SYSTEM: {}\n",
+                    ChatMessageRole::System => Some(format!(
+                        "[user: SYSTEM] {}\n",
                         m.content.clone().unwrap_or(String::from(""))
-                    ),
+                    )),
                     _ => match m.name {
-                        Some(ref name) => format!(
-                            "[name: {}]: {}",
+                        Some(ref name) => Some(format!(
+                            "[user: {}] {}",
                             name,
                             m.content.clone().unwrap_or(String::from(""))
-                        ),
-                        None => m.content.clone().unwrap_or(String::from("")),
+                        )),
+                        None => Some(m.content.clone().unwrap_or(String::from(""))),
                     },
+                },
+                function_call: match m.function_call.clone() {
+                    Some(function_call) => VertexAiFunctionCall::try_from(&function_call).ok(),
+                    None => None,
+                },
+                function_response: match m.role {
+                    ChatMessageRole::Function => VertexAiFunctionResponse::try_from(m).ok(),
+                    _ => None,
                 },
             }],
         })
@@ -265,7 +325,9 @@ impl LLM for GoogleVertexAiLLM {
             &vec![Content {
                 role: String::from("USER"),
                 parts: vec![Part {
-                    text: String::from(prompt),
+                    text: Some(String::from(prompt)),
+                    function_call: None,
+                    function_response: None,
                 }],
             }],
             &vec![],
@@ -287,7 +349,10 @@ impl LLM for GoogleVertexAiLLM {
             provider: ProviderID::GoogleVertexAi.to_string(),
             model: self.id().clone(),
             completions: vec![Tokens {
-                text: c.candidates[0].content.parts[0].text.clone(),
+                text: c.candidates[0].content.parts[0]
+                    .text
+                    .clone()
+                    .unwrap_or_default(),
                 tokens: Some(vec![]),
                 logprobs: Some(vec![]),
                 top_logprobs: None,
@@ -375,7 +440,7 @@ impl LLM for GoogleVertexAiLLM {
                 name: None,
                 function_call: None,
                 role: ChatMessageRole::Assistant,
-                content: Some(c.candidates[0].content.parts[0].text.clone()),
+                content: c.candidates[0].content.parts[0].text.clone(),
             }],
         })
     }
@@ -397,17 +462,30 @@ pub async fn streamed_chat_completion(
     let https = HttpsConnector::new();
     let url = uri.to_string();
 
-    // Squash messages for the same role.
-    // Gemini doesn't allow multiple messages from the same role in a row.
+    // Ensure that all input message have one single part.
+    messages
+        .iter()
+        .map(|m| match m.parts.len() {
+            0 => Err(anyhow!("Message has no parts")),
+            1 => Ok(()),
+            _ => Err(anyhow!("Message has more than one part")),
+        })
+        .collect::<Result<Vec<()>>>()?;
+
+    // Squash user messages.
+    // Gemini doesn't allow multiple user messages in a row.
     let messages: Vec<Content> = messages
         .iter()
         .fold(
+            // First we merge consecutive user messages by making them a multi-part message.
             Vec::<Content>::new(),
             |mut acc: Vec<Content>, m: &Content| {
                 match acc.last_mut() {
-                    Some(last) if last.role == m.role => {
+                    Some(last) if last.role == m.role && m.role == "USER" => {
                         last.parts.push(Part {
                             text: m.parts[0].text.clone(),
+                            function_call: None,
+                            function_response: None,
                         });
                     }
                     _ => {
@@ -418,16 +496,23 @@ pub async fn streamed_chat_completion(
             },
         )
         .iter()
-        .map(|m| Content {
-            role: m.role.clone(),
-            parts: vec![Part {
-                text: m
-                    .parts
-                    .iter()
-                    .map(|p| p.text.clone())
-                    .collect::<Vec<String>>()
-                    .join(" "),
-            }],
+        // Then we squash the parts together.
+        .map(|m| match m.role.as_str() {
+            "USER" => Content {
+                role: m.role.clone(),
+                parts: vec![Part {
+                    text: Some(
+                        m.parts
+                            .iter()
+                            .map(|p| p.text.clone().unwrap_or_default())
+                            .collect::<Vec<String>>()
+                            .join("\n"),
+                    ),
+                    function_call: None,
+                    function_response: None,
+                }],
+            },
+            _ => m.clone(),
         })
         .collect::<Vec<Content>>();
 
@@ -435,7 +520,7 @@ pub async fn streamed_chat_completion(
         Ok(builder) => builder,
         Err(e) => {
             return Err(anyhow!(
-                "Error creating Anthropic streaming client: {:?}",
+                "Error creating Google Vertex AI streaming client: {:?}",
                 e
             ))
         }
@@ -507,14 +592,39 @@ pub async fn streamed_chat_completion(
 
                     match event_sender.as_ref() {
                         Some(sender) => {
-                            let text = completion.candidates[0].content.parts[0].text.clone();
-                            if text.len() > 0 {
-                                let _ = sender.send(json!({
-                                    "type": "tokens",
-                                    "content": {
-                                        "text": text,
+                            // let text = completion.candidates[0].content.parts[0].text.clone();
+                            match completion.candidates[0].content.parts[0].text.clone() {
+                                Some(t) => {
+                                    if t.len() > 0 {
+                                        let _ = sender.send(json!({
+                                            "type": "tokens",
+                                            "content": {
+                                                "text": t,
+                                            }
+                                        }));
                                     }
-                                }));
+                                }
+                                None => (),
+                            }
+                            match completion.candidates[0].content.parts[0]
+                                .function_call
+                                .clone()
+                            {
+                                Some(f) => {
+                                    let _ = sender.send(json!({
+                                        "type": "function_call",
+                                        "content": {
+                                            "name": f.name,
+                                        }
+                                    }));
+                                    let _ = sender.send(json!({
+                                        "type": "function_call_arguments_tokens",
+                                        "content": {
+                                            "text": f.args,
+                                        }
+                                    }));
+                                }
+                                None => (),
                             }
                         }
                         _ => (),
@@ -536,41 +646,47 @@ pub async fn streamed_chat_completion(
         }
     }
 
-    let mut completion = Completion {
+    let candidate = completions.lock()[0].candidates[0].clone();
+    let completions_lock = completions.lock();
+
+    Ok(Completion {
         candidates: vec![Candidate {
             content: Content {
-                role: String::from("MODEL"),
-                parts: vec![Part {
-                    text: String::from(""),
-                }],
+                role: candidate.content.role.clone(),
+                parts: vec![completions_lock.iter().fold(
+                    Part {
+                        text: None,
+                        function_call: None,
+                        function_response: None,
+                    },
+                    |mut acc, c| {
+                        // If there is text, we merge it.
+                        if c.candidates[0].content.parts[0].text.is_some() {
+                            acc.text = c.candidates[0].content.parts[0].text.clone();
+                        }
+                        // If there is a function call, we use the name if we don't have one,
+                        // and we append the arguments.
+                        if let Some(f) = c.candidates[0].content.parts[0].function_call.clone() {
+                            let mut function_call = acc.function_call.clone().unwrap_or(f.clone());
+                            if function_call.name.len() == 0 {
+                                function_call.name = f.name.clone();
+                            }
+                            if f.args.len() > 0 {
+                                function_call.args.push_str(format!(" {}", f.args).as_str());
+                            }
+                            acc.function_call = function_call.into();
+                        }
+
+                        acc
+                    },
+                )],
             },
-            finish_reason: None,
-        }],
-        usage_metadata: Some(UsageMetadata {
-            prompt_token_count: 0,
-            candidates_token_count: 0,
-            total_token_count: 0,
-        }),
-    };
-
-    completions.lock().iter().for_each(|c| {
-        completion.candidates[0].content.parts[0].text.push_str(
-            c.candidates[0]
-                .content
-                .parts
+            finish_reason: completions_lock
                 .iter()
-                .map(|p| p.text.as_str())
-                .collect::<Vec<&str>>()
-                .join(" ")
-                .as_str(),
-        );
-        if c.candidates[0].finish_reason.is_some() {
-            completion.candidates[0].finish_reason = c.candidates[0].finish_reason.clone();
-        }
-        if c.usage_metadata.is_some() {
-            completion.usage_metadata = c.usage_metadata.clone();
-        }
-    });
-
-    Ok(completion)
+                .find_map(|c| c.candidates[0].finish_reason.clone()),
+        }],
+        usage_metadata: completions_lock
+            .iter()
+            .find_map(|c| c.usage_metadata.clone()),
+    })
 }
