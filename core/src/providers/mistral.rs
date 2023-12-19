@@ -84,7 +84,7 @@ impl TryFrom<&BaseChatMessage> for ChatMessage {
             Some(name) if mistral_role == MistralAIChatMessageRole::User => {
                 format!("[user: {}] ", name) // Include space here.
             }
-            _ => "".to_string(),
+            _ => String::from(""),
         };
 
         Ok(ChatMessage {
