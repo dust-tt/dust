@@ -15,8 +15,9 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const CreateDatabaseFromCsvSchema = t.type({
-  name: t.string,
-  description: t.string,
+  databaseName: t.string,
+  tableName: t.string,
+  tableDescription: t.string,
   csv: t.string,
 });
 
@@ -79,7 +80,8 @@ async function handler(
         });
       }
 
-      const { name, description, csv } = bodyValidation.right;
+      const { databaseName, tableName, tableDescription, csv } =
+        bodyValidation.right;
       const csvRowsRes = await rowsFromCsv(csv);
       if (csvRowsRes.isErr()) {
         return apiError(req, res, {
@@ -105,14 +107,14 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
-        name,
+        name: databaseName,
       });
       if (dbRes.isErr()) {
         logger.error(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
+            databaseName: databaseName,
             databaseId: id,
             error: dbRes.error,
           },
@@ -134,8 +136,8 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
-        description,
-        name: name,
+        description: tableDescription,
+        name: tableName,
         tableId,
       });
 

@@ -184,8 +184,9 @@ export default function DataSourceUpsert({
       {
         method: "POST",
         body: JSON.stringify({
-          name: databaseName, // todo upload also the table name
-          description: tableDescription,
+          databaseName,
+          tableName,
+          tableDescription,
           csv: content,
         }),
         headers: {
