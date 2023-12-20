@@ -7,6 +7,7 @@ import {
 } from "@app/lib/algorithms";
 import { CoT } from "@app/lib/algorithms/CoT";
 import { CoTConsensus } from "@app/lib/algorithms/CoTConsensus";
+import { ToT } from "@app/lib/algorithms/ToT";
 import { Dataset, DatasetType, ValidDatasetTypes } from "@app/lib/datasets";
 import { Game24 } from "@app/lib/datasets/game24";
 import { MATH } from "@app/lib/datasets/MATH";
@@ -86,6 +87,9 @@ async function main() {
       break;
     case "CoT-consensus":
       a = new CoTConsensus(d, m);
+      break;
+    case "ToT":
+      a = new ToT(d, m);
       break;
     default:
       ((x: never) => x)(algorithm);

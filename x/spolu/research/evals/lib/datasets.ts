@@ -24,6 +24,7 @@ export abstract class Dataset {
 
   abstract instructions(): string;
   abstract reasoningStepInstructions(): string;
+  abstract rankingInstructions(): string;
 
   abstract maxTokens(): {
     reasoningStep: number;

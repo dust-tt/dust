@@ -31,11 +31,12 @@ export class AnthropicModel extends Model {
       content: m.content,
     }));
 
-    // if message 0 and 1 are users, merge them
-    if (messages.length >= 2) {
-      if (messages[0].role === "user" && messages[1].role === "user") {
-        messages[0].content += "\n" + messages[1].content;
-        messages.splice(1, 1);
+    // If two messages in a row are user, merge them.
+    for (let i = 1; i < messages.length; i++) {
+      if (messages[i - 1].role === "user" && messages[i].role === "user") {
+        messages[i - 1].content += "\n" + messages[i].content;
+        messages.splice(i, 1);
+        i--;
       }
     }
 

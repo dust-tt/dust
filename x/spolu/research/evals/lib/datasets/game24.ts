@@ -134,6 +134,14 @@ export class Game24 extends Dataset {
     );
   }
 
+  rankingInstructions(): string {
+    return (
+      "- Each intermediary step should consist of a valid operation and a correct accounting of left numbers. Down-rank reasonings that do not follow this.\n" +
+      "- Each number must be used exactly once. It's invalid to not use or re-use a number.\n" +
+      "- The last step should propose a valid solution expression.\n"
+    );
+  }
+
   parseAnswer(str: string): string {
     const boxed = str.match(/\\boxed{([^}]*)}/g);
     if (!boxed) {

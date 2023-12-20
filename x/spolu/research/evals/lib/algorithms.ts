@@ -5,7 +5,7 @@ import sqlite3 from "sqlite3";
 import { Dataset, ProblemId, Test } from "@app/lib/datasets";
 import { ChatCompletion, ChatQuery, hashQuery, Model } from "@app/lib/models";
 
-export const ValidAlgorithmTypes = ["CoT", "CoT-consensus"] as const;
+export const ValidAlgorithmTypes = ["CoT", "CoT-consensus", "ToT"] as const;
 export type AlgorithmType = (typeof ValidAlgorithmTypes)[number];
 
 export type TestResult = {
@@ -46,13 +46,12 @@ export abstract class Algorithm {
       // this._sqlite = new Database(`stores/${this.runId()}.sqlite`);
       const query =
         "CREATE TABLE IF NOT EXISTS store (" +
-        "id BIGSERIAL PRIMARY KEY, " +
-        "created_at INTEGER NOT NULL, " +
-        "run_id TEXT NOT NULL, " +
-        "test TEXT NOT NULL, " +
-        "query_hash TEXT NOT NULL, " +
-        "completion TEXT NOT NULL, " +
-        "is_check INTEGER NOT NULL" +
+        "  id         BIGSERIAL PRIMARY KEY, " +
+        "  created_at INTEGER NOT NULL, " +
+        "  run_id     TEXT NOT NULL, " +
+        "  test       TEXT NOT NULL, " +
+        "  query_hash TEXT NOT NULL, " +
+        "  completion TEXT NOT NULL" +
         ")";
       await this._sqlite.exec(query);
     }
@@ -76,20 +75,16 @@ export abstract class Algorithm {
     completion: ChatCompletion;
     check: boolean;
   }) {
+    // console.log("STORE", hashQuery(query));
     const db = await this.sqlite();
 
     const now = Date.now();
 
     await db.run(
-      "INSERT INTO store (created_at, run_id, test, query_hash, completion, is_check) VALUES (?, ?, ?, ?, ?, ?)",
-      [
-        now,
-        this.runId(),
-        test.id,
-        hashQuery(query),
-        JSON.stringify(completion),
-        check ? 1 : 0,
-      ]
+      "INSERT INTO store " +
+        "(created_at, run_id, test, query_hash, completion) " +
+        "VALUES (?, ?, ?, ?, ?)",
+      [now, this.runId(), test.id, hashQuery(query), JSON.stringify(completion)]
     );
 
     this.history.push({
@@ -103,6 +98,7 @@ export abstract class Algorithm {
   }
 
   async runCompletion(query: ChatQuery): Promise<ChatCompletion> {
+    // console.log("RUN", hashQuery(query));
     const db = await this.sqlite();
 
     const result = await db.get(
