@@ -302,6 +302,7 @@ export async function* runAgent(
       for await (const event of eventStream) {
         switch (event.type) {
           case "database_query_params":
+          case "database_query_output":
             yield event;
             break;
           case "database_query_error":
