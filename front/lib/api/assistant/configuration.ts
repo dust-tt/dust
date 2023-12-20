@@ -414,9 +414,11 @@ export async function getAgentConfigurations(
   };
 
   // Superuser view (all agents, to be used internally from poke).
-  if (agentsGetView === "super_user") {
-    if (!auth.isDustSuperUser()) {
-      throw new Error("superuser view is for dust superusers only.");
+  if (agentsGetView === "admin_internal") {
+    if (!auth.isDustSuperUser() && !auth.isAdmin()) {
+      throw new Error(
+        "superuser view is for dust superusers or internal admin auths only."
+      );
     }
     return (
       await Promise.all([

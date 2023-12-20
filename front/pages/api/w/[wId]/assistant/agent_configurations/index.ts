@@ -84,6 +84,15 @@ async function handler(
         : conversationId
         ? { conversationId }
         : "all";
+      if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only Dust Super Users can see admin_internal agents.",
+          },
+        });
+      }
       const agentConfigurations = await getAgentConfigurations(auth, viewParam);
       return res.status(200).json({
         agentConfigurations,
