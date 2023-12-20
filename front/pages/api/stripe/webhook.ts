@@ -13,9 +13,9 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { deleteDataSource } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { deleteDataSource } from "@app/lib/data_sources";
 import { front_sequelize } from "@app/lib/databases";
 import {
   sendAdminDowngradeTooMuchDataEmail,

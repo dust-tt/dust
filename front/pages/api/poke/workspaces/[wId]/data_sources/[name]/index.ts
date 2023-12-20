@@ -1,8 +1,8 @@
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { deleteDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { deleteDataSource } from "@app/lib/data_sources";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DeleteDataSourceResponseBody = {
