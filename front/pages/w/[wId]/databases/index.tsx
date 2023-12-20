@@ -23,7 +23,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { useDatabases, useDatabaseTables } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -47,7 +47,7 @@ export const getServerSideProps: GetServerSideProps<{
   if (
     !owner ||
     !auth.isBuilder() ||
-    !isDevelopmentOrDustWorkspace(owner) ||
+    !isActivatedStructuredDB(owner) ||
     !subscription ||
     !user
   ) {

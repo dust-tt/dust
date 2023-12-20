@@ -9,7 +9,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -50,7 +50,7 @@ async function handler(
     });
   }
 
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  if (!isActivatedStructuredDB(owner)) {
     res.status(404).end();
     return;
   }
