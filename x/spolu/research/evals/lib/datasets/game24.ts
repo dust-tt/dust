@@ -80,7 +80,7 @@ export class Game24 extends Dataset {
         if (result !== 24) {
           throw new Error("Unexpected non 24 result");
         }
-        const r = `${a}${op}${b}=${result}`;
+        const r = `${a}${op}${b}=${result}, \\boxed{${solution}}`;
         reasoning.push(r);
       }
     }
@@ -116,33 +116,39 @@ export class Game24 extends Dataset {
 
   instructions(): string {
     return (
-      `Given a set of 4 input numbers, find a mathematical expression using each number` +
-      ` exactly once that symbolically evaluates to 24 (Game of 24).` +
-      ` The available operators are [+,-,*,/]` +
-      ` (the division operator / is the symbolic division (eg: 2/(3-5/2) = 2/(1/2) = 4)).`
+      "Given a set of 4 input numbers, find a mathematical expression using each number" +
+      " exactly once that symbolically evaluates to 24 (Game of 24)." +
+      " The available operators are [+,-,*,/]" +
+      " (the division operator / is the symbolic division (`2/(3-5/2) = 2/(1/2) = 4`))."
     );
   }
 
   reasoningStepInstructions(): string {
     return (
-      `A reasoning step is one operation involving 2 numbers followed by the numbers left to form` +
-      ` 24 after that operation (eg: '10*7=70, left: 70 2 11').` +
-      ` There is always exactly 3 reasoning steps per question.`
+      "A reasoning step is one operation involving 2 numbers followed by the numbers left to form" +
+      " 24 after that operation, separated by a comma (example: `10*7=70, left: 70 2 11`)." +
+      " There is always exactly 3 reasoning steps per question in Game of 24." +
+      " The last step should present the last operation and the solution expression" +
+      " using the `\\boxed{}` directive, sperated by a comma" +
+      " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)."
     );
   }
 
-  answerInstructions(): string {
-    return (
-      `The answer should be a valid solution expression without space using each number` +
-      ` exactly once (eg: '(6+1)*5-11' or '(9-1)*9/3').`
-    );
+  parseAnswer(str: string): string {
+    const boxed = str.match(/\\boxed{([^}]*)}/g);
+    if (!boxed) {
+      return "";
+    }
+    // remove the \boxed{} directive
+    const answer = boxed.map((s) => s.slice(7, s.length - 1));
+    // return the last one
+    return answer[answer.length - 1];
   }
 
   maxTokens() {
     return {
-      resaoningStep: 32,
-      reasoning: 32 * 3,
-      answer: 16,
+      reasoningStep: 32,
+      maxStepCount: 3,
     };
   }
 
