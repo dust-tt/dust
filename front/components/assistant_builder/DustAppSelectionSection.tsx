@@ -2,13 +2,12 @@ import {
   Button,
   CommandLineIcon,
   ContextItem,
-  PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
 import { AssistantBuilderDustAppConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
-import { classNames } from "@app/lib/utils";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 export default function DustAppSelectionSection({
   show,
@@ -48,21 +47,11 @@ export default function DustAppSelectionSection({
           </div>
         </div>
         {!dustAppConfiguration ? (
-          <div
-            className={classNames(
-              "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-            )}
-          >
-            <Button
-              disabled={!canSelectDustApp}
-              labelVisible={true}
-              label="Select Dust App"
-              variant="primary"
-              size="md"
-              icon={PlusIcon}
-              onClick={openDustAppModal}
-            />
-          </div>
+          <EmptyCallToAction
+            label="Select Dust App"
+            disabled={!canSelectDustApp}
+            onClick={openDustAppModal}
+          />
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">
             <ContextItem

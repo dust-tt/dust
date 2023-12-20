@@ -62,3 +62,4 @@ rayon = "1.8.0"
 clap = { version = "4.4", features = ["derive"] }
 async-recursion = "1.0"
 chrono = "0.4.31"
+yup-oauth2 = "8.3.0"

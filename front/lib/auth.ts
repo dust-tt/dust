@@ -250,6 +250,27 @@ export class Authenticator {
     });
   }
 
+  /* As above, with role `admin` */
+  static async internalAdminForWorkspace(
+    workspaceId: string
+  ): Promise<Authenticator> {
+    const workspace = await Workspace.findOne({
+      where: {
+        sId: workspaceId,
+      },
+    });
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
+
+    const subscription = await subscriptionForWorkspace(workspace);
+    return new Authenticator({
+      workspace,
+      role: "admin",
+      subscription,
+    });
+  }
+
   role(): RoleType {
     return this._role;
   }

@@ -1,3 +1,4 @@
+import { GoogleAuth } from "google-auth-library";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -40,8 +41,18 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      const config = JSON.parse(req.query.config as string);
+    case "POST":
+      const config = req.body.config;
+
+      if (!config) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The config is missing.",
+          },
+        });
+      }
 
       switch (req.query.pId) {
         case "openai":
@@ -155,6 +166,25 @@ async function handler(
           }
           return;
 
+        case "mistral":
+          const mistralModelsRes = await fetch(
+            "https://api.mistral.ai/v1/models",
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${config.api_key}`,
+              },
+            }
+          );
+          if (!mistralModelsRes.ok) {
+            const err = await mistralModelsRes.json();
+            res.status(400).json({ ok: false, error: err.error.code });
+          } else {
+            await mistralModelsRes.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
+
         case "textsynth":
           const testCompletion = await fetch(
             "https://api.textsynth.com/v1/engines/mistral_7B/completions",
@@ -243,6 +273,66 @@ async function handler(
           }
           return;
 
+        case "google_vertex_ai":
+          const { service_account: serviceAccountJson, endpoint } = config;
+          if (!serviceAccountJson) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The service account is missing.",
+              },
+            });
+          }
+          if (!endpoint) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "The endpoint is missing.",
+              },
+            });
+          }
+
+          const serviceAccount = JSON.parse(serviceAccountJson);
+
+          const auth = new GoogleAuth({
+            scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+            credentials: {
+              client_email: serviceAccount.client_email,
+              private_key: serviceAccount.private_key,
+            },
+          });
+          const client = await auth.getClient();
+          const accessToken = await client.getAccessToken();
+          const testUrl = `${endpoint}/publishers/google/models/gemini-pro:streamGenerateContent`;
+          const testRequestBody = {
+            contents: {
+              role: "user",
+              parts: {
+                text: "Another one bites the ...",
+              },
+            },
+            generation_config: {
+              temperature: 0.5,
+              maxOutputTokens: 1,
+            },
+          };
+          const r = await fetch(testUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(testRequestBody),
+          });
+          if (!r.ok) {
+            const err = await r.json();
+            return res.status(400).json({ ok: false, error: err.error });
+          }
+          await r.json();
+          return res.status(200).json({ ok: true });
+
         default:
           return apiError(req, res, {
             status_code: 404,
@@ -258,10 +348,9 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
-      break;
   }
 }
 

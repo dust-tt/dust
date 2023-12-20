@@ -1,4 +1,4 @@
-import { DatabaseQueryConfigurationType } from "../../front/assistant/actions/database";
+import { DatabaseQueryConfigurationType } from "../../front/assistant/actions/database_query";
 import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { SupportedModel } from "../../front/lib/assistant";
@@ -94,7 +94,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  * - conversation: all agents in the user's list + agents in the current conversation (requries a
  *   conversation sId)
  * - all: workspace + published agents (not private ones), eg. for agent gallery
- * - superuser: all agents, including private ones => CAREFUL. Currently used by poke only
+ * - admin_internal: all agents, including private ones => CAREFUL, this is only for internal use.
  * Global agents enabled for the workspace are always returned with all the views.
  */
 export type AgentsGetViewType =
@@ -103,8 +103,8 @@ export type AgentsGetViewType =
   | "all"
   | "workspace"
   | "published"
-  | "dust"
-  | "super_user";
+  | "global"
+  | "admin_internal";
 
 export type AgentConfigurationType = {
   id: ModelId;

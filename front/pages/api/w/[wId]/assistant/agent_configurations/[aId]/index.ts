@@ -76,6 +76,7 @@ async function handler(
       return res.status(200).json({
         agentConfiguration: assistant,
       });
+
     case "PATCH":
       const bodyValidation =
         PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
@@ -111,6 +112,7 @@ async function handler(
           },
         });
       }
+
       const agentConfiguration = await createOrUpgradeAgentConfiguration(
         auth,
         bodyValidation.right,
@@ -120,6 +122,7 @@ async function handler(
       return res.status(200).json({
         agentConfiguration: agentConfiguration,
       });
+
     case "DELETE":
       if (assistant.scope === "workspace" && !auth.isBuilder()) {
         return apiError(req, res, {
@@ -130,6 +133,7 @@ async function handler(
           },
         });
       }
+
       const archived = await archiveAgentConfiguration(
         auth,
         req.query.aId as string
@@ -143,6 +147,7 @@ async function handler(
           },
         });
       }
+
       return res.status(200).json({ success: true });
 
     default:

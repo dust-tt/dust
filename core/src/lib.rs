@@ -29,12 +29,15 @@ pub mod providers {
     pub mod cohere;
     pub mod embedder;
     pub mod llm;
+    pub mod mistral;
     pub mod openai;
+
     pub mod provider;
     pub mod tiktoken {
         pub mod tiktoken;
     }
     pub mod anthropic;
+    pub mod google_vertex_ai;
     pub mod textsynth;
 }
 pub mod http {

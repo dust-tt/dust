@@ -1,22 +1,25 @@
 import { CredentialsType, ProviderType } from "../../../front/provider";
 
 const {
-  DUST_MANAGED_OPENAI_API_KEY = "",
   DUST_MANAGED_ANTHROPIC_API_KEY = "",
-  DUST_MANAGED_TEXTSYNTH_API_KEY = "",
   DUST_MANAGED_AZURE_OPENAI_API_KEY = "",
   DUST_MANAGED_AZURE_OPENAI_ENDPOINT = "",
+  DUST_MANAGED_OPENAI_API_KEY = "",
+  DUST_MANAGED_TEXTSYNTH_API_KEY = "",
+  DUST_MANAGED_MISTRAL_API_KEY = "",
+  DUST_MANAGED_GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON = "",
+  DUST_MANAGED_GOOGLE_VERTEX_AI_ENDPOINT = "",
 } = process.env;
 
 export const credentialsFromProviders = (
   providers: ProviderType[]
 ): CredentialsType => {
   const credentials: CredentialsType = {};
-
   providers.forEach((provider) => {
     const config = JSON.parse(provider.config) as {
-      api_key: string;
+      api_key?: string;
       endpoint?: string;
+      service_account?: string;
     };
 
     switch (provider.providerId) {
@@ -36,6 +39,9 @@ export const credentialsFromProviders = (
       case "anthropic":
         credentials["ANTHROPIC_API_KEY"] = config.api_key;
         break;
+      case "mistral":
+        credentials["MISTRAL_API_KEY"] = config.api_key;
+        break;
       case "textsynth":
         credentials["TEXTSYNTH_API_KEY"] = config.api_key;
         break;
@@ -48,6 +54,11 @@ export const credentialsFromProviders = (
       case "browserlessapi":
         credentials["BROWSERLESS_API_KEY"] = config.api_key;
         break;
+      case "google_vertex_ai":
+        credentials["GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON"] =
+          config.service_account;
+        credentials["GOOGLE_VERTEX_AI_ENDPOINT"] = config.endpoint;
+        break;
     }
   });
   return credentials;
@@ -55,10 +66,14 @@ export const credentialsFromProviders = (
 
 export const dustManagedCredentials = (): CredentialsType => {
   return {
-    OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
-    TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT: DUST_MANAGED_AZURE_OPENAI_ENDPOINT,
+    MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
+    OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
+    TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
+    GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON:
+      DUST_MANAGED_GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON,
+    GOOGLE_VERTEX_AI_ENDPOINT: DUST_MANAGED_GOOGLE_VERTEX_AI_ENDPOINT,
   };
 };

@@ -4,6 +4,7 @@ use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::cohere::CohereProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
+use crate::providers::mistral::MistralProvider;
 use crate::providers::openai::OpenAIProvider;
 use crate::providers::textsynth::TextSynthProvider;
 use crate::utils::ParseError;
@@ -14,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 
+use super::google_vertex_ai::GoogleVertexAiProvider;
+
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderID {
@@ -23,7 +26,10 @@ pub enum ProviderID {
     #[serde(rename = "azure_openai")]
     AzureOpenAI,
     Anthropic,
+    Mistral,
     TextSynth,
+    #[serde(rename = "google_vertex_ai")]
+    GoogleVertexAi,
 }
 
 impl ToString for ProviderID {
@@ -34,7 +40,9 @@ impl ToString for ProviderID {
             ProviderID::AI21 => String::from("ai21"),
             ProviderID::AzureOpenAI => String::from("azure_openai"),
             ProviderID::Anthropic => String::from("anthropic"),
+            ProviderID::Mistral => String::from("mistral"),
             ProviderID::TextSynth => String::from("textsynth"),
+            ProviderID::GoogleVertexAi => String::from("google_vertex_ai"),
         }
     }
 }
@@ -48,9 +56,11 @@ impl FromStr for ProviderID {
             "ai21" => Ok(ProviderID::AI21),
             "azure_openai" => Ok(ProviderID::AzureOpenAI),
             "anthropic" => Ok(ProviderID::Anthropic),
+            "mistral" => Ok(ProviderID::Mistral),
             "textsynth" => Ok(ProviderID::TextSynth),
+            "google_vertex_ai" => Ok(ProviderID::GoogleVertexAi),
             _ => Err(ParseError::with_message(
-                "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai)",
+                "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai, mistral)",
             ))?,
         }
     }
@@ -143,6 +153,8 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::AI21 => Box::new(AI21Provider::new()),
         ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
         ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
+        ProviderID::Mistral => Box::new(MistralProvider::new()),
         ProviderID::TextSynth => Box::new(TextSynthProvider::new()),
+        ProviderID::GoogleVertexAi => Box::new(GoogleVertexAiProvider::new()),
     }
 }

@@ -16,8 +16,8 @@ import {
 import { WebClient } from "@slack/web-api";
 import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
-import levenshtein from "fast-levenshtein";
 import * as t from "io-ts";
+import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { Connector } from "@connectors/lib/models";
@@ -299,10 +299,12 @@ async function botAnswerMessage(
           }
         | undefined = undefined;
       for (const agentConfiguration of agentConfigurations) {
-        const distance = levenshtein.get(
-          mc.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
+        const distance =
+          1 -
+          jaroWinkler(
+            mc.slice(1).toLowerCase(),
+            agentConfiguration.name.toLowerCase()
+          );
         if (bestCandidate === undefined || bestCandidate.distance > distance) {
           bestCandidate = {
             assistantId: agentConfiguration.sId,

@@ -15,6 +15,8 @@ import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder, {
   AssistantBuilderInitialState,
+  BUILDER_FLOWS,
+  BuilderFlow,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -28,60 +30,15 @@ type DataSourceConfig = NonNullable<
   AssistantBuilderInitialState["dataSourceConfigurations"]
 >[string];
 
-export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
-  gaTrackingId: string;
-  dataSources: DataSourceType[];
-  dataSourceConfigurations: Record<string, DataSourceConfig>;
+export async function buildInitialState({
+  dataSourceByName,
+  config,
+  dustApps,
+}: {
+  dataSourceByName: Record<string, DataSourceType>;
+  config: AgentConfigurationType;
   dustApps: AppType[];
-  dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
-  agentConfiguration: AgentConfigurationType;
-}> = async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  if (
-    !owner ||
-    !plan ||
-    !user ||
-    !subscription ||
-    !auth.isBuilder() ||
-    !context.params?.aId
-  ) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const allDataSources = await getDataSources(auth);
-
-  const dataSourceByName = allDataSources.reduce(
-    (acc, ds) => ({ ...acc, [ds.name]: ds }),
-    {} as Record<string, DataSourceType>
-  );
-
-  const config = await getAgentConfiguration(
-    auth,
-    context.params?.aId as string
-  );
-
-  if (!config) {
-    return {
-      notFound: true,
-    };
-  }
-
+}) {
   const selectedResources: {
     dataSourceName: string;
     resources: string[] | null;
@@ -138,13 +95,11 @@ export const getServerSideProps: GetServerSideProps<{
     {} as Record<string, DataSourceConfig>
   );
 
-  const allDustApps = await getApps(auth);
-
   let dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"] =
     null;
 
   if (isDustAppRunConfiguration(config.action)) {
-    for (const app of allDustApps) {
+    for (const app of dustApps) {
       if (app.sId === config.action.appId) {
         dustAppConfiguration = {
           app,
@@ -179,6 +134,90 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   return {
+    dataSourceConfigurations,
+    dustAppConfiguration,
+    databaseQueryConfiguration,
+  };
+}
+
+export const getServerSideProps: GetServerSideProps<{
+  user: UserType;
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  plan: PlanType;
+  gaTrackingId: string;
+  dataSources: DataSourceType[];
+  dataSourceConfigurations: Record<string, DataSourceConfig>;
+  dustApps: AppType[];
+  dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
+  databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
+  agentConfiguration: AgentConfigurationType;
+  flow: BuilderFlow;
+}> = async (context) => {
+  const session = await getSession(context.req, context.res);
+  const user = await getUserFromSession(session);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  const owner = auth.workspace();
+  const plan = auth.plan();
+  const subscription = auth.subscription();
+  if (
+    !owner ||
+    !plan ||
+    !user ||
+    !subscription ||
+    !auth.isUser() ||
+    !context.params?.aId
+  ) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const allDataSources = await getDataSources(auth);
+
+  const dataSourceByName = allDataSources.reduce(
+    (acc, ds) => ({ ...acc, [ds.name]: ds }),
+    {} as Record<string, DataSourceType>
+  );
+  const config = await getAgentConfiguration(
+    auth,
+    context.params?.aId as string
+  );
+  if (config?.scope === "workspace" && !auth.isBuilder()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (!config) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const flow: BuilderFlow = BUILDER_FLOWS.includes(
+    context.query.flow as BuilderFlow
+  )
+    ? (context.query.flow as BuilderFlow)
+    : "personal_assistants";
+
+  const allDustApps = await getApps(auth);
+
+  const {
+    dataSourceConfigurations,
+    dustAppConfiguration,
+    databaseQueryConfiguration,
+  } = await buildInitialState({
+    config,
+    dataSourceByName,
+    dustApps: allDustApps,
+  });
+
+  return {
     props: {
       user,
       owner,
@@ -191,6 +230,7 @@ export const getServerSideProps: GetServerSideProps<{
       dustAppConfiguration,
       databaseQueryConfiguration: databaseQueryConfiguration,
       agentConfiguration: config,
+      flow,
     },
   };
 };
@@ -207,6 +247,7 @@ export default function EditAssistant({
   dustAppConfiguration,
   databaseQueryConfiguration,
   agentConfiguration,
+  flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
@@ -241,6 +282,9 @@ export default function EditAssistant({
   if (isDatabaseQueryConfiguration(agentConfiguration.action)) {
     actionMode = "DATABASE_QUERY";
   }
+  if (agentConfiguration.scope === "global") {
+    throw new Error("Cannot edit global assistant");
+  }
 
   return (
     <AssistantBuilder
@@ -251,12 +295,14 @@ export default function EditAssistant({
       gaTrackingId={gaTrackingId}
       dataSources={dataSources}
       dustApps={dustApps}
+      flow={flow}
       initialBuilderState={{
         actionMode,
         timeFrame,
         dataSourceConfigurations,
         dustAppConfiguration,
         databaseQueryConfiguration,
+        scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
         instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet

@@ -1,14 +1,8 @@
-import {
-  Button,
-  ContextItem,
-  PlusIcon,
-  ServerIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
+import { Button, ContextItem, ServerIcon, TrashIcon } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
 import { AssistantBuilderDatabaseQueryConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
-import { classNames } from "@app/lib/utils";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 export default function DatabaseSelectionSection({
   show,
@@ -48,21 +42,11 @@ export default function DatabaseSelectionSection({
           </div>
         </div>
         {!databaseQueryConfiguration ? (
-          <div
-            className={classNames(
-              "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-            )}
-          >
-            <Button
-              disabled={!canSelecDatabase}
-              labelVisible={true}
-              label="Select Database"
-              variant="primary"
-              size="md"
-              icon={PlusIcon}
-              onClick={openDatabaseModal}
-            />
-          </div>
+          <EmptyCallToAction
+            label="Select Database"
+            disabled={!canSelecDatabase}
+            onClick={openDatabaseModal}
+          />
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">
             <ContextItem

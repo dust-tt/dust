@@ -184,11 +184,18 @@ export default function DataSourceUpsert({
         `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
       );
     } else {
-      const data = await res.json();
+      let errMsg = "";
+      try {
+        const data = await res.json();
+        errMsg = data.error.message;
+      } catch (e) {
+        errMsg = "An error occurred while uploading your document.";
+      }
+
       sendNotification({
         type: "error",
         title: "Error upserting document",
-        description: data.error.message,
+        description: errMsg,
       });
       setLoading(false);
     }

@@ -9,7 +9,12 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
-import { getDocumentId } from "@connectors/connectors/google_drive/temporal/activities";
+import {
+  getAuthObject,
+  getDocumentId,
+  getDriveClient,
+  MIME_TYPES_TO_EXPORT,
+} from "@connectors/connectors/google_drive/temporal/activities";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
@@ -275,6 +280,44 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
           GARBAGE_COLLECT_BY_TYPE[connector.type](connector.id)
         );
       }
+      return;
+    }
+    case "check-file": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      if (
+        !args.fileType ||
+        (args.fileType !== "document" && args.fileType !== "presentation")
+      ) {
+        throw new Error(
+          `Invalid or missing --fileType argument: ${args.fileType}`
+        );
+      }
+      console.log(`Checking gdrive file`);
+      const connector = await Connector.findByPk(args.connectorId);
+      if (!connector) {
+        throw new Error(`Connector ${args.connectorId} not found`);
+      }
+      const drive = await getDriveClient(
+        await getAuthObject(connector.connectionId)
+      );
+      const res = await drive.files.export({
+        fileId: args.fileId,
+        mimeType:
+          MIME_TYPES_TO_EXPORT[
+            args.fileType === "document"
+              ? "application/vnd.google-apps.document"
+              : "application/vnd.google-apps.presentation"
+          ],
+      });
+      console.log(`Status: ${res.status}`);
+      console.log(`Type: ${typeof res.data}`);
+      console.log(`Content:`);
+      console.log(res.data);
       return;
     }
     case "restart-google-webhooks": {

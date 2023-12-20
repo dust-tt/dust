@@ -43,7 +43,6 @@ export async function createGithubConnector(
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
-          defaultNewResourcePermission: "read_write",
         },
         { transaction }
       );
@@ -70,10 +69,8 @@ export async function updateGithubConnector(
   connectorId: ModelId,
   {
     connectionId,
-    defaultNewResourcePermission,
   }: {
     connectionId?: string | null;
-    defaultNewResourcePermission?: ConnectorPermission | null;
   }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   const c = await Connector.findOne({
@@ -87,20 +84,6 @@ export async function updateGithubConnector(
       error: {
         message: "Connector not found",
         type: "connector_not_found",
-      },
-    });
-  }
-
-  if (defaultNewResourcePermission) {
-    logger.error(
-      { connectorId, defaultNewResourcePermission },
-      "Cannot update defaultNewResourcePermission of a Github Data Source"
-    );
-    return new Err({
-      error: {
-        type: "connector_update_unauthorized",
-        message:
-          "Cannot update defaultNewResourcePermission of a Github Data Source",
       },
     });
   }

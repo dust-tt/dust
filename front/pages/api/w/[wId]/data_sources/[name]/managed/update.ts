@@ -13,14 +13,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 // TODO (@fontanierh): camelCase -> snake_case
 const PostManagedDataSourceSettingsRequestBodySchema = t.type({
   connectionId: t.union([t.string, t.null, t.undefined]),
-  defaultNewResourcePermission: t.union([
-    t.literal("read"),
-    t.literal("read_write"),
-    t.literal("write"),
-    t.literal("none"),
-    t.undefined,
-    t.null,
-  ]),
 });
 
 export type GetDataSourceUpdateResponseBody = {
@@ -99,15 +91,13 @@ async function handler(
         });
       }
 
-      const { connectionId, defaultNewResourcePermission } =
-        bodyValidation.right;
+      const { connectionId } = bodyValidation.right;
 
       const connectorsAPI = new ConnectorsAPI(logger);
       const updateRes = await connectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
         params: {
           connectionId,
-          defaultNewResourcePermission,
         },
       });
 

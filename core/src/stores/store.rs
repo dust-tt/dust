@@ -177,7 +177,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<Vec<Database>>;
+    ) -> Result<(Vec<Database>, usize)>;
     async fn assign_live_sqlite_worker_to_database(
         &self,
         project: &Project,
@@ -215,12 +215,19 @@ pub trait Store {
         data_source_id: &str,
         database_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseTable>, usize)>;
+    ) -> Result<(Database, Vec<DatabaseTable>, usize)>;
     async fn delete_database(
         &self,
         project: &Project,
         data_source_id: &str,
         database_id: &str,
+    ) -> Result<()>;
+    async fn delete_database_table(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
     ) -> Result<()>;
     // LLM Cache
     async fn llm_cache_get(

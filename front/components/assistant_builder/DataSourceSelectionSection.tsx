@@ -9,8 +9,8 @@ import {
 
 import { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/shared";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { classNames } from "@app/lib/utils";
 
 export default function DataSourceSelectionSection({
   dataSourceConfigurations,
@@ -49,21 +49,11 @@ export default function DataSourceSelectionSection({
         )}
       </div>
       {!Object.keys(dataSourceConfigurations).length ? (
-        <div
-          className={classNames(
-            "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
-          )}
-        >
-          <Button
-            labelVisible={true}
-            label="Add data sources"
-            variant="primary"
-            size="sm"
-            icon={PlusIcon}
-            onClick={openDataSourceModal}
-            disabled={!canAddDataSource}
-          />
-        </div>
+        <EmptyCallToAction
+          label="Add Data Sources"
+          disabled={!canAddDataSource}
+          onClick={openDataSourceModal}
+        />
       ) : (
         <ContextItem.List className="mt-6 border-b border-t border-structure-200">
           {Object.entries(dataSourceConfigurations).map(

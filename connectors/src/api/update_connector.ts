@@ -7,7 +7,6 @@ import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorUpdateReqBody = {
   connectionId?: string | null;
-  defaultNewResourcePermission?: string | null;
 };
 type ConnectorUpdateResBody =
   | { connectorId: string }
@@ -42,7 +41,6 @@ const _getConnectorUpdateAPIHandler = async (
 
   const updateRes = await connectorUpdater(connector.id, {
     connectionId: req.body.connectionId,
-    defaultNewResourcePermission: req.body.defaultNewResourcePermission,
   });
 
   if (updateRes.isErr()) {

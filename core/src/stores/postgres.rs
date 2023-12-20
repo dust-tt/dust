@@ -1944,7 +1944,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<Vec<Database>> {
+    ) -> Result<(Vec<Database>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -1993,7 +1993,25 @@ impl Store for PostgresStore {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(databases)
+        let total = match limit_offset {
+            None => databases.len(),
+            Some(_) => {
+                let stmt = c
+                    .prepare(
+                        "SELECT COUNT(*) FROM databases \
+                           INNER JOIN data_sources ON databases.data_source = data_sources.id \
+                           WHERE data_sources.project = $1 AND data_sources.data_source_id = $2",
+                    )
+                    .await?;
+                let t: i64 = c
+                    .query_one(&stmt, &[&project_id, &data_source_id])
+                    .await?
+                    .get(0);
+                t as usize
+            }
+        };
+
+        Ok((databases, total))
     }
 
     async fn assign_live_sqlite_worker_to_database(
@@ -2327,7 +2345,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         database_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseTable>, usize)> {
+    ) -> Result<(Database, Vec<DatabaseTable>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let database_id = database_id.to_string();
@@ -2349,17 +2367,35 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // get the database row id
+        // get the database row
         let r = c
             .query(
-                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
+                "SELECT id, created, database_id, name \
+                 FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
                 &[&data_source_row_id, &database_id],
             )
             .await?;
 
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
-            1 => r[0].get(0),
+        let (database, database_row_id): (Database, i64) = match r.len() {
+            0 => {
+                return Err(anyhow!("Unknown Database: {}", database_id).into());
+            }
+            1 => {
+                let db_row_id: i64 = r[0].get(0);
+                let created: i64 = r[0].get(1);
+                let database_id_val: String = r[0].get(2);
+                let name: String = r[0].get(3);
+                (
+                    Database::new(
+                        &Project::new_from_id(project_id),
+                        created as u64,
+                        &data_source_id,
+                        &database_id_val,
+                        &name,
+                    ),
+                    db_row_id,
+                )
+            }
             _ => unreachable!(),
         };
 
@@ -2430,7 +2466,7 @@ impl Store for PostgresStore {
             }
         };
 
-        Ok((tables, total))
+        Ok((database, tables, total))
     }
 
     async fn delete_database(
@@ -2475,17 +2511,64 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
 
         let stmt = tx
-            .prepare("DELETE FROM databases_rows WHERE database_table IN (SELECT id FROM databases_tables WHERE database = $1)")
-            .await?;
-        let _ = tx.query(&stmt, &[&database_row_id]).await?;
-
-        let stmt = tx
             .prepare("DELETE FROM databases_tables WHERE database = $1")
             .await?;
         let _ = tx.query(&stmt, &[&database_row_id]).await?;
 
         let stmt = tx.prepare("DELETE FROM databases WHERE id = $1").await?;
         let _ = tx.query(&stmt, &[&database_row_id]).await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    async fn delete_database_table(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        database_id: &str,
+        table_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let database_id = database_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let r = c
+            .query(
+                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
+                &[&data_source_row_id, &database_id],
+            )
+            .await?;
+        let database_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let tx = c.transaction().await?;
+
+        let stmt = tx
+            .prepare("DELETE FROM databases_tables WHERE database = $1 AND table_id = $2")
+            .await?;
+        let _ = tx.query(&stmt, &[&database_row_id, &table_id]).await?;
 
         tx.commit().await?;
 

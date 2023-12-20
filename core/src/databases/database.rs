@@ -62,7 +62,7 @@ impl Database {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
-                let (tables, _) = store
+                let (_, tables, _) = store
                     .list_databases_tables(
                         &self.project,
                         &self.data_source_id,
@@ -142,6 +142,14 @@ impl Database {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
+                let sqlite_worker = self.sqlite_worker(store.clone()).await?;
+
+                // First we delete all the rows from sqlite-worker.
+                sqlite_worker
+                    .delete_database_rows(&self.unique_id())
+                    .await?;
+
+                // Then we delete the database and its tables from the store.
                 store
                     .delete_database(&self.project, &self.data_source_id, &self.database_id)
                     .await?;
@@ -193,7 +201,7 @@ impl Database {
         &self,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<(DatabaseTable, Vec<DatabaseRow>)>> {
-        let (tables, _) = store
+        let (_, tables, _) = store
             .list_databases_tables(&self.project, &self.data_source_id, &self.database_id, None)
             .await?;
 

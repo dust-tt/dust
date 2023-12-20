@@ -341,11 +341,16 @@ export async function getAgentConfigurations(
     ],
   };
 
-  const getGlobalAgentConfigurations = async () =>
+  const getGlobalAgentConfigurations = async ({
+    activeOnly,
+  }: {
+    activeOnly: boolean;
+  }) =>
     (await getGlobalAgents(auth)).filter(
       (a) =>
-        !agentPrefix ||
-        a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+        (!activeOnly || a.status === "active") &&
+        (!agentPrefix ||
+          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase()))
     );
 
   const getAgentConfigurationsForQuery = async (
@@ -409,19 +414,21 @@ export async function getAgentConfigurations(
   };
 
   // Superuser view (all agents, to be used internally from poke).
-  if (agentsGetView === "super_user") {
-    if (!auth.isDustSuperUser()) {
-      throw new Error("superuser view is for dust superusers only.");
+  if (agentsGetView === "admin_internal") {
+    if (!auth.isDustSuperUser() && !auth.isAdmin()) {
+      throw new Error(
+        "superuser view is for dust superusers or internal admin auths only."
+      );
     }
     return (
       await Promise.all([
         getAgentConfigurationsForQuery(baseAgentsSequelizeQuery),
-        getGlobalAgentConfigurations(),
+        getGlobalAgentConfigurations({ activeOnly: true }),
       ])
     ).flat();
   }
 
-  // All view (published + workspace agents).
+  // All view (published + workspace agents + globals).
   if (agentsGetView === "all") {
     const allAgentsSequelizeQuery = {
       ...baseAgentsSequelizeQuery,
@@ -433,7 +440,7 @@ export async function getAgentConfigurations(
     return (
       await Promise.all([
         getAgentConfigurationsForQuery(allAgentsSequelizeQuery),
-        getGlobalAgentConfigurations(),
+        getGlobalAgentConfigurations({ activeOnly: true }),
       ])
     ).flat();
   }
@@ -472,8 +479,13 @@ export async function getAgentConfigurations(
     ).flat();
   }
 
-  if (agentsGetView === "dust") {
-    return (await Promise.all([[], getGlobalAgentConfigurations()])).flat();
+  if (agentsGetView === "global") {
+    return (
+      await Promise.all([
+        [],
+        getGlobalAgentConfigurations({ activeOnly: false }),
+      ])
+    ).flat();
   }
 
   // List view (user agents list).
@@ -504,7 +516,10 @@ export async function getAgentConfigurations(
     );
 
     return (
-      await Promise.all([listAgentsPromise, getGlobalAgentConfigurations()])
+      await Promise.all([
+        listAgentsPromise,
+        getGlobalAgentConfigurations({ activeOnly: true }),
+      ])
     ).flat();
   }
 
@@ -527,7 +542,7 @@ export async function getAgentConfigurations(
     const [agents, mentions, globalAgents] = await Promise.all([
       getAgentConfigurationsForQuery(conversationAgentsSequelizeQuery),
       getConversationMentions(agentsGetView.conversationId),
-      getGlobalAgentConfigurations(),
+      getGlobalAgentConfigurations({ activeOnly: true }),
     ]);
     const mentionedAgentIds = mentions.map((m) => m.configurationId);
     const localAgents = agents.filter((a) => {
@@ -664,11 +679,28 @@ export async function createAgentConfiguration(
           }
         );
       }
+      const sId = agentConfigurationId || generateModelSId();
+
+      // If creating a new private or published agent, it should be in the user's list, so it
+      // appears in their 'assistants' page (at creation for assistants created published, or at
+      // publication once a private assistant gets published).
+      if (["private", "published"].includes(scope) && !agentConfigurationId) {
+        listStatusOverride = "in-list";
+        await AgentUserRelation.create(
+          {
+            workspaceId: owner.id,
+            agentConfiguration: sId,
+            userId: user.id,
+            listStatusOverride: "in-list",
+          },
+          { transaction: t }
+        );
+      }
 
       // Create Agent config.
       return AgentConfiguration.create(
         {
-          sId: agentConfigurationId || generateModelSId(),
+          sId,
           version,
           status,
           scope,
@@ -797,7 +829,7 @@ export async function createAgentActionConfiguration(
     | {
         type: "retrieval_configuration";
         query: RetrievalQuery;
-        timeframe: RetrievalTimeframe;
+        relativeTimeFrame: RetrievalTimeframe;
         topK: number | "auto";
         dataSources: DataSourceConfiguration[];
       }
@@ -827,14 +859,14 @@ export async function createAgentActionConfiguration(
           queryTemplate: isTemplatedQuery(action.query)
             ? action.query.template
             : null,
-          relativeTimeFrame: isTimeFrame(action.timeframe)
+          relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
             ? "custom"
-            : action.timeframe,
-          relativeTimeFrameDuration: isTimeFrame(action.timeframe)
-            ? action.timeframe.duration
+            : action.relativeTimeFrame,
+          relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
+            ? action.relativeTimeFrame.duration
             : null,
-          relativeTimeFrameUnit: isTimeFrame(action.timeframe)
-            ? action.timeframe.unit
+          relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
+            ? action.relativeTimeFrame.unit
             : null,
           topK: action.topK !== "auto" ? action.topK : null,
           topKMode: action.topK === "auto" ? "auto" : "custom",
@@ -852,7 +884,7 @@ export async function createAgentActionConfiguration(
         sId: retrievalConfig.sId,
         type: "retrieval_configuration",
         query: action.query,
-        relativeTimeFrame: action.timeframe,
+        relativeTimeFrame: action.relativeTimeFrame,
         topK: action.topK,
         dataSources: action.dataSources,
       };

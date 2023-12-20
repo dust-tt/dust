@@ -46,6 +46,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
+  AgentDatabaseQueryAction,
   AgentDustAppRunAction,
   AgentMessage,
   Conversation,
@@ -281,63 +282,88 @@ async function batchRenderAgentMessages(
 ) {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
 
-  const [agentConfigurations, agentRetrievalActions, agentDustAppRunActions] =
-    await Promise.all([
-      (async () => {
-        const agentConfigurationIds: string[] = agentMessages.reduce(
-          (acc: string[], m) => {
-            const agentId = m.agentMessage?.agentConfigurationId;
-            if (agentId && !acc.includes(agentId)) {
-              acc.push(agentId);
-            }
-            return acc;
+  const [
+    agentConfigurations,
+    agentRetrievalActions,
+    agentDustAppRunActions,
+    agentDatabaseQueryActions,
+  ] = await Promise.all([
+    (async () => {
+      const agentConfigurationIds: string[] = agentMessages.reduce(
+        (acc: string[], m) => {
+          const agentId = m.agentMessage?.agentConfigurationId;
+          if (agentId && !acc.includes(agentId)) {
+            acc.push(agentId);
+          }
+          return acc;
+        },
+        []
+      );
+      const agents = (
+        await Promise.all(
+          agentConfigurationIds.map((agentConfigId) => {
+            return getAgentConfiguration(auth, agentConfigId);
+          })
+        )
+      ).filter((a) => a !== null) as AgentConfigurationType[];
+      return agents;
+    })(),
+    (async () => {
+      return await Promise.all(
+        agentMessages
+          .filter((m) => m.agentMessage?.agentRetrievalActionId)
+          .map((m) => {
+            return renderRetrievalActionByModelId(
+              m.agentMessage?.agentRetrievalActionId as number
+            );
+          })
+      );
+    })(),
+    (async () => {
+      const actions = await AgentDustAppRunAction.findAll({
+        where: {
+          id: {
+            [Op.in]: agentMessages
+              .filter((m) => m.agentMessage?.agentDustAppRunActionId)
+              .map((m) => m.agentMessage?.agentDustAppRunActionId as number),
           },
-          []
-        );
-        const agents = (
-          await Promise.all(
-            agentConfigurationIds.map((agentConfigId) => {
-              return getAgentConfiguration(auth, agentConfigId);
-            })
-          )
-        ).filter((a) => a !== null) as AgentConfigurationType[];
-        return agents;
-      })(),
-      (async () => {
-        return await Promise.all(
-          agentMessages
-            .filter((m) => m.agentMessage?.agentRetrievalActionId)
-            .map((m) => {
-              return renderRetrievalActionByModelId(
-                m.agentMessage?.agentRetrievalActionId as number
-              );
-            })
-        );
-      })(),
-      (async () => {
-        const actions = await AgentDustAppRunAction.findAll({
-          where: {
-            id: {
-              [Op.in]: agentMessages
-                .filter((m) => m.agentMessage?.agentDustAppRunActionId)
-                .map((m) => m.agentMessage?.agentDustAppRunActionId as number),
-            },
+        },
+      });
+      return actions.map((action) => {
+        return {
+          id: action.id,
+          type: "dust_app_run_action",
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+          appName: action.appName,
+          params: action.params,
+          runningBlock: null,
+          output: action.output,
+        };
+      });
+    })(),
+    (async () => {
+      const actions = await AgentDatabaseQueryAction.findAll({
+        where: {
+          id: {
+            [Op.in]: agentMessages
+              .filter((m) => m.agentMessage?.agentDatabaseQueryActionId)
+              .map((m) => m.agentMessage?.agentDatabaseQueryActionId as number),
           },
-        });
-        return actions.map((action) => {
-          return {
-            id: action.id,
-            type: "dust_app_run_action",
-            appWorkspaceId: action.appWorkspaceId,
-            appId: action.appId,
-            appName: action.appName,
-            params: action.params,
-            runningBlock: null,
-            output: action.output,
-          };
-        });
-      })(),
-    ]);
+        },
+      });
+      return actions.map((action) => {
+        return {
+          id: action.id,
+          type: "database_query_action",
+          dataSourceWorkspaceId: action.dataSourceWorkspaceId,
+          dataSourceId: action.dataSourceId,
+          databaseId: action.databaseId,
+          output: action.output,
+        };
+      });
+    })(),
+  ]);
 
   return agentMessages.map((message) => {
     if (!message.agentMessage) {
@@ -346,13 +372,22 @@ async function batchRenderAgentMessages(
       );
     }
     const agentMessage = message.agentMessage;
-    const action =
-      agentRetrievalActions.find(
-        (a) => a.id === agentMessage?.agentRetrievalActionId
-      ) ??
-      agentDustAppRunActions.find(
+
+    let action = null;
+    if (agentMessage.agentRetrievalActionId) {
+      action = agentRetrievalActions.find(
+        (a) => a.id === agentMessage.agentRetrievalActionId
+      );
+    } else if (agentMessage.agentDustAppRunActionId) {
+      action = agentDustAppRunActions.find(
         (a) => a.id === agentMessage.agentDustAppRunActionId
       );
+    } else if (agentMessage.agentDatabaseQueryActionId) {
+      action = agentDatabaseQueryActions.find(
+        (a) => a.id === agentMessage.agentDatabaseQueryActionId
+      );
+    }
+
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === message.agentMessage?.agentConfigurationId
     );
@@ -1875,7 +1910,9 @@ async function* streamRunAgentEvents(
             agentDustAppRunActionId: event.action.id,
           });
         } else if (event.action.type === "database_query_action") {
-          // TODO DAPH DATABASE ACTION
+          await agentMessageRow.update({
+            agentDatabaseQueryActionId: event.action.id,
+          });
         } else {
           ((action: never) => {
             throw new Error(
@@ -1918,6 +1955,7 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
+      case "database_query_params":
         yield event;
         break;
       case "generation_tokens":

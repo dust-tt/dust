@@ -29,6 +29,14 @@ pub trait DatabasesStore {
         rows: &Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()>;
+    async fn delete_database_rows(&self, database_id: &str) -> Result<()>;
+    async fn delete_database_table_rows(&self, database_id: &str, table_id: &str) -> Result<()>;
+    async fn delete_database_row(
+        &self,
+        database_id: &str,
+        table_id: &str,
+        row_id: &str,
+    ) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send>;
 }
@@ -205,6 +213,57 @@ impl DatabasesStore for PostgresDatabasesStore {
         }
 
         c.commit().await?;
+
+        Ok(())
+    }
+
+    async fn delete_database_rows(&self, database_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare("DELETE FROM databases_rows WHERE database_id = $1")
+            .await?;
+
+        c.execute(&stmt, &[&database_id]).await?;
+
+        Ok(())
+    }
+
+    async fn delete_database_table_rows(&self, database_id: &str, table_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "DELETE FROM databases_rows
+                WHERE database_id = $1 AND table_id = $2",
+            )
+            .await?;
+
+        c.execute(&stmt, &[&database_id, &table_id]).await?;
+
+        Ok(())
+    }
+
+    async fn delete_database_row(
+        &self,
+        database_id: &str,
+        table_id: &str,
+        row_id: &str,
+    ) -> Result<()> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "DELETE FROM databases_rows
+                WHERE database_id = $1 AND table_id = $2 AND row_id = $3",
+            )
+            .await?;
+
+        c.execute(&stmt, &[&database_id, &table_id, &row_id])
+            .await?;
 
         Ok(())
     }

@@ -4,6 +4,7 @@ export { default as AnthropicWhite } from "./AnthropicWhite";
 export { default as Claude } from "./Claude";
 export { default as Cohere } from "./Cohere";
 export { default as Drive } from "./Drive";
+export { default as Gemini } from "./Gemini";
 export { default as Github } from "./Github";
 export { default as GithubWhite } from "./GithubWhite";
 export { default as Google } from "./Google";

@@ -23,7 +23,7 @@ import { Op, Sequelize } from "sequelize";
 
 import {
   joinChannel,
-  upsertSlackChannelInConnectorsDb,
+  updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -165,7 +165,7 @@ export async function syncChannel(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const channel = await upsertSlackChannelInConnectorsDb({
+  const channel = await updateSlackChannelInConnectorsDb({
     slackChannelId: channelId,
     slackChannelName: remoteChannel.name,
     connectorId: connectorId,

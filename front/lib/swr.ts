@@ -1,4 +1,8 @@
-import { AgentsGetViewType, DataSourceType } from "@dust-tt/types";
+import {
+  AgentsGetViewType,
+  CoreAPIDatabase,
+  DataSourceType,
+} from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
@@ -20,7 +24,6 @@ import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources"
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
 import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
-import { GetManagedDataSourceDefaultNewResourcePermissionResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions/default";
 import { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
@@ -303,26 +306,6 @@ export function useConnectorBotEnabled({
   };
 }
 
-export function useConnectorDefaultNewResourcePermission(
-  owner: WorkspaceType,
-  dataSource: DataSourceType
-) {
-  const defaultNewResourcePermissionFetcher: Fetcher<GetManagedDataSourceDefaultNewResourcePermissionResponseBody> =
-    fetcher;
-
-  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions/default`;
-
-  const { data, error } = useSWR(url, defaultNewResourcePermissionFetcher);
-
-  return {
-    defaultNewResourcePermission: data
-      ? data.default_new_resource_permission
-      : null,
-    isDefaultNewResourcePermissionLoading: !error && !data,
-    isDefaultNewResourcePermissionError: error,
-  };
-}
-
 export function useExtractedEvents({
   owner,
   schemaSId,
@@ -531,6 +514,30 @@ export function useDatabases({
     isDatabasesLoading: !error && !data,
     isDatabasesError: error,
     mutateDatabases: mutate,
+  };
+}
+
+export function useDatabase({
+  workspaceId,
+  dataSourceName,
+  databaseId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  databaseId?: string;
+}) {
+  const databaseFetcher: Fetcher<{ database: CoreAPIDatabase }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}`,
+    databaseFetcher
+  );
+
+  return {
+    database: data ? data.database : null,
+    isDatabaseLoading: !error && !data,
+    isDatabaseError: error,
+    mutateDatabase: mutate,
   };
 }
 

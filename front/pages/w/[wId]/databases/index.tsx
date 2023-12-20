@@ -417,6 +417,38 @@ function DatabaseModal({
             />
           )}
         </div>
+        {database && (
+          <div>
+            <Button
+              size={"xs"}
+              label={"Delete"}
+              onClick={async () => {
+                const res = await fetch(
+                  `/api/w/${workspaceId}/data_sources/${dataSource.name}/databases/${database.database_id}`,
+                  {
+                    method: "DELETE",
+                  }
+                );
+
+                if (!res.ok) {
+                  sendNotification({
+                    type: "error",
+                    title: "Error deleting database",
+                    description: `An error occured: ${await res.text()}.`,
+                  });
+                  return;
+                }
+
+                await mutate(
+                  `/api/w/${workspaceId}/data_sources/${dataSource.name}/databases?offset=0&limit=100`
+                );
+
+                close();
+              }}
+              variant="primaryWarning"
+            />
+          </div>
+        )}
       </div>
     </Modal>
   );

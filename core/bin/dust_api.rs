@@ -1848,15 +1848,61 @@ async fn databases_list(
             "Failed to list databases",
             Some(e),
         ),
-        Ok(dbs) => (
+        Ok((dbs, total)) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
-                    "databases": dbs
+                    "databases": dbs,
+                    "offset": query.offset,
+                    "limit": query.limit,
+                    "total": total,
                 })),
             }),
         ),
+    }
+}
+
+async fn databases_delete(
+    extract::Path((project_id, data_source_id, database_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_database(&project, &data_source_id, &database_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve database",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "database_not_found",
+            &format!("No database found for id `{}`", database_id),
+            None,
+        ),
+        Ok(Some(db)) => match db.delete(state.store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to delete database",
+                Some(e),
+            ),
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "success": true
+                    })),
+                }),
+            ),
+        },
     }
 }
 
@@ -1963,11 +2009,12 @@ async fn databases_tables_list(
             "Failed to list database tables",
             Some(e),
         ),
-        Ok((tables, _)) => (
+        Ok((database, tables, _)) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
+                    "database": database,
                     "tables": tables,
                 })),
             }),
@@ -2459,6 +2506,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/databases",
             get(databases_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/databases/:database_id",
+            delete(databases_delete),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/databases/:database_id/tables",

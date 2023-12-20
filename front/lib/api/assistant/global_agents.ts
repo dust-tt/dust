@@ -10,7 +10,8 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
-  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { AgentConfigurationType, GlobalAgentStatus } from "@dust-tt/types";
 import { PlanType } from "@dust-tt/types";
@@ -240,19 +241,25 @@ async function _getClaudeGlobalAgent({
   };
 }
 
-async function _getMistralGlobalAgent({
+async function _getMistralMediumGlobalAgent({
+  plan,
   settings,
 }: {
+  plan: PlanType;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  const status = settings ? settings.status : "disabled_by_admin";
+  let status = settings?.status ?? "disabled_by_admin";
+  if (plan.code === FREE_TEST_PLAN_CODE) {
+    status = "disabled_free_workspace";
+  }
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL,
+    sId: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
     version: 0,
     versionAuthorId: null,
-    name: "mistral",
-    description: "Mistral latest model (7B Instruct, 4k context).",
+    name: "mistral-medium",
+    description: "Mistral latest larger model (8x7B Instruct, 32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
@@ -261,8 +268,38 @@ async function _getMistralGlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: MISTRAL_7B_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: MISTRAL_7B_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
+        modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getMistralSmallGlobalAgent({
+  settings,
+}: {
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  const status = settings ? settings.status : "disabled_by_admin";
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+    version: 0,
+    versionAuthorId: null,
+    name: "mistral-small",
+    description: "Mistral latest model (8x7B Instruct, 32k context).",
+    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
+        modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -559,7 +596,7 @@ async function _getDustGlobalAgent(
     generation: {
       id: -1,
       prompt:
-        "Assist the user based on the retrieved data from their workspace.",
+        "Assist the user based on the retrieved data from their workspace. Unlesss the user explicitely asks for a detailed answer, you goal is to provide a quick answer to their question.",
       model:
         plan.code === FREE_TEST_PLAN_CODE
           ? {
@@ -642,8 +679,14 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.CLAUDE:
       agentConfiguration = await _getClaudeGlobalAgent({ settings, plan });
       break;
-    case GLOBAL_AGENTS_SID.MISTRAL:
-      agentConfiguration = await _getMistralGlobalAgent({ settings });
+    case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
+      agentConfiguration = await _getMistralMediumGlobalAgent({
+        plan,
+        settings,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
+      agentConfiguration = await _getMistralSmallGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = await _getSlackGlobalAgent(auth, {

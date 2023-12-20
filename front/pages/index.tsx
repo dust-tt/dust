@@ -484,7 +484,7 @@ export default function Home({
               <ReactiveIcon colorHEX="#D4A480" tooltipLabel="Anthropic Claude">
                 <AnthropicWhiteLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1A1C20" tooltipLabel="Mistral 7B">
+              <ReactiveIcon colorHEX="#1A1C20" tooltipLabel="Mistral">
                 <MistralLogo />
               </ReactiveIcon>
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Microsoft Azure">
@@ -973,12 +973,9 @@ const Footer = () => {
             </P>
             <P size="xs">
               <A variant="tertiary">
-                <Link href="/website-privacy">Website Privacy Policy</Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="/platform-privacy">Platform Privacy Policy</Link>
+                <Link href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084">
+                  Website Privacy Policy
+                </Link>
               </A>
             </P>
           </div>
@@ -1002,13 +999,13 @@ const Footer = () => {
             </P>
             <P size="xs">
               <A variant="tertiary">
-                <Link href="/terms">Terms of Use</Link>
+                <Link href="/terms">Website Terms of Use</Link>
               </A>
             </P>
             <P size="xs">
               <A variant="tertiary">
-                <Link href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec">
-                  Cookies Policy
+                <Link href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec">
+                  Cookie Notice
                 </Link>
               </A>
             </P>

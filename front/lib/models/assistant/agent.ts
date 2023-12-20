@@ -18,7 +18,7 @@ import {
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database";
+import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database_query";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { User } from "@app/lib/models/user";
