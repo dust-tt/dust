@@ -131,4 +131,13 @@ export type AgentConfigurationType = {
 
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
+  usage: {
+    userCount: number;
+    usageCount: number;
+  };
+};
+
+export type AgentUsageType = {
+  userCount: number;
+  usageCount: number;
 };

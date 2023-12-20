@@ -30,7 +30,7 @@ import ReactMarkdown from "react-markdown";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useApp, useDatabase } from "@app/lib/swr";
+import { useAgentUsage, useApp, useDatabase } from "@app/lib/swr";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 import { DeleteAssistantDialog } from "./AssistantActions";
@@ -52,6 +52,10 @@ export function AssistantDetails({
   onUpdate: () => void;
   flow: AssistantDetailsFlow;
 }) {
+  const agentUsage = useAgentUsage({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistant.sId,
+  });
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
       <Avatar
@@ -116,6 +120,8 @@ export function AssistantDetails({
           onClose={onClose}
           flow={flow}
         />
+        <h1>Usage</h1>
+        <pre>{JSON.stringify(agentUsage.usage, null, 2)}</pre>
         <DescriptionSection />
         <InstructionsSection />
         <ActionSection />

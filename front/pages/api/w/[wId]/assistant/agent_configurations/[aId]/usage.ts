@@ -1,0 +1,76 @@
+import { AgentUsageType } from "@dust-tt/types";
+import { ReturnedAPIErrorType } from "@dust-tt/types";
+import { NextApiRequest, NextApiResponse } from "next";
+
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentUsage } from "@app/lib/api/assistant/conversation";
+import { Authenticator, getSession } from "@app/lib/auth";
+import { apiError, withLogging } from "@app/logger/withlogging";
+
+export type GetAgentUsageResponseBody = {
+  agentUsage: AgentUsageType;
+};
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<GetAgentUsageResponseBody | ReturnedAPIErrorType>
+): Promise<void> {
+  const session = await getSession(req, res);
+  const auth = await Authenticator.fromSession(
+    session,
+    req.query.wId as string
+  );
+  const owner = auth.workspace();
+  if (!owner) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
+      },
+    });
+  }
+
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are members for the current workspace can duplicate an Assistant.",
+      },
+    });
+  }
+
+  switch (req.method) {
+    case "GET":
+      const agentConfiguration = await getAgentConfiguration(
+        auth,
+        req.query.aId as string
+      );
+      if (!agentConfiguration) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The Assistant you're trying to duplicate was not found.",
+          },
+        });
+      }
+      const agentUsage = await getAgentUsage({
+        agentConfigurationId: agentConfiguration.sId,
+      });
+      return res.status(200).json({ agentUsage });
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
+  }
+}
+
+export default withLogging(handler);

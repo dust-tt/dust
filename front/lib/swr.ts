@@ -20,6 +20,7 @@ import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
@@ -463,6 +464,29 @@ export function useAgentConfigurations({
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
+  };
+}
+
+export function useAgentUsage({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const agentConfigurationsFetcher: Fetcher<GetAgentUsageResponseBody> =
+    fetcher;
+  
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`,
+    agentConfigurationsFetcher
+  );
+
+  return {
+    usage: data ? data.agentUsage : [],
+    isAgentUsageLoading: !error && !data,
+    isAgentUsageError: error,
+    mutateAgentUsage: mutate,
   };
 }
 
