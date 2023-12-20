@@ -48,7 +48,6 @@ import {
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
-import { getAgentUsage } from "./conversation";
 
 /**
  * Get an agent configuration
@@ -287,7 +286,6 @@ export async function getAgentConfiguration(
     action: action,
     generation,
     versionAuthorId: agent.authorId,
-    usage: await getAgentUsage({agentConfigurationId: agent.sId})
   };
 
   agentConfiguration.userListStatus = agentUserListStatus({

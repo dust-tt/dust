@@ -483,7 +483,7 @@ export function useAgentUsage({
   );
 
   return {
-    usage: data ? data.agentUsage : [],
+    usage: data ? data.agentUsage : null,
     isAgentUsageLoading: !error && !data,
     isAgentUsageError: error,
     mutateAgentUsage: mutate,

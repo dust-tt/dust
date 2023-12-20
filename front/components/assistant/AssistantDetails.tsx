@@ -10,6 +10,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import {
+  AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
   DatabaseQueryConfigurationType,
@@ -76,6 +77,34 @@ export function AssistantDetails({
       "This assistant has no instructions."
     );
 
+  const UsageSection = ({
+    usage,
+    isLoading,
+    isError,
+  }: {
+    usage: AgentUsageType | null;
+    isLoading: boolean;
+    isError: boolean;
+  }) => (
+    <div className="flex flex-col gap-2">
+      <div className="text-lg font-bold text-element-800">Usage</div>
+      {(() => {
+        if (isError) {
+          return "Error loading usage data.";
+        } else if (isLoading) {
+          return "Loading usage data...";
+        } else if (usage) {
+          return (
+            <>
+              @{assistant.name} has been used by {usage.userCount} people in{" "}
+              {usage.usageCount} messages over the last 30 days.
+            </>
+          );
+        }
+      })()}
+    </div>
+  );
+
   const ActionSection = () =>
     assistant.action ? (
       isDustAppRunConfiguration(assistant.action) ? (
@@ -120,10 +149,13 @@ export function AssistantDetails({
           onClose={onClose}
           flow={flow}
         />
-        <h1>Usage</h1>
-        <pre>{JSON.stringify(agentUsage.usage, null, 2)}</pre>
         <DescriptionSection />
         <InstructionsSection />
+        <UsageSection
+          usage={agentUsage.usage}
+          isLoading={agentUsage.isAgentUsageLoading}
+          isError={agentUsage.isAgentUsageError}
+        />
         <ActionSection />
       </div>
     </Modal>

@@ -39,7 +39,7 @@ import {
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
 import crypto from "crypto";
-import { Op, Transaction } from "sequelize";
+import { literal, Op, Transaction } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -1065,9 +1065,10 @@ export async function* postUserMessage(
       // that would result in counting multiple time each message.
       // We'll need to add a lock here.
       await signalAgentUsage({
-        userId: context.username,
+        userId: user?.id.toString() || context.email || context.username,
         agentConfigurationId: agentMessage.configuration.sId,
         messageId: agentMessage.id,
+        timestamp: agentMessage.created,
       });
     }
   }
@@ -2041,6 +2042,7 @@ async function signalInRedis({
   agentConfigurationId: string;
   userId: string;
   timestamp: number;
+  messageId: ModelId;
   redis: Awaited<ReturnType<typeof redisClient>> | undefined;
 }) {
   const rankingTTL = 60 * 60 * 24 * 30; // 30 days
@@ -2078,7 +2080,7 @@ async function populateUsageIfNeeded({
   redis,
 }: {
   agentConfigurationId: string;
-  messageId: ModelId;
+  messageId: ModelId | null;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
   const { agentUsedCountKey, agentUserCountKey } =
@@ -2086,58 +2088,64 @@ async function populateUsageIfNeeded({
 
   const existCount = await redis.exists([agentUsedCountKey, agentUserCountKey]);
   if (existCount === 0) {
-    // Sorted sets for this agent usage do not exists, we'll populate them
+    // Sorted sets for this agent usage do not exist, we'll populate them
     // by fetching the data from the database.
-    // We need to ensure only process is going through the populate code path
+    // We need to ensure that only one process is going through the populate code path
     // so we are using redis.incr() to act as a non blocking lock.
     const populateLockKey = `agent_usage_populate_${agentConfigurationId}`;
     const needToPopulate = (await redis.incr(populateLockKey)) === 1;
 
     // Keeping the lock key around for 10 minutes, which essentially gives 10 minutes
     // to create the sorted sets, before running the risk of a race conditions.
-    // A race condition in the sorted set fill up would result in double counting
+    // A race condition in creating the sorted sets would result in double counting
     // usage of the agent.
     const populateTimeoutSec = 60 * 10; // 10 minutes
     await redis.expire(populateLockKey, populateTimeoutSec);
+    if (!needToPopulate) {
+      return;
+    }
 
-    if (needToPopulate) {
-      // We are safe to populate the sorted sets until the Redis populateLockKey expires.
-      const mentions = await Mention.findAll({
-        where: {
+    // We are safe to populate the sorted sets until the Redis populateLockKey expires.
+    // Get all mentions for this agent that have a messageId bigger than messageId
+    // and that happened within the last 30 days.
+    const mentions = await Mention.findAll({
+      where: {
+        ...{
           agentConfigurationId: agentConfigurationId,
-          messageId: {
-            [Op.lt]: messageId,
+          createdAt: {
+            [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
           },
         },
-        include: [
-          {
-            model: Message,
-            required: true,
-            include: [
-              {
-                model: UserMessage,
-                as: "userMessage",
-                required: true,
-              },
-            ],
-          },
-        ],
-      });
-      for (const mention of mentions) {
-        // No need to promise.all() here, as one Redis connection can only execute one command
-        // at a time.
-        if (mention.message?.userMessage?.userContextUsername) {
-          // await signalInRedis(
-          //   mention.message.userMessage.userContextUsername,
-          //   mention.createdAt.getTime()
-          // );
-          await signalInRedis({
-            agentConfigurationId,
-            userId: mention.message.userMessage.userContextUsername,
-            timestamp: mention.createdAt.getTime(),
-            redis,
-          })
-        }
+        ...(messageId ? { messageId: { [Op.lt]: messageId } } : {}),
+      },
+      include: [
+        {
+          model: Message,
+          required: true,
+          include: [
+            {
+              model: UserMessage,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        },
+      ],
+    });
+    for (const mention of mentions) {
+      // No need to promise.all() here, as one Redis connection can only execute one command
+      // at a time.
+      if (mention.message?.userMessage?.userContextUsername) {
+        await signalInRedis({
+          agentConfigurationId,
+          userId:
+            mention.message.userMessage.userId?.toString() ||
+            mention.message.userMessage.userContextEmail ||
+            mention.message.userMessage.userContextUsername,
+          timestamp: mention.createdAt.getTime(),
+          messageId: mention.messageId,
+          redis,
+        });
       }
     }
   }
@@ -2162,6 +2170,11 @@ export async function getAgentUsage({
 
   try {
     redis = await redisClient();
+    await populateUsageIfNeeded({
+      agentConfigurationId,
+      messageId: null,
+      redis,
+    });
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
     const usageCount = await redis.zCount(
@@ -2179,6 +2192,39 @@ export async function getAgentUsage({
       usageCount,
       userCount,
     };
+  } finally {
+    if (redis) {
+      await redis.quit();
+    }
+  }
+}
+
+export async function signalAgentUsage({
+  agentConfigurationId,
+  userId,
+  timestamp,
+  messageId,
+}: {
+  agentConfigurationId: string;
+  userId: string;
+  timestamp: number;
+  messageId: ModelId;
+}) {
+  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+  try {
+    redis = await redisClient();
+    await populateUsageIfNeeded({
+      agentConfigurationId,
+      messageId,
+      redis,
+    });
+    await signalInRedis({
+      agentConfigurationId,
+      userId,
+      timestamp,
+      messageId,
+      redis,
+    });
   } finally {
     if (redis) {
       await redis.quit();
