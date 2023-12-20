@@ -17,5 +17,5 @@ export function isDevelopmentOrDustWorkspace(owner: WorkspaceType) {
 
 export function isActivatedStructuredDB(owner: WorkspaceType) {
   // We will manually add workspace ids here.
-  return isDevelopmentOrDustWorkspace(owner);
+  return isDevelopmentOrDustWorkspace(owner) || owner.sId === "bd133dacaa"; // Daph's workspace;
 }

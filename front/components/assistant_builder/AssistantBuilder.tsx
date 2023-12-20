@@ -67,7 +67,7 @@ import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
   useAgentConfigurations,
@@ -705,7 +705,7 @@ export default function AssistantBuilder({
   };
 
   // Hack to keep DATABASE_QUERY disabled if not Dust workspace
-  const actions = isDevelopmentOrDustWorkspace(owner)
+  const actions = isActivatedStructuredDB(owner)
     ? ACTION_MODE_TO_LABEL
     : Object.fromEntries(
         Object.entries(ACTION_MODE_TO_LABEL).filter(
