@@ -2370,7 +2370,7 @@ impl Store for PostgresStore {
         // get the database row
         let r = c
             .query(
-                "SELECT id, databases.created, databases.database_id, databases.name \
+                "SELECT id, created, database_id, name \
                  FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
                 &[&data_source_row_id, &database_id],
             )
