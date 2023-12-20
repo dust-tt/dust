@@ -20,6 +20,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
+import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -71,7 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-export default function DataSourceUpsert({
+export default function DatabaseUpsert({
   user,
   owner,
   subscription,
@@ -242,12 +243,12 @@ export default function DataSourceUpsert({
           <div className="pt-4">
             <Page.SectionHeader
               title="Database name"
-              description="The name of your database."
+              description="Enter the database name. This identifier will be used in the Assistant builder to choose the specific database for querying."
             />
             <div className="pt-4">
               <Input
-                placeholder="name-of-database"
-                name="document"
+                placeholder="name_of_database"
+                name="database-name"
                 disabled={readOnly || !!loadDatabaseId}
                 value={databaseName}
                 onChange={(v) => setDatabaseName(v)}
@@ -264,12 +265,12 @@ export default function DataSourceUpsert({
           <div className="pt-4">
             <Page.SectionHeader
               title="Table Name"
-              description="This is the name of the table inside your database. One table is the equivalent of one CSV file. For now we only support one table per database but we plan to allow for muliple ones attached to the same database."
+              description="We will generate a table by extracting data from your CSV file and name it accordingly."
             />
             <div className="pt-4">
               <Input
-                placeholder="name-of-table"
-                name="document"
+                placeholder="name_of_table"
+                name="table-name"
                 disabled={readOnly || !!loadDatabaseId}
                 value={tableName}
                 onChange={(v) => setTableName(v)}
@@ -286,15 +287,23 @@ export default function DataSourceUpsert({
           <div className="pt-4">
             <Page.SectionHeader
               title="Table Description"
-              description="This is the description of the content of your CSV file. It will be used to generate relevant queries."
+              description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
             />
             <div className="pt-4">
-              <Input
-                placeholder="This database contains the list of all the company 2024 OKRs with appetite, status and owners."
-                name="document"
+              <textarea
+                name="table-description"
+                placeholder="This table contains..."
+                rows={10}
                 disabled={readOnly || !!loadDatabaseId}
                 value={tableDescription}
-                onChange={(v) => setTableDescription(v)}
+                onChange={(e) => setTableDescription(e.target.value)}
+                className={classNames(
+                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
+                  "border-structure-200 bg-structure-50",
+                  readOnly
+                    ? "focus:border-gray-300 focus:ring-0"
+                    : "focus:border-action-300 focus:ring-action-300"
+                )}
               />
             </div>
           </div>
@@ -304,7 +313,7 @@ export default function DataSourceUpsert({
               <>
                 <Page.SectionHeader
                   title="CSV File"
-                  description={`Upload a CSV file to create a new database.`}
+                  description="Select the CSV file for data extraction. The maximum file size allowed is 5MB."
                   action={{
                     label: uploading
                       ? "Uploading..."
