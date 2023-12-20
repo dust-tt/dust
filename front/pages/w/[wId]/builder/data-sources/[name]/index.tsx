@@ -166,8 +166,18 @@ function StandardDataSourceView({
   useEffect(() => {
     if (router.query.tab === "databases") {
       setCurrentTab("Databases");
+      const newQuery = { ...router.query };
+      delete newQuery.tab;
+      void router.replace(
+        {
+          pathname: router.pathname,
+          query: newQuery,
+        },
+        undefined,
+        { shallow: true } // no reload
+      );
     }
-  }, [router.query.tab]);
+  }, [router]);
 
   const isActivatedSDB = isActivatedStructuredDB(owner);
 
