@@ -257,72 +257,45 @@ export function AssistantInputBar({
     }
   }, [isProcessing, generationContext.generatingMessageIds.length]);
 
-  useEffect(() => {
-    if (!stickyMentions?.length && !selectedAssistant) {
-      return;
-    }
-
-    const mentionsToInject = stickyMentions?.length
-      ? stickyMentions
-      : ([selectedAssistant] as [AgentMention]);
-
-    const mentionedAgentConfigurationIds = new Set(
-      mentionsToInject?.map((m) => m.configurationId)
-    );
-
-    const editor = {};
-    const isNotEmpty = !editor.isEmpty;
-    // TODO: Add mention to editor.
-    if (isNotEmpty && !stickyMentionsTextContent.current) {
-      return;
-    }
-
-    if (
-      isNotEmpty &&
-      !editor.hasOnlyMention(stickyMentionsTextContent.current)
-    ) {
-      // content has changed, we don't clear it (we preserve whatever the user typed)
-      return;
-    }
-
-    // we clear the content of the input bar -- at this point, it's either already empty,
-    // or contains only the sticky mentions added by this hook
-    contentEditable.innerHTML = "";
-    let lastTextNode = null;
-    for (const configurationId of mentionedAgentConfigurationIds) {
-      const agentConfiguration = agentConfigurations.find(
-        (agent) => agent.sId === configurationId
-      );
-      if (!agentConfiguration) {
-        continue;
-      }
-      const mentionNode = getAgentMentionNode(agentConfiguration);
-      if (!mentionNode) {
-        continue;
-      }
-      contentEditable.appendChild(mentionNode);
-      lastTextNode = document.createTextNode(" ");
-      contentEditable.appendChild(lastTextNode);
-
-      stickyMentionsTextContent.current =
-        contentEditable.textContent?.trim() || null;
-    }
-    // move the cursor to the end of the input bar
-    if (lastTextNode) {
-      moveCursorToEnd(contentEditable);
-    }
-    editor?.commands.focus("end");
-  }, [
-    stickyMentions,
-    agentConfigurations,
-    stickyMentionsTextContent,
-    selectedAssistant,
-  ]);
-
   console.log("> isAnimating:", isAnimating);
 
   console.log(">> contentFragmentFilename:", contentFragmentFilename);
   console.log(">> contentFragmentBody:", contentFragmentBody);
+
+  let stickyMentionsConfigurationToInject: any[] = [];
+  if (stickyMentions?.length) {
+    stickyMentionsConfigurationToInject = stickyMentions;
+  } else if (selectedAssistant) {
+    stickyMentionsConfigurationToInject = [selectedAssistant] as [AgentMention];
+  }
+
+  console.log(">> selectedAssistant:", selectedAssistant);
+
+  const stickyMentionsToInject: any[] = stickyMentionsConfigurationToInject
+    .map((configuration) => {
+      const agentConfig = agentConfigurations.find(
+        (agent) => agent.sId === configuration.configurationId
+      );
+
+      console.log(
+        ">> config:",
+        agentConfig,
+        "for",
+        configuration.configurationId
+      );
+
+      if (!agentConfig) {
+        return;
+      }
+
+      return { id: agentConfig.sId, name: agentConfig.name };
+    })
+    .filter(Boolean);
+
+  console.log(
+    ">> stickyMentionsToInject:",
+    JSON.stringify(stickyMentionsToInject, null, 2)
+  );
 
   return (
     <>
@@ -376,12 +349,14 @@ export function AssistantInputBar({
 
               <Tiptap
                 assistants={activeAgents}
-                selectedAssistant={selectedAssistant}
                 owner={owner}
+                conversationId={conversationId}
+                selectedAssistant={selectedAssistant}
                 onCTAClick={handleSubmit}
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
                 disableAttachment={!!contentFragmentFilename}
+                stickyMentionsToInject={stickyMentionsToInject}
               />
             </div>
 

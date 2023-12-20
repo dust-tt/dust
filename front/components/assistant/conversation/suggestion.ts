@@ -3,12 +3,12 @@ import tippy from "tippy.js";
 
 import { MentionList } from "./MentionList.jsx";
 
-export function makeGetAssistantSuggestions(assistants) {
+export function makeGetAssistantSuggestions(suggestions: any[]) {
+  console.log(">> suggestions(!):", suggestions);
   return {
-    items: ({ query }) => {
-      console.log(">> query:", query);
-      console.log(">> assistants:", assistants);
-      return assistants
+    items: ({ query }: { query: string }) => {
+      console.log(">> makeGetAssistantSuggestions:", suggestions);
+      return suggestions
         .filter((item) =>
           item.name.toLowerCase().startsWith(query.toLowerCase())
         )
