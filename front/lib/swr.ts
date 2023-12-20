@@ -476,7 +476,7 @@ export function useAgentUsage({
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentUsageResponseBody> =
     fetcher;
-  
+
   const { data, error, mutate } = useSWR(
     `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`,
     agentConfigurationsFetcher

@@ -48,7 +48,6 @@ import {
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
-
 /**
  * Get an agent configuration
  *
