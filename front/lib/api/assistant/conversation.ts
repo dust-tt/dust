@@ -1057,10 +1057,6 @@ export async function* postUserMessage(
   }
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
-      // Can't use Promise.all() here because populating the data
-      // on the first time would result in a very likely race condition
-      // that would result in counting multiple time each message.
-      // We'll need to add a lock here.
       await signalAgentUsage({
         userId: user?.id.toString() || context.email || context.username,
         agentConfigurationId: agentMessage.configuration.sId,

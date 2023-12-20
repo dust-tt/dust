@@ -26,7 +26,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
+        message: "The workspace you're trying to access was not found.",
       },
     });
   }
@@ -37,7 +37,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Only the users that are members for the current workspace can duplicate an Assistant.",
+          "Only the users that are members for the current workspace can access to the workspace's assistants.",
       },
     });
   }
@@ -53,7 +53,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "agent_configuration_not_found",
-            message: "The Assistant you're trying to duplicate was not found.",
+            message: "The Assistant you're trying to access was not found.",
           },
         });
       }

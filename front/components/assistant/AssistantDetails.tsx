@@ -97,7 +97,7 @@ export function AssistantDetails({
           return (
             <>
               @{assistant.name} has been used by {usage.userCount} people in{" "}
-              {usage.usageCount} messages over the last 30 days.
+              {usage.usageCount} message(s) over the last 30 days.
             </>
           );
         }

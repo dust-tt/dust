@@ -5,14 +5,17 @@ import { v4 as uuidv4 } from "uuid";
 import { Mention, Message, UserMessage } from "@app/lib/models";
 import { redisClient } from "@app/lib/redis";
 
+// TTL of the ranking data in Redis.
+const rankingTTL = 60 * 60 * 24 * 30; // 30 days
+
 function _getKeys(agentConfigurationId: string) {
   // One sorted set per agent for counting the number of times the agent has been used.
   // score is: timestamp of each use of the agent
-  // value: random unique distinct value. Strong random generation not needed here.
+  // value: random unique distinct value.
   const agentUsedCountKey = `agent_usage_count_${agentConfigurationId}`;
 
   // One sorted set per agent for counting the number of users that have used the agent.
-  // score is: last timestamp of usage by a given user
+  // score is: timestamp of last usage by a given user
   // value: user_id
   const agentUserCountKey = `agent_user_count_${agentConfigurationId}`;
   return {
@@ -33,7 +36,6 @@ async function signalInRedis({
   messageId: ModelId;
   redis: Awaited<ReturnType<typeof redisClient>> | undefined;
 }) {
-  const rankingTTL = 60 * 60 * 24 * 30; // 30 days
   let needRedisQuit = false;
   const { agentUsedCountKey, agentUserCountKey } =
     _getKeys(agentConfigurationId);
@@ -94,7 +96,7 @@ async function populateUsageIfNeeded({
     }
 
     // We are safe to populate the sorted sets until the Redis populateLockKey expires.
-    // Get all mentions for this agent that have a messageId bigger than messageId
+    // Get all mentions for this agent that have a messageId smaller than messageId
     // and that happened within the last 30 days.
     const mentions = await Mention.findAll({
       where: {
@@ -123,7 +125,7 @@ async function populateUsageIfNeeded({
     for (const mention of mentions) {
       // No need to promise.all() here, as one Redis connection can only execute one command
       // at a time.
-      if (mention.message?.userMessage?.userContextUsername) {
+      if (mention.message?.userMessage) {
         await signalInRedis({
           agentConfigurationId,
           userId:
@@ -146,15 +148,9 @@ export async function getAgentUsage({
 }): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
-  // One sorted set per agent for counting the number of times the agent has been used.
-  // score is: timestamp of each use of the agent
-  // value: random unique distinct value. Strong random generation not needed here.
-  const agentUsedCountKey = `agent_usage_count_${agentConfigurationId}`;
-
-  // One sorted set per agent for counting the number of users that have used the agent.
-  // score is: last timestamp of usage by a given user
-  // value: user_id
-  const agentUserCountKey = `agent_user_count_${agentConfigurationId}`;
+  const { agentUsedCountKey, agentUserCountKey } = _getKeys(
+    agentConfigurationId
+  );
 
   try {
     redis = await redisClient();
