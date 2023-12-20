@@ -41,13 +41,10 @@ export class CoT extends Algorithm {
     prompt += "\n\n";
     prompt += `Provide a reasoning consisting in multiple steps, using one line per step.`;
     prompt += ` ${this.dataset.reasoningStepInstructions()}`;
-    // prompt +=
-    //   ` Do not perform multiple reasoning attempts per question,` +
-    //   ` do not backtrack in your reasoning steps.`;
     prompt += "\n\n";
     prompt += `EXAMPLES:\n`;
 
-    for (const e of examples.slice(0, 4)) {
+    for (const e of examples.slice(0, this.N_SHOT / 2)) {
       prompt += `\nQUESTION: ${e.question}\n`;
       prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
     }
@@ -57,7 +54,7 @@ export class CoT extends Algorithm {
       content: prompt,
     });
 
-    for (const e of examples.slice(4)) {
+    for (const e of examples.slice(this.N_SHOT / 2)) {
       messages.push({
         role: "user",
         content: `QUESTION: ${e.question}`,

@@ -96,7 +96,7 @@ export class MATH extends Dataset {
     if (!boxed) {
       return "";
     }
-    return boxed[boxed.length - 1];
+    return boxed[boxed.length - 1].trim();
   }
 
   maxTokens() {

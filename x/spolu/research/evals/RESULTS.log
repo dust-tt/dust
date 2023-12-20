@@ -21,77 +21,58 @@ Finished run: algorithm=CoT dataset=MATH provider=mistral model=mistral-medium c
 ## Game24
 
 Finished run: algorithm=CoT-consensus dataset=Game24 provider=openai model=gpt-3.5-turbo-1106
-Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=4.19 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=4.69 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=5.75 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=7.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=7.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=10.00 total=128.00
-Final stats: rate=24.16/s promptTokensTotal=2988275 completionTokensTotal=211267
+Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=3.25 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=2.75 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=3.25 total=128.00
+Result: algorithm=CoT-consensus poolSize=8 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=3.75 total=128.00
+Result: algorithm=CoT-consensus poolSize=16 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=6.00 total=128.00
+Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=openai model=gpt-3.5-turbo-1106 check=3.00 total=128.00
+Final stats: rate=7.33/s promptTokensTotal=3001224 completionTokensTotal=263462
 
 Finished run: algorithm=CoT-consensus dataset=Game24 provider=openai model=gpt-4-1106-preview
-Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=openai model=gpt-4-1106-preview check=6.06 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=openai model=gpt-4-1106-preview check=5.38 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=openai model=gpt-4-1106-preview check=4.88 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=Game24 provider=openai model=gpt-4-1106-preview check=5.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=Game24 provider=openai model=gpt-4-1106-preview check=4.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=openai model=gpt-4-1106-preview check=4.00 total=128.00
-Final stats: rate=24.38/s promptTokensTotal=2988275 completionTokensTotal=337743
+Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=openai model=gpt-4-1106-preview check=5.75 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=openai model=gpt-4-1106-preview check=5.88 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=openai model=gpt-4-1106-preview check=5.63 total=128.00
+Result: algorithm=CoT-consensus poolSize=8 dataset=Game24 provider=openai model=gpt-4-1106-preview check=7.75 total=128.00
+Result: algorithm=CoT-consensus poolSize=16 dataset=Game24 provider=openai model=gpt-4-1106-preview check=8.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=openai model=gpt-4-1106-preview check=9.00 total=128.00
+Final stats: rate=1.42/s promptTokensTotal=3001224 completionTokensTotal=255878
 
 Finished run: algorithm=CoT-consensus dataset=Game24 provider=mistral model=mistral-small
-Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=mistral model=mistral-small check=1.56 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=mistral model=mistral-small check=1.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=mistral model=mistral-small check=1.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=mistral model=mistral-small check=1.59 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=mistral model=mistral-small check=1.75 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=mistral model=mistral-small check=1.88 total=128.00
 Result: algorithm=CoT-consensus poolSize=8 dataset=Game24 provider=mistral model=mistral-small check=1.00 total=128.00
 Result: algorithm=CoT-consensus poolSize=16 dataset=Game24 provider=mistral model=mistral-small check=0.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=mistral model=mistral-small check=0.00 total=128.00
-Final stats: rate=24.62/s promptTokensTotal=3551411 completionTokensTotal=353772
+Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=mistral model=mistral-small check=1.00 total=128.00
+Final stats: rate=4.73/s promptTokensTotal=3618468 completionTokensTotal=300089
 
 Finished run: algorithm=CoT-consensus dataset=Game24 provider=mistral model=mistral-medium
-Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=mistral model=mistral-medium check=0.03 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=mistral model=mistral-medium check=0.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=mistral model=mistral-medium check=0.00 total=128.00
+Result: algorithm=CoT-consensus poolSize=1 dataset=Game24 provider=mistral model=mistral-medium check=0.72 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=Game24 provider=mistral model=mistral-medium check=0.81 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=Game24 provider=mistral model=mistral-medium check=0.25 total=128.00
 Result: algorithm=CoT-consensus poolSize=8 dataset=Game24 provider=mistral model=mistral-medium check=0.00 total=128.00
 Result: algorithm=CoT-consensus poolSize=16 dataset=Game24 provider=mistral model=mistral-medium check=0.00 total=128.00
 Result: algorithm=CoT-consensus poolSize=32 dataset=Game24 provider=mistral model=mistral-medium check=0.00 total=128.00
-Final stats: rate=24.27/s promptTokensTotal=3555507 completionTokensTotal=398154
+Final stats: rate=2.00/s promptTokensTotal=3597988 completionTokensTotal=362230
 
 ## MATH
 
 Finished run: algorithm=CoT-consensus dataset=MATH provider=openai model=gpt-3.5-turbo-1106
-Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=52.69 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=52.38 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=61.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=66.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=68.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=68.00 total=128.00
-Final stats: promptTokensTotal=9267718 completionTokensTotal=802822
-
-Finished run: algorithm=CoT-consensus dataset=MATH provider=openai model=gpt-4-1106-preview
-Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=openai model=gpt-4-1106-preview check=80.78 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=openai model=gpt-4-1106-preview check=81.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=openai model=gpt-4-1106-preview check=85.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=openai model=gpt-4-1106-preview check=90.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=openai model=gpt-4-1106-preview check=92.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=openai model=gpt-4-1106-preview check=91.00 total=128.00
-Final stats: promptTokensTotal=9267718 completionTokensTotal=1118264
+Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=49.16 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=48.25 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=55.38 total=128.00
+Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=59.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=62.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=openai model=gpt-3.5-turbo-1106 check=64.00 total=128.00
+Final stats: rate=3.28/s promptTokensTotal=9044122 completionTokensTotal=734977
 
 Finished run: algorithm=CoT-consensus dataset=MATH provider=mistral model=mistral-small
-Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=mistral model=mistral-small check=37.59 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=mistral model=mistral-small check=38.69 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=mistral model=mistral-small check=46.38 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=mistral model=mistral-small check=53.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=mistral model=mistral-small check=58.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=mistral model=mistral-small check=60.00 total=128.00
-Final stats: promptTokensTotal=10387169 completionTokensTotal=975095
-
-Finished run: algorithm=CoT-consensus dataset=MATH provider=mistral model=mistral-medium
-Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=mistral model=mistral-medium check=42.72 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=mistral model=mistral-medium check=41.69 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=mistral model=mistral-medium check=52.13 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=mistral model=mistral-medium check=59.75 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=mistral model=mistral-medium check=62.50 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=mistral model=mistral-medium check=68.00 total=128.00
-Final stats: promptTokensTotal=10323371 completionTokensTotal=1097376
-
-
+Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=mistral model=mistral-small check=29.13 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=mistral model=mistral-small check=30.31 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=mistral model=mistral-small check=37.63 total=128.00
+Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=mistral model=mistral-small check=45.25 total=128.00
+Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=mistral model=mistral-small check=47.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=mistral model=mistral-small check=46.00 total=128.00
+Final stats: rate=1.35/s promptTokensTotal=10099264 completionTokensTotal=1030224
+Done

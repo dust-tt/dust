@@ -142,7 +142,7 @@ export class Game24 extends Dataset {
     // remove the \boxed{} directive
     const answer = boxed.map((s) => s.slice(7, s.length - 1));
     // return the last one
-    return answer[answer.length - 1];
+    return answer[answer.length - 1].trim();
   }
 
   maxTokens() {
