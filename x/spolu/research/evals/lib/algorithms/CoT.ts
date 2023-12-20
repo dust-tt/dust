@@ -39,10 +39,8 @@ export class CoT extends Algorithm {
     let prompt = `INSTRUCTIONS:\n`;
     prompt += ` ${this.dataset.instructions()}`;
     prompt += "\n\n";
-    prompt += `Start by providing a REASONING consisting in multiple steps, using one line per step.`;
+    prompt += `Provide a reasoning consisting in multiple steps, using one line per step.`;
     prompt += ` ${this.dataset.reasoningStepInstructions()}`;
-    prompt += ` Finally provide a final ANSWER.`;
-    prompt += ` ${this.dataset.answerInstructions()}`;
     // prompt +=
     //   ` Do not perform multiple reasoning attempts per question,` +
     //   ` do not backtrack in your reasoning steps.`;
@@ -52,7 +50,6 @@ export class CoT extends Algorithm {
     for (const e of examples.slice(0, 4)) {
       prompt += `\nQUESTION: ${e.question}\n`;
       prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
-      prompt += `ANSWER: ${e.answer}\n`;
     }
 
     messages.push({
@@ -67,7 +64,7 @@ export class CoT extends Algorithm {
       });
       messages.push({
         role: "assistant",
-        content: `REASONING:\n${e.reasoning.join("\n")}\nANSWER: ${e.answer}`,
+        content: `REASONING:\n${e.reasoning.join("\n")}`,
       });
     }
 
@@ -79,18 +76,14 @@ export class CoT extends Algorithm {
     // console.log(prompt);
     // console.log(messages);
 
-    let maxTokens: number | undefined = undefined;
-    const datasetMaxTokens = this.dataset.maxTokens();
-    if (datasetMaxTokens.reasoning && datasetMaxTokens.answer) {
-      maxTokens = datasetMaxTokens.reasoning + datasetMaxTokens.answer;
-    }
-
     const query: ChatQuery = {
       provider: this.model.provider,
       model: this.model.model(),
       messages,
       temperature: this.TEMPERATURE,
-      maxTokens,
+      maxTokens:
+        this.dataset.maxTokens().reasoningStep *
+        this.dataset.maxTokens().maxStepCount,
     };
 
     const c = await this.runCompletion(query);
@@ -125,18 +118,7 @@ export class CoT extends Algorithm {
       console.log("+++++++++++++++++++++++++");
     }
 
-    if (!c.content || !c.content.includes("REASONING:")) {
-      return await finish(test, c, query, false, "");
-    }
-
-    const content = c.content.split("REASONING:")[1].trim();
-
-    if (!content.includes("ANSWER:")) {
-      return await finish(test, c, query, false, "");
-    }
-
-    const reasoning = content.split("ANSWER:")[0].trim().split("\n");
-    const answer = content.split("ANSWER:")[1].trim();
+    const answer = this.dataset.parseAnswer(c.content);
 
     let check = false;
     try {
@@ -146,7 +128,6 @@ export class CoT extends Algorithm {
     }
 
     if (debug) {
-      console.log(`REASONING: ${reasoning.join(" ")}`);
       console.log(`ANSWER: ${answer}`);
       console.log(`CHECK: ${check}`);
       console.log("-------------------------");

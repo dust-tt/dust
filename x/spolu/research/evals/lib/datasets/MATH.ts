@@ -36,6 +36,7 @@ export class MATH extends Dataset {
         d[e.type][e.level] = [];
       }
       d[e.type][e.level].push(e);
+      // console.log(e.reasoning.length);
     }
 
     return d;
@@ -69,30 +70,39 @@ export class MATH extends Dataset {
   }
 
   instructions(): string {
-    return `Find a solution to the provided mathematical problem below.`;
+    return (
+      "Find a solution to the provided mathematical problem." +
+      " The answer is a unique mathematical expression presented in LaTeX `\\boxed{}` directive. " +
+      " (example: `\\boxed{4}` or `\\boxed{3\\pi}`). Formatting instructions: " +
+      " fractions should be represented in the LaTeX form `\\frac{a}{b}` (not `\\frac12`)," +
+      " units should not be included," +
+      " square roots should be presented in the LaTeX form `\\sqrt{c}` (not `\\sqrt2`)," +
+      " all spaces and non critical parentheses or formatting should be stripped," +
+      " rational numbers should be presented with a leading `0`."
+    );
   }
 
   reasoningStepInstructions(): string {
-    return `A reasoning step is one coherent step of mathematical reasoning it should held in one line.`;
+    return (
+      "A reasoning step is one coherent step of mathematical reasoning. It should hold in one line" +
+      " of at most 500 characters." +
+      " If an answer is reached as part of the reasoning, it should be included" +
+      " in the reasoning step using the `\\boxed{}` directive."
+    );
   }
 
-  answerInstructions(): string {
-    return (
-      ` The answer is a unique mathematical expression presented in a LaTeX '\\boxed' directive` +
-      ` (eg: \\boxed{4} or \\boxed{3\\pi}). Formatting instructions:` +
-      ` fractions should be represented in the LaTeX form \\frac{a}{b} (not \\frac12),` +
-      ` units should not be included,` +
-      ` square roots should be presented in the LaTeX form \\sqrt{c} (not \\sqrt2),` +
-      ` all spaces and non critical parentheses or formatting should be stripped,` +
-      ` rational numbers should be presented with a leading 0.`
-    );
+  parseAnswer(str: string): string {
+    const boxed = str.match(/\\boxed{([^}]*)}/g);
+    if (!boxed) {
+      return "";
+    }
+    return boxed[boxed.length - 1];
   }
 
   maxTokens() {
     return {
-      resaoningStep: 512,
-      reasoning: 3584,
-      answer: 64,
+      reasoningStep: 256,
+      maxStepCount: 16,
     };
   }
 
