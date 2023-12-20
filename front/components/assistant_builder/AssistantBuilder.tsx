@@ -83,8 +83,11 @@ const usedModelConfigs = [
 
 // Avatar URLs
 const BASE_URL = "https://dust.tt/";
-const buildAvatarUrl = (basePath: string, fileName: string) =>
-  `${BASE_URL}${basePath}${fileName}`;
+const buildAvatarUrl = (basePath: string, fileName: string) => {
+  const url = new URL(BASE_URL);
+  url.pathname = `${basePath}${fileName}`;
+  return url.toString();
+};
 const DROID_AVATAR_URLS = DROID_AVATAR_FILES.map((f) =>
   buildAvatarUrl(DROID_AVATARS_BASE_PATH, f)
 );
