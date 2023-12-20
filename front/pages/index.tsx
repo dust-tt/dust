@@ -484,7 +484,7 @@ export default function Home({
               <ReactiveIcon colorHEX="#D4A480" tooltipLabel="Anthropic Claude">
                 <AnthropicWhiteLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1A1C20" tooltipLabel="Mistral 7B">
+              <ReactiveIcon colorHEX="#1A1C20" tooltipLabel="Mistral">
                 <MistralLogo />
               </ReactiveIcon>
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Microsoft Azure">
