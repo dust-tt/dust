@@ -1,18 +1,12 @@
-import {
-  AgentConfiguration,
-  Membership,
-  User,
-  UserMessage,
-} from "@app/lib/models";
+import { Membership, User, UserMessage, Workspace } from "@app/lib/models";
 
 async function main() {
   console.log("Starting imageUrl backfill");
   const workspaceIds = (
-    await AgentConfiguration.findAll({
-      attributes: ["workspaceId"],
-      group: ["workspaceId"],
+    await Workspace.findAll({
+      attributes: ["id"],
     })
-  ).map((a) => a.workspaceId);
+  ).map((a) => a.id);
 
   console.log(`Found ${workspaceIds.length} workspaces to update`);
   const chunks = [];
