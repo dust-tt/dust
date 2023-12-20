@@ -25,6 +25,9 @@ export const ListDatabasesReqQuerySchema = t.type({
 });
 export type ListDatabasesResponseBody = {
   databases: CoreAPIDatabase[];
+  offset: number;
+  limit: number;
+  total: number;
 };
 
 async function handler(
@@ -157,9 +160,7 @@ async function handler(
         });
       }
 
-      const { databases } = getRes.value;
-
-      return res.status(200).json({ databases });
+      return res.status(200).json(getRes.value);
 
     default:
       return apiError(req, res, {
