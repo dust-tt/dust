@@ -148,9 +148,8 @@ export async function getAgentUsage({
 }): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
-  const { agentUsedCountKey, agentUserCountKey } = _getKeys(
-    agentConfigurationId
-  );
+  const { agentUsedCountKey, agentUserCountKey } =
+    _getKeys(agentConfigurationId);
 
   try {
     redis = await redisClient();

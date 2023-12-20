@@ -1543,6 +1543,20 @@ export async function* editUserMessage(
     message: userMessage,
   };
 
+  if (agentMessages.length > 0) {
+    for (const agentMessage of agentMessages) {
+      await signalAgentUsage({
+        userId:
+          user?.id.toString() ||
+          message.context.email ||
+          message.context.username,
+        agentConfigurationId: agentMessage.configuration.sId,
+        messageId: agentMessage.id,
+        timestamp: agentMessage.created,
+      });
+    }
+  }
+
   for (let i = 0; i < agentMessages.length; i++) {
     const agentMessage = agentMessages[i];
 
