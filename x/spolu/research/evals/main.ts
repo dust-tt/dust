@@ -6,14 +6,14 @@ import {
   ValidAlgorithmTypes,
 } from "@app/lib/algorithms";
 import { CoT } from "@app/lib/algorithms/CoT";
+import { CoTConsensus } from "@app/lib/algorithms/CoTConsensus";
 import { Dataset, DatasetType, ValidDatasetTypes } from "@app/lib/datasets";
 import { Game24 } from "@app/lib/datasets/game24";
 import { MATH } from "@app/lib/datasets/MATH";
 import { Model, ProviderType, ValidProviderTypes } from "@app/lib/models";
+import { AnthropicModel, AnthropicModelType } from "@app/lib/models/anthropic";
 import { MistralModel, MistralModelType } from "@app/lib/models/mistral";
 import { OpenAIModel, OpenAIModelType } from "@app/lib/models/openai";
-
-import { CoTConsensus } from "./lib/algorithms/CoTConsensus";
 
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
@@ -51,6 +51,9 @@ async function main() {
       break;
     case "mistral":
       m = new MistralModel(model as MistralModelType);
+      break;
+    case "anthropic":
+      m = new AnthropicModel(model as AnthropicModelType);
       break;
     default:
       ((x: never) => x)(provider);
