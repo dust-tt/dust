@@ -7,11 +7,8 @@ import sgMail from "@sendgrid/mail";
 import { XP1User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
-const { SENDGRID_API_KEY, XP1_CHROME_WEB_STORE_URL } = process.env;
+const { SENDGRID_API_KEY = "", XP1_CHROME_WEB_STORE_URL } = process.env;
 
-if (!SENDGRID_API_KEY) {
-  throw new Error("Missing SENDGRID_API_KEY env variable");
-}
 sgMail.setApiKey(SENDGRID_API_KEY);
 
 export async function sendEmail(email: string, message: any) {
