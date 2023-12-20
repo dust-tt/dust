@@ -73,7 +73,7 @@ export class MATH extends Dataset {
     return (
       "Find a solution to the provided mathematical problem." +
       " The answer is a unique mathematical expression presented in LaTeX `\\boxed{}` directive. " +
-      " (example: `\\boxed{4}` or `\\boxed{3\\pi}`). Formatting instructions: " +
+      " (example: `\\boxed{4}` or `\\boxed{3\\pi}`). Formatting instructions:" +
       " fractions should be represented in the LaTeX form `\\frac{a}{b}` (not `\\frac12`)," +
       " units should not be included," +
       " square roots should be presented in the LaTeX form `\\sqrt{c}` (not `\\sqrt2`)," +
@@ -91,12 +91,20 @@ export class MATH extends Dataset {
     );
   }
 
+  rankingInstructions(): string {
+    return (
+      "- Each reasoning step should be mathetically correct, a reasoning with an incorrect step should be down-ranked.\n" +
+      "- Reasonings should be concise. If a reasoning is too verbose it should be down-ranked.\n" +
+      "- If a reasoning seems to explore a promising new direciton, it should be up-ranked.\n"
+    );
+  }
+
   parseAnswer(str: string): string {
     const boxed = str.match(/\\boxed{([^}]*)}/g);
     if (!boxed) {
       return "";
     }
-    return boxed[boxed.length - 1];
+    return boxed[boxed.length - 1].trim();
   }
 
   maxTokens() {
