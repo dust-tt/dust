@@ -17,10 +17,9 @@ export const MentionList = forwardRef(function mentionList(props, ref) {
 
   const selectItem = index => {
     const item = props.items[index]
-    console.log('>> item:', item);
 
     if (item) {
-      props.command({ id: item.name })
+      props.command({ id: item.sId, label: item.name })
     }
   }
 
@@ -77,16 +76,6 @@ export const MentionList = forwardRef(function mentionList(props, ref) {
         </div>
 
           </>
-          // <><Avatar size="xs" visual={item.pictureUrl} /><button
-          //   className={classNames(
-          //     "flex-initial text-sm font-semibold",
-          //     index === selectedIndex ? "text-action-500" : "text-element-900"
-          //   )}
-          //   key={index}
-          //   onClick={() => selectItem(index)}
-          // >
-          //   {item}
-          // </button></>
         ))
         : <div className="item">No result</div>
       }

@@ -453,10 +453,14 @@ export function useAgentConfigurations({
     typeof agentsGetView === "string"
       ? `view=${agentsGetView}`
       : `conversationId=${agentsGetView.conversationId}`;
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate, isLoading } = useSWR(
     `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}`,
     agentConfigurationsFetcher
   );
+
+  console.log(">> data:", data);
+  console.log(">> error:", error);
+  console.log(">> isLoading:", isLoading);
 
   return {
     agentConfigurations: data ? data.agentConfigurations : [],

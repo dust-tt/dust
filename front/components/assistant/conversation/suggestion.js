@@ -6,6 +6,8 @@ import { MentionList } from "./MentionList.jsx";
 export function makeGetAssistantSuggestions(assistants) {
   return {
     items: ({ query }) => {
+      console.log(">> query:", query);
+      console.log(">> assistants:", assistants);
       return assistants
         .filter((item) =>
           item.name.toLowerCase().startsWith(query.toLowerCase())
