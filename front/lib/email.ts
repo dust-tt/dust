@@ -18,10 +18,7 @@ export async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };
   try {
     await sgMail.send(msg);
-    logger.info(
-      { email, subject: message.subject },
-      "Sending email to admin about subscription."
-    );
+    logger.info({ email, subject: message.subject }, "Sending email");
   } catch (error) {
     logger.error(
       { error, email, subject: message.subject },
@@ -98,6 +95,7 @@ export async function sendCancelSubscriptionEmail(
     <li>conversations, custom assistants, and data sources will still be accessible with limitations;</li>
     <li>your usage of Dust will have the <a href="https://dust.tt/w/${workspaceSId}/subscription">restrictions of the free plan</a>.</li>
     </ul>
+    <p>Also note that if you have a data source (folder) with more than 50 MB of data, it will be deleted after the end of your billing period. </p>
     <p>More details are available on <a href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4">our subscription cancelling FAQ</a>.</p>
     <p>Please reply to this email if you have any questions.
     <p>The Dust team</p>`,
@@ -124,7 +122,10 @@ export async function sendReactivateSubscriptionEmail(
   return sendEmail(email, reactivateMessage);
 }
 
-export async function sendOpsEmail(workspaceSId: string): Promise<void> {
+export async function sendOpsDowngradeTooMuchDataEmail(
+  workspaceSId: string,
+  datasourcesTooBig: string[]
+): Promise<void> {
   const opsMessage = {
     from: {
       name: "System",
@@ -132,10 +133,34 @@ export async function sendOpsEmail(workspaceSId: string): Promise<void> {
     },
     subject: `[OPS - Eng runner] A subscription has been canceled`,
     html: `<p>Hi Dust ops,</p> 
-    <p>The subscription of workspace '${workspaceSId}' was just canceled. Go to the <a href="https://dust.tt/poke/${workspaceSId}">Poke Page</a> and follow the <a href="https://www.notion.so/dust-tt/Runbook-Canceled-subscription-0011ab1afebe467b871b25f572b56a9e?pvs=4">Runbook</a> for when a subscription is cancelled</p>
-    <p>We'll automate this soon. Just doing that to be extra sure for the ~10 first downgrades.</p>
+    <p>The subscription of workspace '${workspaceSId}' was just canceled. They have datasource(s) with more than 50MB data: ${datasourcesTooBig.join(
+      ", "
+    )}</p>
+    Go to the <a href="https://dust.tt/poke/${workspaceSId}">Poke Page</a> and follow the <a href="https://www.notion.so/dust-tt/Runbook-Canceled-subscription-0011ab1afebe467b871b25f572b56a9e?pvs=4">Runbook</a></p>
     <p>Sincerely,
     <p>Ourselves</p>`,
   };
   return sendEmail("ops@dust.tt", opsMessage);
+}
+
+export async function sendAdminDowngradeTooMuchDataEmail(
+  email: string,
+  datasourcesTooBig: string[]
+): Promise<void> {
+  const message = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Your subscription has ended - important information`,
+    html: `<p>Hello from Dust,</p>
+    <p>Your paying subsciption has ended. While you can still access Dust as a free user, the following datasources will be deleted in 7 days because they contain more than 50MB of data: ${datasourcesTooBig.join(
+      ", "
+    )}.</p>
+    <p>If they contain any valuable data, please back them up before then.</p>
+    <p>Reply to this email if you have any questions.</p>
+    <p>Best,
+    <p>The Dust team</p>`,
+  };
+  return sendEmail(email, message);
 }

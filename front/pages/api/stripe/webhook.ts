@@ -1,18 +1,35 @@
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import {
+  CoreAPI,
+  isRetrievalConfiguration,
+  ReturnedAPIErrorType,
+} from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
+import {
+  archiveAgentConfiguration,
+  getAgentConfigurations,
+} from "@app/lib/api/assistant/configuration";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { deleteDataSource } from "@app/lib/data_sources";
 import { front_sequelize } from "@app/lib/databases";
 import {
+  sendAdminDowngradeTooMuchDataEmail,
   sendCancelSubscriptionEmail,
-  sendOpsEmail,
+  sendOpsDowngradeTooMuchDataEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
-import { Membership, Plan, Subscription, Workspace } from "@app/lib/models";
+import {
+  Membership,
+  MembershipInvitation,
+  Plan,
+  Subscription,
+  Workspace,
+} from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -368,8 +385,14 @@ async function handler(
               status: "ended",
               endDate: new Date(),
             });
-            await revokeUsersForDowngrade(activeSubscription.workspace.id);
-            await sendOpsEmail(activeSubscription.workspace.sId);
+            const workspaceId = activeSubscription.workspace.sId;
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspaceId
+            );
+            await revokeUsersForDowngrade(auth);
+            await archiveConnectedAgents(auth);
+            await deleteConnectedDatasources(auth);
+            await checkStaticDatasourcesSize(auth);
           } else {
             logger.warn(
               { event },
@@ -399,9 +422,9 @@ async function handler(
  * Remove everybody except the most tenured admin
  * @param workspaceId
  */
-async function revokeUsersForDowngrade(workspaceId: number) {
+async function revokeUsersForDowngrade(auth: Authenticator) {
   const memberships = await Membership.findAll({
-    where: { workspaceId },
+    where: { workspaceId: auth.workspace()?.id },
     order: [["createdAt", "ASC"]],
   });
   const adminMemberships = memberships.filter((m) => m.role === "admin");
@@ -411,5 +434,107 @@ async function revokeUsersForDowngrade(workspaceId: number) {
   for (const membership of [...adminMemberships, ...nonAdminMemberships]) {
     await membership.update({ role: "revoked" });
   }
+
+  // revoke invitations
+  const workspaceId = auth.workspace()?.id;
+  if (!workspaceId) {
+    throw new Error("Cannot get workspace.");
+  }
+  await MembershipInvitation.update(
+    { status: "revoked" },
+    { where: { workspaceId } }
+  );
 }
+
+async function archiveConnectedAgents(auth: Authenticator) {
+  const agentConfigurations = await getAgentConfigurations(
+    auth,
+    "admin_internal"
+  );
+  // agentconfigurations with a retrieval action with at least a managed
+  // data source
+  const agentConfigurationsToArchive = agentConfigurations.filter(
+    (ac) =>
+      ac.action &&
+      isRetrievalConfiguration(ac.action) &&
+      ac.action.dataSources.length > 0 &&
+      ac.action.dataSources.some((ds) => ds.dataSourceId.startsWith("managed-"))
+  );
+  for (const agentConfiguration of agentConfigurationsToArchive) {
+    await archiveAgentConfiguration(auth, agentConfiguration.sId);
+  }
+}
+
+async function deleteConnectedDatasources(auth: Authenticator) {
+  const dataSources = await getDataSources(auth);
+  const managedDataSources = dataSources.filter((ds) => !!ds.connectorProvider);
+  for (const dataSource of managedDataSources) {
+    // call the poke delete datasource endpoint
+    const r = await deleteDataSource(auth, dataSource.name);
+    if (r.isErr()) {
+      throw new Error(`Failed to delete data source: ${r.error.message}`);
+    }
+  }
+}
+
+/**
+ * Check the size of the static datasources and send an email to the user and us if it is too big.
+ */
+async function checkStaticDatasourcesSize(auth: Authenticator) {
+  const dataSources = await getDataSources(auth);
+  const staticDataSources = dataSources.filter((ds) => !ds.connectorProvider);
+  const coreAPI = new CoreAPI(logger);
+  const datasourcesTooBig = [];
+  logger.info(
+    `Checking static datasources sizes for downgrade of ${
+      auth.workspace()?.sId
+    }`
+  );
+  for (const ds of staticDataSources) {
+    // count total size of all documents of the datasource
+    let totalSize = 0;
+    for (let i = 0; ; i++) {
+      const res = await coreAPI.getDataSourceDocuments({
+        projectId: ds.dustAPIProjectId,
+        dataSourceName: ds.name,
+        limit: 1000,
+        offset: 1000 * i,
+      });
+      if (res.isErr()) {
+        throw new Error("Error getting data source documents.");
+      }
+      totalSize += res.value.documents.reduce(
+        (acc, doc) => acc + doc.text_size,
+        0
+      );
+      if (res.value.documents.length < 1000) {
+        break;
+      }
+      i++;
+    }
+
+    if (totalSize > 50 * 1024 * 1024) {
+      datasourcesTooBig.push(ds.name);
+    }
+  }
+
+  // send email
+  if (datasourcesTooBig.length > 0) {
+    logger.info(
+      `Downgrade of ${
+        auth.workspace()?.sId
+      }: datasources too big: ${datasourcesTooBig.join(", ")}.`
+    );
+    const workspace = auth.workspace();
+    if (!workspace) {
+      throw new Error("Cannot get workspace.");
+    }
+    await sendOpsDowngradeTooMuchDataEmail(workspace.sId, datasourcesTooBig);
+    // for all admins
+    const adminEmails = (await getMembers(auth, "admin")).map((u) => u.email);
+    for (const adminEmail of adminEmails)
+      await sendAdminDowngradeTooMuchDataEmail(adminEmail, datasourcesTooBig);
+  }
+}
+
 export default withLogging(handler);
