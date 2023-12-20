@@ -17,33 +17,39 @@ export class CoTConsensus extends CoT {
     return "CoT-consensus";
   }
 
-  resultFromPool(poolSize: number, test: Test): TestResult {
-    const answers: { [key: string]: { check: boolean; count: number } } = {};
+  resultFromPool(poolSize: number, test: Test): TestResult[] {
+    const results: TestResult[] = [];
 
-    for (const result of this.poolResults[test.id].slice(0, poolSize)) {
-      if (!answers[result.answer]) {
-        answers[result.answer] = { check: result.check, count: 0 };
+    for (let i = 1; i * poolSize <= this.poolResults[test.id].length; i++) {
+      const answers: { [key: string]: { check: boolean; count: number } } = {};
+
+      const pool = this.poolResults[test.id].slice(
+        (i - 1) * poolSize,
+        i * poolSize
+      );
+
+      for (const result of pool) {
+        if (!answers[result.answer]) {
+          answers[result.answer] = { check: result.check, count: 0 };
+        }
+        answers[result.answer].count++;
       }
-      answers[result.answer].count++;
+
+      // find the max count
+      let maxCount = 0;
+      let maxAnswer = "";
+      let maxCheck = false;
+      for (const answer in answers) {
+        if (answers[answer].count > maxCount) {
+          maxCount = answers[answer].count;
+          maxAnswer = answer;
+          maxCheck = answers[answer].check;
+        }
+      }
+      results.push({ test, answer: maxAnswer, check: maxCheck });
     }
 
-    // find the max count
-    let maxCount = 0;
-    let maxAnswer = "";
-    let maxCheck = false;
-    for (const answer in answers) {
-      if (answers[answer].count > maxCount) {
-        maxCount = answers[answer].count;
-        maxAnswer = answer;
-        maxCheck = answers[answer].check;
-      }
-    }
-
-    return {
-      test,
-      answer: maxAnswer,
-      check: maxCheck,
-    };
+    return results;
   }
 
   async runOne({
@@ -60,30 +66,56 @@ export class CoTConsensus extends CoT {
       }
       this.poolResults[test.id].push(result);
     }
-
-    return this.resultFromPool(this.VOTE_COUNT, test);
+    return this.resultFromPool(this.VOTE_COUNT, test)[0];
   }
 
   computeResults(): void {
     for (let p = 1; p <= this.VOTE_COUNT; p = p * 2) {
-      let check = 0;
-      let total = 0;
+      const pools: TestResult[][] = [];
+      for (let i = 0; i < this.VOTE_COUNT / p; i++) {
+        pools.push([]);
+      }
 
       for (const testId in this.poolResults) {
         const test = this.poolResults[testId][0].test;
-        const result = this.resultFromPool(p, test);
-        total++;
-        if (result.check) {
-          check++;
+        const results = this.resultFromPool(p, test);
+
+        if (results.length !== pools.length) {
+          throw new Error(
+            `Expected ${pools.length} pools, got ${results.length}`
+          );
+        }
+
+        for (let i = 0; i < results.length; i++) {
+          pools[i].push(results[i]);
         }
       }
+
+      const check = [];
+      const total = [];
+
+      for (const pool of pools) {
+        let checkCount = 0;
+        let totalCount = 0;
+        for (const result of pool) {
+          if (result.check) {
+            checkCount++;
+          }
+          totalCount++;
+        }
+        check.push(checkCount);
+        total.push(totalCount);
+      }
+
+      const checkAvg = check.reduce((a, b) => a + b, 0) / check.length;
+      const totalAvg = total.reduce((a, b) => a + b, 0) / total.length;
 
       console.log(
         `Result: algorithm=${this.algorithm()} poolSize=${p} dataset=${
           this.dataset.dataset
         } ` +
           `provider=${this.model.provider} model=${this.model.model()} ` +
-          `check=${check} total=${total}`
+          `check=${checkAvg.toFixed(2)} total=${totalAvg.toFixed(2)}`
       );
     }
   }
