@@ -168,14 +168,10 @@ export abstract class Algorithm {
         (acc, x) => acc + x.completion.usage.promptTokens,
         0
       );
-      const completionTokensRate = completionTokensTotal / (duration / 1000);
-      const promptTokensRate = promptTokensTotal / (duration / 1000);
 
       console.log(
         `Final stats: ` +
-          `rate=${rate.toFixed(2)}/s` +
-          `promptTokensRate=${promptTokensRate.toFixed(3)}/s ` +
-          `completionTokensRate=${completionTokensRate.toFixed(2)}/s ` +
+          `rate=${rate.toFixed(2)}/s ` +
           `promptTokensTotal=${promptTokensTotal} ` +
           `completionTokensTotal=${completionTokensTotal}`
       );
