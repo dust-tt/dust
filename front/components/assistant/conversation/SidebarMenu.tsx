@@ -70,7 +70,7 @@ export function AssistantSidebarMenu({
     <div
       className={classNames(
         "flex grow flex-col",
-        owner.role === "user" ? "border-t border-structure-200" : ""
+        owner.role === "member" ? "border-t border-structure-200" : ""
       )}
     >
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
@@ -78,7 +78,7 @@ export function AssistantSidebarMenu({
           <div
             className={classNames(
               "pb-1 pr-1 pt-3 text-right",
-              owner.role === "user" ? "pt-6" : ""
+              owner.role === "member" ? "pt-6" : ""
             )}
           >
             <Link

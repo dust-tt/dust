@@ -17,8 +17,7 @@ import {
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-import { authOptions } from "./auth/[...nextauth]";
+import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 
@@ -193,7 +192,7 @@ async function handler(
           m = await _createAndLogMembership({
             workspace: workspaceInvite,
             userId: user.id,
-            role: "user",
+            role: "member",
           });
         }
 
@@ -243,7 +242,7 @@ async function handler(
           m = await _createAndLogMembership({
             workspace: targetWorkspace,
             userId: user.id,
-            role: "user",
+            role: "member",
           });
         }
         membershipInvite.status = "consumed";
@@ -314,7 +313,7 @@ async function _createAndLogMembership({
 }: {
   userId: number;
   workspace: Workspace;
-  role: "admin" | "user";
+  role: "admin" | "member";
 }) {
   const m = await Membership.create({
     role: role,

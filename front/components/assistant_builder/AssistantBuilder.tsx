@@ -1026,7 +1026,7 @@ export default function AssistantBuilder({
                               </strong>
                             </div>
                           );
-                        case "user":
+                        case "member":
                           return (
                             <div>
                               <strong>

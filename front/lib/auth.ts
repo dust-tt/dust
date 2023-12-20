@@ -106,7 +106,7 @@ export class Authenticator {
             },
           });
           return membership &&
-            ["admin", "builder", "user"].includes(membership.role)
+            ["admin", "builder", "member"].includes(membership.role)
             ? (membership.role as RoleType)
             : "none";
         })(),
@@ -279,7 +279,7 @@ export class Authenticator {
     switch (this._role) {
       case "admin":
       case "builder":
-      case "user":
+      case "member":
         return true;
       default:
         return false;
@@ -395,7 +395,7 @@ export async function getUserFromSession(
   const memberships = await Membership.findAll({
     where: {
       userId: user.id,
-      role: { [Op.in]: ["admin", "builder", "user"] },
+      role: { [Op.in]: ["admin", "builder", "member"] },
     },
   });
   const workspaces = await Workspace.findAll({
@@ -434,7 +434,7 @@ export async function getUserFromSession(
         switch (m.role) {
           case "admin":
           case "builder":
-          case "user":
+          case "member":
             role = m.role;
             break;
           default:

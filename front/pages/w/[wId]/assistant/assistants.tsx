@@ -185,10 +185,10 @@ export default function PersonalAssistants({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent={
-        owner.role === "user" ? "conversations" : "assistants"
+        owner.role === "member" ? "conversations" : "assistants"
       }
       subNavigation={
-        owner.role === "user"
+        owner.role === "member"
           ? subNavigationConversations({
               owner,
               current: "personal_assistants",
@@ -199,7 +199,7 @@ export default function PersonalAssistants({
             })
       }
       navChildren={
-        owner.role === "user" && (
+        owner.role === "member" && (
           <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
         )
       }

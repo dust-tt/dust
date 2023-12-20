@@ -194,10 +194,10 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.role) {
         throw new Error("Missing --role argument");
       }
-      if (!["admin", "builder", "user"].includes(args.role)) {
+      if (!["admin", "builder", "member"].includes(args.role)) {
         throw new Error(`Invalid --role: ${args.role}`);
       }
-      const role = args.role as "admin" | "builder" | "user";
+      const role = args.role as "admin" | "builder" | "member";
 
       const w = await Workspace.findOne({
         where: {
@@ -233,10 +233,10 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.role) {
         throw new Error("Missing --role argument");
       }
-      if (!["admin", "builder", "user", "revoked"].includes(args.role)) {
+      if (!["admin", "builder", "member", "revoked"].includes(args.role)) {
         throw new Error(`Invalid --role: ${args.role}`);
       }
-      const role = args.role as "admin" | "builder" | "user" | "revoked";
+      const role = args.role as "admin" | "builder" | "member" | "revoked";
 
       const w = await Workspace.findOne({
         where: {

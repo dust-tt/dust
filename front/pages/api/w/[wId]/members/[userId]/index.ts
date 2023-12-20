@@ -82,7 +82,7 @@ async function handler(
       if (
         !req.body ||
         !req.body.role ||
-        !["admin", "builder", "user", "revoked"].includes(req.body.role)
+        !["admin", "builder", "member", "revoked"].includes(req.body.role)
       ) {
         return apiError(req, res, {
           status_code: 400,
@@ -108,7 +108,7 @@ async function handler(
       switch (req.body.role) {
         case "admin":
         case "builder":
-        case "user":
+        case "member":
           w.role = req.body.role;
           break;
         default:

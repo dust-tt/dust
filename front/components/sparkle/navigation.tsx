@@ -134,7 +134,7 @@ export const subNavigationConversations = ({
 
   // To be added for personal assistants view.
 
-  if (owner.role === "user") {
+  if (owner.role === "member") {
     nav.push({
       id: "assistants",
       label: null,
@@ -360,7 +360,7 @@ export const subNavigationApp = ({
   ];
 
   if (
-    owner.role === "user" ||
+    owner.role === "member" ||
     owner.role === "builder" ||
     owner.role === "admin"
   ) {

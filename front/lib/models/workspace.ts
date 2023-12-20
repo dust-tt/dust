@@ -84,7 +84,7 @@ export class Membership extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare role: "admin" | "builder" | "user" | "revoked";
+  declare role: "admin" | "builder" | "member" | "revoked" | "user";
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -109,6 +109,13 @@ Membership.init(
     role: {
       type: DataTypes.STRING,
       allowNull: false,
+      get() {
+        const rawValue = this.getDataValue("role");
+        if (rawValue === "user") {
+          return "member";
+        }
+        return rawValue;
+      },
     },
   },
   {

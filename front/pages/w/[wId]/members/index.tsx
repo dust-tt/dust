@@ -536,7 +536,7 @@ function ReinviteUserModal({
               setIsSaving(true);
               await handleMemberRoleChange({
                 member: user,
-                role: "user",
+                role: "member",
                 mutate,
                 sendNotification,
               });
@@ -843,7 +843,7 @@ function ChangeMemberModal({
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topLeft">
-                {["admin", "builder", "user"].map((role) => (
+                {["admin", "builder", "member"].map((role) => (
                   <DropdownMenu.Item
                     key={role}
                     onClick={() => setSelectedRole(role as RoleType)}
