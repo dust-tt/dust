@@ -26,3 +26,11 @@ export type DatabaseQueryParamsEvent = {
   messageId: string;
   action: DatabaseQueryActionType;
 };
+
+export type DatabaseQueryOutputEvent = {
+  type: "database_query_output";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DatabaseQueryActionType;
+};
