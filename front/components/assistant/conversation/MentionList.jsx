@@ -62,20 +62,19 @@ export const MentionList = forwardRef(function mentionList(props, ref) {
     <div className="overflow-y-auto rounded-xl border border-structure-100 bg-white shadow-xl flex flex-col gap-y-1 px-3 py-2">
       {props.items.length
         ? props.items.map((item, index) => (
-          <><div className="flex flex-initial items-center gap-x-2 py-1">
-         <Avatar size="xs" visual={item.pictureUrl} /><button
-            className={classNames(
-              "flex-initial text-sm font-semibold",
-              index === selectedIndex ? "text-action-500" : "text-element-900"
-            )}
-            key={index}
-            onClick={() => selectItem(index)}
-          >
+          <div className="flex flex-initial items-center gap-x-2 py-1" key={index}>
+            <Avatar size="xs" visual={item.pictureUrl} />
+            <button
+              className={classNames(
+                "flex-initial text-sm font-semibold",
+                index === selectedIndex ? "text-action-500" : "text-element-900"
+              )}
+              key={index}
+              onClick={() => selectItem(index)}
+            >
             {item.name}
-          </button>
-        </div>
-
-          </>
+            </button>
+          </div>
         ))
         : <div className="item">No result</div>
       }
