@@ -662,6 +662,9 @@ pub async fn streamed_chat_completion(
                         .unwrap_or_default();
 
                     match parts.len() {
+                        0 => {
+                            break 'stream;
+                        }
                         1 => (),
                         n => {
                             Err(anyhow!("Unexpected number of parts: {}", n))?;
