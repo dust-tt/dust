@@ -89,11 +89,10 @@ export function AssistantInputBar({
 
   // const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleSubmit = async (jsonPayload, resetEditorText) => {
-    // TODO: Only display in blue the CTA once the editor is not empty.
-    // if (empty) {
-    //   return;
-    // }
+  const handleSubmit = (isEmpty, jsonPayload, resetEditorText) => {
+    if (isEmpty) {
+      return;
+    }
 
     console.log(">>jsonPayload:", JSON.stringify(jsonPayload, null, 2));
 
@@ -292,7 +291,6 @@ export function AssistantInputBar({
                 allMentions={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
-                conversationId={conversationId}
                 selectedAssistant={selectedAssistant}
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}

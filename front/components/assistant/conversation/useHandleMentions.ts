@@ -1,91 +1,65 @@
 // useHandleMentions.js
-import { AgentMention, WorkspaceType } from "@dust-tt/types";
-import { Editor } from "@tiptap/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { AgentConfigurationType, AgentMention } from "@dust-tt/types";
+import { useEffect, useMemo, useRef } from "react";
 
-import { useAgentConfigurations } from "@app/lib/swr";
+import { EditorMention, EditorService } from "./useCustomEditor";
 
 const useHandleMentions = (
-  editor: Editor | null,
-  owner: WorkspaceType,
-  conversationId: string | null,
+  editorService: EditorService,
+  agentConfigurations: AgentConfigurationType[],
   stickyMentions: AgentMention[] | undefined,
   selectedAssistant: AgentMention | null
 ) => {
-  // TODO: Remove.
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: conversationId ? { conversationId } : "list",
-  });
+  const stickyMentionsTextContent = useRef<string | null>(null);
 
   // Memoize the mentioned agents to avoid unnecessary recalculations.
   const mentionedAgentConfigurationIds = useMemo(() => {
-    const mentions = stickyMentions?.length
-      ? stickyMentions
-      : [selectedAssistant].filter(Boolean);
-    return new Set(mentions.map((m) => m.configurationId));
+    let mentions: AgentMention[] = [];
+    if (stickyMentions?.length) {
+      mentions = stickyMentions;
+    } else if (selectedAssistant) {
+      mentions = [selectedAssistant];
+    }
+
+    return Array.from(new Set(mentions.map((m) => m.configurationId)));
   }, [stickyMentions, selectedAssistant]);
 
-  const stickyMentionsTextContent = useRef<string | null>(null);
+  useEffect(() => {
+    if (mentionedAgentConfigurationIds.length === 0) {
+      return;
+    }
 
-  // Function to insert mentions
-  // TODO: Move to a class/service.
-  const insertMentions = useCallback(() => {
-    if (editor) {
-      editor.commands.setContent("");
+    const editorIsEmpty = editorService.isEmpty();
+    const onlyContainsPreviousStickyMention =
+      !editorIsEmpty &&
+      editorService.getTrimmedText() === stickyMentionsTextContent.current;
+
+    // Insert sticky mentions under two conditions:
+    // 1. The editor is currently empty.
+    // 2. The editor contains only the sticky mention from a previously selected assistant.
+    // This ensures that sticky mentions are maintained but not duplicated.
+    if (editorIsEmpty || onlyContainsPreviousStickyMention) {
+      const mentionsToInsert: EditorMention[] = [];
+
       for (const configurationId of mentionedAgentConfigurationIds) {
         const agentConfiguration = agentConfigurations.find(
           (agent) => agent.sId === configurationId
         );
-
         if (agentConfiguration) {
-          editor
-            .chain()
-            .focus()
-            .insertContent({
-              type: "mention",
-              attrs: {
-                id: agentConfiguration.sId,
-                label: agentConfiguration.name,
-              },
-            })
-            .insertContent(" ")
-            .run(); // add an extra space after the mention
+          mentionsToInsert.push({
+            id: agentConfiguration.sId,
+            label: agentConfiguration.name,
+          });
         }
       }
-      // Move the cursor to the end of the editor content
-      editor.commands.focus("end");
+
+      if (mentionsToInsert.length !== 0) {
+        editorService.resetWithMentions(mentionsToInsert);
+        stickyMentionsTextContent.current =
+          editorService.getTrimmedText() ?? null;
+      }
     }
-  }, [editor, mentionedAgentConfigurationIds, agentConfigurations]);
-
-  useEffect(() => {
-    if (!stickyMentions?.length && !selectedAssistant) {
-      return;
-    }
-
-    // TODO: Change logic to use service.
-    const editorIsEmpty = editor?.isEmpty;
-    const hasContent = editorIsEmpty === false;
-    const textContentHasChanged =
-      hasContent &&
-      editor?.getText().trim() !== stickyMentionsTextContent.current;
-
-    if (textContentHasChanged) {
-      // Content has changed, we don't clear it (we preserve whatever the user typed)
-      return;
-    }
-
-    // Insert mentions if appropriate
-    insertMentions();
-
-    stickyMentionsTextContent.current = editor?.getText().trim() || null;
-  }, [
-    stickyMentions,
-    selectedAssistant,
-    mentionedAgentConfigurationIds,
-    editor,
-    insertMentions,
-  ]);
+  }, [agentConfigurations, editorService, mentionedAgentConfigurationIds]);
 };
 
 export default useHandleMentions;
