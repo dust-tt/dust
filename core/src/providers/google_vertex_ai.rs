@@ -663,6 +663,7 @@ pub async fn streamed_chat_completion(
 
                     match parts.len() {
                         0 => {
+                            completions.lock().push(completion);
                             break 'stream;
                         }
                         1 => (),
