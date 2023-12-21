@@ -180,7 +180,7 @@ export default function WorkspaceAssistants({
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Manage workspace assistants"
+          title="Manage Workspace Assistants"
           icon={RobotIcon}
           description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
         />

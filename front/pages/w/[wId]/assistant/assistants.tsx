@@ -127,7 +127,7 @@ export default function PersonalAssistants({
 
   const tabs = [
     {
-      label: "Personal",
+      label: "By Me/Teammates",
       href: `/w/${owner.sId}/assistant/assistants?view=personal`,
       current: view === "personal",
     },
@@ -246,7 +246,7 @@ export default function PersonalAssistants({
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Manage my assistants"
+          title="Manage Assistants"
           icon={RobotIcon}
           description="Manage your list of assistants, create and discover new ones."
         />
