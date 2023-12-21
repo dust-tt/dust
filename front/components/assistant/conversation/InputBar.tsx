@@ -34,7 +34,7 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, filterAndSortAgents } from "@app/lib/utils";
 
-import Tiptap from "./InputBarTipTap";
+import InputBarContainer from "./InputBarTipTap";
 
 // AGENT MENTION
 
@@ -347,12 +347,12 @@ export function AssistantInputBar({
                 </div>
               )}
 
-              <Tiptap
+              <InputBarContainer
                 assistants={activeAgents}
                 owner={owner}
                 conversationId={conversationId}
                 selectedAssistant={selectedAssistant}
-                onCTAClick={handleSubmit}
+                onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
                 disableAttachment={!!contentFragmentFilename}
