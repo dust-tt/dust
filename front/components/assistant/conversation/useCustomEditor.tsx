@@ -173,10 +173,6 @@ const useCustomEditor = ({
       enableInputRules: false, // Disable Markdown when typing.
       enablePasteRules: false, // Disable Markdown when pasting.
       extensions: [
-        // TODO: Consider,
-        // StarterKit.configure({
-        //   history: false,
-        // }),
         StarterKit.configure({
           heading: false,
         }),
@@ -203,10 +199,9 @@ const useCustomEditor = ({
     [getSuggestions]
   );
 
-  // Use the custom hook to get the editor service
   const editorService = useEditorService(editor);
 
-  // Expose the editor instance and the editor service
+  // Expose the editor instance and the editor service.
   return {
     editor,
     editorService,

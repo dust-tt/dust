@@ -1,4 +1,3 @@
-// useHandleMentions.js
 import { AgentConfigurationType, AgentMention } from "@dust-tt/types";
 import { useEffect, useMemo, useRef } from "react";
 
