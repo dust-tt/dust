@@ -27,11 +27,14 @@ use super::{
     },
 };
 
+// Disabled for now as it requires using a "tools" API which we don't support yet.
+pub const USE_FUNCTION_CALLING: bool = false;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageMetadata {
     prompt_token_count: usize,
-    candidates_token_count: usize,
+    candidates_token_count: Option<usize>,
     total_token_count: usize,
 }
 
@@ -51,10 +54,11 @@ impl TryFrom<&ChatMessage> for VertexAiFunctionResponse {
     type Error = anyhow::Error;
 
     fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
+        let name = m.name.clone().unwrap_or_default();
         Ok(VertexAiFunctionResponse {
-            name: m.name.clone().unwrap_or_default(),
+            name: name.clone(),
             response: VertexAiFunctionResponseContent {
-                name: String::from(""),
+                name: name,
                 content: m.content.clone().unwrap_or_default(),
             },
         })
@@ -101,7 +105,8 @@ impl TryFrom<&ChatMessage> for Content {
                 ChatMessageRole::Assistant => String::from("MODEL"),
                 ChatMessageRole::Function => match m.function_call {
                     // Role "function" is reserved for function responses.
-                    None => String::from("FUNCTION"),
+                    None if USE_FUNCTION_CALLING => String::from("FUNCTION"),
+                    None => String::from("USER"),
                     // Function calls are done as role "model".
                     Some(_) => String::from("MODEL"),
                 },
@@ -113,7 +118,7 @@ impl TryFrom<&ChatMessage> for Content {
                         "[user: SYSTEM] {}\n",
                         m.content.clone().unwrap_or(String::from(""))
                     )),
-                    _ => match m.name {
+                    ChatMessageRole::User => match m.name {
                         Some(ref name) => Some(format!(
                             "[user: {}] {}",
                             name,
@@ -121,13 +126,32 @@ impl TryFrom<&ChatMessage> for Content {
                         )),
                         None => Some(m.content.clone().unwrap_or(String::from(""))),
                     },
+                    ChatMessageRole::Function if USE_FUNCTION_CALLING => None,
+                    ChatMessageRole::Function => match m.name {
+                        Some(ref name) => Some(format!(
+                            "[function_result: {}] {}",
+                            name,
+                            m.content.clone().unwrap_or(String::from(""))
+                        )),
+                        None => Some(format!(
+                            "[function_result] {}",
+                            m.content.clone().unwrap_or(String::from(""))
+                        )),
+                    },
+                    ChatMessageRole::Assistant => {
+                        Some(m.content.clone().unwrap_or(String::from("")))
+                    }
                 },
                 function_call: match m.function_call.clone() {
-                    Some(function_call) => VertexAiFunctionCall::try_from(&function_call).ok(),
-                    None => None,
+                    Some(function_call) if USE_FUNCTION_CALLING => {
+                        VertexAiFunctionCall::try_from(&function_call).ok()
+                    }
+                    _ => None,
                 },
                 function_response: match m.role {
-                    ChatMessageRole::Function => VertexAiFunctionResponse::try_from(m).ok(),
+                    ChatMessageRole::Function if USE_FUNCTION_CALLING => {
+                        VertexAiFunctionResponse::try_from(m).ok()
+                    }
                     _ => None,
                 },
             }],
@@ -145,7 +169,7 @@ pub struct Candidate {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Completion {
-    candidates: Vec<Candidate>,
+    candidates: Option<Vec<Candidate>>,
     usage_metadata: Option<UsageMetadata>,
 }
 
@@ -349,10 +373,16 @@ impl LLM for GoogleVertexAiLLM {
             provider: ProviderID::GoogleVertexAi.to_string(),
             model: self.id().clone(),
             completions: vec![Tokens {
-                text: c.candidates[0].content.parts[0]
-                    .text
-                    .clone()
-                    .unwrap_or_default(),
+                text: match c.candidates {
+                    None => String::from(""),
+                    Some(candidates) => match candidates.len() {
+                        0 => String::from(""),
+                        _ => candidates[0].content.parts[0]
+                            .text
+                            .clone()
+                            .unwrap_or_default(),
+                    },
+                },
                 tokens: Some(vec![]),
                 logprobs: Some(vec![]),
                 top_logprobs: None,
@@ -392,10 +422,12 @@ impl LLM for GoogleVertexAiLLM {
         }
 
         if functions.len() > 0 || function_call.is_some() {
-            Err(anyhow!(
-                "Functions on Google Vertex AI are not implemented yet."
-            ))?;
+            if USE_FUNCTION_CALLING {
+                unimplemented!("Functions on Google Vertex AI are not implemented yet.");
+            }
+            Err(anyhow!("Functions on Google Vertex AI are disabled."))?;
         }
+
         if frequency_penalty.is_some() {
             Err(anyhow!(
                 "Frequency penalty not supported by Google Vertex AI"
@@ -440,7 +472,18 @@ impl LLM for GoogleVertexAiLLM {
                 name: None,
                 function_call: None,
                 role: ChatMessageRole::Assistant,
-                content: c.candidates[0].content.parts[0].text.clone(),
+                content: match c.candidates {
+                    None => None,
+                    Some(candidates) => match candidates.len() {
+                        0 => None,
+                        _ => Some(
+                            candidates[0].content.parts[0]
+                                .text
+                                .clone()
+                                .unwrap_or_default(),
+                        ),
+                    },
+                },
             }],
         })
     }
@@ -473,15 +516,18 @@ pub async fn streamed_chat_completion(
         .collect::<Result<Vec<()>>>()?;
 
     // Squash user messages.
-    // Gemini doesn't allow multiple user messages in a row.
+    // Gemini doesn't allow multiple user or assistant messages in a row.
     let messages: Vec<Content> = messages
         .iter()
         .fold(
-            // First we merge consecutive user messages by making them a multi-part message.
+            // First we merge consecutive user/assistant messages by making them a multi-part message.
             Vec::<Content>::new(),
             |mut acc: Vec<Content>, m: &Content| {
                 match acc.last_mut() {
-                    Some(last) if last.role == m.role && m.role == "USER" => {
+                    Some(last)
+                        if last.role == m.role
+                            && ["MODEL", "USER"].contains(&m.role.to_uppercase().as_str()) =>
+                    {
                         last.parts.push(Part {
                             text: m.parts[0].text.clone(),
                             function_call: None,
@@ -497,8 +543,8 @@ pub async fn streamed_chat_completion(
         )
         .iter()
         // Then we squash the parts together.
-        .map(|m| match m.role.as_str() {
-            "USER" => Content {
+        .map(|m| match m.role.to_uppercase().as_str() {
+            "USER" | "MODEL" => Content {
                 role: m.role.clone(),
                 parts: vec![Part {
                     text: Some(
@@ -577,23 +623,29 @@ pub async fn streamed_chat_completion(
                 }
                 Some(es::SSE::Event(e)) => {
                     let completion: Completion = serde_json::from_str(e.data.as_str())?;
-                    if completion.candidates.len() != 1 {
-                        Err(anyhow!(
-                            "Unexpected number of candidates: {}",
-                            completion.candidates.len()
-                        ))?;
-                    }
-                    if completion.candidates[0].content.parts.len() != 1 {
-                        Err(anyhow!(
-                            "Unexpected number of parts: {}",
-                            completion.candidates[0].content.parts.len()
-                        ))?;
-                    }
+                    let completion_candidates = completion.candidates.clone().unwrap_or_default();
+
+                    match completion_candidates.len() {
+                        0 => {
+                            break 'stream;
+                        }
+                        1 => (),
+                        n => {
+                            Err(anyhow!("Unexpected number of candidates: {}", n))?;
+                        }
+                    };
+
+                    match completion_candidates[0].content.parts.len() {
+                        1 => (),
+                        n => {
+                            Err(anyhow!("Unexpected number of parts: {}", n))?;
+                        }
+                    };
 
                     match event_sender.as_ref() {
                         Some(sender) => {
                             // let text = completion.candidates[0].content.parts[0].text.clone();
-                            match completion.candidates[0].content.parts[0].text.clone() {
+                            match completion_candidates[0].content.parts[0].text.clone() {
                                 Some(t) => {
                                     if t.len() > 0 {
                                         let _ = sender.send(json!({
@@ -606,7 +658,8 @@ pub async fn streamed_chat_completion(
                                 }
                                 None => (),
                             }
-                            match completion.candidates[0].content.parts[0]
+
+                            match completion_candidates[0].content.parts[0]
                                 .function_call
                                 .clone()
                             {
@@ -627,8 +680,9 @@ pub async fn streamed_chat_completion(
                                 None => (),
                             }
                         }
+
                         _ => (),
-                    }
+                    };
 
                     completions.lock().push(completion);
                 }
@@ -646,47 +700,135 @@ pub async fn streamed_chat_completion(
         }
     }
 
-    let candidate = completions.lock()[0].candidates[0].clone();
     let completions_lock = completions.lock();
 
-    Ok(Completion {
-        candidates: vec![Candidate {
-            content: Content {
-                role: candidate.content.role.clone(),
-                parts: vec![completions_lock.iter().fold(
-                    Part {
-                        text: None,
-                        function_call: None,
-                        function_response: None,
-                    },
-                    |mut acc, c| {
-                        // If there is text, we merge it.
-                        if c.candidates[0].content.parts[0].text.is_some() {
-                            acc.text = c.candidates[0].content.parts[0].text.clone();
-                        }
-                        // If there is a function call, we use the name if we don't have one,
-                        // and we append the arguments.
-                        if let Some(f) = c.candidates[0].content.parts[0].function_call.clone() {
-                            let mut function_call = acc.function_call.clone().unwrap_or(f.clone());
-                            if function_call.name.len() == 0 {
-                                function_call.name = f.name.clone();
-                            }
-                            if f.args.len() > 0 {
-                                function_call.args.push_str(format!(" {}", f.args).as_str());
-                            }
-                            acc.function_call = function_call.into();
-                        }
+    // Sometimes (usually when last message is Assistant), the AI decides not to respond.
+    if completions_lock.len() == 0 {
+        return Ok(Completion {
+            candidates: None,
+            usage_metadata: None,
+        });
+    }
 
-                        acc
-                    },
-                )],
+    // Ensure that we don't have a mix of `function_call` and `text` in the same completion.
+    // Ensure that all the roles are "MODEL"
+    // We merge all the completions texts together.
+    let mut full_completion_text = String::from("");
+    let mut function_call_name = String::from("");
+    let mut function_call_args = String::from("");
+    let mut finish_reason = String::from("");
+    let mut usage_metadata = UsageMetadata {
+        prompt_token_count: 0,
+        candidates_token_count: None,
+        total_token_count: 0,
+    };
+    for c in completions_lock.iter() {
+        match &c.usage_metadata {
+            None => (),
+            Some(um) => {
+                usage_metadata.prompt_token_count = um.prompt_token_count;
+                usage_metadata.candidates_token_count = um.candidates_token_count;
+                usage_metadata.total_token_count = um.total_token_count;
+            }
+        }
+        match &c.candidates {
+            None => (),
+            Some(candidates) => match candidates.len() {
+                0 => (),
+                1 => {
+                    match candidates[0].content.role.to_uppercase().as_str() {
+                        "MODEL" => (),
+                        _ => Err(anyhow!(format!(
+                            "Unexpected role in completion: {}",
+                            candidates[0].content.role
+                        )))?,
+                    };
+                    match &candidates[0].finish_reason {
+                        None => (),
+                        Some(r) => {
+                            match finish_reason.len() {
+                                0 => finish_reason = r.clone(),
+                                _ => Err(anyhow!("Unexpected finish reason"))?,
+                            };
+                        }
+                    }
+                    match candidates[0].content.parts.len() {
+                        0 => (),
+                        1 => {
+                            match candidates[0].content.parts[0].text.clone() {
+                                Some(t) => {
+                                    if function_call_name.len() > 0 || function_call_args.len() > 0
+                                    {
+                                        Err(anyhow!("Unexpected text in function call"))?;
+                                    }
+                                    full_completion_text.push_str(t.as_str());
+                                }
+                                None => (),
+                            };
+                            match candidates[0].content.parts[0].function_call.clone() {
+                                Some(f) => {
+                                    if full_completion_text.len() > 0 {
+                                        Err(anyhow!("Unexpected function call in text"))?;
+                                    }
+                                    match f.name.len() {
+                                        0 => (),
+                                        _ if function_call_name.is_empty() => {
+                                            function_call_name = f.name.clone();
+                                        }
+                                        _ => {
+                                            if function_call_name != f.name {
+                                                Err(anyhow!("Function call name mismatch"))?;
+                                            }
+                                        }
+                                    }
+                                    match f.args.len() {
+                                        0 => (),
+                                        _ if function_call_args.is_empty() => {
+                                            function_call_args.push_str(f.args.as_str());
+                                        }
+                                        _ => (),
+                                    }
+                                }
+                                None => (),
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                _ => Err(anyhow!("Unexpected number of candidates"))?,
             },
-            finish_reason: completions_lock
-                .iter()
-                .find_map(|c| c.candidates[0].finish_reason.clone()),
-        }],
-        usage_metadata: completions_lock
-            .iter()
-            .find_map(|c| c.usage_metadata.clone()),
+        }
+    }
+
+    if finish_reason.len() == 0 {
+        Err(anyhow!("No finish reason"))?;
+    }
+
+    if function_call_name.len() == 0 && full_completion_text.len() == 0 {
+        Err(anyhow!("No text and no function call"))?;
+    }
+
+    Ok(Completion {
+        candidates: Some(vec![Candidate {
+            content: Content {
+                role: String::from("MODEL"),
+                parts: vec![Part {
+                    text: match full_completion_text.len() {
+                        0 => None,
+                        _ => Some(full_completion_text),
+                    },
+                    function_call: match function_call_name.len() {
+                        0 => None,
+                        _ => Some(VertexAiFunctionCall {
+                            name: function_call_name,
+                            args: function_call_args,
+                        }),
+                    },
+                    function_response: None,
+                }],
+            },
+            finish_reason: Some(finish_reason),
+        }]),
+        usage_metadata: Some(usage_metadata),
     })
 }
