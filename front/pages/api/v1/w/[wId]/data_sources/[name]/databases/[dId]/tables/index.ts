@@ -1,4 +1,4 @@
-import { CoreAPI, CoreAPIDatabaseTable } from "@dust-tt/types";
+import { CoreAPI, CoreAPIDatabase, CoreAPIDatabaseTable } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -6,12 +6,13 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type ListDatabaseTablesResponseBody = {
+  database: CoreAPIDatabase;
   tables: CoreAPIDatabaseTable[];
 };
 
@@ -53,7 +54,7 @@ async function handler(
     });
   }
 
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  if (!isActivatedStructuredDB(owner)) {
     res.status(404).end();
     return;
   }
@@ -106,9 +107,9 @@ async function handler(
         });
       }
 
-      const { tables } = tablesRes.value;
+      const { database, tables } = tablesRes.value;
 
-      return res.status(200).json({ tables });
+      return res.status(200).json({ database, tables });
 
     case "POST":
       const bodyValidation = UpsertDatabaseTableRequestBodySchema.decode(

@@ -4,11 +4,11 @@ import {
   ClipboardIcon,
   CloudArrowDownIcon,
   CommandLineIcon,
-  DashIcon,
   Modal,
   PlusIcon,
   ServerIcon,
   TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
   AgentUserListStatus,
@@ -30,12 +30,11 @@ import Link from "next/link";
 import { useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useApp, useDatabase } from "@app/lib/swr";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
-
-import { DeleteAssistantDialog } from "./AssistantActions";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
@@ -296,7 +295,11 @@ function ButtonsSection({
       });
     } else {
       sendNotification({
-        title: `Assistant ${listStatus === "in-list" ? "added" : "removed"}`,
+        title: `Assistant ${
+          listStatus === "in-list"
+            ? "added to your list"
+            : "removed from your list"
+        }`,
         type: "success",
       });
       onUpdate();
@@ -305,30 +308,31 @@ function ButtonsSection({
     setIsAddingOrRemoving(false);
     onClose();
   };
-
   return (
     <Button.List className="flex items-center justify-end gap-1">
-      <Link
-        href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
-      >
-        <Button
-          label={isDuplicating ? "Duplicating..." : "Duplicate"}
-          disabled={isDuplicating}
-          variant="tertiary"
-          icon={ClipboardIcon}
-          size="xs"
-          onClick={async () => {
-            setIsDuplicating(true);
-          }}
-        />
-      </Link>
+      {flow === "personal" && (
+        <Link
+          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+        >
+          <Button
+            label={isDuplicating ? "Duplicating..." : "Duplicate"}
+            disabled={isDuplicating}
+            variant="tertiary"
+            icon={ClipboardIcon}
+            size="xs"
+            onClick={async () => {
+              setIsDuplicating(true);
+            }}
+          />
+        </Link>
+      )}
       {canAddRemoveList &&
         (agentConfiguration.userListStatus === "in-list" ? (
           <Button
             label={isAddingOrRemoving ? "Removing..." : "Remove from my list"}
             disabled={isAddingOrRemoving}
             variant="tertiary"
-            icon={DashIcon}
+            icon={XMarkIcon}
             size="xs"
             onClick={async () => {
               await updateAgentUserListStatus("not-in-list");

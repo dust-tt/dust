@@ -9,14 +9,15 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const CreateDatabaseFromCsvSchema = t.type({
-  name: t.string,
-  description: t.string,
+  databaseName: t.string,
+  tableName: t.string,
+  tableDescription: t.string,
   csv: t.string,
 });
 
@@ -49,7 +50,7 @@ async function handler(
     });
   }
 
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  if (!isActivatedStructuredDB(owner)) {
     res.status(404).end();
     return;
   }
@@ -79,7 +80,8 @@ async function handler(
         });
       }
 
-      const { name, description, csv } = bodyValidation.right;
+      const { databaseName, tableName, tableDescription, csv } =
+        bodyValidation.right;
       const csvRowsRes = await rowsFromCsv(csv);
       if (csvRowsRes.isErr()) {
         return apiError(req, res, {
@@ -89,11 +91,11 @@ async function handler(
       }
 
       const csvRows = csvRowsRes.value;
-      if (csvRows.length > 2000) {
+      if (csvRows.length > 50000) {
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `CSV has too many rows: ${csvRows.length} (max 2000).`,
+            message: `CSV has too many rows: ${csvRows.length} (max 50000).`,
           },
           status_code: 400,
         });
@@ -105,14 +107,14 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
-        name,
+        name: databaseName,
       });
       if (dbRes.isErr()) {
         logger.error(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
+            databaseName: databaseName,
             databaseId: id,
             error: dbRes.error,
           },
@@ -134,8 +136,8 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         databaseId: id,
-        description,
-        name: name,
+        description: tableDescription,
+        name: tableName,
         tableId,
       });
 
@@ -144,10 +146,10 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
+            databaseName,
             databaseId: id,
             tableId,
-            tableName: name,
+            tableName,
             error: tableRes.error,
           },
           "Failed to upsert database table."
@@ -175,10 +177,10 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
+            databaseName,
             databaseId: id,
             tableId,
-            tableName: name,
+            tableName,
             error: rowsRes.error,
           },
           "Failed to upsert database rows."
@@ -301,10 +303,11 @@ async function rowsFromCsv(
     parsedValuesByCol[col] = (() => {
       for (const parser of [
         // number
-        (v: string) => (isNaN(parseFloat(v)) ? undefined : parseFloat(v)),
+        (v: string) =>
+          /^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v.trim()) : undefined,
         // date/datetime
         (v: string) => {
-          const date = new Date(v);
+          const date = new Date(v.trim());
           const epoch = date.getTime();
           return isNaN(epoch)
             ? undefined
@@ -360,7 +363,8 @@ async function rowsFromCsv(
   for (let i = 0; i < nbRows; i++) {
     const record = header.reduce((acc, h) => {
       const parsedValues = parsedValuesByCol[h];
-      acc[h] = parsedValues && parsedValues[i] ? parsedValues[i] : "";
+      acc[h] =
+        parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
       return acc;
     }, {} as Record<string, RowValue>);
 

@@ -84,7 +84,7 @@ export const getServerSideProps: GetServerSideProps<{
   };
 };
 
-export default function DataSourceUpsert({
+export default function DatasourceUpsert({
   user,
   owner,
   subscription,

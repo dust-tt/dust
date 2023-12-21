@@ -556,7 +556,6 @@ export async function getAgentConfigurations(
 
   throw new Error(`Unknown agentsGetView ${agentsGetView}`);
 }
-
 async function getConversationMentions(
   conversationId: string
 ): Promise<AgentMention[]> {
@@ -587,6 +586,29 @@ async function getConversationMentions(
   return mentions.map((m) => ({
     configurationId: m.agentConfigurationId as string,
   }));
+}
+
+/**
+ *  Return names of all agents in the workspace, to avoid name collisions.
+ */
+export async function getAgentNames(auth: Authenticator): Promise<string[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  if (!auth.isUser()) {
+    throw new Error("Unexpected `auth` from outside workspace.");
+  }
+
+  const agents = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: "active",
+    },
+    attributes: ["name"],
+  });
+
+  return agents.map((a) => a.name);
 }
 
 /**

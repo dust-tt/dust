@@ -5,6 +5,7 @@ import {
   ConversationType,
   DatabaseQueryActionType,
   DatabaseQueryErrorEvent,
+  DatabaseQueryOutputEvent,
   DatabaseQueryParamsEvent,
   DatabaseQuerySuccessEvent,
   DustProdActionRegistry,
@@ -119,7 +120,10 @@ export async function* runDatabaseQuery({
   userMessage: UserMessageType;
   agentMessage: AgentMessageType;
 }): AsyncGenerator<
-  DatabaseQueryErrorEvent | DatabaseQuerySuccessEvent | DatabaseQueryParamsEvent
+  | DatabaseQueryErrorEvent
+  | DatabaseQuerySuccessEvent
+  | DatabaseQueryParamsEvent
+  | DatabaseQueryOutputEvent
 > {
   // Checking authorizations
   const owner = auth.workspace();
@@ -282,8 +286,36 @@ export async function* runDatabaseQuery({
         return;
       }
 
+      if (event.content.block_name === "SQL") {
+        let tmpOutput = null;
+        if (e.value) {
+          const sql = e.value as string;
+          tmpOutput = { query: sql };
+        } else {
+          tmpOutput = { no_query: true };
+        }
+        yield {
+          type: "database_query_output",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          action: {
+            id: action.id,
+            type: "database_query_action",
+            dataSourceWorkspaceId: action.dataSourceWorkspaceId,
+            dataSourceId: action.dataSourceId,
+            databaseId: action.databaseId,
+            params: action.params,
+            output: tmpOutput,
+          },
+        };
+      }
+
       if (event.content.block_name === "OUTPUT" && e.value) {
         output = JSON.parse(e.value as string);
+        if (!output.query) {
+          output.no_query = true;
+        }
       }
     }
   }

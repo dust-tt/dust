@@ -124,7 +124,7 @@ export async function getMembers(
       fullName: u.firstName + (u.lastName ? ` ${u.lastName}` : ""),
       firstName: u.firstName,
       lastName: u.lastName,
-      image: null,
+      image: u.imageUrl,
       workspaces: [{ ...owner, role }],
     };
   });

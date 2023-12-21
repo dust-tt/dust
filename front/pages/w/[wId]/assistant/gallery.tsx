@@ -111,17 +111,17 @@ export default function AssistantsGallery({
       current: agentsGetView === "all",
     },
     {
-      label: "From Workspace",
+      label: "By Workspace",
       href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
       current: agentsGetView === "workspace",
     },
     {
-      label: "From Teammates",
+      label: "By Teammates",
       href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
       current: agentsGetView === "published",
     },
     {
-      label: "From Dust",
+      label: "By Dust",
       href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
       current: agentsGetView === "global",
     },
@@ -141,7 +141,9 @@ export default function AssistantsGallery({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title="Assistant Gallery"
+          title={`${
+            flow === "workspace_add" ? "Workspace " : ""
+          }Assistant Gallery`}
           onClose={async () => {
             switch (flow) {
               case "conversation_add":
@@ -179,7 +181,7 @@ export default function AssistantsGallery({
           <Tab tabs={tabs} />
           <Searchbar
             name="search"
-            placeholder="Search Assistants"
+            placeholder="Assistant name"
             value={assistantSearch}
             onChange={(s) => {
               setAssistantSearch(s);
