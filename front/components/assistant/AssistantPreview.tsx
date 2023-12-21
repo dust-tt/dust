@@ -258,27 +258,7 @@ export function AssistantPreview({
         break;
       case "workspace":
         galleryChip = agentConfiguration.scope === "workspace" && (
-          <div className="group">
-            <Chip
-              color="emerald"
-              size="xs"
-              label="Added"
-              className="group-hover:hidden"
-            />
-            <div className="hidden group-hover:block">
-              <Button.List isWrapping={true}>
-                <Button
-                  key="workspace_remove"
-                  variant="tertiary"
-                  icon={DashIcon}
-                  disabled={isUpdatingList}
-                  size="xs"
-                  label={"Remove from Workspace"}
-                  onClick={() => updateWorkspaceScope("published")}
-                />
-              </Button.List>
-            </div>
-          </div>
+          <Chip color="emerald" size="xs" label="Added" />
         );
         break;
       default:
