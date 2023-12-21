@@ -346,7 +346,7 @@ export default function WorkspaceAdmin({
                         color={COLOR_FOR_ROLE[item.workspaces[0].role]}
                         className="capitalize"
                       >
-                        {item.workspaces[0].role}
+                        {displayRole(item.workspaces[0].role)}
                       </Chip>
                     )}
                   </div>
@@ -836,7 +836,11 @@ function ChangeMemberModal({
               <DropdownMenu.Button type="select">
                 <Button
                   variant="secondary"
-                  label={selectedRole || member.workspaces[0].role}
+                  label={
+                    selectedRole
+                      ? displayRole(selectedRole)
+                      : displayRole(member.workspaces[0].role)
+                  }
                   size="sm"
                   type="select"
                   className="capitalize"
@@ -916,4 +920,8 @@ function ChangeMemberModal({
       </Modal>
     </Modal>
   );
+}
+
+function displayRole(role: RoleType): string {
+  return role === "user" ? "member" : role;
 }
