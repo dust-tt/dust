@@ -91,11 +91,11 @@ async function handler(
       }
 
       const csvRows = csvRowsRes.value;
-      if (csvRows.length > 2000) {
+      if (csvRows.length > 50000) {
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `CSV has too many rows: ${csvRows.length} (max 2000).`,
+            message: `CSV has too many rows: ${csvRows.length} (max 50000).`,
           },
           status_code: 400,
         });
