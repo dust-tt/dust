@@ -36,6 +36,7 @@ export class MATH extends Dataset {
         d[e.type][e.level] = [];
       }
       d[e.type][e.level].push(e);
+      // console.log(e.reasoning.length);
     }
 
     return d;
@@ -69,30 +70,47 @@ export class MATH extends Dataset {
   }
 
   instructions(): string {
-    return `Find a solution to the provided mathematical problem below.`;
+    return (
+      "Find a solution to the provided mathematical problem." +
+      " The answer is a unique mathematical expression presented in LaTeX `\\boxed{}` directive. " +
+      " (example: `\\boxed{4}` or `\\boxed{3\\pi}`). Formatting instructions:" +
+      " fractions should be represented in the LaTeX form `\\frac{a}{b}` (not `\\frac12`)," +
+      " units should not be included," +
+      " square roots should be presented in the LaTeX form `\\sqrt{c}` (not `\\sqrt2`)," +
+      " all spaces and non critical parentheses or formatting should be stripped," +
+      " rational numbers should be presented with a leading `0`."
+    );
   }
 
   reasoningStepInstructions(): string {
-    return `A reasoning step is one coherent step of mathematical reasoning it should held in one line.`;
+    return (
+      "A reasoning step is one coherent step of mathematical reasoning. It should hold in one line" +
+      " of at most 500 characters." +
+      " If an answer is reached as part of the reasoning, it should be included" +
+      " in the reasoning step using the `\\boxed{}` directive."
+    );
   }
 
-  answerInstructions(): string {
+  rankingInstructions(): string {
     return (
-      ` The answer is a unique mathematical expression presented in a LaTeX '\\boxed' directive` +
-      ` (eg: \\boxed{4} or \\boxed{3\\pi}). Formatting instructions:` +
-      ` fractions should be represented in the LaTeX form \\frac{a}{b} (not \\frac12),` +
-      ` units should not be included,` +
-      ` square roots should be presented in the LaTeX form \\sqrt{c} (not \\sqrt2),` +
-      ` all spaces and non critical parentheses or formatting should be stripped,` +
-      ` rational numbers should be presented with a leading 0.`
+      "- Each reasoning step should be mathetically correct, a reasoning with an incorrect step should be down-ranked.\n" +
+      "- Reasonings should be concise. If a reasoning is too verbose it should be down-ranked.\n" +
+      "- If a reasoning seems to explore a promising new direciton, it should be up-ranked.\n"
     );
+  }
+
+  parseAnswer(str: string): string {
+    const boxed = str.match(/\\boxed{([^}]*)}/g);
+    if (!boxed) {
+      return "";
+    }
+    return boxed[boxed.length - 1].trim();
   }
 
   maxTokens() {
     return {
-      resaoningStep: 512,
-      reasoning: 3584,
-      answer: 64,
+      reasoningStep: 256,
+      maxStepCount: 16,
     };
   }
 
@@ -158,23 +176,3 @@ export class MATH extends Dataset {
     return answer === truth;
   }
 }
-
-// async function main() {
-//   const d = new MATH();
-//   await d.load();
-//   const test = d.tests({ count: 1 });
-//   const train = d.examples({ problem: test[0].id, count: 1, iteration: 0 });
-//
-//   console.log(train[0]);
-//
-//   console.log(
-//     await d.check({
-//       test: { id: test[0].id, question: test[0].question },
-//       answer: "\\boxed{x \\in [-2,7]}",
-//     })
-//   );
-// }
-//
-// main()
-//   .then(() => console.log("Done"))
-//   .catch(console.error);

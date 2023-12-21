@@ -24,13 +24,14 @@ export abstract class Dataset {
 
   abstract instructions(): string;
   abstract reasoningStepInstructions(): string;
-  abstract answerInstructions(): string;
+  abstract rankingInstructions(): string;
 
   abstract maxTokens(): {
-    resaoningStep: number | null;
-    reasoning: number | null;
-    answer: number | null;
+    reasoningStep: number;
+    maxStepCount: number;
   };
+
+  abstract parseAnswer(str: string): string;
 
   abstract tests({ count }: { count: number }): Test[];
 

@@ -5,7 +5,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
@@ -45,7 +45,7 @@ async function handler(
     });
   }
 
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  if (!isActivatedStructuredDB(owner)) {
     res.status(404).end();
     return;
   }
@@ -112,9 +112,7 @@ async function handler(
         });
       }
 
-      const { databases } = getRes.value;
-
-      return res.status(200).json({ databases });
+      return res.status(200).json(getRes.value);
 
     default:
       return apiError(req, res, {

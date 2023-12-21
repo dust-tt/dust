@@ -10,8 +10,10 @@ import {
   PencilSquareIcon,
   PlusIcon,
   Popup,
+  ServerIcon,
   SlackLogo,
   SliderToggle,
+  Tab,
 } from "@dust-tt/sparkle";
 import {
   ConnectorProvider,
@@ -42,8 +44,13 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
-import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
+import {
+  useConnectorBotEnabled,
+  useDatabases,
+  useDocuments,
+} from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -153,6 +160,112 @@ function StandardDataSourceView({
   readOnly: boolean;
   dataSource: DataSourceType;
 }) {
+  const router = useRouter();
+  const [currentTab, setCurrentTab] = useState("Documents");
+
+  useEffect(() => {
+    if (router.query.tab === "databases") {
+      setCurrentTab("Databases");
+      const newQuery = { ...router.query };
+      delete newQuery.tab;
+      void router.replace(
+        {
+          pathname: router.pathname,
+          query: newQuery,
+        },
+        undefined,
+        { shallow: true } // no reload
+      );
+    }
+  }, [router]);
+
+  const isActivatedSDB = isActivatedStructuredDB(owner);
+
+  return (
+    <div className="pt-6">
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.SectionHeader
+          title={`Folder ${dataSource.name}`}
+          description={
+            isActivatedSDB
+              ? "Use this page to view and upload documents and databases to your Folder."
+              : "Use this page to view and upload documents to your Folder."
+          }
+          action={
+            readOnly
+              ? undefined
+              : {
+                  label: "Settings",
+                  variant: "tertiary",
+                  icon: Cog6ToothIcon,
+                  onClick: () => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
+                    );
+                  },
+                }
+          }
+        />
+
+        {isActivatedSDB && (
+          <Tab
+            tabs={[
+              {
+                label: "Documents",
+                current: currentTab === "Documents",
+              },
+              {
+                label: "Databases",
+                current: currentTab === "Databases",
+              },
+            ]}
+            onTabClick={(tab) => {
+              if (tab === currentTab) return;
+              if (tab === "Documents") {
+                setCurrentTab("Documents");
+              } else if (tab === "Databases") {
+                setCurrentTab("Databases");
+              }
+            }}
+          />
+        )}
+
+        {currentTab === "Documents" && (
+          <DatasourceDocumentsTabView
+            owner={owner}
+            plan={plan}
+            readOnly={readOnly}
+            dataSource={dataSource}
+            router={router}
+          />
+        )}
+
+        {currentTab === "Databases" && (
+          <DatasourceDatabasesTabView
+            owner={owner}
+            readOnly={readOnly}
+            dataSource={dataSource}
+            router={router}
+          />
+        )}
+      </Page.Vertical>
+    </div>
+  );
+}
+
+function DatasourceDocumentsTabView({
+  owner,
+  plan,
+  readOnly,
+  dataSource,
+  router,
+}: {
+  owner: WorkspaceType;
+  plan: PlanType;
+  readOnly: boolean;
+  dataSource: DataSourceType;
+  router: ReturnType<typeof useRouter>;
+}) {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
@@ -163,8 +276,6 @@ function StandardDataSourceView({
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
-
-  const router = useRouter();
 
   useEffect(() => {
     if (!isDocumentsLoading && !isDocumentsError) {
@@ -189,27 +300,171 @@ function StandardDataSourceView({
   }
 
   return (
-    <div className="pt-6">
-      <Page.Vertical align="stretch">
-        <Page.SectionHeader
-          title={`Folder ${dataSource.name}`}
-          description="Use this page to view and upload documents to your Folder."
-          action={
-            readOnly
-              ? undefined
-              : {
-                  label: "Settings",
-                  variant: "tertiary",
-                  icon: Cog6ToothIcon,
-                  onClick: () => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
-                    );
-                  },
-                }
-          }
-        />
+    <Page.Vertical align="stretch">
+      <div className="mt-16 flex flex-row">
+        <div className="flex flex-1">
+          <div className="flex flex-col">
+            <div className="flex flex-row">
+              <div className="flex flex-initial gap-x-2">
+                <Button
+                  variant="tertiary"
+                  disabled={offset < limit}
+                  onClick={() => {
+                    if (offset >= limit) {
+                      setOffset(offset - limit);
+                    } else {
+                      setOffset(0);
+                    }
+                  }}
+                  label="Previous"
+                />
+                <Button
+                  variant="tertiary"
+                  label="Next"
+                  disabled={offset + limit >= total}
+                  onClick={() => {
+                    if (offset + limit < total) {
+                      setOffset(offset + limit);
+                    }
+                  }}
+                />
+              </div>
+            </div>
 
+            <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+              {total > 0 && (
+                <span>
+                  Showing documents {offset + 1} - {last} of {total} documents
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {readOnly ? null : (
+          <div className="">
+            <div className="relative mt-0 flex-none">
+              <Popup
+                show={showDocumentsLimitPopup}
+                chipLabel={`${plan.name} plan`}
+                description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
+                buttonLabel="Check Dust plans"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                onClose={() => {
+                  setShowDocumentsLimitPopup(false);
+                }}
+                className="absolute bottom-8 right-0"
+              />
+
+              <Button
+                variant="primary"
+                icon={PlusIcon}
+                label="Add document"
+                onClick={() => {
+                  // Enforce plan limits: DataSource documents count.
+                  if (
+                    plan.limits.dataSources.documents.count != -1 &&
+                    total >= plan.limits.dataSources.documents.count
+                  ) {
+                    setShowDocumentsLimitPopup(true);
+                  } else {
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
+                    );
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="py-8">
+        <ContextItem.List>
+          {documents.map((d) => (
+            <ContextItem
+              key={d.document_id}
+              title={displayNameByDocId[d.document_id]}
+              visual={
+                <ContextItem.Visual
+                  visual={({ className }) =>
+                    DocumentTextIcon({
+                      className: className + " text-element-600",
+                    })
+                  }
+                />
+              }
+              action={
+                <Button.List>
+                  <Button
+                    variant="secondary"
+                    icon={PencilSquareIcon}
+                    onClick={() => {
+                      void router.push(
+                        `/w/${owner.sId}/builder/data-sources/${
+                          dataSource.name
+                        }/upsert?documentId=${encodeURIComponent(
+                          d.document_id
+                        )}`
+                      );
+                    }}
+                    label="Edit"
+                    labelVisible={false}
+                  />
+                </Button.List>
+              }
+            >
+              <ContextItem.Description>
+                <div className="pt-2 text-sm text-element-700">
+                  {Math.floor(d.text_size / 1024)} kb,{" "}
+                  {timeAgoFrom(d.timestamp)} ago
+                </div>
+              </ContextItem.Description>
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+        {documents.length == 0 ? (
+          <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+            <p>No documents found for this Folder.</p>
+            <p className="mt-2">You can add documents manually or by API.</p>
+          </div>
+        ) : null}
+      </div>
+    </Page.Vertical>
+  );
+}
+
+function DatasourceDatabasesTabView({
+  owner,
+  readOnly,
+  dataSource,
+  router,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  dataSource: DataSourceType;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const [limit] = useState(10);
+  const [offset, setOffset] = useState(0);
+
+  const { databases, total } = useDatabases({
+    workspaceId: owner.sId,
+    dataSourceName: dataSource.name,
+    offset,
+    limit,
+  });
+
+  let last = offset + limit;
+  if (total !== null && offset + limit > total) {
+    last = total;
+  }
+
+  return (
+    <>
+      <Page.Vertical align="stretch">
         <div className="mt-16 flex flex-row">
           <div className="flex flex-1">
             <div className="flex flex-col">
@@ -230,9 +485,9 @@ function StandardDataSourceView({
                   <Button
                     variant="tertiary"
                     label="Next"
-                    disabled={offset + limit >= total}
+                    disabled={total !== null && offset + limit >= total}
                     onClick={() => {
-                      if (offset + limit < total) {
+                      if (total !== null && offset + limit < total) {
                         setOffset(offset + limit);
                       }
                     }}
@@ -241,9 +496,9 @@ function StandardDataSourceView({
               </div>
 
               <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                {total > 0 && (
+                {total !== null && total > 0 && (
                   <span>
-                    Showing documents {offset + 1} - {last} of {total} documents
+                    Showing databases {offset + 1} - {last} of {total} databases
                   </span>
                 )}
               </div>
@@ -253,36 +508,14 @@ function StandardDataSourceView({
           {readOnly ? null : (
             <div className="">
               <div className="relative mt-0 flex-none">
-                <Popup
-                  show={showDocumentsLimitPopup}
-                  chipLabel={`${plan.name} plan`}
-                  description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
-                  buttonLabel="Check Dust plans"
-                  buttonClick={() => {
-                    void router.push(`/w/${owner.sId}/subscription`);
-                  }}
-                  onClose={() => {
-                    setShowDocumentsLimitPopup(false);
-                  }}
-                  className="absolute bottom-8 right-0"
-                />
-
                 <Button
                   variant="primary"
                   icon={PlusIcon}
-                  label="Add document"
+                  label="Add database"
                   onClick={() => {
-                    // Enforce plan limits: DataSource documents count.
-                    if (
-                      plan.limits.dataSources.documents.count != -1 &&
-                      total >= plan.limits.dataSources.documents.count
-                    ) {
-                      setShowDocumentsLimitPopup(true);
-                    } else {
-                      void router.push(
-                        `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
-                      );
-                    }
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/databases/upsert`
+                    );
                   }}
                 />
               </div>
@@ -292,14 +525,14 @@ function StandardDataSourceView({
 
         <div className="py-8">
           <ContextItem.List>
-            {documents.map((d) => (
+            {databases.map((db) => (
               <ContextItem
-                key={d.document_id}
-                title={displayNameByDocId[d.document_id]}
+                key={db.database_id}
+                title={db.name}
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      DocumentTextIcon({
+                      ServerIcon({
                         className: className + " text-element-600",
                       })
                     }
@@ -314,8 +547,8 @@ function StandardDataSourceView({
                         void router.push(
                           `/w/${owner.sId}/builder/data-sources/${
                             dataSource.name
-                          }/upsert?documentId=${encodeURIComponent(
-                            d.document_id
+                          }/databases/upsert?databaseId=${encodeURIComponent(
+                            db.database_id
                           )}`
                         );
                       }}
@@ -324,25 +557,22 @@ function StandardDataSourceView({
                     />
                   </Button.List>
                 }
-              >
-                <ContextItem.Description>
-                  <div className="pt-2 text-sm text-element-700">
-                    {Math.floor(d.text_size / 1024)} kb,{" "}
-                    {timeAgoFrom(d.timestamp)} ago
-                  </div>
-                </ContextItem.Description>
-              </ContextItem>
+              ></ContextItem>
             ))}
           </ContextItem.List>
-          {documents.length == 0 ? (
+          {databases.length == 0 ? (
             <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>No documents found for this Folder.</p>
-              <p className="mt-2">You can add documents manually or by API.</p>
+              <p>No databases found for this Folder.</p>
+              <p className="mt-2">
+                Databases let you create assistants that can query structured
+                data from an uploaded CSV file. You can add databases manually
+                by clicking on the &quot;Add&nbsp;database&quot; button.
+              </p>
             </div>
           ) : null}
         </div>
       </Page.Vertical>
-    </div>
+    </>
   );
 }
 

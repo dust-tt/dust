@@ -24,10 +24,10 @@ import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
-  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
   SupportedModel,
 } from "@dust-tt/types";
 import { TimeframeUnit } from "@dust-tt/types";
@@ -67,12 +67,9 @@ import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { isActivatedStructuredDB } from "@app/lib/development";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import {
-  useAgentConfigurations,
-  useSlackChannelsLinkedWithAgent,
-} from "@app/lib/swr";
+import { useAgentNames, useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 const usedModelConfigs = [
@@ -80,9 +77,23 @@ const usedModelConfigs = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  MISTRAL_7B_DEFAULT_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
 ];
+
+// Avatar URLs
+const BASE_URL = "https://dust.tt/";
+const buildAvatarUrl = (basePath: string, fileName: string) => {
+  const url = new URL(BASE_URL);
+  url.pathname = `${basePath}${fileName}`;
+  return url.toString();
+};
+const DROID_AVATAR_URLS = DROID_AVATAR_FILES.map((f) =>
+  buildAvatarUrl(DROID_AVATARS_BASE_PATH, f)
+);
+const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
+  buildAvatarUrl(SPIRIT_AVATARS_BASE_PATH, f)
+);
 
 // Actions
 
@@ -180,7 +191,7 @@ export type AssistantBuilderInitialState = {
   description: string;
   scope: Exclude<AgentConfigurationScope, "global">;
   instructions: string;
-  avatarUrl: string;
+  avatarUrl: string | null;
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
@@ -203,6 +214,7 @@ type AssistantBuilderProps = {
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
   flow: BuilderFlow;
+  defaultIsEdited?: boolean;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -252,6 +264,7 @@ export default function AssistantBuilder({
   initialBuilderState,
   agentConfigurationId,
   flow,
+  defaultIsEdited,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -261,17 +274,41 @@ export default function AssistantBuilder({
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
 
-  const [builderState, setBuilderState] = useState<AssistantBuilderState>({
-    ...DEFAULT_ASSISTANT_STATE,
-    scope: initialBuilderState?.scope ?? defaultScope,
-    generationSettings: {
-      ...DEFAULT_ASSISTANT_STATE.generationSettings,
-      modelSettings:
-        plan.code === FREE_TEST_PLAN_CODE
-          ? GPT_3_5_TURBO_MODEL_CONFIG
-          : GPT_4_TURBO_MODEL_CONFIG,
-    },
-  });
+  const [builderState, setBuilderState] = useState<AssistantBuilderState>(
+    initialBuilderState
+      ? {
+          actionMode: initialBuilderState.actionMode,
+          dataSourceConfigurations:
+            initialBuilderState.dataSourceConfigurations ?? {
+              ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
+            },
+          timeFrame: initialBuilderState.timeFrame ?? {
+            ...DEFAULT_ASSISTANT_STATE.timeFrame,
+          },
+          dustAppConfiguration: initialBuilderState.dustAppConfiguration,
+          databaseQueryConfiguration:
+            initialBuilderState.databaseQueryConfiguration,
+          handle: initialBuilderState.handle,
+          description: initialBuilderState.description,
+          scope: initialBuilderState.scope,
+          instructions: initialBuilderState.instructions,
+          avatarUrl: initialBuilderState.avatarUrl,
+          generationSettings: initialBuilderState.generationSettings ?? {
+            ...DEFAULT_ASSISTANT_STATE.generationSettings,
+          },
+        }
+      : {
+          ...DEFAULT_ASSISTANT_STATE,
+          scope: defaultScope,
+          generationSettings: {
+            ...DEFAULT_ASSISTANT_STATE.generationSettings,
+            modelSettings:
+              plan.code === FREE_TEST_PLAN_CODE
+                ? GPT_3_5_TURBO_MODEL_CONFIG
+                : GPT_4_TURBO_MODEL_CONFIG,
+          },
+        }
+  );
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
@@ -281,7 +318,7 @@ export default function AssistantBuilder({
 
   const [showDatabaseModal, setShowDatabaseModal] = useState(false);
 
-  const [edited, setEdited] = useState(false);
+  const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
@@ -290,103 +327,23 @@ export default function AssistantBuilder({
     string | null
   >(null);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
-  const { agentConfigurations } = useAgentConfigurations({
+  const { agentNames } = useAgentNames({
     workspaceId: owner.sId,
-    agentsGetView: "all",
   });
 
-  const [droidAvatarUrls, setDroidAvatarUrls] = useState<
-    { available: boolean; url: string }[]
-  >([]);
-  const [spiritAvatarUrls, setSpiritAvatarUrls] = useState<
-    { available: boolean; url: string }[]
-  >([]);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   useEffect(() => {
-    if (agentConfigurations?.length) {
-      const BASE_URL = "https://dust.tt/";
-      const buildAvatarUrl = (basePath: string, fileName: string) =>
-        `${BASE_URL}${basePath}${fileName}`;
-
-      const allDroids = DROID_AVATAR_FILES.map((f) =>
-        buildAvatarUrl(DROID_AVATARS_BASE_PATH, f)
-      );
-      const allSpirits = SPIRIT_AVATAR_FILES.map((f) =>
-        buildAvatarUrl(SPIRIT_AVATARS_BASE_PATH, f)
-      );
-
-      const usedAvatarFiles = new Set(
-        agentConfigurations.map((a) => a.pictureUrl.split("/").pop())
-      );
-
-      const availableAvatars = (avatarFiles: string[], basePath: string) =>
-        avatarFiles
-          .filter((f) => !usedAvatarFiles.has(f))
-          .map((f) => buildAvatarUrl(basePath, f));
-
-      let availableUrls = [
-        ...availableAvatars(DROID_AVATAR_FILES, DROID_AVATARS_BASE_PATH),
-        ...availableAvatars(SPIRIT_AVATAR_FILES, SPIRIT_AVATARS_BASE_PATH),
-      ];
-
-      // TODO(@fontanierh): figure out a real solution for avatar exhaustion
-      availableUrls = availableUrls.length
-        ? availableUrls
-        : [...allDroids, ...allSpirits];
-
-      setDroidAvatarUrls(
-        DROID_AVATAR_FILES.map((f) => ({
-          url: `https://dust.tt/${DROID_AVATARS_BASE_PATH}${f}`,
-          available: !usedAvatarFiles.has(f),
-        }))
-      );
-      setSpiritAvatarUrls(
-        SPIRIT_AVATAR_FILES.map((f) => ({
-          url: `https://dust.tt/${SPIRIT_AVATARS_BASE_PATH}${f}`,
-          available: !usedAvatarFiles.has(f),
-        }))
-      );
-      // Only set a random avatar if one isn't already set
-      if (!builderState.avatarUrl) {
-        setBuilderState((state) => ({
-          ...state,
-          avatarUrl:
-            availableUrls[Math.floor(Math.random() * availableUrls.length)],
-        }));
-      }
+    const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
+    // Only set a random avatar if one isn't already set
+    if (!builderState.avatarUrl) {
+      setBuilderState((state) => ({
+        ...state,
+        avatarUrl:
+          availableUrls[Math.floor(Math.random() * availableUrls.length)],
+      }));
     }
-  }, [
-    agentConfigurations?.length,
-    agentConfigurations,
-    builderState.avatarUrl,
-  ]);
-
-  useEffect(() => {
-    if (initialBuilderState) {
-      setBuilderState({
-        actionMode: initialBuilderState.actionMode,
-        dataSourceConfigurations:
-          initialBuilderState.dataSourceConfigurations ?? {
-            ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
-          },
-        timeFrame: initialBuilderState.timeFrame ?? {
-          ...DEFAULT_ASSISTANT_STATE.timeFrame,
-        },
-        dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-        databaseQueryConfiguration:
-          initialBuilderState.databaseQueryConfiguration,
-        handle: initialBuilderState.handle,
-        description: initialBuilderState.description,
-        scope: initialBuilderState.scope ?? "private",
-        instructions: initialBuilderState.instructions,
-        avatarUrl: initialBuilderState.avatarUrl,
-        generationSettings: initialBuilderState.generationSettings ?? {
-          ...DEFAULT_ASSISTANT_STATE.generationSettings,
-        },
-      });
-    }
-  }, [initialBuilderState]);
+  }, [builderState.avatarUrl]);
 
   // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<
@@ -437,15 +394,14 @@ export default function AssistantBuilder({
 
   const assistantHandleIsAvailable = useCallback(
     (handle: string) => {
-      return !agentConfigurations.some(
-        (agentConfiguration) =>
-          agentConfiguration.name.toLowerCase() ===
-            removeLeadingAt(handle).toLowerCase() &&
+      return !agentNames.some(
+        (name) =>
+          name.toLowerCase() === removeLeadingAt(handle).toLowerCase() &&
           initialBuilderState?.handle.toLowerCase() !==
             removeLeadingAt(handle).toLowerCase()
       );
     },
-    [agentConfigurations, initialBuilderState?.handle]
+    [agentNames, initialBuilderState?.handle]
   );
 
   const configuredDataSourceCount = Object.keys(
@@ -705,7 +661,7 @@ export default function AssistantBuilder({
   };
 
   // Hack to keep DATABASE_QUERY disabled if not Dust workspace
-  const actions = isDevelopmentOrDustWorkspace(owner)
+  const actions = isActivatedStructuredDB(owner)
     ? ACTION_MODE_TO_LABEL
     : Object.fromEntries(
         Object.entries(ACTION_MODE_TO_LABEL).filter(
@@ -787,8 +743,8 @@ export default function AssistantBuilder({
             avatarUrl,
           }));
         }}
-        droidAvatarUrls={droidAvatarUrls}
-        spiritAvatarUrls={spiritAvatarUrls}
+        droidAvatarUrls={DROID_AVATAR_URLS}
+        spiritAvatarUrls={SPIRIT_AVATAR_URLS}
       />
       <AppLayout
         subscription={subscription}
@@ -927,6 +883,7 @@ export default function AssistantBuilder({
           </div>
           <TeamSharingSection
             owner={owner}
+            agentConfigurationId={agentConfigurationId}
             initialScope={initialBuilderState?.scope ?? defaultScope}
             newScope={builderState.scope}
             setNewScope={(

@@ -250,6 +250,27 @@ export class Authenticator {
     });
   }
 
+  /* As above, with role `admin` */
+  static async internalAdminForWorkspace(
+    workspaceId: string
+  ): Promise<Authenticator> {
+    const workspace = await Workspace.findOne({
+      where: {
+        sId: workspaceId,
+      },
+    });
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
+
+    const subscription = await subscriptionForWorkspace(workspace);
+    return new Authenticator({
+      workspace,
+      role: "admin",
+      subscription,
+    });
+  }
+
   role(): RoleType {
     return this._role;
   }
@@ -383,6 +404,19 @@ export async function getUserFromSession(
     },
   });
 
+  if (session.user.image !== user.imageUrl) {
+    void User.update(
+      {
+        imageUrl: session.user.image,
+      },
+      {
+        where: {
+          id: user.id,
+        },
+      }
+    );
+  }
+
   return {
     id: user.id,
     provider: user.provider,
@@ -392,7 +426,7 @@ export async function getUserFromSession(
     firstName: user.firstName,
     lastName: user.lastName,
     fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-    image: session.user ? session.user.image : null,
+    image: user.imageUrl,
     workspaces: workspaces.map((w) => {
       const m = memberships.find((m) => m.workspaceId === w.id);
       let role = "none" as RoleType;

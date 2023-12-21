@@ -360,6 +360,7 @@ async function batchRenderAgentMessages(
           dataSourceWorkspaceId: action.dataSourceWorkspaceId,
           dataSourceId: action.dataSourceId,
           databaseId: action.databaseId,
+          params: action.params,
           output: action.output,
         };
       });
@@ -1982,6 +1983,7 @@ async function* streamRunAgentEvents(
       case "dust_app_run_params":
       case "dust_app_run_block":
       case "database_query_params":
+      case "database_query_output":
         yield event;
         break;
       case "generation_tokens":

@@ -62,7 +62,7 @@ impl Database {
         match self.db_type {
             DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
             DatabaseType::LOCAL => {
-                let (tables, _) = store
+                let (_, tables, _) = store
                     .list_databases_tables(
                         &self.project,
                         &self.data_source_id,
@@ -201,7 +201,7 @@ impl Database {
         &self,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<(DatabaseTable, Vec<DatabaseRow>)>> {
-        let (tables, _) = store
+        let (_, tables, _) = store
             .list_databases_tables(&self.project, &self.data_source_id, &self.database_id, None)
             .await?;
 

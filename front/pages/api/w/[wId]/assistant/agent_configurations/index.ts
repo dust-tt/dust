@@ -84,6 +84,15 @@ async function handler(
         : conversationId
         ? { conversationId }
         : "all";
+      if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only Dust Super Users can see admin_internal agents.",
+          },
+        });
+      }
       const agentConfigurations = await getAgentConfigurations(auth, viewParam);
       return res.status(200).json({
         agentConfigurations,
@@ -148,11 +157,11 @@ async function handler(
 export default withLogging(handler);
 
 /**
- * Create Or Upgrade Agent Configuration
- * If an agentConfigurationId is provided, it will create a new version of the agent configuration
- * with the same agentConfigurationId.
- * If no agentConfigurationId is provided, it will create a new agent configuration.
- * In both cases, it will return the new agent configuration.
+ * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided,
+ * it will create a new version of the agent configuration with the same
+ * agentConfigurationId. If no agentConfigurationId is provided, it will create
+ * a new agent configuration. In both cases, it will return the new agent
+ * configuration.
  **/
 export async function createOrUpgradeAgentConfiguration(
   auth: Authenticator,

@@ -94,7 +94,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  * - conversation: all agents in the user's list + agents in the current conversation (requries a
  *   conversation sId)
  * - all: workspace + published agents (not private ones), eg. for agent gallery
- * - superuser: all agents, including private ones => CAREFUL. Currently used by poke only
+ * - admin_internal: all agents, including private ones => CAREFUL, this is only for internal use.
  * Global agents enabled for the workspace are always returned with all the views.
  */
 export type AgentsGetViewType =
@@ -104,7 +104,7 @@ export type AgentsGetViewType =
   | "workspace"
   | "published"
   | "global"
-  | "super_user";
+  | "admin_internal";
 
 export type AgentConfigurationType = {
   id: ModelId;

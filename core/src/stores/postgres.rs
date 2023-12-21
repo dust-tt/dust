@@ -2345,7 +2345,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         database_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseTable>, usize)> {
+    ) -> Result<(Database, Vec<DatabaseTable>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let database_id = database_id.to_string();
@@ -2367,17 +2367,35 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // get the database row id
+        // get the database row
         let r = c
             .query(
-                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
+                "SELECT id, created, database_id, name \
+                 FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
                 &[&data_source_row_id, &database_id],
             )
             .await?;
 
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
-            1 => r[0].get(0),
+        let (database, database_row_id): (Database, i64) = match r.len() {
+            0 => {
+                return Err(anyhow!("Unknown Database: {}", database_id).into());
+            }
+            1 => {
+                let db_row_id: i64 = r[0].get(0);
+                let created: i64 = r[0].get(1);
+                let database_id_val: String = r[0].get(2);
+                let name: String = r[0].get(3);
+                (
+                    Database::new(
+                        &Project::new_from_id(project_id),
+                        created as u64,
+                        &data_source_id,
+                        &database_id_val,
+                        &name,
+                    ),
+                    db_row_id,
+                )
+            }
             _ => unreachable!(),
         };
 
@@ -2448,7 +2466,7 @@ impl Store for PostgresStore {
             }
         };
 
-        Ok((tables, total))
+        Ok((database, tables, total))
     }
 
     async fn delete_database(

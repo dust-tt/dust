@@ -138,14 +138,14 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "e0c5993d65",
       appHash:
-        "f4895d867ca82023fb5933e6279e2e315164a386145fd971dc9e7293c9fc4cce",
+        "80aa115754ae0d4e968609d4fea47ed4de7dbbc013bfacc0a48eb93129583388",
     },
     config: {
       MODEL: {
         provider_id: "openai",
         model_id: "gpt-4",
         use_cache: false,
-        function_call: "return_sql_query",
+        function_call: "execute_sql_query",
       },
     },
   },

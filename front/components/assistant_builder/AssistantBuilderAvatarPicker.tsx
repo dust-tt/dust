@@ -35,8 +35,8 @@ export function AvatarPicker({
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   onPick: (avatar: string) => void;
-  droidAvatarUrls: { available: boolean; url: string }[];
-  spiritAvatarUrls: { available: boolean; url: string }[];
+  droidAvatarUrls: string[];
+  spiritAvatarUrls: string[];
 }) {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [currentTab, setCurrentTab] = useState<"droids" | "spirits" | "upload">(
@@ -192,48 +192,32 @@ export function AvatarPicker({
         </div>
         {currentTab === "droids" && (
           <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
-            {droidAvatarUrls.map(({ available, url }) => (
+            {droidAvatarUrls.map((url) => (
               <div
                 key={url}
-                className={classNames(
-                  available ? "cursor-pointer" : "opacity-30"
-                )}
+                className="cursor-pointer"
                 onClick={() => {
-                  if (available) {
-                    onPick(url);
-                    onClose();
-                  }
+                  onPick(url);
+                  onClose();
                 }}
               >
-                <Avatar
-                  size="auto"
-                  visual={<img src={url} />}
-                  clickable={available}
-                />
+                <Avatar size="auto" visual={<img src={url} />} />
               </div>
             ))}
           </div>
         )}
         {currentTab === "spirits" && (
           <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
-            {spiritAvatarUrls.map(({ available, url }) => (
+            {spiritAvatarUrls.map((url) => (
               <div
                 key={url}
-                className={classNames(
-                  available ? "cursor-pointer" : "opacity-30"
-                )}
+                className="cursor-pointer"
                 onClick={() => {
-                  if (available) {
-                    onPick(url);
-                    onClose();
-                  }
+                  onPick(url);
+                  onClose();
                 }}
               >
-                <Avatar
-                  size="auto"
-                  visual={<img src={url} />}
-                  clickable={available}
-                />
+                <Avatar size="auto" visual={<img src={url} />} />
               </div>
             ))}
           </div>

@@ -6,7 +6,10 @@ import {
   AgentActionType,
   AgentMessageType,
 } from "../../../../front/assistant/conversation";
-import { DatabaseQueryParamsEvent } from "../../../../front/lib/api/assistant/actions/database_query";
+import {
+  DatabaseQueryOutputEvent,
+  DatabaseQueryParamsEvent,
+} from "../../../../front/lib/api/assistant/actions/database_query";
 import {
   DustAppRunBlockEvent,
   DustAppRunParamsEvent,
@@ -41,7 +44,8 @@ export type AgentActionEvent =
   | RetrievalParamsEvent
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
-  | DatabaseQueryParamsEvent;
+  | DatabaseQueryParamsEvent
+  | DatabaseQueryOutputEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

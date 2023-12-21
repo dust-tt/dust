@@ -2009,11 +2009,12 @@ async fn databases_tables_list(
             "Failed to list database tables",
             Some(e),
         ),
-        Ok((tables, _)) => (
+        Ok((database, tables, _)) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
+                    "database": database,
                     "tables": tables,
                 })),
             }),

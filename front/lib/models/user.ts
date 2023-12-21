@@ -23,6 +23,7 @@ export class User extends Model<
   declare name: string;
   declare firstName: string;
   declare lastName: string | null;
+  declare imageUrl: string | null;
 
   declare isDustSuperUser: CreationOptional<boolean>;
 }
@@ -68,6 +69,10 @@ User.init(
       allowNull: false,
     },
     lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    imageUrl: {
       type: DataTypes.STRING,
       allowNull: true,
     },
