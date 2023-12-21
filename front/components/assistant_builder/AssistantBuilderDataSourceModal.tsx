@@ -87,7 +87,7 @@ export default function AssistantBuilderDataSourceModal({
       title="Add data sources"
     >
       <div className="w-full pt-12">
-        {!selectedDataSource ? (
+        {!selectedDataSource || !selectedDataSource.connectorProvider ? (
           <PickDataSource
             dataSources={dataSources}
             show={!dataSourceToManage}
