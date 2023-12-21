@@ -2,87 +2,106 @@ import { AgentUsageType, ModelId } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import { Mention, Message, UserMessage } from "@app/lib/models";
+import {
+  Conversation as DBConversation,
+  Mention,
+  Message,
+  UserMessage,
+  Workspace,
+} from "@app/lib/models";
 import { redisClient } from "@app/lib/redis";
 
-// TTL of the ranking data in Redis.
-const rankingTTL = 60 * 60 * 24 * 30; // 30 days
+// Ranking of agents is done over a 30 days period.
+const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 
-function _getKeys(agentConfigurationId: string) {
+function _getKeys({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
   // One sorted set per agent for counting the number of times the agent has been used.
   // score is: timestamp of each use of the agent
   // value: random unique distinct value.
-  const agentUsedCountKey = `agent_usage_count_${agentConfigurationId}`;
+  const agentMessageCountKey = `agent_usage_count_${workspaceId}_${agentConfigurationId}`;
 
   // One sorted set per agent for counting the number of users that have used the agent.
   // score is: timestamp of last usage by a given user
   // value: user_id
-  const agentUserCountKey = `agent_user_count_${agentConfigurationId}`;
+  const agentUserCountKey = `agent_user_count_${workspaceId}_${agentConfigurationId}`;
   return {
-    agentUsedCountKey,
+    agentMessageCountKey,
     agentUserCountKey,
   };
 }
 
 async function signalInRedis({
   agentConfigurationId,
+  workspaceId,
   userId,
   timestamp,
   redis,
 }: {
   agentConfigurationId: string;
+  workspaceId: string;
   userId: string;
   timestamp: number;
   messageId: ModelId;
-  redis: Awaited<ReturnType<typeof redisClient>> | undefined;
+  redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
-  let needRedisQuit = false;
-  const { agentUsedCountKey, agentUserCountKey } =
-    _getKeys(agentConfigurationId);
+  const { agentMessageCountKey, agentUserCountKey } = _getKeys({
+    workspaceId,
+    agentConfigurationId,
+  });
 
-  try {
-    if (!redis) {
-      needRedisQuit = true;
-      redis = await redisClient();
-    }
+  await redis.zAdd(agentMessageCountKey, {
+    score: timestamp,
+    value: uuidv4(),
+  });
+  await redis.expire(agentMessageCountKey, rankingTimeframeSec);
 
-    await redis.zAdd(agentUsedCountKey, {
-      score: timestamp,
-      value: uuidv4(),
-    });
-    await redis.expire(agentUsedCountKey, rankingTTL);
-
-    await redis.zAdd(agentUserCountKey, {
-      score: timestamp,
-      value: userId,
-    });
-    await redis.expire(agentUserCountKey, rankingTTL);
-  } finally {
-    if (redis && needRedisQuit) {
-      await redis.quit();
-    }
-  }
+  await redis.zAdd(agentUserCountKey, {
+    score: timestamp,
+    value: userId,
+  });
+  await redis.expire(agentUserCountKey, rankingTimeframeSec);
 }
 
 async function populateUsageIfNeeded({
   agentConfigurationId,
+  workspaceId,
   messageId,
   redis,
 }: {
   agentConfigurationId: string;
+  workspaceId: string;
   messageId: ModelId | null;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
-  const { agentUsedCountKey, agentUserCountKey } =
-    _getKeys(agentConfigurationId);
+  const owner = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!owner) {
+    throw new Error(`Workspace ${workspaceId} not found`);
+  }
+  const { agentMessageCountKey, agentUserCountKey } = _getKeys({
+    agentConfigurationId,
+    workspaceId,
+  });
 
-  const existCount = await redis.exists([agentUsedCountKey, agentUserCountKey]);
+  const existCount = await redis.exists([
+    agentMessageCountKey,
+    agentUserCountKey,
+  ]);
   if (existCount === 0) {
     // Sorted sets for this agent usage do not exist, we'll populate them
     // by fetching the data from the database.
     // We need to ensure that only one process is going through the populate code path
     // so we are using redis.incr() to act as a non blocking lock.
-    const populateLockKey = `agent_usage_populate_${agentConfigurationId}`;
+    const populateLockKey = `agent_usage_populate_${workspaceId}_${agentConfigurationId}`;
     const needToPopulate = (await redis.incr(populateLockKey)) === 1;
 
     // Keeping the lock key around for 10 minutes, which essentially gives 10 minutes
@@ -118,6 +137,14 @@ async function populateUsageIfNeeded({
               as: "userMessage",
               required: true,
             },
+            {
+              model: DBConversation,
+              as: "conversation",
+              required: true,
+              where: {
+                workspaceId: owner.id,
+              },
+            },
           ],
         },
       ],
@@ -128,6 +155,7 @@ async function populateUsageIfNeeded({
       if (mention.message?.userMessage) {
         await signalInRedis({
           agentConfigurationId,
+          workspaceId,
           userId:
             mention.message.userMessage.userId?.toString() ||
             mention.message.userMessage.userContextEmail ||
@@ -142,26 +170,31 @@ async function populateUsageIfNeeded({
 }
 
 export async function getAgentUsage({
+  workspaceId,
   agentConfigurationId,
 }: {
+  workspaceId: string;
   agentConfigurationId: string;
 }): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
-  const { agentUsedCountKey, agentUserCountKey } =
-    _getKeys(agentConfigurationId);
+  const { agentMessageCountKey, agentUserCountKey } = _getKeys({
+    agentConfigurationId,
+    workspaceId,
+  });
 
   try {
     redis = await redisClient();
     await populateUsageIfNeeded({
       agentConfigurationId,
+      workspaceId,
       messageId: null,
       redis,
     });
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
-    const usageCount = await redis.zCount(
-      agentUsedCountKey,
+    const thirtyDaysAgo = new Date(now.getTime() - 1000 * rankingTimeframeSec);
+    const messageCount = await redis.zCount(
+      agentMessageCountKey,
       thirtyDaysAgo.getTime(),
       now.getTime()
     );
@@ -172,8 +205,9 @@ export async function getAgentUsage({
     );
 
     return {
-      usageCount,
+      messageCount,
       userCount,
+      timePeriodSec: rankingTimeframeSec,
     };
   } finally {
     if (redis) {
@@ -184,11 +218,13 @@ export async function getAgentUsage({
 
 export async function signalAgentUsage({
   agentConfigurationId,
+  workspaceId,
   userId,
   timestamp,
   messageId,
 }: {
   agentConfigurationId: string;
+  workspaceId: string;
   userId: string;
   timestamp: number;
   messageId: ModelId;
@@ -198,11 +234,13 @@ export async function signalAgentUsage({
     redis = await redisClient();
     await populateUsageIfNeeded({
       agentConfigurationId,
+      workspaceId,
       messageId,
       redis,
     });
     await signalInRedis({
       agentConfigurationId,
+      workspaceId,
       userId,
       timestamp,
       messageId,

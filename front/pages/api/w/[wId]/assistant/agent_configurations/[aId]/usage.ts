@@ -59,6 +59,7 @@ async function handler(
       }
       const agentUsage = await getAgentUsage({
         agentConfigurationId: agentConfiguration.sId,
+        workspaceId: owner.sId,
       });
       return res.status(200).json({ agentUsage });
 

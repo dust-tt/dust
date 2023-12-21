@@ -97,7 +97,8 @@ export function AssistantDetails({
           return (
             <>
               @{assistant.name} has been used by {usage.userCount} people in{" "}
-              {usage.usageCount} message(s) over the last 30 days.
+              {usage.messageCount} message(s) over the last{" "}
+              {usage.timePeriodSec / (60 * 60 * 24)} days.
             </>
           );
         }
@@ -152,7 +153,7 @@ export function AssistantDetails({
         <DescriptionSection />
         <InstructionsSection />
         <UsageSection
-          usage={agentUsage.usage}
+          usage={agentUsage.agentUsage}
           isLoading={agentUsage.isAgentUsageLoading}
           isError={agentUsage.isAgentUsageError}
         />

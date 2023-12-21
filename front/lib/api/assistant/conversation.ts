@@ -1057,9 +1057,10 @@ export async function* postUserMessage(
   }
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
-      await signalAgentUsage({
+      void signalAgentUsage({
         userId: user?.id.toString() || context.email || context.username,
         agentConfigurationId: agentMessage.configuration.sId,
+        workspaceId: owner.sId,
         messageId: agentMessage.id,
         timestamp: agentMessage.created,
       });
@@ -1545,7 +1546,7 @@ export async function* editUserMessage(
 
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
-      await signalAgentUsage({
+      void signalAgentUsage({
         userId:
           user?.id.toString() ||
           message.context.email ||
@@ -1553,6 +1554,7 @@ export async function* editUserMessage(
         agentConfigurationId: agentMessage.configuration.sId,
         messageId: agentMessage.id,
         timestamp: agentMessage.created,
+        workspaceId: owner.sId,
       });
     }
   }

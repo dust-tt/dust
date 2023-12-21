@@ -135,5 +135,8 @@ export type AgentConfigurationType = {
 
 export type AgentUsageType = {
   userCount: number;
-  usageCount: number;
+  messageCount: number;
+
+  // userCount and messageCount are over the last `timePeriodSec` seconds
+  timePeriodSec: number;
 };
