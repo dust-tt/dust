@@ -37,7 +37,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Only the users that are members for the current workspace can access to the workspace's assistants.",
+          "Only the users that are members for the current workspace can access the workspace's assistants.",
       },
     });
   }
