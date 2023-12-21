@@ -308,23 +308,24 @@ function ButtonsSection({
     setIsAddingOrRemoving(false);
     onClose();
   };
-
   return (
     <Button.List className="flex items-center justify-end gap-1">
-      <Link
-        href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
-      >
-        <Button
-          label={isDuplicating ? "Duplicating..." : "Duplicate"}
-          disabled={isDuplicating}
-          variant="tertiary"
-          icon={ClipboardIcon}
-          size="xs"
-          onClick={async () => {
-            setIsDuplicating(true);
-          }}
-        />
-      </Link>
+      {flow === "personal" && (
+        <Link
+          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+        >
+          <Button
+            label={isDuplicating ? "Duplicating..." : "Duplicate"}
+            disabled={isDuplicating}
+            variant="tertiary"
+            icon={ClipboardIcon}
+            size="xs"
+            onClick={async () => {
+              setIsDuplicating(true);
+            }}
+          />
+        </Link>
+      )}
       {canAddRemoveList &&
         (agentConfiguration.userListStatus === "in-list" ? (
           <Button
