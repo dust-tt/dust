@@ -4,23 +4,57 @@ import { Editor, Extension, JSONContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
-import { makeGetAssistantSuggestions } from "./suggestion";
+import { EditorSuggestion, makeGetAssistantSuggestions } from "./suggestion";
 
 export interface EditorMention {
   id: string;
   label: string;
 }
 
+function getTextAndMentionsFromNode(node?: JSONContent) {
+  let textContent = "";
+  let mentions: EditorMention[] = [];
+
+  if (!node) {
+    return { mentions, text: textContent };
+  }
+
+  // Check if the node is of type 'text' and concatenate its text.
+  if (node.type === "text") {
+    textContent += node.text;
+  }
+
+  // If the node is a 'mention', concatenate the mention label and add to mentions array.
+  if (node.type === "mention") {
+    // TODO: We should not expose `sId` here.
+    textContent += `:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`;
+    mentions.push({
+      id: node.attrs?.id,
+      label: node.attrs?.label,
+    });
+  }
+
+  // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
+  if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
+    textContent += "\n";
+  }
+
+  // If the node has content, recursively get text and mentions from each child node
+  if (node.content) {
+    node.content.forEach((childNode) => {
+      const childResult = getTextAndMentionsFromNode(childNode);
+      textContent += childResult.text;
+      mentions = mentions.concat(childResult.mentions);
+    });
+  }
+
+  return { text: textContent, mentions: mentions };
+}
+
 const useEditorService = (editor: Editor | null) => {
   const editorService = useMemo(() => {
     // Return the service object with utility functions
     return {
-      getMentions: () => {
-        // Implement parsing logic here
-        // TODO:
-        return editor?.getJSON();
-      },
-
       // Insert mention helper function
       insertMention: ({ id, label }: { id: string; label: string }) => {
         editor
@@ -34,7 +68,7 @@ const useEditorService = (editor: Editor | null) => {
           .run();
       },
 
-      resetWithMentions: (mentions: any[]) => {
+      resetWithMentions: (mentions: EditorMention[]) => {
         editor?.commands.clearContent();
         const chainCommands = editor?.chain().focus();
 
@@ -63,6 +97,17 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.getJSON();
       },
 
+      getTextAndMentions() {
+        const { mentions, text } = getTextAndMentionsFromNode(
+          editor?.getJSON()
+        );
+
+        return {
+          mentions,
+          text: text.trim(),
+        };
+      },
+
       getTrimmedText() {
         return editor?.getText().trim();
       },
@@ -70,8 +115,6 @@ const useEditorService = (editor: Editor | null) => {
       clearEditor() {
         return editor?.commands.clearContent();
       },
-
-      // Additional helper functions can be added here.
     };
   }, [editor]);
 
@@ -83,10 +126,10 @@ export type EditorService = ReturnType<typeof useEditorService>;
 export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
-    jsonPayload: JSONContent | undefined,
+    textAndMentions: ReturnType<typeof getTextAndMentionsFromNode>,
     clearEditor: () => void
   ) => void;
-  suggestions: any[];
+  suggestions: EditorSuggestion[];
   resetEditorContainerSize: () => void;
 }
 
@@ -107,14 +150,17 @@ const useCustomEditor = ({
 
       return {
         Enter: () => {
-          // TODO: Move to a service.
           const clearEditor = () => {
             editor.commands.clearContent();
             resetEditorContainerSize();
           };
 
           // TODO: Parse JSON here, and pass the service.
-          onEnterKeyDown(editor.isEmpty, editor.getJSON(), clearEditor);
+          onEnterKeyDown(
+            editor.isEmpty,
+            getTextAndMentionsFromNode(editor.getJSON()),
+            clearEditor
+          );
 
           return true;
         },
@@ -131,7 +177,9 @@ const useCustomEditor = ({
         // StarterKit.configure({
         //   history: false,
         // }),
-        StarterKit.configure({}),
+        StarterKit.configure({
+          heading: false,
+        }),
         PreventEnter,
         Mention.configure({
           HTMLAttributes: {

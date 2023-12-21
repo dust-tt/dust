@@ -23,8 +23,8 @@ import useAssistantSuggestions from "./useAssistantSuggestions";
 import useCustomEditor, { CustomEditorProps } from "./useCustomEditor";
 import useHandleMentions from "./useHandleMentions";
 
-interface InputBarContainerProps {
-  allMentions: AgentConfigurationType[];
+export interface InputBarContainerProps {
+  allAssistants: AgentConfigurationType[];
   agentConfigurations: AgentConfigurationType[];
   disableAttachment: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
@@ -35,7 +35,7 @@ interface InputBarContainerProps {
 }
 
 const InputBarContainer = ({
-  allMentions,
+  allAssistants,
   agentConfigurations,
   disableAttachment,
   onEnterKeyDown,
@@ -120,7 +120,7 @@ const InputBarContainer = ({
             onItemClick={(c) => {
               editorService.insertMention({ id: c.sId, label: c.name });
             }}
-            assistants={allMentions}
+            assistants={allAssistants}
             showBuilderButtons={true}
           />
           <div className="hidden sm:flex">
@@ -141,10 +141,10 @@ const InputBarContainer = ({
           labelVisible={false}
           disabledTooltip
           onClick={async () => {
-            const jsonContent = editorService.getJSONContent();
+            const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
               editorService.clearEditor();
-              setIsExpanded(false);
+              resetEditorContainerSize();
             });
           }}
         />

@@ -14,9 +14,9 @@ const useAssistantSuggestions = (
     activeAgents.sort(compareAgentsForSort);
 
     return activeAgents.map((agent) => ({
-      sId: agent.sId,
+      id: agent.sId,
+      label: agent.name,
       pictureUrl: agent.pictureUrl,
-      name: agent.name,
     }));
   }, [agentConfigurations]);
 

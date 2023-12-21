@@ -1,30 +1,14 @@
-import {
-  ArrowUpIcon,
-  AttachmentIcon,
-  Avatar,
-  Button,
-  Citation,
-  FullscreenExitIcon,
-  FullscreenIcon,
-  IconButton,
-  StopIcon,
-} from "@dust-tt/sparkle";
+import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
 import { AgentConfigurationType } from "@dust-tt/types";
 import { AgentMention, MentionType } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
 import {
   createContext,
-  ForwardedRef,
-  forwardRef,
   Fragment,
   useContext,
   useEffect,
-  useImperativeHandle,
-  useRef,
   useState,
 } from "react";
-import * as ReactDOMServer from "react-dom/server";
 import { mutate } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -32,9 +16,9 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { classNames, filterAndSortAgents } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 
-import InputBarContainer from "./InputBarTipTap";
+import InputBarContainer, { InputBarContainerProps } from "./InputBarTipTap";
 
 // AGENT MENTION
 
@@ -84,44 +68,32 @@ export function AssistantInputBar({
   });
   const sendNotification = useContext(SendNotificationsContext);
 
+  const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const { animate, selectedAssistant } = useContext(InputBarContext);
+  useEffect(() => {
+    if (animate && !isAnimating) {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 1500);
+    }
+  }, [animate, isAnimating]);
+
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  // const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleSubmit = (isEmpty, jsonPayload, resetEditorText) => {
+  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = (
+    isEmpty,
+    textAndMentions,
+    resetEditorText
+  ) => {
     if (isEmpty) {
       return;
     }
 
-    console.log(">>jsonPayload:", JSON.stringify(jsonPayload, null, 2));
+    const { mentions: rawMentions, text } = textAndMentions;
+    const mentions: MentionType[] = rawMentions.map((m) => ({
+      configurationId: m.id,
+    }));
 
-    const mentions: MentionType[] = [];
-    let content = "";
-
-    const [firstParagraph] = jsonPayload.content;
-
-    for (const node of firstParagraph.content) {
-      if (node.type === "mention") {
-        const { id: agentConfigurationId, label: agentName } = node.attrs;
-        if (agentConfigurationId && agentName) {
-          mentions.push({
-            configurationId: agentConfigurationId,
-          });
-          // Internal format for mentions is `:mention[agentName]{sId=agentConfigurationId}`.
-          content += `:mention[${agentName}]{sId=${agentConfigurationId}}`;
-        }
-      }
-      if (node.type === "text") {
-        content += node.text;
-      }
-    }
-
-    console.log(">> content:", content);
-
-    content = content.trim();
-    // Still needed?
-    content = content.replace(/\u200B/g, "");
     let contentFragment:
       | {
           title: string;
@@ -138,16 +110,16 @@ export function AssistantInputBar({
         contentType: "file_attachment",
       };
     }
-    // setIsExpanded(false);
-    onSubmit(content, mentions, contentFragment);
+    onSubmit(text, mentions, contentFragment);
     resetEditorText();
     setContentFragmentFilename(undefined);
     setContentFragmentBody(undefined);
   };
 
-  const onInputFileChange = async (event) => {
-    const file = event?.target?.files?.[0];
-    console.log("> file:", file);
+  const onInputFileChange: InputBarContainerProps["onInputFileChange"] = async (
+    event
+  ) => {
+    const file = (event?.target as HTMLInputElement)?.files?.[0];
     if (!file) return;
     if (file.size > 10_000_000) {
       sendNotification({
@@ -182,16 +154,6 @@ export function AssistantInputBar({
     setContentFragmentFilename(res.value.title);
     setContentFragmentBody(res.value.content);
   };
-
-  const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant } = useContext(InputBarContext);
-
-  useEffect(() => {
-    if (animate && !isAnimating) {
-      setIsAnimating(true);
-      setTimeout(() => setIsAnimating(false), 1500);
-    }
-  }, [animate, isAnimating]);
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -232,22 +194,8 @@ export function AssistantInputBar({
     }
   }, [isProcessing, generationContext.generatingMessageIds.length]);
 
-  console.log("> isAnimating:", isAnimating);
-
-  console.log(">> contentFragmentFilename:", contentFragmentFilename);
-  console.log(">> contentFragmentBody:", contentFragmentBody);
-
   return (
     <>
-      {/* <AgentList
-        owner={owner}
-        visible={agentListVisible}
-        filter={agentListFilter}
-        ref={agentListRef}
-        position={agentListPosition}
-        conversationId={conversationId}
-      /> */}
-
       {generationContext.generatingMessageIds.length > 0 && (
         <div className="flex justify-center px-4 pb-4">
           <Button
@@ -288,7 +236,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                allMentions={activeAgents}
+                allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
                 selectedAssistant={selectedAssistant}

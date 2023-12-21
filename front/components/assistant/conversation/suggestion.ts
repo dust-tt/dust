@@ -1,26 +1,33 @@
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 
-import { MentionList } from "./MentionList.jsx";
+import { MentionList } from "./MentionList";
 
-export function makeGetAssistantSuggestions(suggestions: any[]) {
-  console.log(">> suggestions(!):", suggestions);
+export interface EditorSuggestion {
+  id: string;
+  label: string;
+  pictureUrl: string;
+}
+
+const SUGGESTION_DISPLAY_LIMIT = 7;
+
+export function makeGetAssistantSuggestions(suggestions: EditorSuggestion[]) {
   return {
+    // TODO: Consider refactoring to eliminate the dependency on tippy.
     items: ({ query }: { query: string }) => {
-      console.log(">> makeGetAssistantSuggestions:", suggestions);
       return suggestions
         .filter((item) =>
-          item.name.toLowerCase().startsWith(query.toLowerCase())
+          item.label.toLowerCase().startsWith(query.toLowerCase())
         )
-        .slice(0, 5);
+        .slice(0, SUGGESTION_DISPLAY_LIMIT);
     },
 
     render: () => {
-      let reactRenderer;
-      let popup;
+      let reactRenderer: any;
+      let popup: any;
 
       return {
-        onStart: (props) => {
+        onStart: (props: any) => {
           if (!props.clientRect) {
             return;
           }
@@ -41,7 +48,7 @@ export function makeGetAssistantSuggestions(suggestions: any[]) {
           });
         },
 
-        onUpdate(props) {
+        onUpdate(props: any) {
           reactRenderer.updateProps(props);
 
           if (!props.clientRect) {
@@ -53,7 +60,7 @@ export function makeGetAssistantSuggestions(suggestions: any[]) {
           });
         },
 
-        onKeyDown(props) {
+        onKeyDown(props: any) {
           if (props.event.key === "Escape") {
             popup[0].hide();
 
