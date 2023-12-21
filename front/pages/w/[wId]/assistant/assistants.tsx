@@ -12,6 +12,7 @@ import {
   SliderToggle,
   Tab,
   Tooltip,
+  TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
@@ -131,7 +132,7 @@ export default function PersonalAssistants({
       current: view === "personal",
     },
     {
-      label: "From Workspace",
+      label: "By Workspace",
       href: `/w/${owner.sId}/assistant/assistants?view=workspace`,
       current: view === "workspace",
     },
@@ -309,7 +310,7 @@ export default function PersonalAssistants({
                               <Button
                                 key="show_details"
                                 icon={MoreIcon}
-                                label={"Show Assistant"}
+                                label={"View Assistant"}
                                 labelVisible={false}
                                 size="xs"
                                 variant="tertiary"
@@ -328,8 +329,16 @@ export default function PersonalAssistants({
                               </Link>
                               <Button
                                 variant="tertiary"
-                                icon={XMarkIcon}
-                                label="Remove from my list"
+                                icon={
+                                  agent.scope === "private"
+                                    ? TrashIcon
+                                    : XMarkIcon
+                                }
+                                label={
+                                  agent.scope === "private"
+                                    ? "Delete"
+                                    : "Remove from my list"
+                                }
                                 labelVisible={false}
                                 onClick={() => {
                                   agent.scope === "private"
@@ -344,7 +353,7 @@ export default function PersonalAssistants({
                               <Button
                                 key="show_details"
                                 icon={MoreIcon}
-                                label={"Show Assistant"}
+                                label={"View Assistant"}
                                 labelVisible={false}
                                 size="xs"
                                 variant="tertiary"
