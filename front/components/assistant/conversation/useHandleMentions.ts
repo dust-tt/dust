@@ -12,6 +12,7 @@ const useHandleMentions = (
   stickyMentions: AgentMention[] | undefined,
   selectedAssistant: AgentMention | null
 ) => {
+  // TODO: Remove.
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: conversationId ? { conversationId } : "list",
