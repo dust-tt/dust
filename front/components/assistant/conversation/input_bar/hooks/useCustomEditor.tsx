@@ -190,7 +190,7 @@ const useCustomEditor = ({
         Placeholder.configure({
           placeholder: "Ask a question or get some @help",
           emptyNodeClass:
-            "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none",
+            "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
         }),
       ],
       editorProps: {
