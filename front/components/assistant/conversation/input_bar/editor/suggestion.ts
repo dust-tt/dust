@@ -1,7 +1,7 @@
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 
-import { MentionList } from "@app/components/assistant/conversation/input_bar/hooks/MentionList";
+import { MentionList } from "@app/components/assistant/conversation/input_bar/editor/MentionList";
 
 export interface EditorSuggestion {
   id: string;

@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import {
   EditorSuggestion,
   makeGetAssistantSuggestions,
-} from "@app/components/assistant/conversation/input_bar/hooks/suggestion";
+} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 export interface EditorMention {
   id: string;

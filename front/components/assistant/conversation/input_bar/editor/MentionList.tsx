@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/hooks/suggestion";
+import { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { classNames } from "@app/lib/utils";
 
 interface MentionListProps {
