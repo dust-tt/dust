@@ -303,10 +303,11 @@ async function rowsFromCsv(
     parsedValuesByCol[col] = (() => {
       for (const parser of [
         // number
-        (v: string) => (isNaN(parseFloat(v)) ? undefined : parseFloat(v)),
+        (v: string) =>
+          /^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v.trim()) : undefined,
         // date/datetime
         (v: string) => {
-          const date = new Date(v);
+          const date = new Date(v.trim());
           const epoch = date.getTime();
           return isNaN(epoch)
             ? undefined
