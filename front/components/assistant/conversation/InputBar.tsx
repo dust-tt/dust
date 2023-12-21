@@ -12,13 +12,14 @@ import {
 import { mutate } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import InputBarContainer, {
+  InputBarContainerProps,
+} from "@app/components/assistant/conversation/InputBarContainer";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-
-import InputBarContainer, { InputBarContainerProps } from "./InputBarTipTap";
 
 // AGENT MENTION
 

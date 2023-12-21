@@ -11,12 +11,12 @@ import {
   AgentMention,
   WorkspaceType,
 } from "@dust-tt/types";
+import { EditorContent } from "@tiptap/react";
 import React, { useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { classNames } from "@app/lib/utils";
 
-import InputBarEditorContent from "./inputBarEditorContent";
 import useAssistantSuggestions from "./useAssistantSuggestions";
 import useCustomEditor, { CustomEditorProps } from "./useCustomEditor";
 import useHandleMentions from "./useHandleMentions";
@@ -80,7 +80,7 @@ const InputBarContainer = ({
 
   return (
     <div className="relative flex flex-1 flex-col sm:flex-row">
-      <InputBarEditorContent
+      <EditorContent
         editor={editor}
         className={classNames(
           contentEditableClasses,
