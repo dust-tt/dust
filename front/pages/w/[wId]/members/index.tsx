@@ -849,9 +849,13 @@ function ChangeMemberModal({
               <DropdownMenu.Items origin="topLeft">
                 {["admin", "builder", "user"].map((role) => (
                   <DropdownMenu.Item
-                    key={role}
+                    key={role as string}
                     onClick={() => setSelectedRole(role as RoleType)}
-                    label={role.charAt(0).toUpperCase() + role.slice(1)}
+                    label={
+                      displayRole(role as RoleType)
+                        .charAt(0)
+                        .toUpperCase() + displayRole(role as RoleType).slice(1)
+                    }
                   />
                 ))}
               </DropdownMenu.Items>
