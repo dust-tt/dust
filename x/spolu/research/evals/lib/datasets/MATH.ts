@@ -100,11 +100,33 @@ export class MATH extends Dataset {
   }
 
   parseAnswer(str: string): string {
-    const boxed = str.match(/\\boxed{([^}]*)}/g);
-    if (!boxed) {
-      return "";
+    const answers = [];
+    let pending: string | null = null;
+    let open = 0;
+    for (let i = 0; i < str.length; i++) {
+      if (pending === null) {
+        if (str.slice(i, i + 7) === "\\boxed{") {
+          pending = "\\boxed{";
+          open = 1;
+          i += 6;
+        }
+      } else {
+        pending += str[i];
+        if (str[i] === "{") {
+          open++;
+        }
+        if (str[i] === "}") {
+          open--;
+        }
+        if (open === 0) {
+          answers.push(pending);
+          pending = null;
+        }
+      }
     }
-    return boxed[boxed.length - 1].trim();
+
+    // return the last one
+    return answers[answers.length - 1];
   }
 
   maxTokens() {

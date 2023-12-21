@@ -13,10 +13,10 @@ type Reasoning = {
 export class ToT extends Algorithm {
   readonly N_SHOT = 8;
   readonly EXPANSION_COUNT = 32;
-  readonly POOL_SIZE = 5;
-  readonly SAMPLE_COUNT_PER_EXPANSION = 5;
-  readonly VOTING_POOL_SIZE = 5;
-  readonly VOTING_ITERATIONS = 2;
+  readonly POOL_SIZE = 3;
+  readonly SAMPLE_COUNT_PER_EXPANSION = 8;
+  readonly VOTING_POOL_SIZE = 8;
+  readonly VOTING_ITERATIONS = 4;
 
   private finals: TestResult[] = [];
 
@@ -32,58 +32,38 @@ export class ToT extends Algorithm {
     test: Test,
     iteration: number,
     node: Reasoning
-  ): Promise<Reasoning> {
+  ): Promise<Reasoning[]> {
     const examples = this.dataset.examples({
       problem: test.id,
-      count: this.N_SHOT,
+      count: 3,
       iteration,
     });
 
-    const messages: ChatMessage[] = [];
-
-    let prompt = `INSTRUCTIONS:\n`;
-    prompt += `${this.dataset.instructions()}`;
+    let prompt = `INSTRUCTIONS:`;
+    prompt += ` ${this.dataset.instructions()}`;
     prompt += "\n\n";
     prompt += `${this.dataset.reasoningStepInstructions()}`;
     prompt += "\n\n";
-    prompt += `Provide a single additional reasoning step.`;
+    prompt += "Below are 3 examples of full valid reasonings:\n";
+    for (const example of examples) {
+      prompt += `QUESTION: ${example.question}\n`;
+      prompt += `REASONING:\n${example.reasoning.join("\n")}\n\n`;
+    }
+    prompt += `Your goal is to provide ${this.SAMPLE_COUNT_PER_EXPANSION} alternate reasoning steps for the following question. One per line exactly. Each line you output will be considered a separate new reasoning step to explore.`;
+
+    const messages: ChatMessage[] = [];
 
     messages.push({
       role: "system",
       content: prompt,
     });
 
-    const rng = seedrandom(
-      `TOT-${test.id}-${iteration}-${node.reasoning.length}`
-    );
-
-    for (const e of examples.slice(0, this.N_SHOT)) {
-      let k = Math.floor(rng() * e.reasoning.length);
-      // Bias towards the last reasoning step
-      if (rng() < 0.5) {
-        k = e.reasoning.length - 1;
-      }
-
-      const content =
-        `QUESTION: ${e.question}\n` +
-        `PARTIAL_REASONING:\n${e.reasoning.slice(0, k).join("\n")}${
-          k > 0 ? "\n" : ""
-        }\n` +
-        `Generate one additional reasoning step.`;
-      messages.push({
-        role: "user",
-        content,
-      });
-      messages.push({
-        role: "assistant",
-        content: `${e.reasoning[k]}`,
-      });
-    }
-
     const content =
       `QUESTION: ${test.question}\n` +
       `PARTIAL_REASONING:\n${node.reasoning.join("\n")}\n\n` +
-      `Generate one additional reasoning step (1-line).`;
+      `Generate ${this.SAMPLE_COUNT_PER_EXPANSION} alternate new reasoning steps to explore` +
+      ` (one per line) for the current PARTIAL_REASONING.` +
+      `Each line you output will be considered a separate new reasoning step to explore. Do not prepend the line with a number or any other character. No empty line. No full reasoning, just one reasoning step. 8 lines total.`;
 
     messages.push({
       role: "user",
@@ -99,8 +79,10 @@ export class ToT extends Algorithm {
       provider: this.model.provider,
       model: this.model.model(),
       messages,
-      temperature: 1.0,
-      maxTokens: this.dataset.maxTokens().reasoningStep,
+      temperature: 0.7,
+      maxTokens:
+        this.SAMPLE_COUNT_PER_EXPANSION *
+        this.dataset.maxTokens().reasoningStep,
     };
 
     const c = await this.runCompletion(query);
@@ -115,21 +97,26 @@ export class ToT extends Algorithm {
     this.stats();
     console.log(">>>> ", c.content);
 
-    const answer = this.dataset.parseAnswer(c.content);
-
-    return {
-      reasoning: [...node.reasoning, c.content],
-      answer: answer.length > 0 ? answer : null,
-      score: 0.0,
-    };
+    const new_nodes: Reasoning[] = [];
+    const lines = c.content.split("\n");
+    for (const line of lines) {
+      const answer = this.dataset.parseAnswer(line);
+      const new_node = {
+        reasoning: [...node.reasoning, line],
+        answer: answer.length > 0 ? answer : null,
+        score: 0.0,
+      };
+      new_nodes.push(new_node);
+    }
+    return new_nodes;
   }
 
   async value(test: Test, iteration: number, pool: Reasoning[]) {
-    const example = this.dataset.examples({
+    const examples = this.dataset.examples({
       problem: test.id,
-      count: 1,
+      count: 3,
       iteration,
-    })[0];
+    });
 
     let prompt = `INSTRUCTIONS:\n`;
     prompt += `${this.dataset.instructions()}`;
@@ -139,9 +126,11 @@ export class ToT extends Algorithm {
     prompt +=
       "Your goal is to rank the following (potentially partial) reasonings";
     prompt += " from the most promising to the least promising.\n\n";
-    prompt += "An example of a full valid reasoning is the following:\n";
-    prompt += `QUESTION: ${example.question}\n`;
-    prompt += `REASONING:\n${example.reasoning.join("\n")}\n\n`;
+    prompt += "Below are 3 examples of full valid reasonings:\n";
+    for (const example of examples) {
+      prompt += `QUESTION: ${example.question}\n`;
+      prompt += `REASONING:\n${example.reasoning.join("\n")}\n\n`;
+    }
     prompt +=
       "The format you should use for your response is the ranked, comma separated, list of reasoning indexes without spaces.";
     prompt +=
@@ -152,6 +141,14 @@ export class ToT extends Algorithm {
 
     const iterations =
       (pool.length / this.VOTING_POOL_SIZE) * this.VOTING_ITERATIONS;
+
+    console.log(
+      ">>>>>>>>>>>>>>>>>>>>>>>>>>> VOTIING",
+      pool.length,
+      this.VOTING_POOL_SIZE,
+      this.VOTING_ITERATIONS,
+      iterations
+    );
 
     const rng = seedrandom(
       `TOT-VALUE-${test.id}-${iteration}-${pool
@@ -171,7 +168,7 @@ export class ToT extends Algorithm {
 
       // select this.VOTING_POOL_SIZE reasonings randomly from pool
       const pool_idx: number[] = [];
-      while (pool_idx.length < this.VOTING_POOL_SIZE) {
+      while (pool_idx.length < Math.min(pool.length, this.VOTING_POOL_SIZE)) {
         const idx = Math.floor(rng() * pool.length);
         if (!pool_idx.includes(idx)) {
           pool_idx.push(idx);
@@ -266,10 +263,8 @@ export class ToT extends Algorithm {
           });
           continue;
         }
-        for (let j = 0; j < this.SAMPLE_COUNT_PER_EXPANSION; j++) {
-          const expanded = await this.expand(test, j, node);
-          p.push(expanded);
-        }
+        const expanded = await this.expand(test, i, node);
+        p.push(...expanded);
       }
 
       await this.value(test, i, p);
