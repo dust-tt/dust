@@ -15,11 +15,12 @@ import { EditorContent } from "@tiptap/react";
 import React, { useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import useAssistantSuggestions from "@app/components/assistant/conversation/hooks/useAssistantSuggestions";
+import useCustomEditor, {
+  CustomEditorProps,
+} from "@app/components/assistant/conversation/hooks/useCustomEditor";
+import useHandleMentions from "@app/components/assistant/conversation/hooks/useHandleMentions";
 import { classNames } from "@app/lib/utils";
-
-import useAssistantSuggestions from "./useAssistantSuggestions";
-import useCustomEditor, { CustomEditorProps } from "./useCustomEditor";
-import useHandleMentions from "./useHandleMentions";
 
 export interface InputBarContainerProps {
   allAssistants: AgentConfigurationType[];

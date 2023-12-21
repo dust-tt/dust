@@ -8,9 +8,8 @@ import React, {
   useState,
 } from "react";
 
+import { EditorSuggestion } from "@app/components/assistant/conversation/hooks/suggestion";
 import { classNames } from "@app/lib/utils";
-
-import { EditorSuggestion } from "./suggestion";
 
 interface MentionListProps {
   command: any;

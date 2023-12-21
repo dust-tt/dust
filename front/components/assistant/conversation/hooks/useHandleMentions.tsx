@@ -1,7 +1,10 @@
 import { AgentConfigurationType, AgentMention } from "@dust-tt/types";
 import { useEffect, useMemo, useRef } from "react";
 
-import { EditorMention, EditorService } from "./useCustomEditor";
+import type {
+  EditorMention,
+  EditorService,
+} from "@app/components/assistant/conversation/hooks/useCustomEditor";
 
 const useHandleMentions = (
   editorService: EditorService,

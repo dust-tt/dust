@@ -4,7 +4,10 @@ import { Editor, Extension, JSONContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
-import { EditorSuggestion, makeGetAssistantSuggestions } from "./suggestion";
+import {
+  EditorSuggestion,
+  makeGetAssistantSuggestions,
+} from "@app/components/assistant/conversation/hooks/suggestion";
 
 export interface EditorMention {
   id: string;
