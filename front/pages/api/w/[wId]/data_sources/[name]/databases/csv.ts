@@ -146,10 +146,10 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
+            databaseName,
             databaseId: id,
             tableId,
-            tableName: name,
+            tableName,
             error: tableRes.error,
           },
           "Failed to upsert database table."
@@ -177,10 +177,10 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
+            databaseName,
             databaseId: id,
             tableId,
-            tableName: name,
+            tableName,
             error: rowsRes.error,
           },
           "Failed to upsert database rows."
@@ -363,7 +363,8 @@ async function rowsFromCsv(
   for (let i = 0; i < nbRows; i++) {
     const record = header.reduce((acc, h) => {
       const parsedValues = parsedValuesByCol[h];
-      acc[h] = parsedValues && parsedValues[i] ? parsedValues[i] : "";
+      acc[h] =
+        parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
       return acc;
     }, {} as Record<string, RowValue>);
 
