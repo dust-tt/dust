@@ -36,18 +36,19 @@ export class CoT extends Algorithm {
 
     const messages: ChatMessage[] = [];
 
-    let prompt = `INSTRUCTIONS:`;
-    prompt += ` ${this.dataset.instructions()}`;
+    let prompt = `<Instructions>\n`;
+    prompt += `${this.dataset.instructions()}`;
     prompt += "\n\n";
     prompt += `Provide a reasoning consisting in multiple steps, using one line per step.`;
     prompt += ` ${this.dataset.reasoningStepInstructions()}`;
-    prompt += "\n\n";
-    prompt += `EXAMPLES:\n`;
+    prompt += `\n</Instructions>\n`;
 
     for (const e of examples.slice(0, this.N_SHOT / 2)) {
-      prompt += `\nQUESTION: ${e.question}\n`;
+      prompt += `\n\n<Example>\n`;
+      prompt += `QUESTION: ${e.question}\n`;
       prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
       prompt += `ANSWER: ${e.answer}\n`;
+      prompt += `</Example>`;
     }
 
     messages.push({

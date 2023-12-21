@@ -129,8 +129,9 @@ export class Game24 extends Dataset {
       " 24 after that operation, separated by a comma (example: `10*7=70, left: 70 2 11`)." +
       " There is always exactly 3 reasoning steps per question in Game of 24." +
       " The last step should present the last operation and the solution expression" +
-      " using the `\\boxed{}` directive, separated by a comma" +
-      " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)."
+      " using the `\\boxed{}` directive" +
+      " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)." +
+      " Don't use the `\\boxed{}` directive for anything else than the final step and answer."
     );
   }
 

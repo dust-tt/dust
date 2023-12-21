@@ -87,7 +87,8 @@ export class MATH extends Dataset {
       "A reasoning step is one coherent step of mathematical reasoning. It should hold in one line" +
       " of at most 500 characters." +
       " If an answer is reached as part of the reasoning, it should be included" +
-      " in the reasoning step using the `\\boxed{}` directive."
+      " in the reasoning step using the `\\boxed{}` directive." +
+      " Don't use the `\\boxed{}` directive for anything else than the answer."
     );
   }
 
