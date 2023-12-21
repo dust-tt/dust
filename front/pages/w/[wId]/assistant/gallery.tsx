@@ -111,17 +111,17 @@ export default function AssistantsGallery({
       current: agentsGetView === "all",
     },
     {
-      label: "From Workspace",
+      label: "By Workspace",
       href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
       current: agentsGetView === "workspace",
     },
     {
-      label: "From Teammates",
+      label: "By Teammates",
       href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
       current: agentsGetView === "published",
     },
     {
-      label: "From Dust",
+      label: "By Dust",
       href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
       current: agentsGetView === "global",
     },

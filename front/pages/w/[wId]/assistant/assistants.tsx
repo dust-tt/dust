@@ -132,7 +132,7 @@ export default function PersonalAssistants({
       current: view === "personal",
     },
     {
-      label: "From Workspace",
+      label: "By Workspace",
       href: `/w/${owner.sId}/assistant/assistants?view=workspace`,
       current: view === "workspace",
     },
