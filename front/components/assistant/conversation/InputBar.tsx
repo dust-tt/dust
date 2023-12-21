@@ -72,35 +72,12 @@ export function AssistantInputBar({
   conversationId: string | null;
   stickyMentions?: AgentMention[];
 }) {
-  const [agentListVisible, setAgentListVisible] = useState(false);
-  const [agentListFilter, setAgentListFilter] = useState("");
-  const [agentListPosition, setAgentListPosition] = useState<{
-    bottom: number;
-    left: number;
-  }>({
-    bottom: 0,
-    left: 0,
-  });
   const [contentFragmentBody, setContentFragmentBody] = useState<
     string | undefined
   >(undefined);
   const [contentFragmentFilename, setContentFragmentFilename] = useState<
     string | undefined
   >(undefined);
-  const inputRef = useRef<HTMLDivElement>(null);
-  const agentListRef = useRef<{
-    prev: () => void;
-    next: () => void;
-    reset: () => void;
-    selected: () => AgentConfigurationType | null;
-    noMatch: () => boolean;
-    perfectMatch: () => boolean;
-  }>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: conversationId ? { conversationId } : "list",
@@ -218,7 +195,6 @@ export function AssistantInputBar({
   }, [animate, isAnimating]);
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const stickyMentionsTextContent = useRef<string | null>(null);
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
@@ -261,41 +237,6 @@ export function AssistantInputBar({
 
   console.log(">> contentFragmentFilename:", contentFragmentFilename);
   console.log(">> contentFragmentBody:", contentFragmentBody);
-
-  let stickyMentionsConfigurationToInject: any[] = [];
-  if (stickyMentions?.length) {
-    stickyMentionsConfigurationToInject = stickyMentions;
-  } else if (selectedAssistant) {
-    stickyMentionsConfigurationToInject = [selectedAssistant] as [AgentMention];
-  }
-
-  console.log(">> selectedAssistant:", selectedAssistant);
-
-  const stickyMentionsToInject: any[] = stickyMentionsConfigurationToInject
-    .map((configuration) => {
-      const agentConfig = agentConfigurations.find(
-        (agent) => agent.sId === configuration.configurationId
-      );
-
-      console.log(
-        ">> config:",
-        agentConfig,
-        "for",
-        configuration.configurationId
-      );
-
-      if (!agentConfig) {
-        return;
-      }
-
-      return { id: agentConfig.sId, name: agentConfig.name };
-    })
-    .filter(Boolean);
-
-  console.log(
-    ">> stickyMentionsToInject:",
-    JSON.stringify(stickyMentionsToInject, null, 2)
-  );
 
   return (
     <>
@@ -348,7 +289,8 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                assistants={activeAgents}
+                allMentions={activeAgents}
+                agentConfigurations={agentConfigurations}
                 owner={owner}
                 conversationId={conversationId}
                 selectedAssistant={selectedAssistant}
@@ -356,110 +298,8 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
                 disableAttachment={!!contentFragmentFilename}
-                stickyMentionsToInject={stickyMentionsToInject}
               />
             </div>
-
-            {/* <div className="flex flex-row items-end justify-between gap-2 self-stretch border-t border-structure-100 py-2 pr-2 sm:flex-col sm:border-0">
-              <div className="flex gap-5 rounded-full border border-structure-100 px-4 py-2 sm:gap-3 sm:px-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    // focus on the input text after the file selection interaction is over
-                    inputRef.current?.focus();
-                    const file = e?.target?.files?.[0];
-                    if (!file) return;
-                    if (file.size > 10_000_000) {
-                      sendNotification({
-                        type: "error",
-                        title: "File too large.",
-                        description:
-                          "PDF uploads are limited to 10Mb per file. Please consider uploading a smaller file.",
-                      });
-                      return;
-                    }
-                    const res = await handleFileUploadToText(file);
-
-                    if (res.isErr()) {
-                      sendNotification({
-                        type: "error",
-                        title: "Error uploading file.",
-                        description: res.error.message,
-                      });
-                      return;
-                    }
-                    if (res.value.content.length > 1_000_000) {
-                      // This error should pretty much never be triggered but it is a possible case, so here it is.
-                      sendNotification({
-                        type: "error",
-                        title: "File too large.",
-                        description:
-                          "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-                      });
-                      return;
-                    }
-                    setContentFragmentFilename(res.value.title);
-                    setContentFragmentBody(res.value.content);
-                  }}
-                />
-                <IconButton
-                  variant={"tertiary"}
-                  icon={AttachmentIcon}
-                  size="sm"
-                  disabled={!!contentFragmentFilename}
-                  tooltip="Add a document to the conversation (10MB maximum, only .txt, .pdf, .md)."
-                  tooltipPosition="above"
-                  className="flex"
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                  }}
-                />
-                <AssistantPicker
-                  owner={owner}
-                  size="sm"
-                  onItemClick={(c) => {
-                    // We construct the HTML for an AgentMention and inject it in the content
-                    // editable with an extra space after it.
-                    const mentionNode = getAgentMentionNode(c);
-                    const contentEditable =
-                      document.getElementById("dust-input-bar");
-                    if (contentEditable && mentionNode) {
-                      // Add mentionNode as last childe of contentEditable.
-                      contentEditable.appendChild(mentionNode);
-                      const afterTextNode = document.createTextNode(" ");
-                      contentEditable.appendChild(afterTextNode);
-                      contentEditable.focus();
-                      moveCursorToEnd(contentEditable);
-                    }
-                  }}
-                  assistants={activeAgents}
-                  showBuilderButtons={true}
-                />
-                <div className="hidden sm:flex">
-                  <IconButton
-                    variant={"tertiary"}
-                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                    size="sm"
-                    className="flex"
-                    onClick={() => {
-                      setIsExpanded((e) => !e);
-                    }}
-                  />
-                </div>
-              </div>
-              <Button
-                size="sm"
-                icon={ArrowUpIcon}
-                label="Send"
-                labelVisible={false}
-                disabledTooltip
-                onClick={() => {
-                  void handleSubmit();
-                }}
-              />
-            </div> */}
           </div>
         </div>
       </div>
@@ -482,17 +322,6 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
 }) {
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: conversationId ? { conversationId } : "list",
-  });
-
-  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
-  activeAgents.sort(compareAgentsForSort);
-
-  const filtered = filterAndSortAgents(activeAgents, "");
-  console.log(">> filtered:", filtered);
-
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
       <div className="mx-auto max-h-screen max-w-4xl pb-0 sm:pb-8">

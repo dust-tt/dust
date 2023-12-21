@@ -58,8 +58,7 @@ interface RawMention {
 const InputBarContainer = (props: any) => {
   // REMOVE:
   const { owner, conversationId } = props;
-  const suggestions = useAssistantSuggestions(owner, conversationId);
-
+  const suggestions = useAssistantSuggestions(props.agentConfigurations);
   // Consider:
   // StarterKit.configure({
   //   history: false,
@@ -152,7 +151,7 @@ const InputBarContainer = (props: any) => {
                 .insertContent(" ") // add an extra space after the mention
                 .run();
             }}
-            assistants={props.assistants}
+            assistants={props.allMentions}
             showBuilderButtons={true}
           />
           <div className="hidden sm:flex">
