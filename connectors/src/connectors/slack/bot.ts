@@ -272,7 +272,8 @@ async function botAnswerMessage(
     }
   }
   // Extract all ~mentions.
-  const mentionCandidates = message.match(/(?<!~)~[a-zA-Z0-9_-]{1,20}/g) || [];
+  const mentionCandidates =
+    message.match(/(?<!\S)~(?!~)([a-zA-Z0-9_-]{1,20})(?!\S)/g) || [];
 
   const mentions: { assistantName: string; assistantId: string }[] = [];
   if (mentionCandidates.length > 1) {
