@@ -31,7 +31,7 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import {
   FixedAssistantInputBar,
   InputBarContext,
-} from "@app/components/assistant/conversation/InputBar";
+} from "@app/components/assistant/conversation/input_bar/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
