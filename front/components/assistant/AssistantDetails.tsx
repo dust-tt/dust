@@ -4,11 +4,11 @@ import {
   ClipboardIcon,
   CloudArrowDownIcon,
   CommandLineIcon,
-  DashIcon,
   Modal,
   PlusIcon,
   ServerIcon,
   TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
   AgentUserListStatus,
@@ -331,7 +331,7 @@ function ButtonsSection({
             label={isAddingOrRemoving ? "Removing..." : "Remove from my list"}
             disabled={isAddingOrRemoving}
             variant="tertiary"
-            icon={DashIcon}
+            icon={XMarkIcon}
             size="xs"
             onClick={async () => {
               await updateAgentUserListStatus("not-in-list");
