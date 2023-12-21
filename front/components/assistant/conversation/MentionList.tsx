@@ -90,7 +90,7 @@ export const MentionList = forwardRef(function mentionList(
           </div>
         ))
       ) : (
-        <div className="item">No result</div>
+        <div>No result</div>
       )}
     </div>
   );

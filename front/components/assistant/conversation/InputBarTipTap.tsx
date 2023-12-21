@@ -74,12 +74,12 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 py-1.5",
+    "border-0 pr-1 pl-2 sm:pl-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 py-3.5",
     "whitespace-pre-wrap font-normal"
   );
 
   return (
-    <div className="flex w-full flex-1 whitespace-pre-wrap border-0 py-2 pl-2 pr-1 font-normal outline-none ring-0 scrollbar-hide focus:border-0 focus:outline-none focus:ring-0 sm:pl-0">
+    <div className="relative flex flex-1 flex-col sm:flex-row">
       <InputBarEditorContent
         editor={editor}
         className={classNames(
@@ -92,7 +92,7 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch border-t border-structure-100 pr-1 sm:flex-col sm:border-0">
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch border-t border-structure-100 py-2 pr-2 sm:flex-col sm:border-0">
         <div className="flex gap-5 rounded-full border border-structure-100 px-4 py-2 sm:gap-3 sm:px-2">
           <input
             type="file"
