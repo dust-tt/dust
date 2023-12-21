@@ -1,5 +1,3 @@
-// import './MentionList.scss'
-
 import { Avatar } from "@dust-tt/sparkle";
 import React, {
   forwardRef,
