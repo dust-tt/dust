@@ -82,7 +82,7 @@ export function AssistantPreview({
         });
       } else {
         sendNotification({
-          title: `Assistant added`,
+          title: `Assistant added to your list`,
           type: "success",
         });
         onUpdate();
@@ -133,7 +133,7 @@ export function AssistantPreview({
         });
       } else {
         sendNotification({
-          title: `Assistant added`,
+          title: `Assistant added to Workspace list`,
           type: "success",
         });
         onUpdate();

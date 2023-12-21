@@ -126,7 +126,7 @@ export function RemoveAssistantFromListDialog({
           });
         } else {
           sendNotification({
-            title: `Assistant removed`,
+            title: `Assistant removed from your list`,
             type: "success",
           });
           onRemove();
