@@ -304,7 +304,7 @@ async function rowsFromCsv(
       for (const parser of [
         // number
         (v: string) =>
-          /^\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v.trim()) : undefined,
+          /^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v.trim()) : undefined,
         // date/datetime
         (v: string) => {
           const date = new Date(v.trim());
