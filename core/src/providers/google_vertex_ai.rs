@@ -93,7 +93,7 @@ impl TryFrom<&ChatFunctionCall> for VertexAiFunctionCall {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Content {
     role: String,
-    parts: Vec<Part>,
+    parts: Option<Vec<Part>>,
 }
 
 impl TryFrom<&ChatMessage> for Content {
@@ -112,7 +112,7 @@ impl TryFrom<&ChatMessage> for Content {
                 },
                 _ => String::from("USER"),
             },
-            parts: vec![Part {
+            parts: Some(vec![Part {
                 text: match m.role {
                     ChatMessageRole::System => Some(format!(
                         "[user: SYSTEM] {}\n",
@@ -154,7 +154,7 @@ impl TryFrom<&ChatMessage> for Content {
                     }
                     _ => None,
                 },
-            }],
+            }]),
         })
     }
 }
@@ -348,11 +348,11 @@ impl LLM for GoogleVertexAiLLM {
             api_key,
             &vec![Content {
                 role: String::from("USER"),
-                parts: vec![Part {
+                parts: Some(vec![Part {
                     text: Some(String::from(prompt)),
                     function_call: None,
                     function_response: None,
-                }],
+                }]),
             }],
             &vec![],
             None,
@@ -377,10 +377,16 @@ impl LLM for GoogleVertexAiLLM {
                     None => String::from(""),
                     Some(candidates) => match candidates.len() {
                         0 => String::from(""),
-                        _ => candidates[0].content.parts[0]
-                            .text
-                            .clone()
-                            .unwrap_or_default(),
+                        _ => match &candidates[0].content.parts {
+                            None => String::from(""),
+                            Some(parts) => match parts.len() {
+                                0 => String::from(""),
+                                _ => match &parts[0].text {
+                                    None => String::from(""),
+                                    Some(text) => text.clone(),
+                                },
+                            },
+                        },
                     },
                 },
                 tokens: Some(vec![]),
@@ -476,12 +482,16 @@ impl LLM for GoogleVertexAiLLM {
                     None => None,
                     Some(candidates) => match candidates.len() {
                         0 => None,
-                        _ => Some(
-                            candidates[0].content.parts[0]
-                                .text
-                                .clone()
-                                .unwrap_or_default(),
-                        ),
+                        _ => match &candidates[0].content.parts {
+                            None => None,
+                            Some(parts) => match parts.len() {
+                                0 => None,
+                                _ => match &parts[0].text {
+                                    None => None,
+                                    Some(text) => Some(text.clone()),
+                                },
+                            },
+                        },
                     },
                 },
             }],
@@ -508,10 +518,13 @@ pub async fn streamed_chat_completion(
     // Ensure that all input message have one single part.
     messages
         .iter()
-        .map(|m| match m.parts.len() {
-            0 => Err(anyhow!("Message has no parts")),
-            1 => Ok(()),
-            _ => Err(anyhow!("Message has more than one part")),
+        .map(|m| match &m.parts {
+            None => Err(anyhow!("Message has no parts")),
+            Some(parts) => match parts.len() {
+                0 => Err(anyhow!("Message has no parts")),
+                1 => Ok(()),
+                _ => Err(anyhow!("Message has more than one part")),
+            },
         })
         .collect::<Result<Vec<()>>>()?;
 
@@ -528,11 +541,14 @@ pub async fn streamed_chat_completion(
                         if last.role == m.role
                             && ["MODEL", "USER"].contains(&m.role.to_uppercase().as_str()) =>
                     {
-                        last.parts.push(Part {
-                            text: m.parts[0].text.clone(),
-                            function_call: None,
-                            function_response: None,
-                        });
+                        if last.parts.is_none() {
+                            last.parts = Some(vec![]);
+                        }
+                        if let Some(last_parts) = &mut last.parts {
+                            if let Some(m_parts) = &m.parts {
+                                last_parts.extend(m_parts.iter().cloned());
+                            }
+                        }
                     }
                     _ => {
                         acc.push(m.clone());
@@ -544,20 +560,24 @@ pub async fn streamed_chat_completion(
         .iter()
         // Then we squash the parts together.
         .map(|m| match m.role.to_uppercase().as_str() {
-            "USER" | "MODEL" => Content {
-                role: m.role.clone(),
-                parts: vec![Part {
-                    text: Some(
-                        m.parts
-                            .iter()
-                            .map(|p| p.text.clone().unwrap_or_default())
-                            .collect::<Vec<String>>()
-                            .join("\n"),
-                    ),
-                    function_call: None,
-                    function_response: None,
-                }],
-            },
+            "USER" | "MODEL" => {
+                let parts_text = m.parts.as_ref().map(|parts| {
+                    parts
+                        .iter()
+                        .map(|p| p.text.clone().unwrap_or_default())
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                });
+
+                Content {
+                    role: m.role.clone(),
+                    parts: Some(vec![Part {
+                        text: parts_text,
+                        function_call: None,
+                        function_response: None,
+                    }]),
+                }
+            }
             _ => m.clone(),
         })
         .collect::<Vec<Content>>();
@@ -635,7 +655,13 @@ pub async fn streamed_chat_completion(
                         }
                     };
 
-                    match completion_candidates[0].content.parts.len() {
+                    let parts = completion_candidates[0]
+                        .content
+                        .parts
+                        .clone()
+                        .unwrap_or_default();
+
+                    match parts.len() {
                         1 => (),
                         n => {
                             Err(anyhow!("Unexpected number of parts: {}", n))?;
@@ -644,8 +670,8 @@ pub async fn streamed_chat_completion(
 
                     match event_sender.as_ref() {
                         Some(sender) => {
-                            // let text = completion.candidates[0].content.parts[0].text.clone();
-                            match completion_candidates[0].content.parts[0].text.clone() {
+                            let text = parts[0].text.clone();
+                            match text {
                                 Some(t) => {
                                     if t.len() > 0 {
                                         let _ = sender.send(json!({
@@ -659,10 +685,8 @@ pub async fn streamed_chat_completion(
                                 None => (),
                             }
 
-                            match completion_candidates[0].content.parts[0]
-                                .function_call
-                                .clone()
-                            {
+                            let function_call = parts[0].function_call.clone();
+                            match function_call {
                                 Some(f) => {
                                     let _ = sender.send(json!({
                                         "type": "function_call",
@@ -752,10 +776,13 @@ pub async fn streamed_chat_completion(
                             };
                         }
                     }
-                    match candidates[0].content.parts.len() {
+
+                    let parts = candidates[0].content.parts.clone().unwrap_or_default();
+
+                    match &parts.len() {
                         0 => (),
                         1 => {
-                            match candidates[0].content.parts[0].text.clone() {
+                            match &parts[0].text.clone() {
                                 Some(t) => {
                                     if function_call_name.len() > 0 || function_call_args.len() > 0
                                     {
@@ -765,7 +792,7 @@ pub async fn streamed_chat_completion(
                                 }
                                 None => (),
                             };
-                            match candidates[0].content.parts[0].function_call.clone() {
+                            match parts[0].function_call.clone() {
                                 Some(f) => {
                                     if full_completion_text.len() > 0 {
                                         Err(anyhow!("Unexpected function call in text"))?;
@@ -812,7 +839,7 @@ pub async fn streamed_chat_completion(
         candidates: Some(vec![Candidate {
             content: Content {
                 role: String::from("MODEL"),
-                parts: vec![Part {
+                parts: Some(vec![Part {
                     text: match full_completion_text.len() {
                         0 => None,
                         _ => Some(full_completion_text),
@@ -825,7 +852,7 @@ pub async fn streamed_chat_completion(
                         }),
                     },
                     function_response: None,
-                }],
+                }]),
             },
             finish_reason: Some(finish_reason),
         }]),
