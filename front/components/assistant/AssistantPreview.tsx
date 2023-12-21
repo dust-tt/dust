@@ -211,23 +211,14 @@ export function AssistantPreview({
   if (variant === "gallery") {
     switch (flow) {
       case "personal":
-        galleryChip = agentConfiguration.userListStatus === "in-list" && (
-          <Chip
-            color="emerald"
-            size="xs"
-            label={agentConfiguration.scope === "global" ? "Active" : "Added"}
-          />
-        );
+        galleryChip = agentConfiguration.userListStatus === "in-list" &&
+          !(agentConfiguration.scope === "global") && (
+            <Chip color="emerald" size="xs" label="Added" />
+          );
         break;
       case "workspace":
-        galleryChip = ["workspace", "global"].includes(
-          agentConfiguration.scope
-        ) && (
-          <Chip
-            color="emerald"
-            size="xs"
-            label={agentConfiguration.scope === "global" ? "Active" : "Added"}
-          />
+        galleryChip = agentConfiguration.scope === "workspace" && (
+          <Chip color="emerald" size="xs" label={"Added"} />
         );
         break;
       default:
