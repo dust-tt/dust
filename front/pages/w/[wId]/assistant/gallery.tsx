@@ -141,7 +141,9 @@ export default function AssistantsGallery({
       })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title="Assistant Gallery"
+          title={`${
+            flow === "workspace_add" ? "Workspace " : ""
+          }Assistant Gallery`}
           onClose={async () => {
             switch (flow) {
               case "conversation_add":

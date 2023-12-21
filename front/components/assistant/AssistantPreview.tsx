@@ -1,6 +1,14 @@
-import { Avatar, Button, Chip, MoreIcon, PlusIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  Chip,
+  DashIcon,
+  MoreIcon,
+  PlusIcon,
+} from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
+  AgentUserListStatus,
   assertNever,
   PostOrPatchAgentConfigurationRequestBody,
   WorkspaceType,
@@ -48,18 +56,18 @@ export function AssistantPreview({
   variant,
   flow,
 }: AssistantPreviewProps) {
-  const [isAdding, setIsAdding] = useState<boolean>(false);
+  const [isUpdatingList, setIsUpdatingList] = useState<boolean>(false);
   // TODO(flav) Move notification logic to the caller. This maintains the purity of the component by
   // decoupling it from side-effect operations.
   const sendNotification = useContext(SendNotificationsContext);
 
-  const addToAgentList = async () => {
-    setIsAdding(true);
+  const updateAgentList = async (listStatus: AgentUserListStatus) => {
+    setIsUpdatingList(true);
 
     try {
       const body: PostAgentListStatusRequestBody = {
         agentId: agentConfiguration.sId,
-        listStatus: "in-list",
+        listStatus,
       };
 
       const response = await fetch(
@@ -76,30 +84,36 @@ export function AssistantPreview({
       if (!response.ok) {
         const data = await response.json();
         sendNotification({
-          title: `Error adding Assistant`,
+          title: `Error ${
+            listStatus === "in-list" ? "adding" : "removing"
+          } Assistant`,
           description: data.error.message,
           type: "error",
         });
       } else {
         sendNotification({
-          title: `Assistant added to your list`,
+          title: `Assistant ${
+            listStatus === "in-list" ? "added to" : "removed from"
+          } your list`,
           type: "success",
         });
         onUpdate();
       }
     } catch (error) {
       sendNotification({
-        title: `Error adding Assistant`,
+        title: `Error ${
+          listStatus === "in-list" ? "adding" : "removing"
+        } Assistant`,
         description: error instanceof Error ? error.message : String(error),
         type: "error",
       });
     } finally {
-      setIsAdding(false);
+      setIsUpdatingList(false);
     }
   };
 
-  const addToWorkspace = async () => {
-    setIsAdding(true);
+  const updateWorkspaceScope = async (scope: "workspace" | "published") => {
+    setIsUpdatingList(true);
 
     const body: PostOrPatchAgentConfigurationRequestBody = {
       assistant: {
@@ -107,7 +121,7 @@ export function AssistantPreview({
         description: agentConfiguration.description,
         pictureUrl: agentConfiguration.pictureUrl,
         status: "active",
-        scope: "workspace",
+        scope,
         action: agentConfiguration.action,
         generation: agentConfiguration.generation,
       },
@@ -127,25 +141,31 @@ export function AssistantPreview({
       if (!res.ok) {
         const data = await res.json();
         sendNotification({
-          title: `Error adding Assistant`,
+          title: `Error ${
+            scope === "workspace" ? "adding" : "removing"
+          } Assistant`,
           description: data.error.message,
           type: "error",
         });
       } else {
         sendNotification({
-          title: `Assistant added to Workspace list`,
+          title: `Assistant ${
+            scope === "workspace" ? "added to" : "removed from"
+          } Workspace list`,
           type: "success",
         });
         onUpdate();
       }
     } catch (error) {
       sendNotification({
-        title: `Error adding Assistant`,
+        title: `Error ${
+          scope === "workspace" ? "adding" : "removing"
+        } Assistant`,
         description: error instanceof Error ? error.message : String(error),
         type: "error",
       });
     } finally {
-      setIsAdding(false);
+      setIsUpdatingList(false);
     }
   };
 
@@ -157,10 +177,10 @@ export function AssistantPreview({
           key="personall_add"
           variant="tertiary"
           icon={PlusIcon}
-          disabled={isAdding}
+          disabled={isUpdatingList}
           size="xs"
           label={"Add"}
-          onClick={addToAgentList}
+          onClick={() => updateAgentList("in-list")}
         />
       );
       break;
@@ -170,10 +190,10 @@ export function AssistantPreview({
           key="workspace_add"
           variant="tertiary"
           icon={PlusIcon}
-          disabled={isAdding}
+          disabled={isUpdatingList}
           size="xs"
           label={"Add to Workspace"}
-          onClick={addToWorkspace}
+          onClick={() => updateWorkspaceScope("workspace")}
         />
       );
       break;
@@ -213,12 +233,32 @@ export function AssistantPreview({
       case "personal":
         galleryChip = agentConfiguration.userListStatus === "in-list" &&
           !(agentConfiguration.scope === "global") && (
-            <Chip color="emerald" size="xs" label="Added" />
+            <div className="group">
+              <Chip
+                color="emerald"
+                size="xs"
+                label="Added"
+                className="group-hover:hidden"
+              />
+              <div className="hidden group-hover:block">
+                <Button.List isWrapping={true}>
+                  <Button
+                    key="personall_remove"
+                    variant="tertiary"
+                    icon={DashIcon}
+                    disabled={isUpdatingList}
+                    size="xs"
+                    label={"Remove"}
+                    onClick={() => updateAgentList("not-in-list")}
+                  />
+                </Button.List>
+              </div>
+            </div>
           );
         break;
       case "workspace":
         galleryChip = agentConfiguration.scope === "workspace" && (
-          <Chip color="emerald" size="xs" label={"Added"} />
+          <Chip color="emerald" size="xs" label="Added" />
         );
         break;
       default:
