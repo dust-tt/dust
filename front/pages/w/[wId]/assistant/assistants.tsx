@@ -310,7 +310,7 @@ export default function PersonalAssistants({
                               <Button
                                 key="show_details"
                                 icon={MoreIcon}
-                                label={"Show Assistant"}
+                                label={"View Assistant"}
                                 labelVisible={false}
                                 size="xs"
                                 variant="tertiary"
@@ -353,7 +353,7 @@ export default function PersonalAssistants({
                               <Button
                                 key="show_details"
                                 icon={MoreIcon}
-                                label={"Show Assistant"}
+                                label={"View Assistant"}
                                 labelVisible={false}
                                 size="xs"
                                 variant="tertiary"

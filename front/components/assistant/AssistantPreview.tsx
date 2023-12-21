@@ -185,7 +185,7 @@ export function AssistantPreview({
     <Button
       key="show_details"
       icon={MoreIcon}
-      label={"Show Assistant"}
+      label={"View Assistant"}
       labelVisible={false}
       size="xs"
       variant="tertiary"
