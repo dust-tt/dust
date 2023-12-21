@@ -179,7 +179,7 @@ export default function AssistantsGallery({
           <Tab tabs={tabs} />
           <Searchbar
             name="search"
-            placeholder="Search Assistants"
+            placeholder="Assistant name"
             value={assistantSearch}
             onChange={(s) => {
               setAssistantSearch(s);
