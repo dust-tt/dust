@@ -149,7 +149,7 @@ const useCustomEditor = ({
 
   const editor = useEditor(
     {
-      autofocus: true,
+      autofocus: "end",
       enableInputRules: false, // Disable Markdown when typing.
       enablePasteRules: false, // Disable Markdown when pasting.
       extensions: [
@@ -179,7 +179,7 @@ const useCustomEditor = ({
         class: "border-0 outline-none overflow-y-auto h-full",
       },
       handleKeyDown: (view, event) => {
-        if (event.key === "Enter") {
+        if (event.key === "Enter" && !event.shiftKey) {
           // Prevent the default Enter key behavior
           event.preventDefault();
 
