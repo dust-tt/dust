@@ -19,6 +19,7 @@ import {
   AgentConfigurationScope,
   ConnectorProvider,
   DataSourceType,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
@@ -79,6 +80,7 @@ const usedModelConfigs = [
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ];
 
 // Avatar URLs

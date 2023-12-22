@@ -44,6 +44,7 @@ export enum GLOBAL_AGENTS_SID {
   // it interferes with the retrieval of ongoing conversations involving this agent.
   // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
   MISTRAL_SMALL = "mistral",
+  GEMINI_PRO = "gemini-pro",
 }
 
 const CUSTOM_ORDER: string[] = [
@@ -58,6 +59,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+  GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.HELPER,
 ];
 

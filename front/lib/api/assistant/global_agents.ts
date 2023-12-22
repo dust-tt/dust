@@ -4,7 +4,11 @@ import { promisify } from "util";
 
 const readFileAsync = promisify(fs.readFile);
 
-import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import {
+  ConnectorProvider,
+  DataSourceType,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+} from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -300,6 +304,37 @@ async function _getMistralSmallGlobalAgent({
       model: {
         providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
         modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getGeminiProGlobalAgent({
+  settings,
+}: {
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  const status = settings ? settings.status : "disabled_by_admin";
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
+    version: 0,
+    versionAuthorId: null,
+    name: "gemini-pro",
+    description:
+      "Google's our best model for scaling across a wide range of tasks (8k context).",
+    pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: `Never start your messages with "[assistant:"`,
+      model: {
+        providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -687,6 +722,9 @@ export async function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
       agentConfiguration = await _getMistralSmallGlobalAgent({ settings });
+      break;
+    case GLOBAL_AGENTS_SID.GEMINI_PRO:
+      agentConfiguration = await _getGeminiProGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = await _getSlackGlobalAgent(auth, {
