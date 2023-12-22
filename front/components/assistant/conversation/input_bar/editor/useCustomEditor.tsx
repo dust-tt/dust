@@ -173,6 +173,7 @@ const useCustomEditor = ({
 
   const editor = useEditor(
     {
+      autofocus: true,
       enableInputRules: false, // Disable Markdown when typing.
       enablePasteRules: false, // Disable Markdown when pasting.
       extensions: [
