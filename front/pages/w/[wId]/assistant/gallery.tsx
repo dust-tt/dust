@@ -17,7 +17,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { useAgentConfigurations, useAgentsLeaderboard } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -85,19 +85,15 @@ export default function AssistantsGallery({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [orderBy, setOrderBy] = useState<"name" | "usage">("name");
 
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView,
+      withUsage: orderBy === "usage",
     });
 
-  const { agentsLeaderboard } = useAgentsLeaderboard({
-    workspaceId: owner.sId,
-    agentsGetView,
-  });
-
-  const [orderBy, setOrderBy] = useState<"name" | "usage">("name");
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
   let agentsToDisplay: AgentConfigurationType[] = [];
@@ -117,16 +113,28 @@ export default function AssistantsGallery({
       break;
     }
     case "usage": {
-      agentsToDisplay = agentsLeaderboard
-        .filter((a) => {
-          return (
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
-            a.status === "active"
-          );
-        })
-        .sort((a, b) => {
-          return b.usage.messageCount - a.usage.messageCount;
+      agentsToDisplay = agentConfigurations.filter((a) => {
+        return (
+          subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
+          a.status === "active"
+        );
+      });
+      let allHaveUsage = true;
+      agentsToDisplay.forEach((a) => {
+        if (!a.usage) {
+          allHaveUsage = false;
+        }
+      });
+      if (allHaveUsage) {
+        agentsToDisplay.sort((a, b) => {
+          if (a.usage && b.usage) {
+            return b.usage.messageCount - a.usage.messageCount;
+          } else {
+            // Need that to be type safe
+            return a.name.localeCompare(b.name);
+          }
         });
+      }
       break;
     }
     default:
