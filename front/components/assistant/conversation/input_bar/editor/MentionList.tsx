@@ -12,6 +12,7 @@ import { classNames } from "@app/lib/utils";
 interface MentionListProps {
   command: any;
   items: EditorSuggestion[];
+  query: string;
 }
 
 export const MentionList = forwardRef(function mentionList(
@@ -46,10 +47,32 @@ export const MentionList = forwardRef(function mentionList(
     enterHandler();
   };
 
+  // Handler that selects the item if the current query matches its label exactly.
+  const selectItemOnExactMatch = () => {
+    const { query, items } = props;
+
+    // Check if items are defined and not empty, and get the current selected item.
+    const currentSelectedItem = items?.[selectedIndex];
+
+    // Check if a selected item exists and if the query matches its label exactly.
+    if (currentSelectedItem && query === currentSelectedItem.label) {
+      selectItem(selectedIndex);
+      // Indicate that the default action of the Space key should be prevented
+      return true;
+    }
+
+    // Allow the default Space key action when there's no exact match or items are undefined
+    return false;
+  };
+
+  const spaceHandler = () => {
+    return selectItemOnExactMatch();
+  };
+
   useEffect(() => setSelectedIndex(0), [props.items]);
 
   useImperativeHandle(ref, () => ({
-    onKeyDown: ({ event }: { event: { key: string } }) => {
+    onKeyDown: ({ event }: { event: KeyboardEvent }) => {
       switch (event.key) {
         case "ArrowUp":
           upHandler();
@@ -63,6 +86,11 @@ export const MentionList = forwardRef(function mentionList(
         case "Tab":
           tabHandler();
           return true;
+        case " ":
+          if (spaceHandler()) {
+            event.preventDefault();
+          }
+          break;
 
         default:
           return false;
