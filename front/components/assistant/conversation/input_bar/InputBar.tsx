@@ -100,10 +100,18 @@ export function AssistantInputBar({
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, selectedAssistant } = useContext(InputBarContext);
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
     if (animate && !isAnimating) {
       setIsAnimating(true);
-      setTimeout(() => setIsAnimating(false), 1500);
+      timeoutId = setTimeout(() => setIsAnimating(false), 1500);
     }
+
+    // Cleanup function to clear the timeout
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [animate, isAnimating]);
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
