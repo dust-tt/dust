@@ -1,4 +1,4 @@
-import Mention from "@tiptap/extension-mention";
+import Mention, { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Editor, JSONContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -179,7 +179,19 @@ const useCustomEditor = ({
         class: "border-0 outline-none overflow-y-auto h-full",
       },
       handleKeyDown: (view, event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
+        if (
+          event.key === "Enter" &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey
+        ) {
+          const mentionPluginState = MentionPluginKey.getState(view.state);
+          // Let the mention extension handle the event if its dropdown is currently opened.
+          if (mentionPluginState?.active) {
+            return false;
+          }
+
           // Prevent the default Enter key behavior
           event.preventDefault();
 
