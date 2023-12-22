@@ -16,6 +16,8 @@ import { AnthropicModel, AnthropicModelType } from "@app/lib/models/anthropic";
 import { MistralModel, MistralModelType } from "@app/lib/models/mistral";
 import { OpenAIModel, OpenAIModelType } from "@app/lib/models/openai";
 
+import { GoogleModel, GoogleModelType } from "./lib/models/google";
+
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -55,6 +57,9 @@ async function main() {
       break;
     case "anthropic":
       m = new AnthropicModel(model as AnthropicModelType);
+      break;
+    case "google":
+      m = new GoogleModel(model as GoogleModelType);
       break;
     default:
       ((x: never) => x)(provider);
