@@ -42,26 +42,31 @@ export const MentionList = forwardRef(function mentionList(
     selectItem(selectedIndex);
   };
 
+  const tabHandler = () => {
+    enterHandler();
+  };
+
   useEffect(() => setSelectedIndex(0), [props.items]);
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: { key: string } }) => {
-      if (event.key === "ArrowUp") {
-        upHandler();
-        return true;
-      }
+      switch (event.key) {
+        case "ArrowUp":
+          upHandler();
+          return true;
+        case "ArrowDown":
+          downHandler();
+          return true;
+        case "Enter":
+          enterHandler();
+          return true;
+        case "Tab":
+          tabHandler();
+          return true;
 
-      if (event.key === "ArrowDown") {
-        downHandler();
-        return true;
+        default:
+          return false;
       }
-
-      if (event.key === "Enter") {
-        enterHandler();
-        return true;
-      }
-
-      return false;
     },
   }));
 
