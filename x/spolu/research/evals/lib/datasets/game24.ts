@@ -172,9 +172,14 @@ export class Game24 extends Dataset {
     }
 
     // remove the \boxed{} directive and trim
-    const answer = answers.map((s) => s.slice(7, s.length - 1).trim());
-    // return the last one
-    return answer[answer.length - 1];
+    const clean = answers.map((s) => s.slice(7, s.length - 1).trim());
+
+    if (clean.length === 0) {
+      return "";
+    } else {
+      // return the last one
+      return clean[clean.length - 1];
+    }
   }
 
   maxTokens() {

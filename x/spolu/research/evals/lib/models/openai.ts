@@ -28,10 +28,9 @@ export class OpenAIModel extends Model {
       messages: query.messages,
       max_tokens: query.maxTokens,
       temperature: query.temperature,
-      logprobs: true,
+      // logprobs: true,
     });
 
-    console.log(JSON.stringify(completion));
     const m = completion.choices[0].message;
 
     if (m.content === null) {

@@ -126,8 +126,12 @@ export class MATH extends Dataset {
       }
     }
 
-    // return the last one
-    return answers[answers.length - 1];
+    if (answers.length === 0) {
+      return "";
+    } else {
+      // return the last one
+      return answers[answers.length - 1];
+    }
   }
 
   maxTokens() {
