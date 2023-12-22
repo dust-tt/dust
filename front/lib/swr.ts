@@ -444,9 +444,11 @@ export function useConversationReactions({
 export function useAgentConfigurations({
   workspaceId,
   agentsGetView,
+  withUsage,
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType;
+  withUsage?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -455,7 +457,9 @@ export function useAgentConfigurations({
       ? `view=${agentsGetView}`
       : `conversationId=${agentsGetView.conversationId}`;
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}`,
+    `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}&withUsage=${
+      withUsage ? true : false
+    }`,
     agentConfigurationsFetcher
   );
 

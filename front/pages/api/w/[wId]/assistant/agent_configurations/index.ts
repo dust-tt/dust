@@ -12,6 +12,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
@@ -19,6 +20,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -79,7 +81,7 @@ async function handler(
         });
       }
 
-      const { view, conversationId } = queryValidation.right;
+      const { view, conversationId, withUsage } = queryValidation.right;
       const viewParam = view
         ? view
         : conversationId
@@ -94,7 +96,25 @@ async function handler(
           },
         });
       }
-      const agentConfigurations = await getAgentConfigurations(auth, viewParam);
+      let agentConfigurations = await getAgentConfigurations(auth, viewParam);
+      if (withUsage === "true") {
+        agentConfigurations = await safeRedisClient(async (redis) => {
+          return Promise.all(
+            agentConfigurations.map(
+              async (agentConfiguration): Promise<AgentConfigurationType> => {
+                return {
+                  ...agentConfiguration,
+                  usage: await getAgentUsage({
+                    providedRedis: redis,
+                    agentConfigurationId: agentConfiguration.sId,
+                    workspaceId: owner.sId,
+                  }),
+                };
+              }
+            )
+          );
+        });
+      }
       return res.status(200).json({
         agentConfigurations,
       });

@@ -131,6 +131,9 @@ export type AgentConfigurationType = {
 
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
+
+  // Usage is expensive to compute, so we only compute it when needed.
+  usage?: AgentUsageType;
 };
 
 export type AgentUsageType = {

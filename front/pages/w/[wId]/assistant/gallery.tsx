@@ -1,4 +1,4 @@
-import { Page, Searchbar, Tab } from "@dust-tt/sparkle";
+import { Button, DropdownMenu, Page, Searchbar, Tab } from "@dust-tt/sparkle";
 import {
   AgentConfigurationType,
   AgentsGetViewType,
@@ -85,20 +85,61 @@ export default function AssistantsGallery({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [orderBy, setOrderBy] = useState<"name" | "usage">("name");
 
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView,
+      withUsage: orderBy === "usage",
     });
+
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
-  const filtered = agentConfigurations.filter((a) => {
-    return (
-      subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
-      a.status === "active"
-    );
-  });
+  let agentsToDisplay: AgentConfigurationType[] = [];
+
+  switch (orderBy) {
+    case "name": {
+      agentsToDisplay = agentConfigurations
+        .filter((a) => {
+          return (
+            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
+            a.status === "active"
+          );
+        })
+        .sort((a, b) => {
+          return a.name.localeCompare(b.name);
+        });
+      break;
+    }
+    case "usage": {
+      agentsToDisplay = agentConfigurations.filter((a) => {
+        return (
+          subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
+          a.status === "active"
+        );
+      });
+      let allHaveUsage = true;
+      agentsToDisplay.forEach((a) => {
+        if (!a.usage) {
+          allHaveUsage = false;
+        }
+      });
+      if (allHaveUsage) {
+        agentsToDisplay.sort((a, b) => {
+          if (a.usage && b.usage) {
+            return b.usage.messageCount - a.usage.messageCount;
+          } else {
+            // Need that to be type safe
+            return a.name.localeCompare(b.name);
+          }
+        });
+      }
+      break;
+    }
+    default:
+      assertNever(orderBy);
+  }
 
   const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
     null
@@ -179,17 +220,49 @@ export default function AssistantsGallery({
       <div className="pb-16">
         <Page.Vertical gap="xl" align="stretch">
           <Tab tabs={tabs} />
-          <Searchbar
-            name="search"
-            placeholder="Assistant name"
-            value={assistantSearch}
-            onChange={(s) => {
-              setAssistantSearch(s);
-            }}
-          />
+          <div className="flex flex-row space-x-4">
+            <div className="flex-grow">
+              <Searchbar
+                name="search"
+                placeholder="Assistant name"
+                value={assistantSearch}
+                onChange={(s) => {
+                  setAssistantSearch(s);
+                }}
+              />
+            </div>
+            <div className="shrink-0">
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={`Order by: ${orderBy}`}
+                    variant="tertiary"
+                    hasMagnifying={false}
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomRight">
+                  <DropdownMenu.Item
+                    key="name"
+                    label="Name"
+                    onClick={() => setOrderBy("name")}
+                  />
+                  <DropdownMenu.Item
+                    key="usage"
+                    label="Usage"
+                    onClick={() => {
+                      setOrderBy("usage");
+                    }}
+                  />
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+          </div>
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-              {filtered.map((a) => (
+              {agentsToDisplay.map((a) => (
                 <AssistantPreview
                   key={a.sId}
                   owner={owner}
