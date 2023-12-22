@@ -400,7 +400,6 @@ export default function AssistantBuilder({
       return new Promise((resolve, reject) => {
         checkUsernameTimeout.current = setTimeout(async () => {
           checkUsernameTimeout.current = null;
-          console.log("checking handle availability");
           const res = await fetch(
             `/api/w/${
               owner.sId
