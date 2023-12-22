@@ -1,6 +1,9 @@
 import {
   AgentMention,
   AgentUserListStatus,
+  Err,
+  Ok,
+  Result,
   SupportedModel,
 } from "@dust-tt/types";
 import { DustAppRunConfigurationType } from "@dust-tt/types";
@@ -22,7 +25,7 @@ import {
 } from "@dust-tt/types";
 import { isSupportedModel } from "@dust-tt/types";
 import { DatabaseQueryConfigurationType } from "@dust-tt/types";
-import { FindOptions, Op, Transaction } from "sequelize";
+import { FindOptions, Op, Transaction, UniqueConstraintError } from "sequelize";
 
 import {
   getGlobalAgent,
@@ -635,7 +638,7 @@ export async function createAgentConfiguration(
     action: AgentActionConfigurationType | null;
     agentConfigurationId?: string;
   }
-): Promise<AgentConfigurationType> {
+): Promise<Result<AgentConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -649,129 +652,142 @@ export async function createAgentConfiguration(
   let version = 0;
   let listStatusOverride: AgentUserListStatus | null = null;
 
-  const agent = await front_sequelize.transaction(
-    async (t): Promise<AgentConfiguration> => {
-      if (agentConfigurationId) {
-        const [existing, userRelation] = await Promise.all([
-          AgentConfiguration.findOne({
-            where: {
-              sId: agentConfigurationId,
+  try {
+    const agent = await front_sequelize.transaction(
+      async (t): Promise<AgentConfiguration> => {
+        if (agentConfigurationId) {
+          const [existing, userRelation] = await Promise.all([
+            AgentConfiguration.findOne({
+              where: {
+                sId: agentConfigurationId,
+                workspaceId: owner.id,
+              },
+              attributes: ["scope", "version"],
+              order: [["version", "DESC"]],
+              transaction: t,
+              limit: 1,
+            }),
+            AgentUserRelation.findOne({
+              where: {
+                workspaceId: owner.id,
+                agentConfiguration: agentConfigurationId,
+                userId: user.id,
+              },
+              transaction: t,
+            }),
+          ]);
+
+          if (existing) {
+            // Bump the version of the agent.
+            version = existing.version + 1;
+
+            // If the agent already exists, record the listStatusOverride to properly render the new
+            // AgentConfigurationType.
+            if (userRelation) {
+              listStatusOverride = userRelation.listStatusOverride;
+            }
+
+            // At time of writing, private agents can only be created from scratch. An existing agent
+            // that is not already private cannot be updated back to private.
+            if (
+              existing &&
+              scope === "private" &&
+              existing.scope !== "private"
+            ) {
+              throw new Error("Published agents cannot go back to private.");
+            }
+          }
+
+          await AgentConfiguration.update(
+            { status: "archived" },
+            {
+              where: {
+                sId: agentConfigurationId,
+                workspaceId: owner.id,
+              },
+              transaction: t,
+            }
+          );
+        }
+        const sId = agentConfigurationId || generateModelSId();
+
+        // If creating a new private or published agent, it should be in the user's list, so it
+        // appears in their 'assistants' page (at creation for assistants created published, or at
+        // publication once a private assistant gets published).
+        if (["private", "published"].includes(scope) && !agentConfigurationId) {
+          listStatusOverride = "in-list";
+          await AgentUserRelation.create(
+            {
               workspaceId: owner.id,
-            },
-            attributes: ["scope", "version"],
-            order: [["version", "DESC"]],
-            transaction: t,
-            limit: 1,
-          }),
-          AgentUserRelation.findOne({
-            where: {
-              workspaceId: owner.id,
-              agentConfiguration: agentConfigurationId,
+              agentConfiguration: sId,
               userId: user.id,
+              listStatusOverride: "in-list",
             },
-            transaction: t,
-          }),
-        ]);
-
-        if (existing) {
-          // Bump the version of the agent.
-          version = existing.version + 1;
-
-          // If the agent already exists, record the listStatusOverride to properly render the new
-          // AgentConfigurationType.
-          if (userRelation) {
-            listStatusOverride = userRelation.listStatusOverride;
-          }
-
-          // At time of writing, private agents can only be created from scratch. An existing agent
-          // that is not already private cannot be updated back to private.
-          if (existing && scope === "private" && existing.scope !== "private") {
-            throw new Error("Published agents cannot go back to private.");
-          }
+            { transaction: t }
+          );
         }
 
-        await AgentConfiguration.update(
-          { status: "archived" },
+        // Create Agent config.
+        return AgentConfiguration.create(
           {
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          }
-        );
-      }
-      const sId = agentConfigurationId || generateModelSId();
-
-      // If creating a new private or published agent, it should be in the user's list, so it
-      // appears in their 'assistants' page (at creation for assistants created published, or at
-      // publication once a private assistant gets published).
-      if (["private", "published"].includes(scope) && !agentConfigurationId) {
-        listStatusOverride = "in-list";
-        await AgentUserRelation.create(
-          {
+            sId,
+            version,
+            status,
+            scope,
+            name,
+            description,
+            pictureUrl,
             workspaceId: owner.id,
-            agentConfiguration: sId,
-            userId: user.id,
-            listStatusOverride: "in-list",
+            generationConfigurationId: generation?.id || null,
+            authorId: user.id,
+            // We know here that these are one that we created and not a "global virtual" one so we're
+            // good to set the foreign key.
+            retrievalConfigurationId:
+              action?.type === "retrieval_configuration" ? action?.id : null,
+            dustAppRunConfigurationId:
+              action?.type === "dust_app_run_configuration" ? action?.id : null,
+            databaseQueryConfigurationId:
+              action?.type === "database_query_configuration"
+                ? action?.id
+                : null,
           },
-          { transaction: t }
+          {
+            transaction: t,
+          }
         );
       }
+    );
 
-      // Create Agent config.
-      return AgentConfiguration.create(
-        {
-          sId,
-          version,
-          status,
-          scope,
-          name,
-          description,
-          pictureUrl,
-          workspaceId: owner.id,
-          generationConfigurationId: generation?.id || null,
-          authorId: user.id,
-          // We know here that these are one that we created and not a "global virtual" one so we're
-          // good to set the foreign key.
-          retrievalConfigurationId:
-            action?.type === "retrieval_configuration" ? action?.id : null,
-          dustAppRunConfigurationId:
-            action?.type === "dust_app_run_configuration" ? action?.id : null,
-          databaseQueryConfigurationId:
-            action?.type === "database_query_configuration" ? action?.id : null,
-        },
-        {
-          transaction: t,
-        }
-      );
+    /*
+     * Final rendering.
+     */
+    const agentConfiguration: AgentConfigurationType = {
+      id: agent.id,
+      sId: agent.sId,
+      version: agent.version,
+      versionAuthorId: agent.authorId,
+      scope: agent.scope,
+      userListStatus: null,
+      name: agent.name,
+      description: agent.description,
+      pictureUrl: agent.pictureUrl,
+      status: agent.status,
+      action: action,
+      generation: generation,
+    };
+
+    agentConfiguration.userListStatus = agentUserListStatus({
+      agentConfiguration,
+      listStatusOverride,
+    });
+
+    return new Ok(agentConfiguration);
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return new Err(new Error("An agent with this name already exists."));
     }
-  );
-
-  /*
-   * Final rendering.
-   */
-  const agentConfiguration: AgentConfigurationType = {
-    id: agent.id,
-    sId: agent.sId,
-    version: agent.version,
-    versionAuthorId: agent.authorId,
-    scope: agent.scope,
-    userListStatus: null,
-    name: agent.name,
-    description: agent.description,
-    pictureUrl: agent.pictureUrl,
-    status: agent.status,
-    action: action,
-    generation: generation,
-  };
-
-  agentConfiguration.userListStatus = agentUserListStatus({
-    agentConfiguration,
-    listStatusOverride,
-  });
-
-  return agentConfiguration;
+    throw error;
+  }
 }
 
 /**
@@ -1085,4 +1101,24 @@ async function _createAgentDataSourcesConfigData(
       })
     );
   return agentDataSourcesConfigRows;
+}
+
+export async function agentNameIsAvailable(
+  auth: Authenticator,
+  nameToCheck: string
+) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      workspaceId: owner.id,
+      name: nameToCheck,
+      status: "active",
+    },
+  });
+
+  return !agent;
 }

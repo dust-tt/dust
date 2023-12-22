@@ -182,6 +182,14 @@ AgentConfiguration.init(
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
       { fields: ["authorId"] },
+      {
+        name: "agent_configuration_unique_active_name",
+        fields: ["workspaceId", "name"],
+        unique: true,
+        where: {
+          status: "active",
+        },
+      },
     ],
     hooks: {
       beforeValidate: (agentConfiguration: AgentConfiguration) => {

@@ -4,6 +4,7 @@ import {
   AgentGenerationConfigurationType,
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  Result,
 } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -133,13 +134,21 @@ async function handler(
         });
       }
 
-      const agentConfiguration = await createOrUpgradeAgentConfiguration(
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration(
         auth,
         bodyValidation.right
       );
-
+      if (agentConfigurationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: agentConfigurationRes.error.message,
+          },
+        });
+      }
       return res.status(200).json({
-        agentConfiguration: agentConfiguration,
+        agentConfiguration: agentConfigurationRes.value,
       });
 
     default:
@@ -177,7 +186,7 @@ export async function createOrUpgradeAgentConfiguration(
     },
   }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
   agentConfigurationId?: string
-): Promise<AgentConfigurationType> {
+): Promise<Result<AgentConfigurationType, Error>> {
   let generationConfig: AgentGenerationConfigurationType | null = null;
   if (generation)
     generationConfig = await createAgentGenerationConfiguration(auth, {
