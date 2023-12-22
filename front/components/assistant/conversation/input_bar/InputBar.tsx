@@ -5,10 +5,8 @@ import { AgentMention, MentionType } from "@dust-tt/types";
 import {
   createContext,
   Fragment,
-  useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { mutate } from "swr";
@@ -42,31 +40,6 @@ function AgentMention({
   );
 }
 
-// Custom hook to synchronize state with a ref as a temporary workaround.
-// This hack is used to maintain a synchronous and up-to-date reference to state values
-// that are otherwise affected by parent component re-renders due to changing dependencies.
-// This approach ensures that the latest state is accessible synchronously when needed
-// for operations that cannot rely on the normal asynchronous nature of setState.
-// This is not an ideal solution and should be addressed with a more robust state management strategy
-// as a follow-up action to minimize unnecessary re-renders and improve component performance.
-function useSyncedState<T>(initialValue: T | undefined) {
-  const [state, setState] = useState<T | undefined>(initialValue);
-  const ref = useRef<T | undefined>(initialValue);
-
-  // Synchronize ref with state.
-  useEffect(() => {
-    ref.current = state;
-  }, [state]);
-
-  // Function to update both state and ref.
-  const setSyncedState = useCallback((newValue: T | undefined) => {
-    setState(newValue);
-  }, []);
-
-  // Return both state and ref, along with the setter function.
-  return [state, ref, setSyncedState] as const;
-}
-
 export function AssistantInputBar({
   owner,
   onSubmit,
@@ -82,14 +55,12 @@ export function AssistantInputBar({
   conversationId: string | null;
   stickyMentions?: AgentMention[];
 }) {
-  const [contentFragmentBody, contentFragmentBodyRef, setContentFragmentBody] =
-    useSyncedState<string | undefined>(undefined);
-  const [
-    contentFragmentFilename,
-    contentFragmentFilenameRef,
-    setContentFragmentFilename,
-  ] = useSyncedState<string | undefined>(undefined);
-
+  const [contentFragmentBody, setContentFragmentBody] = useState<
+    string | undefined
+  >(undefined);
+  const [contentFragmentFilename, setContentFragmentFilename] = useState<
+    string | undefined
+  >(undefined);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: conversationId ? { conversationId } : "list",
@@ -138,10 +109,10 @@ export function AssistantInputBar({
           contentType: string;
         }
       | undefined = undefined;
-    if (contentFragmentFilenameRef.current && contentFragmentBodyRef.current) {
+    if (contentFragmentFilename && contentFragmentBody) {
       contentFragment = {
-        title: contentFragmentFilenameRef.current,
-        content: contentFragmentBodyRef.current,
+        title: contentFragmentFilename,
+        content: contentFragmentBody,
         url: null,
         contentType: "file_attachment",
       };
