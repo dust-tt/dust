@@ -27,7 +27,7 @@ export interface InputBarContainerProps {
   agentConfigurations: AgentConfigurationType[];
   disableAttachment: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onInputFileChange: (e: React.ChangeEvent) => void;
+  onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
@@ -97,7 +97,10 @@ const InputBarContainer = ({
         <div className="flex gap-5 rounded-full border border-structure-100 px-4 py-2 sm:gap-3 sm:px-2">
           <input
             accept=".txt,.pdf,.md"
-            onChange={onInputFileChange}
+            onChange={async (e) => {
+              await onInputFileChange(e);
+              editorService.focusEnd();
+            }}
             ref={fileInputRef}
             style={{ display: "none" }}
             type="file"
