@@ -28,10 +28,10 @@ export class OpenAIModel extends Model {
       messages: query.messages,
       max_tokens: query.maxTokens,
       temperature: query.temperature,
-      // logprobs: true,
+      logprobs: true,
     });
 
-    // console.log(JSON.stringify(completion));
+    console.log(JSON.stringify(completion));
     const m = completion.choices[0].message;
 
     if (m.content === null) {
@@ -48,5 +48,51 @@ export class OpenAIModel extends Model {
       provider: this.provider,
       model: this._model,
     };
+  }
+}
+
+export class LogProbModel {
+  readonly provider = "openai";
+  private openai: OpenAI;
+
+  constructor() {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  async value(prefix: string, completion: string) {
+    const c = await this.openai.completions.create({
+      model: "text-davinci-003",
+      prompt: prefix + "\n--\n" + completion,
+      max_tokens: 0,
+      echo: true,
+      logprobs: 1,
+    });
+
+    let logprob = 0;
+    let start = false;
+
+    if (
+      !c.choices[0].logprobs ||
+      !c.choices[0].logprobs.tokens ||
+      !c.choices[0].logprobs.token_logprobs
+    ) {
+      return 0;
+    }
+
+    for (let i = 0; i < (c.choices[0].logprobs.tokens?.length || 0); i++) {
+      const t = c.choices[0].logprobs.tokens[i];
+      const l = c.choices[0].logprobs.token_logprobs[i];
+      if (t === "--") {
+        start = true;
+      } else {
+        if (start) {
+          logprob += l;
+        }
+      }
+    }
+
+    return logprob;
   }
 }

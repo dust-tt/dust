@@ -3,6 +3,7 @@ import seedrandom from "seedrandom";
 import { Algorithm, AlgorithmType, TestResult } from "@app/lib/algorithms";
 import { Dataset, Test } from "@app/lib/datasets";
 import { ChatMessage, ChatQuery, Model } from "@app/lib/models";
+import { LogProbModel } from "@app/lib/models/openai";
 
 type Reasoning = {
   reasoning: string[];
@@ -19,6 +20,7 @@ export class ToT extends Algorithm {
   readonly VOTING_ITERATIONS = 4;
 
   private finals: TestResult[] = [];
+  private valueModel: LogProbModel = new LogProbModel();
 
   constructor(dataset: Dataset, model: Model) {
     super(dataset, model);
@@ -109,6 +111,60 @@ export class ToT extends Algorithm {
       new_nodes.push(new_node);
     }
     return new_nodes;
+  }
+
+  async value(test: Test, iteration: number, pool: Reasoning[]) {
+    const examples = this.dataset.examples({
+      problem: test.id,
+      count: 6,
+      iteration,
+    });
+
+    let prefix = `<Instructions>\n`;
+    prefix += `${this.dataset.instructions()}`;
+    prefix += "\n\n";
+    prefix += `Provide a reasoning consisting in multiple steps, using one line per step.`;
+    prefix += ` ${this.dataset.reasoningStepInstructions()}`;
+    prefix += `\n</Instructions>\n`;
+
+    for (const e of examples.slice(0, 3)) {
+      prefix += `\n\n<Example>\n`;
+      prefix += `QUESTION: ${e.question}\n`;
+      prefix += `REASONING:\n${e.reasoning.join("\n")}\n`;
+      prefix += `ANSWER: ${e.answer}\n`;
+      prefix += `</Example>`;
+    }
+
+    for (const p of pool) {
+      let pr = prefix;
+      p += `\n\n<Example>\n`;
+      p += `QUESTION: ${test.question}\n`;
+      p += `REASONING:\n${p.reasoning.join("\n")}\n`;
+      p += `ANSWER: ${e.answer}\n`;
+      p += `</Example>`;
+    }
+
+
+    let prompt = `INSTRUCTIONS:\n`;
+    prompt += `${this.dataset.instructions()}`;
+    prompt += "\n\n";
+    prompt += `${this.dataset.reasoningStepInstructions()}`;
+    prompt += "\n\n";
+    prompt +=
+      "Your goal is to rank the following (potentially partial) reasonings";
+    prompt += " from the most promising to the least promising.\n\n";
+    prompt += "Below are 3 examples of full valid reasonings:\n";
+    for (const example of examples) {
+      prompt += `QUESTION: ${example.question}\n`;
+      prompt += `REASONING:\n${example.reasoning.join("\n")}\n\n`;
+    }
+    prompt +=
+      "The format you should use for your response is the ranked, comma separated, list of reasoning indexes without spaces.";
+    prompt +=
+      " If there are, say, 5 proposed reasonings, a valid example would be `1,5,2,3,4`";
+    prompt += " where `1` is the most promising and 4 the least promising.";
+    prompt +=
+      " If two reasonings are equally promising break the tie and follow the format.";
   }
 
   async value(test: Test, iteration: number, pool: Reasoning[]) {
