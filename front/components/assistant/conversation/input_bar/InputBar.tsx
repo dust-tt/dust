@@ -53,18 +53,17 @@ function useSyncedState<T>(initialValue: T | undefined) {
   const [state, setState] = useState<T | undefined>(initialValue);
   const ref = useRef<T | undefined>(initialValue);
 
-  // Synchronize ref with state
+  // Synchronize ref with state.
   useEffect(() => {
     ref.current = state;
   }, [state]);
 
-  // Function to update both state and ref
+  // Function to update both state and ref.
   const setSyncedState = useCallback((newValue: T | undefined) => {
     setState(newValue);
-    ref.current = newValue; // This line isn't strictly necessary because of the useEffect above
   }, []);
 
-  // Return both state and ref, along with the setter function
+  // Return both state and ref, along with the setter function.
   return [state, ref, setSyncedState] as const;
 }
 
