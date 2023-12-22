@@ -118,9 +118,18 @@ async function handler(
         bodyValidation.right,
         req.query.aId as string
       );
+      if (agentConfiguration.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: agentConfiguration.error.message,
+          },
+        });
+      }
 
       return res.status(200).json({
-        agentConfiguration: agentConfiguration,
+        agentConfiguration: agentConfiguration.value,
       });
 
     case "DELETE":

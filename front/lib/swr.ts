@@ -21,7 +21,6 @@ import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import { GetAgentNamesResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/names";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
@@ -611,20 +610,5 @@ export function useApp({
     isAppLoading: !error && !data,
     isAppError: error,
     mutateApp: mutate,
-  };
-}
-
-export function useAgentNames({ workspaceId }: { workspaceId: string }) {
-  const agentNamesFetcher: Fetcher<GetAgentNamesResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations/names`,
-    agentNamesFetcher
-  );
-
-  return {
-    agentNames: data ? data.agentNames : [],
-    isAgentNamesLoading: !error && !data,
-    isAgentNamesError: error,
-    mutateAgentNames: mutate,
   };
 }

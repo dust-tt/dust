@@ -70,7 +70,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { useAgentNames, useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 const usedModelConfigs = [
@@ -329,11 +329,9 @@ export default function AssistantBuilder({
     string | null
   >(null);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
-  const { agentNames } = useAgentNames({
-    workspaceId: owner.sId,
-  });
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
@@ -396,14 +394,30 @@ export default function AssistantBuilder({
 
   const assistantHandleIsAvailable = useCallback(
     (handle: string) => {
-      return !agentNames.some(
-        (name) =>
-          name.toLowerCase() === removeLeadingAt(handle).toLowerCase() &&
-          initialBuilderState?.handle.toLowerCase() !==
-            removeLeadingAt(handle).toLowerCase()
-      );
+      if (checkUsernameTimeout.current) {
+        clearTimeout(checkUsernameTimeout.current);
+      }
+      return new Promise((resolve, reject) => {
+        checkUsernameTimeout.current = setTimeout(async () => {
+          checkUsernameTimeout.current = null;
+          const res = await fetch(
+            `/api/w/${
+              owner.sId
+            }/assistant/agent_configurations/name_available?handle=${encodeURIComponent(
+              handle
+            )}`
+          );
+          if (!res.ok) {
+            return reject(
+              new Error("An error occurred while checking the handle.")
+            );
+          }
+          const { available } = await res.json();
+          return resolve(available);
+        }, 500);
+      });
     },
-    [agentNames, initialBuilderState?.handle]
+    [owner.sId]
   );
 
   const configuredDataSourceCount = Object.keys(
@@ -424,7 +438,7 @@ export default function AssistantBuilder({
           setAssistantHandleError("Only letters, numbers, _ and - allowed");
         }
         valid = false;
-      } else if (!assistantHandleIsAvailable(builderState.handle)) {
+      } else if (!(await assistantHandleIsAvailable(builderState.handle))) {
         setAssistantHandleError("Assistant handle is already taken");
         valid = false;
       } else {

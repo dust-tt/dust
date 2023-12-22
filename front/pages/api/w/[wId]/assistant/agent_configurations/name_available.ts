@@ -1,17 +1,26 @@
 import { ReturnedAPIErrorType } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentNames } from "@app/lib/api/assistant/configuration";
+import { agentNameIsAvailable } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetAgentNamesResponseBody = {
-  agentNames: string[];
+export type GetAgentNameIsAvailableResponseBody = {
+  available: boolean;
 };
+
+export const GetAgentConfigurationNameIsAvailable = t.type({
+  handle: t.string,
+});
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetAgentNamesResponseBody | ReturnedAPIErrorType | void>
+  res: NextApiResponse<
+    GetAgentNameIsAvailableResponseBody | ReturnedAPIErrorType | void
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -24,7 +33,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
+        message: "The workspace you're trying to access to was not found.",
       },
     });
   }
@@ -40,8 +49,26 @@ async function handler(
           },
         });
       }
-      const agentNames = await getAgentNames(auth);
-      return res.status(200).json({ agentNames });
+      const bodyValidation = GetAgentConfigurationNameIsAvailable.decode(
+        req.query
+      );
+
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+      const available = await agentNameIsAvailable(
+        auth,
+        bodyValidation.right.handle
+      );
+      return res.status(200).json({ available });
 
     default:
       return apiError(req, res, {
