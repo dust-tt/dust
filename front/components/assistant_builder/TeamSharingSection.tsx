@@ -39,7 +39,7 @@ export function TeamSharingSection({
   if (initialScope === "private" && newScope === "private")
     return (
       <div className="flex flex-col gap-3">
-        <div className="text-lg font-bold text-element-900">Team sharing</div>
+        <div className="text-lg font-bold text-element-900">Sharing</div>
         <div className="flex items-center gap-3">
           <PublishDialog
             show={showPublishDialog}
