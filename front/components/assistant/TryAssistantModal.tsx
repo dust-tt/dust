@@ -108,12 +108,14 @@ export function TryAssistantModal({
             conversationId={conversation.sId}
             onStickyMentionsChange={setStickyMentions}
           />
-          <FixedAssistantInputBar
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation.sId}
-          />{" "}
+          <div className="lg:[&>*]:left-0">
+            <FixedAssistantInputBar
+              owner={owner}
+              onSubmit={handleSubmit}
+              stickyMentions={stickyMentions}
+              conversationId={conversation.sId}
+            />
+          </div>
         </GenerationContextProvider>
       )}
       {conversation && "errorMessage" in conversation && (
