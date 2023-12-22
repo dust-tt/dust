@@ -98,7 +98,7 @@ async function handler(
         });
       }
       let agentConfigurations = await getAgentConfigurations(auth, viewParam);
-      if (withUsage) {
+      if (withUsage === "true") {
         agentConfigurations = await safeRedisClient(async (redis) => {
           return Promise.all(
             agentConfigurations.map(
