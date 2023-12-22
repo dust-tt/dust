@@ -18,6 +18,17 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   conversationId: t.union([t.string, t.undefined]),
 });
 
+export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
+  view: t.union([
+    t.literal("list"),
+    t.literal("workspace"),
+    t.literal("published"),
+    t.literal("global"),
+    t.literal("admin_internal"),
+    t.literal("all"),
+  ]),
+});
+
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,

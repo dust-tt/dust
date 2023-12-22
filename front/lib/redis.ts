@@ -14,3 +14,14 @@ export async function redisClient() {
 
   return client;
 }
+
+export async function safeRedisClient<T>(
+  fn: (client: Awaited<ReturnType<typeof redisClient>>) => PromiseLike<T>
+): Promise<T> {
+  const client = await redisClient();
+  try {
+    return await fn(client);
+  } finally {
+    await client.quit();
+  }
+}

@@ -172,9 +172,11 @@ async function populateUsageIfNeeded({
 export async function getAgentUsage({
   workspaceId,
   agentConfigurationId,
+  providedRedis,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
+  providedRedis?: Awaited<ReturnType<typeof redisClient>>;
 }): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
@@ -184,7 +186,7 @@ export async function getAgentUsage({
   });
 
   try {
-    redis = await redisClient();
+    redis = providedRedis ?? (await redisClient());
     await populateUsageIfNeeded({
       agentConfigurationId,
       workspaceId,
@@ -210,7 +212,7 @@ export async function getAgentUsage({
       timePeriodSec: rankingTimeframeSec,
     };
   } finally {
-    if (redis) {
+    if (redis && !providedRedis) {
       await redis.quit();
     }
   }

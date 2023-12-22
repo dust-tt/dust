@@ -21,6 +21,7 @@ import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/
 import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import { GetAgentConfigurationsLeaderboardResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/leaderboard";
 import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
@@ -464,6 +465,32 @@ export function useAgentConfigurations({
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
+  };
+}
+
+export function useAgentsLeaderboard({
+  workspaceId,
+  agentsGetView,
+}: {
+  workspaceId: string;
+  agentsGetView: AgentsGetViewType;
+}) {
+  const agentsLeaderboardFetcher: Fetcher<GetAgentConfigurationsLeaderboardResponseBody> =
+    fetcher;
+  const viewQueryString =
+    typeof agentsGetView === "string"
+      ? `view=${agentsGetView}`
+      : `conversationId=${agentsGetView.conversationId}`;
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/agent_configurations/leaderboard?${viewQueryString}`,
+    agentsLeaderboardFetcher
+  );
+
+  return {
+    agentsLeaderboard: data ? data.agentConfigurationsWithUsage : [],
+    isAgentsLeaderboardLoading: !error && !data,
+    isAgentsLeaderboardError: error,
+    mutateAgentsLeaderboard: mutate,
   };
 }
 

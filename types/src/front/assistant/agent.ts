@@ -133,6 +133,10 @@ export type AgentConfigurationType = {
   generation: AgentGenerationConfigurationType | null;
 };
 
+export type AgentConfigurationTypeWithUsage = AgentConfigurationType & {
+  usage: AgentUsageType;
+};
+
 export type AgentUsageType = {
   userCount: number;
   messageCount: number;
