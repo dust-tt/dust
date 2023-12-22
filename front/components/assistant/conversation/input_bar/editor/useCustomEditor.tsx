@@ -1,6 +1,6 @@
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Editor, Extension, JSONContent, useEditor } from "@tiptap/react";
+import { Editor, JSONContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
@@ -147,30 +147,6 @@ const useCustomEditor = ({
     [suggestions]
   );
 
-  const PreventEnter = Extension.create({
-    addKeyboardShortcuts(this) {
-      const { editor } = this;
-
-      return {
-        Enter: () => {
-          const clearEditor = () => {
-            editor.commands.clearContent();
-            resetEditorContainerSize();
-          };
-
-          // TODO: Parse JSON here, and pass the service.
-          onEnterKeyDown(
-            editor.isEmpty,
-            getTextAndMentionsFromNode(editor.getJSON()),
-            clearEditor
-          );
-
-          return true;
-        },
-      };
-    },
-  });
-
   const editor = useEditor(
     {
       autofocus: true,
@@ -180,7 +156,6 @@ const useCustomEditor = ({
         StarterKit.configure({
           heading: false,
         }),
-        PreventEnter,
         Mention.configure({
           HTMLAttributes: {
             class:
@@ -194,14 +169,40 @@ const useCustomEditor = ({
             "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
         }),
       ],
-      editorProps: {
-        attributes: {
-          class: "border-0 outline-none overflow-y-auto h-full",
-        },
-      },
     },
     [getSuggestions]
   );
+
+  editor?.setOptions({
+    editorProps: {
+      attributes: {
+        class: "border-0 outline-none overflow-y-auto h-full",
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key === "Enter") {
+          // Prevent the default Enter key behavior
+          event.preventDefault();
+
+          const clearEditor = () => {
+            editor.commands.clearContent();
+            resetEditorContainerSize();
+          };
+
+          onEnterKeyDown(
+            editor.isEmpty,
+            getTextAndMentionsFromNode(editor.getJSON()),
+            clearEditor
+          );
+
+          // Return true to indicate that this key event has been handled
+          return true;
+        }
+
+        // Return false to let other keydown handlers or TipTap's default behavior process the event
+        return false;
+      },
+    },
+  });
 
   const editorService = useEditorService(editor);
 
