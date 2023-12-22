@@ -41,6 +41,7 @@ import { Op, Transaction } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
+import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
@@ -1055,7 +1056,17 @@ export async function* postUserMessage(
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
-
+  if (agentMessages.length > 0) {
+    for (const agentMessage of agentMessages) {
+      void signalAgentUsage({
+        userId: user?.id.toString() || context.email || context.username,
+        agentConfigurationId: agentMessage.configuration.sId,
+        workspaceId: owner.sId,
+        messageId: agentMessage.id,
+        timestamp: agentMessage.created,
+      });
+    }
+  }
   yield {
     type: "user_message_new",
     created: Date.now(),
@@ -1533,6 +1544,21 @@ export async function* editUserMessage(
     messageId: userMessage.sId,
     message: userMessage,
   };
+
+  if (agentMessages.length > 0) {
+    for (const agentMessage of agentMessages) {
+      void signalAgentUsage({
+        userId:
+          user?.id.toString() ||
+          message.context.email ||
+          message.context.username,
+        agentConfigurationId: agentMessage.configuration.sId,
+        messageId: agentMessage.id,
+        timestamp: agentMessage.created,
+        workspaceId: owner.sId,
+      });
+    }
+  }
 
   for (let i = 0; i < agentMessages.length; i++) {
     const agentMessage = agentMessages[i];

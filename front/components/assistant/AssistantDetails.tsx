@@ -11,6 +11,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
+  AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
   DatabaseQueryConfigurationType,
@@ -33,7 +34,7 @@ import ReactMarkdown from "react-markdown";
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useApp, useDatabase } from "@app/lib/swr";
+import { useAgentUsage, useApp, useDatabase } from "@app/lib/swr";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
@@ -53,6 +54,10 @@ export function AssistantDetails({
   onUpdate: () => void;
   flow: AssistantDetailsFlow;
 }) {
+  const agentUsage = useAgentUsage({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistant.sId,
+  });
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
       <Avatar
@@ -72,6 +77,36 @@ export function AssistantDetails({
     ) : (
       "This assistant has no instructions."
     );
+
+  const UsageSection = ({
+    usage,
+    isLoading,
+    isError,
+  }: {
+    usage: AgentUsageType | null;
+    isLoading: boolean;
+    isError: boolean;
+  }) => (
+    <div className="flex flex-col gap-2">
+      <div className="text-lg font-bold text-element-800">Usage</div>
+      {(() => {
+        if (isError) {
+          return "Error loading usage data.";
+        } else if (isLoading) {
+          return "Loading usage data...";
+        } else if (usage) {
+          return (
+            <>
+              @{assistant.name} has been used by {usage.userCount} people in{" "}
+              {usage.messageCount}{" "}
+              {usage.messageCount > 1 ? <>messages</> : <>message</>} over the
+              last {usage.timePeriodSec / (60 * 60 * 24)} days.
+            </>
+          );
+        }
+      })()}
+    </div>
+  );
 
   const ActionSection = () =>
     assistant.action ? (
@@ -119,6 +154,11 @@ export function AssistantDetails({
         />
         <DescriptionSection />
         <InstructionsSection />
+        <UsageSection
+          usage={agentUsage.agentUsage}
+          isLoading={agentUsage.isAgentUsageLoading}
+          isError={agentUsage.isAgentUsageError}
+        />
         <ActionSection />
       </div>
     </Modal>

@@ -132,3 +132,11 @@ export type AgentConfigurationType = {
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 };
+
+export type AgentUsageType = {
+  userCount: number;
+  messageCount: number;
+
+  // userCount and messageCount are over the last `timePeriodSec` seconds
+  timePeriodSec: number;
+};
