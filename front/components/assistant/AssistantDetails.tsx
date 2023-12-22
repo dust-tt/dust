@@ -99,8 +99,9 @@ export function AssistantDetails({
           return (
             <>
               @{assistant.name} has been used by {usage.userCount} people in{" "}
-              {usage.messageCount} message(s) over the last{" "}
-              {usage.timePeriodSec / (60 * 60 * 24)} days.
+              {usage.messageCount}{" "}
+              {usage.messageCount > 1 ? <>messages</> : <>message</>} over the
+              last {usage.timePeriodSec / (60 * 60 * 24)} days.
             </>
           );
         }
