@@ -369,13 +369,27 @@ export async function syncNonThreaded(
   let hasMore: boolean | undefined = undefined;
   let latestTsSec = endTsSec;
   do {
-    const c: ConversationsHistoryResponse = await client.conversations.history({
-      channel: channelId,
-      limit: 100,
-      oldest: `${startTsSec}`,
-      latest: `${latestTsSec}`,
-      cursor: nextCursor,
-    });
+    let c: ConversationsHistoryResponse | undefined = undefined;
+    try {
+      c = await client.conversations.history({
+        channel: channelId,
+        limit: 100,
+        oldest: `${startTsSec}`,
+        latest: `${latestTsSec}`,
+        cursor: nextCursor,
+      });
+    } catch (e) {
+      const maybeSlackPlatformError = e as WebAPIPlatformError;
+      if (
+        maybeSlackPlatformError.code === "slack_webapi_platform_error" &&
+        maybeSlackPlatformError.data?.error === "not_in_channel"
+      ) {
+        // If the bot is no longer in the channel, we don't upsert anything.
+        return;
+      }
+
+      throw e;
+    }
 
     if (c.error) {
       throw new Error(
