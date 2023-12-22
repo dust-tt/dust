@@ -8,7 +8,7 @@ import { useContext, useEffect, useState } from "react";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/InputBar";
+import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
