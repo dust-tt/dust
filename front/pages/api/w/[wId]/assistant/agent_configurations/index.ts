@@ -70,7 +70,6 @@ async function handler(
       const queryValidation = GetAgentConfigurationsQuerySchema.decode(
         req.query
       );
-      console.log("!!!!!!!!!!!!!!!", req.query);
       if (isLeft(queryValidation)) {
         const pathError = reporter.formatValidationErrors(queryValidation.left);
         return apiError(req, res, {
