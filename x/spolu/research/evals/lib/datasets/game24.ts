@@ -129,8 +129,9 @@ export class Game24 extends Dataset {
       " 24 after that operation, separated by a comma (example: `10*7=70, left: 70 2 11`)." +
       " There is always exactly 3 reasoning steps per question in Game of 24." +
       " The last step should present the last operation and the solution expression" +
-      " using the `\\boxed{}` directive, sperated by a comma" +
-      " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)."
+      " using the `\\boxed{}` directive" +
+      " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)." +
+      " Don't use the `\\boxed{}` directive for anything else than the final step and answer."
     );
   }
 
@@ -138,19 +139,47 @@ export class Game24 extends Dataset {
     return (
       "- Each intermediary step should consist of a valid operation and a correct accounting of left numbers. Down-rank reasonings that do not follow this.\n" +
       "- Each number must be used exactly once. It's invalid to not use or re-use a number.\n" +
+      '- Make sure to focus on the "left" numbers in the last step if applicable.\n' +
+      "- You are judging intermediary steps unless there are 3 of them, you still have operations available.\n" +
+      "- Do not forget to consider all possible operations (+, -, *, /).\n" +
       "- The last step should propose a valid solution expression.\n"
     );
   }
 
   parseAnswer(str: string): string {
-    const boxed = str.match(/\\boxed{([^}]*)}/g);
-    if (!boxed) {
-      return "";
+    const answers = [];
+    let pending: string | null = null;
+    let open = 0;
+    for (let i = 0; i < str.length; i++) {
+      if (pending === null) {
+        if (str.slice(i, i + 7) === "\\boxed{") {
+          pending = "\\boxed{";
+          open = 1;
+          i += 7;
+        }
+      } else {
+        if (str[i] === "{") {
+          open++;
+        }
+        if (str[i] === "}") {
+          open--;
+        }
+        if (open === 0) {
+          answers.push(pending);
+          pending = null;
+        }
+      }
     }
-    // remove the \boxed{} directive
-    const answer = boxed.map((s) => s.slice(7, s.length - 1));
-    // return the last one
-    return answer[answer.length - 1].trim();
+
+    // remove the \boxed{} directive and trim
+    const clean = answers.map((s) => s.slice(7, s.length - 1).trim());
+
+    if (clean.length === 0) {
+      return "";
+    } else {
+      // return the last one
+      return clean[clean.length - 1];
+    }
   }
 
   maxTokens() {

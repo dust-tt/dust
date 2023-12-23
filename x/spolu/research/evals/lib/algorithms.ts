@@ -140,6 +140,7 @@ export abstract class Algorithm {
 
     console.log(
       `Running stats: ` +
+        `runId=${this.runId()} ` +
         `pass=${s.testPassed} ` +
         `total=${s.testTotal} ` +
         `rate=${s.testRate.toFixed(2)}/s ` +

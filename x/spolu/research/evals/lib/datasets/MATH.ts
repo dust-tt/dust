@@ -87,7 +87,8 @@ export class MATH extends Dataset {
       "A reasoning step is one coherent step of mathematical reasoning. It should hold in one line" +
       " of at most 500 characters." +
       " If an answer is reached as part of the reasoning, it should be included" +
-      " in the reasoning step using the `\\boxed{}` directive."
+      " in the reasoning step using the `\\boxed{}` directive." +
+      " Don't use the `\\boxed{}` directive for anything else than the answer."
     );
   }
 
@@ -100,11 +101,37 @@ export class MATH extends Dataset {
   }
 
   parseAnswer(str: string): string {
-    const boxed = str.match(/\\boxed{([^}]*)}/g);
-    if (!boxed) {
-      return "";
+    const answers = [];
+    let pending: string | null = null;
+    let open = 0;
+    for (let i = 0; i < str.length; i++) {
+      if (pending === null) {
+        if (str.slice(i, i + 7) === "\\boxed{") {
+          pending = "\\boxed{";
+          open = 1;
+          i += 6;
+        }
+      } else {
+        pending += str[i];
+        if (str[i] === "{") {
+          open++;
+        }
+        if (str[i] === "}") {
+          open--;
+        }
+        if (open === 0) {
+          answers.push(pending);
+          pending = null;
+        }
+      }
     }
-    return boxed[boxed.length - 1].trim();
+
+    if (answers.length === 0) {
+      return "";
+    } else {
+      // return the last one
+      return answers[answers.length - 1];
+    }
   }
 
   maxTokens() {

@@ -36,17 +36,19 @@ export class CoT extends Algorithm {
 
     const messages: ChatMessage[] = [];
 
-    let prompt = `INSTRUCTIONS:\n`;
-    prompt += ` ${this.dataset.instructions()}`;
+    let prompt = `<Instructions>\n`;
+    prompt += `${this.dataset.instructions()}`;
     prompt += "\n\n";
     prompt += `Provide a reasoning consisting in multiple steps, using one line per step.`;
     prompt += ` ${this.dataset.reasoningStepInstructions()}`;
-    prompt += "\n\n";
-    prompt += `EXAMPLES:\n`;
+    prompt += `\n</Instructions>\n`;
 
     for (const e of examples.slice(0, this.N_SHOT / 2)) {
-      prompt += `\nQUESTION: ${e.question}\n`;
+      prompt += `\n\n<Example>\n`;
+      prompt += `QUESTION: ${e.question}\n`;
       prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
+      prompt += `ANSWER: ${e.answer}\n`;
+      prompt += `</Example>`;
     }
 
     messages.push({
@@ -61,7 +63,7 @@ export class CoT extends Algorithm {
       });
       messages.push({
         role: "assistant",
-        content: `REASONING:\n${e.reasoning.join("\n")}`,
+        content: `REASONING:\n${e.reasoning.join("\n")}\nANSWER: ${e.answer}`,
       });
     }
 
@@ -71,7 +73,12 @@ export class CoT extends Algorithm {
     });
 
     // console.log(prompt);
-    // console.log(messages);
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
 
     const query: ChatQuery = {
       provider: this.model.provider,
@@ -125,6 +132,8 @@ export class CoT extends Algorithm {
     }
 
     if (debug) {
+      console.log("-------------------------");
+      console.log(`PROBLEM: ${test.id}`);
       console.log(`ANSWER: ${answer}`);
       console.log(`CHECK: ${check}`);
       console.log("-------------------------");

@@ -1,6 +1,12 @@
 import { hash as blake3 } from "blake3";
 
-export const ValidProviderTypes = ["openai", "mistral", "anthropic"] as const;
+export const ValidProviderTypes = [
+  "openai",
+  "mistral",
+  "anthropic",
+  "google",
+  "together",
+] as const;
 export type ProviderType = (typeof ValidProviderTypes)[number];
 
 export type ChatMessage = {
