@@ -112,14 +112,12 @@ Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=anthropic mode
 Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=anthropic model=claude-2.1 check=65.00 total=128.00
 Final stats: rate=0.08/s promptTokensTotal=0 completionTokensTotal=0
 
---
+Finished run: algorithm=CoT-consensus dataset=MATH provider=google model=gemini-pro
+Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=google model=gemini-pro check=46.19 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=google model=gemini-pro check=46.56 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=google model=gemini-pro check=56.13 total=128.00
+Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=google model=gemini-pro check=64.00 total=128.00
+Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=google model=gemini-pro check=66.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=google model=gemini-pro check=70.00 total=128.00
+Final stats: rate=0.52/s promptTokensTotal=0 completionTokensTotal=0
 
-Finished run: algorithm=CoT-consensus dataset=MATH provider=anthropic model=claude-2.1
-Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=anthropic model=claude-2.1 check=45.56 total=128.00
-Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=anthropic model=claude-2.1 check=45.56 total=128.00
-Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=anthropic model=claude-2.1 check=51.88 total=128.00
-Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=anthropic model=claude-2.1 check=55.75 total=128.00
-Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=anthropic model=claude-2.1 check=57.00 total=128.00
-Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=anthropic model=claude-2.1 check=60.00 total=128.00
-Final stats: rate=0.24/s promptTokensTotal=0 completionTokensTotal=0
-Done

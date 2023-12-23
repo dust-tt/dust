@@ -73,11 +73,12 @@ export class CoT extends Algorithm {
     });
 
     // console.log(prompt);
-    // messages.forEach((m) => {
-    //   console.log(`-------------------------------`);
-    //   console.log(`[${m.role}]: ${m.content}`);
-    //   console.log(`-------------------------------`);
-    // });
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
 
     const query: ChatQuery = {
       provider: this.model.provider,

@@ -13,10 +13,10 @@ import { Game24 } from "@app/lib/datasets/game24";
 import { MATH } from "@app/lib/datasets/MATH";
 import { Model, ProviderType, ValidProviderTypes } from "@app/lib/models";
 import { AnthropicModel, AnthropicModelType } from "@app/lib/models/anthropic";
+import { GoogleModel, GoogleModelType } from "@app/lib/models/google";
 import { MistralModel, MistralModelType } from "@app/lib/models/mistral";
 import { OpenAIModel, OpenAIModelType } from "@app/lib/models/openai";
-
-import { GoogleModel, GoogleModelType } from "./lib/models/google";
+import { TogetherModel, TogetherModelType } from "@app/lib/models/together";
 
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
@@ -60,6 +60,9 @@ async function main() {
       break;
     case "google":
       m = new GoogleModel(model as GoogleModelType);
+      break;
+    case "together":
+      m = new TogetherModel(model as TogetherModelType);
       break;
     default:
       ((x: never) => x)(provider);
