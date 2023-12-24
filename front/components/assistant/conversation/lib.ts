@@ -1,13 +1,18 @@
 import {
+  ConversationType,
+  ConversationVisibility,
   Err,
+  InternalPostConversationsRequestBodySchema,
   MentionType,
   Ok,
   Result,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import * as t from "io-ts";
 
 import { NotificationType } from "@app/components/sparkle/Notification";
+import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 export type ConversationErrorType = {
   type:
@@ -128,4 +133,72 @@ export async function deleteConversation({
     });
     return;
   }
+}
+
+export async function createConversationWithMessage({
+  owner,
+  user,
+  messageData,
+  visibility = "unlisted",
+}: {
+  owner: WorkspaceType;
+  user: UserType;
+  messageData: {
+    input: string;
+    mentions: MentionType[];
+    contentFragment?: {
+      title: string;
+      content: string;
+    };
+  };
+  visibility?: ConversationVisibility;
+}): Promise<Result<ConversationType, ConversationErrorType>> {
+  const { input, mentions, contentFragment } = messageData;
+  const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
+    title: null,
+    visibility,
+    message: {
+      content: input,
+      context: {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        profilePictureUrl: user.image,
+      },
+      mentions,
+    },
+    contentFragment: contentFragment
+      ? {
+          ...contentFragment,
+          contentType: "file_attachment",
+          url: null,
+          context: {
+            profilePictureUrl: user.image,
+          },
+        }
+      : undefined,
+  };
+
+  // Create new conversation and post the initial message at the same time.
+  const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!cRes.ok) {
+    const data = await cRes.json();
+    return new Err({
+      type:
+        data.error.type === "test_plan_message_limit_reached"
+          ? "plan_limit_reached_error"
+          : "message_send_error",
+      title: "Your message could not be sent.",
+      message: data.error.message || "Please try again or contact us.",
+    });
+  }
+
+  return new Ok(
+    ((await cRes.json()) as PostConversationsResponseBody).conversation
+  );
 }
