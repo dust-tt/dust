@@ -16,7 +16,7 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { NotificationType } from "@app/components/sparkle/Notification";
-import { deleteConversation, submitMessage } from "@app/lib/conversation";
+import { submitMessage } from "@app/lib/conversation";
 import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 export function TryAssistantModal({
@@ -89,11 +89,6 @@ export function TryAssistantModal({
       onClose={async () => {
         onClose();
         if (conversation && "sId" in conversation) {
-          await deleteConversation({
-            workspaceId: owner.sId,
-            conversationId: conversation?.sId as string,
-            sendNotification,
-          });
           setConversation(null);
         }
       }}
@@ -141,7 +136,7 @@ async function createEmptyConversation(
 ): Promise<ConversationType> {
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: `Trying out ${agentConfiguration.name}`,
-    visibility: "unlisted",
+    visibility: "test",
     message: null,
     contentFragment: undefined,
   };
