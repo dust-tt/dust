@@ -52,6 +52,7 @@ export function TryAssistantModal({
         user,
         messageData,
         visibility: "test",
+        title: `Trying @${assistant.name}`,
       });
       if (result.isOk()) {
         setConversation(result.value);
