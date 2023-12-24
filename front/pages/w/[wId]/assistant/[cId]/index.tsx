@@ -9,12 +9,15 @@ import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import {
+  deleteConversation,
+  submitMessage,
+} from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { deleteConversation, submitMessage } from "@app/lib/conversation";
 import { useConversation } from "@app/lib/swr";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 

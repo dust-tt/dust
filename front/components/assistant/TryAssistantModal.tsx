@@ -14,9 +14,9 @@ import { useContext, useEffect, useState } from "react";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { submitMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { NotificationType } from "@app/components/sparkle/Notification";
-import { submitMessage } from "@app/lib/conversation";
 import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 export function TryAssistantModal({
@@ -109,6 +109,7 @@ export function TryAssistantModal({
               onSubmit={handleSubmit}
               stickyMentions={stickyMentions}
               conversationId={conversation.sId}
+              additionalAgentConfigurations={[assistant]}
             />
           </div>
         </GenerationContextProvider>
