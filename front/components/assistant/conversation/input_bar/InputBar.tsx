@@ -63,11 +63,20 @@ export function AssistantInputBar({
   const [contentFragmentFilename, setContentFragmentFilename] = useState<
     string | undefined
   >(undefined);
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: conversationId ? { conversationId } : "list",
-  });
-  agentConfigurations.push(...(additionalAgentConfigurations ?? []));
+  const { agentConfigurations: baseAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: conversationId ? { conversationId } : "list",
+    });
+  const agentConfigurationsToAdd = additionalAgentConfigurations
+    ? additionalAgentConfigurations.filter(
+        (a) => !baseAgentConfigurations.find((b) => a.sId === b.sId)
+      )
+    : [];
+  const agentConfigurations = [
+    ...baseAgentConfigurations,
+    ...agentConfigurationsToAdd,
+  ];
 
   const sendNotification = useContext(SendNotificationsContext);
 
