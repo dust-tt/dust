@@ -13,7 +13,6 @@ import { useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantPreview } from "@app/components/assistant/AssistantPreview";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
@@ -145,8 +144,6 @@ export default function AssistantsGallery({
   const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
     null
   );
-  const [testModalAssistant, setTestModalAssistant] =
-    useState<AgentConfigurationType | null>(null);
 
   const tabs = [
     {
@@ -220,14 +217,6 @@ export default function AssistantsGallery({
           flow={flow === "workspace_add" ? "workspace" : "personal"}
         />
       )}
-      {testModalAssistant && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          assistant={testModalAssistant}
-          onClose={() => setTestModalAssistant(null)}
-        />
-      )}
       <div className="pb-16">
         <Page.Vertical gap="xl" align="stretch">
           <Tab tabs={tabs} />
@@ -286,7 +275,6 @@ export default function AssistantsGallery({
                   }}
                   variant="gallery"
                   flow={flow === "workspace_add" ? "workspace" : "personal"}
-                  setTestModalAssistant={setTestModalAssistant}
                 />
               ))}
             </div>

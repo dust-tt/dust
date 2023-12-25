@@ -45,7 +45,6 @@ export function AssistantInputBar({
   onSubmit,
   conversationId,
   stickyMentions,
-  additionalAgentConfigurations,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -55,7 +54,6 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  additionalAgentConfigurations?: AgentConfigurationType[];
 }) {
   const [contentFragmentBody, setContentFragmentBody] = useState<
     string | undefined
@@ -67,8 +65,6 @@ export function AssistantInputBar({
     workspaceId: owner.sId,
     agentsGetView: conversationId ? { conversationId } : "list",
   });
-  agentConfigurations.push(...(additionalAgentConfigurations ?? []));
-
   const sendNotification = useContext(SendNotificationsContext);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
@@ -269,7 +265,6 @@ export function FixedAssistantInputBar({
   onSubmit,
   stickyMentions,
   conversationId,
-  additionalAgentConfigurations,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -279,7 +274,6 @@ export function FixedAssistantInputBar({
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  additionalAgentConfigurations?: AgentConfigurationType[];
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
@@ -289,7 +283,6 @@ export function FixedAssistantInputBar({
           onSubmit={onSubmit}
           conversationId={conversationId}
           stickyMentions={stickyMentions}
-          additionalAgentConfigurations={additionalAgentConfigurations}
         />
       </div>
     </div>

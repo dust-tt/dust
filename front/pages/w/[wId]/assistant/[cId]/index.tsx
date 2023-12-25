@@ -9,10 +9,6 @@ import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import {
-  deleteConversation,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
@@ -93,7 +89,6 @@ export default function AssistantConversation({
     conversationId,
     workspaceId: owner.sId,
   });
-
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
@@ -102,23 +97,90 @@ export default function AssistantConversation({
       content: string;
     }
   ) => {
-    const messageData = { input, mentions, contentFragment };
-    const result = await submitMessage({
-      owner,
-      user,
-      conversationId,
-      messageData,
-    });
-    if (result.isOk()) return;
-    if (result.error.type === "plan_limit_reached_error") {
-      setPlanLimitReached(true);
-    } else {
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
+    // Create a new content fragment.
+    if (contentFragment) {
+      const mcfRes = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: contentFragment.title,
+            content: contentFragment.content,
+            url: null,
+            contentType: "file_attachment",
+            context: {
+              timezone:
+                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+              profilePictureUrl: user.image,
+            },
+          }),
+        }
+      );
+
+      if (!mcfRes.ok) {
+        const data = await mcfRes.json();
+        console.error("Error creating content fragment", data);
+        sendNotification({
+          title: "Error uploading file.",
+          description: data.error.message || "Please try again or contact us.",
+          type: "error",
+        });
+        return;
+      }
     }
+
+    // Create a new user message.
+    const mRes = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: input,
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+            profilePictureUrl: user.image,
+          },
+          mentions,
+        }),
+      }
+    );
+
+    if (!mRes.ok) {
+      const data = await mRes.json();
+      if (data.error.type === "test_plan_message_limit_reached") {
+        setPlanLimitReached(true);
+      } else {
+        sendNotification({
+          title: "Your message could not be sent",
+          description: data.error.message || "Please try again or contact us.",
+          type: "error",
+        });
+      }
+      return;
+    }
+  };
+
+  const handdleDeleteConversation = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!res.ok) {
+      const data = await res.json();
+      window.alert(`Error deleting conversation: ${data.error.message}`);
+      return;
+    }
+
+    await router.push(`/w/${owner.sId}/assistant/new`);
   };
 
   return (
@@ -145,13 +207,8 @@ export default function AssistantConversation({
               owner={owner}
               conversation={conversation}
               shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
-              onDelete={async () => {
-                await deleteConversation({
-                  workspaceId: owner.sId,
-                  conversationId,
-                  sendNotification,
-                });
-                void router.push(`/w/${owner.sId}/assistant/new`);
+              onDelete={() => {
+                void handdleDeleteConversation();
               }}
             />
           )

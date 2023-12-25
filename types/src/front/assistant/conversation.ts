@@ -164,16 +164,7 @@ export function isContentFragmentType(
  * Conversations
  */
 
-/**
- * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an assistant not in their list using the "test" button of
- * the assistant gallery: those conversations do not show in users' histories.
- */
-export type ConversationVisibility =
-  | "unlisted"
-  | "workspace"
-  | "deleted"
-  | "test";
+export type ConversationVisibility = "unlisted" | "workspace" | "deleted";
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
