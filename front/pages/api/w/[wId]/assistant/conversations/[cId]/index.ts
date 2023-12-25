@@ -19,7 +19,6 @@ export const PatchConversationsRequestBodySchema = t.type({
     t.literal("unlisted"),
     t.literal("workspace"),
     t.literal("deleted"),
-    t.literal("test"),
   ]),
 });
 

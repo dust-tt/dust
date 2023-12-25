@@ -4,7 +4,6 @@ import {
   Chip,
   DashIcon,
   MoreIcon,
-  PlayIcon,
   PlusIcon,
 } from "@dust-tt/sparkle";
 import {
@@ -29,7 +28,6 @@ interface AssistantPreviewProps {
   onUpdate: () => void;
   variant: AssistantPreviewVariant;
   flow: AssistantPreviewFlow;
-  setTestModalAssistant?: (agentConfiguration: AgentConfigurationType) => void;
 }
 
 function getDescriptionClassName(variant: AssistantPreviewVariant): string {
@@ -57,7 +55,6 @@ export function AssistantPreview({
   onUpdate,
   variant,
   flow,
-  setTestModalAssistant,
 }: AssistantPreviewProps) {
   const [isUpdatingList, setIsUpdatingList] = useState<boolean>(false);
   // TODO(flav) Move notification logic to the caller. This maintains the purity of the component by
@@ -203,24 +200,7 @@ export function AssistantPreview({
     default:
       assertNever(flow);
   }
-  let testButton = null;
-  if (
-    setTestModalAssistant &&
-    ((flow === "workspace" && agentConfiguration.scope === "published") ||
-      (flow === "personal" &&
-        agentConfiguration.userListStatus === "not-in-list"))
-  ) {
-    testButton = (
-      <Button
-        key="test"
-        variant="tertiary"
-        icon={PlayIcon}
-        size="xs"
-        label={"Test"}
-        onClick={() => setTestModalAssistant(agentConfiguration)}
-      />
-    );
-  }
+
   const showAssistantButton = (
     <Button
       key="show_details"
@@ -288,9 +268,7 @@ export function AssistantPreview({
 
   // Define button groups with JSX elements, including default buttons
   const buttonGroups: Record<AssistantPreviewVariant, JSX.Element[]> = {
-    gallery: [addButton, testButton, showAssistantButton].filter(
-      Boolean
-    ) as JSX.Element[],
+    gallery: [addButton, showAssistantButton].filter(Boolean) as JSX.Element[],
     home: defaultButtons,
   };
 

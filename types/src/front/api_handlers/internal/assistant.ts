@@ -36,7 +36,6 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.literal("unlisted"),
     t.literal("workspace"),
     t.literal("deleted"),
-    t.literal("test"),
   ]),
   message: t.union([InternalPostMessagesRequestBodySchema, t.null]),
   contentFragment: t.union([

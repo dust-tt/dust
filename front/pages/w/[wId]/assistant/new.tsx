@@ -12,11 +12,13 @@ import {
   AgentMention,
   ContentFragmentContentType,
   ConversationType,
+  InternalPostConversationsRequestBodySchema,
   MentionType,
   SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import * as t from "io-ts";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -30,7 +32,6 @@ import {
   FixedAssistantInputBar,
   InputBarContext,
 } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationConversations } from "@app/components/sparkle/navigation";
@@ -39,6 +40,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
+import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -111,35 +113,65 @@ export default function AssistantNew({
         content: string;
       }
     ) => {
-      const conversationRes = await createConversationWithMessage({
-        owner,
-        user,
-        messageData: {
-          input,
-          mentions,
-          contentFragment,
+      const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> =
+        {
+          title: null,
+          visibility: "unlisted",
+          message: {
+            content: input,
+            context: {
+              timezone:
+                Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+              profilePictureUrl: user.image,
+            },
+            mentions,
+          },
+          contentFragment: contentFragment
+            ? {
+                ...contentFragment,
+                contentType: "file_attachment",
+                url: null,
+                context: {
+                  profilePictureUrl: user.image,
+                },
+              }
+            : undefined,
+        };
+
+      // Create new conversation and post the initial message at the same time.
+      const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(body),
       });
-      if (conversationRes.isErr()) {
-        if (conversationRes.error.type === "plan_limit_reached_error") {
+
+      if (!cRes.ok) {
+        const data = await cRes.json();
+        if (data.error.type === "test_plan_message_limit_reached") {
           setPlanLimitReached(true);
         } else {
           sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
+            title: "Your message could not be sent",
+            description:
+              data.error.message || "Please try again or contact us.",
             type: "error",
           });
         }
-      } else {
-        // We use this to clear the UI start rendering the conversation immediately to give an
-        // impression of instantaneity.
-        setConversation(conversationRes.value);
-
-        // We start the push before creating the message to optimize for instantaneity as well.
-        void router.push(
-          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
-        );
+        return;
       }
+
+      const conversation = (
+        (await cRes.json()) as PostConversationsResponseBody
+      ).conversation;
+
+      // We use this to clear the UI start rendering the conversation immediately to give an
+      // impression of instantaneity.
+      setConversation(conversation);
+
+      // We start the push before creating the message to optimize for instantaneity as well.
+      void router.push(`/w/${owner.sId}/assistant/${conversation.sId}`);
     }
   );
 
