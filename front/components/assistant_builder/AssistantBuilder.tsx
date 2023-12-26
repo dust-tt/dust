@@ -397,6 +397,8 @@ export default function AssistantBuilder({
       if (checkUsernameTimeout.current) {
         clearTimeout(checkUsernameTimeout.current);
       }
+      // No check needed if the assistant doesn't change name
+      if (handle === initialBuilderState?.handle) return Promise.resolve(true);
       return new Promise((resolve, reject) => {
         checkUsernameTimeout.current = setTimeout(async () => {
           checkUsernameTimeout.current = null;
@@ -417,7 +419,7 @@ export default function AssistantBuilder({
         }, 500);
       });
     },
-    [owner.sId]
+    [owner.sId, initialBuilderState?.handle]
   );
 
   const configuredDataSourceCount = Object.keys(
