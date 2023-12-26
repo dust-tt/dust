@@ -11,7 +11,7 @@ import { createPortal } from "react-dom";
 
 import { classNames } from "@app/lib/utils";
 
-type NotificationType = {
+export type NotificationType = {
   title?: string;
   description?: string;
   type: "success" | "error";

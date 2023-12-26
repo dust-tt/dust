@@ -45,6 +45,7 @@ export const PublicPostConversationsRequestBodySchema = t.type({
     t.literal("unlisted"),
     t.literal("workspace"),
     t.literal("deleted"),
+    t.literal("test"),
   ]),
   message: t.union([PublicPostMessagesRequestBodySchema, t.undefined]),
   contentFragment: t.union([

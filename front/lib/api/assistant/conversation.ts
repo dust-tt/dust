@@ -40,6 +40,7 @@ import crypto from "crypto";
 import { Op, Transaction } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { renderRetrievalActionByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -61,8 +62,6 @@ import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-
-import { renderRetrievalActionByModelId } from "./actions/retrieval";
 /**
  * Conversation Creation, update and deletion
  */
@@ -480,7 +479,8 @@ async function batchRenderContentFragment(messages: Message[]) {
 
 export async function getUserConversations(
   auth: Authenticator,
-  includeDeleted?: boolean
+  includeDeleted?: boolean,
+  includeTest?: boolean
 ): Promise<ConversationWithoutContentType[]> {
   const owner = auth.workspace();
   const user = auth.user();
@@ -514,7 +514,8 @@ export async function getUserConversations(
       }
       if (
         p.conversation.workspaceId !== owner.id ||
-        (p.conversation.visibility === "deleted" && !includeDeleted)
+        (p.conversation.visibility === "deleted" && !includeDeleted) ||
+        (p.conversation.visibility === "test" && !includeTest)
       ) {
         return acc;
       }
