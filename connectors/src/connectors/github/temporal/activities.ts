@@ -221,6 +221,7 @@ export async function githubUpsertIssueActivity(
     // convention to use the external id string.
     parents: [
       getIssueDocumentId(repoId.toString(), issue.number),
+      `${repoId}-issues`,
       repoId.toString(),
     ],
     retries: 3,
@@ -399,6 +400,7 @@ export async function githubUpsertDiscussionActivity(
     // convention to use the external id string.
     parents: [
       getDiscussionDocumentId(repoId.toString(), discussionNumber),
+      `${repoId}-discussions`,
       repoId.toString(),
     ],
     retries: 3,
