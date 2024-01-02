@@ -5,19 +5,21 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 
 type ContextItemProps = {
-  title: string;
-  visual: ReactNode;
   action?: ReactNode;
   children?: ReactNode;
   hasSeparator?: boolean;
+  subElement?: ReactNode;
+  title: ReactNode;
+  visual: ReactNode;
 };
 
 export function ContextItem({
-  title,
-  visual,
   action,
   children,
   hasSeparator = true,
+  subElement,
+  title,
+  visual,
 }: ContextItemProps) {
   return (
     <div
@@ -25,13 +27,17 @@ export function ContextItem({
         hasSeparator ? "s-border-b s-border-structure-200" : "",
         "s-flex s-w-full s-flex-col"
       )}
-      aria-label={title}
     >
       <div className="s-flex s-flex-row s-gap-3 s-px-2 s-py-4">
         <div className="s-flex">{visual}</div>
         <div className="s-flex s-grow s-flex-col s-gap-1">
-          <div className="s-text-normal s-flex  s-flex-col s-justify-center s-font-semibold">
-            {title}
+          <div className="s-flex s-grow s-flex-row">
+            <div className="s-text-normal s-flex s-flex-col s-justify-center s-font-semibold">
+              {title}
+            </div>
+            <div className="s-flex s-items-center s-text-element-600">
+              {subElement}
+            </div>
           </div>
           <div className="-s-mt-1">{children}</div>
         </div>
