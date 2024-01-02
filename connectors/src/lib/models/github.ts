@@ -95,7 +95,7 @@ GithubIssue.init(
     indexes: [
       { fields: ["repoId", "issueNumber", "connectorId"], unique: true },
       { fields: ["connectorId"] },
-      { fields: ["repoId"] },
+      { fields: ["repoId", "updatedAt"] },
     ],
     modelName: "github_issues",
   }
