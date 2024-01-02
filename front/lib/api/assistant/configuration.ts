@@ -51,6 +51,8 @@ import {
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
+import { agentConfigurationWasUpdatedBy } from "./recent_authors";
+
 /**
  * Get an agent configuration
  *
@@ -779,6 +781,13 @@ export async function createAgentConfiguration(
     agentConfiguration.userListStatus = agentUserListStatus({
       agentConfiguration,
       listStatusOverride,
+    });
+
+    await agentConfigurationWasUpdatedBy({
+      agentId: agent.sId,
+      workspaceId: owner.sId,
+      authorId: agent.authorId.toFixed(),
+      version: agent.version,
     });
 
     return new Ok(agentConfiguration);

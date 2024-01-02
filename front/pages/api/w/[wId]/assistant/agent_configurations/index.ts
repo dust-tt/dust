@@ -19,6 +19,7 @@ import {
   createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { getAgentRecentAuthorIds } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -81,7 +82,8 @@ async function handler(
         });
       }
 
-      const { view, conversationId, withUsage } = queryValidation.right;
+      const { view, conversationId, withUsage, withAuthors } =
+        queryValidation.right;
       const viewParam = view
         ? view
         : conversationId
@@ -115,6 +117,23 @@ async function handler(
           );
         });
       }
+
+      if (withAuthors === "true") {
+        agentConfigurations = await Promise.all(
+          agentConfigurations.map(
+            async (agentConfiguration): Promise<AgentConfigurationType> => {
+              return {
+                ...agentConfiguration,
+                lastAuthorIds: await getAgentRecentAuthorIds({
+                  agentId: agentConfiguration.sId,
+                  workspaceId: owner.sId,
+                }),
+              };
+            }
+          )
+        );
+      }
+
       return res.status(200).json({
         agentConfigurations,
       });
