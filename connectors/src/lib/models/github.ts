@@ -146,7 +146,7 @@ GithubDiscussion.init(
     indexes: [
       { fields: ["repoId", "discussionNumber", "connectorId"], unique: true },
       { fields: ["connectorId"] },
-      { fields: ["repoId"] },
+      { fields: ["repoId", "updatedAt"] },
     ],
     modelName: "github_discussions",
   }

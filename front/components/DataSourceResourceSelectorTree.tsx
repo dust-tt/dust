@@ -149,7 +149,6 @@ function DataSourceResourceSelectorChildren({
         <div className="flex-1 space-y-1">
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
-            const titlePrefix = r.type === "channel" ? "#" : "";
             const checkStatus = getCheckStatus(r.internalId);
             return (
               <div key={r.internalId}>
@@ -189,7 +188,9 @@ function DataSourceResourceSelectorChildren({
                   <div>
                     <IconComponent className="h-5 w-5 text-slate-300" />
                   </div>
-                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">{`${titlePrefix}${r.title}`}</span>
+                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">
+                    {r.title}
+                  </span>
                   <div className="ml-32 flex-grow">
                     <Checkbox
                       variant="checkable"

@@ -1,6 +1,7 @@
 import { ModelId } from "@dust-tt/types";
 
 import {
+  getRepo,
   getReposPage,
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
@@ -8,6 +9,7 @@ import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temp
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GithubConnectorState,
+  GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
 import { Err, Ok, Result } from "@connectors/lib/result";
@@ -252,14 +254,6 @@ export async function retrieveGithubConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  if (parentInternalId) {
-    return new Err(
-      new Error(
-        "Github connector does not support permission retrieval with `parentInternalId`"
-      )
-    );
-  }
-
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -272,36 +266,105 @@ export async function retrieveGithubConnectorPermissions({
 
   const githubInstallationId = c.connectionId;
 
-  let resources: ConnectorResource[] = [];
-  let pageNumber = 1; // 1-indexed
-  for (;;) {
-    const page = await getReposPage(githubInstallationId, pageNumber);
-    pageNumber += 1;
-    if (page.length === 0) {
-      break;
+  if (!parentInternalId) {
+    // No parentInternalId: we return the repositories.
+
+    let resources: ConnectorResource[] = [];
+    let pageNumber = 1; // 1-indexed
+    for (;;) {
+      const page = await getReposPage(githubInstallationId, pageNumber);
+      pageNumber += 1;
+      if (page.length === 0) {
+        break;
+      }
+
+      resources = resources.concat(
+        page.map((repo) => ({
+          provider: c.type,
+          internalId: repo.id.toString(),
+          parentInternalId: null,
+          type: "folder",
+          title: repo.name,
+          sourceUrl: repo.url,
+          expandable: true,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        }))
+      );
     }
 
-    resources = resources.concat(
-      page.map((repo) => ({
+    resources.sort((a, b) => {
+      return a.title.localeCompare(b.title);
+    });
+
+    return new Ok(resources);
+  } else {
+    // If parentInternalId is set this means we are fetching the children of a repository. For now
+    // we only support issues and discussions.
+    const repoId = parseInt(parentInternalId, 10);
+    if (isNaN(repoId)) {
+      return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+    }
+
+    const [latestDiscussion, latestIssue, repo] = await Promise.all([
+      (async () => {
+        return await GithubDiscussion.findOne({
+          where: {
+            connectorId: c.id,
+            repoId: repoId.toString(),
+          },
+          limit: 1,
+          order: [["updatedAt", "DESC"]],
+        });
+      })(),
+      (async () => {
+        return await GithubIssue.findOne({
+          where: {
+            connectorId: c.id,
+            repoId: repoId.toString(),
+          },
+          limit: 1,
+          order: [["updatedAt", "DESC"]],
+        });
+      })(),
+      getRepo(githubInstallationId, repoId),
+    ]);
+
+    const resources: ConnectorResource[] = [];
+
+    if (latestIssue) {
+      resources.push({
         provider: c.type,
-        internalId: repo.id.toString(),
-        parentInternalId: null,
-        type: "folder",
-        title: repo.name,
-        sourceUrl: repo.url,
+        internalId: `${repoId}-issues`,
+        parentInternalId,
+        type: "database",
+        title: "Issues",
+        sourceUrl: repo.url + "/issues",
         expandable: false,
         permission: "read" as ConnectorPermission,
         dustDocumentId: null,
-        lastUpdatedAt: null,
-      }))
-    );
+        lastUpdatedAt: latestIssue.updatedAt.getTime(),
+      });
+    }
+
+    if (latestDiscussion) {
+      resources.push({
+        provider: c.type,
+        internalId: `${repoId}-discussions`,
+        parentInternalId,
+        type: "channel",
+        title: "Discussions",
+        sourceUrl: repo.url + "/discussions",
+        expandable: false,
+        permission: "read" as ConnectorPermission,
+        dustDocumentId: null,
+        lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+      });
+    }
+
+    return new Ok(resources);
   }
-
-  resources.sort((a, b) => {
-    return a.title.localeCompare(b.title);
-  });
-
-  return new Ok(resources);
 }
 
 export async function retrieveGithubReposTitles(

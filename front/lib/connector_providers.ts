@@ -64,7 +64,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust only gathers data from issues, discussions and top-level pull requests (but not in-code comments in pull requests, nor the actual source code or other Github data).",
     logoComponent: GithubLogo,
-    isNested: false,
+    isNested: true,
   },
   intercom: {
     name: "Intercom",

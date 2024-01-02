@@ -118,6 +118,31 @@ export async function getReposPage(
   }));
 }
 
+export async function getRepo(
+  installationId: string,
+  repoId: number
+): Promise<GithubRepo> {
+  const octokit = await getOctokit(installationId);
+
+  const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
+    repo_id: repoId,
+  });
+
+  return {
+    id: r.id,
+    name: r.name,
+    private: r.private,
+    url: r.html_url,
+    createdAt: r.created_at ? new Date(r.created_at) : null,
+    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+    description: r.description,
+    owner: {
+      id: r.owner.id,
+      login: r.owner.login,
+    },
+  };
+}
+
 export async function getRepoIssuesPage(
   installationId: string,
   repoName: string,
@@ -326,7 +351,7 @@ export async function getDiscussionCommentsPage(
           }
         }
       }
-    } 
+    }
     `,
     {
       owner: login,

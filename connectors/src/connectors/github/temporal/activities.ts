@@ -219,10 +219,7 @@ export async function githubUpsertIssueActivity(
     // Therefore as a special case we use getIssueDocumentId() to get a parent string
     // The repo id from github is globally unique so used as-is, as per
     // convention to use the external id string.
-    parents: [
-      getIssueDocumentId(repoId.toString(), issue.number),
-      repoId.toString(),
-    ],
+    parents: [documentId, `${repoId}-issues`, repoId.toString()],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
@@ -397,10 +394,7 @@ export async function githubUpsertDiscussionActivity(
     // as a special case we use getDiscussionDocumentId() to get a parent string
     // The repo id from github is globally unique so used as-is, as per
     // convention to use the external id string.
-    parents: [
-      getDiscussionDocumentId(repoId.toString(), discussionNumber),
-      repoId.toString(),
-    ],
+    parents: [documentId, `${repoId}-discussions`, repoId.toString()],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
