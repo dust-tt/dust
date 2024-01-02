@@ -150,28 +150,72 @@ export class EE extends Algorithm {
   async gradeExplanation({
     test,
     explanation,
-    iteration,
   }: {
     test: Test;
     explanation: Explanation;
-    iteration: number;
   }) {
     const messages: ChatMessage[] = [];
 
     let prompt = `<Instructions>\n`;
+    prompt += `The task we are interested in is the following:\n`;
+    prompt += `\n---\n`;
     prompt += `${this.dataset.instructions()}`;
     prompt += "\n\n";
     prompt += `Provide a reasoning consisting in multiple steps, using one line per step.`;
     prompt += ` ${this.dataset.reasoningStepInstructions()}`;
+    prompt += `\n---\n\n`;
+    prompt += `You are an expert professor in your field of expertise. Grade the explanation provided.`;
+    prompt += ` A good explanation is minimal, deductive, correct and complete.`;
+    prompt += ` It should be clearly understandable by your PhD students, ommiting obvious details`;
+    prompt += ` but including all the necessary steps to reach the conclusion.`;
+    prompt += ` Be precise about what you think is good or bad in the proposed explanation.`;
+    prompt += ` Try to think hard about what might be incorrect in the explanation`;
+    prompt += ` and always propose ways to improve it to make it clearer and more convincing.\n\n`;
+    prompt += `Your goal is to grade an explanation that was generated in response to the following question:\n\n`;
+    prompt += `QUESTION: ${test.question}`;
     prompt += `\n</Instructions>\n`;
 
-    for (const e of examples.slice(0, this.N_SHOT / 2)) {
-      prompt += `\n\n<Example>\n`;
-      prompt += `QUESTION: ${e.question}\n`;
-      prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
-      prompt += `ANSWER: ${e.answer}\n`;
-      prompt += `</Example>`;
-    }
+    messages.push({
+      role: "system",
+      content: prompt,
+    });
+
+    messages.push({
+      role: "user",
+      content: `The explanation to grade:\n\n${explanation.explanation}`,
+    });
+
+    // console.log(prompt);
+    // messages.forEach((m) => {
+    //   console.log(`+++++++++++++++++++++++++++++++`);
+    //   console.log(`[${m.role}]`);
+    //   console.log(`-------------------------------`);
+    //   console.log(`${m.content}`);
+    // });
+
+    const query: ChatQuery = {
+      provider: this.model.provider,
+      model: this.model.model(),
+      messages,
+      temperature: this.TEMPERATURE,
+      maxTokens:
+        this.dataset.maxTokens().reasoningStep *
+        this.dataset.maxTokens().maxStepCount,
+    };
+
+    const c = await this.runCompletion(query);
+
+    console.log("+++++++++++++++++++++++++");
+    console.log(c.content);
+    console.log("+++++++++++++++++++++++++");
+
+    await this.storeCompletion({
+      test,
+      completion: c,
+      query,
+      check: false,
+    });
+    this.stats();
   }
 
   async runOne({
@@ -186,9 +230,14 @@ export class EE extends Algorithm {
     // Initialize the evolutionary pool for the test.
     const pool = await this.initializePool({ test, iteration, debug });
 
-    // Rate each explanation in the pool twice
-
     console.log(pool);
+
+    // Rate each explanation in the pool twice
+    // for (let i = 0; i < this.RATING_DEPTH; i++) {
+    for (const explanation of pool) {
+      await this.gradeExplanation({ test, explanation });
+    }
+    // }
 
     return {
       test,
