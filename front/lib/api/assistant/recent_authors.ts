@@ -60,6 +60,10 @@ async function populateAuthorIdsFromDb(agentId: string, workspaceId: string) {
     agentId
   );
 
+  if (recentAuthorIdsWithVersion.length === 0) {
+    return [];
+  }
+
   const authorIdsWithScore = recentAuthorIdsWithVersion.map((a) => ({
     value: a.get("authorId").toFixed(),
     score: a.version,
@@ -77,10 +81,17 @@ async function populateAuthorIdsFromDb(agentId: string, workspaceId: string) {
 export async function getAgentRecentAuthorIds({
   agentId,
   workspaceId,
+  isGlobalAgent,
 }: {
   agentId: string;
   workspaceId: string;
+  isGlobalAgent: boolean;
 }): Promise<AgentRecentAuthorIds> {
+  // For global agents, which have no authors, return early.
+  if (isGlobalAgent) {
+    return [];
+  }
+
   const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
     agentId,
     workspaceId,

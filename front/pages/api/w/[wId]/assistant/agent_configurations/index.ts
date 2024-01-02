@@ -126,6 +126,7 @@ async function handler(
                 ...agentConfiguration,
                 lastAuthorIds: await getAgentRecentAuthorIds({
                   agentId: agentConfiguration.sId,
+                  isGlobalAgent: agentConfiguration.versionAuthorId === null,
                   workspaceId: owner.sId,
                 }),
               };
