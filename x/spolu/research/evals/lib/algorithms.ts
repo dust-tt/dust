@@ -5,7 +5,12 @@ import sqlite3 from "sqlite3";
 import { Dataset, ProblemId, Test } from "@app/lib/datasets";
 import { ChatCompletion, ChatQuery, hashQuery, Model } from "@app/lib/models";
 
-export const ValidAlgorithmTypes = ["CoT", "CoT-consensus", "ToT"] as const;
+export const ValidAlgorithmTypes = [
+  "CoT",
+  "CoT-consensus",
+  "ToT",
+  "EE",
+] as const;
 export type AlgorithmType = (typeof ValidAlgorithmTypes)[number];
 
 export type TestResult = {

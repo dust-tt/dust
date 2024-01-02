@@ -7,6 +7,7 @@ import {
 } from "@app/lib/algorithms";
 import { CoT } from "@app/lib/algorithms/CoT";
 import { CoTConsensus } from "@app/lib/algorithms/CoTConsensus";
+import { EE } from "@app/lib/algorithms/EE";
 import { ToT } from "@app/lib/algorithms/ToT";
 import { Dataset, DatasetType, ValidDatasetTypes } from "@app/lib/datasets";
 import { Game24 } from "@app/lib/datasets/game24";
@@ -98,6 +99,9 @@ async function main() {
       break;
     case "ToT":
       a = new ToT(d, m);
+      break;
+    case "EE":
+      a = new EE(d, m);
       break;
     default:
       ((x: never) => x)(algorithm);
