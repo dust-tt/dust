@@ -1,4 +1,4 @@
-export type QdrantCluster = "main-0" | "dedicated-0";
+export type QdrantCluster = "main-0" | "dedicated-0" | "dedicated-1";
 
 export type CoreAPIDataSourceConfig = {
   provider_id: string;
