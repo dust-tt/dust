@@ -95,7 +95,6 @@ function PermissionTreeChildren({
   return (
     <Tree isLoading={isResourcesLoading}>
       {resources.map((r, i) => {
-        const titlePrefix = r.type === "channel" ? "#" : "";
         return (
           <Tree.Item
             key={r.internalId}
@@ -107,7 +106,7 @@ function PermissionTreeChildren({
               }));
             }}
             type={r.expandable ? "node" : "leaf"}
-            label={`${titlePrefix}${r.title}`}
+            label={r.title}
             variant={r.type}
             className="whitespace-nowrap"
             checkbox={
