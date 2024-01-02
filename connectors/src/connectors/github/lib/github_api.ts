@@ -124,12 +124,9 @@ export async function getRepo(
 ): Promise<GithubRepo> {
   const octokit = await getOctokit(installationId);
 
-  const { data: r } = await octokit.request(
-    `GET /repositories/:repo_id`,
-    {
-      repo_id: repoId,
-    }
-  );
+  const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
+    repo_id: repoId,
+  });
 
   return {
     id: r.id,
