@@ -483,7 +483,7 @@ export async function retrieveSlackConnectorPermissions({
     internalId: ch.slackChannelId,
     parentInternalId: null,
     type: "channel",
-    title: ch.slackChannelName,
+    title: `#${ch.slackChannelName}`,
     sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
     expandable: false,
     permission: ch.permission,
