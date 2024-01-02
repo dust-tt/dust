@@ -81,7 +81,7 @@ export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
 
 export interface DropdownButtonProps {
   label?: string;
-  type?: "menu" | "select";
+  type?: "menu" | "submenu" | "select";
   size?: "sm" | "md";
   tooltip?: string;
   tooltipPosition?: TooltipProps["position"];
@@ -188,11 +188,19 @@ DropdownMenu.Button = function ({
             disabled ? "s-cursor-default" : "s-cursor-pointer",
             className,
             "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-            label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
+            label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5",
+            type === "submenu" ? "s-opacity-50" : ""
           )}
         >
           <Icon visual={icon} size={size} className={finalIconClasses} />
-          <span className={finalLabelClasses}>{label}</span>
+          <span
+            className={classNames(
+              finalLabelClasses,
+              type === "submenu" ? "s-w-full" : ""
+            )}
+          >
+            {label}
+          </span>
           <Icon
             visual={type === "select" ? ChevronUpDown : ChevronDown}
             size={size === "sm" ? "xs" : "sm"}
@@ -212,6 +220,8 @@ interface DropdownItemProps {
   visual?: string | React.ReactNode;
   icon?: ComponentType;
   onClick?: () => void;
+  hasChildren?: boolean;
+  children?: React.ReactNode;
 }
 
 DropdownMenu.Item = function ({
@@ -222,19 +232,32 @@ DropdownMenu.Item = function ({
   visual,
   icon,
   onClick,
+  hasChildren,
+  children,
 }: DropdownItemProps) {
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
     <Menu.Item disabled={disabled} as="div">
-      <StandardItem.Dropdown
-        className="s-w-full s-px-4"
-        href={href}
-        onClick={onClick}
-        label={label}
-        visual={visual}
-        icon={icon}
-        description={description}
-      />
+      {hasChildren ? (
+        <DropdownMenu className="s-w-full s-gap-x-2 s-px-4 s-py-2">
+          <DropdownMenu.Button
+            label={label}
+            type="submenu"
+            className="s-w-full"
+          />
+          {children}
+        </DropdownMenu>
+      ) : (
+        <StandardItem.Dropdown
+          className="s-w-full s-px-4"
+          href={href}
+          onClick={onClick}
+          label={label}
+          visual={visual}
+          icon={icon}
+          description={description}
+        />
+      )}
     </Menu.Item>
   );
 };

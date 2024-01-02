@@ -146,6 +146,31 @@ export const DropdownExample = () => {
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
+        <div className="s-text-sm">SubMenu</div>
+        <DropdownMenu>
+          <DropdownMenu.Button type="select" label="No action" />
+          <DropdownMenu.Items origin="topLeft" width={300}>
+            <DropdownMenu.Item label="No action" href="#" />
+            <DropdownMenu.Item label="Search data sources" href="#" />
+            <DropdownMenu.Item label="Advanced actions" hasChildren={true}>
+              <DropdownMenu.Items origin="topLeft" width={360}>
+                <DropdownMenu.Item
+                  label="Retrieve most recent content from data sources"
+                  href="#"
+                />
+                <DropdownMenu.Item
+                  label="Run a Dust application and retrieve the output"
+                  href="#"
+                />
+              </DropdownMenu.Items>
+            </DropdownMenu.Item>
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+
       <div className="s-h-12" />
       <div className="s-flex s-gap-6">
         <div className="s-text-sm">With custom button</div>
