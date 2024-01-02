@@ -198,7 +198,7 @@ async function handler(
           qdrant_config:
             NODE_ENV === "production"
               ? {
-                  cluster: "dedicated-0",
+                  cluster: "dedicated-1",
                   shadow_write_cluster: null,
                 }
               : {

@@ -142,7 +142,7 @@ async function handler(
           qdrant_config:
             plan.code !== FREE_TEST_PLAN_CODE && NODE_ENV === "production"
               ? {
-                  cluster: "dedicated-0",
+                  cluster: "dedicated-1",
                   shadow_write_cluster: null,
                 }
               : {
