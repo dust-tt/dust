@@ -13,10 +13,10 @@ type Explanation = {
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
-  readonly POOL_SIZE = 32;
+  readonly POOL_SIZE = 16;
   readonly TEMPERATURE = 0.7;
-  readonly GRADING_DEPTH = 3;
-  readonly GENERATIONS = 4;
+  readonly GRADING_DEPTH = 2;
+  readonly GENERATIONS = 3;
   readonly CROSSOVERS = 4;
 
   private results: TestResult[] = [];
@@ -234,11 +234,11 @@ export class EE extends Algorithm {
 
     const c = await this.runCompletion(query);
 
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-    console.log("COMMENTARY");
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-    console.log(c.content);
-    console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
+    // console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    // console.log("COMMENTARY");
+    // console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    // console.log(c.content);
+    // console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
 
     await this.storeCompletion({
       test,
@@ -334,7 +334,9 @@ export class EE extends Algorithm {
     const c = await this.runCompletion(query);
 
     console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-    console.log("CROSSOVER");
+    console.log(
+      `CROSSOVER test=${test.id} generation=${generation} iteration=${iteration}`
+    );
     console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
     console.log(c.content);
     console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
@@ -348,11 +350,11 @@ export class EE extends Algorithm {
       // Nothing to do, check failed.
     }
 
-    console.log("-------------------------");
-    console.log(`PROBLEM: ${test.id}`);
-    console.log(`ANSWER: ${answer}`);
-    console.log(`CHECK: ${check}`);
-    console.log("-------------------------");
+    // console.log("-------------------------");
+    // console.log(`PROBLEM: ${test.id}`);
+    // console.log(`ANSWER: ${answer}`);
+    // console.log(`CHECK: ${check}`);
+    // console.log("-------------------------");
 
     await this.storeCompletion({
       test,
@@ -388,7 +390,7 @@ export class EE extends Algorithm {
       // Compute the good and bad answers
       const good = pool.filter((x) => x.check).length;
       console.log(
-        `Iteration: test=${test.id} iteration=${iteration} good=${good}/${pool.length}`
+        `Iteration: test=${test.id} generation=${generation} good=${good}/${pool.length}`
       );
 
       // Rate each explanation in the pool twice
@@ -411,7 +413,7 @@ export class EE extends Algorithm {
     // Compute the good and bad answers
     const good = pool.filter((x) => x.check).length;
     console.log(
-      `Final iteration: test=${test.id} iteration=${iteration} good=${good}/${pool.length}`
+      `Iteration: test=${test.id} generation=${this.GENERATIONS} good=${good}/${pool.length}`
     );
 
     return {
