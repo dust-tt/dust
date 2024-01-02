@@ -6,13 +6,14 @@ type Explanation = {
   explanation: string;
   answer: string;
   check: boolean;
+  gradings: string[];
 };
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
   readonly POOL_SIZE = 32;
   readonly TEMPERATURE = 0.7;
-  readonly RATING_DEPTH = 2;
+  readonly GRADING_DEPTH = 3;
 
   private results: TestResult[] = [];
 
@@ -141,6 +142,7 @@ export class EE extends Algorithm {
         answer,
         check,
         explanation: c.content,
+        gradings: [],
       });
     }
 
@@ -164,14 +166,19 @@ export class EE extends Algorithm {
     prompt += `Provide a reasoning consisting in multiple steps, using one line per step.`;
     prompt += ` ${this.dataset.reasoningStepInstructions()}`;
     prompt += `\n---\n\n`;
-    prompt += `You are an expert professor in your field of expertise. Grade the explanation provided.`;
+    prompt += `You are an expert professor in your field of expertise.`;
     prompt += ` A good explanation is minimal, deductive, correct and complete.`;
     prompt += ` It should be clearly understandable by your PhD students, ommiting obvious details`;
     prompt += ` but including all the necessary steps to reach the conclusion.`;
     prompt += ` Be precise about what you think is good or bad in the proposed explanation.`;
     prompt += ` Try to think hard about what might be incorrect in the explanation`;
-    prompt += ` and always propose ways to improve it to make it clearer and more convincing.\n\n`;
-    prompt += `Your goal is to grade an explanation that was generated in response to the following question:\n\n`;
+    prompt += ` and always propose ways to improve it to make it clearer and more convincing.`;
+    prompt += `\n\n`;
+    if (explanation.gradings.length === 0) {
+      prompt += `Your goal is to grade an explanation that was generated in response to the following question:\n\n`;
+    } else {
+      prompt += `Your goal is to criticize the gradings made by other experts on the following explanation:\n\n`;
+    }
     prompt += `QUESTION: ${test.question}`;
     prompt += `\n</Instructions>\n`;
 
@@ -185,13 +192,24 @@ export class EE extends Algorithm {
       content: `The explanation to grade:\n\n${explanation.explanation}`,
     });
 
+    if (explanation.gradings.length > 0) {
+      let content = `The gradings to criticize made by other experts:`;
+      for (let i = 0; i < explanation.gradings.length; i++) {
+        content += `\n\nEXPERT ${i}:\n${explanation.gradings[i]}`;
+      }
+      messages.push({
+        role: "user",
+        content,
+      });
+    }
+
     // console.log(prompt);
-    // messages.forEach((m) => {
-    //   console.log(`+++++++++++++++++++++++++++++++`);
-    //   console.log(`[${m.role}]`);
-    //   console.log(`-------------------------------`);
-    //   console.log(`${m.content}`);
-    // });
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
 
     const query: ChatQuery = {
       provider: this.model.provider,
@@ -205,9 +223,9 @@ export class EE extends Algorithm {
 
     const c = await this.runCompletion(query);
 
-    console.log("+++++++++++++++++++++++++");
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
     console.log(c.content);
-    console.log("+++++++++++++++++++++++++");
+    console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
 
     await this.storeCompletion({
       test,
@@ -216,6 +234,8 @@ export class EE extends Algorithm {
       check: false,
     });
     this.stats();
+
+    explanation.gradings.push(c.content);
   }
 
   async runOne({
@@ -233,11 +253,11 @@ export class EE extends Algorithm {
     console.log(pool);
 
     // Rate each explanation in the pool twice
-    // for (let i = 0; i < this.RATING_DEPTH; i++) {
-    for (const explanation of pool) {
-      await this.gradeExplanation({ test, explanation });
+    for (let i = 0; i < this.GRADING_DEPTH; i++) {
+      for (const explanation of pool) {
+        await this.gradeExplanation({ test, explanation });
+      }
     }
-    // }
 
     return {
       test,
