@@ -86,7 +86,7 @@ export class Game24 extends Dataset {
     }
 
     return {
-      solution,
+      solution: `\\boxed{${solution}}`,
       reasoning,
     };
   }
@@ -135,17 +135,6 @@ export class Game24 extends Dataset {
     );
   }
 
-  rankingInstructions(): string {
-    return (
-      "- Each intermediary step should consist of a valid operation and a correct accounting of left numbers. Down-rank reasonings that do not follow this.\n" +
-      "- Each number must be used exactly once. It's invalid to not use or re-use a number.\n" +
-      '- Make sure to focus on the "left" numbers in the last step if applicable.\n' +
-      "- You are judging intermediary steps unless there are 3 of them, you still have operations available.\n" +
-      "- Do not forget to consider all possible operations (+, -, *, /).\n" +
-      "- The last step should propose a valid solution expression.\n"
-    );
-  }
-
   parseAnswer(str: string): string {
     const answers = [];
     let pending: string | null = null;
@@ -184,8 +173,8 @@ export class Game24 extends Dataset {
 
   maxTokens() {
     return {
-      reasoningStep: 32,
-      maxStepCount: 3,
+      reasoningStep: 48,
+      maxStepCount: 2 * (3 + 1), // account for answer and backtracking
     };
   }
 

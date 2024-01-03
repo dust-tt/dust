@@ -9,16 +9,16 @@ type Explanation = {
   explanation: string;
   answer: string;
   check: boolean;
-  gradings: string[];
+  judgements: string[];
 };
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
   readonly POOL_SIZE = 16;
   readonly TEMPERATURE = 0.7;
-  readonly GRADING_DEPTH = 2;
-  readonly GENERATIONS = 3;
-  readonly CROSSOVERS = 4;
+  readonly JUDGEMENTS_DEPTH = 2;
+  readonly GENERATIONS = 5;
+  readonly MAX_CROSSOVERS = 8;
 
   private results: TestResult[] = [];
 
@@ -46,8 +46,13 @@ export class EE extends Algorithm {
     prompt += ` A good explanation is minimal, deductive, correct and complete.`;
     prompt += ` It should be clearly understandable by your PhD students, ommiting obvious details`;
     prompt += ` but including all the necessary steps to reach the conclusion.`;
-    prompt += ` Be precise about what you think is good or bad in the proposed explanation.`;
-    prompt += ` Try to think hard about what might be incorrect in the explanation`;
+    return prompt;
+  }
+
+  judgementPrompt(): string {
+    let prompt = "";
+    prompt += `Be precise about what you think is good or bad in the proposed explanation.`;
+    prompt += ` Think hard about what might be incorrect in the explanation`;
     prompt += ` and always propose ways to improve it to make it clearer,`;
     prompt += ` more concise if possible, more precise if necessary, and more convincing.`;
     return prompt;
@@ -56,11 +61,9 @@ export class EE extends Algorithm {
   async initializePool({
     test,
     iteration,
-    debug,
   }: {
     test: Test;
     iteration?: number;
-    debug?: boolean;
   }): Promise<Explanation[]> {
     const pool: Explanation[] = [];
 
@@ -75,7 +78,7 @@ export class EE extends Algorithm {
 
       let prompt = `<Instructions>\n`;
       prompt += this.taskPrompt();
-      prompt += `\n</Instructions>\n`;
+      prompt += `\n</Instructions>`;
 
       for (const e of examples.slice(0, this.N_SHOT / 2)) {
         prompt += `\n\n<Example>\n`;
@@ -84,11 +87,6 @@ export class EE extends Algorithm {
         prompt += `ANSWER: ${e.answer}\n`;
         prompt += `</Example>`;
       }
-
-      messages.push({
-        role: "system",
-        content: prompt,
-      });
 
       messages.push({
         role: "system",
@@ -111,13 +109,12 @@ export class EE extends Algorithm {
         content: `QUESTION: ${test.question}`,
       });
 
-      // console.log(prompt);
-      // messages.forEach((m) => {
-      //   console.log(`+++++++++++++++++++++++++++++++`);
-      //   console.log(`[${m.role}]`);
-      //   console.log(`-------------------------------`);
-      //   console.log(`${m.content}`);
-      // });
+      messages.forEach((m) => {
+        console.log(`+++++++++++++++++++++++++++++++`);
+        console.log(`[${m.role}]`);
+        console.log(`-------------------------------`);
+        console.log(`${m.content}`);
+      });
 
       const query: ChatQuery = {
         provider: this.model.provider,
@@ -131,11 +128,11 @@ export class EE extends Algorithm {
 
       const c = await this.runCompletion(query);
 
-      if (debug) {
-        console.log("+++++++++++++++++++++++++");
-        console.log(c.content);
-        console.log("+++++++++++++++++++++++++");
-      }
+      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+      console.log("INITIALIZATION");
+      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+      console.log(c.content);
+      console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
 
       const answer = this.dataset.parseAnswer(c.content);
 
@@ -146,13 +143,12 @@ export class EE extends Algorithm {
         // Nothing to do, check failed.
       }
 
-      if (debug) {
-        console.log("-------------------------");
-        console.log(`PROBLEM: ${test.id}`);
-        console.log(`ANSWER: ${answer}`);
-        console.log(`CHECK: ${check}`);
-        console.log("-------------------------");
-      }
+      console.log("-------------------------");
+      console.log(`PROBLEM: ${test.id}`);
+      console.log(`ANSWER: ${answer}`);
+      console.log(`CHECK: ${check}`);
+      console.log("-------------------------");
+      console.log("\n\n\n");
 
       await this.storeCompletion({
         test,
@@ -166,14 +162,14 @@ export class EE extends Algorithm {
         answer,
         check,
         explanation: c.content,
-        gradings: [],
+        judgements: [],
       });
     }
 
     return pool;
   }
 
-  async gradeExplanation({
+  async judgeExplanation({
     test,
     explanation,
   }: {
@@ -183,31 +179,37 @@ export class EE extends Algorithm {
     const messages: ChatMessage[] = [];
 
     let prompt = `<Instructions>\n`;
+    prompt += `<Task>\n`;
     prompt += this.taskPrompt();
-    prompt += `\n---\n\n`;
+    prompt += `\n</Task>\n\n`;
     prompt += this.explanativePrompt();
     prompt += `\n\n`;
-    if (explanation.gradings.length === 0) {
-      prompt += `Your goal is to produce a commentary of the explanation that was`;
+    prompt += this.judgementPrompt();
+    prompt += `\n\n`;
+    if (explanation.judgements.length === 0) {
+      prompt += `Your goal is to produce a commentary/judgement of the explanation`;
     } else {
-      prompt += `Your goal is to criticize the commentaries made by other experts on the explanation`;
+      prompt += `Your goal is to judge the commentaries made by other experts on the explanation`;
     }
-    prompt += ` proposed in response to the following question:\n\n`;
-    prompt += `QUESTION: ${test.question}`;
-    prompt += `\n</Instructions>\n`;
+    prompt += ` proposed to answer the following question:`;
+    prompt += `\n\n`;
+    prompt += `<Question>\n`;
+    prompt += `${test.question}`;
+    prompt += `\n</Question>`;
+    prompt += `\n</Instructions>`;
 
     messages.push({
       role: "system",
       content: prompt,
     });
 
-    let content = `The explanation to comment/criticize:\n\n${explanation.explanation}`;
+    let content = `The explanation to comment/judge:\n\n${explanation.explanation}`;
 
-    if (explanation.gradings.length > 0) {
+    if (explanation.judgements.length > 0) {
       content += `\n\n`;
-      content += `The commentaries made by other experts to comment/criticize:`;
-      for (let i = 0; i < explanation.gradings.length; i++) {
-        content += `\n\nEXPERT ${i}:\n\n${explanation.gradings[i]}`;
+      content += `The commentaries made by other experts to judge/comment:`;
+      for (let i = 0; i < explanation.judgements.length; i++) {
+        content += `\n\nEXPERT ${i}:\n\n${explanation.judgements[i]}`;
       }
     }
 
@@ -216,30 +218,29 @@ export class EE extends Algorithm {
       content,
     });
 
-    // messages.forEach((m) => {
-    //   console.log(`+++++++++++++++++++++++++++++++`);
-    //   console.log(`[${m.role}]`);
-    //   console.log(`-------------------------------`);
-    //   console.log(`${m.content}`);
-    // });
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
 
     const query: ChatQuery = {
       provider: this.model.provider,
       model: this.model.model(),
       messages,
       temperature: this.TEMPERATURE,
-      maxTokens:
-        this.dataset.maxTokens().reasoningStep *
-        this.dataset.maxTokens().maxStepCount,
+      maxTokens: 1024,
     };
 
     const c = await this.runCompletion(query);
 
-    // console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-    // console.log("COMMENTARY");
-    // console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-    // console.log(c.content);
-    // console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    console.log("JUDGEMENT");
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    console.log(c.content);
+    console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
+    console.log("\n\n\n");
 
     await this.storeCompletion({
       test,
@@ -249,7 +250,7 @@ export class EE extends Algorithm {
     });
     this.stats();
 
-    explanation.gradings.push(c.content);
+    explanation.judgements.push(c.content);
   }
 
   async crossOver({
@@ -267,10 +268,13 @@ export class EE extends Algorithm {
       `EE-CROSSOVER-${test.id}-${generation}-${iteration}`
     );
 
+    // choose a random number between 2 and this.MAX_CROSSOVERS using rng
+    const crossOvers = Math.floor(rng() * (this.MAX_CROSSOVERS - 2)) + 2;
+
     // pick this.CROSSOVERS explanations at random using rng
     const explanations: Explanation[] = [];
     const indexes: number[] = [];
-    for (let i = 0; i < this.CROSSOVERS; i++) {
+    for (let i = 0; i < crossOvers; i++) {
       let index = Math.floor(rng() * pool.length);
       while (indexes.includes(index)) {
         index = Math.floor(rng() * pool.length);
@@ -281,46 +285,52 @@ export class EE extends Algorithm {
     const messages: ChatMessage[] = [];
 
     let prompt = `<Instructions>\n`;
+    prompt += `<Task>\n`;
     prompt += this.taskPrompt();
-    prompt += `\n---\n\n`;
+    prompt += `\n</Task>\n\n`;
     prompt += this.explanativePrompt();
     prompt += `\n\n`;
-    prompt += `Based on the following ${this.CROSSOVERS} explanation(s) from field experts`;
-    prompt += ` and associated commentaries/critics made by other experts,`;
-    prompt += ` your goal is to propose the best possible explanation to answer the following question:\n\n`;
-    prompt += `QUESTION: ${test.question}`;
-    prompt += `\n</Instructions>\n`;
+    prompt += `Based on the following ${crossOvers} explanations`;
+    prompt += ` and associated commentaries/judgements made by field experts,`;
+    prompt += ` propose the best possible explanation to answer the following question:`;
+    prompt += `\n\n`;
+    prompt += `<Question>\n`;
+    prompt += `${test.question}`;
+    prompt += `\n</Question>`;
+    prompt += `\n</Instructions>`;
 
     messages.push({
       role: "system",
       content: prompt,
     });
 
-    let content = `The explanation(s) and commentarie(s):`;
+    let content = ``;
 
     for (let i = 0; i < explanations.length; i++) {
-      content += `\n\nEXPLANATION ${i}:\n\n${explanations[i].explanation}`;
-      for (let j = 0; j < explanations[i].gradings.length; j++) {
-        content += `\n\nEXPERT COMMENTARY ${i} ${j}:\n\n${explanations[i].gradings[j]}`;
+      if (i > 0) {
+        content += `\n\n`;
+      }
+      content += `EXPLANATION ${i}:\n\n${explanations[i].explanation}`;
+      for (let j = 0; j < explanations[i].judgements.length; j++) {
+        content += `\n\nEXPERT JUDGEMENT ${i} ${j}:\n\n${explanations[i].judgements[j]}`;
       }
     }
 
     content += `\n\n`;
-    content +=
-      "Propose the best possible explanation and answer start with `REASONING:` and and with `ANSWER:`.";
+    content += `Propose the best possible explanation and answer.`;
+    content += " Start with `REASONING:` and conclude with `ANSWER:`.";
 
     messages.push({
       role: "user",
       content,
     });
 
-    // console.log(prompt);
-    // messages.forEach((m) => {
-    //   console.log(`+++++++++++++++++++++++++++++++`);
-    //   console.log(`[${m.role}]`);
-    //   console.log(`-------------------------------`);
-    //   console.log(`${m.content}`);
-    // });
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
 
     const query: ChatQuery = {
       provider: this.model.provider,
@@ -351,11 +361,12 @@ export class EE extends Algorithm {
       // Nothing to do, check failed.
     }
 
-    // console.log("-------------------------");
-    // console.log(`PROBLEM: ${test.id}`);
-    // console.log(`ANSWER: ${answer}`);
-    // console.log(`CHECK: ${check}`);
-    // console.log("-------------------------");
+    console.log("-------------------------");
+    console.log(`PROBLEM: ${test.id}`);
+    console.log(`ANSWER: ${answer}`);
+    console.log(`CHECK: ${check}`);
+    console.log("-------------------------");
+    console.log("\n\n\n");
 
     await this.storeCompletion({
       test,
@@ -369,21 +380,19 @@ export class EE extends Algorithm {
       answer,
       check,
       explanation: c.content,
-      gradings: [],
+      judgements: [],
     };
   }
 
   async runOne({
     test,
     iteration,
-    debug,
   }: {
     test: Test;
     iteration?: number;
-    debug?: boolean;
   }): Promise<TestResult> {
     // Initialize the evolutionary pool for the test.
-    let pool = await this.initializePool({ test, iteration, debug });
+    let pool = await this.initializePool({ test, iteration });
 
     // console.log(pool);
 
@@ -395,20 +404,11 @@ export class EE extends Algorithm {
       );
 
       // Rate each explanation in the pool twice
-      for (let i = 0; i < this.GRADING_DEPTH; i++) {
+      for (let i = 0; i < this.JUDGEMENTS_DEPTH; i++) {
         for (const explanation of pool) {
-          await this.gradeExplanation({ test, explanation });
+          await this.judgeExplanation({ test, explanation });
         }
       }
-
-      // Now is time to cross-over explanations
-      // const newPool: Explanation[] = [];
-      // for (let iteration = 0; iteration < this.POOL_SIZE; iteration++) {
-      //   const c = await this.crossOver({ test, pool, generation, iteration });
-      //   newPool.push(c);
-      // }
-      //
-      //pool = newPool;
 
       const queue = new PQueue({
         concurrency: 4,
