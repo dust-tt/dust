@@ -1,8 +1,15 @@
 import { createAppAuth } from "@octokit/auth-app";
 import { isLeft } from "fp-ts/lib/Either";
+import { createWriteStream } from "fs";
+import { mkdtemp, readdir, rmdir } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
+import { tmpdir } from "os";
+import { join, resolve } from "path";
+import { pipeline } from "stream";
+import { extract } from "tar";
+import { promisify } from "util";
 
 import {
   DiscussionCommentNode,
@@ -525,4 +532,50 @@ async function getOctokit(installationId: string): Promise<Octokit> {
       installationId: installationId,
     },
   });
+}
+
+const asyncPipeline = promisify(pipeline);
+
+export async function downloadRepository(
+  installationId: string,
+  login: string,
+  repoName: string
+) {
+  const octokit = await getOctokit(installationId);
+
+  const { data: tarballStream } = await octokit.request(
+    "GET /repos/{owner}/{repo}/tarball",
+    {
+      owner: login,
+      repo: repoName,
+    }
+  );
+
+  // Create a temp directory.
+  const tempDir = await mkdtemp(join(tmpdir(), "repo-"));
+  const tarPath = resolve(tempDir, "repo.tar.gz");
+
+  // Save the tarball to the temp directory.
+  await asyncPipeline(tarballStream, createWriteStream(tarPath));
+  console.log("Downloaded: ", tarPath);
+
+  // Extract the tarball.
+  await extract({
+    file: tarPath,
+    cwd: tempDir,
+  });
+  console.log("Extracted: ", tarPath);
+
+  // Delete the tarball.
+  await fs.unlink(tarPath);
+
+  // Iterate over the files in the temp directory.
+  const files = await readdir(tempDir);
+  for (const file of files) {
+    console.log("FILE: ", file);
+  }
+
+  // Delete the temp directory.
+  await rmdir(tempDir, { recursive: true });
+  console.log("Cleaned up: ", tempDir);
 }
