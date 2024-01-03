@@ -14,11 +14,11 @@ type Explanation = {
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
-  readonly POOL_SIZE = 24;
+  readonly POOL_SIZE = 8;
   readonly TEMPERATURE = 0.7;
-  readonly JUDGEMENTS_DEPTH = 2;
+  readonly JUDGEMENTS_DEPTH = 3;
   readonly GENERATIONS = 8;
-  readonly MAX_CROSSOVERS = 8;
+  readonly MAX_CROSSOVERS = 4;
   readonly INNER_CONCURRENCY = 4;
 
   private generationResults: TestResult[][];
@@ -285,9 +285,9 @@ export class EE extends Algorithm {
     prompt += `\n</Task>\n\n`;
     prompt += this.explanativePrompt();
     prompt += `\n\n`;
-    prompt += `Based on the following ${crossOvers} explanations`;
+    prompt += `Based on the following ${crossOvers} explanation proposals`;
     prompt += ` and associated commentaries/judgements made by field experts,`;
-    prompt += ` propose the best possible explanation to answer the following question:`;
+    prompt += ` propose the most accurate explanation to answer the following question, focusing on correctness:`;
     prompt += `\n\n`;
     prompt += `<Question>\n`;
     prompt += `${test.question}`;
