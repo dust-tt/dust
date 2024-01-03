@@ -30,7 +30,7 @@ export class Connector extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
-  declare connectionId: string;
+  declare connectionId: string | null;
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
@@ -69,7 +69,7 @@ Connector.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     workspaceAPIKey: {
       type: DataTypes.STRING,

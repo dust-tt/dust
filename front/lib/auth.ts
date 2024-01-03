@@ -574,6 +574,7 @@ export async function subscriptionForWorkspace(
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
           isGithubAllowed: plan.isManagedGithubAllowed,
           isIntercomAllowed: plan.isManagedIntercomAllowed,
+          isWebCrawlerAllowed: plan.isWebCrawlerAllowed,
         },
         dataSources: {
           count: plan.maxDataSourcesCount,

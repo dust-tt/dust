@@ -77,4 +77,15 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: IntercomLogo,
     isNested: false,
   },
+  webcrawler: {
+    name: "Web Crawler",
+    connectorProvider: "webcrawler",
+    isBuilt: true,
+    logoPath: "/static/intercom_32x32.png",
+    description:
+      "Crawl a website.",
+    limitations: null,
+    logoComponent: IntercomLogo,
+    isNested: false,
+  },  
 };

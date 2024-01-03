@@ -30,15 +30,14 @@ const _createConnectorAPIHandler = async (
     if (
       !req.body.workspaceAPIKey ||
       !req.body.dataSourceName ||
-      !req.body.workspaceId ||
-      !req.body.connectionId
+      !req.body.workspaceId
     ) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message: `Missing required parameters. Required : workspaceAPIKey,
-           dataSourceName, workspaceId, connectionId`,
+           dataSourceName, workspaceId. Optional: connectionId`,
         },
       });
     }

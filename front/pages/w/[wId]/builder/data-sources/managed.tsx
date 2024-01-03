@@ -384,7 +384,7 @@ export default function DataSourcesView({
     suffix: string | null
   ) => {
     try {
-      let connectionId: string;
+      let connectionId: string | undefined;
       if (connectorIsUsingNango(provider)) {
         // nango-based connectors
         const nangoConnectorId = {
@@ -403,6 +403,9 @@ export default function DataSourcesView({
       } else if (provider === "github") {
         const installationId = await githubAuth(githubAppUrl);
         connectionId = installationId;
+      } else if (provider === "webcrawler") {
+        // all good
+        connectionId = undefined;
       } else {
         throw new Error(`Unknown provider ${provider}`);
       }
@@ -560,6 +563,10 @@ export default function DataSourcesView({
                             case "intercom":
                               isDataSourceAllowedInPlan =
                                 planConnectionsLimits.isIntercomAllowed;
+                              break;
+                            case "webcrawler":
+                              // ****************************** TO FIX  ****************************** //
+                              isDataSourceAllowedInPlan = true;
                               break;
                             default:
                               ((p: never) => {

@@ -1,4 +1,8 @@
-import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import {
+  CONNECTOR_PROVIDERS,
+  ConnectorProvider,
+  DataSourceType,
+} from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
@@ -71,38 +75,15 @@ async function handler(
         });
       }
 
-      if (!req.body || typeof req.body.connectionId !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The request body is missing.",
-          },
-        });
-      }
-
       if (
         !req.body.provider ||
-        !["slack", "notion", "github", "google_drive", "intercom"].includes(
-          req.body.provider
-        )
+        !CONNECTOR_PROVIDERS.includes(req.body.provider)
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message: "Invalid provider.",
-          },
-        });
-      }
-
-      if (typeof req.body.connectionId !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { connectionId: string, provider: string }.",
           },
         });
       }
@@ -136,6 +117,10 @@ async function handler(
           break;
         case "intercom":
           isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
+          break;
+        case "webcrawler":
+          isDataSourceAllowedInPlan =
+            plan.limits.connections.isWebCrawlerAllowed;
           break;
         default:
           isDataSourceAllowedInPlan = false; // default to false if provider is not recognized

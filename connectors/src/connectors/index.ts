@@ -77,6 +77,8 @@ import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/c
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
+import { createWebcrawlerConnector } from "./webcrawler";
+
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCreator
@@ -86,6 +88,7 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
   github: createGithubConnector,
   google_drive: createGoogleDriveConnector,
   intercom: createIntercomConnector,
+  webcrawler: createWebcrawlerConnector,
 };
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<

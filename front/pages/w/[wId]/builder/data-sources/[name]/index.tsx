@@ -918,6 +918,8 @@ function ManagedDataSourceView({
                           }}
                         />
                       );
+                    case "webcrawler":
+                      return <div>handle me</div>;
                     default:
                       ((p: never) => {
                         throw new Error(`Unknown connector provider ${p}`);
