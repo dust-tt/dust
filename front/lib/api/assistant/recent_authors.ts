@@ -112,21 +112,21 @@ function renderAuthors(
 export async function getAgentRecentAuthors(
   {
     agentConfiguration,
-    authenticator,
+    auth,
   }: {
     agentConfiguration: AgentConfigurationType;
-    authenticator: Authenticator;
+    auth: Authenticator;
   },
   members: UserType[]
 ): Promise<AgentRecentAuthors> {
   const { sId: agentId, versionAuthorId } = agentConfiguration;
 
-  const owner = authenticator.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     throw new Error("Owner is required");
   }
   const { sId: workspaceId } = owner;
-  const currentUserId = authenticator.user()?.id;
+  const currentUserId = auth.user()?.id;
 
   const isGlobalAgent = versionAuthorId === null;
   // For global agents, which have no authors, return early.

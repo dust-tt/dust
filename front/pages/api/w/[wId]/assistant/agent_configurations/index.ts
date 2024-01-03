@@ -130,7 +130,7 @@ async function handler(
                 lastAuthors: await getAgentRecentAuthors(
                   {
                     agentConfiguration,
-                    authenticator: auth,
+                    auth,
                   },
                   members
                 ),
