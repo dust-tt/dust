@@ -176,7 +176,7 @@ const useCustomEditor = ({
   editor?.setOptions({
     editorProps: {
       attributes: {
-        class: "border-0 outline-none overflow-y-auto h-full",
+        class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
       },
       handleKeyDown: (view, event) => {
         if (
