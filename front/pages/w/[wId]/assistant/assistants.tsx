@@ -311,7 +311,7 @@ export default function PersonalAssistants({
                             }
                             size="xs"
                           />
-                          {agent.lastAuthors.join(",")}
+                          {agent.lastAuthors.join(", ")}
                         </>
                       ) : (
                         <></>

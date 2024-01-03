@@ -786,7 +786,7 @@ export async function createAgentConfiguration(
     await agentConfigurationWasUpdatedBy({
       agentId: agent.sId,
       workspaceId: owner.sId,
-      authorId: agent.authorId.toFixed(),
+      authorId: agent.authorId,
       version: agent.version,
     });
 

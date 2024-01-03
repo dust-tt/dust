@@ -154,10 +154,10 @@ export async function agentConfigurationWasUpdatedBy({
 }: {
   agentId: string;
   workspaceId: string;
-  authorId: string;
+  authorId: number;
   version: number;
 }) {
   await setAuthorIdsWithVersionInRedis(agentId, workspaceId, [
-    { value: authorId, score: version },
+    { value: authorId.toString(), score: version },
   ]);
 }
