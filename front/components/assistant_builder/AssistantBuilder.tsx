@@ -99,20 +99,23 @@ const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
 
 // Actions
 
-const ACTION_MODES = [
-  "GENERIC",
-  "RETRIEVAL_SEARCH",
+const BASIC_ACTION_MODES = ["GENERIC", "RETRIEVAL_SEARCH"] as const;
+const ADVANCED_ACTION_MODES = [
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
   "DATABASE_QUERY",
 ] as const;
-type ActionMode = (typeof ACTION_MODES)[number];
+
+type ActionMode =
+  | (typeof BASIC_ACTION_MODES)[number]
+  | (typeof ADVANCED_ACTION_MODES)[number];
+
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   GENERIC: "No action",
-  RETRIEVAL_SEARCH: "Search Data Sources",
-  RETRIEVAL_EXHAUSTIVE: "Process Data Sources",
-  DUST_APP_RUN: "Run Dust App",
-  DATABASE_QUERY: "Query Database",
+  RETRIEVAL_SEARCH: "Search in data sources",
+  RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
+  DUST_APP_RUN: "Run a Dust app",
+  DATABASE_QUERY: "Query a database",
 };
 
 // Retrieval Action
@@ -678,15 +681,6 @@ export default function AssistantBuilder({
     return newAgentConfiguration;
   };
 
-  // Hack to keep DATABASE_QUERY disabled if not Dust workspace
-  const actions = isActivatedStructuredDB(owner)
-    ? ACTION_MODE_TO_LABEL
-    : Object.fromEntries(
-        Object.entries(ACTION_MODE_TO_LABEL).filter(
-          ([key]) => key !== "DATABASE_QUERY"
-        )
-      );
-
   return (
     <>
       <AssistantBuilderDataSourceModal
@@ -826,7 +820,7 @@ export default function AssistantBuilder({
           )
         }
       >
-        <div className="flex flex-col space-y-8 pb-8 pt-8">
+        <div className="flex flex-col space-y-8 pb-16 pt-8">
           <div className="flex w-full flex-col gap-4">
             <div className="text-2xl font-bold text-element-900">Identity</div>
             <div className="flex flex-row items-start gap-8">
@@ -960,9 +954,7 @@ export default function AssistantBuilder({
           </div>
 
           <div className="flex flex-col gap-6 text-sm text-element-700">
-            <div className="text-2xl font-bold text-element-900">
-              Data Sources & Actions
-            </div>
+            <div className="text-2xl font-bold text-element-900">Action</div>
             {configurableDataSources.length === 0 &&
               Object.keys(builderState.dataSourceConfigurations).length ===
                 0 && (
@@ -1021,13 +1013,8 @@ export default function AssistantBuilder({
                 </ContentMessage>
               )}
             <div>
-              You can ask the assistant to perform actions before answering,
-              like{" "}
-              <span className="font-bold text-element-800">
-                searching in your data sources
-              </span>
-              , or use a Dust Application you have built for your specific
-              needs.
+              Choose the action the assistant will perform and take into account
+              before answering:
             </div>
             <div className="flex flex-row items-center space-x-2">
               <div className="text-sm font-semibold text-element-900">
@@ -1044,23 +1031,58 @@ export default function AssistantBuilder({
                     size="sm"
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items origin="bottomRight" width={260}>
-                  {Object.entries(actions).map(([key, value]) => (
+                <DropdownMenu.Items origin="topLeft" width={200}>
+                  {BASIC_ACTION_MODES.map((key) => (
                     <DropdownMenu.Item
                       key={key}
-                      label={value}
+                      label={ACTION_MODE_TO_LABEL[key]}
                       onClick={() => {
                         setEdited(true);
                         setBuilderState((state) => ({
                           ...state,
-                          actionMode: key as ActionMode,
+                          actionMode: key,
                         }));
                       }}
                     />
                   ))}
+                  <DropdownMenu.Item
+                    label="Advanced actions"
+                    hasChildren={true}
+                  >
+                    <DropdownMenu.Items
+                      origin="topLeft"
+                      width={250}
+                      marginLeft={40}
+                    >
+                      {ADVANCED_ACTION_MODES.filter((key) => {
+                        return (
+                          key !== "DATABASE_QUERY" ||
+                          isActivatedStructuredDB(owner)
+                        );
+                      }).map((key) => (
+                        <DropdownMenu.Item
+                          key={key}
+                          label={ACTION_MODE_TO_LABEL[key]}
+                          onClick={() => {
+                            setEdited(true);
+                            setBuilderState((state) => ({
+                              ...state,
+                              actionMode: key,
+                            }));
+                          }}
+                        />
+                      ))}
+                    </DropdownMenu.Items>
+                  </DropdownMenu.Item>
                 </DropdownMenu.Items>
               </DropdownMenu>
             </div>
+            <ActionModeSection show={builderState.actionMode === "GENERIC"}>
+              <div className="text-sm text-element-700">
+                No action is set. The assistant will use the instructions only
+                to answer.
+              </div>
+            </ActionModeSection>
             <ActionModeSection
               show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
             >
@@ -1213,7 +1235,7 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "DUST_APP_RUN"}
             >
               <div className="text-sm text-element-700">
-                Your assistant can execute a Dust Application of your design
+                The assistant will execute a Dust Application of your design
                 before answering. The output of the app (last block) is injected
                 in context for the model to generate an answer. The inputs of
                 the app will be automatically generated from the context of the
@@ -1234,8 +1256,8 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "DATABASE_QUERY"}
             >
               <div className="text-sm text-element-700">
-                Your assistant can search directly from a database built from
-                one of your files.
+                The assistant will generate a SQL query from your request,
+                execute it on the tables selected and retrieve the results.
               </div>
               <DatabaseSelectionSection
                 show={builderState.actionMode === "DATABASE_QUERY"}
