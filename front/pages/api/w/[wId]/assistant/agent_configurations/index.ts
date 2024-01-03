@@ -130,8 +130,7 @@ async function handler(
                 lastAuthors: await getAgentRecentAuthors(
                   {
                     agentConfiguration,
-                    workspaceId: owner.sId,
-                    currentUserId: auth.user()?.id,
+                    authenticator: auth,
                   },
                   members
                 ),

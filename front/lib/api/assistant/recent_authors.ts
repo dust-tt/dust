@@ -5,6 +5,7 @@ import {
 } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 
@@ -111,16 +112,21 @@ function renderAuthors(
 export async function getAgentRecentAuthors(
   {
     agentConfiguration,
-    workspaceId,
-    currentUserId,
+    authenticator,
   }: {
     agentConfiguration: AgentConfigurationType;
-    workspaceId: string;
-    currentUserId?: number;
+    authenticator: Authenticator;
   },
   members: UserType[]
 ): Promise<AgentRecentAuthors> {
   const { sId: agentId, versionAuthorId } = agentConfiguration;
+
+  const owner = authenticator.workspace();
+  if (!owner) {
+    throw new Error("Owner is required");
+  }
+  const { sId: workspaceId } = owner;
+  const currentUserId = authenticator.user()?.id;
 
   const isGlobalAgent = versionAuthorId === null;
   // For global agents, which have no authors, return early.
