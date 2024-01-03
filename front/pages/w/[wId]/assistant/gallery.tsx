@@ -92,7 +92,7 @@ export default function AssistantsGallery({
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView,
-      withUsage: orderBy === "usage",
+      includes: orderBy === "usage" ? ["usage"] : [],
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");

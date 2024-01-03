@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   Button,
   ContextItem,
+  Icon,
   MoreIcon,
   Page,
   PencilSquareIcon,
@@ -13,6 +14,8 @@ import {
   Tab,
   Tooltip,
   TrashIcon,
+  UserGroupIcon,
+  UserIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
@@ -100,6 +103,7 @@ export default function PersonalAssistants({
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView: view === "personal" ? "list" : "workspace",
+      includes: view === "personal" ? ["authors"] : [],
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
@@ -296,6 +300,23 @@ export default function PersonalAssistants({
                   <ContextItem
                     key={agent.sId}
                     title={`@${agent.name}`}
+                    subElement={
+                      agent.lastAuthors && agent.lastAuthors.length > 0 ? (
+                        <>
+                          <Icon
+                            visual={
+                              agent.lastAuthors.length > 1
+                                ? UserGroupIcon
+                                : UserIcon
+                            }
+                            size="xs"
+                          />
+                          {agent.lastAuthors.join(", ")}
+                        </>
+                      ) : (
+                        <></>
+                      )
+                    }
                     visual={
                       <Avatar
                         visual={<img src={agent.pictureUrl} />}

@@ -106,6 +106,16 @@ export type AgentsGetViewType =
   | "global"
   | "admin_internal";
 
+export type AgentUsageType = {
+  userCount: number;
+  messageCount: number;
+
+  // userCount and messageCount are over the last `timePeriodSec` seconds
+  timePeriodSec: number;
+};
+
+export type AgentRecentAuthors = readonly string[];
+
 export type AgentConfigurationType = {
   id: ModelId;
 
@@ -134,12 +144,7 @@ export type AgentConfigurationType = {
 
   // Usage is expensive to compute, so we only compute it when needed.
   usage?: AgentUsageType;
-};
 
-export type AgentUsageType = {
-  userCount: number;
-  messageCount: number;
-
-  // userCount and messageCount are over the last `timePeriodSec` seconds
-  timePeriodSec: number;
+  // `lastAuthors` is expensive to compute, so we only compute it when needed.
+  lastAuthors?: AgentRecentAuthors;
 };

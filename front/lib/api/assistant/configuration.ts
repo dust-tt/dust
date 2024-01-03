@@ -32,6 +32,7 @@ import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
+import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -779,6 +780,11 @@ export async function createAgentConfiguration(
     agentConfiguration.userListStatus = agentUserListStatus({
       agentConfiguration,
       listStatusOverride,
+    });
+
+    await agentConfigurationWasUpdatedBy({
+      agent: agentConfiguration,
+      auth,
     });
 
     return new Ok(agentConfiguration);
