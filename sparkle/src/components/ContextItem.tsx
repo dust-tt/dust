@@ -31,7 +31,7 @@ export function ContextItem({
       <div className="s-flex s-flex-row s-gap-3 s-px-2 s-py-4">
         <div className="s-flex">{visual}</div>
         <div className="s-flex s-grow s-flex-col s-gap-1">
-          <div className="s-flex s-grow s-flex-row">
+          <div className="s-flex s-grow s-flex-row s-gap-3">
             <div className="s-text-normal s-flex s-flex-col s-justify-center s-font-semibold">
               {title}
             </div>
