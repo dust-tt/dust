@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 
-import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
+import { ChevronDown, ChevronRight, ChevronUpDown } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -158,6 +158,13 @@ DropdownMenu.Button = function ({
     );
   }
 
+  const chevronIcon =
+    type === "select"
+      ? ChevronUpDown
+      : type === "submenu"
+      ? ChevronRight
+      : ChevronDown;
+
   return (
     <>
       {tooltip ? (
@@ -174,7 +181,7 @@ DropdownMenu.Button = function ({
           >
             <Icon visual={icon} size={size} className={finalIconClasses} />
             <Icon
-              visual={type === "select" ? ChevronUpDown : ChevronDown}
+              visual={chevronIcon}
               size={size === "sm" ? "xs" : "sm"}
               className={finalChevronClasses}
             />
@@ -202,7 +209,7 @@ DropdownMenu.Button = function ({
             {label}
           </span>
           <Icon
-            visual={type === "select" ? ChevronUpDown : ChevronDown}
+            visual={chevronIcon}
             size={size === "sm" ? "xs" : "sm"}
             className={finalChevronClasses}
           />
@@ -265,12 +272,14 @@ DropdownMenu.Item = function ({
 interface DropdownItemsProps {
   origin?: "topLeft" | "topRight" | "bottomLeft" | "bottomRight" | "auto";
   width?: number;
+  marginLeft?: number;
   children: React.ReactNode;
 }
 
 DropdownMenu.Items = function ({
   origin = "auto",
   width = 160,
+  marginLeft = 0,
   children,
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
@@ -314,14 +323,22 @@ DropdownMenu.Items = function ({
     }
   };
 
-  const styleInsert = (origin: string) => {
+  const styleInsert = (origin: string, marginLeft: number) => {
     switch (origin) {
       case "topLeft":
-        return { width: `${width}px`, top: `${buttonHeight + 8}px` };
+        return {
+          width: `${width}px`,
+          top: `${buttonHeight + 8}px`,
+          left: `${marginLeft}px`,
+        };
       case "topRight":
-        return { width: `${width}px`, top: `${buttonHeight + 8}px` };
+        return {
+          width: `${width}px`,
+          top: `${buttonHeight + 8}px`,
+          left: `${marginLeft}px`,
+        };
       default:
-        return { width: `${width}px` };
+        return { width: `${width}px`, left: `${marginLeft}px` };
     }
   };
 
@@ -339,7 +356,7 @@ DropdownMenu.Items = function ({
         className={`s-absolute s-z-10 ${getOriginClass(
           origin
         )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-py-1 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
-        style={styleInsert(origin)}
+        style={styleInsert(origin, marginLeft)}
       >
         <StandardItem.List>{children}</StandardItem.List>
       </Menu.Items>
