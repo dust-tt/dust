@@ -19,7 +19,7 @@ export class EE extends Algorithm {
   readonly JUDGEMENTS_DEPTH = 2;
   readonly GENERATIONS = 8;
   readonly MAX_CROSSOVERS = 8;
-  readonly INNER_CONCURRENCY = 4;
+  readonly INNER_CONCURRENCY = 3;
 
   private results: TestResult[] = [];
 
