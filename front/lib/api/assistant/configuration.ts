@@ -32,6 +32,7 @@ import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
+import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -50,8 +51,6 @@ import {
 } from "@app/lib/models";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
-
-import { agentConfigurationWasUpdatedBy } from "./recent_authors";
 
 /**
  * Get an agent configuration
