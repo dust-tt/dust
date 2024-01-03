@@ -112,9 +112,9 @@ type ActionMode =
 
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   GENERIC: "No action",
-  RETRIEVAL_SEARCH: "Search data sources",
-  RETRIEVAL_EXHAUSTIVE: "Retrieve most recent content from data sources",
-  DUST_APP_RUN: "Run a Dust application and retrieve the output",
+  RETRIEVAL_SEARCH: "Search in data sources",
+  RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
+  DUST_APP_RUN: "Run a Dust App",
   DATABASE_QUERY: "Query a Database",
 };
 
@@ -1049,7 +1049,7 @@ export default function AssistantBuilder({
                     label="Advanced actions"
                     hasChildren={true}
                   >
-                    <DropdownMenu.Items origin="topLeft" width={360}>
+                    <DropdownMenu.Items origin="topLeft" width={250}>
                       {ADVANCED_ACTION_MODES.filter((key) => {
                         return (
                           key !== "DATABASE_QUERY" ||
@@ -1075,7 +1075,7 @@ export default function AssistantBuilder({
             </div>
             <ActionModeSection show={builderState.actionMode === "GENERIC"}>
               <div className="text-sm text-element-700">
-                No action is set. Your assistant will use the instructions only
+                No action is set. The assistant will use the instructions only
                 to answer.
               </div>
             </ActionModeSection>
@@ -1231,7 +1231,7 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "DUST_APP_RUN"}
             >
               <div className="text-sm text-element-700">
-                Your assistant can execute a Dust Application of your design
+                The assistant will execute a Dust Application of your design
                 before answering. The output of the app (last block) is injected
                 in context for the model to generate an answer. The inputs of
                 the app will be automatically generated from the context of the
@@ -1252,8 +1252,8 @@ export default function AssistantBuilder({
               show={builderState.actionMode === "DATABASE_QUERY"}
             >
               <div className="text-sm text-element-700">
-                Your assistant can search directly from a database built from
-                one of your files.
+                The assistant will generate a SQL query from your request,
+                execute it on the tables selected and retrieve the results.
               </div>
               <DatabaseSelectionSection
                 show={builderState.actionMode === "DATABASE_QUERY"}
