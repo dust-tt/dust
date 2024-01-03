@@ -13,11 +13,11 @@ import { safeRedisClient } from "@app/lib/redis";
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
 
 function _getRecentAuthorIdsKey({
-  workspaceId,
   agentId,
+  workspaceId,
 }: {
-  workspaceId: string;
   agentId: string;
+  workspaceId: string;
 }) {
   // One sorted set per agent for keeping record of the most recent author ids, with:
   // score: version of each configuration of the agent
@@ -49,8 +49,13 @@ async function fetchRecentAuthorIdsWithVersion(agentId: string) {
  * This approach is cost-effective, as the TTL naturally clears out old data without extra cleanup overhead.
  */
 async function setAuthorIdsWithVersionInRedis(
-  agentId: string,
-  workspaceId: string,
+  {
+    agentId,
+    workspaceId,
+  }: {
+    agentId: string;
+    workspaceId: string;
+  },
   authorIdsWithScore: { value: string; score: number }[]
 ) {
   const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
@@ -65,7 +70,13 @@ async function setAuthorIdsWithVersionInRedis(
   });
 }
 
-async function populateAuthorIdsFromDb(agentId: string, workspaceId: string) {
+async function populateAuthorIdsFromDb({
+  agentId,
+  workspaceId,
+}: {
+  agentId: string;
+  workspaceId: string;
+}) {
   const recentAuthorIdsWithVersion = await fetchRecentAuthorIdsWithVersion(
     agentId
   );
@@ -81,8 +92,10 @@ async function populateAuthorIdsFromDb(agentId: string, workspaceId: string) {
   }));
 
   await setAuthorIdsWithVersionInRedis(
-    agentId,
-    workspaceId,
+    {
+      agentId,
+      workspaceId,
+    },
     authorIdsWithScore
   );
 
@@ -111,15 +124,15 @@ function renderAuthors(
 
 export async function getAgentRecentAuthors(
   {
-    agentConfiguration,
+    agent,
     auth,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agent: AgentConfigurationType;
     auth: Authenticator;
   },
   members: UserType[]
 ): Promise<AgentRecentAuthors> {
-  const { sId: agentId, versionAuthorId } = agentConfiguration;
+  const { sId: agentId, versionAuthorId } = agent;
 
   const owner = auth.workspace();
   if (!owner) {
@@ -145,7 +158,7 @@ export async function getAgentRecentAuthors(
 
   if (recentAuthorIds.length === 0) {
     // Populate from the database and store in Redis if the entry is not already present.
-    recentAuthorIds = await populateAuthorIdsFromDb(agentId, workspaceId);
+    recentAuthorIds = await populateAuthorIdsFromDb({ agentId, workspaceId });
   }
 
   // Consider moving this logic to the FE if we need to fetch members in different places.
@@ -153,17 +166,29 @@ export async function getAgentRecentAuthors(
 }
 
 export async function agentConfigurationWasUpdatedBy({
-  agentId,
-  workspaceId,
-  authorId,
-  version,
+  agent,
+  auth,
 }: {
-  agentId: string;
-  workspaceId: string;
-  authorId: number;
-  version: number;
+  agent: AgentConfigurationType;
+  auth: Authenticator;
 }) {
-  await setAuthorIdsWithVersionInRedis(agentId, workspaceId, [
-    { value: authorId.toString(), score: version },
-  ]);
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Owner is required");
+  }
+
+  const { sId: workspaceId } = owner;
+  const { sId: agentId, version, versionAuthorId: authorId } = agent;
+
+  if (!authorId) {
+    return;
+  }
+
+  await setAuthorIdsWithVersionInRedis(
+    {
+      agentId,
+      workspaceId,
+    },
+    [{ value: authorId.toString(), score: version }]
+  );
 }

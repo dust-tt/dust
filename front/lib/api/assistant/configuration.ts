@@ -783,10 +783,8 @@ export async function createAgentConfiguration(
     });
 
     await agentConfigurationWasUpdatedBy({
-      agentId: agent.sId,
-      workspaceId: owner.sId,
-      authorId: agent.authorId,
-      version: agent.version,
+      agent: agentConfiguration,
+      auth,
     });
 
     return new Ok(agentConfiguration);
