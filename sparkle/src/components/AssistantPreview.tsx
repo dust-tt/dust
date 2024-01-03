@@ -67,7 +67,7 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
     subtitle,
   } = props;
 
-  const galleryChip = allowAddAction && isAdded && (
+  const galleryChip = isAdded && (
     <div className="s-group">
       <Chip
         color="emerald"
@@ -75,19 +75,21 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
         label="Added"
         className="group-hover:s-hidden"
       />
-      <div className="s-hidden group-hover:s-block">
-        <Button.List isWrapping={true}>
-          <Button
-            key="remove"
-            variant="tertiary"
-            icon={Dash}
-            disabled={isUpdatingList}
-            size="xs"
-            label={"Remove"}
-            onClick={() => onUpdate("removed")}
-          />
-        </Button.List>
-      </div>
+      {allowAddAction && (
+        <div className="s-hidden group-hover:s-block">
+          <Button.List isWrapping={true}>
+            <Button
+              key="remove"
+              variant="tertiary"
+              icon={Dash}
+              disabled={isUpdatingList}
+              size="xs"
+              label={"Remove"}
+              onClick={() => onUpdate("removed")}
+            />
+          </Button.List>
+        </div>
+      )}
     </div>
   );
 
