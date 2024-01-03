@@ -1049,7 +1049,11 @@ export default function AssistantBuilder({
                     label="Advanced actions"
                     hasChildren={true}
                   >
-                    <DropdownMenu.Items origin="topLeft" width={250}>
+                    <DropdownMenu.Items
+                      origin="topLeft"
+                      width={250}
+                      marginLeft={40}
+                    >
                       {ADVANCED_ACTION_MODES.filter((key) => {
                         return (
                           key !== "DATABASE_QUERY" ||
