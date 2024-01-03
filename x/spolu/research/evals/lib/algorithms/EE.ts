@@ -17,7 +17,7 @@ export class EE extends Algorithm {
   readonly POOL_SIZE = 16;
   readonly TEMPERATURE = 0.7;
   readonly JUDGEMENTS_DEPTH = 2;
-  readonly GENERATIONS = 5;
+  readonly GENERATIONS = 8;
   readonly MAX_CROSSOVERS = 8;
   readonly INNER_CONCURRENCY = 4;
 
