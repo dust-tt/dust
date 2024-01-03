@@ -19,6 +19,7 @@ export class EE extends Algorithm {
   readonly JUDGEMENTS_DEPTH = 2;
   readonly GENERATIONS = 5;
   readonly MAX_CROSSOVERS = 8;
+  readonly INNER_CONCURRENCY = 4;
 
   private results: TestResult[] = [];
 
@@ -64,109 +65,103 @@ export class EE extends Algorithm {
   }: {
     test: Test;
     iteration?: number;
-  }): Promise<Explanation[]> {
-    const pool: Explanation[] = [];
+  }): Promise<Explanation> {
+    const examples = this.dataset.examples({
+      problem: test.id,
+      count: this.N_SHOT,
+      iteration: iteration ? iteration : 0,
+    });
 
-    for (let i = 0; i < this.POOL_SIZE; i++) {
-      const examples = this.dataset.examples({
-        problem: test.id,
-        count: this.N_SHOT,
-        iteration: iteration ? iteration * i : i,
-      });
+    const messages: ChatMessage[] = [];
 
-      const messages: ChatMessage[] = [];
+    let prompt = `<Instructions>\n`;
+    prompt += this.taskPrompt();
+    prompt += `\n</Instructions>`;
 
-      let prompt = `<Instructions>\n`;
-      prompt += this.taskPrompt();
-      prompt += `\n</Instructions>`;
+    for (const e of examples.slice(0, this.N_SHOT / 2)) {
+      prompt += `\n\n<Example>\n`;
+      prompt += `QUESTION: ${e.question}\n`;
+      prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
+      prompt += `ANSWER: ${e.answer}\n`;
+      prompt += `</Example>`;
+    }
 
-      for (const e of examples.slice(0, this.N_SHOT / 2)) {
-        prompt += `\n\n<Example>\n`;
-        prompt += `QUESTION: ${e.question}\n`;
-        prompt += `REASONING:\n${e.reasoning.join("\n")}\n`;
-        prompt += `ANSWER: ${e.answer}\n`;
-        prompt += `</Example>`;
-      }
+    messages.push({
+      role: "system",
+      content: prompt,
+    });
 
-      messages.push({
-        role: "system",
-        content: prompt,
-      });
-
-      for (const e of examples.slice(this.N_SHOT / 2)) {
-        messages.push({
-          role: "user",
-          content: `QUESTION: ${e.question}`,
-        });
-        messages.push({
-          role: "assistant",
-          content: `REASONING:\n${e.reasoning.join("\n")}\nANSWER: ${e.answer}`,
-        });
-      }
-
+    for (const e of examples.slice(this.N_SHOT / 2)) {
       messages.push({
         role: "user",
-        content: `QUESTION: ${test.question}`,
+        content: `QUESTION: ${e.question}`,
       });
-
-      messages.forEach((m) => {
-        console.log(`+++++++++++++++++++++++++++++++`);
-        console.log(`[${m.role}]`);
-        console.log(`-------------------------------`);
-        console.log(`${m.content}`);
-      });
-
-      const query: ChatQuery = {
-        provider: this.model.provider,
-        model: this.model.model(),
-        messages,
-        temperature: this.TEMPERATURE,
-        maxTokens:
-          this.dataset.maxTokens().reasoningStep *
-          this.dataset.maxTokens().maxStepCount,
-      };
-
-      const c = await this.runCompletion(query);
-
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-      console.log("INITIALIZATION");
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
-      console.log(c.content);
-      console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
-
-      const answer = this.dataset.parseAnswer(c.content);
-
-      let check = false;
-      try {
-        check = await this.dataset.check({ test, answer });
-      } catch (e) {
-        // Nothing to do, check failed.
-      }
-
-      console.log("-------------------------");
-      console.log(`PROBLEM: ${test.id}`);
-      console.log(`ANSWER: ${answer}`);
-      console.log(`CHECK: ${check}`);
-      console.log("-------------------------");
-      console.log("\n\n\n");
-
-      await this.storeCompletion({
-        test,
-        completion: c,
-        query,
-        check,
-      });
-      this.stats();
-
-      pool.push({
-        answer,
-        check,
-        explanation: c.content,
-        judgements: [],
+      messages.push({
+        role: "assistant",
+        content: `REASONING:\n${e.reasoning.join("\n")}\nANSWER: ${e.answer}`,
       });
     }
 
-    return pool;
+    messages.push({
+      role: "user",
+      content: `QUESTION: ${test.question}`,
+    });
+
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
+
+    const query: ChatQuery = {
+      provider: this.model.provider,
+      model: this.model.model(),
+      messages,
+      temperature: this.TEMPERATURE,
+      maxTokens:
+        this.dataset.maxTokens().reasoningStep *
+        this.dataset.maxTokens().maxStepCount,
+    };
+
+    const c = await this.runCompletion(query);
+
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    console.log("INITIALIZATION");
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    console.log(c.content);
+    console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
+
+    const answer = this.dataset.parseAnswer(c.content);
+
+    let check = false;
+    try {
+      check = await this.dataset.check({ test, answer });
+    } catch (e) {
+      // Nothing to do, check failed.
+    }
+
+    console.log("-------------------------");
+    console.log(`PROBLEM: ${test.id}`);
+    console.log(`ANSWER: ${answer}`);
+    console.log(`CHECK: ${check}`);
+    console.log("-------------------------");
+    console.log("\n\n\n");
+
+    await this.storeCompletion({
+      test,
+      completion: c,
+      query,
+      check,
+    });
+    this.stats();
+
+    return {
+      answer,
+      check,
+      explanation: c.content,
+      judgements: [],
+    };
   }
 
   async judgeExplanation({
@@ -384,15 +379,27 @@ export class EE extends Algorithm {
     };
   }
 
-  async runOne({
-    test,
-    iteration,
-  }: {
-    test: Test;
-    iteration?: number;
-  }): Promise<TestResult> {
+  async runOne({ test }: { test: Test }): Promise<TestResult> {
+    const initQueue = new PQueue({
+      concurrency: this.INNER_CONCURRENCY,
+    });
+
     // Initialize the evolutionary pool for the test.
-    let pool = await this.initializePool({ test, iteration });
+    let pool = (
+      await Promise.all(
+        Array.from(Array(this.POOL_SIZE).keys()).map((_, i) => {
+          return initQueue.add(() =>
+            this.initializePool({ test, iteration: i })
+          );
+        })
+      )
+    )
+      .filter((x) => x)
+      .map((x) => x as Explanation);
+
+    if (pool.length !== this.POOL_SIZE) {
+      throw new Error("Invalid pool size");
+    }
 
     // console.log(pool);
 
@@ -405,19 +412,27 @@ export class EE extends Algorithm {
 
       // Rate each explanation in the pool twice
       for (let i = 0; i < this.JUDGEMENTS_DEPTH; i++) {
-        for (const explanation of pool) {
-          await this.judgeExplanation({ test, explanation });
-        }
+        const judgementQueue = new PQueue({
+          concurrency: this.INNER_CONCURRENCY,
+        });
+
+        await Promise.all(
+          pool.map((e) => {
+            return judgementQueue.add(() =>
+              this.judgeExplanation({ test, explanation: e })
+            );
+          })
+        );
       }
 
-      const queue = new PQueue({
-        concurrency: 4,
+      const crossOverQueue = new PQueue({
+        concurrency: this.INNER_CONCURRENCY,
       });
 
       pool = (
         await Promise.all(
           pool.map((_, i) => {
-            return queue.add(() =>
+            return crossOverQueue.add(() =>
               this.crossOver({ test, pool, generation, iteration: i })
             );
           })
