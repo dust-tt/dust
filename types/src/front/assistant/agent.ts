@@ -114,7 +114,7 @@ export type AgentUsageType = {
   timePeriodSec: number;
 };
 
-export type AgentRecentAuthorIds = readonly number[];
+export type AgentRecentAuthors = readonly string[];
 
 export type AgentConfigurationType = {
   id: ModelId;
@@ -146,5 +146,5 @@ export type AgentConfigurationType = {
   usage?: AgentUsageType;
 
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
-  lastAuthorIds?: AgentRecentAuthorIds;
+  lastAuthors?: AgentRecentAuthors;
 };

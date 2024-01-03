@@ -1,4 +1,4 @@
-import { AgentRecentAuthorIds } from "@dust-tt/types";
+import { AgentRecentAuthors, UserType } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models";
@@ -65,7 +65,8 @@ async function populateAuthorIdsFromDb(agentId: string, workspaceId: string) {
   }
 
   const authorIdsWithScore = recentAuthorIdsWithVersion.map((a) => ({
-    value: a.get("authorId").toFixed(),
+    // Redis only supports strings.
+    value: a.get("authorId").toString(),
     score: a.version,
   }));
 
@@ -75,18 +76,43 @@ async function populateAuthorIdsFromDb(agentId: string, workspaceId: string) {
     authorIdsWithScore
   );
 
-  return recentAuthorIdsWithVersion.map((a) => a.authorId);
+  return recentAuthorIdsWithVersion.map((a) => a.authorId.toString());
 }
 
-export async function getAgentRecentAuthorIds({
-  agentId,
-  workspaceId,
-  isGlobalAgent,
-}: {
-  agentId: string;
-  workspaceId: string;
-  isGlobalAgent: boolean;
-}): Promise<AgentRecentAuthorIds> {
+function renderAuthors(
+  authorIds: readonly string[],
+  members: UserType[],
+  currentUserId?: number
+): readonly string[] {
+  return (
+    authorIds
+      .map((id) => parseInt(id, 10))
+      .map((authorId) => {
+        // If authorId is the current requester, return "Me".
+        if (authorId === currentUserId) {
+          return "Me";
+        }
+        return members.find((m) => m.id === authorId)?.fullName ?? null;
+      })
+      // Filter out `undefined` authors.
+      .filter((name): name is string => name !== null)
+  );
+}
+
+export async function getAgentRecentAuthors(
+  {
+    agentId,
+    workspaceId,
+    isGlobalAgent,
+    currentUserId,
+  }: {
+    agentId: string;
+    workspaceId: string;
+    isGlobalAgent: boolean;
+    currentUserId?: number;
+  },
+  members: UserType[]
+): Promise<AgentRecentAuthors> {
   // For global agents, which have no authors, return early.
   if (isGlobalAgent) {
     return [];
@@ -97,16 +123,17 @@ export async function getAgentRecentAuthorIds({
     workspaceId,
   });
 
-  const recentAuthorIds = await safeRedisClient(async (redis) =>
+  let recentAuthorIds = await safeRedisClient(async (redis) =>
     redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
   );
 
-  if (recentAuthorIds.length > 0) {
-    return recentAuthorIds.map((n) => Number.parseInt(n, 10));
+  if (recentAuthorIds.length === 0) {
+    // Populate from the database and store in Redis if the entry is not already present.
+    recentAuthorIds = await populateAuthorIdsFromDb(agentId, workspaceId);
   }
 
-  // Populate from the database and store in Redis if the entry is not already present.
-  return await populateAuthorIdsFromDb(agentId, workspaceId);
+  // Consider moving this logic to the FE if we need to fetch members in different places.
+  return renderAuthors(recentAuthorIds, members, currentUserId);
 }
 
 export async function agentConfigurationWasUpdatedBy({

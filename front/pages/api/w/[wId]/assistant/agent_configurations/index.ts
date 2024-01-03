@@ -19,7 +19,8 @@ import {
   createAgentGenerationConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
-import { getAgentRecentAuthorIds } from "@app/lib/api/assistant/recent_authors";
+import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -119,16 +120,22 @@ async function handler(
       }
 
       if (withAuthors === "true") {
+        const members = await getMembers(auth);
+
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
             async (agentConfiguration): Promise<AgentConfigurationType> => {
               return {
                 ...agentConfiguration,
-                lastAuthorIds: await getAgentRecentAuthorIds({
-                  agentId: agentConfiguration.sId,
-                  isGlobalAgent: agentConfiguration.versionAuthorId === null,
-                  workspaceId: owner.sId,
-                }),
+                lastAuthors: await getAgentRecentAuthors(
+                  {
+                    agentId: agentConfiguration.sId,
+                    isGlobalAgent: agentConfiguration.versionAuthorId === null,
+                    workspaceId: owner.sId,
+                    currentUserId: auth.user()?.id,
+                  },
+                  members
+                ),
               };
             }
           )
