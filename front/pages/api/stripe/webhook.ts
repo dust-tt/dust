@@ -38,7 +38,8 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
 
 export type GetResponseBody = {
-  success: true;
+  success: boolean;
+  message?: string;
 };
 
 export const config = {
@@ -161,24 +162,54 @@ async function handler(
               const now = new Date();
               const activeSubscription = await Subscription.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
+                include: [
+                  {
+                    model: Plan,
+                    as: "plan",
+                  },
+                ],
                 transaction: t,
               });
 
-              if (
-                activeSubscription &&
-                activeSubscription.stripeSubscriptionId === stripeSubscriptionId
-              ) {
-                // We already have a subscription for this workspace and this stripe subscription.
-                logger.info(
+              // We block a double subscription for a workspace on the same plan
+              if (activeSubscription && activeSubscription.planId === plan.id) {
+                logger.error(
                   {
                     workspaceId,
                     stripeCustomerId,
                     stripeSubscriptionId,
                     planCode,
                   },
-                  "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this workspace and this stripe subscription. Ignoring event"
+                  "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this plan on the workspace. Check on Stripe dashboard."
                 );
-                return res.status(200).json({ success: true });
+
+                return res.status(409).json({
+                  success: false,
+                  message:
+                    "Conflict: Active subscription already exists for this workspace/plan.",
+                });
+              }
+
+              // We block a new subscription if the active one is with payment
+              if (
+                activeSubscription &&
+                activeSubscription.plan.stripeProductId !== null
+              ) {
+                logger.error(
+                  {
+                    workspaceId,
+                    stripeCustomerId,
+                    stripeSubscriptionId,
+                    planCode,
+                  },
+                  "[Stripe Webhook] Received checkout.session.completed when we already have a subscription with payment on the workspace. Check on Stripe dashboard."
+                );
+
+                return res.status(409).json({
+                  success: false,
+                  message:
+                    "Conflict: Active subscription with payment already exists for this workspace.",
+                });
               }
 
               // mark existing plan invite as consumed
