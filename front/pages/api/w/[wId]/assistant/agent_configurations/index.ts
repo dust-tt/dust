@@ -129,7 +129,7 @@ async function handler(
                 ...agentConfiguration,
                 lastAuthors: await getAgentRecentAuthors(
                   {
-                    agentConfiguration,
+                    agent: agentConfiguration,
                     auth,
                   },
                   members
