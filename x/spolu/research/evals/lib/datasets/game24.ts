@@ -131,7 +131,8 @@ export class Game24 extends Dataset {
       " The last step should present the last operation and the solution expression" +
       " using the `\\boxed{}` directive" +
       " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)." +
-      " Don't use the `\\boxed{}` directive for anything else than the final step and answer."
+      " Don't use the `\\boxed{}` directive for anything else than the final step and answer." +
+      " Inside the `\\boxed{}` directive only use numbers, and the symbols `+,-,*,/,(,)`."
     );
   }
 
