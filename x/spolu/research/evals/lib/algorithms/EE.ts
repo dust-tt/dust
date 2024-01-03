@@ -14,18 +14,18 @@ type Explanation = {
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
-  readonly POOL_SIZE = 16;
+  readonly POOL_SIZE = 24;
   readonly TEMPERATURE = 0.7;
   readonly JUDGEMENTS_DEPTH = 2;
   readonly GENERATIONS = 8;
   readonly MAX_CROSSOVERS = 8;
-  readonly INNER_CONCURRENCY = 3;
+  readonly INNER_CONCURRENCY = 4;
 
-  private results: TestResult[] = [];
+  private generationResults: TestResult[][];
 
   constructor(dataset: Dataset, model: Model) {
     super(dataset, model);
-    this.results = [];
+    this.generationResults = [];
   }
 
   algorithm(): AlgorithmType {
@@ -379,6 +379,38 @@ export class EE extends Algorithm {
     };
   }
 
+  answerFromPool(test: Test, pool: Explanation[]): TestResult {
+    const answers: { [key: string]: { check: boolean; count: number } } = {};
+
+    pool.forEach((e) => {
+      if (e.answer in answers) {
+        answers[e.answer].count += 1;
+        if (e.check !== answers[e.answer].check) {
+          throw new Error("Invalid check");
+        }
+      } else {
+        answers[e.answer] = { check: e.check, count: 1 };
+      }
+    });
+
+    let maxCount = 0;
+    let maxAnswer = "";
+    let maxCheck = false;
+    for (const answer in answers) {
+      if (answers[answer].count > maxCount) {
+        maxCount = answers[answer].count;
+        maxAnswer = answer;
+        maxCheck = answers[answer].check;
+      }
+    }
+
+    return {
+      check: maxCheck,
+      answer: maxAnswer,
+      test,
+    };
+  }
+
   async runOne({ test }: { test: Test }): Promise<TestResult> {
     const initQueue = new PQueue({
       concurrency: this.INNER_CONCURRENCY,
@@ -406,9 +438,14 @@ export class EE extends Algorithm {
     for (let generation = 0; generation < this.GENERATIONS; generation++) {
       // Compute the good and bad answers
       const good = pool.filter((x) => x.check).length;
+      const r = this.answerFromPool(test, pool);
       console.log(
-        `Iteration: test=${test.id} generation=${generation} good=${good}/${pool.length}`
+        `Iteration: test=${test.id} generation=${generation} good=${good}/${pool.length} check=${r.check}`
       );
+      if (this.generationResults[generation] === undefined) {
+        this.generationResults[generation] = [];
+      }
+      this.generationResults[generation].push(r);
 
       // Rate each explanation in the pool twice
       for (let i = 0; i < this.JUDGEMENTS_DEPTH; i++) {
@@ -448,24 +485,34 @@ export class EE extends Algorithm {
 
     // Compute the good and bad answers
     const good = pool.filter((x) => x.check).length;
+    const r = this.answerFromPool(test, pool);
     console.log(
-      `Iteration: test=${test.id} generation=${this.GENERATIONS} good=${good}/${pool.length}`
+      `Iteration: test=${test.id} generation=${this.GENERATIONS} good=${good}/${pool.length} check=${r.check}`
     );
+    if (this.generationResults[this.GENERATIONS] === undefined) {
+      this.generationResults[this.GENERATIONS] = [];
+    }
+    this.generationResults[this.GENERATIONS].push(r);
 
     return {
       test,
-      answer: "",
-      check: false,
+      answer: r.answer,
+      check: r.check,
     };
   }
 
   computeResults(): void {
-    console.log(
-      `Result: algorithm=${this.algorithm()} dataset=${this.dataset.dataset} ` +
-        `provider=${this.model.provider} model=${this.model.model()} ` +
-        `check=${this.results.filter((x) => x.check).length} total=${
-          this.results.length
-        }`
-    );
+    for (let i = 0; i < this.generationResults.length; i++) {
+      console.log(
+        `Result: algorithm=${this.algorithm()} dataset=${
+          this.dataset.dataset
+        } ` +
+          `provider=${this.model.provider} model=${this.model.model()} ` +
+          `generation=${i} ` +
+          `check=${
+            this.generationResults[i].filter((x) => x.check).length
+          } total=${this.generationResults[i].length}`
+      );
+    }
   }
 }
