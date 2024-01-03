@@ -1,13 +1,15 @@
 import { createAppAuth } from "@octokit/auth-app";
+import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
-import { mkdtemp, readdir, rmdir } from "fs/promises";
+import { mkdtemp, readdir, rm } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { pipeline } from "stream";
+import { Readable } from "stream";
 import { extract } from "tar";
 import { promisify } from "util";
 
@@ -534,20 +536,94 @@ async function getOctokit(installationId: string): Promise<Octokit> {
   });
 }
 
+// Repository processing
+
 const asyncPipeline = promisify(pipeline);
 
-export async function downloadRepository(
+const EXTENSION_WHITELIST = [
+  ".js",
+  ".ts",
+  ".tsx",
+  ".jsx",
+  ".rb",
+  ".py",
+  ".rs",
+  ".go",
+  ".swift",
+  ".css",
+  ".html",
+  ".less",
+  ".sass",
+  ".scss",
+  ".php",
+  ".java",
+  ".yaml",
+  ".yml",
+  ".md",
+];
+
+const FILENAME_WHITELIST = [
+  "README",
+  "Dockerfile",
+  "package.json",
+  "Cargo.toml",
+];
+
+const DIRECTORY_BLACKLIST = [
+  "node_modules",
+  "vendor",
+  "dist",
+  "build",
+  "coverage",
+  "pkg",
+  "bundle",
+  "built",
+  "eggs",
+  "downloads",
+  "env",
+  "venv",
+  "tmp",
+  "temp",
+  "debug",
+  "target",
+];
+
+async function* getFiles(dir: string): AsyncGenerator<string> {
+  const dirents = await readdir(dir, { withFileTypes: true });
+  for (const dirent of dirents) {
+    const res = resolve(dir, dirent.name);
+    if (dirent.isDirectory()) {
+      // blacklist
+      if (DIRECTORY_BLACKLIST.includes(dirent.name)) {
+        continue;
+      }
+      yield* getFiles(res);
+    } else {
+      yield res;
+    }
+  }
+}
+
+export async function processRepository(
   installationId: string,
   login: string,
-  repoName: string
+  repoName: string,
+  repoId: string
 ) {
   const octokit = await getOctokit(installationId);
 
-  const { data: tarballStream } = await octokit.request(
-    "GET /repos/{owner}/{repo}/tarball",
+  const { data } = await octokit.rest.repos.get({
+    owner: login,
+    repo: repoName,
+  });
+  const defaultBranch = data.default_branch;
+
+  let { data: tarballStream } = await octokit.request(
+    "GET /repos/{owner}/{repo}/tarball/{ref}",
     {
       owner: login,
       repo: repoName,
+      ref: defaultBranch,
     }
   );
 
@@ -555,27 +631,102 @@ export async function downloadRepository(
   const tempDir = await mkdtemp(join(tmpdir(), "repo-"));
   const tarPath = resolve(tempDir, "repo.tar.gz");
 
+  // Convert ArrayBuffer to stream if necessary
+  if (tarballStream instanceof ArrayBuffer) {
+    // Wrap ArrayBuffer with a stream
+    const stream = new Readable();
+    stream.push(Buffer.from(tarballStream));
+    stream.push(null); // Signal the end of the stream
+    tarballStream = stream;
+  }
+
   // Save the tarball to the temp directory.
-  await asyncPipeline(tarballStream, createWriteStream(tarPath));
-  console.log("Downloaded: ", tarPath);
+  await asyncPipeline(tarballStream as Readable, createWriteStream(tarPath));
 
   // Extract the tarball.
   await extract({
     file: tarPath,
     cwd: tempDir,
   });
-  console.log("Extracted: ", tarPath);
 
   // Delete the tarball.
   await fs.unlink(tarPath);
 
+  const files: {
+    fileName: string;
+    filePath: string[];
+    sourceUrl: string;
+    sizeBytes: number;
+    documentId: string;
+    parentInternalId: string | null;
+    parents: string[];
+    localFilePath: string;
+  }[] = [];
+
   // Iterate over the files in the temp directory.
-  const files = await readdir(tempDir);
-  for (const file of files) {
-    console.log("FILE: ", file);
+  for await (const file of getFiles(tempDir)) {
+    console.log(file);
+    // get file extension
+    const ext = file.split(".").pop();
+    // get file size
+    const { size } = await fs.stat(file);
+
+    const isWithelisted =
+      EXTENSION_WHITELIST.includes(`.${ext}`) ||
+      FILENAME_WHITELIST.includes(file);
+
+    const isUnderLimite = size < 1024 * 1024;
+
+    if (isWithelisted && isUnderLimite) {
+      const path = file
+        .substring(tempDir.length + 1)
+        .split("/")
+        .slice(1, -1);
+
+      const pathInternalIds = [];
+      for (let i = 0; i < path.length; i++) {
+        const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
+        pathInternalIds.push(
+          `github-code-${repoId}-dir-${blake3(p)
+            .toString("hex")
+            .substring(0, 16)}`
+        );
+      }
+
+      const documentId = `github-code-${repoId}-file-${blake3(
+        `github-code-${repoId}-file-${path.join("/")}/${file}`
+      )
+        .toString("hex")
+        .substring(0, 16)}`;
+
+      const fileName = file.split("/").pop() || "";
+      const parentInternalId =
+        pathInternalIds.length === 0
+          ? null
+          : (pathInternalIds[pathInternalIds.length - 1] as string);
+
+      files.push({
+        fileName,
+        filePath: path,
+        sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${path.join(
+          "/"
+        )}/${fileName}`,
+        sizeBytes: size,
+        documentId,
+        parentInternalId,
+        parents: pathInternalIds,
+        localFilePath: file,
+      });
+    }
   }
 
+  return {
+    tempDir,
+    files,
+  };
+}
+
+export async function cleanUpProcessRepository(tempDir: string) {
   // Delete the temp directory.
-  await rmdir(tempDir, { recursive: true });
-  console.log("Cleaned up: ", tempDir);
+  await rm(tempDir, { recursive: true });
 }

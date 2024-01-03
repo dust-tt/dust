@@ -28,6 +28,10 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
+import {
+  cleanUpProcessRepository,
+  processRepository,
+} from "@connectors/connectors/github/lib/github_api";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -96,6 +100,51 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
     }
     default:
       throw new Error(`Unknown workspace command: ${command}`);
+  }
+};
+
+const github = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "test-repo": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.owner) {
+        throw new Error("Missing --owner argument");
+      }
+      if (!args.repo) {
+        throw new Error("Missing --repo argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "github",
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+        );
+      }
+
+      const installationId = connector.connectionId;
+      const { tempDir, files } = await processRepository(
+        installationId,
+        args.owner,
+        args.repo,
+        "999"
+      );
+
+      console.log(files);
+
+      await cleanUpProcessRepository(tempDir);
+    }
   }
 };
 
@@ -567,6 +616,9 @@ const main = async () => {
       return;
     case "notion":
       await notion(command, argv);
+      return;
+    case "github":
+      await github(command, argv);
       return;
     case "google":
       await google(command, argv);
