@@ -15,6 +15,7 @@ export const AssistantPreviewExample = () => (
     <h2>Gallery view (variant: `lg`)</h2>
     <div className="s-flex s-flex-row">
       <AssistantPreview
+        allowAddAction={true}
         description={"OpenAI's most powerful and recent model (128k context)."}
         isAdded={false}
         isUpdatingList={false}
@@ -31,6 +32,7 @@ export const AssistantPreviewExample = () => (
         variant={"lg"}
       />
       <AssistantPreview
+        allowAddAction={true}
         name={"gpt3.5-turbo"}
         description={"OpenAI's most powerful and recent model (128k context)."}
         pictureUrl={"https://dust.tt/static/systemavatar/gpt3_avatar_full.png"}

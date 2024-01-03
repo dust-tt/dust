@@ -8,6 +8,7 @@ import { Dash, More, Play, Plus } from "@sparkle/icons/solid";
 type AssistantPreviewVariant = "sm" | "md" | "lg" | "list";
 
 interface AssistantPreviewProps {
+  allowAddAction: boolean;
   description: string;
   isAdded: boolean;
   isUpdatingList: boolean;
@@ -53,19 +54,20 @@ const MediumVariantContent = () => {
 
 const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
   const {
-    isWorkspace,
-    isAdded,
-    name,
     description,
-    subtitle,
-    pictureUrl,
+    isAdded,
+    allowAddAction,
+    isUpdatingList,
+    isWorkspace,
+    name,
+    onShowDetailsClick,
     onTestClick,
     onUpdate,
-    onShowDetailsClick,
-    isUpdatingList,
+    pictureUrl,
+    subtitle,
   } = props;
 
-  const galleryChip = isAdded && (
+  const galleryChip = allowAddAction && isAdded && (
     <div className="s-group">
       <Chip
         color="emerald"
@@ -89,7 +91,7 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
     </div>
   );
 
-  const addButton = !isAdded && (
+  const addButton = !isAdded && allowAddAction && (
     <Button
       key="add"
       variant="tertiary"
