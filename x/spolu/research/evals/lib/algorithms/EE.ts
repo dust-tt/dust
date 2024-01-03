@@ -1,3 +1,4 @@
+import PQueue from "p-queue";
 import seedrandom from "seedrandom";
 
 import { Algorithm, AlgorithmType, TestResult } from "@app/lib/algorithms";
@@ -284,8 +285,8 @@ export class EE extends Algorithm {
     prompt += `\n---\n\n`;
     prompt += this.explanativePrompt();
     prompt += `\n\n`;
-    prompt += `Based on the following ${this.CROSSOVERS} explanations from field experts`;
-    prompt += ` along with commentaries made by other experts on each of them,`;
+    prompt += `Based on the following ${this.CROSSOVERS} explanation(s) from field experts`;
+    prompt += ` and associated commentaries/critics made by other experts,`;
     prompt += ` your goal is to propose the best possible explanation to answer the following question:\n\n`;
     prompt += `QUESTION: ${test.question}`;
     prompt += `\n</Instructions>\n`;
@@ -295,7 +296,7 @@ export class EE extends Algorithm {
       content: prompt,
     });
 
-    let content = `The explanations and commentaries:`;
+    let content = `The explanation(s) and commentarie(s):`;
 
     for (let i = 0; i < explanations.length; i++) {
       content += `\n\nEXPLANATION ${i}:\n\n${explanations[i].explanation}`;
@@ -401,13 +402,33 @@ export class EE extends Algorithm {
       }
 
       // Now is time to cross-over explanations
-      const newPool: Explanation[] = [];
-      for (let iteration = 0; iteration < this.POOL_SIZE; iteration++) {
-        const c = await this.crossOver({ test, pool, generation, iteration });
-        newPool.push(c);
-      }
+      // const newPool: Explanation[] = [];
+      // for (let iteration = 0; iteration < this.POOL_SIZE; iteration++) {
+      //   const c = await this.crossOver({ test, pool, generation, iteration });
+      //   newPool.push(c);
+      // }
+      //
+      //pool = newPool;
 
-      pool = newPool;
+      const queue = new PQueue({
+        concurrency: 4,
+      });
+
+      pool = (
+        await Promise.all(
+          pool.map((_, i) => {
+            return queue.add(() =>
+              this.crossOver({ test, pool, generation, iteration: i })
+            );
+          })
+        )
+      )
+        .filter((x) => x)
+        .map((x) => x as Explanation);
+
+      if (pool.length !== this.POOL_SIZE) {
+        throw new Error("Invalid pool size");
+      }
     }
 
     // Compute the good and bad answers

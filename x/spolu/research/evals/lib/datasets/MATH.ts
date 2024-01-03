@@ -12,6 +12,24 @@ type ExampleMATH = {
   reasoning: string[];
 };
 
+const FOCUS = [
+  // "algebra-l1-1142", // (15->16) [easy]
+  "algebra-l1-190", // (15->7)
+  // "algebra-l4-1057", // (3->0)
+  "counting_and_probability-l4-430", // (7->15)
+  // "counting_and_probability-l4-504", // (7->0)
+  "intermediate_algebra-l4-1588", // (0->2)
+  "intermediate_algebra-l4-1799", // (1->4)
+  "number_theory-l1-640", // (15->11)
+  "number_theory-l2-237", // (9->9)
+  // "number_theory-l3-511", // (13->16) [easy]
+  // "prealgebra-l5-1404", // (3->2)
+  "prealgebra-l5-2078", // (9->5)
+  // "precalculus-l2-1101", // (15->16) [easy]
+  "precalculus-l5-1115", // (0->3)
+];
+const MATH_FOCUS = true;
+
 export class MATH extends Dataset {
   readonly dataset = "MATH";
   private train: { [type: string]: { [level: number]: ExampleMATH[] } } = {};
@@ -55,6 +73,10 @@ export class MATH extends Dataset {
 
     const rng = seedrandom("MATH_DATASET");
     this.test = this.test.sort(() => rng() - 0.5);
+
+    if (MATH_FOCUS) {
+      this.test = this.test.filter((e) => FOCUS.includes(e.name));
+    }
 
     let train_count = 0;
     for (const type in train) {
