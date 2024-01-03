@@ -4,8 +4,8 @@ import { Sequelize } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 
-// We keep the most recent authorIds for 7 days.
-const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days.
+// We keep the most recent authorIds for 3 days.
+const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
 
 function _getRecentAuthorIdsKey({
   workspaceId,
@@ -38,6 +38,11 @@ async function fetchRecentAuthorIdsWithVersion(agentId: string) {
   });
 }
 
+/**
+ * Inserts or updates authors with their respective version scores into a Redis sorted set.
+ * The operation is a 'best effort' that does not remove outdated authors because the sorted set has a TTL.
+ * This approach is cost-effective, as the TTL naturally clears out old data without extra cleanup overhead.
+ */
 async function setAuthorIdsWithVersionInRedis(
   agentId: string,
   workspaceId: string,
@@ -48,10 +53,10 @@ async function setAuthorIdsWithVersionInRedis(
     workspaceId,
   });
   await safeRedisClient(async (redis) => {
-    // Insert <authorId:version> into Redis sorted set.
-    // Update only if the author is new or the version is higher.
+    // Add <authorId:version> pairs to the sorted set, only if the version is greater than the one stored.
     await redis.zAdd(agentRecentAuthorIdsKey, authorIdsWithScore, { GT: true });
-    await redis.expire(agentRecentAuthorIdsKey, rankingTimeframeSec);
+    // Set the expiry for the sorted set to manage its lifecycle.
+    await redis.expire(agentRecentAuthorIdsKey, recentAuthorIdsKeyTTL);
   });
 }
 
