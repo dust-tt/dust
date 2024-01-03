@@ -144,9 +144,10 @@ export class Game24 extends Dataset {
         if (str.slice(i, i + 7) === "\\boxed{") {
           pending = "\\boxed{";
           open = 1;
-          i += 7;
+          i += 6;
         }
       } else {
+        pending += str[i];
         if (str[i] === "{") {
           open++;
         }
@@ -160,14 +161,11 @@ export class Game24 extends Dataset {
       }
     }
 
-    // remove the \boxed{} directive and trim
-    const clean = answers.map((s) => s.slice(7, s.length - 1).trim());
-
-    if (clean.length === 0) {
+    if (answers.length === 0) {
       return "";
     } else {
       // return the last one
-      return clean[clean.length - 1];
+      return answers[answers.length - 1];
     }
   }
 
@@ -215,7 +213,10 @@ export class Game24 extends Dataset {
   }
 
   async check({ test, answer }: { test: Test; answer: string }) {
-    const node = parse(answer);
+    // remove the \boxed{} directive and trim
+    const clean = answer.slice(7, answer.length - 1).trim();
+
+    const node = parse(clean);
     const attempt: number[] = [];
 
     node.traverse(function (node) {
@@ -251,7 +252,7 @@ export class Game24 extends Dataset {
       }
     }
 
-    const result = evaluate(answer);
+    const result = evaluate(clean);
     if (result === 24) {
       return true;
     }
