@@ -17,6 +17,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   ]),
   conversationId: t.union([t.string, t.undefined]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
 });
 
 export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({

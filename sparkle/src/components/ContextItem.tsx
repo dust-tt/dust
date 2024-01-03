@@ -35,7 +35,7 @@ export function ContextItem({
             <div className="s-text-normal s-flex s-flex-col s-justify-center s-font-semibold">
               {title}
             </div>
-            <div className="s-flex s-items-center s-text-element-600">
+            <div className="s-flex s-items-center s-gap-1 s-text-element-600">
               {subElement}
             </div>
           </div>

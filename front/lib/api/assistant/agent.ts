@@ -10,7 +10,6 @@ import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
   isDatabaseQueryConfiguration,
 } from "@dust-tt/types";
 import {
@@ -79,7 +78,7 @@ export async function generateActionInputs(
 
   const contextSize = isFree
     ? GPT_3_5_TURBO_MODEL_CONFIG.contextSize
-    : GPT_4_TURBO_MODEL_CONFIG.contextSize;
+    : GPT_4_32K_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({

@@ -152,11 +152,11 @@ export const DropdownExample = () => {
         <div className="s-text-sm">SubMenu</div>
         <DropdownMenu>
           <DropdownMenu.Button type="select" label="No action" />
-          <DropdownMenu.Items origin="topLeft" width={300}>
+          <DropdownMenu.Items origin="topLeft" width={200}>
             <DropdownMenu.Item label="No action" href="#" />
             <DropdownMenu.Item label="Search data sources" href="#" />
             <DropdownMenu.Item label="Advanced actions" hasChildren={true}>
-              <DropdownMenu.Items origin="topLeft" width={360}>
+              <DropdownMenu.Items origin="topLeft" width={360} marginLeft={40}>
                 <DropdownMenu.Item
                   label="Retrieve most recent content from data sources"
                   href="#"

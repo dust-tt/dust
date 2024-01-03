@@ -444,22 +444,35 @@ export function useConversationReactions({
 export function useAgentConfigurations({
   workspaceId,
   agentsGetView,
-  withUsage,
+  includes = [],
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType;
-  withUsage?: boolean;
+  includes?: ("authors" | "usage")[];
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
-  const viewQueryString =
-    typeof agentsGetView === "string"
-      ? `view=${agentsGetView}`
-      : `conversationId=${agentsGetView.conversationId}`;
+
+  // Function to generate query parameters.
+  function getQueryString() {
+    const params = new URLSearchParams();
+    if (typeof agentsGetView === "string") {
+      params.append("view", agentsGetView);
+    } else {
+      params.append("conversationId", agentsGetView.conversationId);
+    }
+    if (includes.includes("usage")) {
+      params.append("withUsage", "true");
+    }
+    if (includes.includes("authors")) {
+      params.append("withAuthors", "true");
+    }
+    return params.toString();
+  }
+
+  const queryString = getQueryString();
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations?${viewQueryString}&withUsage=${
-      withUsage ? true : false
-    }`,
+    `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`,
     agentConfigurationsFetcher
   );
 
