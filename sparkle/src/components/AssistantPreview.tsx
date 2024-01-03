@@ -73,7 +73,7 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
         color="emerald"
         size="xs"
         label="Added"
-        className="group-hover:s-hidden"
+        className={allowAddAction ? "group-hover:s-hidden" : ""}
       />
       {allowAddAction && (
         <div className="s-hidden group-hover:s-block">
