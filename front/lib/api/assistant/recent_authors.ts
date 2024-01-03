@@ -1,4 +1,8 @@
-import { AgentRecentAuthors, UserType } from "@dust-tt/types";
+import {
+  AgentConfigurationType,
+  AgentRecentAuthors,
+  UserType,
+} from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models";
@@ -99,25 +103,26 @@ function renderAuthors(
         }
         return members.find((m) => m.id === authorId)?.fullName ?? null;
       })
-      // Filter out `undefined` authors.
+      // Filter out `null` authors.
       .filter((name): name is string => name !== null)
   );
 }
 
 export async function getAgentRecentAuthors(
   {
-    agentId,
+    agentConfiguration,
     workspaceId,
-    isGlobalAgent,
     currentUserId,
   }: {
-    agentId: string;
+    agentConfiguration: AgentConfigurationType;
     workspaceId: string;
-    isGlobalAgent: boolean;
     currentUserId?: number;
   },
   members: UserType[]
 ): Promise<AgentRecentAuthors> {
+  const { sId: agentId, versionAuthorId } = agentConfiguration;
+
+  const isGlobalAgent = versionAuthorId === null;
   // For global agents, which have no authors, return early.
   if (isGlobalAgent) {
     return [];
