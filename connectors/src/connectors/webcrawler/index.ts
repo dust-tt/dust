@@ -12,7 +12,9 @@ import { ConnectorPermissionRetriever } from "../interface";
 import { getFolderForUrl } from "./temporal/activities";
 
 export async function createWebcrawlerConnector(
-  dataSourceConfig: DataSourceConfig
+  dataSourceConfig: DataSourceConfig,
+  url: string,
+  refreshRate: number
 ): Promise<Result<string, Error>> {
   const res = await sequelize_conn.transaction(
     async (t): Promise<Result<Connector, Error>> => {
@@ -25,6 +27,16 @@ export async function createWebcrawlerConnector(
           dataSourceName: dataSourceConfig.dataSourceName,
         },
         { transaction: t }
+      );
+
+      await WebCrawlerConfiguration.create(
+        {
+          connectorId: connector.id,
+          url,
+        },
+        {
+          transaction: t,
+        }
       );
 
       return new Ok(connector);

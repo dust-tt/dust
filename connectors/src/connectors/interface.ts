@@ -8,9 +8,15 @@ import {
   ConnectorResource,
 } from "@connectors/types/resources";
 
-export type ConnectorCreator = (
+export type ConnectorCreatorOauth = (
   dataSourceConfig: DataSourceConfig,
   connectionId: string
+) => Promise<Result<string, Error>>;
+
+export type ConnectorCreatorUrl = (
+  dataSourceConfig: DataSourceConfig,
+  url: string,
+  refreshRate: number
 ) => Promise<Result<string, Error>>;
 
 export type ConnectorUpdater = (

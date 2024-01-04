@@ -40,7 +40,8 @@ import {
   ConnectorCleaner,
   ConnectorConfigGetter,
   ConnectorConfigSetter,
-  ConnectorCreator,
+  ConnectorCreatorOauth,
+  ConnectorCreatorUrl,
   ConnectorGarbageCollector,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
@@ -84,7 +85,7 @@ import {
 
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorCreator
+  ConnectorCreatorOauth | ConnectorCreatorUrl
 > = {
   slack: createSlackConnector,
   notion: createNotionConnector,

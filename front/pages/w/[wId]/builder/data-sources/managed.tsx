@@ -110,7 +110,9 @@ export const getServerSideProps: GetServerSideProps<{
   const isAdmin = auth.isAdmin();
 
   const allDataSources = await getDataSources(auth);
-  const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
+  const managedDataSources = allDataSources
+    .filter((ds) => ds.connectorId)
+    .filter((ds) => ds.connectorProvider !== "webcrawler");
 
   const managedConnector: {
     dataSourceName: string;
@@ -403,9 +405,6 @@ export default function DataSourcesView({
       } else if (provider === "github") {
         const installationId = await githubAuth(githubAppUrl);
         connectionId = installationId;
-      } else if (provider === "webcrawler") {
-        // all good
-        connectionId = undefined;
       } else {
         throw new Error(`Unknown provider ${provider}`);
       }
@@ -565,8 +564,8 @@ export default function DataSourcesView({
                                 planConnectionsLimits.isIntercomAllowed;
                               break;
                             case "webcrawler":
-                              // ****************************** TO FIX  ****************************** //
-                              isDataSourceAllowedInPlan = true;
+                              // Web crawler connector is not displayed on this web page.
+                              isDataSourceAllowedInPlan = false;
                               break;
                             default:
                               ((p: never) => {

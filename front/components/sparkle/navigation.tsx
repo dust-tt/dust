@@ -6,6 +6,7 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  LinkIcon,
   PaperAirplaneIcon,
   PlanetIcon,
   RobotIcon,
@@ -32,6 +33,7 @@ export type SubNavigationConversationsId =
 export type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
+  | "data_sources_url"
   | "workspace_assistants"
   | "personal_assistants";
 export type SubNavigationAdminId =
@@ -226,6 +228,15 @@ export const subNavigationAssistants = ({
         subMenuLabel:
           current === "data_sources_static" ? subMenuLabel : undefined,
         subMenu: current === "data_sources_static" ? subMenu : undefined,
+      },
+      {
+        id: "data_sources_url",
+        label: "Websites",
+        icon: LinkIcon,
+        href: `/w/${owner.sId}/builder/data-sources/urls`,
+        current: current === "data_sources_url",
+        subMenuLabel: undefined,
+        subMenu: undefined,
       },
     ],
   });

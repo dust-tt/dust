@@ -1,6 +1,11 @@
+import { assertNever, Result } from "@dust-tt/types";
 import { Request, Response } from "express";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import {
+  ConnectorCreatorOauth,
+  ConnectorCreatorUrl,
+} from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
@@ -9,12 +14,23 @@ import { ConnectorType } from "@connectors/types/connector";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateReqBody = {
+type ConnectorCreateRequired = {
   workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
-  connectionId: string;
 };
+
+type ConnectorCreateOAuth = ConnectorCreateRequired & {
+  connectionId: string;
+  type: "oauth";
+};
+
+type ConnectorCreateUrl = ConnectorCreateRequired & {
+  url: string;
+  type: "url";
+};
+
+type ConnectorCreateReqBody = ConnectorCreateOAuth | ConnectorCreateUrl;
 
 type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
 
@@ -52,17 +68,43 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    const connectorCreator =
-      CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
+    let connectorRes: Result<string, Error> | null = null;
+    switch (req.body.type) {
+      case "oauth": {
+        const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
+          req.params.connector_provider
+        ] as ConnectorCreatorOauth;
 
-    const connectorRes = await connectorCreator(
-      {
-        workspaceAPIKey: req.body.workspaceAPIKey,
-        dataSourceName: req.body.dataSourceName,
-        workspaceId: req.body.workspaceId,
-      },
-      req.body.connectionId
-    );
+        connectorRes = await connectorCreator(
+          {
+            workspaceAPIKey: req.body.workspaceAPIKey,
+            dataSourceName: req.body.dataSourceName,
+            workspaceId: req.body.workspaceId,
+          },
+          req.body.connectionId
+        );
+        break;
+      }
+      case "url": {
+        const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
+          req.params.connector_provider
+        ] as ConnectorCreatorUrl;
+        connectorRes = await connectorCreator(
+          {
+            workspaceAPIKey: req.body.workspaceAPIKey,
+            dataSourceName: req.body.dataSourceName,
+            workspaceId: req.body.workspaceId,
+          },
+          req.body.url,
+          10
+        );
+        break;
+      }
+
+      default: {
+        assertNever(req.body);
+      }
+    }
 
     if (connectorRes.isErr()) {
       return apiError(req, res, {
