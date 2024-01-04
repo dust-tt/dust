@@ -1031,7 +1031,7 @@ export default function AssistantBuilder({
                     size="sm"
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items origin="topLeft" width={200}>
+                <DropdownMenu.Items origin="auto" width={200}>
                   {BASIC_ACTION_MODES.map((key) => (
                     <DropdownMenu.Item
                       key={key}
