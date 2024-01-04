@@ -22,6 +22,9 @@ export { Item };
 import { ContextItem } from "./components/ContextItem";
 export { ContextItem };
 
+import { AssistantPreview } from "./components/AssistantPreview";
+export { AssistantPreview };
+
 import { Chip } from "./components/Chip";
 export { Chip };
 
