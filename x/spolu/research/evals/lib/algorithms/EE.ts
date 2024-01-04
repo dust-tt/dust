@@ -14,7 +14,7 @@ type Explanation = {
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
-  readonly POOL_SIZE = 32;
+  readonly POOL_SIZE = 64;
   readonly TEMPERATURE = 0.7;
   readonly JUDGEMENTS_DEPTH = 4;
   readonly GENERATIONS = 4;
