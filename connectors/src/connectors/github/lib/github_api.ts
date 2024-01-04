@@ -7,11 +7,10 @@ import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
 import { tmpdir } from "os";
-import { join, resolve } from "path";
-import { pipeline } from "stream";
+import { join, resolve, extname, basename } from "path";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { extract } from "tar";
-import { promisify } from "util";
 
 import {
   DiscussionCommentNode,
@@ -538,8 +537,6 @@ async function getOctokit(installationId: string): Promise<Octokit> {
 
 // Repository processing
 
-const asyncPipeline = promisify(pipeline);
-
 const EXTENSION_WHITELIST = [
   ".js",
   ".ts",
@@ -626,150 +623,156 @@ export async function processRepository(
   });
   const defaultBranch = data.default_branch;
 
-  let { data: tarballStream } = await octokit.request(
+  octokit.request.defaults({
+    request: {
+      parseSuccessResponseBody: false,
+    },
+  });
+
+  const { data: tarballStream } = (await octokit.request(
     "GET /repos/{owner}/{repo}/tarball/{ref}",
     {
       owner: login,
       repo: repoName,
       ref: defaultBranch,
+      request: {
+        parseSuccessResponseBody: false,
+      },
     }
-  );
+  )) as { data: Readable };
 
   // Create a temp directory.
   const tempDir = await mkdtemp(join(tmpdir(), "repo-"));
-  const tarPath = resolve(tempDir, "repo.tar.gz");
 
-  // Convert ArrayBuffer to stream if necessary
-  if (tarballStream instanceof ArrayBuffer) {
-    // Wrap ArrayBuffer with a stream
-    const stream = new Readable();
-    stream.push(Buffer.from(tarballStream));
-    stream.push(null); // Signal the end of the stream
-    tarballStream = stream;
-  }
+  try {
+    const tarPath = resolve(tempDir, "repo.tar.gz");
 
-  // Save the tarball to the temp directory.
-  await asyncPipeline(tarballStream as Readable, createWriteStream(tarPath));
+    // Save the tarball to the temp directory.
+    await pipeline(tarballStream, createWriteStream(tarPath));
 
-  // Extract the tarball.
-  await extract({
-    file: tarPath,
-    cwd: tempDir,
-  });
+    // Extract the tarball.
+    await extract({
+      file: tarPath,
+      cwd: tempDir,
+    });
 
-  // Delete the tarball.
-  await fs.unlink(tarPath);
+    // Delete the tarball.
+    await fs.unlink(tarPath);
 
-  const files: {
-    fileName: string;
-    filePath: string[];
-    sourceUrl: string;
-    sizeBytes: number;
-    documentId: string;
-    parentInternalId: string | null;
-    parents: string[];
-    localFilePath: string;
-  }[] = [];
-  const seenDirs: { [key: string]: boolean } = {};
-  const directories: {
-    dirName: string;
-    dirPath: string[];
-    sourceUrl: string;
-    internalId: string;
-    parentInternalId: string | null;
-    parents: string[];
-  }[] = [];
+    const files: {
+      fileName: string;
+      filePath: string[];
+      sourceUrl: string;
+      sizeBytes: number;
+      documentId: string;
+      parentInternalId: string | null;
+      parents: string[];
+      localFilePath: string;
+    }[] = [];
+    const seenDirs: { [key: string]: boolean } = {};
+    const directories: {
+      dirName: string;
+      dirPath: string[];
+      sourceUrl: string;
+      internalId: string;
+      parentInternalId: string | null;
+      parents: string[];
+    }[] = [];
 
-  // Iterate over the files in the temp directory.
-  for await (const file of getFiles(tempDir)) {
-    console.log(file);
-    // get file extension
-    const ext = file.split(".").pop();
-    // get file size
-    const { size } = await fs.stat(file);
+    // Iterate over the files in the temp directory.
+    for await (const file of getFiles(tempDir)) {
+      // get file extension
+      const ext = extname(file).toLowerCase();
+      // get file size
+      const { size } = await fs.stat(file);
 
-    const isWithelisted =
-      EXTENSION_WHITELIST.includes(`.${ext}`) ||
-      FILENAME_WHITELIST.includes(file);
+      const isWithelisted =
+        EXTENSION_WHITELIST.includes(ext) || FILENAME_WHITELIST.includes(file);
 
-    const isUnderLimite = size < 1024 * 1024;
+      const isUnderLimit = size < 1024 * 1024;
 
-    if (isWithelisted && isUnderLimite) {
-      const path = file
-        .substring(tempDir.length + 1)
-        .split("/")
-        .slice(1, -1);
+      if (isWithelisted && isUnderLimit) {
+        const path = file
+          .substring(tempDir.length + 1)
+          .split("/")
+          .slice(1, -1);
 
-      const pathInternalIds = [];
+        const pathInternalIds = [];
 
-      for (let i = 0; i < path.length; i++) {
-        const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
-        pathInternalIds.push(
-          `github-code-${repoId}-dir-${blake3(p)
-            .toString("hex")
-            .substring(0, 16)}`
-        );
-      }
+        for (let i = 0; i < path.length; i++) {
+          const p = `github-code-${repoId}-dir-${path
+            .slice(0, i + 1)
+            .join("/")}`;
+          pathInternalIds.push(
+            `github-code-${repoId}-dir-${blake3(p)
+              .toString("hex")
+              .substring(0, 16)}`
+          );
+        }
 
-      const documentId = `github-code-${repoId}-file-${blake3(
-        `github-code-${repoId}-file-${path.join("/")}/${file}`
-      )
-        .toString("hex")
-        .substring(0, 16)}`;
+        const documentId = `github-code-${repoId}-file-${blake3(
+          `github-code-${repoId}-file-${path.join("/")}/${file}`
+        )
+          .toString("hex")
+          .substring(0, 16)}`;
 
-      const fileName = file.split("/").pop() || "";
-      const parentInternalId =
-        pathInternalIds.length === 0
-          ? null
-          : (pathInternalIds[pathInternalIds.length - 1] as string);
-
-      // Files
-      files.push({
-        fileName,
-        filePath: path,
-        sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
-          path.join("/"),
-          fileName
-        )}`,
-        sizeBytes: size,
-        documentId,
-        parentInternalId,
-        parents: pathInternalIds,
-        localFilePath: file,
-      });
-
-      // Directories
-      if (parentInternalId && !seenDirs[parentInternalId]) {
-        seenDirs[parentInternalId] = true;
-
-        const dirName = path[path.length - 1] || "";
-        const dirPath = path.slice(0, -1);
-        const internalId = parentInternalId;
-        const dirParentInternalId =
-          pathInternalIds.length === 2
+        const fileName = basename(file);
+        const parentInternalId =
+          pathInternalIds.length === 0
             ? null
-            : (pathInternalIds[pathInternalIds.length - 2] as string);
+            : (pathInternalIds[pathInternalIds.length - 1] as string);
 
-        directories.push({
-          dirName,
-          dirPath,
+        // Files
+        files.push({
+          fileName,
+          filePath: path,
           sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
-            dirPath.join("/"),
-            dirName
+            path.join("/"),
+            fileName
           )}`,
-          internalId,
-          parentInternalId: dirParentInternalId,
-          parents: pathInternalIds.slice(0, -1),
+          sizeBytes: size,
+          documentId,
+          parentInternalId,
+          parents: pathInternalIds,
+          localFilePath: file,
         });
+
+        // Directories
+        if (parentInternalId && !seenDirs[parentInternalId]) {
+          seenDirs[parentInternalId] = true;
+
+          const dirName = path[path.length - 1] || "";
+          const dirPath = path.slice(0, -1);
+          const internalId = parentInternalId;
+          const dirParentInternalId =
+            pathInternalIds.length === 2
+              ? null
+              : (pathInternalIds[pathInternalIds.length - 2] as string);
+
+          directories.push({
+            dirName,
+            dirPath,
+            sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+              dirPath.join("/"),
+              dirName
+            )}`,
+            internalId,
+            parentInternalId: dirParentInternalId,
+            parents: pathInternalIds.slice(0, -1),
+          });
+        }
       }
     }
-  }
 
-  return {
-    tempDir,
-    files,
-    directories,
-  };
+    return {
+      tempDir,
+      files,
+      directories,
+    };
+  } catch (e) {
+    await cleanUpProcessRepository(tempDir);
+    throw e;
+  }
 }
 
 export async function cleanUpProcessRepository(tempDir: string) {

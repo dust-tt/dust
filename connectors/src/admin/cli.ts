@@ -134,6 +134,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const installationId = connector.connectionId;
+
       const { tempDir, files, directories } = await processRepository(
         installationId,
         args.owner,
