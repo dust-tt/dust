@@ -279,7 +279,7 @@ interface DropdownItemsProps {
 DropdownMenu.Items = function ({
   origin = "auto",
   width = 160,
-  marginLeft = 0,
+  marginLeft,
   children,
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
@@ -323,23 +323,20 @@ DropdownMenu.Items = function ({
     }
   };
 
-  const styleInsert = (origin: string, marginLeft: number) => {
-    switch (origin) {
-      case "topLeft":
-        return {
-          width: `${width}px`,
-          top: `${buttonHeight + 8}px`,
-          left: `${marginLeft}px`,
-        };
-      case "topRight":
-        return {
-          width: `${width}px`,
-          top: `${buttonHeight + 8}px`,
-          left: `${marginLeft}px`,
-        };
-      default:
-        return { width: `${width}px`, left: `${marginLeft}px` };
+  const styleInsert = (origin: string, marginLeft?: number) => {
+    const style: { width: string; top?: string; left?: string } = {
+      width: `${width}px`,
+    };
+
+    if (marginLeft) {
+      style["left"] = `${marginLeft}px`;
     }
+
+    if (origin === "topLeft" || origin === "topRight") {
+      style["top"] = `${buttonHeight + 8}px`;
+    }
+
+    return style;
   };
 
   return (
