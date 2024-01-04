@@ -609,6 +609,9 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
   }
 }
 
+// This function returns file and directories object with parent, internalIds, and sourceUrl
+// information. The root of the directory is considered the null parent (and will have to be
+// stitched by the activity).
 export async function processRepository(
   installationId: string,
   login: string,
