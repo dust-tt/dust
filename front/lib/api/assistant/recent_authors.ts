@@ -12,6 +12,8 @@ import { safeRedisClient } from "@app/lib/redis";
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
 
+const DUST_OWNED_ASSISTANTS_AUTHOR_NAME = "Dust";
+
 function _getRecentAuthorIdsKey({
   agentId,
   workspaceId,
@@ -144,7 +146,7 @@ export async function getAgentRecentAuthors(
   const isGlobalAgent = versionAuthorId === null;
   // For global agents, which have no authors, return early.
   if (isGlobalAgent) {
-    return [];
+    return [DUST_OWNED_ASSISTANTS_AUTHOR_NAME];
   }
 
   const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
