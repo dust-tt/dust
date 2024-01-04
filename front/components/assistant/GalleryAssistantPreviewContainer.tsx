@@ -184,7 +184,7 @@ export function GalleryAssistantPreviewContainer({
       subtitle={lastAuthors?.join(", ") ?? ""}
       variant="lg"
       onUpdate={handleUpdate}
-      onTestClick={scope !== "global" && !isAdded ? handleTestClick : undefined}
+      onTestClick={!isGlobal && !isAdded ? handleTestClick : undefined}
       onShowDetailsClick={onShowDetails}
     />
   );
