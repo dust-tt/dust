@@ -7,7 +7,7 @@ import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
 import { tmpdir } from "os";
-import { basename,extname, join, resolve } from "path";
+import { basename, extname, join, resolve } from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { extract } from "tar";
