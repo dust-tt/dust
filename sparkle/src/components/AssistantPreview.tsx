@@ -8,7 +8,8 @@ import { Dash, More, Play, Plus } from "@sparkle/icons/solid";
 type AssistantPreviewVariant = "sm" | "md" | "lg" | "list";
 
 interface AssistantPreviewProps {
-  allowAddAction: boolean;
+  allowAddAction?: boolean;
+  allowRemoveAction?: boolean;
   description: string;
   isAdded: boolean;
   isUpdatingList: boolean;
@@ -24,7 +25,13 @@ interface AssistantPreviewProps {
   onUpdate: (action: "added" | "removed") => Promise<void> | void;
 }
 
-function getVariantContent(
+// Define defaultProps for the AssistantPreview component.
+AssistantPreview.defaultProps = {
+  allowAddAction: false,
+  allowRemoveAction: false,
+};
+
+function renderVariantContent(
   variant: AssistantPreviewVariant,
   props: AssistantPreviewProps
 ) {
@@ -52,11 +59,117 @@ const MediumVariantContent = () => {
   throw new Error("Not yet implemented!");
 };
 
+type GalleryChipProps = Pick<
+  AssistantPreviewProps,
+  | "allowAddAction"
+  | "allowRemoveAction"
+  | "isAdded"
+  | "isUpdatingList"
+  | "onUpdate"
+>;
+
+const GalleryChip = ({
+  allowAddAction,
+  allowRemoveAction,
+  isAdded,
+  isUpdatingList,
+  onUpdate,
+}: GalleryChipProps) => {
+  if (!isAdded || !allowAddAction) return null;
+
+  return (
+    allowAddAction && (
+      <div className="s-group">
+        <Chip
+          color="emerald"
+          size="xs"
+          label="Added"
+          className={allowRemoveAction ? "group-hover:s-hidden" : ""}
+        />
+        {allowRemoveAction && (
+          <div className="s-hidden group-hover:s-block">
+            <Button.List isWrapping={true}>
+              <Button
+                key="remove"
+                variant="tertiary"
+                icon={Dash}
+                disabled={isUpdatingList}
+                size="xs"
+                label={"Remove"}
+                onClick={() => onUpdate("removed")}
+              />
+            </Button.List>
+          </div>
+        )}
+      </div>
+    )
+  );
+};
+
+type ButtonsGroupProps = Pick<
+  AssistantPreviewProps,
+  | "allowAddAction"
+  | "isAdded"
+  | "isUpdatingList"
+  | "isWorkspace"
+  | "onShowDetailsClick"
+  | "onTestClick"
+  | "onUpdate"
+>;
+
+const ButtonsGroup = ({
+  allowAddAction,
+  isAdded,
+  isUpdatingList,
+  isWorkspace,
+  onShowDetailsClick,
+  onTestClick,
+  onUpdate,
+}: ButtonsGroupProps) => {
+  return (
+    <Button.List isWrapping={true}>
+      {!isAdded && allowAddAction && (
+        <Button
+          key="add"
+          variant="tertiary"
+          icon={Plus}
+          disabled={isUpdatingList}
+          size="xs"
+          label={isWorkspace ? "Add to Workspace" : "Add"}
+          onClick={() => onUpdate("added")}
+        />
+      )}
+      {onTestClick && (
+        <Button
+          key="test"
+          variant="tertiary"
+          icon={Play}
+          size="xs"
+          label={"Test"}
+          onClick={onTestClick}
+        />
+      )}
+      {onShowDetailsClick && (
+        <Button
+          key="show_details"
+          icon={More}
+          label={"View Assistant"}
+          labelVisible={false}
+          size="xs"
+          variant="tertiary"
+          onClick={onShowDetailsClick}
+        />
+      )}
+    </Button.List>
+  );
+};
+
 const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
   const {
+    allowAddAction,
+    allowRemoveAction,
     description,
     isAdded,
-    allowAddAction,
     isUpdatingList,
     isWorkspace,
     name,
@@ -67,78 +180,12 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
     subtitle,
   } = props;
 
-  const galleryChip = isAdded && (
-    <div className="s-group">
-      <Chip
-        color="emerald"
-        size="xs"
-        label="Added"
-        className={allowAddAction ? "group-hover:s-hidden" : ""}
-      />
-      {allowAddAction && (
-        <div className="s-hidden group-hover:s-block">
-          <Button.List isWrapping={true}>
-            <Button
-              key="remove"
-              variant="tertiary"
-              icon={Dash}
-              disabled={isUpdatingList}
-              size="xs"
-              label={"Remove"}
-              onClick={() => onUpdate("removed")}
-            />
-          </Button.List>
-        </div>
-      )}
-    </div>
-  );
-
-  const addButton = !isAdded && allowAddAction && (
-    <Button
-      key="add"
-      variant="tertiary"
-      icon={Plus}
-      disabled={isUpdatingList}
-      size="xs"
-      label={isWorkspace ? "Add to Workspace" : "Add"}
-      onClick={() => onUpdate("added")}
-    />
-  );
-
-  let testButton = null;
-  if (onTestClick) {
-    testButton = (
-      <Button
-        key="test"
-        variant="tertiary"
-        icon={Play}
-        size="xs"
-        label={"Test"}
-        onClick={onTestClick}
-      />
-    );
-  }
-
-  const showAssistantButton = (
-    <Button
-      key="show_details"
-      icon={More}
-      label={"View Assistant"}
-      labelVisible={false}
-      size="xs"
-      variant="tertiary"
-      onClick={onShowDetailsClick}
-    />
-  );
-
-  const buttonsToRender =
-    ([addButton, testButton, showAssistantButton].filter(
-      Boolean
-    ) as JSX.Element[]) ?? [];
-
   return (
     <div className="s-flex s-flex-row s-gap-2 s-py-2">
-      <Avatar visual={<img src={pictureUrl} alt="Agent Avatar" />} size="md" />
+      <Avatar
+        visual={<img src={pictureUrl} alt={`Avatar of ${name}`} />}
+        size="md"
+      />
       <div className="s-flex s-flex-col s-gap-2">
         <div>
           <div className="s-text-sm s-font-medium s-text-element-900">
@@ -149,8 +196,22 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
           </div>
         </div>
         <div className="s-flex s-flex-row s-gap-2">
-          {galleryChip}
-          <Button.List isWrapping={true}>{buttonsToRender}</Button.List>
+          <GalleryChip
+            allowAddAction={allowAddAction}
+            allowRemoveAction={allowRemoveAction}
+            isAdded={isAdded}
+            isUpdatingList={isUpdatingList}
+            onUpdate={onUpdate}
+          />
+          <ButtonsGroup
+            allowAddAction={allowAddAction}
+            isAdded={isAdded}
+            isUpdatingList={isUpdatingList}
+            isWorkspace={isWorkspace}
+            onShowDetailsClick={onShowDetailsClick}
+            onTestClick={onTestClick}
+            onUpdate={onUpdate}
+          />
         </div>
         <div className="s-text-sm s-font-normal s-text-element-800">
           {description}
@@ -166,8 +227,7 @@ const ListVariantContent = () => {
 };
 
 export function AssistantPreview(props: AssistantPreviewProps) {
-  // You can also use a function to get variant-specific styles or components
-  const VariantContent = getVariantContent(props.variant, props);
+  const VariantContent = renderVariantContent(props.variant, props);
 
   return <div>{VariantContent}</div>;
 }

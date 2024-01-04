@@ -33,6 +33,7 @@ export const AssistantPreviewExample = () => (
       />
       <AssistantPreview
         allowAddAction={true}
+        allowRemoveAction={true}
         name={"gpt3.5-turbo"}
         description={"OpenAI's most powerful and recent model (128k context)."}
         pictureUrl={"https://dust.tt/static/systemavatar/gpt3_avatar_full.png"}
