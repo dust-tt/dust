@@ -1,4 +1,4 @@
-name: Build and Test (core)
+name: Lint & Build & Test (core)
 
 on:
   push:
