@@ -14,18 +14,20 @@ type Explanation = {
 
 export class EE extends Algorithm {
   readonly N_SHOT = 8;
-  readonly POOL_SIZE = 8;
+  readonly POOL_SIZE = 12;
   readonly TEMPERATURE = 0.7;
-  readonly JUDGEMENTS_DEPTH = 3;
+  readonly JUDGEMENTS_DEPTH = 2;
   readonly GENERATIONS = 8;
   readonly MAX_CROSSOVERS = 4;
   readonly INNER_CONCURRENCY = 4;
 
   private generationResults: TestResult[][];
+  private insights: { [key: string]: string[] };
 
   constructor(dataset: Dataset, model: Model) {
     super(dataset, model);
     this.generationResults = [];
+    this.insights = {};
   }
 
   algorithm(): AlgorithmType {
@@ -47,15 +49,6 @@ export class EE extends Algorithm {
     prompt += ` A good explanation is minimal, deductive, correct and complete.`;
     prompt += ` It should be clearly understandable by your PhD students, ommiting obvious details`;
     prompt += ` but including all the necessary steps to reach the conclusion.`;
-    return prompt;
-  }
-
-  judgementPrompt(): string {
-    let prompt = "";
-    prompt += `Be precise about what you think is good or bad in the proposed explanation.`;
-    prompt += ` Think hard about what might be incorrect in the explanation`;
-    prompt += ` and always propose ways to improve it to make it clearer,`;
-    prompt += ` more concise if possible, more precise if necessary, and more convincing.`;
     return prompt;
   }
 
@@ -171,6 +164,12 @@ export class EE extends Algorithm {
     test: Test;
     explanation: Explanation;
   }) {
+    let currentInsights: string | null = null;
+    if (this.insights[test.id] && this.insights[test.id].length > 0) {
+      currentInsights =
+        this.insights[test.id][this.insights[test.id].length - 1];
+    }
+
     const messages: ChatMessage[] = [];
 
     let prompt = `<Instructions>\n`;
@@ -179,12 +178,20 @@ export class EE extends Algorithm {
     prompt += `\n</Task>\n\n`;
     prompt += this.explanativePrompt();
     prompt += `\n\n`;
-    prompt += this.judgementPrompt();
+    prompt += `Be precise about what you think is good or bad in the proposed explanation.`;
+    prompt += ` Think hard about what might be incorrect in the explanation`;
+    prompt += ` and always propose ways to improve it to make it clearer,`;
+    prompt += ` more concise if possible, more precise if necessary, and more convincing.`;
     prompt += `\n\n`;
+    if (currentInsights) {
+      prompt += `Leverage the insights about the question accumulated from previous rounds of explanations and judgements to avoid common pitfalls and reinforce convincing ideas.`;
+      prompt += `\n\n<Insights>\n${currentInsights}\n</Insights>`;
+      prompt += `\n\n`;
+    }
     if (explanation.judgements.length === 0) {
-      prompt += `Your goal is to produce a commentary/judgement of the explanation`;
+      prompt += `Produce a commentary/judgement of the explanation`;
     } else {
-      prompt += `Your goal is to judge the commentaries made by other experts on the explanation`;
+      prompt += `Judge the commentaries made by other experts on the explanation`;
     }
     prompt += ` proposed to answer the following question:`;
     prompt += `\n\n`;
@@ -263,6 +270,12 @@ export class EE extends Algorithm {
       `EE-CROSSOVER-${test.id}-${generation}-${iteration}`
     );
 
+    let currentInsights: string | null = null;
+    if (this.insights[test.id] && this.insights[test.id].length > 0) {
+      currentInsights =
+        this.insights[test.id][this.insights[test.id].length - 1];
+    }
+
     // choose a random number between 2 and this.MAX_CROSSOVERS using rng
     const crossOvers = Math.floor(rng() * (this.MAX_CROSSOVERS - 2)) + 2;
 
@@ -289,6 +302,11 @@ export class EE extends Algorithm {
     prompt += ` and associated commentaries/judgements made by field experts,`;
     prompt += ` propose the most accurate explanation to answer the following question, focusing on correctness:`;
     prompt += `\n\n`;
+    if (currentInsights) {
+      prompt += `Take into account the insights about the question accumulated from previous rounds of explanations and judgements to avoid common pitfalls and explore convincing ideas.`;
+      prompt += `\n\n<Insights>\n${currentInsights}\n</Insights>`;
+      prompt += `\n\n`;
+    }
     prompt += `<Question>\n`;
     prompt += `${test.question}`;
     prompt += `\n</Question>`;
@@ -411,6 +429,120 @@ export class EE extends Algorithm {
     };
   }
 
+  async aggregateInsights({
+    test,
+    pool,
+    generation,
+  }: {
+    test: Test;
+    pool: Explanation[];
+    generation: number;
+  }): Promise<void> {
+    let currentInsights: string | null = null;
+
+    if (!this.insights[test.id]) {
+      this.insights[test.id] = [];
+    }
+    if (this.insights[test.id].length !== generation) {
+      throw new Error("Invalid insights length");
+    }
+    if (this.insights[test.id].length > 0) {
+      currentInsights =
+        this.insights[test.id][this.insights[test.id].length - 1];
+    }
+
+    const messages: ChatMessage[] = [];
+
+    let prompt = `<Instructions>\n`;
+    prompt += `<Task>\n`;
+    prompt += this.taskPrompt();
+    prompt += `\n</Task>\n\n`;
+    prompt += this.explanativePrompt();
+    prompt += `\n\n`;
+    prompt += `Insights about a question are a condensed (1000 words max) repository of learnings about a question accumulated`;
+    prompt += ` across rounds of explanation proposals and expert judgements about them.`;
+    prompt += ` Record spotted errors and good strategies in explored explanations so that they`;
+    prompt += ` can be presented to future experts working on the explanation of the question,`;
+    prompt += ` to ensure future explanations are correct and mistakes are not repeated.`;
+    prompt += `\n\n`;
+    if (currentInsights) {
+      prompt += `Update the current insights about the question based on the last round of explanations and judgements, record common errors, valid reasonings and convincing new ideas.`;
+    } else {
+      prompt += `Record insights about the question based on the last round of explanations and judgements.`;
+    }
+    prompt += `\n\n`;
+    prompt += `<Question>\n`;
+    prompt += `${test.question}`;
+    prompt += `\n</Question>`;
+    prompt += `\n</Instructions>`;
+
+    messages.push({
+      role: "system",
+      content: prompt,
+    });
+
+    let content = ``;
+    if (currentInsights) {
+      content += `<Insights>\n${currentInsights}\n</Insights>\n\n`;
+    }
+
+    for (let i = 0; i < pool.length; i++) {
+      if (i > 0) {
+        content += `\n\n`;
+      }
+      content += `EXPLANATION ${i}:\n\n${pool[i].explanation}`;
+      for (let j = 0; j < pool[i].judgements.length; j++) {
+        content += `\n\nEXPERT JUDGEMENT ${i} ${j}:\n\n${pool[i].judgements[j]}`;
+      }
+    }
+    content += `\n\n`;
+
+    if (currentInsights) {
+      content += `Propose new insights based on the current insights and the most important learnings from the explanations and judgements.`;
+    } else {
+      content += `Propose insights based on the most important learnings from the explanations and judgements.`;
+    }
+
+    messages.push({
+      role: "user",
+      content,
+    });
+
+    messages.forEach((m) => {
+      console.log(`+++++++++++++++++++++++++++++++`);
+      console.log(`[${m.role}]`);
+      console.log(`-------------------------------`);
+      console.log(`${m.content}`);
+    });
+
+    const query: ChatQuery = {
+      provider: this.model.provider,
+      model: this.model.model(),
+      messages,
+      temperature: this.TEMPERATURE,
+      maxTokens: 2048,
+    };
+
+    const c = await this.runCompletion(query);
+
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    console.log("INSIGHTS");
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>");
+    console.log(c.content);
+    console.log("<<<<<<<<<<<<<<<<<<<<<<<<<");
+    console.log("\n\n\n");
+
+    await this.storeCompletion({
+      test,
+      completion: c,
+      query,
+      check: false,
+    });
+    this.stats();
+
+    this.insights[test.id].push(c.content);
+  }
+
   async runOne({ test }: { test: Test }): Promise<TestResult> {
     const initQueue = new PQueue({
       concurrency: this.INNER_CONCURRENCY,
@@ -433,10 +565,7 @@ export class EE extends Algorithm {
       throw new Error("Invalid pool size");
     }
 
-    // console.log(pool);
-
-    for (let generation = 0; generation < this.GENERATIONS; generation++) {
-      // Compute the good and bad answers
+    const recordIteration = (pool: Explanation[], generation: number) => {
       const good = pool.filter((x) => x.check).length;
       const r = this.answerFromPool(test, pool);
       console.log(
@@ -447,7 +576,13 @@ export class EE extends Algorithm {
       }
       this.generationResults[generation].push(r);
 
-      // Rate each explanation in the pool twice
+      return r;
+    };
+
+    for (let generation = 0; generation < this.GENERATIONS; generation++) {
+      recordIteration(pool, generation);
+
+      // Judge each explanation in the pool.
       for (let i = 0; i < this.JUDGEMENTS_DEPTH; i++) {
         const judgementQueue = new PQueue({
           concurrency: this.INNER_CONCURRENCY,
@@ -462,6 +597,10 @@ export class EE extends Algorithm {
         );
       }
 
+      // Insight aggregation.
+      await this.aggregateInsights({ test, pool, generation });
+
+      // Cross-over.
       const crossOverQueue = new PQueue({
         concurrency: this.INNER_CONCURRENCY,
       });
@@ -483,16 +622,7 @@ export class EE extends Algorithm {
       }
     }
 
-    // Compute the good and bad answers
-    const good = pool.filter((x) => x.check).length;
-    const r = this.answerFromPool(test, pool);
-    console.log(
-      `Iteration: test=${test.id} generation=${this.GENERATIONS} good=${good}/${pool.length} check=${r.check}`
-    );
-    if (this.generationResults[this.GENERATIONS] === undefined) {
-      this.generationResults[this.GENERATIONS] = [];
-    }
-    this.generationResults[this.GENERATIONS].push(r);
+    const r = recordIteration(pool, this.GENERATIONS);
 
     return {
       test,
