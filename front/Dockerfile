@@ -1,5 +1,7 @@
 FROM node:18.15.0 as front
 
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client
+
 WORKDIR /types
 COPY /types/package*.json ./
 COPY /types/ .
