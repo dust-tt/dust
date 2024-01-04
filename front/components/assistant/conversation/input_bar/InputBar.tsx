@@ -7,6 +7,7 @@ import {
   Fragment,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { mutate } from "swr";
@@ -68,15 +69,15 @@ export function AssistantInputBar({
       workspaceId: owner.sId,
       agentsGetView: conversationId ? { conversationId } : "list",
     });
-  const agentConfigurationsToAdd = additionalAgentConfigurations
-    ? additionalAgentConfigurations.filter(
-        (a) => !baseAgentConfigurations.find((b) => a.sId === b.sId)
-      )
-    : [];
-  const agentConfigurations = [
-    ...baseAgentConfigurations,
-    ...agentConfigurationsToAdd,
-  ];
+
+  const agentConfigurations = useMemo(() => {
+    const agentConfigurationsToAdd = additionalAgentConfigurations
+      ? additionalAgentConfigurations.filter(
+          (a) => !baseAgentConfigurations.find((b) => a.sId === b.sId)
+        )
+      : [];
+    return [...baseAgentConfigurations, ...agentConfigurationsToAdd];
+  }, [baseAgentConfigurations, additionalAgentConfigurations]);
 
   const sendNotification = useContext(SendNotificationsContext);
 
