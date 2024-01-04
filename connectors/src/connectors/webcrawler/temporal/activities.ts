@@ -5,20 +5,31 @@ import turndown from "turndown";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertToDatasource } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
-import { WebCrawlerFolder } from "@connectors/lib/models/webcrawler";
+import {
+  WebCrawlerConfiguration,
+  WebCrawlerFolder,
+} from "@connectors/lib/models/webcrawler";
 
 export async function crawlWebsite(
-  connectorId: ModelId,
-  url: string
+  webcrawlerConfigurationId: ModelId
 ): Promise<{ pageCount: number; errorCount: number }> {
-  const connector = await Connector.findByPk(connectorId);
+  const webCrawlerConfig = await WebCrawlerConfiguration.findByPk(
+    webcrawlerConfigurationId
+  );
+  if (!webCrawlerConfig) {
+    throw new Error(
+      `Webcrawler configuration ${webcrawlerConfigurationId} not found.`
+    );
+  }
+
+  const connector = await Connector.findByPk(webCrawlerConfig.connectorId);
   if (!connector) {
-    throw new Error(`Connector ${connectorId} not found.`);
+    throw new Error(`Connector ${webCrawlerConfig.connectorId} not found.`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const requestQueue = await RequestQueue.open();
   await requestQueue.addRequest({
-    url: url,
+    url: webCrawlerConfig.url,
   });
 
   // Create the crawler and add the queue with our URL
@@ -28,49 +39,79 @@ export async function crawlWebsite(
   const createdFolders = new Set<string>();
 
   const crawler = new CheerioCrawler({
+    maxRequestsPerCrawl: 15000,
     requestQueue,
     // The `$` argument is the Cheerio object
     // which contains parsed HTML of the website.
-    async requestHandler({ $, request, enqueueLinks }) {
+    async requestHandler({ $, request }) {
       // Extract <title> text with Cheerio.
       // See Cheerio documentation for API docs.
-      const extracted = new turndown().turndown($.html());
-      await enqueueLinks({
-        // globs: [`"https://docs.dust.tt/*`"],
-      });
+      const extracted = new turndown()
+        .remove(["style", "script", "iframe"])
+        .turndown($.html());
+
+      // Without enqueueLinks, we first have to extract all
+      // the URLs from the page with Cheerio.
+      const links = $("a[href]")
+        .map((_, el) => $(el).attr("href"))
+        .get();
+
+      // Then we need to resolve relative URLs,
+      // otherwise they would be unusable for crawling.
+      const absoluteUrls = links
+        .map((link) => new URL(link, request.loadedUrl).href)
+        .filter((linkUrl) => linkUrl.startsWith(webCrawlerConfig.url));
+
+      // Finally, we have to add the URLs to the queue
+      await crawler.addRequests(absoluteUrls);
 
       const folders = getAllFoldersForUrl(request.url);
-      console.log("getting folders for url", folders, request.url);
       for (const folder of folders) {
-        console.log("working with folder:", folder);
+        if (!folder.startsWith(webCrawlerConfig.url)) {
+          continue;
+        }
         // if (createdFolders.has(folder)) {
         //   continue;
         // }
         await WebCrawlerFolder.upsert({
           url: folder,
-          parentUrl: folder.split("/").slice(0, -1).join("/"),
+          parentUrl: getFolderForUrl(folder) || webCrawlerConfig.url,
           connectorId: connector.id,
-          webcrawlerConfigurationId: 2,
+          webcrawlerConfigurationId: webCrawlerConfig.id,
+          ressourceType: "folder",
+          dustDocumentId: null,
         });
         createdFolders.add(folder);
       }
 
-      // await upsertToDatasource({
-      //   dataSourceConfig,
-      //   documentId: encodeURIComponent(request.url),
-      //   documentContent: {
-      //     prefix: null,
-      //     content: extracted,
-      //     sections: [],
-      //   },
-      //   documentUrl: request.url,
-      //   timestampMs: new Date().getTime(),
-      //   tags: [],
-      //   parents: [],
-      //   upsertContext: {
-      //     sync_type: "batch",
-      //   },
-      // });
+      const updatedFolder = await WebCrawlerFolder.upsert({
+        url: request.url,
+        parentUrl: getFolderForUrl(request.url) || webCrawlerConfig.url,
+        connectorId: connector.id,
+        webcrawlerConfigurationId: webCrawlerConfig.id,
+        ressourceType: "file",
+        dustDocumentId: request.url,
+      });
+
+      await upsertToDatasource({
+        dataSourceConfig,
+        documentId: encodeURIComponent(
+          updatedFolder[0].dustDocumentId as string
+        ),
+        documentContent: {
+          prefix: null,
+          content: extracted,
+          sections: [],
+        },
+        documentUrl: request.url,
+        timestampMs: new Date().getTime(),
+        tags: [],
+        parents: [],
+        upsertContext: {
+          sync_type: "batch",
+        },
+      });
+
       pageCount++;
     },
     failedRequestHandler: async () => {
@@ -89,14 +130,24 @@ export async function crawlWebsite(
 }
 
 export function getAllFoldersForUrl(url: string) {
+  const parents: string[] = [];
+
+  let parent: string | null = null;
+  while ((parent = getFolderForUrl(url))) {
+    parents.push(parent);
+    url = parent;
+  }
+
+  return parents;
+}
+
+export function getFolderForUrl(url: string) {
   const parsed = new URL(url);
   const urlParts = parsed.pathname.split("/").filter((part) => part.length > 0);
-  const folders: string[] = [];
-  for (let i = 0; i < urlParts.length; i++) {
-    folders.push(`${parsed.origin}/${urlParts.slice(0, i + 1).join("/")}`);
+  console.log("urlParts", urlParts);
+  if (urlParts.length < 2) {
+    return null;
+  } else {
+    return `${parsed.origin}/${urlParts.slice(0, -1).join("/")}/`;
   }
-  if (folders.length === 0) {
-    folders.push(`${parsed.origin}/`);
-  }
-  return folders;
 }

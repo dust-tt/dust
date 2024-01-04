@@ -77,7 +77,10 @@ import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/c
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
-import { createWebcrawlerConnector } from "./webcrawler";
+import {
+  createWebcrawlerConnector,
+  retrieveWebcrawlerConnectorPermissions,
+} from "./webcrawler";
 
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
@@ -201,6 +204,7 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   notion: retrieveNotionConnectorPermissions,
   google_drive: retrieveGoogleDriveConnectorPermissions,
   intercom: retrieveIntercomConnectorPermissions,
+  webcrawler: retrieveWebcrawlerConnectorPermissions,
 };
 
 export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<

@@ -1,3 +1,4 @@
+import { ConnectorResourceType } from "@dust-tt/types";
 import {
   type CreationOptional,
   DataTypes,
@@ -59,6 +60,8 @@ export class WebCrawlerFolder extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare url: string;
   declare parentUrl: string;
+  declare dustDocumentId: string | null;
+  declare ressourceType: ConnectorResourceType;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
@@ -88,13 +91,26 @@ WebCrawlerFolder.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    ressourceType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    dustDocumentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
     indexes: [
       {
         unique: true,
-        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
+        fields: [
+          "url",
+          "connectorId",
+          "webcrawlerConfigurationId",
+          "ressourceType",
+        ],
       },
     ],
     modelName: "webcrawler_folders",
