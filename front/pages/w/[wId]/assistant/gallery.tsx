@@ -12,7 +12,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AssistantPreview } from "@app/components/assistant/AssistantPreview";
+import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -92,7 +92,7 @@ export default function AssistantsGallery({
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView,
-      includes: orderBy === "usage" ? ["usage"] : [],
+      includes: orderBy === "usage" ? ["authors", "usage"] : ["authors"],
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
@@ -274,7 +274,7 @@ export default function AssistantsGallery({
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
               {agentsToDisplay.map((a) => (
-                <AssistantPreview
+                <GalleryAssistantPreviewContainer
                   key={a.sId}
                   owner={owner}
                   agentConfiguration={a}
@@ -284,7 +284,6 @@ export default function AssistantsGallery({
                   onUpdate={() => {
                     void mutateAgentConfigurations();
                   }}
-                  variant="gallery"
                   flow={flow === "workspace_add" ? "workspace" : "personal"}
                   setTestModalAssistant={setTestModalAssistant}
                 />
