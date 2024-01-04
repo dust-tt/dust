@@ -10,6 +10,7 @@ import {
   renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { HTTPError } from "@connectors/lib/error";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -35,6 +36,7 @@ import {
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
+import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -1017,6 +1019,24 @@ export async function renewOneWebhook(webhookId: ModelId) {
         await wh.destroy();
         return;
       }
+
+      if (
+        e instanceof HTTPError &&
+        e.message === "The caller does not have permission"
+      ) {
+        await syncFailed(connector.id, "oauth_token_revoked");
+        logger.error(
+          {
+            error: e,
+            connectorId: wh.connectorId,
+            workspaceId: connector.workspaceId,
+            id: wh.id,
+          },
+          `Failed to renew webhook: Received "The caller does not have permission" from Google.`
+        );
+        return;
+      }
+
       logger.error(
         {
           error: e,
