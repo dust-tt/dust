@@ -3,6 +3,7 @@ import {
   AgentConfigurationType,
   AgentsGetViewType,
   assertNever,
+  PlanType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -33,6 +34,7 @@ export type GalleryFlow = (typeof GALLERY_FLOWS)[number];
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
+  plan: PlanType | null;
   subscription: SubscriptionType;
   agentsGetView: AgentsGetViewType;
   flow: GalleryFlow;
@@ -47,6 +49,7 @@ export const getServerSideProps: GetServerSideProps<{
   );
 
   const owner = auth.workspace();
+  const plan = auth.plan();
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
@@ -69,6 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
     props: {
       user,
       owner,
+      plan,
       subscription,
       agentsGetView,
       flow,
@@ -80,6 +84,7 @@ export const getServerSideProps: GetServerSideProps<{
 export default function AssistantsGallery({
   user,
   owner,
+  plan,
   subscription,
   agentsGetView,
   flow,
@@ -277,6 +282,7 @@ export default function AssistantsGallery({
                 <GalleryAssistantPreviewContainer
                   key={a.sId}
                   owner={owner}
+                  plan={plan}
                   agentConfiguration={a}
                   onShowDetails={() => {
                     setShowDetails(a);

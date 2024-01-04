@@ -11,6 +11,8 @@ import {
   NotificationType,
   SendNotificationsContext,
 } from "@app/components/sparkle/Notification";
+import { isLargeModel } from "@app/lib/assistant";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewFlow = "personal" | "workspace";
@@ -112,6 +114,7 @@ export function GalleryAssistantPreviewContainer({
   onShowDetails,
   onUpdate,
   owner,
+  plan,
   setTestModalAssistant,
 }: GalleryAssistantPreviewContainer) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
@@ -166,11 +169,15 @@ export function GalleryAssistantPreviewContainer({
 
   const handleTestClick = () => setTestModalAssistant?.(agentConfiguration);
 
-  const { description, lastAuthors, name, pictureUrl, scope } =
+  const { description, generation, lastAuthors, name, pictureUrl, scope } =
     agentConfiguration;
 
   const isGlobal = scope === "global";
   const isAddedToWorkspace = flow === "workspace" && isAdded;
+  const hasAccessToLargeModels = plan?.code !== FREE_TEST_PLAN_CODE;
+  const eligibleForTesting =
+    hasAccessToLargeModels || !isLargeModel(generation?.model);
+  const isTestable = !isGlobal && !isAdded && eligibleForTesting;
   return (
     <AssistantPreview
       allowAddAction={!isGlobal}
@@ -184,7 +191,7 @@ export function GalleryAssistantPreviewContainer({
       subtitle={lastAuthors?.join(", ") ?? ""}
       variant="lg"
       onUpdate={handleUpdate}
-      onTestClick={!isGlobal && !isAdded ? handleTestClick : undefined}
+      onTestClick={isTestable ? handleTestClick : undefined}
       onShowDetailsClick={onShowDetails}
     />
   );
