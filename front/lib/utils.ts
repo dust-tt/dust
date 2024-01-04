@@ -128,25 +128,35 @@ export function subFilter(a: string, b: string) {
   return i === a.length;
 }
 
+export function compareForFuzzySort(query: string, a: string, b: string) {
+  // Find the index of the token in both strings.
+  const indexA = a.toLowerCase().indexOf(query);
+  const indexB = b.toLowerCase().indexOf(query);
+
+  // If the token index is the same, compare the strings lexicographically.
+  if (indexA === indexB) {
+    return a.localeCompare(b);
+  }
+
+  // Otherwise, sort based on the index of the token's first occurrence.
+  return indexA - indexB;
+}
+
 export function filterAndSortAgents(
   agents: AgentConfigurationType[],
   searchText: string
 ) {
+  const lowerCaseSearchText = searchText.toLowerCase();
+
   const filtered = agents.filter((a) =>
-    subFilter(searchText.toLowerCase(), a.name.toLowerCase())
+    subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
   // Sort by position of the subFilter in the name (position of the first character matching).
   if (searchText.length > 0) {
-    filtered.sort((a, b) => {
-      const aPos = a.name.toLowerCase().indexOf(searchText[0].toLowerCase());
-      const bPos = b.name.toLowerCase().indexOf(searchText[0].toLowerCase());
-      return aPos - bPos;
-    });
-
-    // Finally sort by length of the name. Only do so if we filtered by a subsequence as otherwise
-    // we want to preserve the initial ordering of agents.
-    filtered.sort((a, b) => a.name.length - b.name.length);
+    filtered.sort((a, b) =>
+      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+    );
   }
 
   return filtered;
