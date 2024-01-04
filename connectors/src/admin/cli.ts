@@ -10,6 +10,10 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import {
+  cleanUpProcessRepository,
+  processRepository,
+} from "@connectors/connectors/github/lib/github_api";
+import {
   getAuthObject,
   getDocumentId,
   getDriveClient,
@@ -96,6 +100,64 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
     }
     default:
       throw new Error(`Unknown workspace command: ${command}`);
+  }
+};
+
+const github = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "test-repo": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.owner) {
+        throw new Error("Missing --owner argument");
+      }
+      if (!args.repo) {
+        throw new Error("Missing --repo argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "github",
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+        );
+      }
+
+      const installationId = connector.connectionId;
+
+      const { tempDir, files, directories } = await processRepository(
+        installationId,
+        args.owner,
+        args.repo,
+        "999"
+      );
+
+      files.forEach((f) => {
+        console.log(f);
+      });
+      directories.forEach((d) => {
+        console.log(d);
+      });
+
+      console.log(
+        `Found ${files.length} files in ${directories.length} directories`
+      );
+      console.log(
+        `Files total size: ${files.reduce((acc, f) => acc + f.sizeBytes, 0)}`
+      );
+
+      await cleanUpProcessRepository(tempDir);
+    }
   }
 };
 
@@ -567,6 +629,9 @@ const main = async () => {
       return;
     case "notion":
       await notion(command, argv);
+      return;
+    case "github":
+      await github(command, argv);
       return;
     case "google":
       await google(command, argv);

@@ -1,8 +1,16 @@
 import { createAppAuth } from "@octokit/auth-app";
+import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
+import { createWriteStream } from "fs";
+import { mkdtemp, readdir, rm } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
+import { tmpdir } from "os";
+import { basename, extname, join, resolve } from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { extract } from "tar";
 
 import {
   DiscussionCommentNode,
@@ -525,4 +533,249 @@ async function getOctokit(installationId: string): Promise<Octokit> {
       installationId: installationId,
     },
   });
+}
+
+// Repository processing
+
+const EXTENSION_WHITELIST = [
+  ".js",
+  ".ts",
+  ".tsx",
+  ".jsx",
+  ".rb",
+  ".py",
+  ".rs",
+  ".go",
+  ".swift",
+  ".css",
+  ".html",
+  ".less",
+  ".sass",
+  ".scss",
+  ".php",
+  ".java",
+  ".yaml",
+  ".yml",
+  ".md",
+  ".c",
+  ".h",
+  ".cc",
+  ".cpp",
+  ".hpp",
+];
+
+const FILENAME_WHITELIST = [
+  "README",
+  "Dockerfile",
+  "package.json",
+  "Cargo.toml",
+];
+
+const DIRECTORY_BLACKLIST = [
+  "node_modules",
+  "vendor",
+  "dist",
+  "build",
+  "coverage",
+  "pkg",
+  "bundle",
+  "built",
+  "eggs",
+  "downloads",
+  "env",
+  "venv",
+  "tmp",
+  "temp",
+  "debug",
+  "target",
+];
+
+async function* getFiles(dir: string): AsyncGenerator<string> {
+  const dirents = await readdir(dir, { withFileTypes: true });
+  for (const dirent of dirents) {
+    const res = resolve(dir, dirent.name);
+    if (dirent.isDirectory()) {
+      // blacklist
+      if (DIRECTORY_BLACKLIST.includes(dirent.name)) {
+        continue;
+      }
+      yield* getFiles(res);
+    } else {
+      yield res;
+    }
+  }
+}
+
+// This function returns file and directories object with parent, internalIds, and sourceUrl
+// information. The root of the directory is considered the null parent (and will have to be
+// stitched by the activity).
+export async function processRepository(
+  installationId: string,
+  login: string,
+  repoName: string,
+  repoId: string
+) {
+  const octokit = await getOctokit(installationId);
+
+  const { data } = await octokit.rest.repos.get({
+    owner: login,
+    repo: repoName,
+  });
+  const defaultBranch = data.default_branch;
+
+  octokit.request.defaults({
+    request: {
+      parseSuccessResponseBody: false,
+    },
+  });
+
+  const { data: tarballStream } = (await octokit.request(
+    "GET /repos/{owner}/{repo}/tarball/{ref}",
+    {
+      owner: login,
+      repo: repoName,
+      ref: defaultBranch,
+      request: {
+        parseSuccessResponseBody: false,
+      },
+    }
+  )) as { data: Readable };
+
+  // Create a temp directory.
+  const tempDir = await mkdtemp(join(tmpdir(), "repo-"));
+
+  try {
+    const tarPath = resolve(tempDir, "repo.tar.gz");
+
+    // Save the tarball to the temp directory.
+    await pipeline(tarballStream, createWriteStream(tarPath));
+
+    // Extract the tarball.
+    await extract({
+      file: tarPath,
+      cwd: tempDir,
+    });
+
+    // Delete the tarball.
+    await fs.unlink(tarPath);
+
+    const files: {
+      fileName: string;
+      filePath: string[];
+      sourceUrl: string;
+      sizeBytes: number;
+      documentId: string;
+      parentInternalId: string | null;
+      parents: string[];
+      localFilePath: string;
+    }[] = [];
+    const seenDirs: { [key: string]: boolean } = {};
+    const directories: {
+      dirName: string;
+      dirPath: string[];
+      sourceUrl: string;
+      internalId: string;
+      parentInternalId: string | null;
+      parents: string[];
+    }[] = [];
+
+    // Iterate over the files in the temp directory.
+    for await (const file of getFiles(tempDir)) {
+      // get file extension
+      const ext = extname(file).toLowerCase();
+      // get file size
+      const { size } = await fs.stat(file);
+
+      const isWithelisted =
+        EXTENSION_WHITELIST.includes(ext) || FILENAME_WHITELIST.includes(file);
+
+      const isUnderLimit = size < 1024 * 1024;
+
+      if (isWithelisted && isUnderLimit) {
+        const path = file
+          .substring(tempDir.length + 1)
+          .split("/")
+          .slice(1, -1);
+
+        const pathInternalIds = [];
+
+        for (let i = 0; i < path.length; i++) {
+          const p = `github-code-${repoId}-dir-${path
+            .slice(0, i + 1)
+            .join("/")}`;
+          pathInternalIds.push(
+            `github-code-${repoId}-dir-${blake3(p)
+              .toString("hex")
+              .substring(0, 16)}`
+          );
+        }
+
+        const documentId = `github-code-${repoId}-file-${blake3(
+          `github-code-${repoId}-file-${path.join("/")}/${file}`
+        )
+          .toString("hex")
+          .substring(0, 16)}`;
+
+        const fileName = basename(file);
+        const parentInternalId =
+          pathInternalIds.length === 0
+            ? null
+            : (pathInternalIds[pathInternalIds.length - 1] as string);
+
+        // Files
+        files.push({
+          fileName,
+          filePath: path,
+          sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+            path.join("/"),
+            fileName
+          )}`,
+          sizeBytes: size,
+          documentId,
+          parentInternalId,
+          parents: pathInternalIds,
+          localFilePath: file,
+        });
+
+        // Directories
+        if (parentInternalId && !seenDirs[parentInternalId]) {
+          seenDirs[parentInternalId] = true;
+
+          const dirName = path[path.length - 1] || "";
+          const dirPath = path.slice(0, -1);
+          const internalId = parentInternalId;
+          const dirParentInternalId =
+            pathInternalIds.length === 2
+              ? null
+              : (pathInternalIds[pathInternalIds.length - 2] as string);
+
+          directories.push({
+            dirName,
+            dirPath,
+            sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+              dirPath.join("/"),
+              dirName
+            )}`,
+            internalId,
+            parentInternalId: dirParentInternalId,
+            parents: pathInternalIds.slice(0, -1),
+          });
+        }
+      }
+    }
+
+    return {
+      tempDir,
+      files,
+      directories,
+    };
+  } catch (e) {
+    await cleanUpProcessRepository(tempDir);
+    throw e;
+  }
+}
+
+export async function cleanUpProcessRepository(tempDir: string) {
+  // Delete the temp directory.
+  await rm(tempDir, { recursive: true });
 }
