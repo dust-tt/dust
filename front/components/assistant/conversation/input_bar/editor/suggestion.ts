@@ -2,6 +2,7 @@ import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 
 import { MentionList } from "@app/components/assistant/conversation/input_bar/editor/MentionList";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
 export interface EditorSuggestion {
   id: string;
@@ -15,10 +16,11 @@ export function makeGetAssistantSuggestions(suggestions: EditorSuggestion[]) {
   return {
     // TODO: Consider refactoring to eliminate the dependency on tippy.
     items: ({ query }: { query: string }) => {
+      const lowerCaseQuery = query.toLowerCase();
+
       return suggestions
-        .filter((item) =>
-          item.label.toLowerCase().startsWith(query.toLowerCase())
-        )
+        .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
+        .sort((a, b) => compareForFuzzySort(lowerCaseQuery, a.label, b.label))
         .slice(0, SUGGESTION_DISPLAY_LIMIT);
     },
 
