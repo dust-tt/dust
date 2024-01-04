@@ -560,6 +560,11 @@ const EXTENSION_WHITELIST = [
   ".yaml",
   ".yml",
   ".md",
+  ".c",
+  ".h",
+  ".cc",
+  ".cpp",
+  ".hpp",
 ];
 
 const FILENAME_WHITELIST = [
@@ -662,6 +667,15 @@ export async function processRepository(
     parents: string[];
     localFilePath: string;
   }[] = [];
+  const seenDirs: { [key: string]: boolean } = {};
+  const directories: {
+    dirName: string;
+    dirPath: string[];
+    sourceUrl: string;
+    internalId: string;
+    parentInternalId: string | null;
+    parents: string[];
+  }[] = [];
 
   // Iterate over the files in the temp directory.
   for await (const file of getFiles(tempDir)) {
@@ -684,6 +698,7 @@ export async function processRepository(
         .slice(1, -1);
 
       const pathInternalIds = [];
+
       for (let i = 0; i < path.length; i++) {
         const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
         pathInternalIds.push(
@@ -705,24 +720,52 @@ export async function processRepository(
           ? null
           : (pathInternalIds[pathInternalIds.length - 1] as string);
 
+      // Files
       files.push({
         fileName,
         filePath: path,
-        sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${path.join(
-          "/"
-        )}/${fileName}`,
+        sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+          path.join("/"),
+          fileName
+        )}`,
         sizeBytes: size,
         documentId,
         parentInternalId,
         parents: pathInternalIds,
         localFilePath: file,
       });
+
+      // Directories
+      if (parentInternalId && !seenDirs[parentInternalId]) {
+        seenDirs[parentInternalId] = true;
+
+        const dirName = path[path.length - 1] || "";
+        const dirPath = path.slice(0, -1);
+        const internalId = parentInternalId;
+        const dirParentInternalId =
+          pathInternalIds.length === 2
+            ? null
+            : (pathInternalIds[pathInternalIds.length - 2] as string);
+
+        directories.push({
+          dirName,
+          dirPath,
+          sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+            dirPath.join("/"),
+            dirName
+          )}`,
+          internalId,
+          parentInternalId: dirParentInternalId,
+          parents: pathInternalIds.slice(0, -1),
+        });
+      }
     }
   }
 
   return {
     tempDir,
     files,
+    directories,
   };
 }
 

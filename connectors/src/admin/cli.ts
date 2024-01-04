@@ -10,6 +10,10 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import {
+  cleanUpProcessRepository,
+  processRepository,
+} from "@connectors/connectors/github/lib/github_api";
+import {
   getAuthObject,
   getDocumentId,
   getDriveClient,
@@ -28,10 +32,6 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
-import {
-  cleanUpProcessRepository,
-  processRepository,
-} from "@connectors/connectors/github/lib/github_api";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -134,14 +134,26 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const installationId = connector.connectionId;
-      const { tempDir, files } = await processRepository(
+      const { tempDir, files, directories } = await processRepository(
         installationId,
         args.owner,
         args.repo,
         "999"
       );
 
-      console.log(files);
+      files.forEach((f) => {
+        console.log(f);
+      });
+      directories.forEach((d) => {
+        console.log(d);
+      });
+
+      console.log(
+        `Found ${files.length} files in ${directories.length} directories`
+      );
+      console.log(
+        `Files total size: ${files.reduce((acc, f) => acc + f.sizeBytes, 0)}`
+      );
 
       await cleanUpProcessRepository(tempDir);
     }
