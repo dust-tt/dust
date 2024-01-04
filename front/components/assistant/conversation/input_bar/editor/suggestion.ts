@@ -2,6 +2,7 @@ import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 
 import { MentionList } from "@app/components/assistant/conversation/input_bar/editor/MentionList";
+import { subFilter } from "@app/lib/utils";
 
 export interface EditorSuggestion {
   id: string;
@@ -15,10 +16,24 @@ export function makeGetAssistantSuggestions(suggestions: EditorSuggestion[]) {
   return {
     // TODO: Consider refactoring to eliminate the dependency on tippy.
     items: ({ query }: { query: string }) => {
+      const lowerCaseQuery = query.toLowerCase();
+
+      // Higly inspired by `filterAndSortAgents`.
       return suggestions
-        .filter((item) =>
-          item.label.toLowerCase().startsWith(query.toLowerCase())
-        )
+        .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
+        .sort((a, b) => {
+          // Find the index of the token in both strings.
+          const indexA = a.label.toLowerCase().indexOf(lowerCaseQuery);
+          const indexB = b.label.toLowerCase().indexOf(lowerCaseQuery);
+
+          // If the token index is the same, compare the strings lexicographically.
+          if (indexA === indexB) {
+            return a.label.localeCompare(b.label);
+          }
+
+          // Otherwise, sort based on the index of the token's first occurrence.
+          return indexA - indexB;
+        })
         .slice(0, SUGGESTION_DISPLAY_LIMIT);
     },
 
