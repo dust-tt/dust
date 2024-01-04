@@ -7,11 +7,11 @@ import {
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
-import { PostAgentListStatusRequestBody } from "../../pages/api/w/[wId]/members/me/agent_list_status";
 import {
   NotificationType,
   SendNotificationsContext,
-} from "../sparkle/Notification";
+} from "@app/components/sparkle/Notification";
+import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewFlow = "personal" | "workspace";
 
