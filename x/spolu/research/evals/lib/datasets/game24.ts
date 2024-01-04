@@ -86,7 +86,7 @@ export class Game24 extends Dataset {
     }
 
     return {
-      solution,
+      solution: `\\boxed{${solution}}`,
       reasoning,
     };
   }
@@ -131,18 +131,8 @@ export class Game24 extends Dataset {
       " The last step should present the last operation and the solution expression" +
       " using the `\\boxed{}` directive" +
       " (example: `35-11=24, \\\boxed{(6+1)*5-11}`)." +
-      " Don't use the `\\boxed{}` directive for anything else than the final step and answer."
-    );
-  }
-
-  rankingInstructions(): string {
-    return (
-      "- Each intermediary step should consist of a valid operation and a correct accounting of left numbers. Down-rank reasonings that do not follow this.\n" +
-      "- Each number must be used exactly once. It's invalid to not use or re-use a number.\n" +
-      '- Make sure to focus on the "left" numbers in the last step if applicable.\n' +
-      "- You are judging intermediary steps unless there are 3 of them, you still have operations available.\n" +
-      "- Do not forget to consider all possible operations (+, -, *, /).\n" +
-      "- The last step should propose a valid solution expression.\n"
+      " Don't use the `\\boxed{}` directive for anything else than the final step and answer." +
+      " Inside the `\\boxed{}` directive only use numbers, and the symbols `+,-,*,/,(,)`."
     );
   }
 
@@ -155,9 +145,10 @@ export class Game24 extends Dataset {
         if (str.slice(i, i + 7) === "\\boxed{") {
           pending = "\\boxed{";
           open = 1;
-          i += 7;
+          i += 6;
         }
       } else {
+        pending += str[i];
         if (str[i] === "{") {
           open++;
         }
@@ -171,21 +162,18 @@ export class Game24 extends Dataset {
       }
     }
 
-    // remove the \boxed{} directive and trim
-    const clean = answers.map((s) => s.slice(7, s.length - 1).trim());
-
-    if (clean.length === 0) {
+    if (answers.length === 0) {
       return "";
     } else {
       // return the last one
-      return clean[clean.length - 1];
+      return answers[answers.length - 1];
     }
   }
 
   maxTokens() {
     return {
-      reasoningStep: 32,
-      maxStepCount: 3,
+      reasoningStep: 48,
+      maxStepCount: 2 * (3 + 1), // account for answer and backtracking
     };
   }
 
@@ -226,7 +214,10 @@ export class Game24 extends Dataset {
   }
 
   async check({ test, answer }: { test: Test; answer: string }) {
-    const node = parse(answer);
+    // remove the \boxed{} directive and trim
+    const clean = answer.slice(7, answer.length - 1).trim();
+
+    const node = parse(clean);
     const attempt: number[] = [];
 
     node.traverse(function (node) {
@@ -262,7 +253,7 @@ export class Game24 extends Dataset {
       }
     }
 
-    const result = evaluate(answer);
+    const result = evaluate(clean);
     if (result === 24) {
       return true;
     }
