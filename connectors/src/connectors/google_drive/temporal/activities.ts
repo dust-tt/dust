@@ -1017,7 +1017,15 @@ export async function renewOneWebhook(webhookId: ModelId) {
         await wh.destroy();
         return;
       }
-      logger.error({ error: e }, `Failed to renew webhook`);
+      logger.error(
+        {
+          error: e,
+          connectorId: wh.connectorId,
+          workspaceId: connector.workspaceId,
+          id: wh.id,
+        },
+        `Failed to renew webhook`
+      );
       const tags = [
         `connector_id:${wh.connectorId}`,
         `workspaceId:${connector.workspaceId}`,
