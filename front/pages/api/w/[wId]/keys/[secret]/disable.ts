@@ -52,9 +52,10 @@ async function handler(
 
       res.status(200).json({
         key: {
+          createdAt: key.createdAt.getTime(),
+          creator: null,
           secret: key.secret,
           status: key.status,
-          isSystem: key.isSystem,
         },
       });
       return;
