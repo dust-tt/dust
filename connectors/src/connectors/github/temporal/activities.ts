@@ -1,4 +1,6 @@
 import { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import { hash as blake3 } from "blake3";
+import { promises as fs } from "fs";
 import PQueue from "p-queue";
 
 import {
@@ -22,6 +24,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
 import {
+  GithubCodeFile,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
@@ -718,12 +721,57 @@ export function getDiscussionDocumentId(
   return `github-discussion-${repoId}-${discussionNumber}`;
 }
 
+export async function formatCodeContentForUpsert(
+  sourceUrl: string,
+  content: Buffer
+): CoreAPIDataSourceDocumentSection {
+  // const data = await Promise.all(
+  //   messages.map(async (message) => {
+  //     const text = await processMessageForMentions(
+  //       message.text as string,
+  //       connectorId,
+  //       slackClient
+  //     );
+  //     const userName = await getUserName(
+  //       message.user as string,
+  //       connectorId,
+  //       slackClient
+  //     );
+  //     const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
+  //     const messageDateStr = formatDateForUpsert(messageDate);
+  //     return {
+  //       dateStr: messageDateStr,
+  //       userName,
+  //       text: text,
+  //       content: text + "\n",
+  //       sections: [],
+  //     };
+  //   })
+  // );
+  // const first = data[0];
+  // if (!first) {
+  //   throw new Error("Cannot format empty list of messages");
+  // }
+  // return {
+  //   prefix: `Thread in #${channelName} [${first.dateStr}]: ${
+  //     first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
+  //   }\n`,
+  //   content: null,
+  //   sections: data.map((d) => ({
+  //     prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
+  //     content: d.text + "\n",
+  //     sections: [],
+  //   })),
+  // };
+}
+
 export async function githubCodeSyncActivity(
   dataSourceConfig: DataSourceConfig,
   installationId: string,
   repoLogin: string,
   repoName: string,
   repoId: string,
+  isBatchSync: boolean,
   loggerArgs: Record<string, string | number>
 ) {
   const localLogger = logger.child(loggerArgs);
@@ -775,14 +823,95 @@ export async function githubCodeSyncActivity(
     // retrying downloading the repository externally.
 
     const codeSyncStartedAt = new Date();
+    const rootInternalId = `github-code-${repoId}`;
 
-    // TOOD(spolu): get content of each file and hash it.
-    // TOOD(spolu): update each file if hash has changed.
-    // TODO(spolu): ideally record parent directories to update their updatedAt.
-    // TODO(spolu): upsert github files and github directories, updating updatedAt
-    // TODO(spolu): upload each file to the data source
+    const updatedDirectories: { [key: string]: boolean } = {};
 
+    for (const f of files) {
+      // Read file (files are 1MB at most).
+      const content = await fs.readFile(f.localFilePath);
+      const contentHash = blake3(content).toString("hex");
 
+      // Find file or create it with an empty contentHash.
+      let githubCodeFile = await GithubCodeFile.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId,
+          documentId: f.documentId,
+        },
+      });
+
+      if (!githubCodeFile) {
+        githubCodeFile = await GithubCodeFile.create({
+          connectorId: connector.id,
+          repoId,
+          documentId: f.documentId,
+          parentInternalId: f.parentInternalId || rootInternalId,
+          fileName: f.fileName,
+          sourceUrl: f.sourceUrl,
+          contentHash: "",
+          createdAt: codeSyncStartedAt,
+          updatedAt: codeSyncStartedAt,
+          lastSeenAt: codeSyncStartedAt,
+        });
+      }
+
+      if (
+        f.fileName === githubCodeFile.fileName &&
+        f.parentInternalId === githubCodeFile.parentInternalId &&
+        f.sourceUrl === githubCodeFile.sourceUrl &&
+        contentHash === githubCodeFile.contentHash
+      ) {
+        // If the file has the sane name, parent, URL and contentHash, update the lastSeenAt and
+        // skip.
+        await githubCodeFile.update({
+          lastSeenAt: codeSyncStartedAt,
+        });
+        continue;
+      }
+
+      // Record the parent directories to update their updatedAt.
+      for (const parentInternalId of f.parents) {
+        updatedDirectories[parentInternalId] = true;
+      }
+
+      const tags = [
+        `title:${f.fileName}`,
+        `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
+      ];
+
+      // Time to upload the file to the data source.
+      await upsertToDatasource({
+        dataSourceConfig,
+        documentId: f.documentId,
+        documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
+        documentUrl: f.sourceUrl,
+        timestampMs: codeSyncStartedAt.getTime(),
+        tags,
+        parents: [...f.parents, rootInternalId, repoId],
+        retries: 3,
+        delayBetweenRetriesMs: 1000,
+        loggerArgs: { ...loggerArgs, provider: "github" },
+        upsertContext: {
+          sync_type: isBatchSync ? "batch" : "incremental",
+        },
+      });
+
+      // Finally update the file.
+      githubCodeFile.fileName = f.fileName;
+      githubCodeFile.parentInternalId = f.parentInternalId || rootInternalId;
+      githubCodeFile.sourceUrl = f.sourceUrl;
+      githubCodeFile.contentHash = contentHash;
+      githubCodeFile.updatedAt = codeSyncStartedAt;
+      githubCodeFile.lastSeenAt = codeSyncStartedAt;
+
+      await githubCodeFile.save();
+    }
+
+    for (const d of directories) {
+      // Find directory or create it
+      // // Update if was updated
+    }
   } finally {
     await cleanUpProcessRepository(tempDir);
     logger.info(

@@ -158,3 +158,81 @@ GithubDiscussion.init(
   }
 );
 Connector.hasMany(GithubDiscussion);
+
+export class GithubCodeFile extends Model<
+  InferAttributes<GithubCodeFile>,
+  InferCreationAttributes<GithubCodeFile>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare lastSeenAt: CreationOptional<Date>;
+
+  declare repoId: string;
+  declare documentId: string;
+  declare parentInternalId: string;
+
+  declare fileName: string;
+  declare sourceUrl: string;
+  declare contentHash: string;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+GithubCodeFile.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    repoId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentInternalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    fileName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    contentHash: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["connectorId", "repoId", "internalId"], unique: true },
+      { fields: ["connectorId"] },
+      { fields: ["connectorId", "repoId", "updatedAt"] },
+    ],
+    modelName: "github_code_files",
+  }
+);
+Connector.hasMany(GithubIssue);
