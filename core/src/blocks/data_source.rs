@@ -241,9 +241,22 @@ impl Block for DataSource {
                     match filter.tags.as_mut() {
                         Some(tags) => {
                             let replace_tags = |tags: &mut Vec<String>, field: &str| {
-                                for t in tags.iter_mut() {
-                                    *t = replace_variables_in_string(t, field, env)?;
-                                }
+                                *tags = tags
+                                    .iter()
+                                    .map(|t| {
+                                        let t = replace_variables_in_string(t, field, env)?;
+                                        // Attempt ot parse t as a JSON Array. If possible consider
+                                        // the tag as an array, otherwise consider it as a single
+                                        // value.
+                                        match serde_json::from_str::<Vec<String>>(t.as_str()) {
+                                            Ok(v) => Ok(v),
+                                            Err(_) => Ok(vec![t]),
+                                        }
+                                    })
+                                    .collect::<Result<Vec<_>>>()?
+                                    .into_iter()
+                                    .flatten()
+                                    .collect();
                                 Ok::<_, anyhow::Error>(())
                             };
 
