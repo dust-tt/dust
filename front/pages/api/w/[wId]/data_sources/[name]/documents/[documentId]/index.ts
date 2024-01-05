@@ -222,8 +222,8 @@ async function handler(
     case "GET":
       const document = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        documentId: req.query.documentId as string,
+        dataSourceName: encodeURIComponent(dataSource.name),
+        documentId: encodeURIComponent(req.query.documentId as string),
       });
 
       if (document.isErr()) {

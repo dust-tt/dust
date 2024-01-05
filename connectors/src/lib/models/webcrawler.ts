@@ -84,11 +84,11 @@ WebCrawlerFolder.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     parentUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     ressourceType: {
@@ -96,7 +96,7 @@ WebCrawlerFolder.init(
       allowNull: false,
     },
     dustDocumentId: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
   },

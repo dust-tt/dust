@@ -1,5 +1,5 @@
 import { ModelId } from "@dust-tt/types";
-import { CheerioCrawler, RequestQueue } from "crawlee";
+import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -9,6 +9,27 @@ import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
 } from "@connectors/lib/models/webcrawler";
+import {
+  reportInitialSyncProgress,
+  syncSucceeded,
+} from "@connectors/lib/sync_status";
+
+export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found.`);
+  }
+  const webCrawlerConfig = await WebCrawlerConfiguration.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!webCrawlerConfig) {
+    throw new Error(`Webcrawler configuration not found for connector.`);
+  }
+
+  return crawlWebsite(webCrawlerConfig.id);
+}
 
 export async function crawlWebsite(
   webcrawlerConfigurationId: ModelId
@@ -27,102 +48,95 @@ export async function crawlWebsite(
     throw new Error(`Connector ${webCrawlerConfig.connectorId} not found.`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const requestQueue = await RequestQueue.open();
-  await requestQueue.addRequest({
-    url: webCrawlerConfig.url,
-  });
-
-  // Create the crawler and add the queue with our URL
-  // and a request handler to process the page.
   let pageCount = 0;
   let errorCount = 0;
   const createdFolders = new Set<string>();
 
-  const crawler = new CheerioCrawler({
-    maxRequestsPerCrawl: 15000,
-    requestQueue,
-    // The `$` argument is the Cheerio object
-    // which contains parsed HTML of the website.
-    async requestHandler({ $, request }) {
-      // Extract <title> text with Cheerio.
-      // See Cheerio documentation for API docs.
-      const extracted = new turndown()
-        .remove(["style", "script", "iframe"])
-        .turndown($.html());
+  const crawler = new CheerioCrawler(
+    {
+      maxRequestsPerCrawl: 300,
+      maxConcurrency: 1,
 
-      // Without enqueueLinks, we first have to extract all
-      // the URLs from the page with Cheerio.
-      const links = $("a[href]")
-        .map((_, el) => $(el).attr("href"))
-        .get();
+      async requestHandler({ $, request, enqueueLinks }) {
+        const extracted = new turndown()
+          .remove(["style", "script", "iframe"])
+          .turndown($.html());
 
-      // Then we need to resolve relative URLs,
-      // otherwise they would be unusable for crawling.
-      const absoluteUrls = links
-        .map((link) => new URL(link, request.loadedUrl).href)
-        .filter((linkUrl) => linkUrl.startsWith(webCrawlerConfig.url));
+        // Finally, we have to add the URLs to the queue
+        // await crawler.addRequests(absoluteUrls);
+        await enqueueLinks();
 
-      // Finally, we have to add the URLs to the queue
-      await crawler.addRequests(absoluteUrls);
-
-      const folders = getAllFoldersForUrl(request.url);
-      for (const folder of folders) {
-        if (!folder.startsWith(webCrawlerConfig.url)) {
-          continue;
+        const folders = getAllFoldersForUrl(request.url);
+        for (const folder of folders) {
+          if (!folder.startsWith(webCrawlerConfig.url)) {
+            continue;
+          }
+          if (createdFolders.has(folder)) {
+            continue;
+          }
+          await WebCrawlerFolder.upsert({
+            url: folder,
+            parentUrl: getFolderForUrl(folder) || webCrawlerConfig.url,
+            connectorId: connector.id,
+            webcrawlerConfigurationId: webCrawlerConfig.id,
+            ressourceType: "folder",
+            dustDocumentId: null,
+          });
+          createdFolders.add(folder);
         }
-        // if (createdFolders.has(folder)) {
-        //   continue;
-        // }
-        await WebCrawlerFolder.upsert({
-          url: folder,
-          parentUrl: getFolderForUrl(folder) || webCrawlerConfig.url,
+
+        const updatedFolder = await WebCrawlerFolder.upsert({
+          url: request.url,
+          parentUrl: getFolderForUrl(request.url) || webCrawlerConfig.url,
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
-          ressourceType: "folder",
-          dustDocumentId: null,
+          ressourceType: "file",
+          dustDocumentId: request.url,
         });
-        createdFolders.add(folder);
-      }
 
-      const updatedFolder = await WebCrawlerFolder.upsert({
-        url: request.url,
-        parentUrl: getFolderForUrl(request.url) || webCrawlerConfig.url,
-        connectorId: connector.id,
-        webcrawlerConfigurationId: webCrawlerConfig.id,
-        ressourceType: "file",
-        dustDocumentId: request.url,
-      });
+        await upsertToDatasource({
+          dataSourceConfig,
+          documentId: encodeURIComponent(
+            updatedFolder[0].dustDocumentId as string
+          ),
+          documentContent: {
+            prefix: null,
+            content: extracted,
+            sections: [],
+          },
+          documentUrl: request.url,
+          timestampMs: new Date().getTime(),
+          tags: [],
+          parents: [],
+          upsertContext: {
+            sync_type: "batch",
+          },
+        });
+        await reportInitialSyncProgress(
+          connector.id,
+          `Crawled ${pageCount} pages.`
+        );
 
-      await upsertToDatasource({
-        dataSourceConfig,
-        documentId: encodeURIComponent(
-          updatedFolder[0].dustDocumentId as string
-        ),
-        documentContent: {
-          prefix: null,
-          content: extracted,
-          sections: [],
-        },
-        documentUrl: request.url,
-        timestampMs: new Date().getTime(),
-        tags: [],
-        parents: [],
-        upsertContext: {
-          sync_type: "batch",
-        },
-      });
-
-      pageCount++;
+        pageCount++;
+      },
+      failedRequestHandler: async () => {
+        errorCount++;
+      },
     },
-    failedRequestHandler: async () => {
-      errorCount++;
-    },
-  });
+    new Configuration({
+      purgeOnStart: true,
+      persistStorage: false,
+    })
+  );
 
   // Start the crawler and wait for it to finish
 
-  await crawler.run();
+  await crawler.run([webCrawlerConfig.url]);
+  if (pageCount > 0) {
+    await syncSucceeded(connector.id);
+  }
 
+  await crawler.teardown();
   return {
     pageCount,
     errorCount,

@@ -82,6 +82,7 @@ import {
   createWebcrawlerConnector,
   retrieveWebcrawlerConnectorPermissions,
 } from "./webcrawler";
+import { launchCrawlWebsiteWorkflow } from "./webcrawler/temporal/client";
 
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
@@ -194,6 +195,8 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
     intercom: fullResyncIntercomConnector,
+    webcrawler: (connectorId: string) =>
+      launchCrawlWebsiteWorkflow(parseInt(connectorId)),
   };
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<

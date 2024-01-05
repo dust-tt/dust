@@ -95,8 +95,8 @@ async function handler(
     case "GET":
       const docRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        documentId: req.query.documentId as string,
+        dataSourceName: encodeURIComponent(dataSource.name),
+        documentId: encodeURIComponent( req.query.documentId as string),
       });
 
       if (docRes.isErr()) {
@@ -250,8 +250,8 @@ async function handler(
       // Create document with the Dust internal API.
       const upsertRes = await coreAPI.upsertDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        documentId: req.query.documentId as string,
+        dataSourceName: encodeURIComponent(dataSource.name),
+        documentId: encodeURIComponent(req.query.documentId as string),
         tags: bodyValidation.right.tags || [],
         parents: bodyValidation.right.parents || [],
         sourceUrl,

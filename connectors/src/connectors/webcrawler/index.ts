@@ -6,15 +6,16 @@ import {
   WebCrawlerFolder,
 } from "@connectors/lib/models/webcrawler";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
+import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import { ConnectorPermissionRetriever } from "../interface";
 import { getFolderForUrl } from "./temporal/activities";
+import { launchCrawlWebsiteWorkflow } from "./temporal/client";
 
 export async function createWebcrawlerConnector(
   dataSourceConfig: DataSourceConfig,
-  url: string,
-  refreshRate: number
+  url: string
 ): Promise<Result<string, Error>> {
   const res = await sequelize_conn.transaction(
     async (t): Promise<Result<Connector, Error>> => {
@@ -46,6 +47,15 @@ export async function createWebcrawlerConnector(
   if (res.isErr()) {
     return res;
   }
+
+  const workflowRes = await launchCrawlWebsiteWorkflow(res.value.id);
+  if (workflowRes.isErr()) {
+    return workflowRes;
+  }
+  logger.info(
+    { connectorId: res.value.id },
+    `Launched crawl website workflow for connector`
+  );
 
   return new Ok(res.value.id.toString());
 }

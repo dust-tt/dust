@@ -1,172 +1,39 @@
-import { ModelId } from "@dust-tt/types";
+import { Err, ModelId, Ok, Result } from "@dust-tt/types";
+import { WorkflowHandle, WorkflowNotFoundError } from "@temporalio/client";
 
 import { Connector } from "@connectors/lib/models";
-import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import logger from "@connectors/logger/logger";
 
-import { getWeekStart } from "../lib/utils";
-import { getChannelsToSync } from "./activities";
 import { QUEUE_NAME } from "./config";
-import { newWebhookSignal, syncChannelSignal } from "./signals";
-import {
-  slackGarbageCollectorWorkflow,
-  slackGarbageCollectorWorkflowId,
-  syncOneMessageDebounced,
-  syncOneMessageDebouncedWorkflowId,
-  syncOneThreadDebounced,
-  syncOneThreadDebouncedWorkflowId,
-  workspaceFullSync,
-  workspaceFullSyncWorkflowId,
-} from "./workflows";
+import { crawlWebsiteWorkflow } from "./workflows";
 
-const logger = mainLogger.child({ provider: "slack" });
-
-export async function launchSlackSyncWorkflow(
-  connectorId: string,
-  fromTs: number | null,
-  channelsToSync: string[] | null = null
-) {
+export async function launchCrawlWebsiteWorkflow(
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-  if (channelsToSync === null) {
-    channelsToSync = (await getChannelsToSync(parseInt(connectorId)))
-      .map((c) => c.id)
-      .flatMap((c) => (c ? [c] : []));
-  }
+
   const client = await getTemporalClient();
 
-  const dataSourceConfig: DataSourceConfig = {
-    workspaceAPIKey: connector.workspaceAPIKey,
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-  };
-
-  const workflowId = workspaceFullSyncWorkflowId(parseInt(connectorId), fromTs);
+  const workflowId = `webcrawler-${connectorId}`;
   try {
-    await client.workflow.signalWithStart(workspaceFullSync, {
-      args: [parseInt(connectorId), fromTs],
-      taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
-      signal: syncChannelSignal,
-      signalArgs: [{ channelIds: channelsToSync ? channelsToSync : [] }],
-      memo: {
-        connectorId: connectorId,
-      },
-    });
-    logger.info(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-      },
-      `Started Slack sync workflow.`
-    );
-    return new Ok(workflowId);
-  } catch (e) {
-    logger.error(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-        error: e,
-      },
-      `Failed starting the Slack sync.`
-    );
-    return new Err(e as Error);
-  }
-}
-
-export async function launchSlackSyncOneThreadWorkflow(
-  connectorId: ModelId,
-  channelId: string,
-  threadTs: string
-) {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-
-  const workflowId = syncOneThreadDebouncedWorkflowId(
-    connectorId,
-    channelId,
-    threadTs
-  );
-  try {
-    const handle = await client.workflow.signalWithStart(
-      syncOneThreadDebounced,
-      {
-        args: [connectorId, channelId, threadTs],
-        taskQueue: QUEUE_NAME,
-        workflowId: workflowId,
-        signal: newWebhookSignal,
-        signalArgs: undefined,
-        memo: {
-          connectorId: connectorId,
-        },
+    const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
       }
-    );
-
-    return new Ok(handle);
-  } catch (e) {
-    return new Err(e as Error);
-  }
-}
-
-export async function launchSlackSyncOneMessageWorkflow(
-  connectorId: ModelId,
-  channelId: string,
-  threadTs: string
-) {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-
-  const messageTs = parseInt(threadTs as string) * 1000;
-  const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
-  const workflowId = syncOneMessageDebouncedWorkflowId(
-    connectorId,
-    channelId,
-    weekStartTsMs
-  );
-  try {
-    const handle = await client.workflow.signalWithStart(
-      syncOneMessageDebounced,
-      {
-        args: [connectorId, channelId, threadTs],
-        taskQueue: QUEUE_NAME,
-        workflowId: workflowId,
-        signal: newWebhookSignal,
-        signalArgs: undefined,
-        memo: {
-          connectorId: connectorId,
-        },
-      }
-    );
-
-    return new Ok(handle);
-  } catch (e) {
-    return new Err(e as Error);
-  }
-}
-
-export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-
-  const workflowId = slackGarbageCollectorWorkflowId(connectorId);
-  try {
-    await client.workflow.start(slackGarbageCollectorWorkflow, {
+    }
+    await client.workflow.start(crawlWebsiteWorkflow, {
       args: [connectorId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+
       memo: {
         connectorId: connectorId,
       },
@@ -175,7 +42,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       {
         workflowId,
       },
-      `Started slackGarbageCollector workflow.`
+      `Started workflow.`
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -184,7 +51,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
         workflowId,
         error: e,
       },
-      `Failed starting slackGarbageCollector workflow.`
+      `Failed starting workflow.`
     );
     return new Err(e as Error);
   }
