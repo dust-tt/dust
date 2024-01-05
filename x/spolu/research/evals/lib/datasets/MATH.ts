@@ -42,7 +42,7 @@ const FOCUS = [
   "precalculus-l3-1024", // (8->0)
   "precalculus-l5-1115", // (0->11->3)
 ];
-const MATH_FOCUS = true;
+const MATH_FOCUS = false;
 
 export class MATH extends Dataset {
   readonly dataset = "MATH";
