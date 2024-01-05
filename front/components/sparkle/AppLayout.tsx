@@ -47,7 +47,7 @@ function NavigationBar({
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col">
         <div className="flex flex-row p-3">
           <div className="flex flex-col gap-2">
             <div className="pt-3">
@@ -113,7 +113,7 @@ function NavigationBar({
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
         {nav.length > 1 && (
-          <div>
+          <div className="pt-2">
             <Tab tabs={nav} />
           </div>
         )}
@@ -121,7 +121,7 @@ function NavigationBar({
           <>
             {subNavigation.map((nav) => {
               return (
-                <div key={nav.id} className="grow py-2 pl-4 pr-3">
+                <div key={nav.id} className="grow py-1 pl-4 pr-3">
                   <Item.List>
                     {nav.label && (
                       <Item.SectionHeader

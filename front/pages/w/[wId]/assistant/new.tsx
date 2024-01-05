@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BookOpenIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
@@ -39,6 +40,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
+import { getRandomGreetingForName } from "@app/pages/w/[wId]/assistant/greetings";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -144,6 +146,7 @@ export default function AssistantNew({
   );
 
   const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
+  const [greeting, setGreeting] = useState<string>("");
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMention | null>(null);
   const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
@@ -159,6 +162,10 @@ export default function AssistantNew({
       setShouldAnimateInput(false);
     }
   }, [shouldAnimateInput]);
+
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
 
   return (
     <InputBarContext.Provider
@@ -199,18 +206,46 @@ export default function AssistantNew({
             />
           )}
           {!conversation ? (
-            <div className="flex h-full items-center">
+            <div className="flex h-full items-center pb-20">
               <div className="flex text-sm font-normal text-element-800">
                 <Page.Vertical gap="md" align="left">
                   {/* FEATURED AGENTS */}
                   <Page.Vertical gap="lg" align="left">
-                    <Page.SectionHeader title="How can I help you today?" />
-                    <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="flex w-full flex-row gap-4">
+                      <div className="flex w-full flex-row justify-between">
+                        <Page.SectionHeader title={greeting} />
+                        {!isBuilder && (
+                          <Link
+                            href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
+                          >
+                            <Button
+                              variant="primary"
+                              icon={BookOpenIcon}
+                              size="xs"
+                              label="Discover more in the Assistant Gallery"
+                            />
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
                       <div className="flex w-full flex-col gap-2">
                         {isBuilder && (
-                          <div className="text-base font-bold text-element-800">
-                            Your assistant team
-                          </div>
+                          <>
+                            <div className="text-base font-bold text-element-800">
+                              Assistants
+                            </div>
+                            <Link
+                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
+                            >
+                              <Button
+                                variant="secondary"
+                                icon={BookOpenIcon}
+                                size="xs"
+                                label="Discover more in the Assistant Gallery"
+                              />
+                            </Link>
+                          </>
                         )}
                         <div
                           className={`grid grid-cols-2 gap-4 py-2 ${
@@ -246,16 +281,6 @@ export default function AssistantNew({
                         </div>
                         <Button.List isWrapping={true}>
                           <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
-                            >
-                              <Button
-                                variant="primary"
-                                icon={BookOpenIcon}
-                                size="xs"
-                                label="Discover more in the Assistant Gallery"
-                              />
-                            </Link>
                             <StartHelperConversationButton
                               content="@help, what can I use the assistants for?"
                               handleSubmit={handleSubmit}
@@ -272,36 +297,58 @@ export default function AssistantNew({
                           <div className="text-base font-bold text-element-800">
                             Data Sources
                           </div>
-                          <div className="text-xs font-normal text-element-700">
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/w/${owner.sId}/builder/data-sources/managed`}
+                            >
+                              <Button
+                                variant="secondary"
+                                icon={CloudArrowLeftRightIcon}
+                                size="xs"
+                                label="Manage Connections"
+                              />
+                            </Link>
+                            <Link
+                              href={`/w/${owner.sId}/builder/data-sources/static`}
+                            >
+                              <Button
+                                variant="secondary"
+                                icon={FolderOpenIcon}
+                                size="xs"
+                                label={"Manage Folders"}
+                              />
+                            </Link>
+                          </div>
+                          <div className="flex flex-wrap gap-2 py-2">
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
+                            />
+                          </div>
+                          <div className="text-xs font-normal text-element-700 sm:pt-2.5">
                             Make assistants smarter by giving them access to
                             your company’s knowledge and data.
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
-                              <Link
-                                href={`/w/${owner.sId}/builder/data-sources/managed`}
-                              >
-                                <Button
-                                  variant="secondary"
-                                  icon={CloudArrowLeftRightIcon}
-                                  size="xs"
-                                  label="Manage Connections"
-                                />
-                              </Link>
-                              <Link
-                                href={`/w/${owner.sId}/builder/data-sources/static`}
-                              >
-                                <Button
-                                  variant="secondary"
-                                  icon={FolderOpenIcon}
-                                  size="xs"
-                                  label={"Manage Folders"}
-                                />
-                              </Link>
-
                               <StartHelperConversationButton
                                 content="@help, tell me about Data Sources"
-                                variant="tertiary"
                                 handleSubmit={handleSubmit}
                               />
                             </div>
@@ -339,7 +386,7 @@ export default function AssistantNew({
 function StartHelperConversationButton({
   content,
   handleSubmit,
-  variant = "secondary",
+  variant = "tertiary",
   size = "xs",
 }: {
   content: string;
