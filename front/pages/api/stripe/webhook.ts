@@ -183,7 +183,7 @@ async function handler(
                   "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this plan on the workspace. Check on Stripe dashboard."
                 );
 
-                return res.status(409).json({
+                return res.status(200).json({
                   success: false,
                   message:
                     "Conflict: Active subscription already exists for this workspace/plan.",
@@ -205,7 +205,7 @@ async function handler(
                   "[Stripe Webhook] Received checkout.session.completed when we already have a subscription with payment on the workspace. Check on Stripe dashboard."
                 );
 
-                return res.status(409).json({
+                return res.status(200).json({
                   success: false,
                   message:
                     "Conflict: Active subscription with payment already exists for this workspace.",
