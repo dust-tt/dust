@@ -83,7 +83,7 @@ async function handler(
       res.status(201).json({
         key: {
           createdAt: key.createdAt.getTime(),
-          creator: formatUserFullName(user),
+          creator: formatUserFullName(key.user),
           isSystem: key.isSystem,
           secret: key.secret,
           status: key.status,
