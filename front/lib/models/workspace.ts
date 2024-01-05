@@ -202,6 +202,7 @@ export class Key extends Model<
   declare status: "active" | "disabled";
   declare isSystem: boolean;
 
+  declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 Key.init(
@@ -240,6 +241,7 @@ Key.init(
     sequelize: front_sequelize,
     indexes: [
       { unique: true, fields: ["secret"] },
+      { fields: ["userId"] },
       { fields: ["workspaceId"] },
     ],
   }
@@ -247,4 +249,9 @@ Key.init(
 Workspace.hasMany(Key, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
+});
+// We don't want to delete keys when a user gets deleted.
+User.hasMany(Key, {
+  foreignKey: { allowNull: true },
+  onDelete: "SET NULL",
 });

@@ -25,6 +25,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
+  const user = auth.user();
   if (!owner) {
     res.status(404).end();
     return;
@@ -38,6 +39,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const keys = await Key.findAll({
+        attributes: ["isSystem", "secret", "status", "userId"],
         where: {
           workspaceId: owner.id,
           isSystem: false,
@@ -48,9 +50,10 @@ async function handler(
       res.status(200).json({
         keys: keys.map((k) => {
           return {
+            isSystem: k.isSystem,
             secret: k.secret,
             status: k.status,
-            isSystem: k.isSystem,
+            userId: k.userId,
           };
         }),
       });
@@ -62,6 +65,7 @@ async function handler(
       const key = await Key.create({
         secret: secret,
         status: "active",
+        userId: user?.id,
         workspaceId: owner.id,
         isSystem: false,
       });
@@ -70,6 +74,7 @@ async function handler(
         key: {
           secret: key.secret,
           status: key.status,
+          userId: user?.id ?? null,
           isSystem: key.isSystem,
         },
       });

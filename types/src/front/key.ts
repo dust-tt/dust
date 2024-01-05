@@ -1,5 +1,6 @@
 export type KeyType = {
+  isSystem: boolean;
   secret: string;
   status: string;
-  isSystem: boolean;
+  userId: number | null;
 };
