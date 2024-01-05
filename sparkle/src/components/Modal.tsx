@@ -165,7 +165,7 @@ export function Modal({
                 rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
               />
               <div
-                className={classNames("s-pb-6 s-pt-14", innerContainerClasses)}
+                className={classNames("s-pb-6 s-pt-16", innerContainerClasses)}
               >
                 {children}
               </div>

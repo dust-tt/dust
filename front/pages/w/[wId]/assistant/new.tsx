@@ -271,7 +271,7 @@ export default function AssistantNew({
                         />
                       </Link>
                     )}
-                    <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
                       <div className="flex w-full flex-col gap-2">
                         {isBuilder && (
                           <>
@@ -362,7 +362,7 @@ export default function AssistantNew({
                               />
                             </Link>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 py-2">
                             <Avatar
                               size="md"
                               visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
@@ -380,7 +380,7 @@ export default function AssistantNew({
                               visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
                             />
                           </div>
-                          <div className="text-xs font-normal text-element-700">
+                          <div className="text-xs font-normal text-element-700 sm:pt-2.5">
                             Make assistants smarter by giving them access to
                             your company’s knowledge and data.
                           </div>

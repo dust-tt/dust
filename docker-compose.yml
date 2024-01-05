@@ -4,8 +4,8 @@ services:
     image: postgres:14.1-alpine
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
     volumes:
           - dustvolume:/postgres
     ports:

@@ -143,7 +143,7 @@ export function AssistantDetails({
       hasChanged={false}
       variant="side-sm"
     >
-      <div className="flex flex-col gap-5 p-6 text-sm text-element-700">
+      <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <ButtonsSection
           owner={owner}
           agentConfiguration={assistant}
@@ -374,6 +374,7 @@ function ButtonsSection({
             variant="tertiary"
             icon={XMarkIcon}
             size="xs"
+            hasMagnifying={false}
             onClick={async () => {
               await updateAgentUserListStatus("not-in-list");
             }}
@@ -385,6 +386,7 @@ function ButtonsSection({
             variant="tertiary"
             icon={PlusIcon}
             size="xs"
+            hasMagnifying={false}
             onClick={async () => {
               await updateAgentUserListStatus("in-list");
             }}
@@ -410,6 +412,7 @@ function ButtonsSection({
             size="xs"
             disabled={!["builder", "admin"].includes(owner.role)}
             onClick={() => setShowDeletionModal(true)}
+            hasMagnifying={false}
           />
         </>
       )}
