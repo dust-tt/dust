@@ -30,7 +30,7 @@ export function Searchbar({
   };
 
   return (
-    <div className="s-relative">
+    <div className="s-relative s-m-px">
       <input
         type="text"
         name={name}

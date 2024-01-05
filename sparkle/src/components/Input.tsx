@@ -33,7 +33,7 @@ export function Input({
   className = "",
 }: InputProps) {
   return (
-    <div className="s-flex s-flex-col s-gap-1 s-p-px">
+    <div className="s-m-px s-flex s-flex-col s-gap-1 s-p-px">
       <input
         type={isPassword ? "password" : "text"}
         name={name}
