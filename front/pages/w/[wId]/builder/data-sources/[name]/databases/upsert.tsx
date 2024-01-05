@@ -169,8 +169,9 @@ export default function DatabaseUpsert({
       });
       return;
     }
+
     const { content } = res.value;
-    if (res.value.content.length > 1000000) {
+    if (res.value.content.length > 10000000) {
       sendNotification({
         type: "error",
         title: "File too large",
