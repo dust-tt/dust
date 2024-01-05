@@ -18,6 +18,7 @@ export class GithubConnectorState extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare webhooksEnabledAt?: Date | null;
+  declare codeSyncEnabled: boolean;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -41,6 +42,11 @@ GithubConnectorState.init(
     webhooksEnabledAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    codeSyncEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
