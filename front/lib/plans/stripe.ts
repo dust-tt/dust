@@ -109,6 +109,7 @@ export const createCheckoutSession = async ({
       planCode: planCode,
     },
     line_items: [item],
+    allow_promotion_codes: true,
     billing_address_collection: "auto",
     automatic_tax: {
       enabled: true,
