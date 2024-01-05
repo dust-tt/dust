@@ -25,6 +25,12 @@ const avatarUrlList = {
     "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
   "claude_avatar_full.png":
     "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+  "mistral_avatar_full.png":
+    "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+  "confluence_avatar_full.png":
+    "https://dust.tt/static/systemavatar/confluence_avatar_full.png",
+  "gemini_avatar_full.png":
+    "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
 };
 
 const gridStyle = {
