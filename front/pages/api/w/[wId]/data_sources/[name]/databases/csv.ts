@@ -95,7 +95,7 @@ async function handler(
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `CSV has too many rows: ${csvRows.length} (max 50000).`,
+            message: `CSV has too many rows: ${csvRows.length} (max 100000).`,
           },
           status_code: 400,
         });
