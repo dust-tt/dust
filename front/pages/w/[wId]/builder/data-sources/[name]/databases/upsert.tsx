@@ -170,15 +170,6 @@ export default function DatabaseUpsert({
       return;
     }
     const { content } = res.value;
-    if (res.value.content.length > 1000000) {
-      sendNotification({
-        type: "error",
-        title: "File too large",
-        description:
-          "Please upload a file containing less than 1 million characters.",
-      });
-      return;
-    }
 
     const uploadRes = await fetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.name}/databases/csv`,
