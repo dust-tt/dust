@@ -40,6 +40,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
+import { getRandomGreetingForName } from "@app/pages/w/[wId]/assistant/greetings";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -145,6 +146,7 @@ export default function AssistantNew({
   );
 
   const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
+  const [greeting, setGreeting] = useState<string>();
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMention | null>(null);
   const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
@@ -161,58 +163,9 @@ export default function AssistantNew({
     }
   }, [shouldAnimateInput]);
 
-  const greetings = [
-    "Hey [Name]! 👋",
-    "Good to see you, [Name]! 😊",
-    "What's up, [Name]? 🙌",
-    "How's it going, [Name]? 🚀",
-    "Hiya, [Name]! 🌟",
-    "Yo [Name]! 😎",
-    "Welcome, [Name]! 🎉",
-    "Howdy, [Name]! 🤠",
-    "Greetings, [Name]! 🌈",
-    "Salutations, [Name]! 🎩",
-    "What's new, [Name]? 💌",
-    "How are you, [Name]? 🤗",
-    "Ahoy, [Name]! ⚓",
-    "Bonjour, [Name]! 🥖",
-    "Hola, [Name]! 🌮",
-    "Ciao, [Name]! 🍕",
-    "Namaste, [Name]! 🕉",
-    "Konnichiwa, [Name]! 🎌",
-    "Aloha, [Name]! 🌺",
-    "Hey there, [Name]! 💡",
-    "How's everything, [Name]? 📈",
-    "Good day, [Name]! 🌞",
-    "Welcome back, [Name]! 🔄",
-    "Long time no see, [Name]! ⏰",
-    "Great to meet you, [Name]! 🤝",
-    "Pleased to see you, [Name]! 😁",
-    "Cheers, [Name]! 🥂",
-    "Top of the morning, [Name]! 🍀",
-    "Happy to chat, [Name]! 💬",
-    "What's happening, [Name]? 🎈",
-    "How's life treating you, [Name]? 🎠",
-    "Missed you, [Name]! 💔",
-    "Glad you're here, [Name]! 📍",
-    "Smile, [Name]! 😄",
-    "Lookin' good, [Name]! 👍",
-    "What's cooking, [Name]? 🍳",
-    "How's the family, [Name]? 👨‍👩‍👧‍👦",
-    "Stay cool, [Name]! ❄️",
-    "Keep shining, [Name]! 💎",
-    "You're a star, [Name]! ⭐",
-    "Rise and shine, [Name]! 🌅",
-    "Keep it up, [Name]! 💪",
-    "Rock on, [Name]! 🤘",
-  ];
-
-  const userName = "Alice"; // Replace this with the actual user name variable
-
-  const getRandomGreeting = (name: string) => {
-    const randomIndex = Math.floor(Math.random() * greetings.length);
-    return greetings[randomIndex].replace("[Name]", name);
-  };
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
 
   return (
     <InputBarContext.Provider
@@ -260,9 +213,7 @@ export default function AssistantNew({
                   <Page.Vertical gap="lg" align="left">
                     <div className="flex w-full flex-row gap-4">
                       <div className="flex w-full flex-row justify-between">
-                        <Page.SectionHeader
-                          title={getRandomGreeting(userName)}
-                        />
+                        <Page.SectionHeader title={greeting} />
                         {!isBuilder && (
                           <Link
                             href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
