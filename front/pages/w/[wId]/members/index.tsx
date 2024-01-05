@@ -819,7 +819,7 @@ function ChangeMemberModal({
       }}
       saveLabel="Update role"
     >
-      <div className="mt-6 flex flex-col gap-9 px-2 text-sm text-element-700">
+      <div className="mt-6 flex flex-col gap-9 text-sm text-element-700">
         <div className="flex items-center gap-4">
           <Avatar size="lg" visual={member.image} name={member.fullName} />
           <div className="flex grow flex-col">
