@@ -41,10 +41,6 @@ export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 export const SUBSCRIPTION_STATUSES = ["active", "ended"] as const;
 export type SubscriptionStatusType = (typeof SUBSCRIPTION_STATUSES)[number];
 
-export const SUBSCRIPTION_PAYMENT_STATUSES = ["succeeded", "past_due"] as const;
-export type SubscriptionPaymentStatusType =
-  (typeof SUBSCRIPTION_PAYMENT_STATUSES)[number];
-
 export type PlanType = {
   code: string;
   name: string;
@@ -60,6 +56,7 @@ export type SubscriptionType = {
   stripeCustomerId: string | null;
   startDate: number | null;
   endDate: number | null;
+  paymentFailingSince: number | null;
   plan: PlanType;
 };
 

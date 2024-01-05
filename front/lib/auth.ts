@@ -519,6 +519,7 @@ export async function subscriptionForWorkspace(
       "stripeCustomerId",
       "startDate",
       "endDate",
+      "paymentFailingSince",
     ],
     where: { workspaceId: w.id, status: "active" },
     include: [
@@ -558,6 +559,8 @@ export async function subscriptionForWorkspace(
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,
     startDate: startDate?.getTime() || null,
     endDate: endDate?.getTime() || null,
+    paymentFailingSince:
+      activeSubscription?.paymentFailingSince?.getTime() || null,
     plan: {
       code: plan.code,
       name: plan.name,

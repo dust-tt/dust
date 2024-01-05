@@ -112,6 +112,7 @@ function NavigationBar({
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
+        {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
         {nav.length > 1 && (
           <div className="pt-2">
             <Tab tabs={nav} />
@@ -444,6 +445,31 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
       <div className="font-bold">Subscription ending on {formattedEndDate}</div>
       <div className="font-normal">
         Connections will be deleted and members will be revoked. Details{" "}
+        <Link
+          href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
+          target="_blank"
+          className="underline"
+        >
+          here
+        </Link>
+        .
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionPastDueBanner() {
+  return (
+    <div className="border-y border-warning-200 bg-warning-100 px-3 py-3 text-xs text-warning-900">
+      <div className="font-bold">Oh no, your payment failed!</div>
+      <div className="font-normal">
+        <br />
+        Please make sure to update your payment method in the Admin section to
+        keep your account. We will retry in a few days.
+        <br />
+        <br />
+        Careful! After 3 retry, your workspace will be downgraded to the free
+        plan. Connections will be deleted and members will be revoked. Details{" "}
         <Link
           href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
           target="_blank"

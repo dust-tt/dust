@@ -161,3 +161,27 @@ export async function sendAdminDowngradeTooMuchDataEmail(
   };
   return sendEmail(email, message);
 }
+
+export async function sendAdminSubscriptionPaymentFailedEmail(
+  email: string,
+  customerPortailUrl: string | null
+): Promise<void> {
+  const message = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Your payment has failed`,
+    html: `<p>Hello from Dust,</p>
+    <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
+    <p>
+      Please note failed payments are retried 3 times before downgrading your workspace, 
+      removing any feature attached to the paid plan you were on, and permanently deleting connections and the data associated with them.
+      Any assistant that are linked to connections will also be removed.
+    </p>
+    <p>Please reply to this email if you have any questions.</p>
+    <br />
+    <p>The Dust team</p>`,
+  };
+  return sendEmail(email, message);
+}

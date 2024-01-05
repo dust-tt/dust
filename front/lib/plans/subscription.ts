@@ -63,6 +63,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     stripeCustomerId: null,
     startDate: null,
     endDate: null,
+    paymentFailingSince: null,
     plan: {
       code: freeTestPlan.code,
       name: freeTestPlan.name,
@@ -160,6 +161,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       stripeCustomerId: newSubscription.stripeCustomerId,
       startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
+      paymentFailingSince: null,
       plan: {
         code: plan.code,
         name: plan.name,
