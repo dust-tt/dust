@@ -134,7 +134,6 @@ export default function DataSourceNew({
         visibility: "private",
         assistantDefaultSelected,
         url: dataSourceUrl,
-        refreshRate: 10,
       }),
     });
     if (res.ok) {

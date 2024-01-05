@@ -29,7 +29,6 @@ export type PostManagedDataSourceUrlResponseBody = {
 
 export const PostManagedDataSourceUrlReqBodySchema = t.type({
   url: t.string,
-  refreshRate: t.number,
 });
 
 async function handler(
@@ -83,7 +82,7 @@ async function handler(
           },
         });
       }
-      const { url, refreshRate } = queryValidation.right;
+      const { url } = queryValidation.right;
 
       const provider: ConnectorProvider = "webcrawler";
 
@@ -190,7 +189,6 @@ async function handler(
         url,
         {
           url,
-          refreshRate,
           type: "url",
         }
       );

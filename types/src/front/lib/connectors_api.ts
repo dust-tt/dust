@@ -92,7 +92,6 @@ export class ConnectorsAPI {
         }
       | {
           url: string;
-          refreshRate: number;
           type: "url";
         }
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {

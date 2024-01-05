@@ -14,18 +14,18 @@ import { ConnectorType } from "@connectors/types/connector";
 import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateRequired = {
+type ConnectorCreateBase = {
   workspaceAPIKey: string;
   dataSourceName: string;
   workspaceId: string;
 };
 
-type ConnectorCreateOAuth = ConnectorCreateRequired & {
+type ConnectorCreateOAuth = ConnectorCreateBase & {
   connectionId: string;
   type: "oauth";
 };
 
-type ConnectorCreateUrl = ConnectorCreateRequired & {
+type ConnectorCreateUrl = ConnectorCreateBase & {
   url: string;
   type: "url";
 };

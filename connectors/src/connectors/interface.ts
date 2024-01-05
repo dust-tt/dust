@@ -15,8 +15,7 @@ export type ConnectorCreatorOauth = (
 
 export type ConnectorCreatorUrl = (
   dataSourceConfig: DataSourceConfig,
-  url: string,
-  refreshRate: number
+  url: string
 ) => Promise<Result<string, Error>>;
 
 export type ConnectorUpdater = (
