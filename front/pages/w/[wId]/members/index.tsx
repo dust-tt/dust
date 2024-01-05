@@ -128,7 +128,7 @@ export default function WorkspaceAdmin({
                   name={""}
                 />
               </div>
-              <div className="relative bottom-0.5 flex flex-row gap-2">
+              <div className="relative flex flex-row gap-2">
                 <div className="flex-none">
                   <Button
                     variant="secondary"
