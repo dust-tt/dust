@@ -146,7 +146,7 @@ export default function AssistantNew({
   );
 
   const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
-  const [greeting, setGreeting] = useState<string>();
+  const [greeting, setGreeting] = useState<string>("");
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMention | null>(null);
   const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
