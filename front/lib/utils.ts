@@ -39,7 +39,14 @@ export const utcDateFrom = (millisSinceEpoch: number | string | Date) => {
   return d.toUTCString();
 };
 
-export const timeAgoFrom = (millisSinceEpoch: number) => {
+function maybePlural(unit: number, label: string) {
+  return `${label}${unit > 1 ? "s" : ""}`;
+}
+
+export const timeAgoFrom = (
+  millisSinceEpoch: number,
+  { useLongFormat = false }: { useLongFormat?: boolean } = {}
+) => {
   // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
   const now = new Date().getTime();
   const diff = now - millisSinceEpoch;
@@ -50,19 +57,19 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
   const months = Math.floor(days / 30);
   const years = Math.floor(days / 365);
   if (years > 0) {
-    return years + "y";
+    return `${years}${useLongFormat ? maybePlural(years, " year") : "y"}`;
   }
   if (months > 0) {
-    return months + "m";
+    return `${months}${useLongFormat ? maybePlural(months, " month") : "m"}`;
   }
   if (days > 0) {
-    return days + "d";
+    return `${days}${useLongFormat ? maybePlural(days, " day") : "d"}`;
   }
   if (hours > 0) {
-    return hours + "h";
+    return `${hours}${useLongFormat ? maybePlural(hours, " hour") : "h"}`;
   }
   if (minutes > 0) {
-    return minutes + "m";
+    return `${minutes}${useLongFormat ? maybePlural(minutes, " minute") : "m"}`;
   }
   return seconds + "s";
 };

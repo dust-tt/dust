@@ -195,7 +195,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                     </div>
                     <p className="front-normal text-xs text-element-700">
                       Created {key.creator ? `by ${key.creator} ` : ""}
-                      {timeAgoFrom(key.createdAt)} ago.
+                      {timeAgoFrom(key.createdAt, { useLongFormat: true })} ago.
                     </p>
                   </div>
                 </div>
