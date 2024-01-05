@@ -204,6 +204,8 @@ export class Key extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare user: NonAttribute<User>;
 }
 Key.init(
   {
@@ -255,3 +257,4 @@ User.hasMany(Key, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
+Key.belongsTo(User);

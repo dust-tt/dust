@@ -1,6 +1,7 @@
 export type KeyType = {
+  createdAt: number;
   isSystem: boolean;
   secret: string;
   status: string;
-  userId: number | null;
+  creator: string | null;
 };
