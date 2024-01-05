@@ -101,7 +101,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
       const mainTag = document.querySelector("main");
       if (mainTag) {
         mainTag.scrollTo({
-          top: document.body.scrollHeight,
+          top: mainTag.scrollHeight,
           behavior: "smooth",
         });
       }
