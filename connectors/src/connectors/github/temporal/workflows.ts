@@ -215,6 +215,8 @@ export async function githubRepoSyncWorkflow(
     nextCursor = cursor;
   }
 
+  // TOOD(spolu) add code syncing
+
   await Promise.all(promises);
 }
 

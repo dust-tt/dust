@@ -609,16 +609,21 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
 // This function returns file and directories object with parent, internalIds, and sourceUrl
 // information. The root of the directory is considered the null parent (and will have to be
 // stitched by the activity).
-export async function processRepository(
-  installationId: string,
-  login: string,
-  repoName: string,
-  repoId: string
-) {
+export async function processRepository({
+  installationId,
+  repoLogin,
+  repoName,
+  repoId,
+}: {
+  installationId: string;
+  repoLogin: string;
+  repoName: string;
+  repoId: string;
+}) {
   const octokit = await getOctokit(installationId);
 
   const { data } = await octokit.rest.repos.get({
-    owner: login,
+    owner: repoLogin,
     repo: repoName,
   });
   const defaultBranch = data.default_branch;
@@ -643,7 +648,7 @@ export async function processRepository(
   const { data: tarballStream } = (await octokit.request(
     "GET /repos/{owner}/{repo}/tarball/{ref}",
     {
-      owner: login,
+      owner: repoLogin,
       repo: repoName,
       ref: defaultBranch,
       request: {
@@ -737,7 +742,7 @@ export async function processRepository(
         files.push({
           fileName,
           filePath: path,
-          sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+          sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
             path.join("/"),
             fileName
           )}`,
@@ -763,7 +768,7 @@ export async function processRepository(
           directories.push({
             dirName,
             dirPath,
-            sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+            sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
               dirPath.join("/"),
               dirName
             )}`,

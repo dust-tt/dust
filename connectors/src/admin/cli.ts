@@ -135,12 +135,12 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const installationId = connector.connectionId;
 
-      const { tempDir, files, directories } = await processRepository(
+      const { tempDir, files, directories } = await processRepository({
         installationId,
-        args.owner,
-        args.repo,
-        "999"
-      );
+        repoLogin: args.owner,
+        repoName: args.repo,
+        repoId: "999",
+      });
 
       files.forEach((f) => {
         console.log(f);

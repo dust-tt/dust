@@ -2,6 +2,7 @@ import { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import PQueue from "p-queue";
 
 import {
+  cleanUpProcessRepository,
   getDiscussion,
   getDiscussionCommentRepliesPage,
   getDiscussionCommentsPage,
@@ -12,6 +13,7 @@ import {
   getReposPage,
   GithubIssue as GithubIssueType,
   GithubUser,
+  processRepository,
 } from "@connectors/connectors/github/lib/github_api";
 import {
   deleteFromDataSource,
@@ -19,7 +21,11 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
-import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
+import {
+  GithubConnectorState,
+  GithubDiscussion,
+  GithubIssue,
+} from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -710,4 +716,80 @@ export function getDiscussionDocumentId(
   discussionNumber: number
 ): string {
   return `github-discussion-${repoId}-${discussionNumber}`;
+}
+
+export async function githubCodeSyncActivity(
+  dataSourceConfig: DataSourceConfig,
+  installationId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: string,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child(loggerArgs);
+
+  const connector = await Connector.findOne({
+    where: {
+      connectionId: installationId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      workspaceId: dataSourceConfig.workspaceId,
+    },
+  });
+  if (!connector) {
+    throw new Error(`Connector not found (installationId: ${installationId})`);
+  }
+
+  const connectorState = await GithubConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!connectorState) {
+    throw new Error(`Connector state not found for connector ${connector.id}`);
+  }
+
+  if (!connectorState.codeSyncEnabled) {
+    localLogger.info("Code sync disabled for connector");
+    return;
+  }
+
+  const { tempDir, files, directories } = await processRepository({
+    installationId,
+    repoLogin,
+    repoName,
+    repoId,
+  });
+
+  try {
+    logger.info(
+      {
+        repoId,
+        filesCount: files.length,
+        directoriesCount: directories.length,
+        totalSize: files.reduce((acc, file) => acc + file.sizeBytes, 0),
+      },
+      "Downloaded Github repository for sync"
+    );
+
+    // From here everything happens locally this is a big activity but if retried we're really just
+    // retrying downloading the repository externally.
+
+    const codeSyncStartedAt = new Date();
+
+    // TOOD(spolu): get content of each file and hash it.
+    // TOOD(spolu): update each file if hash has changed.
+    // TODO(spolu): ideally record parent directories to update their updatedAt.
+    // TODO(spolu): upsert github files and github directories, updating updatedAt
+    // TODO(spolu): upload each file to the data source
+
+
+  } finally {
+    await cleanUpProcessRepository(tempDir);
+    logger.info(
+      {
+        repoId,
+      },
+      "Cleaned-up Github repository post sync"
+    );
+  }
 }
