@@ -38,9 +38,9 @@ import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { getRandomGreetingForName } from "@app/pages/w/[wId]/assistant/greetings";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
