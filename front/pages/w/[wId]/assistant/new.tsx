@@ -258,19 +258,25 @@ export default function AssistantNew({
                 <Page.Vertical gap="md" align="left">
                   {/* FEATURED AGENTS */}
                   <Page.Vertical gap="lg" align="left">
-                    <Page.SectionHeader title={getRandomGreeting(userName)} />
-                    {!isBuilder && (
-                      <Link
-                        href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
-                      >
-                        <Button
-                          variant="primary"
-                          icon={BookOpenIcon}
-                          size="xs"
-                          label="Discover more in the Assistant Gallery"
+                    <div className="flex w-full flex-row gap-4">
+                      <div className="flex w-full flex-row justify-between">
+                        <Page.SectionHeader
+                          title={getRandomGreeting(userName)}
                         />
-                      </Link>
-                    )}
+                        {!isBuilder && (
+                          <Link
+                            href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
+                          >
+                            <Button
+                              variant="primary"
+                              icon={BookOpenIcon}
+                              size="xs"
+                              label="Discover more in the Assistant Gallery"
+                            />
+                          </Link>
+                        )}
+                      </div>
+                    </div>
                     <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
                       <div className="flex w-full flex-col gap-2">
                         {isBuilder && (
@@ -378,6 +384,10 @@ export default function AssistantNew({
                             <Avatar
                               size="md"
                               visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
+                            />
+                            <Avatar
+                              size="md"
+                              visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
                             />
                           </div>
                           <div className="text-xs font-normal text-element-700 sm:pt-2.5">
