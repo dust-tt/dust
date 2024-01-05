@@ -26,7 +26,7 @@ export async function sendSunsetXP1Email(email: string): Promise<void> {
     text: `Hi!
 
 First of all, thank you for being a long time user of XP1! We've evolved a lot since you first
-signed up for it. As a result, we'll be sunsetting XP1[0] on Januray the 15th, 2024 as we focus on
+signed up for it. As a result, we'll be sunsetting XP1[0] on January the 15th, 2024 as we focus on
 team productivity vs single-player mode.
 
 Dust lets you Amplify your team's potential with customizable and secure AI assistants.
