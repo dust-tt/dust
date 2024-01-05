@@ -31,3 +31,12 @@ export type UserMetadataType = {
   key: string;
   value: string;
 };
+
+export function formatUserFullName(user?: {
+  firstName?: string;
+  lastName?: string | null;
+}) {
+  return user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+    : null;
+}

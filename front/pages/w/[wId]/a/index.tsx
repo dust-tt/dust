@@ -29,7 +29,7 @@ import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -141,53 +141,61 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
             <li key={key.secret} className="px-2 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <p
-                    className={classNames(
-                      "font-mono truncate text-sm text-slate-700"
-                    )}
-                  >
-                    {isRevealed[key.secret] ? (
-                      <>
-                        {key.secret}
-                        {key.status == "active" ? (
-                          <EyeSlashIcon
-                            className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                            onClick={() => {
-                              setIsRevealed({
-                                ...isRevealed,
-                                [key.secret]: false,
-                              });
-                            }}
-                          />
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        sk-...{key.secret.slice(-5)}
-                        {key.status == "active" ? (
-                          <EyeIcon
-                            className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                            onClick={() => {
-                              setIsRevealed({
-                                ...isRevealed,
-                                [key.secret]: true,
-                              });
-                            }}
-                          />
-                        ) : null}
-                      </>
-                    )}
-                  </p>
-                  <div className="ml-2 mt-0.5 flex flex-shrink-0">
-                    <p
-                      className={classNames(
-                        "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                        key.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : "ml-6 bg-gray-100 text-gray-800"
-                      )}
-                    >
-                      {key.status === "active" ? "active" : "revoked"}
+                  <div className="flex flex-col">
+                    <div className="flex flex-row">
+                      <p
+                        className={classNames(
+                          "font-mono truncate text-sm text-slate-700"
+                        )}
+                      >
+                        {isRevealed[key.secret] ? (
+                          <>
+                            {key.secret}
+                            {key.status == "active" ? (
+                              <EyeSlashIcon
+                                className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
+                                onClick={() => {
+                                  setIsRevealed({
+                                    ...isRevealed,
+                                    [key.secret]: false,
+                                  });
+                                }}
+                              />
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            sk-...{key.secret.slice(-5)}
+                            {key.status == "active" ? (
+                              <EyeIcon
+                                className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
+                                onClick={() => {
+                                  setIsRevealed({
+                                    ...isRevealed,
+                                    [key.secret]: true,
+                                  });
+                                }}
+                              />
+                            ) : null}
+                          </>
+                        )}
+                      </p>
+                      <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                        <p
+                          className={classNames(
+                            "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                            key.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : "ml-6 bg-gray-100 text-gray-800"
+                          )}
+                        >
+                          {key.status === "active" ? "active" : "revoked"}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="front-normal text-xs text-element-700">
+                      Created {key.creator ? `by ${key.creator} ` : ""}
+                      {timeAgoFrom(key.createdAt)} ago.
                     </p>
                   </div>
                 </div>

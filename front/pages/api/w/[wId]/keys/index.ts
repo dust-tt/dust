@@ -1,8 +1,8 @@
-import { KeyType } from "@dust-tt/types";
+import { formatUserFullName, KeyType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Key } from "@app/lib/models";
+import { Key, User } from "@app/lib/models";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
 
@@ -25,6 +25,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
+  const user = auth.user();
   if (!owner) {
     res.status(404).end();
     return;
@@ -38,19 +39,30 @@ async function handler(
   switch (req.method) {
     case "GET":
       const keys = await Key.findAll({
+        attributes: ["createdAt", "secret", "status", "userId"],
         where: {
           workspaceId: owner.id,
           isSystem: false,
         },
         order: [["createdAt", "DESC"]],
+        // Remove the day we have the users on the client side.
+        include: [
+          {
+            as: "user",
+            attributes: ["firstName", "lastName"],
+            model: User,
+            required: false,
+          },
+        ],
       });
 
       res.status(200).json({
         keys: keys.map((k) => {
           return {
+            createdAt: k.createdAt.getTime(),
+            creator: formatUserFullName(k.user),
             secret: k.secret,
             status: k.status,
-            isSystem: k.isSystem,
           };
         }),
       });
@@ -62,15 +74,17 @@ async function handler(
       const key = await Key.create({
         secret: secret,
         status: "active",
+        userId: user?.id,
         workspaceId: owner.id,
         isSystem: false,
       });
 
       res.status(201).json({
         key: {
+          createdAt: key.createdAt.getTime(),
+          creator: formatUserFullName(key.user),
           secret: key.secret,
           status: key.status,
-          isSystem: key.isSystem,
         },
       });
       return;
