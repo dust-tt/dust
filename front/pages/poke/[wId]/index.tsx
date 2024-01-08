@@ -419,7 +419,7 @@ const WorkspacePage = ({
     }
   });
 
-  const { submit: onInviteToEnterprisePlan } = useSubmitFunction(
+  const { submit: onUpgradeOrInviteToPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
         !window.confirm(
@@ -535,7 +535,7 @@ const WorkspacePage = ({
               {plans && (
                 <div className="pt-8">
                   <Collapsible>
-                    <Collapsible.Button label="Invite to enterprise plan" />
+                    <Collapsible.Button label="Invite or Upgrade to plan" />
                     <Collapsible.Panel>
                       <div className="flex flex-col gap-2 pt-4">
                         {plans.map((p) => {
@@ -552,8 +552,12 @@ const WorkspacePage = ({
                             <div key={p.code}>
                               <Button
                                 variant="secondary"
-                                label={`${p.name} (${p.code})`}
-                                onClick={() => onInviteToEnterprisePlan(p)}
+                                label={
+                                  p.billingType === "free"
+                                    ? `Upgrade to free plan: ${p.code}`
+                                    : `Invite to paid plan: ${p.code}`
+                                }
+                                onClick={() => onUpgradeOrInviteToPlan(p)}
                                 disabled={[
                                   subscription.plan.code,
                                   planInvitation?.planCode ?? "",

@@ -101,8 +101,10 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
  */
 export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   workspaceId,
+  planCode = FREE_UPGRADED_PLAN_CODE,
 }: {
   workspaceId: string;
+  planCode?: string;
 }): Promise<SubscriptionType> => {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -111,12 +113,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     throw new Error(`Cannot find workspace ${workspaceId}`);
   }
   const plan = await Plan.findOne({
-    where: { code: FREE_UPGRADED_PLAN_CODE },
+    where: { code: planCode },
   });
   if (!plan) {
-    throw new Error(
-      `Cannot subscribe to plan ${FREE_UPGRADED_PLAN_CODE}:  not found.`
-    );
+    throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
   }
 
   const now = new Date();
@@ -127,7 +127,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   });
   if (activeSubscription && activeSubscription.planId === plan.id) {
     throw new Error(
-      `Cannot subscribe to plan ${FREE_UPGRADED_PLAN_CODE}:  already subscribed.`
+      `Cannot subscribe to plan ${planCode}:  already subscribed.`
     );
   }
 
@@ -196,10 +196,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
 /**
  * Internal function to create a PlanInvitation for the workspace.
  */
-export const pokeInviteWorkspaceToEnterprisePlan = async (
+export const pokeUpgradeOrInviteWorkspaceToPlan = async (
   auth: Authenticator,
   planCode: string
-): Promise<PlanInvitationType> => {
+): Promise<PlanInvitationType | void> => {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find workspace}");
@@ -224,6 +224,15 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
     throw new Error(
       `Cannot subscribe to plan ${planCode}: already subscribed.`
     );
+  }
+
+  // If plan is a free plan, we subscribe immediately no need for an invitation
+  if (plan.billingType === "free" && plan.stripeProductId === null) {
+    await internalSubscribeWorkspaceToFreeUpgradedPlan({
+      workspaceId: owner.sId,
+      planCode: plan.code,
+    });
+    return;
   }
 
   const invitation = await getPlanInvitation(auth);
