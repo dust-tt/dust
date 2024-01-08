@@ -795,8 +795,12 @@ export async function githubCodeSyncActivity(
       "Downloaded Github repository for sync"
     );
 
-    // From here everything happens locally this is a big activity but if retried we're really just
-    // retrying downloading the repository externally.
+    // From here everything happens locally or consists in upserting data. This is a big activity
+    // but if retried we're really just retrying downloading the repository externally and the
+    // upserts that succeeded before won't be retried as their associated GithubCodeFile object will
+    // have been updated. This means that while the syncing is not succeeedd we might have slightly
+    // incoherent state (files that moved will appear twice before final cleanup). This seems fine
+    // given that syncing stallness is already considered an incident.
 
     const codeSyncStartedAt = new Date();
     const rootInternalId = `github-code-${repoId}`;
