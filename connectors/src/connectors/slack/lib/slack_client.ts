@@ -3,10 +3,11 @@ import {
   CodedError,
   ErrorCode,
   WebAPIHTTPError,
+  WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
 
-import { WorkflowError } from "@connectors/lib/error";
+import { ExternalOauthTokenError, WorkflowError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -78,6 +79,16 @@ export async function getSlackClient(
               __is_dust_error: true,
             };
             throw workflowError;
+          }
+        }
+        if (slackError.code === ErrorCode.PlatformError) {
+          const platformError = e as WebAPIPlatformError;
+          if (
+            ["account_inactive", "invalid_auth"].includes(
+              platformError.data.error
+            )
+          ) {
+            throw new ExternalOauthTokenError();
           }
         }
         throw e;

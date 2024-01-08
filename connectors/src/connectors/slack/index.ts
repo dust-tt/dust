@@ -1,10 +1,5 @@
 import { ModelId } from "@dust-tt/types";
-import {
-  CodedError,
-  ErrorCode,
-  WebAPIPlatformError,
-  WebClient,
-} from "@slack/web-api";
+import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
@@ -15,6 +10,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -245,8 +241,9 @@ export async function uninstallSlack(nangoConnectionId: string) {
   }
 
   const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
-  const slackClient = await getSlackClient(slackAccessToken);
+
   try {
+    const slackClient = await getSlackClient(slackAccessToken);
     await slackClient.auth.test();
     const deleteRes = await slackClient.apps.uninstall({
       client_id: SLACK_CLIENT_ID,
@@ -260,25 +257,14 @@ export async function uninstallSlack(nangoConnectionId: string) {
       );
     }
   } catch (e) {
-    const slackError = e as CodedError;
-    let shouldThrow = true;
-
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = e as WebAPIPlatformError;
-      if (
-        ["account_inactive", "invalid_auth"].includes(platformError.data.error)
-      ) {
-        shouldThrow = false;
-        logger.info(
-          {
-            nangoConnectionId,
-          },
-          `Slack auth is invalid, skipping uninstallation of the Slack app`
-        );
-      }
-    }
-
-    if (shouldThrow) {
+    if (e instanceof ExternalOauthTokenError) {
+      logger.info(
+        {
+          nangoConnectionId,
+        },
+        `Slack auth is invalid, skipping uninstallation of the Slack app`
+      );
+    } else {
       throw e;
     }
   }
