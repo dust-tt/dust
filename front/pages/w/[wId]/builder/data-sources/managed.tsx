@@ -386,7 +386,7 @@ export default function DataSourcesView({
     suffix: string | null
   ) => {
     try {
-      let connectionId: string | undefined;
+      let connectionId: string;
       if (connectorIsUsingNango(provider)) {
         // nango-based connectors
         const nangoConnectorId = {

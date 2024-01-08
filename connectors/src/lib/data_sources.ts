@@ -40,9 +40,7 @@ type UpsertToDataSourceParams = {
   upsertContext: UpsertContext;
 };
 
-export const upsertToDatasource = withRetries(_upsertToDatasource, {
-  retries: 1,
-});
+export const upsertToDatasource = withRetries(_upsertToDatasource);
 
 async function _upsertToDatasource({
   dataSourceConfig,

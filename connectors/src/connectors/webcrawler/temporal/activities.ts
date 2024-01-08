@@ -28,25 +28,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
 
-  return crawlWebsite(webCrawlerConfig.id);
-}
-
-export async function crawlWebsite(
-  webcrawlerConfigurationId: ModelId
-): Promise<{ pageCount: number; errorCount: number }> {
-  const webCrawlerConfig = await WebCrawlerConfiguration.findByPk(
-    webcrawlerConfigurationId
-  );
-  if (!webCrawlerConfig) {
-    throw new Error(
-      `Webcrawler configuration ${webcrawlerConfigurationId} not found.`
-    );
-  }
-
-  const connector = await Connector.findByPk(webCrawlerConfig.connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${webCrawlerConfig.connectorId} not found.`);
-  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
   let errorCount = 0;
