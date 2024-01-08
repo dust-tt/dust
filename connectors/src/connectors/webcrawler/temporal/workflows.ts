@@ -13,3 +13,7 @@ export async function crawlWebsiteWorkflow(
 ): Promise<void> {
   await crawlWebsiteByConnectorId(connectorId);
 }
+
+export  function crawlWebsiteWorkflowId(connectorId: ModelId) {
+  return `webcrawler-${connectorId}`;
+}

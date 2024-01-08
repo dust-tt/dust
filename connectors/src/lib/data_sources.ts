@@ -193,7 +193,11 @@ async function _updateDocumentParentsField({
 }) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${
+    dataSourceConfig.workspaceId
+  }/data_sources/${urlSafeName}/documents/${encodeURIComponent(
+    documentId
+  )}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,

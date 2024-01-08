@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import {
-  ConnectorCreatorOauth,
+  ConnectorCreatorOAuth,
   ConnectorCreatorUrl,
 } from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
@@ -68,12 +68,12 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    let connectorRes: Result<string, Error> | null = null;
+    let connectorRes: Result<string, Error>;
     switch (req.body.type) {
       case "oauth": {
         const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
           req.params.connector_provider
-        ] as ConnectorCreatorOauth;
+        ] as ConnectorCreatorOAuth;
 
         connectorRes = await connectorCreator(
           {
@@ -95,8 +95,7 @@ const _createConnectorAPIHandler = async (
             dataSourceName: req.body.dataSourceName,
             workspaceId: req.body.workspaceId,
           },
-          req.body.url,
-          10
+          req.body.url
         );
         break;
       }

@@ -768,9 +768,9 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        documentId
-      )}/parents`,
+      `${CORE_API}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(documentId)}/parents`,
       {
         method: "PATCH",
         headers: {

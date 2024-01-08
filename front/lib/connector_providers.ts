@@ -86,6 +86,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Crawl a website.",
     limitations: null,
     logoComponent: IntercomLogo,
-    isNested: false,
+    isNested: true,
   },  
 };

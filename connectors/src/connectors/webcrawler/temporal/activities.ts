@@ -55,7 +55,7 @@ export async function crawlWebsite(
   const crawler = new CheerioCrawler(
     {
       maxRequestsPerCrawl: 300,
-      maxConcurrency: 1,
+      maxConcurrency: 10,
 
       async requestHandler({ $, request, enqueueLinks }) {
         const extracted = new turndown()
@@ -76,7 +76,7 @@ export async function crawlWebsite(
           }
           await WebCrawlerFolder.upsert({
             url: folder,
-            parentUrl: getFolderForUrl(folder) || webCrawlerConfig.url,
+            parentUrl: getFolderForUrl(folder),
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
             ressourceType: "folder",
@@ -87,7 +87,7 @@ export async function crawlWebsite(
 
         const updatedFolder = await WebCrawlerFolder.upsert({
           url: request.url,
-          parentUrl: getFolderForUrl(request.url) || webCrawlerConfig.url,
+          parentUrl: getFolderForUrl(request.url),
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
           ressourceType: "file",
@@ -107,7 +107,7 @@ export async function crawlWebsite(
           documentUrl: request.url,
           timestampMs: new Date().getTime(),
           tags: [],
-          parents: [],
+          parents: folders,
           upsertContext: {
             sync_type: "batch",
           },
@@ -158,10 +158,9 @@ export function getAllFoldersForUrl(url: string) {
 export function getFolderForUrl(url: string) {
   const parsed = new URL(url);
   const urlParts = parsed.pathname.split("/").filter((part) => part.length > 0);
-  console.log("urlParts", urlParts);
-  if (urlParts.length < 2) {
+  if (parsed.pathname === "/") {
     return null;
   } else {
-    return `${parsed.origin}/${urlParts.slice(0, -1).join("/")}/`;
+    return `${parsed.origin}/${urlParts.slice(0, -1).join("/")}`;
   }
 }

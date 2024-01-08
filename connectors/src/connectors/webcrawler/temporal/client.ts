@@ -6,7 +6,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 
 import { QUEUE_NAME } from "./config";
-import { crawlWebsiteWorkflow } from "./workflows";
+import { crawlWebsiteWorkflow, crawlWebsiteWorkflowId } from "./workflows";
 
 export async function launchCrawlWebsiteWorkflow(
   connectorId: ModelId
@@ -18,7 +18,7 @@ export async function launchCrawlWebsiteWorkflow(
 
   const client = await getTemporalClient();
 
-  const workflowId = `webcrawler-${connectorId}`;
+  const workflowId = crawlWebsiteWorkflowId(connectorId);
   try {
     const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
       client.workflow.getHandle(workflowId);
@@ -52,6 +52,38 @@ export async function launchCrawlWebsiteWorkflow(
         error: e,
       },
       `Failed starting workflow.`
+    );
+    return new Err(e as Error);
+  }
+}
+
+
+export async function stopCrawlWebsiteWorkflow(
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  
+
+  const client = await getTemporalClient();
+
+  const workflowId = crawlWebsiteWorkflowId(connectorId);
+  try {
+    const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+  return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      `Failed stopping workflow.`
     );
     return new Err(e as Error);
   }
