@@ -59,7 +59,7 @@ export async function createGithubConnector(
 
       return connector;
     });
-    await launchGithubFullSyncWorkflow(connector.id.toString());
+    await launchGithubFullSyncWorkflow(connector.id.toString(), false);
     return new Ok(connector.id.toString());
   } catch (err) {
     logger.error({ error: err }, "Error creating github connector");
@@ -180,7 +180,7 @@ export async function resumeGithubConnector(
       webhooksEnabledAt: new Date(),
     });
 
-    await launchGithubFullSyncWorkflow(connector.id.toString());
+    await launchGithubFullSyncWorkflow(connector.id.toString(), false);
 
     return new Ok(connector.id.toString());
   } catch (err) {
@@ -199,7 +199,7 @@ export async function fullResyncGithubConnector(
   }
 
   try {
-    await launchGithubFullSyncWorkflow(connectorId);
+    await launchGithubFullSyncWorkflow(connectorId, false);
     return new Ok(connectorId);
   } catch (err) {
     return new Err(err as Error);

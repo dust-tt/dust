@@ -11,6 +11,7 @@ import {
 } from "@connectors/connectors";
 import {
   cleanUpProcessRepository,
+  getOctokit,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -32,6 +33,7 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
+import { launchGithubCodeSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -105,7 +107,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const github = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
-    case "test-repo": {
+    case "resync-repo": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
@@ -133,30 +135,25 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
+      console.log("Resyncing repo " + args.owner + "/" + args.repo);
+
       const installationId = connector.connectionId;
 
-      const { tempDir, files, directories } = await processRepository({
-        installationId,
-        repoLogin: args.owner,
-        repoName: args.repo,
-        repoId: "999",
+      const octokit = await getOctokit(installationId);
+
+      const { data } = await octokit.rest.repos.get({
+        owner: args.owner,
+        repo: args.repo,
       });
 
-      files.forEach((f) => {
-        console.log(f);
-      });
-      directories.forEach((d) => {
-        console.log(d);
-      });
+      const repoId = data.id;
 
-      console.log(
-        `Found ${files.length} files in ${directories.length} directories`
+      await launchGithubCodeSyncWorkflow(
+        connector.id.toString(),
+        args.owner,
+        args.repo,
+        repoId
       );
-      console.log(
-        `Files total size: ${files.reduce((acc, f) => acc + f.sizeBytes, 0)}`
-      );
-
-      await cleanUpProcessRepository(tempDir);
     }
   }
 };
@@ -578,15 +575,36 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.provider) {
         throw new Error("Missing --provider argument");
       }
+      let fromTs: number | null = null;
+      if (args.fromTs) {
+        fromTs = parseInt(args.fromTs as string, 10);
+      }
+
       const connectors = await Connector.findAll({
         where: {
           type: args.provider,
         },
       });
-      let fromTs: number | null = null;
-      if (args.fromTs) {
-        fromTs = parseInt(args.fromTs as string, 10);
+
+      const answer: string = await new Promise((resolve) => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        rl.question(
+          `Are you sure you want to trigger full sync for ${connectors.length} connectors of type ${args.provider}? (y/N) `,
+          (answer) => {
+            rl.close();
+            resolve(answer);
+          }
+        );
+      });
+
+      if (answer !== "y") {
+        console.log("Cancelled");
+        return;
       }
+
       for (const connector of connectors) {
         await throwOnError(
           SYNC_CONNECTOR_BY_TYPE[connector.type](

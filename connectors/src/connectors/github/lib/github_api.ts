@@ -519,7 +519,7 @@ export async function getDiscussion(
   return payload.repository.discussion;
 }
 
-async function getOctokit(installationId: string): Promise<Octokit> {
+export async function getOctokit(installationId: string): Promise<Octokit> {
   if (!GITHUB_APP_ID) {
     throw new Error("GITHUB_APP_ID not set");
   }

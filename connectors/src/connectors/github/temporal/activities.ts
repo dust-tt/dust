@@ -747,6 +747,66 @@ export function formatCodeContentForUpsert(
   };
 }
 
+async function garbageCollectCodeSync(
+  dataSourceConfig: DataSourceConfig,
+  connector: Connector,
+  repoId: number,
+  codeSyncStartedAt: Date,
+  loggerArgs: Record<string, string | number>
+) {
+  const localLogger = logger.child(loggerArgs);
+  const filesToDelete = await GithubCodeFile.findAll({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+      lastSeenAt: {
+        [Op.lt]: codeSyncStartedAt,
+      },
+    },
+  });
+
+  if (filesToDelete.length > 0) {
+    localLogger.info(
+      { filesToDelete: filesToDelete.length },
+      "GarbageCollectCodeSync: deleting files"
+    );
+
+    for (const f of filesToDelete) {
+      await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
+      await f.destroy();
+    }
+  }
+
+  const directoriesToDelete = await GithubCodeDirectory.findAll({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+      lastSeenAt: {
+        [Op.lt]: codeSyncStartedAt,
+      },
+    },
+  });
+
+  if (directoriesToDelete.length > 0) {
+    localLogger.info(
+      {
+        directoriesToDelete: directoriesToDelete.length,
+      },
+      "GarbageCollectCodeSync: deleting directories"
+    );
+
+    await GithubCodeDirectory.destroy({
+      where: {
+        connectorId: connector.id,
+        repoId: repoId.toString(),
+        lastSeenAt: {
+          [Op.lt]: codeSyncStartedAt,
+        },
+      },
+    });
+  }
+}
+
 export async function githubCodeSyncActivity(
   dataSourceConfig: DataSourceConfig,
   installationId: string,
@@ -756,6 +816,7 @@ export async function githubCodeSyncActivity(
   loggerArgs: Record<string, string | number>,
   isBatchSync: boolean
 ) {
+  const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
 
   const connector = await Connector.findOne({
@@ -779,7 +840,15 @@ export async function githubCodeSyncActivity(
   }
 
   if (!connectorState.codeSyncEnabled) {
+    // Garbage collect any existing code files.
     localLogger.info("Code sync disabled for connector");
+    await garbageCollectCodeSync(
+      dataSourceConfig,
+      connector,
+      repoId,
+      codeSyncStartedAt,
+      { ...loggerArgs, task: "garbageCollectCodeSyncDisabled" }
+    );
     return;
   }
 
@@ -808,7 +877,6 @@ export async function githubCodeSyncActivity(
     // incoherent state (files that moved will appear twice before final cleanup). This seems fine
     // given that syncing stallness is already considered an incident.
 
-    const codeSyncStartedAt = new Date();
     const rootInternalId = `github-code-${repoId}`;
 
     const updatedDirectories: { [key: string]: boolean } = {};
@@ -843,6 +911,8 @@ export async function githubCodeSyncActivity(
         });
       }
 
+      console.log("HERE", contentHash);
+
       // If the parents have updated then the documentId gets updated as well so we should never
       // have an udpate to parentInternalId. We check that this is always the case. If the file is
       // moved (the parents change) then it will trigger the creation of a new file with a new
@@ -860,6 +930,8 @@ export async function githubCodeSyncActivity(
         f.fileName !== githubCodeFile.fileName ||
         f.sourceUrl !== githubCodeFile.sourceUrl ||
         contentHash === githubCodeFile.contentHash;
+
+      console.log("HERE 2", needsUpdate);
 
       if (needsUpdate) {
         // Record the parent directories to update their updatedAt.
@@ -954,57 +1026,13 @@ export async function githubCodeSyncActivity(
 
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
-    const filesToDelete = await GithubCodeFile.findAll({
-      where: {
-        connectorId: connector.id,
-        repoId: repoId.toString(),
-        lastSeenAt: {
-          [Op.lt]: codeSyncStartedAt,
-        },
-      },
-    });
-
-    if (filesToDelete.length > 0) {
-      localLogger.info(
-        { filesToDelete: filesToDelete.length, filesSeen: files.length },
-        "Github code sync, deleting files."
-      );
-
-      for (const f of filesToDelete) {
-        await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
-        await f.destroy();
-      }
-    }
-
-    const directoriesToDelete = await GithubCodeDirectory.findAll({
-      where: {
-        connectorId: connector.id,
-        repoId: repoId.toString(),
-        lastSeenAt: {
-          [Op.lt]: codeSyncStartedAt,
-        },
-      },
-    });
-
-    if (directoriesToDelete.length > 0) {
-      localLogger.info(
-        {
-          directoriesToDelete: directoriesToDelete.length,
-          directoriesSeen: directories.length,
-        },
-        "Github code sync, deleting directories."
-      );
-
-      await GithubCodeDirectory.destroy({
-        where: {
-          connectorId: connector.id,
-          repoId: repoId.toString(),
-          lastSeenAt: {
-            [Op.lt]: codeSyncStartedAt,
-          },
-        },
-      });
-    }
+    await garbageCollectCodeSync(
+      dataSourceConfig,
+      connector,
+      repoId,
+      codeSyncStartedAt,
+      { ...loggerArgs, task: "garbageCollectCodeSync" }
+    );
   } finally {
     await cleanUpProcessRepository(tempDir);
     localLogger.info(
