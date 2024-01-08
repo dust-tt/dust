@@ -752,9 +752,9 @@ export async function githubCodeSyncActivity(
   installationId: string,
   repoLogin: string,
   repoName: string,
-  repoId: string,
-  isBatchSync: boolean,
-  loggerArgs: Record<string, string | number>
+  repoId: number,
+  loggerArgs: Record<string, string | number>,
+  isBatchSync: boolean
 ) {
   const localLogger = logger.child(loggerArgs);
 
@@ -823,7 +823,7 @@ export async function githubCodeSyncActivity(
       let githubCodeFile = await GithubCodeFile.findOne({
         where: {
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           documentId: f.documentId,
         },
       });
@@ -831,7 +831,7 @@ export async function githubCodeSyncActivity(
       if (!githubCodeFile) {
         githubCodeFile = await GithubCodeFile.create({
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           documentId: f.documentId,
           parentInternalId,
           fileName: f.fileName,
@@ -880,7 +880,7 @@ export async function githubCodeSyncActivity(
           documentUrl: f.sourceUrl,
           timestampMs: codeSyncStartedAt.getTime(),
           tags,
-          parents: [...f.parents, rootInternalId, repoId],
+          parents: [...f.parents, rootInternalId, repoId.toString()],
           retries: 3,
           delayBetweenRetriesMs: 1000,
           loggerArgs: { ...loggerArgs, provider: "github" },
@@ -908,7 +908,7 @@ export async function githubCodeSyncActivity(
       let githubCodeDirectory = await GithubCodeDirectory.findOne({
         where: {
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           internalId: d.internalId,
         },
       });
@@ -916,7 +916,7 @@ export async function githubCodeSyncActivity(
       if (!githubCodeDirectory) {
         githubCodeDirectory = await GithubCodeDirectory.create({
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           internalId: d.internalId,
           parentInternalId,
           dirName: d.dirName,
@@ -957,7 +957,7 @@ export async function githubCodeSyncActivity(
     const filesToDelete = await GithubCodeFile.findAll({
       where: {
         connectorId: connector.id,
-        repoId,
+        repoId: repoId.toString(),
         lastSeenAt: {
           [Op.lt]: codeSyncStartedAt,
         },
@@ -979,7 +979,7 @@ export async function githubCodeSyncActivity(
     const directoriesToDelete = await GithubCodeDirectory.findAll({
       where: {
         connectorId: connector.id,
-        repoId,
+        repoId: repoId.toString(),
         lastSeenAt: {
           [Op.lt]: codeSyncStartedAt,
         },
@@ -998,7 +998,7 @@ export async function githubCodeSyncActivity(
       await GithubCodeDirectory.destroy({
         where: {
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           lastSeenAt: {
             [Op.lt]: codeSyncStartedAt,
           },

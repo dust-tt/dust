@@ -618,7 +618,7 @@ export async function processRepository({
   installationId: string;
   repoLogin: string;
   repoName: string;
-  repoId: string;
+  repoId: number;
 }) {
   const octokit = await getOctokit(installationId);
 
