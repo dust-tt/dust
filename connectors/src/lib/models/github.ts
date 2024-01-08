@@ -18,6 +18,7 @@ export class GithubConnectorState extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare webhooksEnabledAt?: Date | null;
+  declare codeSyncEnabled: boolean;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -41,6 +42,11 @@ GithubConnectorState.init(
     webhooksEnabledAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    codeSyncEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
@@ -152,3 +158,152 @@ GithubDiscussion.init(
   }
 );
 Connector.hasMany(GithubDiscussion);
+
+export class GithubCodeFile extends Model<
+  InferAttributes<GithubCodeFile>,
+  InferCreationAttributes<GithubCodeFile>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare lastSeenAt: CreationOptional<Date>;
+
+  declare repoId: string;
+  declare documentId: string;
+  declare parentInternalId: string;
+
+  declare fileName: string;
+  declare sourceUrl: string;
+  declare contentHash: string;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+GithubCodeFile.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    repoId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentInternalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    fileName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    contentHash: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["connectorId", "repoId", "documentId"], unique: true },
+      { fields: ["connectorId", "repoId", "lastSeenAt"] },
+    ],
+    modelName: "github_code_files",
+  }
+);
+Connector.hasMany(GithubCodeFile);
+
+export class GithubCodeDirectory extends Model<
+  InferAttributes<GithubCodeDirectory>,
+  InferCreationAttributes<GithubCodeDirectory>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare lastSeenAt: CreationOptional<Date>;
+
+  declare repoId: string;
+  declare internalId: string;
+  declare parentInternalId: string;
+
+  declare dirName: string;
+  declare sourceUrl: string;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+GithubCodeDirectory.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    repoId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    internalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentInternalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    dirName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["connectorId", "repoId", "internalId"], unique: true },
+      { fields: ["connectorId", "repoId", "lastSeenAt"] },
+    ],
+    modelName: "github_code_directories",
+  }
+);
+Connector.hasMany(GithubCodeDirectory);

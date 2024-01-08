@@ -52,6 +52,7 @@ export async function createGithubConnector(
         {
           connectorId: connector.id,
           webhooksEnabledAt: new Date(),
+          codeSyncEnabled: false,
         },
         { transaction }
       );
