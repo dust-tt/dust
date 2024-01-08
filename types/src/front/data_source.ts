@@ -8,7 +8,7 @@ export const CONNECTOR_PROVIDERS = [
   "github",
   "google_drive",
   "intercom",
-  "webcrawler"
+  "webcrawler",
 ] as const;
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
