@@ -48,7 +48,8 @@ export type APIErrorType =
   | "test_plan_message_limit_reached"
   | "global_agent_error"
   | "stripe_invalid_product_id_error"
-  | "rate_limit_error";
+  | "rate_limit_error"
+  | "subscription_payment_failed";
 
 export type APIError = {
   type: APIErrorType;
