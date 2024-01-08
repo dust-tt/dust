@@ -80,6 +80,8 @@ export class ActivityInboundLogInterceptor
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
+      error = err;
+
       const maybeNangoError = err as {
         code?: string;
         status?: number;
@@ -96,7 +98,7 @@ export class ActivityInboundLogInterceptor
           },
           "Got 5xx Bad Response from external API"
         );
-        throw {
+        error = {
           __is_dust_error: true,
           message: `Got ${maybeNangoError.status} Bad Response from Nango`,
           type: "nango_5xx_bad_response",
@@ -115,7 +117,6 @@ export class ActivityInboundLogInterceptor
           await cancelWorkflow(workflowId);
         }
       }
-      error = err;
       throw err;
     } finally {
       const durationMs = new Date().getTime() - startTime.getTime();
