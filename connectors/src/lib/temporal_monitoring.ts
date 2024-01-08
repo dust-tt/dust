@@ -90,7 +90,8 @@ export class ActivityInboundLogInterceptor
       if (
         maybeNangoError.code === "ERR_BAD_RESPONSE" &&
         maybeNangoError.status &&
-        [522, 502, 500].includes(maybeNangoError.status)
+        [520, 522, 502, 500].includes(maybeNangoError.status) &&
+        maybeNangoError.config?.url?.includes("api.nango.dev")
       ) {
         this.logger.info(
           {
