@@ -2,6 +2,7 @@ import { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
+import { Op } from "sequelize";
 
 import {
   cleanUpProcessRepository,
@@ -24,6 +25,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
 import {
+  GithubCodeDirectory,
   GithubCodeFile,
   GithubConnectorState,
   GithubDiscussion,
@@ -633,7 +635,10 @@ async function deleteIssue(
     { documentId },
     "Deleting GitHub issue from Dust data source."
   );
-  await deleteFromDataSource(dataSourceConfig, documentId);
+  await deleteFromDataSource(dataSourceConfig, documentId, {
+    ...loggerArgs,
+    issueNumber,
+  });
 
   localLogger.info("Deleting GitHub issue from database.");
   await GithubIssue.destroy({
@@ -685,7 +690,10 @@ async function deleteDiscussion(
     { documentId },
     "Deleting GitHub discussion from Dust data source."
   );
-  await deleteFromDataSource(dataSourceConfig, documentId);
+  await deleteFromDataSource(dataSourceConfig, documentId, {
+    ...loggerArgs,
+    discussionNumber,
+  });
 
   localLogger.info("Deleting GitHub discussion from database.");
   await GithubDiscussion.destroy({
@@ -721,48 +729,16 @@ export function getDiscussionDocumentId(
   return `github-discussion-${repoId}-${discussionNumber}`;
 }
 
-export async function formatCodeContentForUpsert(
+export function formatCodeContentForUpsert(
   sourceUrl: string,
   content: Buffer
 ): CoreAPIDataSourceDocumentSection {
-  // const data = await Promise.all(
-  //   messages.map(async (message) => {
-  //     const text = await processMessageForMentions(
-  //       message.text as string,
-  //       connectorId,
-  //       slackClient
-  //     );
-  //     const userName = await getUserName(
-  //       message.user as string,
-  //       connectorId,
-  //       slackClient
-  //     );
-  //     const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
-  //     const messageDateStr = formatDateForUpsert(messageDate);
-  //     return {
-  //       dateStr: messageDateStr,
-  //       userName,
-  //       text: text,
-  //       content: text + "\n",
-  //       sections: [],
-  //     };
-  //   })
-  // );
-  // const first = data[0];
-  // if (!first) {
-  //   throw new Error("Cannot format empty list of messages");
-  // }
-  // return {
-  //   prefix: `Thread in #${channelName} [${first.dateStr}]: ${
-  //     first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
-  //   }\n`,
-  //   content: null,
-  //   sections: data.map((d) => ({
-  //     prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
-  //     content: d.text + "\n",
-  //     sections: [],
-  //   })),
-  // };
+  // For now we simply add the file name as prefix to all chunks.
+  return {
+    prefix: `SOURCE FILE: ${sourceUrl}\n\n`,
+    content: content.toString(),
+    sections: [],
+  };
 }
 
 export async function githubCodeSyncActivity(
@@ -856,65 +832,149 @@ export async function githubCodeSyncActivity(
         });
       }
 
-      if (
-        f.fileName === githubCodeFile.fileName &&
-        f.parentInternalId === githubCodeFile.parentInternalId &&
-        f.sourceUrl === githubCodeFile.sourceUrl &&
-        contentHash === githubCodeFile.contentHash
-      ) {
-        // If the file has the sane name, parent, URL and contentHash, update the lastSeenAt and
-        // skip.
-        await githubCodeFile.update({
-          lastSeenAt: codeSyncStartedAt,
+      // We update if the file name or source url or content has changed.
+      const needsUpdate =
+        f.fileName !== githubCodeFile.fileName ||
+        f.parentInternalId !== githubCodeFile.parentInternalId ||
+        f.sourceUrl !== githubCodeFile.sourceUrl ||
+        contentHash === githubCodeFile.contentHash;
+
+      if (needsUpdate) {
+        // Record the parent directories to update their updatedAt.
+        for (const parentInternalId of f.parents) {
+          updatedDirectories[parentInternalId] = true;
+        }
+
+        const tags = [
+          `title:${f.fileName}`,
+          `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
+        ];
+
+        // Time to upload the file to the data source.
+        await upsertToDatasource({
+          dataSourceConfig,
+          documentId: f.documentId,
+          documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
+          documentUrl: f.sourceUrl,
+          timestampMs: codeSyncStartedAt.getTime(),
+          tags,
+          parents: [...f.parents, rootInternalId, repoId],
+          retries: 3,
+          delayBetweenRetriesMs: 1000,
+          loggerArgs: { ...loggerArgs, provider: "github" },
+          upsertContext: {
+            sync_type: isBatchSync ? "batch" : "incremental",
+          },
         });
-        continue;
+
+        // Finally update the file.
+        githubCodeFile.fileName = f.fileName;
+        githubCodeFile.parentInternalId = f.parentInternalId || rootInternalId;
+        githubCodeFile.sourceUrl = f.sourceUrl;
+        githubCodeFile.contentHash = contentHash;
+        githubCodeFile.updatedAt = codeSyncStartedAt;
       }
 
-      // Record the parent directories to update their updatedAt.
-      for (const parentInternalId of f.parents) {
-        updatedDirectories[parentInternalId] = true;
-      }
-
-      const tags = [
-        `title:${f.fileName}`,
-        `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
-      ];
-
-      // Time to upload the file to the data source.
-      await upsertToDatasource({
-        dataSourceConfig,
-        documentId: f.documentId,
-        documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
-        documentUrl: f.sourceUrl,
-        timestampMs: codeSyncStartedAt.getTime(),
-        tags,
-        parents: [...f.parents, rootInternalId, repoId],
-        retries: 3,
-        delayBetweenRetriesMs: 1000,
-        loggerArgs: { ...loggerArgs, provider: "github" },
-        upsertContext: {
-          sync_type: isBatchSync ? "batch" : "incremental",
-        },
-      });
-
-      // Finally update the file.
-      githubCodeFile.fileName = f.fileName;
-      githubCodeFile.parentInternalId = f.parentInternalId || rootInternalId;
-      githubCodeFile.sourceUrl = f.sourceUrl;
-      githubCodeFile.contentHash = contentHash;
-      githubCodeFile.updatedAt = codeSyncStartedAt;
+      // Finally we update the lastSeenAt for all files we've seen, and save.
       githubCodeFile.lastSeenAt = codeSyncStartedAt;
-
       await githubCodeFile.save();
     }
 
     for (const d of directories) {
-      // Find directory or create it
-      // // Update if was updated
+      // Find directory or create it.
+      let githubCodeDirectory = await GithubCodeDirectory.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId,
+          internalId: d.internalId,
+        },
+      });
+
+      if (!githubCodeDirectory) {
+        githubCodeDirectory = await GithubCodeDirectory.create({
+          connectorId: connector.id,
+          repoId,
+          internalId: d.internalId,
+          parentInternalId: d.parentInternalId || rootInternalId,
+          dirName: d.dirName,
+          sourceUrl: d.sourceUrl,
+          createdAt: codeSyncStartedAt,
+          updatedAt: codeSyncStartedAt,
+          lastSeenAt: codeSyncStartedAt,
+        });
+      }
+
+      // If some files were updated as part of the sync, refresh the directory updatedAt.
+      if (updatedDirectories[d.internalId]) {
+        githubCodeDirectory.updatedAt = codeSyncStartedAt;
+      }
+
+      // Update everything else.
+      githubCodeDirectory.dirName = d.dirName;
+      githubCodeDirectory.parentInternalId =
+        d.parentInternalId || rootInternalId;
+      githubCodeDirectory.sourceUrl = d.sourceUrl;
+      githubCodeDirectory.lastSeenAt = codeSyncStartedAt;
+
+      await githubCodeDirectory.save();
+    }
+
+    // Final part of the sync, we delete all files and directories that were not seen during the
+    // sync.
+    const filesToDelete = await GithubCodeFile.findAll({
+      where: {
+        connectorId: connector.id,
+        repoId,
+        lastSeenAt: {
+          [Op.lt]: codeSyncStartedAt,
+        },
+      },
+    });
+
+    if (filesToDelete.length > 0) {
+      localLogger.info(
+        { filesToDelete: filesToDelete.length, filesSeen: files.length },
+        "Github code sync, deleting files."
+      );
+
+      for (const f of filesToDelete) {
+        await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
+        await f.destroy();
+      }
+    }
+
+    const directoriesToDelete = await GithubCodeDirectory.findAll({
+      where: {
+        connectorId: connector.id,
+        repoId,
+        lastSeenAt: {
+          [Op.lt]: codeSyncStartedAt,
+        },
+      },
+    });
+
+    if (directoriesToDelete.length > 0) {
+      localLogger.info(
+        {
+          directoriesToDelete: directoriesToDelete.length,
+          directoriesSeen: directories.length,
+        },
+        "Github code sync, deleting directories."
+      );
+
+      await GithubCodeDirectory.destroy({
+        where: {
+          connectorId: connector.id,
+          repoId,
+          lastSeenAt: {
+            [Op.lt]: codeSyncStartedAt,
+          },
+        },
+      });
     }
   } finally {
     await cleanUpProcessRepository(tempDir);
-    logger.info(
+    localLogger.info(
       {
         repoId,
       },

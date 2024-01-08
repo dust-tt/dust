@@ -228,11 +228,82 @@ GithubCodeFile.init(
   {
     sequelize: sequelize_conn,
     indexes: [
-      { fields: ["connectorId", "repoId", "internalId"], unique: true },
-      { fields: ["connectorId"] },
-      { fields: ["connectorId", "repoId", "updatedAt"] },
+      { fields: ["connectorId", "repoId", "documentId"], unique: true },
+      { fields: ["connectorId", "repoId", "lastSeenAt"] },
     ],
     modelName: "github_code_files",
   }
 );
-Connector.hasMany(GithubIssue);
+Connector.hasMany(GithubCodeFile);
+
+export class GithubCodeDirectory extends Model<
+  InferAttributes<GithubCodeDirectory>,
+  InferCreationAttributes<GithubCodeDirectory>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare lastSeenAt: CreationOptional<Date>;
+
+  declare repoId: string;
+  declare internalId: string;
+  declare parentInternalId: string;
+
+  declare dirName: string;
+  declare sourceUrl: string;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+GithubCodeDirectory.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    repoId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    internalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    parentInternalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    dirName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["connectorId", "repoId", "internalId"], unique: true },
+      { fields: ["connectorId", "repoId", "lastSeenAt"] },
+    ],
+    modelName: "github_code_directories",
+  }
+);
+Connector.hasMany(GithubCodeDirectory);
