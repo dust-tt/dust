@@ -175,9 +175,7 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
     html: `<p>Hello from Dust,</p>
     <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
     <p>
-      Please note failed payments are retried 3 times before downgrading your workspace, 
-      removing any feature attached to the paid plan you were on, and permanently deleting connections and the data associated with them.
-      Any assistant that are linked to connections will also be removed.
+      Please note: your workspace will be downgraded after 3 failed payment retries. This will trigger the removal of any feature attached to the paid plan you were on, and the permanent deletion of connections and the data associated with them. Any assistant that are linked to connections will also be removed.
     </p>
     <p>Please reply to this email if you have any questions.</p>
     <br />

@@ -461,15 +461,15 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
 function SubscriptionPastDueBanner() {
   return (
     <div className="border-y border-warning-200 bg-warning-100 px-3 py-3 text-xs text-warning-900">
-      <div className="font-bold">Oh no, your payment failed!</div>
+      <div className="font-bold">Your payment has failed!</div>
       <div className="font-normal">
         <br />
         Please make sure to update your payment method in the Admin section to
-        keep your account. We will retry in a few days.
+        maintain access to your workspace. We will retry in a few days.
         <br />
         <br />
-        Careful! After 3 retry, your workspace will be downgraded to the free
-        plan. Connections will be deleted and members will be revoked. Details{" "}
+        After 3 attempts, your workspace will be downgraded to the free plan.
+        Connections will be deleted and members will be revoked. Details{" "}
         <Link
           href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
           target="_blank"
