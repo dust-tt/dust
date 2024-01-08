@@ -299,12 +299,12 @@ function DatabaseModal({
             return;
           }
           const { content } = res.value;
-          if (res.value.content.length > 1_000_000) {
+          if (res.value.content.length > 10_000_000) {
             sendNotification({
               type: "error",
               title: "File too large",
               description:
-                "Please upload a file containing less than 1 million characters.",
+                "Please upload a file containing less than 10 million characters.",
             });
             return;
           }
