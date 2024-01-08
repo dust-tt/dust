@@ -607,9 +607,9 @@ export class CoreAPI {
   > {
     const qs = versionHash ? `?version_hash=${versionHash}` : "";
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        documentId
-      )}${qs}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(documentId)}${qs}`,
       {
         method: "GET",
       }
@@ -694,7 +694,9 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
+      `${CORE_API}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents`,
       {
         method: "POST",
         headers: {
