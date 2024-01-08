@@ -629,6 +629,17 @@ export async function processRepository(
     },
   });
 
+  // `data.size` is the whole repo size in KB, we use it to filter repos > 2GB download size. There
+  // is further filtering by file type + for "extracted size" per file to 1MB.
+  if (data.size > 2 * 1024 * 1024) {
+    // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
+    // error to return a syncFailed to the user, or increase this limit if we want some largers
+    // repositories).
+    throw new Error(
+      `Repository is too large to sync (size: ${data.size}KB, max: 2GB)`
+    );
+  }
+
   const { data: tarballStream } = (await octokit.request(
     "GET /repos/{owner}/{repo}/tarball/{ref}",
     {
