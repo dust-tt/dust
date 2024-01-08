@@ -33,7 +33,6 @@ export type SubNavigationConversationsId =
 export type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
-  | "data_sources_url"
   | "workspace_assistants"
   | "personal_assistants";
 export type SubNavigationAdminId =
@@ -42,7 +41,8 @@ export type SubNavigationAdminId =
   | "members"
   | "developers"
   | "extract"
-  | "databases";
+  | "databases"
+  | "data_sources_url";
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
@@ -229,15 +229,6 @@ export const subNavigationAssistants = ({
           current === "data_sources_static" ? subMenuLabel : undefined,
         subMenu: current === "data_sources_static" ? subMenu : undefined,
       },
-      {
-        id: "data_sources_url",
-        label: "Public URLs",
-        icon: LinkIcon,
-        href: `/w/${owner.sId}/builder/data-sources/public-urls`,
-        current: current === "data_sources_url",
-        subMenuLabel: undefined,
-        subMenu: undefined,
-      },
     ],
   });
 
@@ -334,6 +325,15 @@ export const subNavigationAdmin = ({
           icon: ServerIcon,
           href: `/w/${owner.sId}/databases`,
           current: current === "databases",
+        },
+        {
+          id: "data_sources_url",
+          label: "Public URLs",
+          icon: LinkIcon,
+          href: `/w/${owner.sId}/builder/data-sources/public-urls`,
+          current: current === "data_sources_url",
+          subMenuLabel: undefined,
+          subMenu: undefined,
         },
       ],
     });

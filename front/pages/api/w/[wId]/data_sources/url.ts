@@ -26,6 +26,7 @@ export type PostManagedDataSourceUrlResponseBody = {
 
 export const PostManagedDataSourceUrlReqBodySchema = t.type({
   url: t.string,
+  name: t.string,
 });
 
 async function handler(
@@ -79,7 +80,7 @@ async function handler(
           },
         });
       }
-      const { url } = queryValidation.right;
+      const { url, name } = queryValidation.right;
 
       const provider: ConnectorProvider = "webcrawler";
 
@@ -138,7 +139,7 @@ async function handler(
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
-        dataSourceId: url,
+        dataSourceId: name,
         config: {
           provider_id: dataSourceProviderId,
           model_id: dataSourceModelId,
@@ -170,7 +171,7 @@ async function handler(
       }
 
       let dataSource = await DataSource.create({
-        name: url,
+        name: name,
         description: url,
         visibility: "private",
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
@@ -183,7 +184,7 @@ async function handler(
         provider,
         owner.sId,
         systemAPIKeyRes.value.secret,
-        url,
+        name,
         {
           url,
           type: "url",

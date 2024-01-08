@@ -62,6 +62,8 @@ export async function crawlWebsite(
           .remove(["style", "script", "iframe"])
           .turndown($.html());
 
+        const pageTitle = $("title").text();
+
         // Finally, we have to add the URLs to the queue
         // await crawler.addRequests(absoluteUrls);
         await enqueueLinks();
@@ -74,44 +76,50 @@ export async function crawlWebsite(
           if (createdFolders.has(folder)) {
             continue;
           }
+
+          const logicalParent =
+            folder === webCrawlerConfig.url ? null : getFolderForUrl(folder);
           await WebCrawlerFolder.upsert({
             url: folder,
-            parentUrl: getFolderForUrl(folder),
+            parentUrl: logicalParent,
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
             ressourceType: "folder",
-            dustDocumentId: null,
+            title: null,
           });
           createdFolders.add(folder);
         }
 
+        const logicalParent =
+          request.url === webCrawlerConfig.url
+            ? null
+            : getFolderForUrl(request.url);
         const updatedFolder = await WebCrawlerFolder.upsert({
           url: request.url,
-          parentUrl: getFolderForUrl(request.url),
+          parentUrl: logicalParent,
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
           ressourceType: "file",
-          dustDocumentId: request.url,
+          title: pageTitle,
         });
 
         await upsertToDatasource({
           dataSourceConfig,
-          documentId: encodeURIComponent(
-            updatedFolder[0].dustDocumentId as string
-          ),
+          documentId: updatedFolder[0].id.toString(),
           documentContent: {
-            prefix: null,
+            prefix: pageTitle,
             content: extracted,
             sections: [],
           },
           documentUrl: request.url,
           timestampMs: new Date().getTime(),
-          tags: [],
+          tags: [`title:${pageTitle.substring(0, 300)}`],
           parents: folders,
           upsertContext: {
             sync_type: "batch",
           },
         });
+
         await reportInitialSyncProgress(
           connector.id,
           `Crawled ${pageCount} pages.`

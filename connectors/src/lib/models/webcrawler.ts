@@ -58,9 +58,9 @@ export class WebCrawlerFolder extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare url: string;
+  declare title: string | null;
   declare parentUrl: string | null;
-  declare dustDocumentId: string | null;
+  declare url: string;
   declare ressourceType: ConnectorResourceType;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
@@ -87,6 +87,10 @@ WebCrawlerFolder.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     parentUrl: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -94,10 +98,6 @@ WebCrawlerFolder.init(
     ressourceType: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    dustDocumentId: {
-      type: DataTypes.TEXT,
-      allowNull: true,
     },
   },
   {

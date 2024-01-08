@@ -118,7 +118,8 @@ export async function retrieveWebcrawlerConnectorPermissions({
           sourceUrl: folder.ressourceType === "file" ? folder.url : null,
           expandable: folder.ressourceType === "folder",
           permission: "read",
-          dustDocumentId: folder.dustDocumentId,
+          dustDocumentId:
+            folder.ressourceType === "file" ? folder.id.toString() : null,
           lastUpdatedAt: folder.updatedAt.getTime(),
         };
       })
