@@ -45,8 +45,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
         const pageTitle = $("title").text();
 
-        // Finally, we have to add the URLs to the queue
-        // await crawler.addRequests(absoluteUrls);
         await enqueueLinks();
 
         const folders = getAllFoldersForUrl(request.url);
@@ -132,6 +130,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   };
 }
 
+// Returns all parent folders for a given url
+// eg: https://example.com/a/b/c -> [https://example.com/a/b, https://example.com/a, https://example.com/]
 export function getAllFoldersForUrl(url: string) {
   const parents: string[] = [];
 
@@ -144,6 +144,9 @@ export function getAllFoldersForUrl(url: string) {
   return parents;
 }
 
+// Returns the parent folder for a given url
+// eg: https://example.com/foo/bar -> https://example.com/foo
+// eg: https://example.com/foo -> https://example.com/
 export function getFolderForUrl(url: string) {
   const parsed = new URL(url);
   const urlParts = parsed.pathname.split("/").filter((part) => part.length > 0);
