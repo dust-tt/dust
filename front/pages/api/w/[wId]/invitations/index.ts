@@ -49,6 +49,17 @@ async function handler(
     });
   }
 
+  const subscription = auth.subscription();
+  if (!subscription) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "The subscription was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const invitations = await getPendingInvitations(auth);
@@ -75,6 +86,17 @@ async function handler(
       }
       if (!DUST_INVITE_TOKEN_SECRET) {
         throw new Error("DUST_INVITE_TOKEN_SECRET is not set");
+      }
+
+      if (subscription.paymentFailingSince) {
+        return apiError(req, res, {
+          status_code: 402,
+          api_error: {
+            type: "subscription_payment_failed",
+            message:
+              "The subscription payment has failed, impossible to add new members.",
+          },
+        });
       }
 
       // Create MembershipInvitation

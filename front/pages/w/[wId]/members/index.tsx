@@ -182,7 +182,11 @@ export default function WorkspaceAdmin({
       builder: "amber",
       user: "emerald",
     };
-    const [showNoInviteEmailPopup, setShowNoInviteEmailPopup] = useState(false);
+    const [showNoInviteFreePlanPopup, setShowNoInviteFreePlanPopup] =
+      useState(false);
+    const [showNoInviteFailedPaymentPopup, setShowNoInviteFailedPaymentPopup] =
+      useState(false);
+
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
     const { invitations, isInvitationsLoading } =
@@ -271,12 +275,14 @@ export default function WorkspaceAdmin({
                 icon={PlusIcon}
                 onClick={() => {
                   if (plan.code === FREE_TEST_PLAN_CODE)
-                    setShowNoInviteEmailPopup(true);
+                    setShowNoInviteFreePlanPopup(true);
+                  else if (subscription.paymentFailingSince)
+                    setShowNoInviteFailedPaymentPopup(true);
                   else setInviteEmailModalOpen(true);
                 }}
               />
               <Popup
-                show={showNoInviteEmailPopup}
+                show={showNoInviteFreePlanPopup}
                 chipLabel="Free plan"
                 description="You cannot invite other members with the free plan. Upgrade your plan for unlimited members."
                 buttonLabel="Check Dust plans"
@@ -284,7 +290,18 @@ export default function WorkspaceAdmin({
                   void router.push(`/w/${owner.sId}/subscription`);
                 }}
                 className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteEmailPopup(false)}
+                onClose={() => setShowNoInviteFreePlanPopup(false)}
+              />
+              <Popup
+                show={showNoInviteFailedPaymentPopup}
+                chipLabel="Failed Payment"
+                description="You cannot invite other members while your workspace has a failed payment."
+                buttonLabel="Check Subscription"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                className="absolute bottom-8 right-0"
+                onClose={() => setShowNoInviteFailedPaymentPopup(false)}
               />
             </div>
           </div>
