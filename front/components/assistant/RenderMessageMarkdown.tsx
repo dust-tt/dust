@@ -538,9 +538,9 @@ function LiBlock({ children }: { children: React.ReactNode }) {
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return (
-    <p className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
       {children}
-    </p>
+    </div>
   );
 }
 
