@@ -148,7 +148,6 @@ export class Subscription extends Model<
 
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
-  declare paymentStatus: string | null; // to be removed
   declare paymentFailingSince: Date | null;
 
   declare startDate: Date;
@@ -190,10 +189,6 @@ Subscription.init(
       validate: {
         isIn: [SUBSCRIPTION_STATUSES],
       },
-    },
-    paymentStatus: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     paymentFailingSince: {
       type: DataTypes.DATE,
