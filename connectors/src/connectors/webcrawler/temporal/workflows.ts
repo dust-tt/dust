@@ -14,6 +14,6 @@ export async function crawlWebsiteWorkflow(
   await crawlWebsiteByConnectorId(connectorId);
 }
 
-export  function crawlWebsiteWorkflowId(connectorId: ModelId) {
+export function crawlWebsiteWorkflowId(connectorId: ModelId) {
   return `webcrawler-${connectorId}`;
 }

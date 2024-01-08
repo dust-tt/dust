@@ -1,7 +1,4 @@
-import {
-  ConnectorProvider,
-  DataSourceType,
-} from "@dust-tt/types";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";

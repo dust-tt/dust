@@ -57,12 +57,9 @@ export async function launchCrawlWebsiteWorkflow(
   }
 }
 
-
 export async function stopCrawlWebsiteWorkflow(
   connectorId: ModelId
 ): Promise<Result<void, Error>> {
-  
-
   const client = await getTemporalClient();
 
   const workflowId = crawlWebsiteWorkflowId(connectorId);
@@ -76,7 +73,7 @@ export async function stopCrawlWebsiteWorkflow(
         throw e;
       }
     }
-  return new Ok(undefined);
+    return new Ok(undefined);
   } catch (e) {
     logger.error(
       {

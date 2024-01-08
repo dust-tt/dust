@@ -75,7 +75,7 @@ export default function DataSourceNew({
 
   const formValidation = useCallback(() => {
     const urlRegex =
-      /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
 
     let edited = false;
     let valid = true;
@@ -137,7 +137,7 @@ export default function DataSourceNew({
       }),
     });
     if (res.ok) {
-      await router.push(`/w/${owner.sId}/builder/data-sources/urls`);
+      await router.push(`/w/${owner.sId}/builder/data-sources/public-urls`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setIsSaving(false);
@@ -167,7 +167,9 @@ export default function DataSourceNew({
               : undefined
           }
           onCancel={() => {
-            void router.push(`/w/${owner.sId}/builder/data-sources/urls`);
+            void router.push(
+              `/w/${owner.sId}/builder/data-sources/public-urls`
+            );
           }}
         />
       }
@@ -175,8 +177,8 @@ export default function DataSourceNew({
     >
       <div className="flex flex-1 flex-col space-y-4">
         <Page.SectionHeader
-          title="Synchronize a new website (TBD)"
-          description="TBD"
+          title="Add a new public URL"
+          description="Provide the public URL to be added."
         />
         <div>
           <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
@@ -185,7 +187,7 @@ export default function DataSourceNew({
                 htmlFor="dataSourceName"
                 className="block text-sm font-medium text-gray-700"
               >
-                URL
+                Public URL
               </label>
               <div className="mt-1 flex rounded-md shadow-sm">
                 <input
@@ -203,7 +205,8 @@ export default function DataSourceNew({
                 />
               </div>
               <p className="mt-2 text-sm text-gray-500">
-                Think GitHub repository names, short and memorable.
+                This is the highest level URL on the selected domain that will
+                be crawled.
               </p>
             </div>
             <div className="mt-2 sm:col-span-6">
@@ -212,7 +215,7 @@ export default function DataSourceNew({
                   htmlFor="assistantDefaultSelected"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Availability to @dust
+                  Availability to the @dust assistant
                 </label>
               </div>
               <div className="mt-2 flex items-center">
@@ -221,7 +224,7 @@ export default function DataSourceNew({
                   onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  Make this Website available to the{" "}
+                  Make this public URL available to the{" "}
                   <span className="font-semibold">@dust</span> assistant.
                 </p>
               </div>

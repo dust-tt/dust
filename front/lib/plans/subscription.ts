@@ -79,7 +79,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
           isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
           isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
           isIntercomAllowed: freeTestPlan.isManagedIntercomAllowed,
-          isWebCrawlerAllowed: freeTestPlan.isWebCrawlerAllowed,
+          isWebCrawlerAllowed: freeTestPlan.isManagedWebCrawlerAllowed,
         },
         dataSources: {
           count: freeTestPlan.maxDataSourcesCount,
@@ -177,6 +177,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
             isGithubAllowed: plan.isManagedGithubAllowed,
             isIntercomAllowed: plan.isManagedIntercomAllowed,
+            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
           },
           dataSources: {
             count: plan.maxDataSourcesCount,
@@ -332,7 +333,7 @@ export const getCheckoutUrlForUpgrade = async (
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
           isGithubAllowed: plan.isManagedGithubAllowed,
           isIntercomAllowed: plan.isManagedIntercomAllowed,
-          isWebCrawlerAllowed: plan.isWebCrawlerAllowed,
+          isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
         },
         dataSources: {
           count: plan.maxDataSourcesCount,

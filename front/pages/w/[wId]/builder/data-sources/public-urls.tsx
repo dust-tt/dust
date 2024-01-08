@@ -99,7 +99,7 @@ export default function DataSourcesView({
     ) {
       setShowDatasourceLimitPopup(true);
     } else {
-      void router.push(`/w/${owner.sId}/builder/data-sources/new_url`);
+      void router.push(`/w/${owner.sId}/builder/data-sources/new-public-url`);
     }
   });
 
@@ -117,9 +117,9 @@ export default function DataSourcesView({
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Websites"
+          title="Public URLs"
           icon={LinkIcon}
-          description="Synchronize a public website to a Dust Data Source."
+          description="Manage public URLs as data sources for the workspace."
         />
 
         {dataSources.length > 0 ? (
@@ -130,7 +130,7 @@ export default function DataSourcesView({
               action={
                 !readOnly
                   ? {
-                      label: "Add a new website",
+                      label: "Add a public URL",
                       variant: "primary",
                       icon: PlusIcon,
                       onClick: async () => {

@@ -183,7 +183,7 @@ async function handler(
           body.limits.connections.isGoogleDriveAllowed,
         isManagedGithubAllowed: body.limits.connections.isGithubAllowed,
         isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
-        isManagedWebcrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
+        isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

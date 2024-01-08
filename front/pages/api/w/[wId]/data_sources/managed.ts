@@ -220,7 +220,10 @@ async function handler(
         owner.sId,
         systemAPIKeyRes.value.secret,
         dataSourceName,
-        req.body.connectionId
+        {
+          connectionId: req.body.connectionId as string,
+          type: "oauth",
+        }
       );
       if (connectorsRes.isErr()) {
         logger.error(

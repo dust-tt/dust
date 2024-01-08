@@ -96,7 +96,7 @@ async function handler(
       const docRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: encodeURIComponent(dataSource.name),
-        documentId: encodeURIComponent( req.query.documentId as string),
+        documentId: encodeURIComponent(req.query.documentId as string),
       });
 
       if (docRes.isErr()) {

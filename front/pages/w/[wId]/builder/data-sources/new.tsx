@@ -256,7 +256,7 @@ export default function DataSourceNew({
                   htmlFor="assistantDefaultSelected"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Availability to @dust
+                  Availability to the @dust assistant
                 </label>
               </div>
               <div className="mt-2 flex items-center">

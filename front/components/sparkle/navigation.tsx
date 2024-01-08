@@ -231,9 +231,9 @@ export const subNavigationAssistants = ({
       },
       {
         id: "data_sources_url",
-        label: "Websites",
+        label: "Public URLs",
         icon: LinkIcon,
-        href: `/w/${owner.sId}/builder/data-sources/urls`,
+        href: `/w/${owner.sId}/builder/data-sources/public-urls`,
         current: current === "data_sources_url",
         subMenuLabel: undefined,
         subMenu: undefined,
