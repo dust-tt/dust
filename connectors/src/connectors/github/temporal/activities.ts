@@ -811,6 +811,7 @@ export async function githubCodeSyncActivity(
       // Read file (files are 1MB at most).
       const content = await fs.readFile(f.localFilePath);
       const contentHash = blake3(content).toString("hex");
+      const parentInternalId = f.parentInternalId || rootInternalId;
 
       // Find file or create it with an empty contentHash.
       let githubCodeFile = await GithubCodeFile.findOne({
@@ -826,7 +827,7 @@ export async function githubCodeSyncActivity(
           connectorId: connector.id,
           repoId,
           documentId: f.documentId,
-          parentInternalId: f.parentInternalId || rootInternalId,
+          parentInternalId,
           fileName: f.fileName,
           sourceUrl: f.sourceUrl,
           contentHash: "",
@@ -836,10 +837,21 @@ export async function githubCodeSyncActivity(
         });
       }
 
-      // We update if the file name or source url or content has changed.
+      // If the parents have updated then the documentId gets updated as well so we should never
+      // have an udpate to parentInternalId. We check that this is always the case. If the file is
+      // moved (the parents change) then it will trigger the creation of a new file with a new
+      // docuemntId and the existing GithubCodeFile (with old documentId) will be cleaned up at the
+      // end of the activity.
+      if (parentInternalId !== githubCodeFile.parentInternalId) {
+        throw new Error(
+          `File parentInternalId mismatch for ${connector.id}/${f.documentId}` +
+            ` (expected ${parentInternalId}, got ${githubCodeFile.parentInternalId})`
+        );
+      }
+
+      // We update the if the file name, source url or content has changed.
       const needsUpdate =
         f.fileName !== githubCodeFile.fileName ||
-        f.parentInternalId !== githubCodeFile.parentInternalId ||
         f.sourceUrl !== githubCodeFile.sourceUrl ||
         contentHash === githubCodeFile.contentHash;
 
@@ -873,7 +885,6 @@ export async function githubCodeSyncActivity(
 
         // Finally update the file.
         githubCodeFile.fileName = f.fileName;
-        githubCodeFile.parentInternalId = f.parentInternalId || rootInternalId;
         githubCodeFile.sourceUrl = f.sourceUrl;
         githubCodeFile.contentHash = contentHash;
         githubCodeFile.updatedAt = codeSyncStartedAt;
@@ -885,6 +896,8 @@ export async function githubCodeSyncActivity(
     }
 
     for (const d of directories) {
+      const parentInternalId = d.parentInternalId || rootInternalId;
+
       // Find directory or create it.
       let githubCodeDirectory = await GithubCodeDirectory.findOne({
         where: {
@@ -899,13 +912,25 @@ export async function githubCodeSyncActivity(
           connectorId: connector.id,
           repoId,
           internalId: d.internalId,
-          parentInternalId: d.parentInternalId || rootInternalId,
+          parentInternalId,
           dirName: d.dirName,
           sourceUrl: d.sourceUrl,
           createdAt: codeSyncStartedAt,
           updatedAt: codeSyncStartedAt,
           lastSeenAt: codeSyncStartedAt,
         });
+      }
+
+      // If the parents have updated then the internalId gets updated as well so we should never
+      // have an udpate to parentInternalId. We check that this is always the case. If the directory
+      // is moved (the parents change) then it will trigger the creation of a new directory with a
+      // new internalId and the existing GithubCodeDirectory (with old internalId) will be cleaned
+      // up at the end of the activity.
+      if (parentInternalId !== githubCodeDirectory.parentInternalId) {
+        throw new Error(
+          `Directory parentInternalId mismatch for ${connector.id}/${d.internalId}` +
+            ` (expected ${parentInternalId}, got ${githubCodeDirectory.parentInternalId})`
+        );
       }
 
       // If some files were updated as part of the sync, refresh the directory updatedAt.
@@ -915,8 +940,6 @@ export async function githubCodeSyncActivity(
 
       // Update everything else.
       githubCodeDirectory.dirName = d.dirName;
-      githubCodeDirectory.parentInternalId =
-        d.parentInternalId || rootInternalId;
       githubCodeDirectory.sourceUrl = d.sourceUrl;
       githubCodeDirectory.lastSeenAt = codeSyncStartedAt;
 
