@@ -3,9 +3,7 @@ import {
   FreeBillingType,
   PAID_BILLING_TYPES,
   PaidBillingType,
-  SUBSCRIPTION_PAYMENT_STATUSES,
   SUBSCRIPTION_STATUSES,
-  SubscriptionPaymentStatusType,
   SubscriptionStatusType,
 } from "@dust-tt/types";
 import {
@@ -150,7 +148,9 @@ export class Subscription extends Model<
 
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
-  declare paymentStatus: SubscriptionPaymentStatusType | null;
+  declare paymentStatus: string | null; // to be removed
+  declare paymentFailingSince: Date | null;
+
   declare startDate: Date;
   declare endDate: Date | null;
 
@@ -194,9 +194,10 @@ Subscription.init(
     paymentStatus: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        isIn: [SUBSCRIPTION_PAYMENT_STATUSES],
-      },
+    },
+    paymentFailingSince: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     startDate: {
       type: DataTypes.DATE,

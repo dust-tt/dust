@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   Button,
   Chip,
   ExternalLinkIcon,
@@ -215,10 +216,22 @@ export default function Subscription({
                     <Page.H variant="h5">Payment, invoicing & billing</Page.H>
                     <div className="pt-2">
                       <Button
-                        icon={ExternalLinkIcon}
+                        icon={
+                          subscription.paymentFailingSince
+                            ? ArrowPathIcon
+                            : ExternalLinkIcon
+                        }
                         size="sm"
-                        variant="secondary"
-                        label="Visit Dust's dashboard on Stripe"
+                        variant={
+                          subscription.paymentFailingSince
+                            ? "secondaryWarning"
+                            : "secondary"
+                        }
+                        label={
+                          subscription.paymentFailingSince
+                            ? "Update your payment method"
+                            : "Visit Dust's dashboard on Stripe"
+                        }
                         disabled={isProcessing}
                         onClick={async () => await handleGoToStripePortal()}
                       />
