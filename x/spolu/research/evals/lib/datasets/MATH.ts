@@ -12,21 +12,35 @@ type ExampleMATH = {
   reasoning: string[];
 };
 
+// const FOCUS = [
+//   // "algebra-l1-1142", // (15->16) [easy]
+//   "algebra-l1-190", // (15->7)
+//   // "algebra-l4-1057", // (3->0)
+//   "counting_and_probability-l4-430", // (7->15)
+//   // "counting_and_probability-l4-504", // (7->0)
+//   "intermediate_algebra-l4-1588", // (0->2)
+//   "intermediate_algebra-l4-1799", // (1->4)
+//   "number_theory-l1-640", // (15->11)
+//   "number_theory-l2-237", // (9->9)
+//   // "number_theory-l3-511", // (13->16) [easy]
+//   // "prealgebra-l5-1404", // (3->2)
+//   "prealgebra-l5-2078", // (9->5)
+//   // "precalculus-l2-1101", // (15->16) [easy]
+//   "precalculus-l5-1115", // (0->3)
+// ];
+
 const FOCUS = [
-  // "algebra-l1-1142", // (15->16) [easy]
-  "algebra-l1-190", // (15->7)
-  // "algebra-l4-1057", // (3->0)
-  "counting_and_probability-l4-430", // (7->15)
-  // "counting_and_probability-l4-504", // (7->0)
-  "intermediate_algebra-l4-1588", // (0->2)
-  "intermediate_algebra-l4-1799", // (1->4)
-  "number_theory-l1-640", // (15->11)
-  "number_theory-l2-237", // (9->9)
-  // "number_theory-l3-511", // (13->16) [easy]
-  // "prealgebra-l5-1404", // (3->2)
-  "prealgebra-l5-2078", // (9->5)
-  // "precalculus-l2-1101", // (15->16) [easy]
-  "precalculus-l5-1115", // (0->3)
+  "algebra-l5-2176", // (2->12)
+  "counting_and_probability-l5-1026", // (5->1)
+  "geometry-l3-528", // (11->0)
+  "intermediate_algebra-l3-1839", // (9->0)
+  "number_theory-l1-640", // (10->0)
+  "number_theory-l5-380", // (4->0)
+  "prealgebra-l3-1392", // (5->12)
+  "prealgebra-l5-1404", // (4->12)
+  "prealgebra-l5-2078", // (7->0->12)
+  "precalculus-l3-1024", // (8->0)
+  "precalculus-l5-1115", // (0->11->3)
 ];
 const MATH_FOCUS = true;
 

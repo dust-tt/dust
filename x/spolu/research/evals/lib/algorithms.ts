@@ -15,6 +15,8 @@ export type TestResult = {
 };
 
 export abstract class Algorithm {
+  readonly CACHE = false;
+
   private history: {
     createdAt: number;
     runId: string;
@@ -75,17 +77,25 @@ export abstract class Algorithm {
     completion: ChatCompletion;
     check: boolean;
   }) {
-    // console.log("STORE", hashQuery(query));
-    const db = await this.sqlite();
-
     const now = Date.now();
 
-    await db.run(
-      "INSERT INTO store " +
-        "(created_at, run_id, test, query_hash, completion) " +
-        "VALUES (?, ?, ?, ?, ?)",
-      [now, this.runId(), test.id, hashQuery(query), JSON.stringify(completion)]
-    );
+    if (this.CACHE) {
+      // console.log("STORE", hashQuery(query));
+      const db = await this.sqlite();
+
+      await db.run(
+        "INSERT INTO store " +
+          "(created_at, run_id, test, query_hash, completion) " +
+          "VALUES (?, ?, ?, ?, ?)",
+        [
+          now,
+          this.runId(),
+          test.id,
+          hashQuery(query),
+          JSON.stringify(completion),
+        ]
+      );
+    }
 
     this.history.push({
       createdAt: now,
@@ -98,15 +108,17 @@ export abstract class Algorithm {
   }
 
   async runCompletion(query: ChatQuery): Promise<ChatCompletion> {
-    // console.log("RUN", hashQuery(query));
-    const db = await this.sqlite();
+    if (this.CACHE) {
+      // console.log("RUN", hashQuery(query));
+      const db = await this.sqlite();
 
-    const result = await db.get(
-      "SELECT * FROM store WHERE run_id = ? AND query_hash = ?",
-      [this.runId(), hashQuery(query)]
-    );
-    if (result) {
-      return JSON.parse(result.completion);
+      const result = await db.get(
+        "SELECT * FROM store WHERE run_id = ? AND query_hash = ?",
+        [this.runId(), hashQuery(query)]
+      );
+      if (result) {
+        return JSON.parse(result.completion);
+      }
     }
 
     return await this.model.completionWithRetry(query);
