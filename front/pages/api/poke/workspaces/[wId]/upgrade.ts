@@ -5,7 +5,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
   internalSubscribeWorkspaceToFreeUpgradedPlan,
-  pokeInviteWorkspaceToEnterprisePlan,
+  pokeUpgradeOrInviteWorkspaceToPlan,
 } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -45,7 +45,7 @@ async function handler(
           workspaceId: owner.sId,
         });
       } else {
-        await pokeInviteWorkspaceToEnterprisePlan(auth, planCode);
+        await pokeUpgradeOrInviteWorkspaceToPlan(auth, planCode);
       }
 
       return res.status(200).json({
