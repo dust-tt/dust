@@ -2,7 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
-use crate::databases::database::{Database, DatabaseTable};
+use crate::databases::database::{Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -181,7 +181,7 @@ pub trait Store {
         table_id: &str,
         name: &str,
         description: &str,
-    ) -> Result<DatabaseTable>;
+    ) -> Result<Table>;
     async fn update_table_schema(
         &self,
         project: &Project,
@@ -194,13 +194,13 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-    ) -> Result<Option<DatabaseTable>>;
+    ) -> Result<Option<Table>>;
     async fn list_tables(
         &self,
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseTable>, usize)>;
+    ) -> Result<(Vec<Table>, usize)>;
     async fn delete_table(
         &self,
         project: &Project,

@@ -1,6 +1,6 @@
 use super::helpers::get_data_source_project;
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::DatabaseTable;
+use crate::databases::database::Table;
 use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
 use async_trait::async_trait;
@@ -102,7 +102,7 @@ impl Block for DatabaseSchema {
 pub async fn load_tables_from_identifiers(
     table_identifiers: &Vec<(&String, &String, &String)>,
     env: &Env,
-) -> Result<Vec<DatabaseTable>> {
+) -> Result<Vec<Table>> {
     // Get a vec of unique (workspace_id, data_source_id) pairs.
     let data_source_identifiers = table_identifiers
         .iter()

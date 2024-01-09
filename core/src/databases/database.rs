@@ -29,10 +29,10 @@ impl ToString for DatabaseType {
 }
 
 pub async fn query_database(
-    tables: &Vec<DatabaseTable>,
+    tables: &Vec<Table>,
     store: Box<dyn Store + Sync + Send>,
     query: &str,
-) -> Result<(Vec<DatabaseResult>, TableSchema)> {
+) -> Result<(Vec<QueryResult>, TableSchema)> {
     let table_ids_hash = tables.iter().map(|t| t.unique_id()).sorted().join("/");
     let database = store
         .upsert_database(&table_ids_hash, HEARTBEAT_INTERVAL_MS)
@@ -110,7 +110,7 @@ impl Database {
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
-pub struct DatabaseTable {
+pub struct Table {
     project: Project,
     data_source_id: String,
     created: u64,
@@ -121,15 +121,11 @@ pub struct DatabaseTable {
     schema: Option<TableSchema>,
 }
 
-pub fn get_database_table_unique_id(
-    project: &Project,
-    data_source_id: &str,
-    table_id: &str,
-) -> String {
+pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
     format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
 
-impl DatabaseTable {
+impl Table {
     pub fn new(
         project: &Project,
         data_source_id: &str,
@@ -139,7 +135,7 @@ impl DatabaseTable {
         description: &str,
         schema: &Option<TableSchema>,
     ) -> Self {
-        DatabaseTable {
+        Table {
             project: project.clone(),
             data_source_id: data_source_id.to_string(),
             created,
@@ -172,7 +168,7 @@ impl DatabaseTable {
         self.schema.as_ref()
     }
     pub fn unique_id(&self) -> String {
-        get_database_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
+        get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
     }
 
     pub fn render_dbml(&self) -> String {
@@ -201,7 +197,7 @@ impl DatabaseTable {
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
-        rows: &Vec<DatabaseRow>,
+        rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
         // Upsert the rows in the table.
@@ -231,7 +227,7 @@ impl DatabaseTable {
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
-    ) -> Result<Option<DatabaseRow>> {
+    ) -> Result<Option<Row>> {
         databases_store
             .load_table_row(&self.unique_id(), row_id)
             .await
@@ -241,7 +237,7 @@ impl DatabaseTable {
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseRow>, usize)> {
+    ) -> Result<(Vec<Row>, usize)> {
         databases_store
             .list_table_rows(&self.unique_id(), limit_offset)
             .await
@@ -253,14 +249,14 @@ pub trait HasValue {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct DatabaseRow {
+pub struct Row {
     row_id: String,
     value: Value,
 }
 
-impl DatabaseRow {
+impl Row {
     pub fn new(row_id: String, value: Value) -> Self {
-        DatabaseRow { row_id, value }
+        Row { row_id, value }
     }
 
     pub fn row_id(&self) -> &str {
@@ -271,18 +267,18 @@ impl DatabaseRow {
     }
 }
 
-impl HasValue for DatabaseRow {
+impl HasValue for Row {
     fn value(&self) -> &Value {
         &self.value
     }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct DatabaseResult {
+pub struct QueryResult {
     pub value: Value,
 }
 
-impl HasValue for DatabaseResult {
+impl HasValue for QueryResult {
     fn value(&self) -> &Value {
         &self.value
     }
@@ -310,12 +306,12 @@ mod tests {
             "description": "not null anymore and prety long so that it's not shown in note",
         });
         let rows = &vec![
-            DatabaseRow::new("1".to_string(), row_1),
-            DatabaseRow::new("2".to_string(), row_2),
+            Row::new("1".to_string(), row_1),
+            Row::new("2".to_string(), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
-        let table = DatabaseTable::new(
+        let table = Table::new(
             &Project::new_from_id(42),
             "data_source_id",
             utils::now(),

@@ -17,7 +17,7 @@ use dust::{
         data_source::{self, SearchFilter, Section},
         qdrant::QdrantClients,
     },
-    databases::database::{query_database, DatabaseRow, DatabaseTable},
+    databases::database::{query_database, Row, Table},
     databases_store::{store as databases_store, store::DatabasesStore},
     dataset,
     project::{self},
@@ -1864,7 +1864,7 @@ async fn tables_list(
 
 #[derive(serde::Deserialize)]
 struct TablesRowsUpsertPayload {
-    rows: Vec<DatabaseRow>,
+    rows: Vec<Row>,
     truncate: Option<bool>,
 }
 
@@ -2083,7 +2083,7 @@ async fn databases_query_run(
         ),
         Ok(tables) => {
             // Check that all tables exist.
-            match tables.into_iter().collect::<Option<Vec<DatabaseTable>>>() {
+            match tables.into_iter().collect::<Option<Vec<Table>>>() {
                 None => {
                     return error_response(
                         StatusCode::NOT_FOUND,

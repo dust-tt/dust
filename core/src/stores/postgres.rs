@@ -3,7 +3,7 @@ use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
-use crate::databases::database::{get_database_table_unique_id, Database, DatabaseTable};
+use crate::databases::database::{get_table_unique_id, Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -2123,7 +2123,7 @@ impl Store for PostgresStore {
                 &stmt,
                 &[&format!(
                     "%{}%",
-                    get_database_table_unique_id(project, &data_source_id, &table_id)
+                    get_table_unique_id(project, &data_source_id, &table_id)
                 )],
             )
             .await?;
@@ -2151,7 +2151,7 @@ impl Store for PostgresStore {
         table_id: &str,
         name: &str,
         description: &str,
-    ) -> Result<DatabaseTable> {
+    ) -> Result<Table> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -2201,7 +2201,7 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(DatabaseTable::new(
+        Ok(Table::new(
             project,
             &data_source_id,
             table_created,
@@ -2264,7 +2264,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-    ) -> Result<Option<DatabaseTable>> {
+    ) -> Result<Option<Table>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
         let table_id = table_id.to_string();
@@ -2318,7 +2318,7 @@ impl Store for PostgresStore {
                         }
                     }
                 };
-                Ok(Some(DatabaseTable::new(
+                Ok(Some(Table::new(
                     project,
                     &data_source_id,
                     created as u64,
@@ -2336,7 +2336,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseTable>, usize)> {
+    ) -> Result<(Vec<Table>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -2382,7 +2382,7 @@ impl Store for PostgresStore {
             }
         };
 
-        let tables: Vec<DatabaseTable> = rows
+        let tables: Vec<Table> = rows
             .into_iter()
             .map(|r| {
                 let created: i64 = r.get(0);
@@ -2402,7 +2402,7 @@ impl Store for PostgresStore {
                     }
                 };
 
-                Ok(DatabaseTable::new(
+                Ok(Table::new(
                     project,
                     &data_source_id,
                     created as u64,

@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use dust::{
-    databases::database::DatabaseTable,
+    databases::database::Table,
     databases_store::{self, store::DatabasesStore},
     sqlite_workers::sqlite_database::SqliteDatabase,
     utils::{self, error_response, APIResponse},
@@ -159,7 +159,7 @@ async fn index() -> &'static str {
 #[derive(Deserialize)]
 struct DbQueryPayload {
     query: String,
-    tables: Vec<DatabaseTable>,
+    tables: Vec<Table>,
 }
 
 async fn databases_query(

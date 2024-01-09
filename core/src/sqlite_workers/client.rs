@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    databases::database::{DatabaseResult, DatabaseTable},
+    databases::database::{QueryResult, Table},
     utils,
 };
 
@@ -38,9 +38,9 @@ impl SqliteWorker {
     pub async fn execute_query(
         &self,
         database_unique_id: &str,
-        tables: &Vec<DatabaseTable>,
+        tables: &Vec<Table>,
         query: &str,
-    ) -> Result<Vec<DatabaseResult>> {
+    ) -> Result<Vec<QueryResult>> {
         let worker_url = self.url();
 
         let req = Request::builder()
@@ -60,7 +60,7 @@ impl SqliteWorker {
         #[derive(Deserialize)]
         struct ExecuteQueryResponseBody {
             error: Option<String>,
-            response: Option<Vec<DatabaseResult>>,
+            response: Option<Vec<QueryResult>>,
         }
 
         match res.status().as_u16() {

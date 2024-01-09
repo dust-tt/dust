@@ -5,21 +5,21 @@ use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use tokio_postgres::{types::ToSql, NoTls};
 
-use crate::{databases::database::DatabaseRow, utils};
+use crate::{databases::database::Row, utils};
 
 #[async_trait]
 pub trait DatabasesStore {
     async fn init(&self) -> Result<()>;
-    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<DatabaseRow>>;
+    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>>;
     async fn list_table_rows(
         &self,
         table_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseRow>, usize)>;
+    ) -> Result<(Vec<Row>, usize)>;
     async fn batch_upsert_table_rows(
         &self,
         table_id: &str,
-        rows: &Vec<DatabaseRow>,
+        rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()>;
     async fn delete_table_rows(&self, table_id: &str) -> Result<()>;
@@ -60,7 +60,7 @@ impl DatabasesStore for PostgresDatabasesStore {
         Ok(())
     }
 
-    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<DatabaseRow>> {
+    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -83,9 +83,7 @@ impl DatabasesStore for PostgresDatabasesStore {
 
         match d {
             None => Ok(None),
-            Some((_, row_id, data)) => {
-                Ok(Some(DatabaseRow::new(row_id, serde_json::from_str(&data)?)))
-            }
+            Some((_, row_id, data)) => Ok(Some(Row::new(row_id, serde_json::from_str(&data)?))),
         }
     }
 
@@ -93,7 +91,7 @@ impl DatabasesStore for PostgresDatabasesStore {
         &self,
         table_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<DatabaseRow>, usize)> {
+    ) -> Result<(Vec<Row>, usize)> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -116,13 +114,13 @@ impl DatabasesStore for PostgresDatabasesStore {
 
         let rows = c.query(&query, &params).await?;
 
-        let rows: Vec<DatabaseRow> = rows
+        let rows: Vec<Row> = rows
             .iter()
             .map(|row| {
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
                 let content: Value = serde_json::from_str(&data)?;
-                Ok(DatabaseRow::new(row_id, content))
+                Ok(Row::new(row_id, content))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -148,7 +146,7 @@ impl DatabasesStore for PostgresDatabasesStore {
     async fn batch_upsert_table_rows(
         &self,
         table_id: &str,
-        rows: &Vec<DatabaseRow>,
+        rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
         let pool = self.pool.clone();
