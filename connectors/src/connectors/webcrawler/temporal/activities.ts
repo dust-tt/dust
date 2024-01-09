@@ -68,8 +68,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             parentUrl: logicalParent,
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
-            // folders are not upserted to the datasource, but their ids are used
-            // as parents for the documents in the folder.
             dustDocumentId: stableIdForUrl({
               url: folder,
               ressourceType: "folder",
