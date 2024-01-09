@@ -16,7 +16,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 
-const MAX_DEPTH = 20;
+const MAX_DEPTH = 5;
 const MAX_PAGES = 1000;
 const CONCURRENCY = 10;
 
