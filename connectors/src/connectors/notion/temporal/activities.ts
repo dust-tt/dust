@@ -3,7 +3,6 @@ import { isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
-import { cachedConfig } from "@connectors/connectors/config";
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
   getNotionDatabaseFromConnectorsDb,
