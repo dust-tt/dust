@@ -64,6 +64,9 @@ export async function workspaceFullSync(
           i++;
           return await executeChild(syncOneChannel, {
             workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+            searchAttributes: {
+              connectorId: [connectorId],
+            },
             args: [connectorId, channelId, false, fromTs],
             memo: workflowInfo().memo,
           });
@@ -76,6 +79,9 @@ export async function workspaceFullSync(
 
   await executeChild(slackGarbageCollectorWorkflow, {
     workflowId: slackGarbageCollectorWorkflowId(connectorId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
     args: [connectorId],
     memo: workflowInfo().memo,
   });

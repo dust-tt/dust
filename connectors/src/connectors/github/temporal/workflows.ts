@@ -45,10 +45,10 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 3;
 
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string
+  githubInstallationId: string,
+  connectorId: string
 ) {
   await githubSaveStartSyncActivity(dataSourceConfig);
-
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -78,6 +78,9 @@ export async function githubFullSyncWorkflow(
         queue.add(() =>
           executeChild(githubRepoSyncWorkflow, {
             workflowId: childWorkflowId,
+            searchAttributes: {
+              connectorId: [parseInt(connectorId)],
+            },
             args: [
               dataSourceConfig,
               githubInstallationId,
@@ -102,7 +105,8 @@ export async function githubReposSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string,
   orgLogin: string,
-  repos: { name: string; id: number }[]
+  repos: { name: string; id: number }[],
+  connectorId: string
 ) {
   const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
   const promises: Promise<void>[] = [];
@@ -114,6 +118,9 @@ export async function githubReposSyncWorkflow(
       queue.add(() =>
         executeChild(githubRepoSyncWorkflow, {
           workflowId: childWorkflowId,
+          searchAttributes: {
+            connectorId: [parseInt(connectorId)],
+          },
           args: [
             dataSourceConfig,
             githubInstallationId,

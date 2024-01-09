@@ -55,7 +55,7 @@ export async function launchGithubFullSyncWorkflow(connectorId: string) {
   }
 
   await client.workflow.start(githubFullSyncWorkflow, {
-    args: [dataSourceConfig, githubInstallationId],
+    args: [dataSourceConfig, githubInstallationId, connectorId],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
@@ -110,7 +110,13 @@ export async function launchGithubReposSyncWorkflow(
   const githubInstallationId = connector.connectionId;
 
   await client.workflow.start(githubReposSyncWorkflow, {
-    args: [dataSourceConfig, githubInstallationId, orgLogin, repos],
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      orgLogin,
+      repos,
+      connectorId,
+    ],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
