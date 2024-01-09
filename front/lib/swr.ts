@@ -14,7 +14,6 @@ import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import { ListDatabasesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases";
-import { ListDatabaseTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases/[dId]/tables";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
