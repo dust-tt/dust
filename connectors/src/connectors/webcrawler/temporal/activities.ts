@@ -1,4 +1,5 @@
 import { ModelId } from "@dust-tt/types";
+import { hash as blake3 } from "blake3";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
@@ -68,23 +69,24 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           });
           createdFolders.add(folder);
         }
-
+        const documentId = Buffer.from(blake3(request.url)).toString("hex");
         const logicalParent =
           request.url === webCrawlerConfig.url
             ? null
             : getFolderForUrl(request.url);
-        const updatedFolder = await WebCrawlerFolder.upsert({
+        await WebCrawlerFolder.upsert({
           url: request.url,
           parentUrl: logicalParent,
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
+          dustDocumentId: documentId,
           ressourceType: "file",
           title: pageTitle,
         });
 
         await upsertToDatasource({
           dataSourceConfig,
-          documentId: updatedFolder[0].id.toString(),
+          documentId: documentId,
           documentContent: {
             prefix: pageTitle,
             content: extracted,
