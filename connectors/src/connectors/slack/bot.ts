@@ -173,6 +173,7 @@ async function botAnswerMessage(
   }
 
   // We check that the user is not restricted or a stranger.
+  // See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619
   if (
     slackUserInfo.user.profile?.team !== slackTeamId ||
     slackUserInfo.user.is_restricted ||
