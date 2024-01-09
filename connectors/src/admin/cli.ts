@@ -204,7 +204,10 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       // full-resync, code sync only.
-      await launchGithubFullSyncWorkflow(connector.id.toString(), true);
+      await launchGithubFullSyncWorkflow({
+        connectorId: connector.id.toString(),
+        syncCodeOnly: true,
+      });
 
       return;
     }

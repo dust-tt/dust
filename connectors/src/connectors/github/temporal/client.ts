@@ -33,10 +33,13 @@ import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "github" });
 
-export async function launchGithubFullSyncWorkflow(
-  connectorId: string,
-  syncCodeOnly: boolean
-) {
+export async function launchGithubFullSyncWorkflow({
+  connectorId,
+  syncCodeOnly,
+}: {
+  connectorId: string;
+  syncCodeOnly: boolean;
+}) {
   const client = await getTemporalClient();
 
   const connector = await Connector.findByPk(connectorId);

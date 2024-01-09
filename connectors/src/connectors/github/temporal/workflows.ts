@@ -59,7 +59,7 @@ export async function githubFullSyncWorkflow(
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
     githubInstallationId,
-    syncCodeOnly: syncCodeOnly ? "true" : "false",
+    syncCodeOnly: syncCodeOnly.toString(),
   };
 
   const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
