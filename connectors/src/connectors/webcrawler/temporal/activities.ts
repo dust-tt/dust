@@ -17,7 +17,7 @@ import {
 } from "@connectors/lib/sync_status";
 
 const MAX_DEPTH = 5;
-const MAX_PAGES = 1000;
+const MAX_PAGES = 512;
 const CONCURRENCY = 10;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
@@ -60,15 +60,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               console.log("reached max depth");
               return false;
             }
-            return req.url.startsWith(webCrawlerConfig.url) ? req : false;
+            return req;
           },
         });
 
         const folders = getAllFoldersForUrl(request.url);
         for (const folder of folders) {
-          if (!folder.startsWith(webCrawlerConfig.url)) {
-            continue;
-          }
           if (createdFolders.has(folder)) {
             continue;
           }
