@@ -10,33 +10,20 @@ use crate::{databases::database::DatabaseRow, utils};
 #[async_trait]
 pub trait DatabasesStore {
     async fn init(&self) -> Result<()>;
-    async fn load_database_row(
+    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<DatabaseRow>>;
+    async fn list_table_rows(
         &self,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-    ) -> Result<Option<DatabaseRow>>;
-    async fn list_database_rows(
-        &self,
-        database_id: &str,
         table_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)>;
-    async fn batch_upsert_database_rows(
+    async fn batch_upsert_table_rows(
         &self,
-        database_id: &str,
         table_id: &str,
         rows: &Vec<DatabaseRow>,
         truncate: bool,
     ) -> Result<()>;
-    async fn delete_database_rows(&self, database_id: &str) -> Result<()>;
-    async fn delete_database_table_rows(&self, database_id: &str, table_id: &str) -> Result<()>;
-    async fn delete_database_row(
-        &self,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-    ) -> Result<()>;
+    async fn delete_table_rows(&self, table_id: &str) -> Result<()>;
+    async fn delete_table_row(&self, table_id: &str, row_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send>;
 }
@@ -73,25 +60,20 @@ impl DatabasesStore for PostgresDatabasesStore {
         Ok(())
     }
 
-    async fn load_database_row(
-        &self,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-    ) -> Result<Option<DatabaseRow>> {
+    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<DatabaseRow>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let stmt = c
             .prepare(
                 "SELECT created, row_id, content
-                FROM databases_rows
-                WHERE database_id = $1 AND table_id = $2 AND row_id = $3
+                FROM tables_rows
+                WHERE table_id = $1 AND row_id = $2
                 LIMIT 1",
             )
             .await?;
 
-        let r = c.query(&stmt, &[&database_id, &table_id, &row_id]).await?;
+        let r = c.query(&stmt, &[&table_id, &row_id]).await?;
 
         let d: Option<(i64, String, String)> = match r.len() {
             0 => None,
@@ -107,19 +89,18 @@ impl DatabasesStore for PostgresDatabasesStore {
         }
     }
 
-    async fn list_database_rows(
+    async fn list_table_rows(
         &self,
-        database_id: &str,
         table_id: &str,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<DatabaseRow>, usize)> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&database_id, &table_id];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![&table_id];
         let mut query = "SELECT created, row_id, content
-            FROM databases_rows
-            WHERE  database_id = $1 AND table_id = $2
+            FROM tables_rows
+            WHERE table_id = $1
             ORDER BY created DESC"
             .to_string();
 
@@ -151,9 +132,9 @@ impl DatabasesStore for PostgresDatabasesStore {
                 let t: i64 = c
                     .query_one(
                         "SELECT COUNT(*)
-                        FROM databases_rows
-                        WHERE database_id = $1 AND table_id = $2",
-                        &[&database_id, &table_id],
+                        FROM tables_rows
+                        WHERE table_id = $1",
+                        &[&table_id],
                     )
                     .await?
                     .get(0);
@@ -164,9 +145,8 @@ impl DatabasesStore for PostgresDatabasesStore {
         Ok((rows, total))
     }
 
-    async fn batch_upsert_database_rows(
+    async fn batch_upsert_table_rows(
         &self,
-        database_id: &str,
         table_id: &str,
         rows: &Vec<DatabaseRow>,
         truncate: bool,
@@ -180,20 +160,20 @@ impl DatabasesStore for PostgresDatabasesStore {
         if truncate {
             let stmt = c
                 .prepare(
-                    "DELETE FROM databases_rows
-                    WHERE database_id = $1 AND table_id = $2",
+                    "DELETE FROM tables_rows
+                    WHERE table_id = $1",
                 )
                 .await?;
-            c.execute(&stmt, &[&database_id, &table_id]).await?;
+            c.execute(&stmt, &[&table_id]).await?;
         }
 
         // Prepare insertion/updation statement.
         let stmt = c
             .prepare(
-                "INSERT INTO databases_rows
-                (id, database_id, table_id, row_id, created, content)
-                VALUES (DEFAULT, $1, $2, $3, $4, $5)
-                ON CONFLICT (database_id, table_id, row_id) DO UPDATE
+                "INSERT INTO tables_rows
+                (id, table_id, row_id, created, content)
+                VALUES (DEFAULT, $1, $2, $3, $4)
+                ON CONFLICT (table_id, row_id) DO UPDATE
                 SET content = EXCLUDED.content",
             )
             .await?;
@@ -202,7 +182,6 @@ impl DatabasesStore for PostgresDatabasesStore {
             c.execute(
                 &stmt,
                 &[
-                    &database_id,
                     &table_id,
                     &row.row_id(),
                     &(utils::now() as i64),
@@ -217,53 +196,28 @@ impl DatabasesStore for PostgresDatabasesStore {
         Ok(())
     }
 
-    async fn delete_database_rows(&self, database_id: &str) -> Result<()> {
+    async fn delete_table_rows(&self, table_id: &str) -> Result<()> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let stmt = c
-            .prepare("DELETE FROM databases_rows WHERE database_id = $1")
+            .prepare("DELETE FROM tables_rows WHERE table_id = $1")
             .await?;
 
-        c.execute(&stmt, &[&database_id]).await?;
+        c.execute(&stmt, &[&table_id]).await?;
 
         Ok(())
     }
 
-    async fn delete_database_table_rows(&self, database_id: &str, table_id: &str) -> Result<()> {
+    async fn delete_table_row(&self, table_id: &str, row_id: &str) -> Result<()> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
         let stmt = c
-            .prepare(
-                "DELETE FROM databases_rows
-                WHERE database_id = $1 AND table_id = $2",
-            )
+            .prepare("DELETE FROM tables_rows WHERE table_id = $1 AND row_id = $2")
             .await?;
 
-        c.execute(&stmt, &[&database_id, &table_id]).await?;
-
-        Ok(())
-    }
-
-    async fn delete_database_row(
-        &self,
-        database_id: &str,
-        table_id: &str,
-        row_id: &str,
-    ) -> Result<()> {
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let stmt = c
-            .prepare(
-                "DELETE FROM databases_rows
-                WHERE database_id = $1 AND table_id = $2 AND row_id = $3",
-            )
-            .await?;
-
-        c.execute(&stmt, &[&database_id, &table_id, &row_id])
-            .await?;
+        c.execute(&stmt, &[&table_id, &row_id]).await?;
 
         Ok(())
     }
@@ -275,17 +229,14 @@ impl DatabasesStore for PostgresDatabasesStore {
 
 pub const POSTGRES_TABLES: [&'static str; 1] = [
     //
-    "CREATE TABLE IF NOT EXISTS databases_rows (
+    "CREATE TABLE IF NOT EXISTS tables_rows (
     id                   BIGSERIAL PRIMARY KEY,
     created              BIGINT NOT NULL,
-    database_id          TEXT NOT NULL, -- unique id of the database (globally)
-    table_id             TEXT NOT NULL, -- unique within database
+    table_id             TEXT NOT NULL, -- unique ID of the table (globally)
     row_id               TEXT NOT NULL, -- unique within table
     content              TEXT NOT NULL -- json
  );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 2] = [
-    "CREATE UNIQUE INDEX IF NOT EXISTS databases_rows_unique ON databases_rows (row_id, table_id, database_id);",
-    "CREATE INDEX IF NOT EXISTS databases_rows_database_id_table_id ON databases_rows (database_id, table_id);",
-];
+pub const SQL_INDEXES: [&'static str; 1] =
+    ["CREATE UNIQUE INDEX IF NOT EXISTS tables_rows_unique ON tables_rows (row_id, table_id);"];

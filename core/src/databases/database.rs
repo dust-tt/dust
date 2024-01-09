@@ -1,5 +1,6 @@
 use super::table_schema::TableSchema;
 use crate::{
+    databases_store::store::DatabasesStore,
     project::Project,
     sqlite_workers::client::{SqliteWorker, HEARTBEAT_INTERVAL_MS},
     stores::store::Store,
@@ -27,265 +28,121 @@ impl ToString for DatabaseType {
     }
 }
 
-#[derive(Debug, Serialize)]
+pub async fn query_database(
+    tables: &Vec<DatabaseTable>,
+    store: Box<dyn Store + Sync + Send>,
+    query: &str,
+) -> Result<(Vec<DatabaseResult>, TableSchema)> {
+    let table_ids_hash = tables.iter().map(|t| t.unique_id()).sorted().join("/");
+    let database = store
+        .upsert_database(&table_ids_hash, HEARTBEAT_INTERVAL_MS)
+        .await?;
+
+    let time_query_start = utils::now();
+
+    let result_rows = match database.sqlite_worker() {
+        Some(sqlite_worker) => {
+            let result_rows = sqlite_worker
+                .execute_query(&table_ids_hash, tables, query)
+                .await?;
+            result_rows
+        }
+        None => Err(anyhow!(
+            "No live SQLite worker found for database {}",
+            database.table_ids_hash
+        ))?,
+    };
+
+    utils::done(&format!(
+        "DSSTRUCTSTAT Finished executing user query on worker: duration={}ms",
+        utils::now() - time_query_start
+    ));
+
+    let infer_result_schema_start = utils::now();
+    let table_schema = TableSchema::from_rows(&result_rows)?;
+    utils::done(&format!(
+        "DSSTRUCTSTAT Finished inferring schema: duration={}ms",
+        utils::now() - infer_result_schema_start
+    ));
+
+    utils::done(&format!(
+        "DSSTRUCTSTAT Finished query database: duration={}ms",
+        utils::now() - time_query_start
+    ));
+
+    Ok((result_rows, table_schema))
+}
+
+pub async fn invalidate_database(db: Database, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+    if let Some(worker) = db.sqlite_worker() {
+        worker.invalidate_database(db.unique_id()).await?;
+    } else {
+        // If the worker is not alive, we delete the database row in case the worker becomes alive again.
+        store.delete_database(&db.table_ids_hash).await?;
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Clone)]
 pub struct Database {
-    project: Project,
     created: u64,
-    data_source_id: String,
-    database_id: String,
-    name: String,
-    db_type: DatabaseType,
+    table_ids_hash: String,
+    sqlite_worker: Option<SqliteWorker>,
 }
 
 impl Database {
-    pub fn new(
-        project: &Project,
-        created: u64,
-        data_source_id: &str,
-        database_id: &str,
-        name: &str,
-    ) -> Self {
+    pub fn new(created: u64, table_ids_hash: &str, sqlite_worker: &Option<SqliteWorker>) -> Self {
         Database {
-            project: project.clone(),
-            created: created,
-            data_source_id: data_source_id.to_string(),
-            database_id: database_id.to_string(),
-            name: name.to_string(),
-            db_type: DatabaseType::LOCAL,
+            created,
+            table_ids_hash: table_ids_hash.to_string(),
+            sqlite_worker: sqlite_worker.clone(),
         }
     }
 
-    pub async fn get_tables(
-        &self,
-        store: Box<dyn Store + Sync + Send>,
-    ) -> Result<Vec<DatabaseTable>> {
-        match self.db_type {
-            DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
-            DatabaseType::LOCAL => {
-                let (_, tables, _) = store
-                    .list_databases_tables(
-                        &self.project,
-                        &self.data_source_id,
-                        &self.database_id,
-                        None,
-                    )
-                    .await?;
-
-                Ok(tables
-                    .into_iter()
-                    // Ignore empty tables.
-                    .filter_map(|t| match t.schema() {
-                        None => None,
-                        Some(_) => Some(t),
-                    })
-                    .collect::<Vec<_>>())
-            }
-        }
+    pub fn sqlite_worker(&self) -> &Option<SqliteWorker> {
+        &self.sqlite_worker
     }
 
-    pub async fn batch_upsert_rows(
-        &self,
-        store: Box<dyn Store + Sync + Send>,
-        table_id: &str,
-        rows: Vec<DatabaseRow>,
-        truncate: bool,
-    ) -> Result<()> {
-        let table = match store
-            .load_database_table(
-                &self.project,
-                &self.data_source_id,
-                &self.database_id,
-                table_id,
-            )
-            .await?
-        {
-            Some(t) => t,
-            None => Err(anyhow!(
-                "Table {} not found in database {}",
-                table_id,
-                self.database_id
-            ))?,
-        };
-
-        let new_rows_table_schema = TableSchema::from_rows(&rows)?;
-        let table_schema = match table.schema() {
-            // If there is no existing schema cache, simply use the new schema.
-            None => new_rows_table_schema,
-            Some(existing_table_schema) => {
-                // If there is an existing schema cache, merge it with the new schema.
-                existing_table_schema.merge(&new_rows_table_schema)?
-            }
-        };
-
-        store
-            .update_database_table_schema(
-                &self.project,
-                &self.data_source_id,
-                &self.database_id,
-                table_id,
-                &table_schema,
-            )
-            .await?;
-
-        // Call the SqliteWorker to update the rows contents.
-        // Note: if this fails, the DB will still contain the new schema, but the rows will not be updated.
-        // This isn't too bad, because the merged schema is necessarily backward-compatible with the previous one.
-        // The other way around would not be true -- old schema doesn't necessarily work with the new rows.
-        // This is why we cannot `try_join_all`.
-        let sqlite_worker = self.sqlite_worker(store.clone()).await?;
-        sqlite_worker
-            .upsert_rows(&self.unique_id(), table_id, rows, truncate)
-            .await
-    }
-
-    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
-        match self.db_type {
-            DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
-            DatabaseType::LOCAL => {
-                let sqlite_worker = self.sqlite_worker(store.clone()).await?;
-
-                // First we delete all the rows from sqlite-worker.
-                sqlite_worker
-                    .delete_database_rows(&self.unique_id())
-                    .await?;
-
-                // Then we delete the database and its tables from the store.
-                store
-                    .delete_database(&self.project, &self.data_source_id, &self.database_id)
-                    .await?;
-
-                Ok(())
-            }
-        }
-    }
-
-    pub async fn query(
-        &self,
-        store: Box<dyn Store + Sync + Send>,
-        query: &str,
-    ) -> Result<(Vec<DatabaseResult>, TableSchema)> {
-        match self.db_type {
-            DatabaseType::REMOTE => Err(anyhow!("Remote DB not implemented.")),
-            DatabaseType::LOCAL => {
-                let tables = self.get_tables(store.clone()).await?;
-                let sqlite_worker = self.sqlite_worker(store.clone()).await?;
-
-                let time_query_start = utils::now();
-                let result_rows = sqlite_worker
-                    .execute_query(&self.unique_id(), tables, query)
-                    .await?;
-
-                utils::done(&format!(
-                    "DSSTRUCTSTAT Finished executing user query on worker: duration={}ms",
-                    utils::now() - time_query_start
-                ));
-
-                let infer_result_schema_start = utils::now();
-                let table_schema = TableSchema::from_rows(&result_rows)?;
-                utils::done(&format!(
-                    "DSSTRUCTSTAT Finished inferring schema: duration={}ms",
-                    utils::now() - infer_result_schema_start
-                ));
-
-                utils::done(&format!(
-                    "DSSTRUCTSTAT Finished query database: duration={}ms",
-                    utils::now() - time_query_start
-                ));
-
-                Ok((result_rows, table_schema))
-            }
-        }
-    }
-
-    pub async fn get_rows(
-        &self,
-        store: Box<dyn Store + Sync + Send>,
-    ) -> Result<Vec<(DatabaseTable, Vec<DatabaseRow>)>> {
-        let (_, tables, _) = store
-            .list_databases_tables(&self.project, &self.data_source_id, &self.database_id, None)
-            .await?;
-
-        // Get the SQLite worker for this database.
-        let sqlite_worker = &self.sqlite_worker(store.clone()).await?;
-
-        Ok(try_join_all(tables.into_iter().map(|table| {
-            let database_id = self.unique_id();
-            let table_id = table.table_id().to_string();
-
-            async move {
-                let (rows, _) = sqlite_worker
-                    .get_rows(&database_id, &table_id, None)
-                    .await?;
-                Ok::<_, anyhow::Error>((table, rows))
-            }
-        }))
-        .await?)
-    }
-
-    // Getters
-    pub fn created(&self) -> u64 {
-        self.created
-    }
-    pub fn data_source_id(&self) -> &str {
-        &self.data_source_id
-    }
-    pub fn database_id(&self) -> &str {
-        &self.database_id
-    }
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-    pub fn unique_id(&self) -> String {
-        format!(
-            "{}__{}__{}",
-            self.project.project_id(),
-            self.data_source_id,
-            self.database_id
-        )
-    }
-
-    pub async fn sqlite_worker(&self, store: Box<dyn Store + Sync + Send>) -> Result<SqliteWorker> {
-        let worker = store
-            .assign_live_sqlite_worker_to_database(
-                &self.project,
-                &self.data_source_id,
-                &self.database_id,
-                HEARTBEAT_INTERVAL_MS,
-            )
-            .await?;
-
-        match worker.is_alive() {
-            true => Ok(worker),
-            false => Err(anyhow!(
-                "No live SQLite worker found for database {}",
-                self.database_id
-            )),
-        }
+    pub fn unique_id(&self) -> &str {
+        &self.table_ids_hash
     }
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct DatabaseTable {
+    project: Project,
+    data_source_id: String,
     created: u64,
-    database_id: String,
+
     table_id: String,
     name: String,
     description: String,
     schema: Option<TableSchema>,
 }
 
+pub fn get_database_table_unique_id(
+    project: &Project,
+    data_source_id: &str,
+    table_id: &str,
+) -> String {
+    format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
+}
+
 impl DatabaseTable {
     pub fn new(
+        project: &Project,
+        data_source_id: &str,
         created: u64,
-        database_id: &str,
         table_id: &str,
         name: &str,
         description: &str,
         schema: &Option<TableSchema>,
     ) -> Self {
         DatabaseTable {
-            created: created,
-            database_id: database_id.to_string(),
+            project: project.clone(),
+            data_source_id: data_source_id.to_string(),
+            created,
             table_id: table_id.to_string(),
             name: name.to_string(),
             description: description.to_string(),
@@ -293,11 +150,14 @@ impl DatabaseTable {
         }
     }
 
+    pub fn project(&self) -> &Project {
+        &self.project
+    }
+    pub fn data_source_id(&self) -> &str {
+        &self.data_source_id
+    }
     pub fn created(&self) -> u64 {
         self.created
-    }
-    pub fn database_id(&self) -> &str {
-        &self.database_id
     }
     pub fn table_id(&self) -> &str {
         &self.table_id
@@ -310,6 +170,9 @@ impl DatabaseTable {
     }
     pub fn schema(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
+    }
+    pub fn unique_id(&self) -> String {
+        get_database_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
     }
 
     pub fn render_dbml(&self) -> String {
@@ -326,6 +189,62 @@ impl DatabaseTable {
                 self.description()
             ),
         }
+    }
+
+    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+        store
+            .delete_table(&self.project, &self.data_source_id, &self.table_id)
+            .await
+    }
+
+    pub async fn upsert_rows(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        rows: &Vec<DatabaseRow>,
+        truncate: bool,
+    ) -> Result<()> {
+        // Upsert the rows in the table.
+        databases_store
+            .batch_upsert_table_rows(&self.unique_id(), rows, truncate)
+            .await?;
+
+        // Invalidate the databases that use the table.
+        try_join_all(
+            (store
+                .find_databases_using_table(
+                    &self.project,
+                    &self.data_source_id,
+                    &self.table_id,
+                    HEARTBEAT_INTERVAL_MS,
+                )
+                .await?)
+                .into_iter()
+                .map(|db| invalidate_database(db, store.clone())),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn retrieve_row(
+        &self,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        row_id: &str,
+    ) -> Result<Option<DatabaseRow>> {
+        databases_store
+            .load_table_row(&self.unique_id(), row_id)
+            .await
+    }
+
+    pub async fn list_rows(
+        &self,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        limit_offset: Option<(usize, usize)>,
+    ) -> Result<(Vec<DatabaseRow>, usize)> {
+        databases_store
+            .list_table_rows(&self.unique_id(), limit_offset)
+            .await
     }
 }
 
@@ -376,7 +295,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_database_table_to_dbml() -> Result<()> {
+    fn test_database_table_to_dbml() -> anyhow::Result<()> {
         let row_1 = json!({
             "user_id": 1,
             "temperature": 1.2,
@@ -397,8 +316,9 @@ mod tests {
 
         let schema = TableSchema::from_rows(rows)?;
         let table = DatabaseTable::new(
+            &Project::new_from_id(42),
+            "data_source_id",
             utils::now(),
-            "database_id",
             "table_id",
             "test_dbml",
             "Test records for DBML rendering",

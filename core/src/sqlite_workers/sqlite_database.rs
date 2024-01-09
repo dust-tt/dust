@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use super::store::DatabasesStore;
 use crate::{
     databases::database::{DatabaseResult, DatabaseRow, DatabaseTable},
+    databases_store::store::DatabasesStore,
     utils,
 };
 use anyhow::{anyhow, Result};
@@ -14,16 +14,12 @@ use tokio::task;
 
 #[derive(Clone)]
 pub struct SqliteDatabase {
-    database_id: String,
     conn: Option<Arc<Mutex<Connection>>>,
 }
 
 impl SqliteDatabase {
-    pub fn new(database_id: String) -> Self {
-        Self {
-            database_id,
-            conn: None,
-        }
+    pub fn new() -> Self {
+        Self { conn: None }
     }
 
     pub async fn init(
@@ -35,7 +31,7 @@ impl SqliteDatabase {
             Some(_) => Ok(()),
             None => {
                 self.conn = Some(Arc::new(Mutex::new(
-                    create_in_memory_sqlite_db(databases_store, &self.database_id, tables).await?,
+                    create_in_memory_sqlite_db(databases_store, tables).await?,
                 )));
 
                 Ok(())
@@ -128,7 +124,6 @@ impl SqliteDatabase {
 
 async fn create_in_memory_sqlite_db(
     databases_store: Box<dyn DatabasesStore + Sync + Send>,
-    database_id: &str,
     tables: Vec<DatabaseTable>,
 ) -> Result<Connection> {
     let time_get_rows_start = utils::now();
@@ -138,7 +133,7 @@ async fn create_in_memory_sqlite_db(
             let databases_store = databases_store.clone();
             async move {
                 let (rows, _) = databases_store
-                    .list_database_rows(&database_id, table.table_id(), None)
+                    .list_table_rows(table.table_id(), None)
                     .await?;
                 Ok::<_, anyhow::Error>((table.clone(), rows))
             }
