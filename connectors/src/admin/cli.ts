@@ -10,7 +10,10 @@ import {
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
-import { launchGithubCodeSyncWorkflow } from "@connectors/connectors/github/temporal/client";
+import {
+  launchGithubCodeSyncWorkflow,
+  launchGithubFullSyncWorkflow,
+} from "@connectors/connectors/github/temporal/client";
 import {
   getAuthObject,
   getDocumentId,
@@ -30,6 +33,7 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
+import { GithubConnectorState } from "@connectors/lib/models/github";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -150,7 +154,62 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
         args.repo,
         repoId
       );
+
+      return;
     }
+
+    case "code-sync": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.enable) {
+        throw new Error("Missing --enable (true/false) argument");
+      }
+      if (!["true", "false"].includes(args.enable)) {
+        throw new Error("--enable must be true or false");
+      }
+
+      const enable = args.enable === "true";
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "github",
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+        );
+      }
+
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        throw new Error(
+          `Connector state not found for connector ${connector.id}`
+        );
+      }
+
+      await connectorState.update({
+        codeSyncEnabled: enable,
+      });
+
+      // full-resync, code sync only.
+      await launchGithubFullSyncWorkflow(connector.id.toString(), true);
+
+      return;
+    }
+    default:
+      throw new Error("Unknown github command: " + command);
   }
 };
 
@@ -318,11 +377,15 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         connectorId,
         lastSeenTs: new Date(),
       });
+
+      return;
     }
+    default:
+      throw new Error("Unknown notion command: " + command);
   }
 };
 
-const google = async (command: string, args: parseArgs.ParsedArgs) => {
+const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "garbage-collect-all": {
       const connectors = await Connector.findAll({
@@ -450,6 +513,8 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+    default:
+      throw new Error("Unknown google command: " + command);
   }
 };
 
@@ -562,6 +627,8 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       break;
     }
+    default:
+      throw new Error("Unknown slack command: " + command);
   }
 };
 
@@ -614,6 +681,8 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       return;
     }
+    default:
+      throw new Error("Unknown batch command: " + command);
   }
 };
 
@@ -647,8 +716,8 @@ const main = async () => {
     case "github":
       await github(command, argv);
       return;
-    case "google":
-      await google(command, argv);
+    case "google_drive":
+      await google_drive(command, argv);
       return;
     case "slack":
       await slack(command, argv);

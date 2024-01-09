@@ -773,6 +773,8 @@ async function garbageCollectCodeSync(
 
     for (const f of filesToDelete) {
       await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
+      // Only destroy once we succesfully removed from the data source. This is idempotent and will
+      // work as expected when retried.
       await f.destroy();
     }
   }
@@ -897,7 +899,6 @@ export async function githubCodeSyncActivity(
       });
 
       if (!githubCodeFile) {
-        console.log("CREATING FILE", f.documentId);
         githubCodeFile = await GithubCodeFile.create({
           connectorId: connector.id,
           repoId: repoId.toString(),
