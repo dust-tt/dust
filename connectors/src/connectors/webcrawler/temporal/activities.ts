@@ -80,7 +80,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             parentUrl: logicalParent,
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
-            dustDocumentId: stableIdForUrl({
+            internalId: stableIdForUrl({
               url: folder,
               ressourceType: "folder",
             }),

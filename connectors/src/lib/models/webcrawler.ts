@@ -61,7 +61,7 @@ export class WebCrawlerFolder extends Model<
   declare url: string;
   // Folders are not upserted to the data source but their ids are
   // used as parent to WebCrawlerPage.
-  declare dustDocumentId: string;
+  declare internalId: string;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
@@ -91,7 +91,7 @@ WebCrawlerFolder.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    dustDocumentId: {
+    internalId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
