@@ -469,7 +469,7 @@ async function _getGoogleDriveGlobalAgent(
     dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
-  return await _getManagedDataSourceAgent(auth, {
+  return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "google_drive",
     agentId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
@@ -492,7 +492,7 @@ async function _getSlackGlobalAgent(
     dataSources: DataSourceType[];
   }
 ) {
-  return await _getManagedDataSourceAgent(auth, {
+  return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "slack",
     agentId: GLOBAL_AGENTS_SID.SLACK,
@@ -515,7 +515,7 @@ async function _getGithubGlobalAgent(
     dataSources: DataSourceType[];
   }
 ) {
-  return await _getManagedDataSourceAgent(auth, {
+  return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "github",
     agentId: GLOBAL_AGENTS_SID.GITHUB,
@@ -539,7 +539,7 @@ async function _getNotionGlobalAgent(
     dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
-  return await _getManagedDataSourceAgent(auth, {
+  return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "notion",
     agentId: GLOBAL_AGENTS_SID.NOTION,

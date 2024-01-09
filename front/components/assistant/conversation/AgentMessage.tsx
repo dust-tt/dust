@@ -331,7 +331,7 @@ export function AgentMessage({
               code: "unexpected_error",
             }
           }
-          retryHandler={async () => await retryHandler(agentMessage)}
+          retryHandler={async () => retryHandler(agentMessage)}
         />
       );
     }

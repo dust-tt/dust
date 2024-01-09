@@ -248,7 +248,7 @@ export function ConversationMessage({
                     emoji={nativeEmoji}
                     count={reaction.users.length.toString()}
                     onClick={async () =>
-                      await handleEmoji({
+                      handleEmoji({
                         emoji: reaction.emoji,
                         isToRemove: hasReacted,
                       })

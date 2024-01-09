@@ -73,7 +73,7 @@ export class Authenticator {
   static async fromSession(session: any, wId: string): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       (async () => {
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             sId: wId,
           },
@@ -83,7 +83,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return await User.findOne({
+          return User.findOne({
             where: {
               provider: session.provider.provider,
               providerId: session.provider.id.toString(),
@@ -140,7 +140,7 @@ export class Authenticator {
         if (!wId) {
           return null;
         }
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             sId: wId,
           },
@@ -150,7 +150,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return await User.findOne({
+          return User.findOne({
             where: {
               provider: session.provider.provider,
               providerId: session.provider.id.toString(),
@@ -186,14 +186,14 @@ export class Authenticator {
   ): Promise<{ auth: Authenticator; keyWorkspaceId: string }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             sId: wId,
           },
         });
       })(),
       (async () => {
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             id: key.workspaceId,
           },
@@ -366,7 +366,7 @@ export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<any> {
-  return await getServerSession(req, res, authOptions);
+  return getServerSession(req, res, authOptions);
 }
 
 /**

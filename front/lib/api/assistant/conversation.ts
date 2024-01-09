@@ -209,7 +209,7 @@ async function batchRenderUserMessages(messages: Message[]) {
       if (userIds.length === 0) {
         return [];
       }
-      return await User.findAll({
+      return User.findAll({
         where: {
           id: userIds,
         },
@@ -309,7 +309,7 @@ async function batchRenderAgentMessages(
       return agents;
     })(),
     (async () => {
-      return await Promise.all(
+      return Promise.all(
         agentMessages
           .filter((m) => m.agentMessage?.agentRetrievalActionId)
           .map((m) => {
@@ -881,7 +881,7 @@ export async function* postUserMessage(
         })) ?? -1) + 1;
 
       async function createMessageAndUserMessage() {
-        return await Message.create(
+        return Message.create(
           {
             sId: generateModelSId(),
             rank: nextMessageRank++,
@@ -917,14 +917,14 @@ export async function* postUserMessage(
             transaction: t,
           });
           if (participant) {
-            return await participant.update(
+            return participant.update(
               {
                 action: "posted",
               },
               { transaction: t }
             );
           } else {
-            return await ConversationParticipant.create(
+            return ConversationParticipant.create(
               {
                 conversationId: conversation.id,
                 userId: user.id,
@@ -1335,7 +1335,7 @@ export async function* editUserMessage(
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(messageRow: Message) {
-        return await Message.create(
+        return Message.create(
           {
             sId: generateModelSId(),
             rank: messageRow.rank,
@@ -1373,7 +1373,7 @@ export async function* editUserMessage(
             transaction: t,
           });
           if (participant) {
-            return await participant.update(
+            return participant.update(
               {
                 action: "posted",
               },

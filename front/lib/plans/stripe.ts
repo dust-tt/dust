@@ -172,7 +172,7 @@ export const getProduct = async (
 export const getStripeSubscription = async (
   stripeSubscriptionId: string
 ): Promise<Stripe.Subscription> => {
-  return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  return stripe.subscriptions.retrieve(stripeSubscriptionId);
 };
 
 /**
