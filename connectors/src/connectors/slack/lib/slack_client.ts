@@ -1,7 +1,6 @@
 import { ModelId } from "@dust-tt/types";
 import {
   CodedError,
-  ConversationsInfoResponse,
   ErrorCode,
   UsersInfoResponse,
   WebAPIHTTPError,
