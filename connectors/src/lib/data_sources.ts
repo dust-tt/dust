@@ -295,13 +295,17 @@ export function renderPrefixSection(
 /// This function is used to render markdown from the GFM markdown format to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
-export function renderGfmMarkdownSection(
+export function renderMarkdownSection(
   prefix: string | null,
-  markdown: string
+  markdown: string,
+  { flavor }: { flavor?: "gfm" } = {}
 ): CoreAPIDataSourceDocumentSection {
+  const extensions = flavor === "gfm" ? [gfm()] : [];
+  const mdastExtensions = flavor === "gfm" ? [gfmFromMarkdown()] : [];
+
   const tree = fromMarkdown(markdown, {
-    extensions: [gfm()],
-    mdastExtensions: [gfmFromMarkdown()],
+    extensions: extensions,
+    mdastExtensions: mdastExtensions,
   });
 
   const top = renderPrefixSection(prefix);
@@ -342,4 +346,11 @@ export function renderGfmMarkdownSection(
   }
 
   return top;
+}
+
+export function renderGfmMarkdownSection(
+  prefix: string | null,
+  markdown: string
+): CoreAPIDataSourceDocumentSection {
+  return renderMarkdownSection(prefix, markdown, { flavor: "gfm" });
 }
