@@ -116,8 +116,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     })
   );
 
-  // Start the crawler and wait for it to finish
-
   await crawler.run([webCrawlerConfig.url]);
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
