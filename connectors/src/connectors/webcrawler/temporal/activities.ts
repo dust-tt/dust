@@ -46,7 +46,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
         const pageTitle = $("title").text();
 
-        await enqueueLinks();
+        await enqueueLinks({
+          transformRequestFunction: (req) =>
+            req.url.startsWith(webCrawlerConfig.url) ? req : false,
+        });
 
         const folders = getAllFoldersForUrl(request.url);
         for (const folder of folders) {
