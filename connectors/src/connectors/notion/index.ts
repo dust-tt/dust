@@ -1,6 +1,7 @@
 import { ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
+import { cachedConfig } from "@connectors/connectors/config";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -28,7 +29,8 @@ import { ConnectorResource } from "@connectors/types/resources";
 import { ConnectorPermissionRetriever } from "../interface";
 import { getParents } from "./lib/parents";
 
-const { NANGO_NOTION_CONNECTOR_ID } = process.env;
+const { NANGO_NOTION_CONNECTOR_ID } = cachedConfig;
+
 const logger = mainLogger.child({ provider: "notion" });
 
 export async function createNotionConnector(
@@ -36,10 +38,6 @@ export async function createNotionConnector(
   connectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
   const nangoConnectionId = connectionId;
-
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
 
   const notionAccessToken = await getAccessTokenFromNango({
     connectionId: nangoConnectionId,
@@ -88,10 +86,6 @@ export async function updateNotionConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -312,9 +306,6 @@ export async function cleanupNotionConnector(
 }
 
 async function deleteNangoConnection(connectionId: NangoConnectionId) {
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
   const nangoRes = await nangoDeleteConnection(
     connectionId,
     NANGO_NOTION_CONNECTOR_ID

@@ -16,13 +16,10 @@ const logger = mainLogger.child({
   migration: "20230828_notion_block_parents",
 });
 
+import { cachedConfig } from "@connectors/connectors/config";
+const { NANGO_NOTION_CONNECTOR_ID } = cachedConfig;
+
 async function main() {
-  const { NANGO_NOTION_CONNECTOR_ID } = process.env;
-
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
   const pagesAffected = await NotionPage.findAll({
     where: {
       parentType: "block",
