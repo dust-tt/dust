@@ -176,6 +176,7 @@ async function botAnswerMessage(
   if (
     slackUserInfo.user.profile?.team !== slackTeamId ||
     slackUserInfo.user.is_restricted ||
+    slackUserInfo.user.is_ultra_restricted ||
     slackUserInfo.user.is_stranger
   ) {
     return new Err(
