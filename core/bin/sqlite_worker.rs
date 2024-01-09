@@ -6,10 +6,9 @@ use axum::{
     Router,
 };
 use dust::{
-    databases::database::DatabaseRow,
-    databases::database::DatabaseTable,
-    sqlite_workers::store::DatabasesStore,
-    sqlite_workers::{sqlite_database::SqliteDatabase, store},
+    databases::database::Table,
+    databases_store::{self, store::DatabasesStore},
+    sqlite_workers::sqlite_database::SqliteDatabase,
     utils::{self, error_response, APIResponse},
 };
 use hyper::{Body, Client, Request, StatusCode};
@@ -37,14 +36,14 @@ struct DatabaseEntry {
 }
 
 struct WorkerState {
-    databases_store: Box<dyn store::DatabasesStore + Sync + Send>,
+    databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
 
     registry: Arc<Mutex<HashMap<String, DatabaseEntry>>>,
     is_shutting_down: Arc<AtomicBool>,
 }
 
 impl WorkerState {
-    fn new(databases_store: Box<dyn store::DatabasesStore + Sync + Send>) -> Self {
+    fn new(databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>) -> Self {
         Self {
             databases_store,
 
@@ -160,10 +159,10 @@ async fn index() -> &'static str {
 #[derive(Deserialize)]
 struct DbQueryPayload {
     query: String,
-    tables: Vec<DatabaseTable>,
+    tables: Vec<Table>,
 }
 
-async fn db_query(
+async fn databases_query(
     extract::Path(database_id): extract::Path<String>,
     extract::Json(payload): Json<DbQueryPayload>,
     extract::Extension(state): extract::Extension<Arc<WorkerState>>,
@@ -173,7 +172,7 @@ async fn db_query(
         let entry = registry
             .entry(database_id.clone())
             .or_insert_with(|| DatabaseEntry {
-                database: Arc::new(Mutex::new(SqliteDatabase::new(database_id))),
+                database: Arc::new(Mutex::new(SqliteDatabase::new())),
                 last_accessed: Instant::now(),
             });
         entry.last_accessed = Instant::now();
@@ -214,198 +213,19 @@ async fn db_query(
     }
 }
 
-async fn delete_database_rows(
+async fn databases_delete(
     extract::Path(database_id): extract::Path<String>,
     extract::Extension(state): extract::Extension<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     state.invalidate_database(&database_id).await;
 
-    match state
-        .databases_store
-        .delete_database_rows(&database_id)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to delete database rows",
-            Some(e),
-        ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
-    }
-}
-
-#[derive(serde::Deserialize)]
-struct DatabasesRowsUpsertPayload {
-    rows: Vec<DatabaseRow>,
-    truncate: Option<bool>,
-}
-
-async fn databases_rows_upsert(
-    extract::Path((database_id, table_id)): extract::Path<(String, String)>,
-    extract::Json(payload): extract::Json<DatabasesRowsUpsertPayload>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
-    state.invalidate_database(&database_id).await;
-
-    let truncate = match payload.truncate {
-        Some(v) => v,
-        None => false,
-    };
-
-    match state
-        .databases_store
-        .batch_upsert_database_rows(&database_id, &table_id, &payload.rows, truncate)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to upsert database rows",
-            Some(e),
-        ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
-    }
-}
-
-#[derive(serde::Deserialize)]
-struct DatabasesRowsListQuery {
-    offset: Option<usize>,
-    limit: Option<usize>,
-}
-
-async fn databases_rows_list(
-    extract::Path((database_id, table_id)): extract::Path<(String, String)>,
-    extract::Query(query): extract::Query<DatabasesRowsListQuery>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
-    let limit_offset = match (query.limit, query.offset) {
-        (Some(limit), Some(offset)) => Some((limit, offset)),
-        _ => None,
-    };
-    match state
-        .databases_store
-        .list_database_rows(&database_id, &table_id, limit_offset)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to list database rows",
-            Some(e),
-        ),
-        Ok((rows, total)) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "rows": rows,
-                    "total": total,
-                })),
-            }),
-        ),
-    }
-}
-
-async fn databases_table_rows_delete(
-    extract::Path((database_id, table_id)): extract::Path<(String, String)>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
-    state.invalidate_database(&database_id).await;
-
-    match state
-        .databases_store
-        .delete_database_table_rows(&database_id, &table_id)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to delete database rows",
-            Some(e),
-        ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
-    }
-}
-
-async fn databases_row_retrieve(
-    extract::Path((database_id, table_id, row_id)): extract::Path<(String, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
-    match state
-        .databases_store
-        .load_database_row(&database_id, &table_id, &row_id)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to retrieve database row",
-            Some(e),
-        ),
-        Ok(row) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "row": row,
-                })),
-            }),
-        ),
-    }
-}
-
-async fn databases_row_delete(
-    extract::Path((database_id, table_id, row_id)): extract::Path<(String, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
-    state.invalidate_database(&database_id).await;
-
-    match state
-        .databases_store
-        .delete_database_row(&database_id, &table_id, &row_id)
-        .await
-    {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to delete database row",
-            Some(e),
-        ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
-    }
+    (
+        axum::http::StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: None,
+        }),
+    )
 }
 
 fn main() {
@@ -422,10 +242,10 @@ fn main() {
             .with_ansi(false)
             .init();
 
-        let databases_store: Box<dyn store::DatabasesStore + Sync + Send> =
+        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
             match std::env::var("DATABASES_STORE_DATABASE_URI") {
                 Ok(db_uri) => {
-                    let s = store::PostgresDatabasesStore::new(&db_uri).await?;
+                    let s = databases_store::store::PostgresDatabasesStore::new(&db_uri).await?;
                     s.init().await?;
                     Box::new(s)
                 }
@@ -435,28 +255,8 @@ fn main() {
         let state = Arc::new(WorkerState::new(databases_store));
 
         let router = Router::new()
-            .route("/databases/:database_id", post(db_query))
-            .route("/databases/:database_id", delete(delete_database_rows))
-            .route(
-                "/databases/:database_id/tables/:table_id/rows",
-                post(databases_rows_upsert),
-            )
-            .route(
-                "/databases/:database_id/tables/:table_id/rows",
-                get(databases_rows_list),
-            )
-            .route(
-                "/databases/:database_id/tables/:table_id/rows",
-                delete(databases_table_rows_delete),
-            )
-            .route(
-                "/databases/:database_id/tables/:table_id/rows/:row_id",
-                get(databases_row_retrieve),
-            )
-            .route(
-                "/databases/:database_id/tables/:table_id/rows/:row_id",
-                delete(databases_row_delete),
-            )
+            .route("/databases/:database_id", post(databases_query))
+            .route("/databases/:database_id", delete(databases_delete))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))

@@ -1827,14 +1827,14 @@ impl DataSource {
             self.data_source_id,
         ));
 
-        // Delete databases (concurrently).
-        let (databases, total) = store
-            .list_databases(&self.project, &self.data_source_id, None)
+        // Delete tables (concurrently).
+        let (tables, total) = store
+            .list_tables(&self.project, &self.data_source_id, None)
             .await?;
-        try_join_all(databases.iter().map(|db| db.delete(store.clone()))).await?;
+        try_join_all(tables.iter().map(|t| t.delete(store.clone()))).await?;
 
         utils::done(&format!(
-            "Deleted databases: data_source_id={} database_count={}",
+            "Deleted tables: data_source_id={} table_count={}",
             self.data_source_id, total,
         ));
 

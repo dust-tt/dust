@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::database::{DatabaseRow, HasValue};
+use super::database::{HasValue, Row};
 use anyhow::{anyhow, Result};
 use chrono::prelude::DateTime;
 use itertools::Itertools;
@@ -268,7 +268,7 @@ impl TableSchema {
     pub fn get_insert_params(
         &self,
         field_names: &Vec<&String>,
-        row: &DatabaseRow,
+        row: &Row,
     ) -> Result<Vec<SqlParam>> {
         match row.content().as_object() {
             None => Err(anyhow!("Row content is not an object")),
@@ -422,8 +422,8 @@ mod tests {
             "field5": "not null anymore",
         });
         let rows = &vec![
-            DatabaseRow::new("1".to_string(), row_1),
-            DatabaseRow::new("2".to_string(), row_2),
+            Row::new("1".to_string(), row_1),
+            Row::new("2".to_string(), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -481,8 +481,8 @@ mod tests {
             "field7": {"anotherKey": "anotherValue"}
         });
         let rows = &vec![
-            DatabaseRow::new("1".to_string(), row_1),
-            DatabaseRow::new("2".to_string(), row_2),
+            Row::new("1".to_string(), row_1),
+            Row::new("2".to_string(), row_2),
         ];
 
         match TableSchema::from_rows(rows) {
@@ -510,9 +510,9 @@ mod tests {
             "field1": "now it's a text field",
         });
         let rows = &vec![
-            DatabaseRow::new("1".to_string(), row_1),
-            DatabaseRow::new("2".to_string(), row_2),
-            DatabaseRow::new("3".to_string(), row_3),
+            Row::new("1".to_string(), row_1),
+            Row::new("2".to_string(), row_2),
+            Row::new("3".to_string(), row_3),
         ];
 
         let schema = TableSchema::from_rows(rows);
@@ -525,7 +525,7 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_empty_rows() {
-        let rows: &Vec<DatabaseRow> = &vec![];
+        let rows: &Vec<Row> = &vec![];
         let schema = TableSchema::from_rows(rows);
         assert!(schema.is_ok(), "Schema from empty rows should be valid.");
     }
@@ -561,7 +561,7 @@ mod tests {
         let schema = create_test_schema();
         let conn = setup_in_memory_db(&schema)?;
 
-        let row = DatabaseRow::new(
+        let row = Row::new(
             "row_1".to_string(),
             json!({
                 "field1": 1,
@@ -611,10 +611,9 @@ mod tests {
         });
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
-        let params = params_from_iter(schema.get_insert_params(
-            &field_names,
-            &DatabaseRow::new("1".to_string(), row_content),
-        )?);
+        let params = params_from_iter(
+            schema.get_insert_params(&field_names, &Row::new("1".to_string(), row_content))?,
+        );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;
 
@@ -833,8 +832,8 @@ mod tests {
             }
         });
         let rows = &vec![
-            DatabaseRow::new("1".to_string(), row_1.clone()),
-            DatabaseRow::new("2".to_string(), row_2.clone()),
+            Row::new("1".to_string(), row_1.clone()),
+            Row::new("2".to_string(), row_2.clone()),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -854,14 +853,14 @@ mod tests {
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
-            schema.get_insert_params(&field_names, &DatabaseRow::new("1".to_string(), row_1))?,
+            schema.get_insert_params(&field_names, &Row::new("1".to_string(), row_1))?,
         );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
-            schema.get_insert_params(&field_names, &DatabaseRow::new("2".to_string(), row_2))?,
+            schema.get_insert_params(&field_names, &Row::new("2".to_string(), row_2))?,
         );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;

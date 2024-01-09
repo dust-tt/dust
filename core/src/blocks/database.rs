@@ -1,4 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
+use crate::databases::database::query_database;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -8,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::block::replace_variables_in_string;
-use super::helpers::get_data_source_project;
+use super::database_schema::load_tables_from_identifiers;
 
 #[derive(Clone)]
 pub struct Database {
@@ -67,60 +68,42 @@ impl Block for Database {
         let config = env.config.config_for_block(name);
 
         let err_msg = format!(
-            "Invalid or missing `database` in configuration for \
-        `database` block `{}` expecting `{{ \"database\": \
-        {{ \"workspace_id\": ..., \"data_source_id\": ..., \"database_id\": ... }} }}`",
+            "Invalid or missing `tables` in configuration for \
+        `database` block `{}` expecting `{{ \"tables\": \
+        [ {{ \"workspace_id\": ..., \"data_source_id\": ..., \"table_id\": ... }}, ... ] }}`",
             name
         );
 
-        let (workspace_id, data_source_id, database_id) = match config {
-            Some(v) => match v.get("database") {
-                Some(Value::Object(o)) => {
-                    let workspace_id = match o.get("workspace_id") {
-                        Some(Value::String(s)) => s,
-                        _ => Err(anyhow!(err_msg.clone()))?,
-                    };
-                    let data_source_id = match o.get("data_source_id") {
-                        Some(Value::String(s)) => s,
-                        _ => Err(anyhow!(err_msg.clone()))?,
-                    };
-                    let database_id = match o.get("database_id") {
-                        Some(Value::String(s)) => s,
-                        _ => Err(anyhow!(err_msg.clone()))?,
-                    };
+        let table_identifiers = match config {
+            Some(v) => match v.get("tables") {
+                Some(Value::Array(a)) => a
+                    .iter()
+                    .map(|v| {
+                        let workspace_id = match v.get("workspace_id") {
+                            Some(Value::String(s)) => s,
+                            _ => Err(anyhow!(err_msg.clone()))?,
+                        };
+                        let data_source_id = match v.get("data_source_id") {
+                            Some(Value::String(s)) => s,
+                            _ => Err(anyhow!(err_msg.clone()))?,
+                        };
+                        let table_id = match v.get("table_id") {
+                            Some(Value::String(s)) => s,
+                            _ => Err(anyhow!(err_msg.clone()))?,
+                        };
 
-                    Ok((workspace_id, data_source_id, database_id))
-                }
-                _ => Err(anyhow!(err_msg)),
+                        Ok((workspace_id, data_source_id, table_id))
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+                _ => Err(anyhow!(err_msg.clone()))?,
             },
-            None => Err(anyhow!(err_msg)),
-        }?;
+            _ => Err(anyhow!(err_msg.clone()))?,
+        };
 
         let query = replace_variables_in_string(&self.query, "query", env)?;
-        let project = get_data_source_project(&workspace_id, &data_source_id, env).await?;
+        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
-        let database = match env
-            .store
-            .load_database(&project, &data_source_id, &database_id)
-            .await?
-        {
-            Some(d) => d,
-            None => Err(anyhow!(
-                "Database `{}` not found in data source `{}`",
-                database_id,
-                data_source_id
-            ))?,
-        };
-
-        let (results, schema) = match database.query(env.store.clone(), &query).await {
-            Ok(r) => r,
-            Err(e) => Err(anyhow!(
-                "Error querying database `{}` in data source `{}`: {}",
-                database_id,
-                data_source_id,
-                e
-            ))?,
-        };
+        let (results, schema) = query_database(&tables, env.store.clone(), &query).await?;
 
         Ok(BlockResult {
             value: json!({
