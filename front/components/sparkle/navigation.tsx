@@ -10,7 +10,6 @@ import {
   PlanetIcon,
   RobotIcon,
   RobotSharedIcon,
-  ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
