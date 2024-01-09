@@ -115,8 +115,9 @@ async function getSlackConversationInfo(
   return slackClient.conversations.info({ channel: channelId });
 }
 
-// We check that the user is not restricted or a stranger.
-// For public channels, we check if the email's domain has been whitelisted.
+// Verify the Slack user is not an external guest to the workspace.
+// An exception is made for users from domains on the whitelist,
+// allowing them to interact with the bot in public channels.
 // See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619
 export async function isUserAllowedToUseChatbot(
   slackClient: WebClient,
