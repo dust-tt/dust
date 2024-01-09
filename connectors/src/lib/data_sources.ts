@@ -347,10 +347,3 @@ export function renderMarkdownSection(
 
   return top;
 }
-
-export function renderGfmMarkdownSection(
-  prefix: string | null,
-  markdown: string
-): CoreAPIDataSourceDocumentSection {
-  return renderMarkdownSection(prefix, markdown, { flavor: "gfm" });
-}
