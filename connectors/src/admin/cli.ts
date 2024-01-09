@@ -9,11 +9,8 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
-import {
-  cleanUpProcessRepository,
-  getOctokit,
-  processRepository,
-} from "@connectors/connectors/github/lib/github_api";
+import { getOctokit } from "@connectors/connectors/github/lib/github_api";
+import { launchGithubCodeSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import {
   getAuthObject,
   getDocumentId,
@@ -33,7 +30,6 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
-import { launchGithubCodeSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
