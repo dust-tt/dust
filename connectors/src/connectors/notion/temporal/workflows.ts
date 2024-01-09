@@ -258,6 +258,9 @@ export async function upsertPageWorkflow({
         workflowId: `${getWorkflowIdV2(
           connectorId
         )}-page-${pageId}-block-${block}-children`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
         args: [{ connectorId, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
@@ -268,6 +271,9 @@ export async function upsertPageWorkflow({
         workflowId: `${getWorkflowIdV2(
           connectorId
         )}-page-${pageId}-child-database-${databaseId}`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
         args: [{ connectorId, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
@@ -322,6 +328,9 @@ export async function notionProcessBlockChildrenWorkflow({
         workflowId: `${getWorkflowIdV2(
           connectorId
         )}-page-${pageId}-block-${block}-children`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
         args: [{ connectorId, pageId, blockId: block }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
@@ -332,6 +341,9 @@ export async function notionProcessBlockChildrenWorkflow({
         workflowId: `${getWorkflowIdV2(
           connectorId
         )}-page-${pageId}-child-database-${databaseId}`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
         args: [{ connectorId, databaseId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
@@ -385,6 +397,9 @@ export async function syncResultPageWorkflow({
       upsertQueue.add(() =>
         executeChild(upsertPageWorkflow, {
           workflowId: `${getWorkflowIdV2(connectorId)}-upsert-page-${pageId}`,
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
           args: [{ connectorId, pageId, runTimestamp, isBatchSync, pageIndex }],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           memo: workflowInfo().memo,
@@ -553,6 +568,9 @@ async function performUpserts({
                 pageIds: batch,
               },
             ],
+            searchAttributes: {
+              connectorId: [connectorId],
+            },
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
             memo: workflowInfo().memo,
           })
@@ -595,6 +613,9 @@ async function performUpserts({
                 databaseIds: batch,
               },
             ],
+            searchAttributes: {
+              connectorId: [connectorId],
+            },
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
             memo: workflowInfo().memo,
           })
