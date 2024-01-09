@@ -16,6 +16,10 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 
+const MAX_DEPTH = 20;
+const MAX_PAGES = 1000;
+const CONCURRENCY = 10;
+
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -37,8 +41,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
-      maxRequestsPerCrawl: 300,
-      maxConcurrency: 10,
+      maxRequestsPerCrawl: MAX_PAGES,
+      maxConcurrency: CONCURRENCY,
 
       async requestHandler({ $, request, enqueueLinks }) {
         const extracted = new turndown()
@@ -48,8 +52,16 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         const pageTitle = $("title").text();
 
         await enqueueLinks({
-          transformRequestFunction: (req) =>
-            req.url.startsWith(webCrawlerConfig.url) ? req : false,
+          userData: {
+            depth: request.userData.depth ? request.userData.depth + 1 : 1,
+          },
+          transformRequestFunction: (req) => {
+            if (request.userData.depth > MAX_DEPTH) {
+              console.log("reached max depth");
+              return false;
+            }
+            return req.url.startsWith(webCrawlerConfig.url) ? req : false;
+          },
         });
 
         const folders = getAllFoldersForUrl(request.url);
