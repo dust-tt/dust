@@ -2011,7 +2011,6 @@ impl Store for PostgresStore {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        // Check if there is already a database with the same table_ids_hash.
         let stmt = c
             .prepare(
                 "SELECT id, created, table_ids_hash, sqlite_worker \
@@ -2026,7 +2025,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let database_result: Result<Option<Database>, anyhow::Error> = match database_row {
+        match database_row {
             None => Ok(None),
             Some((_database_row_id, created, table_ids_hash, sqlite_worker_row_id)) => {
                 if sqlite_worker_row_id.is_none() {
@@ -2059,19 +2058,14 @@ impl Store for PostgresStore {
                         }
                     };
 
-                    match sqlite_worker {
-                        None => Ok(Some(Database::new(created as u64, &table_ids_hash, &None))),
-                        Some(sqlite_worker) => Ok(Some(Database::new(
-                            created as u64,
-                            &table_ids_hash,
-                            &Some(sqlite_worker),
-                        ))),
-                    }
+                    Ok(Some(Database::new(
+                        created as u64,
+                        &table_ids_hash,
+                        &sqlite_worker,
+                    )))
                 }
             }
-        };
-
-        database_result
+        }
     }
 
     async fn delete_database(&self, table_ids_hash: &str) -> Result<()> {
