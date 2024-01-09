@@ -897,6 +897,7 @@ export async function githubCodeSyncActivity(
       });
 
       if (!githubCodeFile) {
+        console.log("CREATING FILE", f.documentId);
         githubCodeFile = await GithubCodeFile.create({
           connectorId: connector.id,
           repoId: repoId.toString(),
@@ -910,8 +911,6 @@ export async function githubCodeSyncActivity(
           lastSeenAt: codeSyncStartedAt,
         });
       }
-
-      console.log("HERE", contentHash);
 
       // If the parents have updated then the documentId gets updated as well so we should never
       // have an udpate to parentInternalId. We check that this is always the case. If the file is
@@ -929,9 +928,7 @@ export async function githubCodeSyncActivity(
       const needsUpdate =
         f.fileName !== githubCodeFile.fileName ||
         f.sourceUrl !== githubCodeFile.sourceUrl ||
-        contentHash === githubCodeFile.contentHash;
-
-      console.log("HERE 2", needsUpdate);
+        contentHash !== githubCodeFile.contentHash;
 
       if (needsUpdate) {
         // Record the parent directories to update their updatedAt.
@@ -966,6 +963,15 @@ export async function githubCodeSyncActivity(
         githubCodeFile.sourceUrl = f.sourceUrl;
         githubCodeFile.contentHash = contentHash;
         githubCodeFile.updatedAt = codeSyncStartedAt;
+      } else {
+        localLogger.info(
+          {
+            repoId,
+            fileName: f.fileName,
+            documentId: f.documentId,
+          },
+          "Skipping update of unchanged GithubCodeFile"
+        );
       }
 
       // Finally we update the lastSeenAt for all files we've seen, and save.
