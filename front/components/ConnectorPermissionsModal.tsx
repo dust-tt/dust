@@ -16,6 +16,7 @@ import { SendNotificationsContext } from "./sparkle/Notification";
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "slack",
   "google_drive",
+  "intercom",
 ]);
 
 export default function ConnectorPermissionsModal({

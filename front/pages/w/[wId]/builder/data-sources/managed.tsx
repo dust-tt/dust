@@ -63,7 +63,7 @@ type DataSourceIntegration = {
   setupWithSuffix: string | null;
 };
 
-const REDIRECT_TO_EDIT_PERMISSIONS = ["google_drive", "slack"];
+const REDIRECT_TO_EDIT_PERMISSIONS = ["google_drive", "slack", "intercom"];
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;

@@ -721,6 +721,7 @@ function ManagedDataSourceView({
                   switch (connectorProvider) {
                     case "slack":
                     case "google_drive":
+                    case "intercom":
                       return (
                         <>
                           <Button
@@ -745,7 +746,6 @@ function ManagedDataSourceView({
                       );
                     case "notion":
                     case "github":
-                    case "intercom":
                       return (
                         <Button
                           label="Add / Remove data, manage permissions"
