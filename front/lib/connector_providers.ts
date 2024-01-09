@@ -90,14 +90,14 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   intercom: {
     name: "Intercom",
     connectorProvider: "intercom",
-    isBuilt: false,
+    isBuilt: true, // DO NOT COMMIT DAPH
     hide: false,
     logoPath: "/static/intercom_32x32.png",
     description:
-      "Authorize granular access to your company's Intercom Help Centers. Dust does not access your conversations.",
+      "Authorize access to your Intercom Help Center Collections & Articles. Conversations coming soon.",
     limitations: null,
     logoComponent: IntercomLogo,
-    isNested: false,
+    isNested: true,
   },
   webcrawler: {
     name: "Web Crawler",

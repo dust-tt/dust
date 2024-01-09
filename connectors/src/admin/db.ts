@@ -22,6 +22,7 @@ import {
 import {
   IntercomArticle,
   IntercomCollection,
+  IntercomHelpCenter,
 } from "@connectors/lib/models/intercom";
 import {
   NotionConnectorBlockCacheEntry,
@@ -68,6 +69,7 @@ async function main(): Promise<void> {
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
   await GoogleDriveConfig.sync({ alter: true });
+  await IntercomHelpCenter.sync({ alter: true });
   await IntercomCollection.sync({ alter: true });
   await IntercomArticle.sync({ alter: true });
   await WebCrawlerConfiguration.sync({ alter: true });
