@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import { ConnectorResourceType, ModelId } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
@@ -65,11 +65,20 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
             ressourceType: "folder",
+            // folders are not upserted to the datasource, but their ids are used
+            // as parents for the documents in the folder.
+            dustDocumentId: stableIdForUrl({
+              url: folder,
+              ressourceType: "folder",
+            }),
             title: null,
           });
           createdFolders.add(folder);
         }
-        const documentId = Buffer.from(blake3(request.url)).toString("hex");
+        const documentId = stableIdForUrl({
+          url: request.url,
+          ressourceType: "file",
+        });
         const logicalParent =
           request.url === webCrawlerConfig.url
             ? null
@@ -95,7 +104,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           documentUrl: request.url,
           timestampMs: new Date().getTime(),
           tags: [`title:${pageTitle.substring(0, 300)}`],
-          parents: folders,
+          parents: [documentId].concat(
+            folders.map((x) =>
+              stableIdForUrl({ url: x, ressourceType: "folder" })
+            )
+          ),
           upsertContext: {
             sync_type: "batch",
           },
@@ -155,4 +168,14 @@ export function getFolderForUrl(url: string) {
   } else {
     return `${parsed.origin}/${urlParts.slice(0, -1).join("/")}`;
   }
+}
+
+function stableIdForUrl({
+  url,
+  ressourceType,
+}: {
+  url: string;
+  ressourceType: ConnectorResourceType;
+}) {
+  return Buffer.from(blake3(`${ressourceType}-${url}`)).toString("hex");
 }
