@@ -20,7 +20,7 @@ import {
 } from "@connectors/connectors/github/lib/github_api";
 import {
   deleteFromDataSource,
-  renderGfmMarkdownSection,
+  renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -108,9 +108,10 @@ async function renderIssue(
 
   const issue = await getIssue(installationId, repoName, login, issueNumber);
 
-  const content = renderGfmMarkdownSection(
+  const content = renderMarkdownSection(
     `Issue #${issue.number} [${repoName}]: ${issue.title}\n`,
-    issue.body || ""
+    issue.body || "",
+    { flavor: "gfm" }
   );
 
   let resultPage = 1;
@@ -146,9 +147,10 @@ async function renderIssue(
 
     for (const comment of comments) {
       if (comment.body) {
-        const c = renderGfmMarkdownSection(
+        const c = renderMarkdownSection(
           `>> ${renderGithubUser(comment.creator)}:\n`,
-          comment.body
+          comment.body,
+          { flavor: "gfm" }
         );
         content.sections.push(c);
       }
@@ -278,9 +280,10 @@ async function renderDiscussion(
     discussionNumber
   );
 
-  const content = renderGfmMarkdownSection(
+  const content = renderMarkdownSection(
     `Discussion #${discussion.number} [${repoName}]: ${discussion.title}\n`,
-    discussion.bodyText
+    discussion.bodyText,
+    { flavor: "gfm" }
   );
 
   let nextCursor: string | null = null;
@@ -308,7 +311,9 @@ async function renderDiscussion(
         prefix += "[ACCEPTED ANSWER] ";
       }
       prefix += `${comment.author?.login || "Unknown author"}:\n`;
-      const c = renderGfmMarkdownSection(prefix, comment.bodyText);
+      const c = renderMarkdownSection(prefix, comment.bodyText, {
+        flavor: "gfm",
+      });
       content.sections.push(c);
 
       let nextChildCursor: string | null = null;
@@ -328,9 +333,10 @@ async function renderDiscussion(
           );
 
         for (const childComment of childComments) {
-          const cc = renderGfmMarkdownSection(
+          const cc = renderMarkdownSection(
             `>> ${childComment.author?.login || "Unknown author"}:\n`,
-            childComment.bodyText
+            childComment.bodyText,
+            { flavor: "gfm" }
           );
           c.sections.push(cc);
         }
