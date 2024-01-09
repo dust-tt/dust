@@ -317,13 +317,6 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/u/extract`,
           current: current === "extract",
         },
-        {
-          id: "databases",
-          label: "Databases",
-          icon: ServerIcon,
-          href: `/w/${owner.sId}/databases`,
-          current: current === "databases",
-        },
       ],
     });
   }

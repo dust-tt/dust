@@ -582,32 +582,6 @@ export function useDatabase({
   };
 }
 
-export function useDatabaseTables({
-  workspaceId,
-  dataSourceName,
-  databaseId,
-}: {
-  workspaceId: string;
-  dataSourceName: string;
-  databaseId?: string;
-}) {
-  const tablesFetcher: Fetcher<ListDatabaseTablesResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWR(
-    databaseId
-      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`
-      : null,
-    tablesFetcher
-  );
-
-  return {
-    tables: data ? data.tables : [],
-    isTablesLoading: !error && !data,
-    isTablesError: error,
-    mutateTables: mutate,
-  };
-}
-
 export function useApp({
   workspaceId,
   appId,
