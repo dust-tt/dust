@@ -147,6 +147,7 @@ export async function isUserAllowedToUseChatbot(
 
   if (isExternal) {
     const userDomain = profile?.email?.split("@")[1];
+    // Ensure the domain matches exactly.
     const isWhitelistedDomain = userDomain
       ? whitelistedDomains?.includes(userDomain) ?? false
       : false;
