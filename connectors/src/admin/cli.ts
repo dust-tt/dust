@@ -9,10 +9,11 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
+import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
-  cleanUpProcessRepository,
-  processRepository,
-} from "@connectors/connectors/github/lib/github_api";
+  launchGithubCodeSyncWorkflow,
+  launchGithubFullSyncWorkflow,
+} from "@connectors/connectors/github/temporal/client";
 import {
   getAuthObject,
   getDocumentId,
@@ -27,6 +28,7 @@ import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector } from "@connectors/lib/models";
+import { GithubConnectorState } from "@connectors/lib/models/github";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
@@ -105,7 +107,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const github = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
-    case "test-repo": {
+    case "resync-repo": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
@@ -133,31 +135,84 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
+      console.log("Resyncing repo " + args.owner + "/" + args.repo);
+
       const installationId = connector.connectionId;
 
-      const { tempDir, files, directories } = await processRepository({
-        installationId,
-        repoLogin: args.owner,
-        repoName: args.repo,
-        repoId: "999",
+      const octokit = await getOctokit(installationId);
+
+      const { data } = await octokit.rest.repos.get({
+        owner: args.owner,
+        repo: args.repo,
       });
 
-      files.forEach((f) => {
-        console.log(f);
-      });
-      directories.forEach((d) => {
-        console.log(d);
-      });
+      const repoId = data.id;
 
-      console.log(
-        `Found ${files.length} files in ${directories.length} directories`
-      );
-      console.log(
-        `Files total size: ${files.reduce((acc, f) => acc + f.sizeBytes, 0)}`
+      await launchGithubCodeSyncWorkflow(
+        connector.id.toString(),
+        args.owner,
+        args.repo,
+        repoId
       );
 
-      await cleanUpProcessRepository(tempDir);
+      return;
     }
+
+    case "code-sync": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.enable) {
+        throw new Error("Missing --enable (true/false) argument");
+      }
+      if (!["true", "false"].includes(args.enable)) {
+        throw new Error("--enable must be true or false");
+      }
+
+      const enable = args.enable === "true";
+
+      const connector = await Connector.findOne({
+        where: {
+          type: "github",
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+        },
+      });
+
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+        );
+      }
+
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        throw new Error(
+          `Connector state not found for connector ${connector.id}`
+        );
+      }
+
+      await connectorState.update({
+        codeSyncEnabled: enable,
+      });
+
+      // full-resync, code sync only.
+      await launchGithubFullSyncWorkflow({
+        connectorId: connector.id.toString(),
+        syncCodeOnly: true,
+      });
+
+      return;
+    }
+    default:
+      throw new Error("Unknown github command: " + command);
   }
 };
 
@@ -325,11 +380,15 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         connectorId,
         lastSeenTs: new Date(),
       });
+
+      return;
     }
+    default:
+      throw new Error("Unknown notion command: " + command);
   }
 };
 
-const google = async (command: string, args: parseArgs.ParsedArgs) => {
+const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "garbage-collect-all": {
       const connectors = await Connector.findAll({
@@ -457,6 +516,8 @@ const google = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+    default:
+      throw new Error("Unknown google command: " + command);
   }
 };
 
@@ -569,6 +630,8 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       break;
     }
+    default:
+      throw new Error("Unknown slack command: " + command);
   }
 };
 
@@ -578,15 +641,36 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.provider) {
         throw new Error("Missing --provider argument");
       }
+      let fromTs: number | null = null;
+      if (args.fromTs) {
+        fromTs = parseInt(args.fromTs as string, 10);
+      }
+
       const connectors = await Connector.findAll({
         where: {
           type: args.provider,
         },
       });
-      let fromTs: number | null = null;
-      if (args.fromTs) {
-        fromTs = parseInt(args.fromTs as string, 10);
+
+      const answer: string = await new Promise((resolve) => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        rl.question(
+          `Are you sure you want to trigger full sync for ${connectors.length} connectors of type ${args.provider}? (y/N) `,
+          (answer) => {
+            rl.close();
+            resolve(answer);
+          }
+        );
+      });
+
+      if (answer !== "y") {
+        console.log("Cancelled");
+        return;
       }
+
       for (const connector of connectors) {
         await throwOnError(
           SYNC_CONNECTOR_BY_TYPE[connector.type](
@@ -600,6 +684,8 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       return;
     }
+    default:
+      throw new Error("Unknown batch command: " + command);
   }
 };
 
@@ -633,8 +719,8 @@ const main = async () => {
     case "github":
       await github(command, argv);
       return;
-    case "google":
-      await google(command, argv);
+    case "google_drive":
+      await google_drive(command, argv);
       return;
     case "slack":
       await slack(command, argv);

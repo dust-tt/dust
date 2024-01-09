@@ -519,7 +519,7 @@ export async function getDiscussion(
   return payload.repository.discussion;
 }
 
-async function getOctokit(installationId: string): Promise<Octokit> {
+export async function getOctokit(installationId: string): Promise<Octokit> {
   if (!GITHUB_APP_ID) {
     throw new Error("GITHUB_APP_ID not set");
   }
@@ -618,7 +618,7 @@ export async function processRepository({
   installationId: string;
   repoLogin: string;
   repoName: string;
-  repoId: string;
+  repoId: number;
 }) {
   const octokit = await getOctokit(installationId);
 
@@ -712,6 +712,7 @@ export async function processRepository({
           .substring(tempDir.length + 1)
           .split("/")
           .slice(1, -1);
+        const fileName = basename(file);
 
         const pathInternalIds = [];
 
@@ -727,12 +728,11 @@ export async function processRepository({
         }
 
         const documentId = `github-code-${repoId}-file-${blake3(
-          `github-code-${repoId}-file-${path.join("/")}/${file}`
+          `github-code-${repoId}-file-${path.join("/")}/${fileName}`
         )
           .toString("hex")
           .substring(0, 16)}`;
 
-        const fileName = basename(file);
         const parentInternalId =
           pathInternalIds.length === 0
             ? null

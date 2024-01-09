@@ -2,6 +2,8 @@ import { Sequelize } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
+  GithubCodeDirectory,
+  GithubCodeFile,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
@@ -45,6 +47,8 @@ async function main(): Promise<void> {
   await GithubConnectorState.sync({ alter: true });
   await GithubIssue.sync({ alter: true });
   await GithubDiscussion.sync({ alter: true });
+  await GithubCodeFile.sync({ alter: true });
+  await GithubCodeDirectory.sync({ alter: true });
   await GoogleDriveFolders.sync({ alter: true });
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
