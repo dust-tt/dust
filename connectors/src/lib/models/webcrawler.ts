@@ -120,7 +120,7 @@ export class WebCrawlerPage extends Model<
   declare title: string | null;
   declare parentUrl: string | null;
   declare url: string;
-  declare dustDocumentId: string;
+  declare documentId: string;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
@@ -154,7 +154,7 @@ WebCrawlerPage.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    dustDocumentId: {
+    documentId: {
       type: DataTypes.STRING,
       allowNull: false,
     },

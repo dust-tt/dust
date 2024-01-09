@@ -100,7 +100,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           parentUrl: logicalParent,
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
-          dustDocumentId: documentId,
+          documentId: documentId,
           title: pageTitle,
         });
 
