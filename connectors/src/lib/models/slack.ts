@@ -20,6 +20,7 @@ export class SlackConfiguration extends Model<
   declare slackTeamId: string;
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
+  declare whitelistedDomains?: readonly string[];
 }
 SlackConfiguration.init(
   {
@@ -46,6 +47,10 @@ SlackConfiguration.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    whitelistedDomains: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
     },
   },
   {

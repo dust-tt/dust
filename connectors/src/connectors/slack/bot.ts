@@ -19,7 +19,11 @@ import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/Conve
 import * as t from "io-ts";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  getSlackUserInfo,
+  isUserAllowedToUseChatbot,
+} from "@connectors/connectors/slack/lib/slack_client";
 import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -82,7 +86,8 @@ export async function botAnswerMessageWithErrorHandling(
       slackUserId,
       slackMessageTs,
       slackThreadTs,
-      connector
+      connector,
+      slackConfig
     );
     if (res.isErr()) {
       logger.error(
@@ -147,7 +152,8 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null,
-  connector: Connector
+  connector: Connector,
+  slackConfig: SlackConfiguration
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -164,22 +170,20 @@ async function botAnswerMessage(
 
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
-  const slackUserInfo = await slackClient.users.info({
-    user: slackUserId,
-  });
+  const slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
 
   if (!slackUserInfo.ok || !slackUserInfo.user) {
     throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
   }
 
-  // We check that the user is not restricted or a stranger.
-  // See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619
-  if (
-    slackUserInfo.user.profile?.team !== slackTeamId ||
-    slackUserInfo.user.is_restricted ||
-    slackUserInfo.user.is_ultra_restricted ||
-    slackUserInfo.user.is_stranger
-  ) {
+  const hasChatbotAccess = await isUserAllowedToUseChatbot(
+    slackClient,
+    slackUserInfo,
+    slackChannel,
+    slackTeamId,
+    slackConfig.whitelistedDomains
+  );
+  if (!hasChatbotAccess) {
     return new Err(
       new SlackExternalUserError(
         "Hi there. Sorry, but I can only answer to members of the workspace where I am installed."
