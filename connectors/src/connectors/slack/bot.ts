@@ -171,7 +171,14 @@ async function botAnswerMessage(
   if (!slackUserInfo.ok || !slackUserInfo.user) {
     throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
   }
-  if (slackUserInfo.user.profile?.team !== slackTeamId) {
+
+  // We check that the user is not restricted or a stranger.
+  if (
+    slackUserInfo.user.profile?.team !== slackTeamId ||
+    slackUserInfo.user.is_restricted ||
+    slackUserInfo.user.is_ultra_restricted ||
+    slackUserInfo.user.is_stranger
+  ) {
     return new Err(
       new SlackExternalUserError(
         "Hi there. Sorry, but I can only answer to members of the workspace where I am installed."
