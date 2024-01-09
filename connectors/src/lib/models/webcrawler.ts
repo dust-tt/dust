@@ -1,4 +1,3 @@
-import { ConnectorResourceType } from "@dust-tt/types";
 import {
   type CreationOptional,
   DataTypes,
@@ -58,16 +57,75 @@ export class WebCrawlerFolder extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare title: string | null;
   declare parentUrl: string | null;
   declare url: string;
-  declare ressourceType: ConnectorResourceType;
-  declare dustDocumentId: string | null;
+  // Folders are not upserted to the data source but their ids are
+  // used as parent to WebCrawlerPage.
+  declare dustDocumentId: string;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
 
 WebCrawlerFolder.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    url: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    parentUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    dustDocumentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      {
+        unique: true,
+        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
+      },
+    ],
+    modelName: "webcrawler_folders",
+  }
+);
+Connector.hasMany(WebCrawlerFolder);
+WebCrawlerConfiguration.hasMany(WebCrawlerFolder);
+
+export class WebCrawlerPage extends Model<
+  InferAttributes<WebCrawlerPage>,
+  InferCreationAttributes<WebCrawlerPage>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare title: string | null;
+  declare parentUrl: string | null;
+  declare url: string;
+  declare dustDocumentId: string;
+  declare connectorId: ForeignKey<Connector["id"]>;
+  declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
+}
+
+WebCrawlerPage.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -96,13 +154,9 @@ WebCrawlerFolder.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    ressourceType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     dustDocumentId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
@@ -110,16 +164,11 @@ WebCrawlerFolder.init(
     indexes: [
       {
         unique: true,
-        fields: [
-          "url",
-          "connectorId",
-          "webcrawlerConfigurationId",
-          "ressourceType",
-        ],
+        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
       },
     ],
-    modelName: "webcrawler_folders",
+    modelName: "webcrawler_pages",
   }
 );
-Connector.hasMany(WebCrawlerFolder);
-WebCrawlerConfiguration.hasMany(WebCrawlerFolder);
+Connector.hasMany(WebCrawlerPage);
+WebCrawlerConfiguration.hasMany(WebCrawlerPage);

@@ -9,6 +9,7 @@ import { Connector } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
+  WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import {
   reportInitialSyncProgress,
@@ -67,14 +68,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             parentUrl: logicalParent,
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
-            ressourceType: "folder",
             // folders are not upserted to the datasource, but their ids are used
             // as parents for the documents in the folder.
             dustDocumentId: stableIdForUrl({
               url: folder,
               ressourceType: "folder",
             }),
-            title: null,
           });
           createdFolders.add(folder);
         }
@@ -86,13 +85,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           request.url === webCrawlerConfig.url
             ? null
             : getFolderForUrl(request.url);
-        await WebCrawlerFolder.upsert({
+        await WebCrawlerPage.upsert({
           url: request.url,
           parentUrl: logicalParent,
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
           dustDocumentId: documentId,
-          ressourceType: "file",
           title: pageTitle,
         });
 

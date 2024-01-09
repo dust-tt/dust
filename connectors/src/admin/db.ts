@@ -34,6 +34,7 @@ import {
 import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
+  WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
 
@@ -61,6 +62,7 @@ async function main(): Promise<void> {
   await IntercomArticle.sync({ alter: true });
   await WebCrawlerConfiguration.sync({ alter: true });
   await WebCrawlerFolder.sync({ alter: true });
+  await WebCrawlerPage.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
