@@ -10,7 +10,6 @@ import {
   PlanetIcon,
   RobotIcon,
   RobotSharedIcon,
-  ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
@@ -316,13 +315,6 @@ export const subNavigationAdmin = ({
           icon: ArrowUpOnSquareIcon,
           href: `/w/${owner.sId}/u/extract`,
           current: current === "extract",
-        },
-        {
-          id: "databases",
-          label: "Databases",
-          icon: ServerIcon,
-          href: `/w/${owner.sId}/databases`,
-          current: current === "databases",
         },
       ],
     });
