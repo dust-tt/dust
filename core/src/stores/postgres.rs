@@ -2028,41 +2028,36 @@ impl Store for PostgresStore {
         match database_row {
             None => Ok(None),
             Some((_database_row_id, created, table_ids_hash, sqlite_worker_row_id)) => {
-                if sqlite_worker_row_id.is_none() {
-                    // There is no sqlite_worker assigned to the database.
-                    Ok(Some(Database::new(created as u64, &table_ids_hash, &None)))
-                } else {
-                    let sqlite_worker_row_id = sqlite_worker_row_id.unwrap();
-                    let sqlite_worker: Option<SqliteWorker> = {
-                        let stmt = c
-                            .prepare(
-                                "SELECT url, last_heartbeat \
-                                FROM sqlite_workers \
-                                WHERE id = $1 AND last_heartbeat > $2 LIMIT 1",
-                            )
-                            .await?;
-                        let r = c
-                            .query(
-                                &stmt,
-                                &[&sqlite_worker_row_id, &((utils::now() - worker_ttl) as i64)],
-                            )
-                            .await?;
-                        match r.len() {
-                            0 => None,
-                            1 => {
-                                let url: String = r[0].get(0);
-                                let last_heartbeat: i64 = r[0].get(1);
-                                Some(SqliteWorker::new(url, last_heartbeat as u64))
+                match sqlite_worker_row_id {
+                    None => Ok(Some(Database::new(created as u64, &table_ids_hash, &None))),
+                    Some(worker_id) => {
+                        let sqlite_worker: Option<SqliteWorker> = {
+                            let stmt = c
+                                .prepare(
+                                    "SELECT url, last_heartbeat \
+                                    FROM sqlite_workers \
+                                    WHERE id = $1 AND last_heartbeat > $2 LIMIT 1",
+                                )
+                                .await?;
+                            let r = c
+                                .query(&stmt, &[&worker_id, &((utils::now() - worker_ttl) as i64)])
+                                .await?;
+                            match r.len() {
+                                0 => None,
+                                1 => Some(SqliteWorker::new(
+                                    r[0].get::<usize, String>(0),
+                                    r[0].get::<usize, i64>(1) as u64,
+                                )),
+                                _ => unreachable!(),
                             }
-                            _ => unreachable!(),
-                        }
-                    };
+                        };
 
-                    Ok(Some(Database::new(
-                        created as u64,
-                        &table_ids_hash,
-                        &sqlite_worker,
-                    )))
+                        Ok(Some(Database::new(
+                            created as u64,
+                            &table_ids_hash,
+                            &sqlite_worker,
+                        )))
+                    }
                 }
             }
         }
