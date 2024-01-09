@@ -31,6 +31,7 @@ module.exports = {
     "simple-import-sort/exports": "error",
     "@typescript-eslint/no-floating-promises": "error",
     "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/return-await": ["error", "in-try-catch"],
   },
   overrides: [
     {

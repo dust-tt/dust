@@ -47,6 +47,7 @@ module.exports = {
       },
     ],
     "simple-import-sort/exports": "error",
+    "@typescript-eslint/return-await": ["error", "in-try-catch"],
   },
   overrides: [
     {
