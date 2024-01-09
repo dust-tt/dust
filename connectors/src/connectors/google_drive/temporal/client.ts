@@ -57,7 +57,9 @@ export async function launchGoogleDriveFullSyncWorkflow(
       args: [connectorIdModelId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-
+      searchAttributes: {
+        connectorId: [parseInt(connectorId)],
+      },
       memo: {
         connectorId: connectorId,
       },
@@ -111,6 +113,9 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       args: [connectorIdModelId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [parseInt(connectorId)],
+      },
       signal: newWebhookSignal,
       signalArgs: undefined,
       memo: {
@@ -202,7 +207,9 @@ export async function launchGoogleGarbageCollector(
       args: [connector.id, new Date().getTime()],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
       memo: {
         connectorId: connectorId,
       },

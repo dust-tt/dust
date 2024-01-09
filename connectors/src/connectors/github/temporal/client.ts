@@ -58,6 +58,9 @@ export async function launchGithubFullSyncWorkflow(connectorId: string) {
     args: [dataSourceConfig, githubInstallationId],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
     memo: {
       connectorId: connectorId,
     },
@@ -110,6 +113,9 @@ export async function launchGithubReposSyncWorkflow(
     args: [dataSourceConfig, githubInstallationId, orgLogin, repos],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(dataSourceConfig),
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
     memo: {
       connectorId: connectorId,
     },
@@ -149,6 +155,9 @@ export async function launchGithubIssueSyncWorkflow(
     ],
     taskQueue: QUEUE_NAME,
     workflowId,
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
     signal: newWebhookSignal,
     signalArgs: undefined,
     memo: {
@@ -189,6 +198,9 @@ export async function launchGithubDiscussionSyncWorkflow(
       repoLogin,
       discussionNumber,
     ],
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
     taskQueue: QUEUE_NAME,
     workflowId,
     signal: newWebhookSignal,
@@ -224,6 +236,9 @@ export async function launchGithubIssueGarbageCollectWorkflow(
       issueNumber,
     ],
     taskQueue: QUEUE_NAME,
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
     workflowId: getIssueGarbageCollectWorkflowId(
       dataSourceConfig,
       repoId,
@@ -269,6 +284,9 @@ export async function launchGithubDiscussionGarbageCollectWorkflow(
       repoId,
       discussionNumber
     ),
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
   });
 }
 
@@ -292,6 +310,9 @@ export async function launchGithubRepoGarbageCollectWorkflow(
     args: [dataSourceConfig, githubInstallationId, repoId.toString()],
     taskQueue: QUEUE_NAME,
     workflowId: getRepoGarbageCollectWorkflowId(dataSourceConfig, repoId),
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
     memo: {
       connectorId: connectorId,
     },

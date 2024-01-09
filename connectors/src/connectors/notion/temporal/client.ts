@@ -44,6 +44,9 @@ export async function launchNotionSyncWorkflow(
     args: [{ connectorId, startFromTs, forceResync }],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
     memo: {
       connectorId: connectorId,
     },
