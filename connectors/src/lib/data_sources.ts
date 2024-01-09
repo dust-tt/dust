@@ -292,7 +292,7 @@ export function renderPrefixSection(
   };
 }
 
-/// This function is used to render markdown from the GFM markdown format to our Section format.
+/// This function is used to render markdown from (alternatively GFM format) to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
 export function renderMarkdownSection(
