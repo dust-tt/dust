@@ -630,6 +630,48 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       break;
     }
+
+    case "whitelist-domains": {
+      const { wId, whitelistedDomains } = args;
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!whitelistedDomains) {
+        throw new Error("Missing --whitelistedDomains argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: args.wId,
+          type: "slack",
+        },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const whitelistedDomainsArray = whitelistedDomains.split(",");
+      // TODO(2024-01-10 flav) Add domain validation.
+      console.log(
+        `Whitelisting following domains for slack:\n- ${whitelistedDomainsArray.join(
+          "\n-"
+        )}`
+      );
+
+      await SlackConfiguration.update(
+        {
+          whitelistedDomains: whitelistedDomainsArray,
+        },
+        {
+          where: {
+            connectorId: connector.id,
+          },
+        }
+      );
+
+      break;
+    }
+
     default:
       throw new Error("Unknown slack command: " + command);
   }
