@@ -20,9 +20,7 @@ import * as t from "io-ts";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
-  checkUserPermissions,
   getSlackClient,
-  getSlackConversationInfo,
   getSlackUserInfo,
   isUserAllowedToUseChatbot,
 } from "@connectors/connectors/slack/lib/slack_client";
