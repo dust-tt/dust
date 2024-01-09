@@ -7,6 +7,7 @@ import {
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import {
+  getCodeSyncWorkflowId,
   getDiscussionGarbageCollectWorkflowId,
   getDiscussionSyncWorkflowId,
   getFullSyncWorkflowId,
@@ -16,6 +17,7 @@ import {
   getReposSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
+  githubCodeSyncWorkflow,
   githubDiscussionGarbageCollectWorkflow,
   githubDiscussionSyncWorkflow,
   githubFullSyncWorkflow,
@@ -31,7 +33,13 @@ import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "github" });
 
-export async function launchGithubFullSyncWorkflow(connectorId: string) {
+export async function launchGithubFullSyncWorkflow({
+  connectorId,
+  syncCodeOnly,
+}: {
+  connectorId: string;
+  syncCodeOnly: boolean;
+}) {
   const client = await getTemporalClient();
 
   const connector = await Connector.findByPk(connectorId);
@@ -48,6 +56,7 @@ export async function launchGithubFullSyncWorkflow(connectorId: string) {
     logger.warn(
       {
         workspaceId: dataSourceConfig.workspaceId,
+        syncCodeOnly,
       },
       "launchGithubFullSyncWorkflow: Github full sync workflow already running."
     );
@@ -55,7 +64,7 @@ export async function launchGithubFullSyncWorkflow(connectorId: string) {
   }
 
   await client.workflow.start(githubFullSyncWorkflow, {
-    args: [dataSourceConfig, githubInstallationId, connectorId],
+    args: [dataSourceConfig, githubInstallationId, connectorId, syncCodeOnly],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
@@ -122,6 +131,31 @@ export async function launchGithubReposSyncWorkflow(
     searchAttributes: {
       connectorId: [parseInt(connectorId)],
     },
+    memo: {
+      connectorId: connectorId,
+    },
+  });
+}
+
+export async function launchGithubCodeSyncWorkflow(
+  connectorId: string,
+  repoLogin: string,
+  repoName: string,
+  repoId: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const githubInstallationId = connector.connectionId;
+
+  await client.workflow.start(githubCodeSyncWorkflow, {
+    args: [dataSourceConfig, githubInstallationId, repoName, repoId, repoLogin],
+    taskQueue: QUEUE_NAME,
+    workflowId: getCodeSyncWorkflowId(dataSourceConfig, repoId),
     memo: {
       connectorId: connectorId,
     },

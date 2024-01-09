@@ -747,15 +747,86 @@ export function formatCodeContentForUpsert(
   };
 }
 
-export async function githubCodeSyncActivity(
+async function garbageCollectCodeSync(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
-  repoLogin: string,
-  repoName: string,
-  repoId: string,
-  isBatchSync: boolean,
+  connector: Connector,
+  repoId: number,
+  codeSyncStartedAt: Date,
   loggerArgs: Record<string, string | number>
 ) {
+  const localLogger = logger.child(loggerArgs);
+  const filesToDelete = await GithubCodeFile.findAll({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+      lastSeenAt: {
+        [Op.lt]: codeSyncStartedAt,
+      },
+    },
+  });
+
+  if (filesToDelete.length > 0) {
+    localLogger.info(
+      { filesToDelete: filesToDelete.length },
+      "GarbageCollectCodeSync: deleting files"
+    );
+
+    for (const f of filesToDelete) {
+      await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
+      // Only destroy once we succesfully removed from the data source. This is idempotent and will
+      // work as expected when retried.
+      await f.destroy();
+    }
+  }
+
+  const directoriesToDelete = await GithubCodeDirectory.findAll({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+      lastSeenAt: {
+        [Op.lt]: codeSyncStartedAt,
+      },
+    },
+  });
+
+  if (directoriesToDelete.length > 0) {
+    localLogger.info(
+      {
+        directoriesToDelete: directoriesToDelete.length,
+      },
+      "GarbageCollectCodeSync: deleting directories"
+    );
+
+    await GithubCodeDirectory.destroy({
+      where: {
+        connectorId: connector.id,
+        repoId: repoId.toString(),
+        lastSeenAt: {
+          [Op.lt]: codeSyncStartedAt,
+        },
+      },
+    });
+  }
+}
+
+export async function githubCodeSyncActivity({
+  dataSourceConfig,
+  installationId,
+  repoLogin,
+  repoName,
+  repoId,
+  loggerArgs,
+  isBatchSync,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  installationId: string;
+  repoLogin: string;
+  repoName: string;
+  repoId: number;
+  loggerArgs: Record<string, string | number>;
+  isBatchSync: boolean;
+}) {
+  const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
 
   const connector = await Connector.findOne({
@@ -779,7 +850,15 @@ export async function githubCodeSyncActivity(
   }
 
   if (!connectorState.codeSyncEnabled) {
+    // Garbage collect any existing code files.
     localLogger.info("Code sync disabled for connector");
+    await garbageCollectCodeSync(
+      dataSourceConfig,
+      connector,
+      repoId,
+      codeSyncStartedAt,
+      { ...loggerArgs, task: "garbageCollectCodeSyncDisabled" }
+    );
     return;
   }
 
@@ -808,7 +887,6 @@ export async function githubCodeSyncActivity(
     // incoherent state (files that moved will appear twice before final cleanup). This seems fine
     // given that syncing stallness is already considered an incident.
 
-    const codeSyncStartedAt = new Date();
     const rootInternalId = `github-code-${repoId}`;
 
     const updatedDirectories: { [key: string]: boolean } = {};
@@ -823,7 +901,7 @@ export async function githubCodeSyncActivity(
       let githubCodeFile = await GithubCodeFile.findOne({
         where: {
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           documentId: f.documentId,
         },
       });
@@ -831,7 +909,7 @@ export async function githubCodeSyncActivity(
       if (!githubCodeFile) {
         githubCodeFile = await GithubCodeFile.create({
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           documentId: f.documentId,
           parentInternalId,
           fileName: f.fileName,
@@ -859,7 +937,7 @@ export async function githubCodeSyncActivity(
       const needsUpdate =
         f.fileName !== githubCodeFile.fileName ||
         f.sourceUrl !== githubCodeFile.sourceUrl ||
-        contentHash === githubCodeFile.contentHash;
+        contentHash !== githubCodeFile.contentHash;
 
       if (needsUpdate) {
         // Record the parent directories to update their updatedAt.
@@ -880,7 +958,7 @@ export async function githubCodeSyncActivity(
           documentUrl: f.sourceUrl,
           timestampMs: codeSyncStartedAt.getTime(),
           tags,
-          parents: [...f.parents, rootInternalId, repoId],
+          parents: [...f.parents, rootInternalId, repoId.toString()],
           retries: 3,
           delayBetweenRetriesMs: 1000,
           loggerArgs: { ...loggerArgs, provider: "github" },
@@ -894,6 +972,15 @@ export async function githubCodeSyncActivity(
         githubCodeFile.sourceUrl = f.sourceUrl;
         githubCodeFile.contentHash = contentHash;
         githubCodeFile.updatedAt = codeSyncStartedAt;
+      } else {
+        localLogger.info(
+          {
+            repoId,
+            fileName: f.fileName,
+            documentId: f.documentId,
+          },
+          "Skipping update of unchanged GithubCodeFile"
+        );
       }
 
       // Finally we update the lastSeenAt for all files we've seen, and save.
@@ -908,7 +995,7 @@ export async function githubCodeSyncActivity(
       let githubCodeDirectory = await GithubCodeDirectory.findOne({
         where: {
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           internalId: d.internalId,
         },
       });
@@ -916,7 +1003,7 @@ export async function githubCodeSyncActivity(
       if (!githubCodeDirectory) {
         githubCodeDirectory = await GithubCodeDirectory.create({
           connectorId: connector.id,
-          repoId,
+          repoId: repoId.toString(),
           internalId: d.internalId,
           parentInternalId,
           dirName: d.dirName,
@@ -954,57 +1041,13 @@ export async function githubCodeSyncActivity(
 
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
-    const filesToDelete = await GithubCodeFile.findAll({
-      where: {
-        connectorId: connector.id,
-        repoId,
-        lastSeenAt: {
-          [Op.lt]: codeSyncStartedAt,
-        },
-      },
-    });
-
-    if (filesToDelete.length > 0) {
-      localLogger.info(
-        { filesToDelete: filesToDelete.length, filesSeen: files.length },
-        "Github code sync, deleting files."
-      );
-
-      for (const f of filesToDelete) {
-        await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
-        await f.destroy();
-      }
-    }
-
-    const directoriesToDelete = await GithubCodeDirectory.findAll({
-      where: {
-        connectorId: connector.id,
-        repoId,
-        lastSeenAt: {
-          [Op.lt]: codeSyncStartedAt,
-        },
-      },
-    });
-
-    if (directoriesToDelete.length > 0) {
-      localLogger.info(
-        {
-          directoriesToDelete: directoriesToDelete.length,
-          directoriesSeen: directories.length,
-        },
-        "Github code sync, deleting directories."
-      );
-
-      await GithubCodeDirectory.destroy({
-        where: {
-          connectorId: connector.id,
-          repoId,
-          lastSeenAt: {
-            [Op.lt]: codeSyncStartedAt,
-          },
-        },
-      });
-    }
+    await garbageCollectCodeSync(
+      dataSourceConfig,
+      connector,
+      repoId,
+      codeSyncStartedAt,
+      { ...loggerArgs, task: "garbageCollectCodeSync" }
+    );
   } finally {
     await cleanUpProcessRepository(tempDir);
     localLogger.info(

@@ -2,7 +2,7 @@ use crate::blocks::block::BlockType;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
-use crate::databases::database::{Database, DatabaseTable};
+use crate::databases::database::{Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -159,74 +159,52 @@ pub trait Store {
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
     // Databases
-    async fn register_database(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        name: &str,
-    ) -> Result<Database>;
+    async fn upsert_database(&self, table_ids_hash: &str, worker_ttl: u64) -> Result<Database>;
     async fn load_database(
         &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
+        table_ids_hash: &str,
+        worker_ttl: u64,
     ) -> Result<Option<Database>>;
-    async fn list_databases(
+    async fn find_databases_using_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<Database>, usize)>;
-    async fn assign_live_sqlite_worker_to_database(
+        table_id: &str,
+        worker_ttl: u64,
+    ) -> Result<Vec<Database>>;
+    async fn delete_database(&self, table_ids_hash: &str) -> Result<()>;
+    // Tables
+    async fn upsert_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
-        ttl: u64,
-    ) -> Result<SqliteWorker>;
-    async fn upsert_database_table(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
         table_id: &str,
         name: &str,
         description: &str,
-    ) -> Result<DatabaseTable>;
-    async fn update_database_table_schema(
+    ) -> Result<Table>;
+    async fn update_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
-    async fn load_database_table(
+    async fn load_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         table_id: &str,
-    ) -> Result<Option<DatabaseTable>>;
-    async fn list_databases_tables(
+    ) -> Result<Option<Table>>;
+    async fn list_tables(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Database, Vec<DatabaseTable>, usize)>;
-    async fn delete_database(
+    ) -> Result<(Vec<Table>, usize)>;
+    async fn delete_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
-    ) -> Result<()>;
-    async fn delete_database_table(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
         table_id: &str,
     ) -> Result<()>;
     // LLM Cache
@@ -413,27 +391,24 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     CREATE TABLE IF NOT EXISTS databases (
        id                           BIGSERIAL PRIMARY KEY,
        created                      BIGINT NOT NULL,
-       data_source                  BIGINT NOT NULL,
-       database_id                  TEXT NOT NULL, -- unique within data source. Used as the external id.
-       name                         TEXT NOT NULL, -- unique within data source
+       table_ids_hash               TEXT NOT NULL, -- unique. A hash of the table_ids in this database.
        sqlite_worker                BIGINT,
-       FOREIGN KEY(data_source)     REFERENCES data_sources(id),
        FOREIGN KEY(sqlite_worker)   REFERENCES sqlite_workers(id)
     );",
     "-- databases tables
-    CREATE TABLE IF NOT EXISTS databases_tables (
-       id                   BIGSERIAL PRIMARY KEY,
-       created              BIGINT NOT NULL,
-       database             BIGINT NOT NULL,
-       table_id             TEXT NOT NULL, -- unique within database
-       name                 TEXT NOT NULL, -- unique within database
-       description          TEXT NOT NULL,
-       schema               TEXT, -- json, kept up-to-date automatically with the last insert
-       FOREIGN KEY(database) REFERENCES databases(id)
+    CREATE TABLE IF NOT EXISTS tables (
+       id                       BIGSERIAL PRIMARY KEY,
+       created                  BIGINT NOT NULL,
+       table_id                 TEXT NOT NULL, -- unique within datasource
+       name                     TEXT NOT NULL, -- unique within datasource
+       description              TEXT NOT NULL,
+       schema                   TEXT, -- json, kept up-to-date automatically with the last insert
+       data_source              BIGINT NOT NULL,
+       FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 23] = [
+pub const SQL_INDEXES: [&'static str; 22] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -477,13 +452,11 @@ pub const SQL_INDEXES: [&'static str; 23] = [
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_parents_array ON data_sources_documents USING GIN (parents);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_database_id_data_source ON databases (database_id, data_source);",
+       idx_databases_table_ids_hash ON databases (table_ids_hash);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_data_source_database_name ON databases (data_source, name);",
+       idx_tables_data_source_table_id ON tables (data_source, table_id);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_tables_table_id_database ON databases_tables (table_id, database);",
-    "CREATE UNIQUE INDEX IF NOT EXISTS
-        idx_databases_tables_database_table_name ON databases_tables (database, name);",
+       idx_tables_data_source_table_name ON tables (data_source, name);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_url ON sqlite_workers (url);",
 ];

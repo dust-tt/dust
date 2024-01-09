@@ -3,7 +3,7 @@ use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
-use crate::databases::database::{Database, DatabaseTable};
+use crate::databases::database::{get_table_unique_id, Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
 use crate::http::request::{HttpRequest, HttpResponse};
@@ -18,6 +18,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use futures::future::try_join_all;
 use serde_json::Value;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
@@ -25,7 +26,7 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
-use tokio_postgres::NoTls;
+use tokio_postgres::{NoTls, Transaction};
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -1844,307 +1845,304 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn register_database(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        name: &str,
-    ) -> Result<Database> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-
+    async fn upsert_database(&self, table_ids_hash: &str, worker_ttl: u64) -> Result<Database> {
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
+        let mut tx = c.transaction().await?;
 
-        // Get the data source row id.
-        let stmt = c
+        // Acquire a transaction-level advisory lock on the table_ids_hash.
+        let mut hasher = DefaultHasher::new();
+        format!("databases-{}", table_ids_hash).hash(&mut hasher);
+        let lock_key = hasher.finish() as i64;
+        tx.execute("SELECT pg_advisory_xact_lock($1)", &[&(lock_key)])
+            .await?;
+
+        async fn create_database(
+            tx: &mut Transaction<'_>,
+            table_ids_hash: &str,
+            worker_ttl: u64,
+            existing_database_row_id: &Option<i64>,
+        ) -> Result<Database> {
+            if existing_database_row_id.is_some() {
+                // Delete the database.
+                let stmt = tx.prepare("DELETE FROM databases WHERE id = $1").await?;
+                tx.execute(&stmt, &[&existing_database_row_id]).await?;
+            }
+
+            let created = utils::now();
+
+            // Pick a random live worker.
+            let stmt = tx
+                .prepare(
+                    "SELECT id, url, last_heartbeat
+                    FROM sqlite_workers
+                    WHERE last_heartbeat > $1 ORDER BY RANDOM() LIMIT 1",
+                )
+                .await?;
+            let r = tx
+                .query(&stmt, &[&((utils::now() - worker_ttl) as i64)])
+                .await?;
+
+            match r.len() {
+                0 => Err(anyhow!("No live workers found"))?,
+                1 => {
+                    let (sqlite_worker_row_id, url, last_heartbeat): (i64, String, i64) =
+                        (r[0].get(0), r[0].get(1), r[0].get(2));
+
+                    // Insert the database row.
+                    let stmt = tx
+                        .prepare(
+                            "INSERT INTO databases \
+                            (id, created, table_ids_hash, sqlite_worker) \
+                            VALUES (DEFAULT, $1, $2, $3) RETURNING id",
+                        )
+                        .await?;
+
+                    tx.query_one(
+                        &stmt,
+                        &[&(created as i64), &table_ids_hash, &sqlite_worker_row_id],
+                    )
+                    .await?;
+
+                    Ok(Database::new(
+                        created as u64,
+                        &table_ids_hash,
+                        &Some(SqliteWorker::new(url, last_heartbeat as u64)),
+                    ))
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // Check if there is already a database with the same table_ids_hash.
+        let stmt = tx
             .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT id, created, table_ids_hash, sqlite_worker \
+                FROM databases \
+                WHERE table_ids_hash = $1;",
             )
             .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let db_created = utils::now();
-
-        let db_id = database_id.to_string();
-        let db_name = name.to_string();
-
-        // Upsert Database.
-        let stmt = c
-            .prepare(
-                "INSERT INTO databases \
-                   (id, data_source, created, database_id, name) \
-                   VALUES (DEFAULT, $1, $2, $3, $4) RETURNING id",
-            )
-            .await?;
-        c.query_one(
-            &stmt,
-            &[&data_source_row_id, &(db_created as i64), &db_id, &db_name],
-        )
-        .await?;
-
-        Ok(Database::new(
-            &Project::new_from_id(project_id),
-            db_created,
-            &data_source_id,
-            &db_id,
-            &db_name,
-        ))
-    }
-
-    async fn load_database(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-    ) -> Result<Option<Database>> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let stmt = c.prepare(
-            "SELECT databases.created, databases.database_id, databases.name, data_sources.data_source_id \
-            FROM databases \
-            INNER JOIN data_sources ON databases.data_source = data_sources.id \
-            WHERE data_sources.project = $1 AND data_sources.data_source_id = $2 AND databases.database_id = $3 LIMIT 1"
-        ).await?;
-        let r = c
-            .query(&stmt, &[&project_id, &data_source_id, &database_id])
-            .await?;
-
-        let d: Option<(i64, String, String, String)> = match r.len() {
+        let r = tx.query(&stmt, &[&table_ids_hash]).await?;
+        let database_row: Option<(i64, i64, String, Option<i64>)> = match r.len() {
             0 => None,
             1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
             _ => unreachable!(),
         };
 
-        match d {
+        let database_result: Result<Database, anyhow::Error> = match database_row {
+            // There is no database with the same table_ids_hash, we can create a new one.
+            None => create_database(&mut tx, table_ids_hash, worker_ttl, &None).await,
+            // There is a database with the same table_ids_hash.
+            Some((database_row_id, created, table_ids_hash, sqlite_worker_row_id)) => {
+                if sqlite_worker_row_id.is_none() {
+                    // There is no sqlite_worker assigned to the database.
+                    create_database(&mut tx, &table_ids_hash, worker_ttl, &Some(database_row_id))
+                        .await
+                } else {
+                    // There is a sqlite_worker assigned to the database.
+                    // We need to check if the sqlite_worker is still alive.
+                    // If it is, we can release the lock and return the database.
+                    // If it is not, we need to delete the database and create a new one.
+                    // We need to keep the lock until the database is deleted and a new one is created.
+
+                    // Get the sqlite_worker row id.
+                    let sqlite_worker_row_id = sqlite_worker_row_id.unwrap();
+                    let sqlite_worker: Option<SqliteWorker> = {
+                        let stmt = tx
+                            .prepare(
+                                "SELECT url, last_heartbeat \
+                                FROM sqlite_workers \
+                                WHERE id = $1 AND last_heartbeat > $2 LIMIT 1",
+                            )
+                            .await?;
+                        let r = tx
+                            .query(
+                                &stmt,
+                                &[&sqlite_worker_row_id, &((utils::now() - worker_ttl) as i64)],
+                            )
+                            .await?;
+                        match r.len() {
+                            0 => None,
+                            1 => {
+                                let url: String = r[0].get(0);
+                                let last_heartbeat: i64 = r[0].get(1);
+                                Some(SqliteWorker::new(url, last_heartbeat as u64))
+                            }
+                            _ => unreachable!(),
+                        }
+                    };
+
+                    match sqlite_worker {
+                        None => {
+                            // The sqlite_worker is dead or missing.
+                            create_database(
+                                &mut tx,
+                                &table_ids_hash,
+                                worker_ttl,
+                                &Some(database_row_id),
+                            )
+                            .await
+                        }
+                        Some(sqlite_worker) => {
+                            // The sqlite_worker is still alive.
+                            // We can release the lock and return the database.
+                            Ok(Database::new(
+                                created as u64,
+                                &table_ids_hash,
+                                &Some(sqlite_worker),
+                            ))
+                        }
+                    }
+                }
+            }
+        };
+
+        // Commit the transaction and release the lock.
+        tx.commit().await?;
+
+        database_result
+    }
+
+    async fn load_database(
+        &self,
+        table_ids_hash: &str,
+        worker_ttl: u64,
+    ) -> Result<Option<Database>> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "SELECT id, created, table_ids_hash, sqlite_worker \
+                FROM databases \
+                WHERE table_ids_hash = $1;",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&table_ids_hash]).await?;
+        let database_row: Option<(i64, i64, String, Option<i64>)> = match r.len() {
+            0 => None,
+            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
+            _ => unreachable!(),
+        };
+
+        match database_row {
             None => Ok(None),
-            Some((created, database_id, name, data_source_id)) => Ok(Some(Database::new(
-                &Project::new_from_id(project_id),
-                created as u64,
-                &data_source_id,
-                &database_id,
-                &name,
-            ))),
+            Some((_database_row_id, created, table_ids_hash, sqlite_worker_row_id)) => {
+                match sqlite_worker_row_id {
+                    None => Ok(Some(Database::new(created as u64, &table_ids_hash, &None))),
+                    Some(worker_id) => {
+                        let sqlite_worker: Option<SqliteWorker> = {
+                            let stmt = c
+                                .prepare(
+                                    "SELECT url, last_heartbeat \
+                                    FROM sqlite_workers \
+                                    WHERE id = $1 AND last_heartbeat > $2 LIMIT 1",
+                                )
+                                .await?;
+                            let r = c
+                                .query(&stmt, &[&worker_id, &((utils::now() - worker_ttl) as i64)])
+                                .await?;
+                            match r.len() {
+                                0 => None,
+                                1 => Some(SqliteWorker::new(
+                                    r[0].get::<usize, String>(0),
+                                    r[0].get::<usize, i64>(1) as u64,
+                                )),
+                                _ => unreachable!(),
+                            }
+                        };
+
+                        Ok(Some(Database::new(
+                            created as u64,
+                            &table_ids_hash,
+                            &sqlite_worker,
+                        )))
+                    }
+                }
+            }
         }
     }
 
-    async fn list_databases(
+    async fn delete_database(&self, table_ids_hash: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let mut c = pool.get().await?;
+        let tx = c.transaction().await?;
+
+        // Acquire a transaction-level advisory lock on the table_ids_hash.
+        let mut hasher = DefaultHasher::new();
+        format!("databases-{}", table_ids_hash).hash(&mut hasher);
+        let lock_key = hasher.finish() as i64;
+        tx.execute("SELECT pg_advisory_xact_lock($1)", &[&(lock_key)])
+            .await?;
+
+        let stmt = tx
+            .prepare("DELETE FROM databases WHERE table_ids_hash = $1")
+            .await?;
+        let _ = tx.query(&stmt, &[&table_ids_hash]).await?;
+
+        // Commit the transaction and release the lock.
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    async fn find_databases_using_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Vec<Database>, usize)> {
-        let project_id = project.project_id();
+        table_id: &str,
+        worker_ttl: u64,
+    ) -> Result<Vec<Database>> {
         let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
-        let base_query = "SELECT databases.created, databases.database_id, databases.name, data_sources.data_source_id \
-        FROM databases \
-        INNER JOIN data_sources ON databases.data_source = data_sources.id \
-        WHERE data_sources.project = $1 AND data_sources.data_source_id = $2";
-
-        let rows = match limit_offset {
-            None => {
-                c.query(&base_query.to_string(), &[&project_id, &data_source_id])
-                    .await?
-            }
-            Some((limit, offset)) => {
-                c.query(
-                    &(base_query.to_owned() + " LIMIT $3 OFFSET $4"),
-                    &[
-                        &project_id,
-                        &data_source_id,
-                        &(limit as i64),
-                        &(offset as i64),
-                    ],
-                )
-                .await?
-            }
-        };
-
-        let databases: Vec<Database> = rows
-            .iter()
-            .map(|row| {
-                let created: i64 = row.get(0);
-                let database_id: String = row.get(1);
-                let name: String = row.get(2);
-                let data_source_id: String = row.get(3);
-
-                Ok(Database::new(
-                    &Project::new_from_id(project_id),
-                    created as u64,
-                    &data_source_id,
-                    &database_id,
-                    &name,
-                ))
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        let total = match limit_offset {
-            None => databases.len(),
-            Some(_) => {
-                let stmt = c
-                    .prepare(
-                        "SELECT COUNT(*) FROM databases \
-                           INNER JOIN data_sources ON databases.data_source = data_sources.id \
-                           WHERE data_sources.project = $1 AND data_sources.data_source_id = $2",
-                    )
-                    .await?;
-                let t: i64 = c
-                    .query_one(&stmt, &[&project_id, &data_source_id])
-                    .await?
-                    .get(0);
-                t as usize
-            }
-        };
-
-        Ok((databases, total))
-    }
-
-    async fn assign_live_sqlite_worker_to_database(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
-        ttl: u64,
-    ) -> Result<SqliteWorker> {
-        let project_id = project.project_id();
-        let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-
-        let mut hasher = DefaultHasher::new();
-        format!(
-            "databases-{}-{}-{}",
-            project_id, data_source_id, database_id
-        )
-        .hash(&mut hasher);
-        let lock_key = hasher.finish() as i64;
-
-        let tx = c.transaction().await?;
-
-        // Acquire a transaction-level advisory lock on the database.
-        tx.execute("SELECT pg_advisory_xact_lock($1)", &[&(lock_key as i64)])
-            .await?;
-
-        // Get the data source row id.
-        let stmt = tx
+        // We look for databases that have a table_ids_hash that contains the table's unique id.
+        let stmt = c
             .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                "SELECT table_ids_hash \
+                FROM databases \
+                WHERE table_ids_hash LIKE $1",
             )
             .await?;
-        let r = tx.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // Check if there is already an assigned live worker.
-        let stmt = tx
-            .prepare(
-                "SELECT url, last_heartbeat 
-                FROM sqlite_workers
-                WHERE id IN (
-                    SELECT sqlite_worker 
-                    FROM databases
-                    WHERE data_source = $1 AND database_id = $2
-                 ) AND last_heartbeat > $3 LIMIT 1",
-            )
-            .await?;
-        let r = tx
+        let r = c
             .query(
                 &stmt,
-                &[
-                    &data_source_row_id,
-                    &database_id,
-                    &((utils::now() - ttl) as i64),
-                ],
+                &[&format!(
+                    "%{}%",
+                    get_table_unique_id(project, &data_source_id, &table_id)
+                )],
             )
             .await?;
+        let database_ids = r
+            .into_iter()
+            .map(|row| row.get::<usize, String>(0))
+            .collect::<Vec<_>>();
 
-        let worker: Option<SqliteWorker> = match r.len() {
-            0 => None,
-            1 => {
-                let (url, last_heartbeat): (String, i64) = (r[0].get(0), r[0].get(1));
-                Some(SqliteWorker::new(url, last_heartbeat as u64))
-            }
-            _ => unreachable!(),
-        };
-
-        if worker.is_some() {
-            // There is already an assigned worker.
-            // We can release the lock and return the worker.
-            tx.commit().await?;
-            return Ok(worker.unwrap());
-        }
-
-        // Pick a random live worker.
-        let stmt = tx
-            .prepare(
-                "SELECT id, url, last_heartbeat 
-                FROM sqlite_workers 
-                WHERE last_heartbeat > $1 ORDER BY RANDOM() LIMIT 1",
-            )
-            .await?;
-        let r = tx.query(&stmt, &[&((utils::now() - ttl) as i64)]).await?;
-
-        match r.len() {
-            0 => Err(anyhow!("No live workers found"))?,
-            1 => {
-                let (sqlite_worker_row_id, url, last_heartbeat): (i64, String, i64) =
-                    (r[0].get(0), r[0].get(1), r[0].get(2));
-
-                // Update the database row to assign the worker.
-                let stmt = tx
-                    .prepare(
-                        "UPDATE databases SET sqlite_worker = $1 \
-                        WHERE data_source = $2 AND database_id = $3",
-                    )
-                    .await?;
-                tx.execute(
-                    &stmt,
-                    &[
-                        &sqlite_worker_row_id,
-                        &data_source_row_id,
-                        &database_id.to_string(),
-                    ],
-                )
-                .await?;
-
-                // Release the lock.
-                tx.commit().await?;
-
-                Ok(SqliteWorker::new(url, last_heartbeat as u64))
-            }
-            _ => unreachable!(),
-        }
+        Ok((try_join_all(
+            database_ids
+                .iter()
+                .map(|h| self.load_database(&h, worker_ttl))
+                .collect::<Vec<_>>(),
+        )
+        .await?)
+            .into_iter()
+            .filter_map(|d| d)
+            .collect::<Vec<_>>())
     }
 
-    async fn upsert_database_table(
+    async fn upsert_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         table_id: &str,
         name: &str,
         description: &str,
-    ) -> Result<DatabaseTable> {
+    ) -> Result<Table> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2158,17 +2156,6 @@ impl Store for PostgresStore {
         let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
         let data_source_row_id: i64 = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // Get the database row id.
-        let stmt = c
-            .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
-            .await?;
-        let r = c.query(&stmt, &[&data_source_row_id, &database_id]).await?;
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
             1 => r[0].get(0),
             _ => unreachable!(),
         };
@@ -2182,10 +2169,10 @@ impl Store for PostgresStore {
         // Upsert Database Table.
         let stmt = c
             .prepare(
-                "INSERT INTO databases_tables \
-                   (id, database, created, table_id, name, description) \
+                "INSERT INTO tables \
+                   (id, data_source, created, table_id, name, description) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5) \
-                   ON CONFLICT (table_id, database) DO UPDATE \
+                   ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description \
                    RETURNING id",
             )
@@ -2194,7 +2181,7 @@ impl Store for PostgresStore {
         c.query_one(
             &stmt,
             &[
-                &database_row_id,
+                &data_source_row_id,
                 &(table_created as i64),
                 &table_id,
                 &table_name,
@@ -2203,9 +2190,10 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(DatabaseTable::new(
+        Ok(Table::new(
+            project,
+            &data_source_id,
             table_created,
-            &database_id,
             &table_id,
             &table_name,
             &table_description,
@@ -2213,17 +2201,15 @@ impl Store for PostgresStore {
         ))
     }
 
-    async fn update_database_table_schema(
+    async fn update_table_schema(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
         let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
@@ -2242,65 +2228,59 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // Get the database row id.
-        let stmt = c
-            .prepare("SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1")
-            .await?;
-        let r = c.query(&stmt, &[&data_source_row_id, &database_id]).await?;
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
         // Update the schema.
         let stmt = c
             .prepare(
-                "UPDATE databases_tables SET schema = $1 \
-                   WHERE database = $2 AND table_id = $3",
+                "UPDATE tables SET schema = $1 \
+                   WHERE data_source = $2 AND table_id = $3",
             )
             .await?;
         c.query(
             &stmt,
-            &[&serde_json::to_string(schema)?, &database_row_id, &table_id],
+            &[
+                &serde_json::to_string(schema)?,
+                &data_source_row_id,
+                &table_id,
+            ],
         )
         .await?;
 
         Ok(())
     }
 
-    async fn load_database_table(
+    async fn load_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         table_id: &str,
-    ) -> Result<Option<DatabaseTable>> {
+    ) -> Result<Option<Table>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
         let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
+        // Get the data source row id.
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, schema FROM databases_tables \
-                WHERE database IN (
-                    SELECT id FROM databases WHERE data_source IN (
-                        SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2
-                    ) AND database_id = $3
-                ) \
-                AND table_id = $4 LIMIT 1",
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
             )
             .await?;
-        let r = c
-            .query(
-                &stmt,
-                &[&project_id, &data_source_id, &database_id, &table_id],
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let stmt = c
+            .prepare(
+                "SELECT created, table_id, name, description, schema FROM tables \
+                WHERE data_source = $1 table_id = $2 LIMIT 1",
             )
             .await?;
+        let r = c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
 
         let d: Option<(i64, String, String, String, Option<String>)> = match r.len() {
             0 => None,
@@ -2327,9 +2307,10 @@ impl Store for PostgresStore {
                         }
                     }
                 };
-                Ok(Some(DatabaseTable::new(
+                Ok(Some(Table::new(
+                    project,
+                    &data_source_id,
                     created as u64,
-                    &database_id,
                     &table_id,
                     &name,
                     &description,
@@ -2339,16 +2320,14 @@ impl Store for PostgresStore {
         }
     }
 
-    async fn list_databases_tables(
+    async fn list_tables(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
         limit_offset: Option<(usize, usize)>,
-    ) -> Result<(Database, Vec<DatabaseTable>, usize)> {
+    ) -> Result<(Vec<Table>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2367,64 +2346,32 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // get the database row
-        let r = c
-            .query(
-                "SELECT id, created, database_id, name \
-                 FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
-                &[&data_source_row_id, &database_id],
-            )
-            .await?;
-
-        let (database, database_row_id): (Database, i64) = match r.len() {
-            0 => {
-                return Err(anyhow!("Unknown Database: {}", database_id).into());
-            }
-            1 => {
-                let db_row_id: i64 = r[0].get(0);
-                let created: i64 = r[0].get(1);
-                let database_id_val: String = r[0].get(2);
-                let name: String = r[0].get(3);
-                (
-                    Database::new(
-                        &Project::new_from_id(project_id),
-                        created as u64,
-                        &data_source_id,
-                        &database_id_val,
-                        &name,
-                    ),
-                    db_row_id,
-                )
-            }
-            _ => unreachable!(),
-        };
-
         let rows = match limit_offset {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema FROM databases_tables \
-                        WHERE database = $1",
+                        "SELECT created, table_id, name, description, schema FROM tables \
+                        WHERE data_source = $1",
                     )
                     .await?;
-                c.query(&stmt, &[&database_row_id]).await?
+                c.query(&stmt, &[&data_source_row_id]).await?
             }
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema FROM databases_tables \
-                        WHERE database = $1 LIMIT $2 OFFSET $3",
+                        "SELECT created, table_id, name, description, schema FROM tables \
+                        WHERE data_source = $1 LIMIT $2 OFFSET $3",
                     )
                     .await?;
                 c.query(
                     &stmt,
-                    &[&database_row_id, &(limit as i64), &(offset as i64)],
+                    &[&data_source_row_id, &(limit as i64), &(offset as i64)],
                 )
                 .await?
             }
         };
 
-        let tables: Vec<DatabaseTable> = rows
+        let tables: Vec<Table> = rows
             .into_iter()
             .map(|r| {
                 let created: i64 = r.get(0);
@@ -2444,9 +2391,10 @@ impl Store for PostgresStore {
                     }
                 };
 
-                Ok(DatabaseTable::new(
+                Ok(Table::new(
+                    project,
+                    &data_source_id,
                     created as u64,
-                    &database_id,
                     &table_id,
                     &name,
                     &description,
@@ -2459,80 +2407,24 @@ impl Store for PostgresStore {
             None => tables.len(),
             Some(_) => {
                 let stmt = c
-                    .prepare("SELECT COUNT(*) FROM databases_tables WHERE database = $1")
+                    .prepare("SELECT COUNT(*) FROM tables WHERE data_source = $1")
                     .await?;
-                let t: i64 = c.query_one(&stmt, &[&database_row_id]).await?.get(0);
+                let t: i64 = c.query_one(&stmt, &[&data_source_row_id]).await?.get(0);
                 t as usize
             }
         };
 
-        Ok((database, tables, total))
+        Ok((tables, total))
     }
 
-    async fn delete_database(
+    async fn delete_table(
         &self,
         project: &Project,
         data_source_id: &str,
-        database_id: &str,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
-
-        let pool = self.pool.clone();
-        let mut c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let r = c
-            .query(
-                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
-                &[&data_source_row_id, &database_id],
-            )
-            .await?;
-
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let tx = c.transaction().await?;
-
-        let stmt = tx
-            .prepare("DELETE FROM databases_tables WHERE database = $1")
-            .await?;
-        let _ = tx.query(&stmt, &[&database_row_id]).await?;
-
-        let stmt = tx.prepare("DELETE FROM databases WHERE id = $1").await?;
-        let _ = tx.query(&stmt, &[&database_row_id]).await?;
-
-        tx.commit().await?;
-
-        Ok(())
-    }
-
-    async fn delete_database_table(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        database_id: &str,
         table_id: &str,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
-        let database_id = database_id.to_string();
         let table_id = table_id.to_string();
 
         let pool = self.pool.clone();
@@ -2544,21 +2436,8 @@ impl Store for PostgresStore {
                 &[&project_id, &data_source_id],
             )
             .await?;
-
         let data_source_row_id: i64 = match r.len() {
             0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let r = c
-            .query(
-                "SELECT id FROM databases WHERE data_source = $1 AND database_id = $2 LIMIT 1",
-                &[&data_source_row_id, &database_id],
-            )
-            .await?;
-        let database_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown Database: {}", database_id))?,
             1 => r[0].get(0),
             _ => unreachable!(),
         };
@@ -2566,9 +2445,9 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
 
         let stmt = tx
-            .prepare("DELETE FROM databases_tables WHERE database = $1 AND table_id = $2")
+            .prepare("DELETE FROM tables WHERE data_source = $1 AND table_id = $2")
             .await?;
-        let _ = tx.query(&stmt, &[&database_row_id, &table_id]).await?;
+        let _ = tx.query(&stmt, &[&data_source_row_id, &table_id]).await?;
 
         tx.commit().await?;
 
@@ -2884,55 +2763,82 @@ impl Store for PostgresStore {
 
     async fn sqlite_workers_delete(&self, url: &str) -> Result<()> {
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
+        let tx = c.transaction().await?;
 
-        // Remove the worker from the databases.
-        let stmt = c
+        // Find the ID of the worker.
+        let stmt = tx
+            .prepare("SELECT id FROM sqlite_workers WHERE url = $1 LIMIT 1")
+            .await?;
+        let r = tx.query(&stmt, &[&url.to_string()]).await?;
+        let worker_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown SQLite Worker: {}", url))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Delete the databases that are assigned to the worker.
+        let stmt = tx
             .prepare(
-                "UPDATE databases SET sqlite_worker = NULL \
-                WHERE sqlite_worker IN (
-                    SELECT id 
-                    FROM sqlite_workers 
-                    WHERE url = $1
-                )",
+                "DELETE FROM databases \
+                WHERE sqlite_worker = $1",
             )
             .await?;
-        c.execute(&stmt, &[&url.to_string()]).await?;
+        tx.execute(&stmt, &[&worker_row_id]).await?;
 
         // Delete the worker.
-        let stmt = c
-            .prepare("DELETE FROM sqlite_workers WHERE url = $1")
+        let stmt = tx
+            .prepare(
+                "DELETE FROM sqlite_workers \
+                WHERE id = $1",
+            )
             .await?;
+        tx.execute(&stmt, &[&worker_row_id]).await?;
 
-        c.execute(&stmt, &[&url.to_string()]).await?;
+        tx.commit().await?;
 
         Ok(())
     }
 
     async fn sqlite_workers_cleanup(&self, ttl: u64) -> Result<()> {
         let pool = self.pool.clone();
-        let c = pool.get().await?;
+        let mut c = pool.get().await?;
+        let tx = c.transaction().await?;
 
-        // Remove the dead workers from the databases.
-        let stmt = c
+        // Find the IDs of the dead workers.
+        let stmt = tx
             .prepare(
-                "UPDATE databases SET sqlite_worker = NULL \
-                WHERE sqlite_worker IN (
-                    SELECT id 
-                    FROM sqlite_workers 
-                    WHERE last_heartbeat < $1
-                )",
+                "SELECT id FROM sqlite_workers \
+                WHERE last_heartbeat < $1",
             )
             .await?;
-        c.execute(&stmt, &[&(utils::now() as i64 - ttl as i64)])
+        let rows = tx
+            .query(&stmt, &[&(utils::now() as i64 - ttl as i64)])
             .await?;
+        let dead_worker_ids = rows
+            .iter()
+            .map(|row| row.get::<usize, i64>(0))
+            .collect::<Vec<_>>();
 
-        let stmt = c
-            .prepare("DELETE FROM sqlite_workers WHERE last_heartbeat < $1")
+        // Delete databases that are assigned to the dead workers.
+        let stmt = tx
+            .prepare(
+                "DELETE FROM databases \
+                WHERE sqlite_worker IN ($1)",
+            )
             .await?;
+        tx.execute(&stmt, &[&dead_worker_ids]).await?;
 
-        c.execute(&stmt, &[&(utils::now() as i64 - ttl as i64)])
+        // Delete the dead workers.
+        let stmt = tx
+            .prepare(
+                "DELETE FROM sqlite_workers \
+                WHERE id IN ($1)",
+            )
             .await?;
+        tx.execute(&stmt, &[&dead_worker_ids]).await?;
+
+        tx.commit().await?;
 
         Ok(())
     }

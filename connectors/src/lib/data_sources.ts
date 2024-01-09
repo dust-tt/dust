@@ -60,6 +60,7 @@ async function _upsertToDatasource({
     documentLength: sectionFullText(documentContent).length,
     workspaceId: dataSourceConfig.workspaceId,
     dataSourceName: dataSourceConfig.dataSourceName,
+    parents,
   });
   const statsDTags = [
     `data_source_name:${dataSourceConfig.dataSourceName}`,
