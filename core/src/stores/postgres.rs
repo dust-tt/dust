@@ -2166,7 +2166,7 @@ impl Store for PostgresStore {
         let table_name = name.to_string();
         let table_description = description.to_string();
 
-        // Upsert Database Table.
+        // Upsert Table.
         let stmt = c
             .prepare(
                 "INSERT INTO tables \

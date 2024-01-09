@@ -1,8 +1,7 @@
-import { CoreAPI, CoreAPIDatabase } from "@dust-tt/types";
+import { CoreAPI, CoreAPITable } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { IntFromString } from "io-ts-types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -12,27 +11,23 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export const CreateDatabaseReqBodySchema = t.type({
-  name: t.string,
-});
-export type CreateDatabaseResponseBody = {
-  database: CoreAPIDatabase;
+export type ListTablesResponseBody = {
+  tables: CoreAPITable[];
 };
 
-export const ListDatabasesReqQuerySchema = t.type({
-  offset: t.union([IntFromString, t.number]),
-  limit: t.union([IntFromString, t.number]),
+const UpsertDatabaseTableRequestBodySchema = t.type({
+  table_id: t.union([t.string, t.undefined]),
+  name: t.string,
+  description: t.string,
 });
-export type ListDatabasesResponseBody = {
-  databases: CoreAPIDatabase[];
-  offset: number;
-  limit: number;
-  total: number;
+
+type UpsertTableResponseBody = {
+  table: CoreAPITable;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<CreateDatabaseResponseBody | ListDatabasesResponseBody>
+  res: NextApiResponse<ListTablesResponseBody | UpsertTableResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -73,9 +68,39 @@ async function handler(
   }
 
   const coreAPI = new CoreAPI(logger);
+
   switch (req.method) {
+    case "GET":
+      const tablesRes = await coreAPI.getTables({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+      });
+      if (tablesRes.isErr()) {
+        logger.error(
+          {
+            dataSourcename: dataSource.name,
+            workspaceId: owner.id,
+            error: tablesRes.error,
+          },
+          "Failed to get tables."
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to get tables.",
+          },
+        });
+      }
+
+      const { tables } = tablesRes.value;
+
+      return res.status(200).json({ tables });
+
     case "POST":
-      const bodyValidation = CreateDatabaseReqBodySchema.decode(req.body);
+      const bodyValidation = UpsertDatabaseTableRequestBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -86,81 +111,45 @@ async function handler(
           status_code: 400,
         });
       }
-
-      const { name } = bodyValidation.right;
-      const id = generateModelSId();
-
-      const createRes = await coreAPI.createDatabase({
+      const {
+        name,
+        description,
+        table_id: maybeTableId,
+      } = bodyValidation.right;
+      const tableId = maybeTableId || generateModelSId();
+      const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId: id,
+        tableId,
         name,
+        description,
       });
-      if (createRes.isErr()) {
+
+      if (upsertRes.isErr()) {
         logger.error(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
             databaseName: name,
-            databaseId: id,
-            error: createRes.error,
+            tableId,
+            tableName: name,
+            error: upsertRes.error,
           },
-          "Failed to create database."
+          "Failed to upsert table."
         );
+
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to create database.",
+            message: "Failed to upsert table.",
           },
         });
       }
 
-      const { database } = createRes.value;
+      const { table } = upsertRes.value;
 
-      return res.status(200).json({ database });
-
-    case "GET":
-      const queryValidation = ListDatabasesReqQuerySchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request query: ${pathError}`,
-          },
-          status_code: 400,
-        });
-      }
-
-      const { offset, limit } = queryValidation.right;
-
-      const getRes = await coreAPI.getDatabases({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        offset,
-        limit,
-      });
-
-      if (getRes.isErr()) {
-        logger.error(
-          {
-            dataSourceName: dataSource.name,
-            workspaceId: owner.id,
-            error: getRes.error,
-          },
-          "Failed to list databases."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to list databases.",
-          },
-        });
-      }
-
-      return res.status(200).json(getRes.value);
+      return res.status(200).json({ table });
 
     default:
       return apiError(req, res, {

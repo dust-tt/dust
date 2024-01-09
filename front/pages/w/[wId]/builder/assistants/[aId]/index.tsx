@@ -1,9 +1,4 @@
-import {
-  CoreAPI,
-  DataSourceType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { isDatabaseQueryConfiguration } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
@@ -109,29 +104,8 @@ export async function buildInitialState({
     }
   }
 
-  let databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"] =
+  const databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"] =
     null;
-
-  if (isDatabaseQueryConfiguration(config.action)) {
-    const dataSource = dataSourceByName[config.action.dataSourceId];
-
-    const coreAPI = new CoreAPI(logger);
-    const databaseRes = await coreAPI.getDatabase({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceName: config.action.dataSourceId,
-      databaseId: config.action.databaseId,
-    });
-
-    if (databaseRes.isOk()) {
-      const { database } = databaseRes.value;
-      databaseQueryConfiguration = {
-        dataSourceWorkspaceId: config.action.dataSourceWorkspaceId,
-        dataSourceId: config.action.dataSourceId,
-        databaseId: config.action.databaseId,
-        databaseName: database.name,
-      };
-    }
-  }
 
   return {
     dataSourceConfigurations,

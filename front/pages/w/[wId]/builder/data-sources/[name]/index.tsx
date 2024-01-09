@@ -10,10 +10,8 @@ import {
   PencilSquareIcon,
   PlusIcon,
   Popup,
-  ServerIcon,
   SlackLogo,
   SliderToggle,
-  Tab,
 } from "@dust-tt/sparkle";
 import {
   ConnectorProvider,
@@ -46,11 +44,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
-import {
-  useConnectorBotEnabled,
-  useDatabases,
-  useDocuments,
-} from "@app/lib/swr";
+import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -207,42 +201,10 @@ function StandardDataSourceView({
           }
         />
 
-        {isActivatedSDB && (
-          <Tab
-            tabs={[
-              {
-                label: "Documents",
-                current: currentTab === "Documents",
-              },
-              {
-                label: "Databases",
-                current: currentTab === "Databases",
-              },
-            ]}
-            onTabClick={(tab) => {
-              if (tab === currentTab) return;
-              if (tab === "Documents") {
-                setCurrentTab("Documents");
-              } else if (tab === "Databases") {
-                setCurrentTab("Databases");
-              }
-            }}
-          />
-        )}
-
         {currentTab === "Documents" && (
           <DatasourceDocumentsTabView
             owner={owner}
             plan={plan}
-            readOnly={readOnly}
-            dataSource={dataSource}
-            router={router}
-          />
-        )}
-
-        {currentTab === "Databases" && (
-          <DatasourceDatabasesTabView
-            owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
             router={router}
@@ -433,146 +395,6 @@ function DatasourceDocumentsTabView({
         ) : null}
       </div>
     </Page.Vertical>
-  );
-}
-
-function DatasourceDatabasesTabView({
-  owner,
-  readOnly,
-  dataSource,
-  router,
-}: {
-  owner: WorkspaceType;
-  readOnly: boolean;
-  dataSource: DataSourceType;
-  router: ReturnType<typeof useRouter>;
-}) {
-  const [limit] = useState(10);
-  const [offset, setOffset] = useState(0);
-
-  const { databases, total } = useDatabases({
-    workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
-    offset,
-    limit,
-  });
-
-  let last = offset + limit;
-  if (total !== null && offset + limit > total) {
-    last = total;
-  }
-
-  return (
-    <>
-      <Page.Vertical align="stretch">
-        <div className="mt-16 flex flex-row">
-          <div className="flex flex-1">
-            <div className="flex flex-col">
-              <div className="flex flex-row">
-                <div className="flex flex-initial gap-x-2">
-                  <Button
-                    variant="tertiary"
-                    disabled={offset < limit}
-                    onClick={() => {
-                      if (offset >= limit) {
-                        setOffset(offset - limit);
-                      } else {
-                        setOffset(0);
-                      }
-                    }}
-                    label="Previous"
-                  />
-                  <Button
-                    variant="tertiary"
-                    label="Next"
-                    disabled={total !== null && offset + limit >= total}
-                    onClick={() => {
-                      if (total !== null && offset + limit < total) {
-                        setOffset(offset + limit);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                {total !== null && total > 0 && (
-                  <span>
-                    Showing databases {offset + 1} - {last} of {total} databases
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {readOnly ? null : (
-            <div className="">
-              <div className="relative mt-0 flex-none">
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Add database"
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/databases/upsert`
-                    );
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="py-8">
-          <ContextItem.List>
-            {databases.map((db) => (
-              <ContextItem
-                key={db.database_id}
-                title={db.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={({ className }) =>
-                      ServerIcon({
-                        className: className + " text-element-600",
-                      })
-                    }
-                  />
-                }
-                action={
-                  <Button.List>
-                    <Button
-                      variant="secondary"
-                      icon={PencilSquareIcon}
-                      onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/${
-                            dataSource.name
-                          }/databases/upsert?databaseId=${encodeURIComponent(
-                            db.database_id
-                          )}`
-                        );
-                      }}
-                      label="Edit"
-                      labelVisible={false}
-                    />
-                  </Button.List>
-                }
-              ></ContextItem>
-            ))}
-          </ContextItem.List>
-          {databases.length == 0 ? (
-            <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>No databases found for this Folder.</p>
-              <p className="mt-2">
-                Databases let you create assistants that can query structured
-                data from an uploaded CSV file. You can add databases manually
-                by clicking on the &quot;Add&nbsp;database&quot; button.
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </Page.Vertical>
-    </>
   );
 }
 

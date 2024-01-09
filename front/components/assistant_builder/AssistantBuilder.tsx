@@ -44,10 +44,8 @@ import { mutate } from "swr";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
-import AssistantBuilderDatabaseModal from "@app/components/assistant_builder/AssistantBuilderDatabaseModal";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
-import DatabaseSelectionSection from "@app/components/assistant_builder/DatabaseSelectionSection";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import {
@@ -320,8 +318,6 @@ export default function AssistantBuilder({
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
 
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
-
-  const [showDatabaseModal, setShowDatabaseModal] = useState(false);
 
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
@@ -727,22 +723,6 @@ export default function AssistantBuilder({
             },
           }));
         }}
-      />
-      <AssistantBuilderDatabaseModal
-        isOpen={showDatabaseModal}
-        setOpen={(isOpen) => {
-          setShowDatabaseModal(isOpen);
-        }}
-        owner={owner}
-        dataSources={configurableDataSources}
-        onSave={(database) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            databaseQueryConfiguration: database,
-          }));
-        }}
-        currentDatabase={builderState.databaseQueryConfiguration}
       />
       <AvatarPicker
         owner={owner}
@@ -1250,30 +1230,6 @@ export default function AssistantBuilder({
                 }}
                 onDelete={deleteDustApp}
                 canSelectDustApp={dustApps.length !== 0}
-              />
-            </ActionModeSection>
-            <ActionModeSection
-              show={builderState.actionMode === "DATABASE_QUERY"}
-            >
-              <div className="text-sm text-element-700">
-                The assistant will generate a SQL query from your request,
-                execute it on the tables selected and retrieve the results.
-              </div>
-              <DatabaseSelectionSection
-                show={builderState.actionMode === "DATABASE_QUERY"}
-                databaseQueryConfiguration={
-                  builderState.databaseQueryConfiguration
-                }
-                openDatabaseModal={() => {
-                  setShowDatabaseModal(true);
-                }}
-                onDelete={() => {
-                  setEdited(true);
-                  setBuilderState((state) => {
-                    return { ...state, databaseQueryConfiguration: null };
-                  });
-                }}
-                canSelecDatabase={dataSources.length !== 0}
               />
             </ActionModeSection>
           </div>

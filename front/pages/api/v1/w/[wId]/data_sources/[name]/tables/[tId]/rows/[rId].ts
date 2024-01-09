@@ -1,4 +1,4 @@
-import { CoreAPI, CoreAPIDatabaseRow } from "@dust-tt/types";
+import { CoreAPI, CoreAPIRow } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -7,13 +7,13 @@ import { isActivatedStructuredDB } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetDatabaseRowsResponseBody = {
-  row: CoreAPIDatabaseRow;
+type GetTableRowsResponseBody = {
+  row: CoreAPIRow;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatabaseRowsResponseBody>
+  res: NextApiResponse<GetTableRowsResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -53,17 +53,6 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.dId;
-  if (!databaseId || typeof databaseId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The database id is missing.",
-      },
-    });
-  }
-
   const tableId = req.query.tId;
   if (!tableId || typeof tableId !== "string") {
     return apiError(req, res, {
@@ -89,10 +78,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const coreAPI = new CoreAPI(logger);
-      const rowRes = await coreAPI.getDatabaseRow({
+      const rowRes = await coreAPI.getTableRow({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId,
         tableId,
         rowId,
       });
@@ -102,19 +90,18 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
-            databaseId: databaseId,
             tableId: tableId,
+            rowId: rowId,
             error: rowRes.error,
           },
-          "Failed to get database row."
+          "Failed to get row."
         );
 
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get database row.",
+            message: "Failed to get row.",
           },
         });
       }
