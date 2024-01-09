@@ -809,15 +809,23 @@ async function garbageCollectCodeSync(
   }
 }
 
-export async function githubCodeSyncActivity(
-  dataSourceConfig: DataSourceConfig,
-  installationId: string,
-  repoLogin: string,
-  repoName: string,
-  repoId: number,
-  loggerArgs: Record<string, string | number>,
-  isBatchSync: boolean
-) {
+export async function githubCodeSyncActivity({
+  dataSourceConfig,
+  installationId,
+  repoLogin,
+  repoName,
+  repoId,
+  loggerArgs,
+  isBatchSync,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  installationId: string;
+  repoLogin: string;
+  repoName: string;
+  repoId: number;
+  loggerArgs: Record<string, string | number>;
+  isBatchSync: boolean;
+}) {
   const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
 

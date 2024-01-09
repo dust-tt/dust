@@ -268,15 +268,15 @@ export async function githubCodeSyncWorkflow(
     repoLogin,
   };
 
-  await githubCodeSyncActivity(
+  await githubCodeSyncActivity({
     dataSourceConfig,
-    githubInstallationId,
+    installationId: githubInstallationId,
     repoLogin,
     repoName,
     repoId,
     loggerArgs,
-    true // isBatchSync
-  );
+    isBatchSync: true,
+  });
 }
 
 export async function githubIssueSyncWorkflow(
