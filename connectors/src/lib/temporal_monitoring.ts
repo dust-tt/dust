@@ -74,7 +74,7 @@ export class ActivityInboundLogInterceptor
             this.context.info.workflowExecution.runId
           );
 
-          return await next(input);
+          return next(input);
         }
       );
 

@@ -343,7 +343,7 @@ export async function syncMultipleNoNThreaded(
     );
     promises.push(p);
   }
-  return await Promise.all(promises);
+  return Promise.all(promises);
 }
 
 export async function syncNonThreaded(
@@ -525,7 +525,7 @@ export async function syncThreads(
     });
     promises.push(p);
   }
-  return await Promise.all(promises);
+  return Promise.all(promises);
 }
 
 export async function syncThread(
