@@ -4,6 +4,7 @@ import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
 import { cachedConfig } from "@connectors/connectors/config";
+import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -57,7 +58,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 
-const { NANGO_NOTION_CONNECTOR_ID } = cachedConfig;
+const { getRequiredNangoNotionConnectorId } = notionConfig;
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -477,7 +478,7 @@ export async function getNotionAccessToken(
 ): Promise<string> {
   const notionAccessToken = await getAccessTokenFromNango({
     connectionId: nangoConnectionId,
-    integrationId: NANGO_NOTION_CONNECTOR_ID,
+    integrationId: getRequiredNangoNotionConnectorId(),
     useCache: true,
   });
 
