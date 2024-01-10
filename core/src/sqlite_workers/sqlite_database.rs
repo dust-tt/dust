@@ -132,7 +132,7 @@ async fn create_in_memory_sqlite_db(
         let databases_store = databases_store.clone();
         async move {
             let (rows, _) = databases_store
-                .list_table_rows(table.table_id(), None)
+                .list_table_rows(&table.unique_id(), None)
                 .await?;
             Ok::<_, anyhow::Error>((table.clone(), rows))
         }
