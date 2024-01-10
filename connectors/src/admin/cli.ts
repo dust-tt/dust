@@ -386,6 +386,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
 
       return;
     }
+
     default:
       throw new Error("Unknown notion command: " + command);
   }
