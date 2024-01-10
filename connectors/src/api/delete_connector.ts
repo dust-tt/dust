@@ -5,6 +5,7 @@ import {
   STOP_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
@@ -70,7 +71,7 @@ const _deleteConnectorAPIHandler = async (
       },
     });
   }
-
+  await terminateAllWorkflowsForConnectorId(connector.id);
   return res.json({
     success: true,
   });

@@ -34,6 +34,7 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -72,6 +73,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
       await throwOnError(
         DELETE_CONNECTOR_BY_TYPE[provider](connector.id.toString(), true)
       );
+      await terminateAllWorkflowsForConnectorId(connector.id);
       return;
     }
     case "resume": {
