@@ -8,6 +8,7 @@ import {
 import {
   GithubCodeDirectory,
   GithubCodeFile,
+  GithubCodeRepository,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
@@ -59,6 +60,7 @@ async function main(): Promise<void> {
   await GithubConnectorState.sync({ alter: true });
   await GithubIssue.sync({ alter: true });
   await GithubDiscussion.sync({ alter: true });
+  await GithubCodeRepository.sync({ alter: true });
   await GithubCodeFile.sync({ alter: true });
   await GithubCodeDirectory.sync({ alter: true });
   await GoogleDriveFolders.sync({ alter: true });

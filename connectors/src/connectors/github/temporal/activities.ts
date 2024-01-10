@@ -28,6 +28,7 @@ import { Connector } from "@connectors/lib/models";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
+  GithubCodeRepository,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
@@ -864,6 +865,7 @@ export async function githubCodeSyncActivity({
   if (!connectorState.codeSyncEnabled) {
     // Garbage collect any existing code files.
     localLogger.info("Code sync disabled for connector");
+
     await garbageCollectCodeSync(
       dataSourceConfig,
       connector,
@@ -871,8 +873,44 @@ export async function githubCodeSyncActivity({
       codeSyncStartedAt,
       { ...loggerArgs, task: "garbageCollectCodeSyncDisabled" }
     );
+
+    // Finally delete the repository object if it exists.
+    await GithubCodeRepository.destroy({
+      where: {
+        connectorId: connector.id,
+        repoId: repoId.toString(),
+      },
+    });
+
     return;
   }
+
+  let githubCodeRepository = await GithubCodeRepository.findOne({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+    },
+  });
+
+  if (!githubCodeRepository) {
+    githubCodeRepository = await GithubCodeRepository.create({
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+      repoLogin,
+      repoName,
+      createdAt: codeSyncStartedAt,
+      updatedAt: codeSyncStartedAt,
+      lastSeenAt: codeSyncStartedAt,
+      sourceUrl: `https://github.com/${repoLogin}/${repoName}`,
+    });
+  }
+
+  // We update the repo name and source url in case they changed. We also update the lastSeenAt as
+  // soon as possible to prevent further attempt to incrementally synchronize it.
+  githubCodeRepository.repoName = repoName;
+  githubCodeRepository.sourceUrl = `https://github.com/${repoLogin}/${repoName}`;
+  githubCodeRepository.lastSeenAt = codeSyncStartedAt;
+  await githubCodeRepository.save();
 
   const { tempDir, files, directories } = await processRepository({
     installationId,
@@ -901,6 +939,7 @@ export async function githubCodeSyncActivity({
 
     const rootInternalId = `github-code-${repoId}`;
     const updatedDirectories: { [key: string]: boolean } = {};
+    let repoUpdatedAt: Date | null = null;
 
     const fq = new PQueue({ concurrency: 4 });
     files.forEach((f) =>
@@ -957,6 +996,7 @@ export async function githubCodeSyncActivity({
           for (const parentInternalId of f.parents) {
             updatedDirectories[parentInternalId] = true;
           }
+          repoUpdatedAt = codeSyncStartedAt;
 
           const tags = [
             `title:${f.fileName}`,
@@ -1067,6 +1107,12 @@ export async function githubCodeSyncActivity({
       codeSyncStartedAt,
       { ...loggerArgs, task: "garbageCollectCodeSync" }
     );
+
+    // Finally we update the repository updatedAt value.
+    if (repoUpdatedAt) {
+      githubCodeRepository.updatedAt = repoUpdatedAt;
+      await githubCodeRepository.save();
+    }
   } finally {
     await cleanUpProcessRepository(tempDir);
     localLogger.info(
