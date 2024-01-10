@@ -28,7 +28,7 @@ import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -383,120 +383,6 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         connectorId,
         lastSeenTs: new Date(),
       });
-
-      return;
-    }
-
-    case "batch-resync": {
-      if (!args.size) {
-        throw new Error("Missing --size argument");
-      }
-
-      if (!["small", "medium", "large"].includes(args.size)) {
-        throw new Error("--size must be small, medium or large");
-      }
-
-      // 0-indexed
-      let batchNumber: number | null = null;
-      let batchSize: number | null = null;
-
-      if (args.batchNumber) {
-        batchNumber = parseInt(args.batchNumber as string, 10);
-      }
-
-      if (args.batchSize) {
-        batchSize = parseInt(args.batchSize as string, 10);
-      }
-
-      if (args.size !== "small" && (!batchNumber || !batchSize)) {
-        throw new Error(
-          `--batchNumber and --batchSize are required for size ${args.size}`
-        );
-      }
-
-      if ((batchNumber === null) !== (batchSize === null)) {
-        throw new Error(
-          `--batchNumber and --batchSize must be both specified or both null`
-        );
-      }
-
-      const queryRes = await sequelize_conn.query(`
-        SELECT COUNT(*) c, "connectorId" 
-        FROM notion_pages
-        GROUP BY "connectorId"
-        ORDER BY "connectorId" ASC`);
-
-      const connectorIdsWithCount = queryRes[0] as {
-        c: number;
-        connectorId: string;
-      }[];
-
-      const filter = (c: number) => {
-        if (args.size === "small") {
-          return c <= 10_000;
-        }
-
-        if (args.size === "medium") {
-          return c > 10_000 && c <= 60_000;
-        }
-
-        if (args.size === "large") {
-          return c > 60_000;
-        }
-      };
-
-      const connectorIds = connectorIdsWithCount
-        .filter((c) => filter(c.c))
-        .map((c) => c.connectorId);
-
-      let connectorsToResync = [];
-
-      if (batchNumber && batchSize) {
-        const start = batchNumber * batchSize;
-        const end = start + batchSize;
-        const batchesRemaining = Math.ceil(
-          (connectorIds.length - end) / batchSize
-        );
-        console.log(
-          `Resyncing batch ${batchNumber} of size ${batchSize} (from ${start} to ${end}). ${batchesRemaining} batches remaining.`
-        );
-        connectorsToResync = connectorIds.slice(start, end);
-      } else {
-        console.log(`Resyncing ${connectorIds.length} connectors`);
-        connectorsToResync = connectorIds;
-      }
-
-      let fromTs: number | null = null;
-      if (args.fromTs) {
-        fromTs = parseInt(args.fromTs as string, 10);
-      }
-
-      const answer: string = await new Promise((resolve) => {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-        rl.question(
-          "Are you sure you want to trigger full sync" +
-            (fromTs ? ` (fromTS=${fromTs})` : "") +
-            ` for ${connectorsToResync.length} Notion connectors ? (y/N) `,
-          (answer) => {
-            rl.close();
-            resolve(answer);
-          }
-        );
-      });
-
-      if (answer !== "y") {
-        console.log("Cancelled");
-        return;
-      }
-
-      for (const connectorId of connectorsToResync) {
-        await throwOnError(
-          SYNC_CONNECTOR_BY_TYPE["notion"](connectorId, fromTs)
-        );
-      }
 
       return;
     }
