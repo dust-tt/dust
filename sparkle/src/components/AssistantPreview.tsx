@@ -3,27 +3,47 @@ import React from "react";
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
-import { Dash, More, Play, Plus } from "@sparkle/icons/solid";
+import {
+  ChatBubbleBottomCenterText,
+  Dash,
+  More,
+  Play,
+  Plus,
+} from "@sparkle/icons/solid";
 
 type AssistantPreviewVariant = "sm" | "md" | "lg" | "list";
 
-interface AssistantPreviewProps {
-  allowAddAction?: boolean;
-  allowRemoveAction?: boolean;
+interface BaseAssistantPreviewProps {
   description: string;
-  isAdded: boolean;
-  isUpdatingList: boolean;
-  isWorkspace: boolean;
   name: string;
   pictureUrl: string;
   subtitle: string;
   variant: AssistantPreviewVariant;
+}
 
-  // CTA's.
+type LargeVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "lg";
+
+  allowAddAction?: boolean;
+  allowRemoveAction?: boolean;
+  isAdded: boolean;
+  isUpdatingList: boolean;
+  isWorkspace: boolean;
+
   onShowDetailsClick?: () => void;
   onTestClick?: () => void;
   onUpdate: (action: "added" | "removed") => Promise<void> | void;
-}
+};
+
+type SmallVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "sm";
+
+  onClick: () => void;
+};
+
+type AssistantPreviewProps =
+  | SmallVariantAssistantPreviewProps
+  | LargeVariantAssistantPreviewProps;
 
 // Define defaultProps for the AssistantPreview component.
 AssistantPreview.defaultProps = {
@@ -31,36 +51,50 @@ AssistantPreview.defaultProps = {
   allowRemoveAction: false,
 };
 
-function renderVariantContent(
-  variant: AssistantPreviewVariant,
-  props: AssistantPreviewProps
-) {
-  switch (variant) {
+function renderVariantContent(props: AssistantPreviewProps) {
+  switch (props.variant) {
     case "sm":
-      return <SmallVariantContent />;
-    case "md":
-      return <MediumVariantContent />;
+      return <SmallVariantContent {...props} />;
     case "lg":
-      return <LargeVariantContent props={props} />;
-    case "list":
-      return <ListVariantContent />;
+      return <LargeVariantContent {...props} />;
     default:
       return <></>;
   }
 }
 
-// TODO:
-const SmallVariantContent = () => {
-  throw new Error("Not yet implemented!");
-};
+const SmallVariantContent = (props: SmallVariantAssistantPreviewProps) => {
+  const { description, name, onClick, pictureUrl } = props;
 
-// TODO:
-const MediumVariantContent = () => {
-  throw new Error("Not yet implemented!");
+  return (
+    <div className="s-flex s-flex-col s-py-2">
+      <div className="s-flex s-flex-row s-gap-2">
+        <Avatar
+          visual={<img src={pictureUrl} alt={`Avatar of ${name}`} />}
+          size="md"
+        />
+        <div className="s-flex s-flex-col s-gap-2">
+          <div className="s-text-sm s-font-medium s-text-element-900">
+            @{name}
+          </div>
+          <Button
+            key="start"
+            variant="tertiary"
+            icon={ChatBubbleBottomCenterText}
+            size="xs"
+            label={"Start"}
+            onClick={onClick}
+          />
+        </div>
+      </div>
+      <div className="s-py-1.5 s-text-sm s-font-normal s-text-element-700">
+        {description}
+      </div>
+    </div>
+  );
 };
 
 type GalleryChipProps = Pick<
-  AssistantPreviewProps,
+  LargeVariantAssistantPreviewProps,
   | "allowAddAction"
   | "allowRemoveAction"
   | "isAdded"
@@ -107,7 +141,7 @@ const GalleryChip = ({
 };
 
 type ButtonsGroupProps = Pick<
-  AssistantPreviewProps,
+  LargeVariantAssistantPreviewProps,
   | "allowAddAction"
   | "isAdded"
   | "isUpdatingList"
@@ -164,7 +198,7 @@ const ButtonsGroup = ({
   );
 };
 
-const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
+const LargeVariantContent = (props: LargeVariantAssistantPreviewProps) => {
   const {
     allowAddAction,
     allowRemoveAction,
@@ -221,13 +255,8 @@ const LargeVariantContent = ({ props }: { props: AssistantPreviewProps }) => {
   );
 };
 
-// TODO:
-const ListVariantContent = () => {
-  throw new Error("Not yet implemented!");
-};
-
 export function AssistantPreview(props: AssistantPreviewProps) {
-  const VariantContent = renderVariantContent(props.variant, props);
+  const VariantContent = renderVariantContent(props);
 
   return <div>{VariantContent}</div>;
 }
