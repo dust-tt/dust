@@ -102,6 +102,7 @@ const _webhookSlackAPIHandler = async (
   }
 
   if (req.body.type === "event_callback") {
+    const { team_id: teamId } = req.body;
     if (!req.body.team_id) {
       return apiError(req, res, {
         api_error: {
@@ -111,16 +112,24 @@ const _webhookSlackAPIHandler = async (
         status_code: 400,
       });
     }
+
+    logger.info(
+      {
+        slackTeamId: teamId,
+      },
+      "[Slack]: Proccessing webhooks"
+    );
+
     const slackConfigurations = await SlackConfiguration.findAll({
       where: {
-        slackTeamId: req.body.team_id,
+        slackTeamId: teamId,
       },
     });
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {
           type: "connector_configuration_not_found",
-          message: `Slack configuration not found for teamId ${req.body.team_id}`,
+          message: `Slack configuration not found for teamId ${teamId}`,
         },
         status_code: 404,
       });
@@ -135,7 +144,7 @@ const _webhookSlackAPIHandler = async (
        * `message` handler.
        */
       case "message": {
-        if (!req.body.team_id) {
+        if (!teamId) {
           return apiError(req, res, {
             api_error: {
               type: "invalid_request_error",
@@ -152,7 +161,7 @@ const _webhookSlackAPIHandler = async (
           }
           const slackConfig = await SlackConfiguration.findOne({
             where: {
-              slackTeamId: req.body.team_id,
+              slackTeamId: teamId,
               botEnabled: true,
             },
           });
@@ -160,7 +169,7 @@ const _webhookSlackAPIHandler = async (
             return apiError(req, res, {
               api_error: {
                 type: "connector_configuration_not_found",
-                message: `Slack configuration not found for teamId ${req.body.team_id}. Are you sure the bot is not enabled?`,
+                message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
               },
               status_code: 404,
             });
