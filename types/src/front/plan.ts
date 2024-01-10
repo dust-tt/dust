@@ -9,6 +9,7 @@ export type ManageDataSourcesLimitsType = {
   isGoogleDriveAllowed: boolean;
   isGithubAllowed: boolean;
   isIntercomAllowed: boolean;
+  isWebCrawlerAllowed: boolean;
 };
 export type LimitsType = {
   assistant: {

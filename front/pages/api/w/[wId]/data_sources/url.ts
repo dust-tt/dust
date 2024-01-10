@@ -1,12 +1,11 @@
-import {
-  CONNECTOR_PROVIDERS,
-  ConnectorProvider,
-  DataSourceType,
-} from "@dust-tt/types";
+import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -20,14 +19,21 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { NODE_ENV } = process.env;
 
-export type PostManagedDataSourceResponseBody = {
+export type PostManagedDataSourceUrlResponseBody = {
   dataSource: DataSourceType;
   connector: ConnectorType;
 };
 
+export const PostManagedDataSourceUrlReqBodySchema = t.type({
+  url: t.string,
+  name: t.string,
+});
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostManagedDataSourceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    PostManagedDataSourceUrlResponseBody | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -60,71 +66,30 @@ async function handler(
         });
       }
 
-      // retrieve suffix GET parameter
-      let suffix: string | null = null;
-      if (req.query.suffix && typeof req.query.suffix === "string") {
-        suffix = req.query.suffix;
-      }
-      if (suffix && !/^[a-z0-9\-_]{1,16}$/.test(suffix)) {
+      // extract the view from the query parameters
+      const queryValidation = PostManagedDataSourceUrlReqBodySchema.decode(
+        req.body
+      );
+      if (isLeft(queryValidation)) {
+        const pathError = reporter.formatValidationErrors(queryValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid suffix.",
+            message: `Invalid query parameters: ${pathError}`,
           },
         });
       }
+      const { url, name } = queryValidation.right;
 
-      if (
-        !req.body.provider ||
-        !CONNECTOR_PROVIDERS.includes(req.body.provider)
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid provider.",
-          },
-        });
-      }
+      const provider: ConnectorProvider = "webcrawler";
 
-      const provider = req.body.provider as ConnectorProvider;
-
-      const dataSourceName = suffix
-        ? `managed-${provider}-${suffix}`
-        : `managed-${provider}`;
-      const dataSourceDescription = suffix
-        ? `Managed Data Source for ${provider} (${suffix})`
-        : `Managed Data Source for ${provider}`;
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 512;
 
-      let isDataSourceAllowedInPlan: boolean;
-      switch (provider) {
-        case "slack":
-          isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
-          break;
-        case "notion":
-          isDataSourceAllowedInPlan = plan.limits.connections.isNotionAllowed;
-          break;
-        case "github":
-          isDataSourceAllowedInPlan = plan.limits.connections.isGithubAllowed;
-          break;
-        case "google_drive":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isGoogleDriveAllowed;
-          break;
-        case "intercom":
-          isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
-          break;
-        case "webcrawler":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isWebCrawlerAllowed;
-          break;
-        default:
-          isDataSourceAllowedInPlan = false; // default to false if provider is not recognized
-      }
+      const isDataSourceAllowedInPlan =
+        plan.limits.connections.isWebCrawlerAllowed;
 
       // Enforce plan limits: managed DataSources.
       if (!isDataSourceAllowedInPlan) {
@@ -174,7 +139,7 @@ async function handler(
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
-        dataSourceId: dataSourceName,
+        dataSourceId: name,
         config: {
           provider_id: dataSourceProviderId,
           model_id: dataSourceModelId,
@@ -206,8 +171,8 @@ async function handler(
       }
 
       let dataSource = await DataSource.create({
-        name: dataSourceName,
-        description: dataSourceDescription,
+        name: name,
+        description: url,
         visibility: "private",
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
@@ -219,10 +184,10 @@ async function handler(
         provider,
         owner.sId,
         systemAPIKeyRes.value.secret,
-        dataSourceName,
+        name,
         {
-          connectionId: req.body.connectionId as string,
-          type: "oauth",
+          url,
+          type: "url",
         }
       );
       if (connectorsRes.isErr()) {

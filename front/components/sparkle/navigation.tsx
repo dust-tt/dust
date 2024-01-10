@@ -6,6 +6,7 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  LinkIcon,
   PaperAirplaneIcon,
   PlanetIcon,
   RobotIcon,
@@ -40,7 +41,8 @@ export type SubNavigationAdminId =
   | "members"
   | "developers"
   | "extract"
-  | "tables";
+  | "tables"
+  | "data_sources_url";
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
@@ -323,6 +325,15 @@ export const subNavigationAdmin = ({
           icon: ServerIcon,
           href: `/w/${owner.sId}/tables`,
           current: current === "tables",
+        },
+        {
+          id: "data_sources_url",
+          label: "Public URLs",
+          icon: LinkIcon,
+          href: `/w/${owner.sId}/builder/data-sources/public-urls`,
+          current: current === "data_sources_url",
+          subMenuLabel: undefined,
+          subMenu: undefined,
         },
       ],
     });
