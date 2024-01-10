@@ -3,6 +3,7 @@ import { isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
+import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -55,6 +56,8 @@ import {
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+
+const { getRequiredNangoNotionConnectorId } = notionConfig;
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -472,15 +475,9 @@ export async function saveStartSync(connectorId: ModelId) {
 export async function getNotionAccessToken(
   nangoConnectionId: string
 ): Promise<string> {
-  const { NANGO_NOTION_CONNECTOR_ID } = process.env;
-
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
   const notionAccessToken = await getAccessTokenFromNango({
     connectionId: nangoConnectionId,
-    integrationId: NANGO_NOTION_CONNECTOR_ID,
+    integrationId: getRequiredNangoNotionConnectorId(),
     useCache: true,
   });
 
