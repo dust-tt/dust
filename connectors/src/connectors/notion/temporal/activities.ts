@@ -1502,6 +1502,8 @@ export async function renderAndUpsertPageFromCache({
   const topLevelBlocks = blockCacheEntries.filter(
     (b) => b.parentBlockId === null
   );
+  topLevelBlocks.sort((a, b) => a.indexInParent - b.indexInParent);
+
   const blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]> = {};
   for (const blockCacheEntry of blockCacheEntries) {
     if (!blockCacheEntry.parentBlockId) continue;
@@ -1572,6 +1574,7 @@ export async function renderAndUpsertPageFromCache({
     }
     let renderedBlock = b.blockText ? `${indent}${b.blockText}\n` : "";
     const children = blocksByParentId[b.notionBlockId] ?? [];
+    children.sort((a, b) => a.indexInParent - b.indexInParent);
     for (const child of children) {
       renderedBlock += renderBlock(child, `- ${indent}`);
     }
