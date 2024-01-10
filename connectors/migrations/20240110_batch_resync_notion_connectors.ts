@@ -38,6 +38,7 @@ const main = async () => {
   const queryRes = await sequelize_conn.query(`
     SELECT COUNT(*) c, "connectorId"
     FROM notion_pages
+    WHERE "connectorId" IS NOT NULL
     GROUP BY "connectorId"
     ORDER BY "connectorId" ASC`);
 
