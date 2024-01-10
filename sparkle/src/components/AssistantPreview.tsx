@@ -1,4 +1,4 @@
-import React from "react";
+import React, { SyntheticEvent } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
@@ -38,7 +38,7 @@ type LargeVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
 type SmallVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "sm";
 
-  onClick: () => void;
+  onClick: (e: SyntheticEvent) => void;
 };
 
 type AssistantPreviewProps =
