@@ -11,10 +11,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import {
-  getDisplayNameForDocument,
-  getProviderLogoPathForDataSource,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -80,8 +77,6 @@ export default function DataSourceView({
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
-
-  const documentPoviderIconPath = getProviderLogoPathForDataSource(dataSource);
 
   const router = useRouter();
 
@@ -200,11 +195,6 @@ export default function DataSourceView({
                       <div className="col-span-4">
                         <div className="truncate text-base font-bold text-action-600">
                           <div className="flex">
-                            {documentPoviderIconPath ? (
-                              <div className="mr-1.5 mt-1 flex h-4 w-4 flex-initial">
-                                <img src={documentPoviderIconPath}></img>
-                              </div>
-                            ) : null}
                             <Link
                               href={`/w/${owner.sId}/builder/data-sources/${
                                 dataSource.name

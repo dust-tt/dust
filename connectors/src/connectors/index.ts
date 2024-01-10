@@ -40,7 +40,8 @@ import {
   ConnectorCleaner,
   ConnectorConfigGetter,
   ConnectorConfigSetter,
-  ConnectorCreator,
+  ConnectorCreatorOAuth,
+  ConnectorCreatorUrl,
   ConnectorGarbageCollector,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
@@ -77,15 +78,26 @@ import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/c
 import { Err, Ok, Result } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
+import {
+  cleanupWebcrawlerConnector,
+  createWebcrawlerConnector,
+  retrieveWebcrawlerConnectorPermissions,
+  retrieveWebCrawlerObjectsParents,
+  retrieveWebCrawlerObjectsTitles,
+  stopWebcrawlerConnector,
+} from "./webcrawler";
+import { launchCrawlWebsiteWorkflow } from "./webcrawler/temporal/client";
+
 export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorCreator
+  ConnectorCreatorOAuth | ConnectorCreatorUrl
 > = {
   slack: createSlackConnector,
   notion: createNotionConnector,
   github: createGithubConnector,
   google_drive: createGoogleDriveConnector,
   intercom: createIntercomConnector,
+  webcrawler: createWebcrawlerConnector,
 };
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<
@@ -97,6 +109,9 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   github: updateGithubConnector,
   google_drive: updateGoogleDriveConnector,
   intercom: updateIntercomConnector,
+  webcrawler: () => {
+    throw new Error("Not implemented");
+  },
 };
 
 export const STOP_CONNECTOR_BY_TYPE: Record<
@@ -114,6 +129,9 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
     return new Ok(connectorId);
   },
   intercom: stopIntercomConnector,
+  webcrawler: async (connectorId: string) => {
+    return stopWebcrawlerConnector(connectorId);
+  },
 };
 
 export const DELETE_CONNECTOR_BY_TYPE: Record<
@@ -125,6 +143,7 @@ export const DELETE_CONNECTOR_BY_TYPE: Record<
   github: cleanupGithubConnector,
   google_drive: cleanupGoogleDriveConnector,
   intercom: cleanupIntercomConnector,
+  webcrawler: cleanupWebcrawlerConnector,
 };
 
 export const RESUME_CONNECTOR_BY_TYPE: Record<
@@ -141,6 +160,9 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
     throw new Error(`Not implemented ${connectorId}`);
   },
   intercom: resumeIntercomConnector,
+  webcrawler: () => {
+    throw new Error("Not implemented");
+  },
 };
 
 const toggleBotNotImplemented = async (
@@ -157,6 +179,7 @@ export const TOGGLE_BOT_BY_TYPE: Record<ConnectorProvider, BotToggler> = {
   github: toggleBotNotImplemented,
   google_drive: toggleBotNotImplemented,
   intercom: toggleBotNotImplemented,
+  webcrawler: toggleBotNotImplemented,
 };
 
 const getBotEnabledNotImplemented = async (
@@ -178,6 +201,7 @@ export const GET_BOT_ENABLED_BY_TYPE: Record<
   github: getBotEnabledNotImplemented,
   google_drive: getBotEnabledNotImplemented,
   intercom: getBotEnabledNotImplemented,
+  webcrawler: getBotEnabledNotImplemented,
 };
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
@@ -187,6 +211,8 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
     intercom: fullResyncIntercomConnector,
+    webcrawler: (connectorId: string) =>
+      launchCrawlWebsiteWorkflow(parseInt(connectorId)),
   };
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
@@ -198,6 +224,7 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   notion: retrieveNotionConnectorPermissions,
   google_drive: retrieveGoogleDriveConnectorPermissions,
   intercom: retrieveIntercomConnectorPermissions,
+  webcrawler: retrieveWebcrawlerConnectorPermissions,
 };
 
 export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
@@ -223,6 +250,11 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
       )
     );
   },
+  webcrawler: async () => {
+    return new Err(
+      new Error(`Setting Webcrawler connector permissions is not applicable.`)
+    );
+  },
 };
 
 export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
@@ -234,6 +266,7 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
   github: retrieveGithubReposTitles,
   google_drive: retrieveGoogleDriveObjectsTitles,
   intercom: retrieveIntercomResourcesTitles,
+  webcrawler: retrieveWebCrawlerObjectsTitles,
 };
 
 export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
@@ -245,6 +278,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   slack: async () => new Ok([]), // Slack is flat
   github: async () => new Ok([]), // Github is flat,
   intercom: async () => new Ok([]), // Intercom is not truly flat as we can put articles & collections inside collections but will handle this later
+  webcrawler: retrieveWebCrawlerObjectsParents,
 };
 
 export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
@@ -262,6 +296,9 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   },
   google_drive: setGoogleDriveConfig,
   intercom: async () => {
+    throw new Error("Not implemented");
+  },
+  webcrawler: async () => {
     throw new Error("Not implemented");
   },
 };
@@ -283,6 +320,9 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
   intercom: async () => {
     throw new Error("Not implemented");
   },
+  webcrawler: () => {
+    throw new Error("Not implemented");
+  },
 };
 
 export const GARBAGE_COLLECT_BY_TYPE: Record<
@@ -300,6 +340,9 @@ export const GARBAGE_COLLECT_BY_TYPE: Record<
   },
   google_drive: googleDriveGarbageCollect,
   intercom: async () => {
+    throw new Error("Not implemented");
+  },
+  webcrawler: () => {
     throw new Error("Not implemented");
   },
 };

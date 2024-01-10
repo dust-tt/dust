@@ -1,8 +1,8 @@
-import { ConnectorResourceType, ModelId } from "@dust-tt/types";
-import { hash as blake3 } from "blake3";
+import { ModelId } from "@dust-tt/types";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
+import { stableIdForUrl } from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertToDatasource } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -176,14 +176,4 @@ export function getFolderForUrl(url: string) {
   } else {
     return `${parsed.origin}/${urlParts.slice(0, -1).join("/")}`;
   }
-}
-
-function stableIdForUrl({
-  url,
-  ressourceType,
-}: {
-  url: string;
-  ressourceType: ConnectorResourceType;
-}) {
-  return Buffer.from(blake3(`${ressourceType}-${url}`)).toString("hex");
 }
