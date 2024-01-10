@@ -14,6 +14,7 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import {
+  assertNever,
   ConnectorProvider,
   DataSourceType,
   UserType,
@@ -501,6 +502,7 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
   intercom:
     "You cannot select another Intercom Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+  webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
 function ManagedDataSourceView({
@@ -667,7 +669,21 @@ function ManagedDataSourceView({
       />
       <div className="flex flex-col pt-4">
         <Page.Header
-          title={`Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`}
+          title={(() => {
+            switch (connectorProvider) {
+              case "slack":
+              case "google_drive":
+              case "github":
+              case "notion":
+              case "intercom":
+                return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
+              case "webcrawler":
+                return `Manage public URL`;
+
+              default:
+                assertNever(connectorProvider);
+            }
+          })()}
           icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
         />
         <div className="pt-2">
@@ -740,6 +756,8 @@ function ManagedDataSourceView({
                           }}
                         />
                       );
+                    case "webcrawler":
+                      return null;
                     default:
                       ((p: never) => {
                         throw new Error(`Unknown connector provider ${p}`);
@@ -748,10 +766,27 @@ function ManagedDataSourceView({
                 })()}
               </Button.List>
               <div className="pt-2 text-sm font-normal text-element-700">
-                Selected resources will be accessible to all members of the
-                workspace.
-                <br />
-                Changes may impact existing assistants.
+                {(() => {
+                  switch (connectorProvider) {
+                    case "google_drive":
+                    case "slack":
+                    case "github":
+                    case "notion":
+                    case "intercom":
+                      return (
+                        <>
+                          Selected resources will be accessible to all members
+                          of the workspace.
+                          <br />
+                          Changes may impact existing assistants.
+                        </>
+                      );
+                    case "webcrawler":
+                      return null;
+                    default:
+                      assertNever(connectorProvider);
+                  }
+                })()}
               </div>
             </div>
 

@@ -130,6 +130,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   slack: { singular: "channel", plural: "channels" },
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "article", plural: "articles" },
+  webcrawler: { singular: "page", plural: "pages" },
 };
 
 export type AssistantBuilderDataSourceConfiguration = {

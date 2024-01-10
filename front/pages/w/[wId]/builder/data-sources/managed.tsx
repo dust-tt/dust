@@ -110,7 +110,9 @@ export const getServerSideProps: GetServerSideProps<{
   const isAdmin = auth.isAdmin();
 
   const allDataSources = await getDataSources(auth);
-  const managedDataSources = allDataSources.filter((ds) => ds.connectorId);
+  const managedDataSources = allDataSources
+    .filter((ds) => ds.connectorId)
+    .filter((ds) => ds.connectorProvider !== "webcrawler");
 
   const managedConnector: {
     dataSourceName: string;
@@ -512,203 +514,214 @@ export default function DataSourcesView({
           </ContentMessage>
         )}
         <ContextItem.List>
-          {localIntegrations.map((ds) => {
-            return (
-              <ContextItem
-                key={
-                  ds.dataSourceName ||
-                  `managed-to-connect-${ds.connectorProvider}`
-                }
-                title={ds.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={
-                      CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                        .logoComponent
-                    }
-                  />
-                }
-                action={
-                  <div className="relative">
-                    <Button.List>
-                      {(() => {
-                        const disabled =
-                          isLoadingByProvider[
-                            ds.connectorProvider as ConnectorProvider
-                          ] || !isAdmin;
+          {localIntegrations
+            .filter(
+              (ds) => !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide
+            )
+            .map((ds) => {
+              return (
+                <ContextItem
+                  key={
+                    ds.dataSourceName ||
+                    `managed-to-connect-${ds.connectorProvider}`
+                  }
+                  title={ds.name}
+                  visual={
+                    <ContextItem.Visual
+                      visual={
+                        CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
+                          .logoComponent
+                      }
+                    />
+                  }
+                  action={
+                    <div className="relative">
+                      <Button.List>
+                        {(() => {
+                          const disabled =
+                            isLoadingByProvider[
+                              ds.connectorProvider as ConnectorProvider
+                            ] || !isAdmin;
 
-                        const onClick = async () => {
-                          let isDataSourceAllowedInPlan: boolean;
+                          const onClick = async () => {
+                            let isDataSourceAllowedInPlan: boolean;
 
-                          switch (ds.connectorProvider) {
-                            case "slack":
-                              isDataSourceAllowedInPlan =
-                                planConnectionsLimits.isSlackAllowed;
-                              break;
-                            case "notion":
-                              isDataSourceAllowedInPlan =
-                                planConnectionsLimits.isNotionAllowed;
-                              break;
-                            case "github":
-                              isDataSourceAllowedInPlan =
-                                planConnectionsLimits.isGithubAllowed;
-                              break;
-                            case "google_drive":
-                              isDataSourceAllowedInPlan =
-                                planConnectionsLimits.isGoogleDriveAllowed;
-                              break;
-                            case "intercom":
-                              isDataSourceAllowedInPlan =
-                                planConnectionsLimits.isIntercomAllowed;
-                              break;
-                            default:
-                              ((p: never) => {
-                                throw new Error(
-                                  `Unknown connector provider ${p}`
-                                );
-                              })(ds.connectorProvider);
-                          }
+                            switch (ds.connectorProvider) {
+                              case "slack":
+                                isDataSourceAllowedInPlan =
+                                  planConnectionsLimits.isSlackAllowed;
+                                break;
+                              case "notion":
+                                isDataSourceAllowedInPlan =
+                                  planConnectionsLimits.isNotionAllowed;
+                                break;
+                              case "github":
+                                isDataSourceAllowedInPlan =
+                                  planConnectionsLimits.isGithubAllowed;
+                                break;
+                              case "google_drive":
+                                isDataSourceAllowedInPlan =
+                                  planConnectionsLimits.isGoogleDriveAllowed;
+                                break;
+                              case "intercom":
+                                isDataSourceAllowedInPlan =
+                                  planConnectionsLimits.isIntercomAllowed;
+                                break;
+                              case "webcrawler":
+                                // Web crawler connector is not displayed on this web page.
+                                isDataSourceAllowedInPlan = false;
+                                break;
+                              default:
+                                ((p: never) => {
+                                  throw new Error(
+                                    `Unknown connector provider ${p}`
+                                  );
+                                })(ds.connectorProvider);
+                            }
 
-                          if (isDataSourceAllowedInPlan && ds.isBuilt) {
-                            setShowConfirmConnection(ds);
-                          } else if (isDataSourceAllowedInPlan && !ds.isBuilt) {
-                            setShowPreviewPopupForProvider(
-                              ds.connectorProvider
+                            if (isDataSourceAllowedInPlan && ds.isBuilt) {
+                              setShowConfirmConnection(ds);
+                            } else if (
+                              isDataSourceAllowedInPlan &&
+                              !ds.isBuilt
+                            ) {
+                              setShowPreviewPopupForProvider(
+                                ds.connectorProvider
+                              );
+                            } else {
+                              setShowUpgradePopupForProvider(
+                                ds.connectorProvider as ConnectorProvider
+                              );
+                            }
+                            return;
+                          };
+
+                          const label = !ds.isBuilt
+                            ? "Preview"
+                            : !isLoadingByProvider[
+                                ds.connectorProvider as ConnectorProvider
+                              ] && !ds.fetchConnectorError
+                            ? "Connect"
+                            : "Connecting...";
+
+                          if (!ds || !ds.connector) {
+                            return (
+                              <Button
+                                variant="primary"
+                                icon={
+                                  ds.isBuilt
+                                    ? CloudArrowLeftRightIcon
+                                    : InformationCircleIcon
+                                }
+                                disabled={disabled}
+                                onClick={onClick}
+                                label={label}
+                              />
                             );
                           } else {
-                            setShowUpgradePopupForProvider(
-                              ds.connectorProvider as ConnectorProvider
+                            return (
+                              <Button
+                                variant="secondary"
+                                icon={Cog6ToothIcon}
+                                disabled={
+                                  !ds.isBuilt ||
+                                  isLoadingByProvider[
+                                    ds.connectorProvider as ConnectorProvider
+                                  ] ||
+                                  // Can't manage or view if not (admin or not readonly (ie builder)).
+                                  !(isAdmin || !readOnly)
+                                }
+                                onClick={() => {
+                                  void router.push(
+                                    `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
+                                  );
+                                }}
+                                label={isAdmin ? "Manage" : "View"}
+                              />
                             );
                           }
-                          return;
-                        };
-
-                        const label = !ds.isBuilt
-                          ? "Preview"
-                          : !isLoadingByProvider[
-                              ds.connectorProvider as ConnectorProvider
-                            ] && !ds.fetchConnectorError
-                          ? "Connect"
-                          : "Connecting...";
-
-                        if (!ds || !ds.connector) {
+                        })()}
+                      </Button.List>
+                      <Popup
+                        show={
+                          showUpgradePopupForProvider === ds.connectorProvider
+                        }
+                        className="absolute bottom-8 right-0"
+                        chipLabel={`${plan.name} plan`}
+                        description="Unlock this managed data source by upgrading your plan."
+                        buttonLabel="Check Dust plans"
+                        buttonClick={() => {
+                          void router.push(`/w/${owner.sId}/subscription`);
+                        }}
+                        onClose={() => {
+                          setShowUpgradePopupForProvider(null);
+                        }}
+                      />
+                      <Popup
+                        show={
+                          showPreviewPopupForProvider === ds.connectorProvider
+                        }
+                        className="absolute bottom-8 right-0"
+                        chipLabel="Coming Soon!"
+                        description="Please email us at team@dust.tt for early access."
+                        buttonLabel="Contact us"
+                        buttonClick={() => {
+                          window.open(
+                            "mailto:team@dust.tt?subject=Early access to the Intercom connection"
+                          );
+                        }}
+                        onClose={() => {
+                          setShowPreviewPopupForProvider(null);
+                        }}
+                      />
+                    </div>
+                  }
+                >
+                  {ds && ds.connector && (
+                    <div className="mb-1 mt-2">
+                      {(() => {
+                        if (ds.fetchConnectorError) {
                           return (
-                            <Button
-                              variant="primary"
-                              icon={
-                                ds.isBuilt
-                                  ? CloudArrowLeftRightIcon
-                                  : InformationCircleIcon
-                              }
-                              disabled={disabled}
-                              onClick={onClick}
-                              label={label}
-                            />
+                            <Chip color="warning">
+                              Error loading the connector. Try again in a few
+                              minutes.
+                            </Chip>
+                          );
+                        } else if (ds.connector.errorType) {
+                          return (
+                            <Chip color="warning">
+                              Oops! It seems that our access to your account has
+                              been revoked. Please re-authorize this Data Source
+                              to keep your data up to date on Dust.
+                            </Chip>
+                          );
+                        } else if (!ds.connector.lastSyncSuccessfulTime) {
+                          return (
+                            <Chip color="amber" isBusy>
+                              Synchronizing
+                              {ds.connector?.firstSyncProgress
+                                ? ` (${ds.connector?.firstSyncProgress})`
+                                : null}
+                            </Chip>
                           );
                         } else {
                           return (
-                            <Button
-                              variant="secondary"
-                              icon={Cog6ToothIcon}
-                              disabled={
-                                !ds.isBuilt ||
-                                isLoadingByProvider[
-                                  ds.connectorProvider as ConnectorProvider
-                                ] ||
-                                // Can't manage or view if not (admin or not readonly (ie builder)).
-                                !(isAdmin || !readOnly)
-                              }
-                              onClick={() => {
-                                void router.push(
-                                  `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
-                                );
-                              }}
-                              label={isAdmin ? "Manage" : "View"}
-                            />
+                            <Chip color="slate">
+                              Last Sync ~ {ds.synchronizedAgo} ago
+                            </Chip>
                           );
                         }
                       })()}
-                    </Button.List>
-                    <Popup
-                      show={
-                        showUpgradePopupForProvider === ds.connectorProvider
-                      }
-                      className="absolute bottom-8 right-0"
-                      chipLabel={`${plan.name} plan`}
-                      description="Unlock this managed data source by upgrading your plan."
-                      buttonLabel="Check Dust plans"
-                      buttonClick={() => {
-                        void router.push(`/w/${owner.sId}/subscription`);
-                      }}
-                      onClose={() => {
-                        setShowUpgradePopupForProvider(null);
-                      }}
-                    />
-                    <Popup
-                      show={
-                        showPreviewPopupForProvider === ds.connectorProvider
-                      }
-                      className="absolute bottom-8 right-0"
-                      chipLabel="Coming Soon!"
-                      description="Please email us at team@dust.tt for early access."
-                      buttonLabel="Contact us"
-                      buttonClick={() => {
-                        window.open(
-                          "mailto:team@dust.tt?subject=Early access to the Intercom connection"
-                        );
-                      }}
-                      onClose={() => {
-                        setShowPreviewPopupForProvider(null);
-                      }}
-                    />
-                  </div>
-                }
-              >
-                {ds && ds.connector && (
-                  <div className="mb-1 mt-2">
-                    {(() => {
-                      if (ds.fetchConnectorError) {
-                        return (
-                          <Chip color="warning">
-                            Error loading the connector. Try again in a few
-                            minutes.
-                          </Chip>
-                        );
-                      } else if (ds.connector.errorType) {
-                        return (
-                          <Chip color="warning">
-                            Oops! It seems that our access to your account has
-                            been revoked. Please re-authorize this Data Source
-                            to keep your data up to date on Dust.
-                          </Chip>
-                        );
-                      } else if (!ds.connector.lastSyncSuccessfulTime) {
-                        return (
-                          <Chip color="amber" isBusy>
-                            Synchronizing
-                            {ds.connector?.firstSyncProgress
-                              ? ` (${ds.connector?.firstSyncProgress})`
-                              : null}
-                          </Chip>
-                        );
-                      } else {
-                        return (
-                          <Chip color="slate">
-                            Last Sync ~ {ds.synchronizedAgo} ago
-                          </Chip>
-                        );
-                      }
-                    })()}
-                  </div>
-                )}
-                <ContextItem.Description>
-                  <div className="text-sm text-element-700">
-                    {ds.description}
-                  </div>
-                </ContextItem.Description>
-              </ContextItem>
-            );
-          })}
+                    </div>
+                  )}
+                  <ContextItem.Description>
+                    <div className="text-sm text-element-700">
+                      {ds.description}
+                    </div>
+                  </ContextItem.Description>
+                </ContextItem>
+              );
+            })}
         </ContextItem.List>
       </Page.Vertical>
     </AppLayout>
