@@ -131,7 +131,7 @@ export default function DataSourceNew({
 
   const handleCreate = async () => {
     setIsSaving(true);
-    const res = await fetch(`/api/w/${owner.sId}/data_sources/url`, {
+    const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -141,6 +141,8 @@ export default function DataSourceNew({
         visibility: "private",
         assistantDefaultSelected,
         url: dataSourceUrl,
+        type: "url",
+        provider: "webcrawler",
       }),
     });
     if (res.ok) {

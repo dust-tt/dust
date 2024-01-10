@@ -426,6 +426,7 @@ export default function DataSourcesView({
           body: JSON.stringify({
             provider,
             connectionId,
+            type: "oauth",
           }),
         }
       );

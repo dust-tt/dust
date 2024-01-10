@@ -1,4 +1,5 @@
 import {
+  assertNever,
   CONNECTOR_PROVIDERS,
   ConnectorProvider,
   DataSourceType,
@@ -7,6 +8,9 @@ import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -19,6 +23,13 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { NODE_ENV } = process.env;
+
+const PostManagedDataSourceRequestBodySchema = t.type({
+  provider: t.string,
+  connectionId: t.union([t.string, t.undefined]),
+  type: t.union([t.literal("oauth"), t.literal("url")]),
+  url: t.union([t.string, t.undefined]),
+});
 
 export type PostManagedDataSourceResponseBody = {
   dataSource: DataSourceType;
@@ -59,7 +70,33 @@ async function handler(
           },
         });
       }
+      const bodyValidation = PostManagedDataSourceRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { type, connectionId, url, provider } = bodyValidation.right;
+
+      if (!CONNECTOR_PROVIDERS.includes(provider as ConnectorProvider)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid provider.",
+          },
+        });
+      }
+      const certifiedProvider = provider as ConnectorProvider;
       // retrieve suffix GET parameter
       let suffix: string | null = null;
       if (req.query.suffix && typeof req.query.suffix === "string") {
@@ -75,33 +112,18 @@ async function handler(
         });
       }
 
-      if (
-        !req.body.provider ||
-        !CONNECTOR_PROVIDERS.includes(req.body.provider)
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid provider.",
-          },
-        });
-      }
-
-      const provider = req.body.provider as ConnectorProvider;
-
       const dataSourceName = suffix
-        ? `managed-${provider}-${suffix}`
-        : `managed-${provider}`;
+        ? `managed-${certifiedProvider}-${suffix}`
+        : `managed-${certifiedProvider}`;
       const dataSourceDescription = suffix
-        ? `Managed Data Source for ${provider} (${suffix})`
-        : `Managed Data Source for ${provider}`;
+        ? `Managed Data Source for ${certifiedProvider} (${suffix})`
+        : `Managed Data Source for ${certifiedProvider}`;
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 512;
 
       let isDataSourceAllowedInPlan: boolean;
-      switch (provider) {
+      switch (certifiedProvider) {
         case "slack":
           isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
           break;
@@ -215,16 +237,57 @@ async function handler(
       });
 
       const connectorsAPI = new ConnectorsAPI(logger);
-      const connectorsRes = await connectorsAPI.createConnector(
-        provider,
-        owner.sId,
-        systemAPIKeyRes.value.secret,
-        dataSourceName,
-        {
-          connectionId: req.body.connectionId as string,
-          type: "oauth",
+      let connectorsRes: Awaited<ReturnType<ConnectorsAPI["createConnector"]>>;
+      switch (type) {
+        case "oauth": {
+          if (!connectionId) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "connectionId is required for OAuth connectors.",
+              },
+            });
+          }
+          connectorsRes = await connectorsAPI.createConnector(
+            certifiedProvider,
+            owner.sId,
+            systemAPIKeyRes.value.secret,
+            dataSourceName,
+            {
+              connectionId: connectionId,
+              type: "oauth",
+            }
+          );
+          break;
         }
-      );
+        case "url": {
+          if (!url) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "url is required for URL connectors.",
+              },
+            });
+          }
+          connectorsRes = await connectorsAPI.createConnector(
+            certifiedProvider,
+            owner.sId,
+            systemAPIKeyRes.value.secret,
+            dataSourceName,
+            {
+              url,
+              type: "url",
+            }
+          );
+          break;
+        }
+
+        default:
+          assertNever(type);
+      }
+
       if (connectorsRes.isErr()) {
         logger.error(
           {
@@ -257,7 +320,7 @@ async function handler(
 
       dataSource = await dataSource.update({
         connectorId: connectorsRes.value.id,
-        connectorProvider: provider,
+        connectorProvider: certifiedProvider,
       });
 
       return res.status(201).json({
@@ -268,7 +331,7 @@ async function handler(
           visibility: dataSource.visibility,
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
-          connectorProvider: provider,
+          connectorProvider: certifiedProvider,
           assistantDefaultSelected: true,
         },
         connector: connectorsRes.value,
