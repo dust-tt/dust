@@ -26,6 +26,7 @@ import {
 } from "@connectors/connectors/google_drive/temporal/client";
 import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
+import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
@@ -539,6 +540,33 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
       await throwOnError(toggleSlackbot(connector.id, true));
+      break;
+    }
+
+    case "sync-channel": {
+      const { channelId, wId } = args;
+
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: wId,
+          type: "slack",
+        },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${wId}`);
+      }
+
+      await throwOnError(
+        maybeLaunchSlackSyncWorkflowForChannelId(connector.id, channelId)
+      );
+
       break;
     }
 
