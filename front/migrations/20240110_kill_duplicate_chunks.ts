@@ -32,7 +32,6 @@ async function run() {
       | Record<string, unknown> = 0;
     while (offset !== null && offset !== undefined) {
       const res = await client.scroll(c.name, {
-        // with_payload: true,
         limit: 1024,
         offset,
       });
@@ -66,8 +65,16 @@ async function run() {
     );
 
     if (duplicates.length > 0) {
-      await client.delete(c.name, { wait: true, points: duplicates });
-      console.log(`DELETED ${duplicates.length} points from ${c.name}`);
+      const chunkSize = 1024;
+      const chunks: (string | number)[][] = [];
+      for (let j = 0; j < duplicates.length; j += chunkSize) {
+        chunks.push(duplicates.slice(j, j + chunkSize));
+      }
+      for (let j = 0; j < chunks.length; j++) {
+        await client.delete(c.name, { wait: true, points: chunks[j] });
+        console.log(`DELETED ${chunks[j].length} points from ${c.name}`);
+      }
+      console.log(`DELETED TOTAL ${duplicates.length} points from ${c.name}`);
     }
 
     i++;
