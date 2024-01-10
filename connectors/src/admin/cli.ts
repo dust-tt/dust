@@ -29,15 +29,12 @@ import {
   uninstallSlack,
 } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
-import {
-  launchSlackSyncOneThreadWorkflow,
-  launchSlackSyncWorkflow,
-} from "@connectors/connectors/slack/temporal/client";
+import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
+import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
 
