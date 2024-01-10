@@ -1,4 +1,4 @@
-import { CoreAPI, CoreAPIDatabaseRow } from "@dust-tt/types";
+import { CoreAPI, CoreAPIRow } from "@dust-tt/types";
 import { Err, Ok, Result } from "@dust-tt/types";
 import { APIError } from "@dust-tt/types";
 import { parse } from "csv-parse";
@@ -14,10 +14,9 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const CreateDatabaseFromCsvSchema = t.type({
-  databaseName: t.string,
-  tableName: t.string,
-  tableDescription: t.string,
+const CreateTableFromCsvSchema = t.type({
+  name: t.string,
+  description: t.string,
   csv: t.string,
 });
 
@@ -68,7 +67,7 @@ async function handler(
   const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "POST":
-      const bodyValidation = CreateDatabaseFromCsvSchema.decode(req.body);
+      const bodyValidation = CreateTableFromCsvSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -80,8 +79,7 @@ async function handler(
         });
       }
 
-      const { databaseName, tableName, tableDescription, csv } =
-        bodyValidation.right;
+      const { name, description, csv } = bodyValidation.right;
       const csvRowsRes = await rowsFromCsv(csv);
       if (csvRowsRes.isErr()) {
         return apiError(req, res, {
@@ -91,53 +89,22 @@ async function handler(
       }
 
       const csvRows = csvRowsRes.value;
-      if (csvRows.length > 50000) {
+      if (csvRows.length > 100_000) {
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `CSV has too many rows: ${csvRows.length} (max 100000).`,
+            message: `CSV has too many rows: ${csvRows.length} (max 100_000).`,
           },
           status_code: 400,
         });
       }
 
-      const id = generateModelSId();
-
-      const dbRes = await coreAPI.createDatabase({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        databaseId: id,
-        name: databaseName,
-      });
-      if (dbRes.isErr()) {
-        logger.error(
-          {
-            dataSourceName: dataSource.name,
-            workspaceId: owner.id,
-            databaseName: databaseName,
-            databaseId: id,
-            error: dbRes.error,
-          },
-          "Failed to create database."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to create database.",
-          },
-        });
-      }
-
-      const { database } = dbRes.value;
-
       const tableId = generateModelSId();
-      const tableRes = await coreAPI.upsertDatabaseTable({
+      const tableRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId: id,
-        description: tableDescription,
-        name: tableName,
+        description,
+        name,
         tableId,
       });
 
@@ -146,28 +113,25 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName,
-            databaseId: id,
             tableId,
-            tableName,
+            tableName: name,
             error: tableRes.error,
           },
-          "Failed to upsert database table."
+          "Failed to upsert table."
         );
 
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to upsert database table.",
+            message: "Failed to upsert table.",
           },
         });
       }
 
-      const rowsRes = await coreAPI.upsertDatabaseRows({
+      const rowsRes = await coreAPI.upsertTableRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId: id,
         tableId,
         rows: csvRows,
       });
@@ -177,25 +141,23 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName,
-            databaseId: id,
             tableId,
-            tableName,
+            tableName: name,
             error: rowsRes.error,
           },
-          "Failed to upsert database rows."
+          "Failed to upsert rows."
         );
 
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to upsert database rows.",
+            message: "Failed to upsert rows.",
           },
         });
       }
 
-      return res.status(200).json({ database });
+      return res.status(200).json({ table: tableRes.value });
 
     default:
       return apiError(req, res, {
@@ -212,7 +174,7 @@ export default withLogging(handler);
 
 async function rowsFromCsv(
   csv: string
-): Promise<Result<CoreAPIDatabaseRow[], APIError>> {
+): Promise<Result<CoreAPIRow[], APIError>> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,
   // keep the one that works for both lines and has the most columns.
   let delimiter: string | undefined = undefined;
@@ -359,7 +321,7 @@ async function rowsFromCsv(
   }
 
   const nbRows = (Object.values(parsedValuesByCol)[0] || []).length;
-  const rows: CoreAPIDatabaseRow[] = [];
+  const rows: CoreAPIRow[] = [];
   for (let i = 0; i < nbRows; i++) {
     const record = header.reduce((acc, h) => {
       const parsedValues = parsedValuesByCol[h];

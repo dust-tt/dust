@@ -4,11 +4,9 @@ import { BlockType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
-import { isActivatedStructuredDB } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 
 export default function NewBlock({
-  owner,
   spec,
   disabled,
   onClick,
@@ -99,23 +97,6 @@ export default function NewBlock({
       description: "Loop over a set of blocks until a condition is met.",
     },
   ];
-
-  if (isActivatedStructuredDB(owner)) {
-    blocks.push(
-      {
-        type: "database",
-        typeNames: ["database"],
-        name: "Database",
-        description: "Query a database.",
-      },
-      {
-        type: "database_schema",
-        typeNames: ["database_schema"],
-        name: "Database Schema",
-        description: "Retrieve the schema of a database.",
-      }
-    );
-  }
 
   if (!containsInput) {
     blocks.splice(0, 0, {

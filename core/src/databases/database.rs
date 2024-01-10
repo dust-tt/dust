@@ -200,7 +200,29 @@ impl Table {
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
+        // Validate the tables schema, merge it if necessary and store it in the schema cache.
+        let table_schema = match self.schema() {
+            // If there is no existing schema cache, simply use the new schema.
+            None => TableSchema::from_rows(&rows)?,
+            Some(existing_table_schema) => {
+                // If there is an existing schema cache, merge it with the new schema.
+                existing_table_schema.merge(&TableSchema::from_rows(&rows)?)?
+            }
+        };
+        store
+            .update_table_schema(
+                &self.project,
+                &self.data_source_id,
+                &self.table_id,
+                &table_schema,
+            )
+            .await?;
+
         // Upsert the rows in the table.
+        // Note: if this fails, the Table will still contain the new schema, but the rows will not be updated.
+        // This isn't too bad, because the merged schema is necessarily backward-compatible with the previous one.
+        // The other way around would not be true -- old schema doesn't necessarily work with the new rows.
+        // This is why we cannot `try_join_all`.
         databases_store
             .batch_upsert_table_rows(&self.unique_id(), rows, truncate)
             .await?;

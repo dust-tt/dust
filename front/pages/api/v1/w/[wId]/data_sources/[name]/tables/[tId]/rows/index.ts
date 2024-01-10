@@ -1,4 +1,4 @@
-import { CoreAPI, CoreAPIDatabase, CoreAPIDatabaseTable } from "@dust-tt/types";
+import { CoreAPI, CoreAPIRow } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -7,30 +7,41 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { isActivatedStructuredDB } from "@app/lib/development";
-import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type ListDatabaseTablesResponseBody = {
-  database: CoreAPIDatabase;
-  tables: CoreAPIDatabaseTable[];
-};
-
-const UpsertDatabaseTableRequestBodySchema = t.type({
-  table_id: t.union([t.string, t.undefined]),
-  name: t.string,
-  description: t.string,
+const UpsertTableRowsRequestBodySchema = t.type({
+  rows: t.array(
+    t.type({
+      row_id: t.string,
+      value: t.record(
+        t.string,
+        t.union([t.string, t.null, t.number, t.boolean])
+      ),
+    })
+  ),
+  truncate: t.union([t.boolean, t.undefined]),
 });
 
-type UpsertDatabaseTableResponseBody = {
-  table: CoreAPIDatabaseTable;
+type UpsertTableRowsResponseBody = {
+  success: true;
+};
+
+const ListTableRowsReqQuerySchema = t.type({
+  offset: t.number,
+  limit: t.number,
+});
+
+type ListTableRowsResponseBody = {
+  rows: CoreAPIRow[];
+  offset: number;
+  limit: number;
+  total: number;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    ListDatabaseTablesResponseBody | UpsertDatabaseTableResponseBody
-  >
+  res: NextApiResponse<UpsertTableRowsResponseBody | ListTableRowsResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -70,51 +81,65 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.dId;
-  if (!databaseId || typeof databaseId !== "string") {
+  const tableId = req.query.tId;
+  if (!tableId || typeof tableId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The database id is missing.",
+        message: "The table id is missing.",
       },
     });
   }
   const coreAPI = new CoreAPI(logger);
-
   switch (req.method) {
     case "GET":
-      const tablesRes = await coreAPI.getDatabaseTables({
+      const queryValidation = ListTableRowsReqQuerySchema.decode(req.query);
+      if (isLeft(queryValidation)) {
+        const pathError = reporter.formatValidationErrors(queryValidation.left);
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request query: ${pathError}`,
+          },
+          status_code: 400,
+        });
+      }
+      const { offset, limit } = queryValidation.right;
+
+      const listRes = await coreAPI.getTableRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId,
+        tableId,
+        offset,
+        limit,
       });
-      if (tablesRes.isErr()) {
+
+      if (listRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            error: tablesRes.error,
+            tableId: tableId,
+            error: listRes.error,
           },
-          "Failed to get database tables."
+          "Failed to list database rows."
         );
+
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get database tables.",
+            message: "Failed to list database rows.",
           },
         });
       }
 
-      const { database, tables } = tablesRes.value;
-
-      return res.status(200).json({ database, tables });
+      const { rows: rowsList, total } = listRes.value;
+      return res.status(200).json({ rows: rowsList, offset, limit, total });
 
     case "POST":
-      const bodyValidation = UpsertDatabaseTableRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation = UpsertTableRowsRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -125,19 +150,14 @@ async function handler(
           status_code: 400,
         });
       }
-      const {
-        name,
-        description,
-        table_id: maybeTableId,
-      } = bodyValidation.right;
-      const tableId = maybeTableId || generateModelSId();
-      const upsertRes = await coreAPI.upsertDatabaseTable({
+      const { rows: rowsToUpsert, truncate } = bodyValidation.right;
+
+      const upsertRes = await coreAPI.upsertTableRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId,
-        tableId,
-        name,
-        description,
+        tableId: tableId,
+        rows: rowsToUpsert,
+        truncate,
       });
 
       if (upsertRes.isErr()) {
@@ -145,27 +165,22 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            databaseName: name,
-            databaseId,
-            tableId,
-            tableName: name,
+            tableId: tableId,
             error: upsertRes.error,
           },
-          "Failed to upsert database table."
+          "Failed to upsert database rows."
         );
 
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to upsert database table.",
+            message: "Failed to upsert database rows.",
           },
         });
       }
 
-      const { table } = upsertRes.value;
-
-      return res.status(200).json({ table });
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {

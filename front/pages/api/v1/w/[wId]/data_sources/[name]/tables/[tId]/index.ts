@@ -1,4 +1,4 @@
-import { CoreAPI, CoreAPIDatabaseTable } from "@dust-tt/types";
+import { CoreAPI, CoreAPITable } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -7,13 +7,13 @@ import { isActivatedStructuredDB } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetDatabaseTableResponseBody = {
-  table: CoreAPIDatabaseTable;
+type GetTableResponseBody = {
+  table: CoreAPITable;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDatabaseTableResponseBody>
+  res: NextApiResponse<GetTableResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -53,17 +53,6 @@ async function handler(
     });
   }
 
-  const databaseId = req.query.dId;
-  if (!databaseId || typeof databaseId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The database id is missing.",
-      },
-    });
-  }
-
   const tableId = req.query.tId;
   if (!tableId || typeof tableId !== "string") {
     return apiError(req, res, {
@@ -78,10 +67,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const coreAPI = new CoreAPI(logger);
-      const tableRes = await coreAPI.getDatabaseTable({
+      const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        databaseId,
         tableId,
       });
       if (tableRes.isErr()) {
@@ -91,13 +79,13 @@ async function handler(
             workspaceId: owner.id,
             error: tableRes.error,
           },
-          "Failed to get database table."
+          "Failed to get table."
         );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get database.",
+            message: "Failed to get table.",
           },
         });
       }

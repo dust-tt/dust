@@ -1,6 +1,4 @@
 import { CoreAPI } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -8,14 +6,11 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  ListDatabasesReqQuerySchema,
-  ListDatabasesResponseBody,
-} from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases";
+import { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ListDatabasesResponseBody>
+  res: NextApiResponse<ListTablesResponseBody>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -59,7 +54,8 @@ async function handler(
       },
     });
   }
-  const dataSource = await getDataSource(auth, req.query.name as string);
+
+  const dataSource = await getDataSource(auth, req.query.name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -72,47 +68,32 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = ListDatabasesReqQuerySchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request query: ${pathError}`,
-          },
-          status_code: 400,
-        });
-      }
-
-      const { offset, limit } = queryValidation.right;
-
       const coreAPI = new CoreAPI(logger);
-      const getRes = await coreAPI.getDatabases({
+      const tablesRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        offset,
-        limit,
       });
-
-      if (getRes.isErr()) {
+      if (tablesRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourcename: dataSource.name,
             workspaceId: owner.id,
-            error: getRes.error,
+            error: tablesRes.error,
           },
-          "Failed to list databases."
+          "Failed to get tables."
         );
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to list databases.",
+            message: "Failed to get tables.",
           },
         });
       }
 
-      return res.status(200).json(getRes.value);
+      const { tables } = tablesRes.value;
+
+      return res.status(200).json({ tables });
 
     default:
       return apiError(req, res, {

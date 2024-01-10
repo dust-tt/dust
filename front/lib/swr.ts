@@ -1,8 +1,4 @@
-import {
-  AgentsGetViewType,
-  CoreAPIDatabase,
-  DataSourceType,
-} from "@dust-tt/types";
+import { AgentsGetViewType, DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
@@ -13,7 +9,7 @@ import useSWR, { Fetcher } from "swr";
 import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
-import { ListDatabasesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases";
+import { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
 import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
@@ -530,54 +526,27 @@ export function useSlackChannelsLinkedWithAgent({
   };
 }
 
-export function useDatabases({
+export function useTables({
   workspaceId,
   dataSourceName,
-  offset,
-  limit,
 }: {
   workspaceId: string;
   dataSourceName: string;
-  offset: number;
-  limit: number;
 }) {
-  const databasesFetcher: Fetcher<ListDatabasesResponseBody> = fetcher;
+  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases?offset=${offset}&limit=${limit}`,
-    databasesFetcher
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables`
+      : null,
+    tablesFetcher
   );
 
   return {
-    databases: data ? data.databases : [],
-    total: data ? data.total : null,
-    isDatabasesLoading: !error && !data,
-    isDatabasesError: error,
-    mutateDatabases: mutate,
-  };
-}
-
-export function useDatabase({
-  workspaceId,
-  dataSourceName,
-  databaseId,
-}: {
-  workspaceId: string;
-  dataSourceName: string;
-  databaseId?: string;
-}) {
-  const databaseFetcher: Fetcher<{ database: CoreAPIDatabase }> = fetcher;
-
-  const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}`,
-    databaseFetcher
-  );
-
-  return {
-    database: data ? data.database : null,
-    isDatabaseLoading: !error && !data,
-    isDatabaseError: error,
-    mutateDatabase: mutate,
+    tables: data ? data.tables : [],
+    isTablesLoading: !error && !data,
+    isTablesError: error,
+    mutateTables: mutate,
   };
 }
 

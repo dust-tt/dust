@@ -91,18 +91,6 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
             : false,
         };
         break;
-      case "database_schema":
-        c[spec[i].name] = {
-          type: "database_schema",
-          database: spec[i].config?.database,
-        };
-        break;
-      case "database":
-        c[spec[i].name] = {
-          type: "database",
-          database: spec[i].config?.database,
-        };
-        break;
       case "data":
       case "code":
       case "map":
