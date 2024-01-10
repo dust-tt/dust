@@ -112,7 +112,7 @@ export async function cancelWorkflow(workflowId: string) {
   return false;
 }
 
-export async function cancelAllWorkflowsForConnectorId(
+export async function terminateAllWorkflowsForConnectorId(
   connectorId: ModelId
 ): Promise<boolean> {
   const client = await getTemporalClient();
