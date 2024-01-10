@@ -45,7 +45,7 @@ async function handler(
           },
         });
       }
-      const { botEnabled } = req.body;
+      const { botEnabled }: { botEnabled: boolean } = req.body;
 
       const dataSource = await DataSource.findOne({
         where: {
@@ -75,9 +75,10 @@ async function handler(
       }
 
       const connectorsAPI = new ConnectorsAPI(logger);
-      const connectorRes = await connectorsAPI.setBotEnabled(
+      const connectorRes = await connectorsAPI.setConnectorConfig(
         dataSource.connectorId,
-        botEnabled
+        "botEnabled",
+        botEnabled ? "true" : "false"
       );
 
       if (connectorRes.isErr()) {

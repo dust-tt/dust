@@ -243,46 +243,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getBotEnabled(connectorId: string): Promise<
-    ConnectorsAPIResponse<{
-      botEnabled: boolean;
-    }>
-  > {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
-      {
-        method: "GET",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async setBotEnabled(
-    connectorId: string,
-    botEnabled: boolean
-  ): Promise<
-    ConnectorsAPIResponse<{
-      botEnabled: boolean;
-    }>
-  > {
-    const headers = this.getDefaultHeaders();
-
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          botEnabled,
-        }),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async setConnectorConfig(
     connectorId: string,
     configKey: string,

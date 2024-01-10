@@ -133,11 +133,14 @@ export const getServerSideProps: GetServerSideProps<{
 
   let slackbotEnabled = false;
   if (slackConnectorId) {
-    const botEnabledRes = await connectorsAPI.getBotEnabled(slackConnectorId);
+    const botEnabledRes = await connectorsAPI.getConnectorConfig(
+      slackConnectorId,
+      "botEnabled"
+    );
     if (botEnabledRes.isErr()) {
       throw botEnabledRes.error;
     }
-    slackbotEnabled = botEnabledRes.value.botEnabled;
+    slackbotEnabled = botEnabledRes.value.configValue === "true";
   }
   // Get Gdrive PDF enabled status
   const gdriveConnectorId = dataSources.find(
