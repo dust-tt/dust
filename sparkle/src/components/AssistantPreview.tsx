@@ -62,7 +62,6 @@ function renderVariantContent(props: AssistantPreviewProps) {
   }
 }
 
-// TODO:
 const SmallVariantContent = (props: SmallVariantAssistantPreviewProps) => {
   const { description, name, onClick, pictureUrl } = props;
 
