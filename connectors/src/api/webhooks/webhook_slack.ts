@@ -319,6 +319,7 @@ const _webhookSlackAPIHandler = async (
                 ts: req.body.event.ts,
                 thread_ts: req.body.event.thread_ts,
                 user: req.body.event.user,
+                slackTeamId: teamId,
               },
               `Successfully processed Slack Webhook`
             );
