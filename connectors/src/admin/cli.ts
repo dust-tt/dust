@@ -24,11 +24,9 @@ import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
-import {
-  maybeLaunchSlackSyncWorkflowForChannelId,
-  uninstallSlack,
-} from "@connectors/connectors/slack";
+import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
+import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
