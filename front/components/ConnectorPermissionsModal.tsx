@@ -14,6 +14,7 @@ import { PermissionTree } from "./ConnectorPermissionsTree";
 import { SendNotificationsContext } from "./sparkle/Notification";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
+  "confluence",
   "slack",
   "google_drive",
 ]);

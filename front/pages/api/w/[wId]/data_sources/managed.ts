@@ -83,9 +83,14 @@ async function handler(
 
       if (
         !req.body.provider ||
-        !["slack", "notion", "github", "google_drive", "intercom"].includes(
-          req.body.provider
-        )
+        ![
+          "confluence",
+          "slack",
+          "notion",
+          "github",
+          "google_drive",
+          "intercom",
+        ].includes(req.body.provider)
       ) {
         return apiError(req, res, {
           status_code: 400,
@@ -121,6 +126,10 @@ async function handler(
 
       let isDataSourceAllowedInPlan: boolean;
       switch (provider) {
+        case "confluence":
+          isDataSourceAllowedInPlan =
+            plan.limits.connections.isConfluenceAllowed;
+          break;
         case "slack":
           isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
           break;

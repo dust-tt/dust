@@ -1,6 +1,12 @@
 import { ConnectorProvider, ModelId } from "@dust-tt/types";
 
 import {
+  createConfluenceConnector,
+  retrieveConfluenceConnectorPermissions,
+  setConfluenceConnectorPermissions,
+  updateConfluenceConnector,
+} from "@connectors/connectors/confluence";
+import {
   cleanupGithubConnector,
   createGithubConnector,
   fullResyncGithubConnector,
@@ -92,11 +98,12 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCreatorOAuth | ConnectorCreatorUrl
 > = {
-  slack: createSlackConnector,
-  notion: createNotionConnector,
+  confluence: createConfluenceConnector,
   github: createGithubConnector,
   google_drive: createGoogleDriveConnector,
   intercom: createIntercomConnector,
+  notion: createNotionConnector,
+  slack: createSlackConnector,
   webcrawler: createWebcrawlerConnector,
 };
 
@@ -104,6 +111,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorUpdater
 > = {
+  confluence: updateConfluenceConnector,
   slack: updateSlackConnector,
   notion: updateNotionConnector,
   github: updateGithubConnector,
@@ -118,6 +126,9 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorStopper
 > = {
+  confluence: () => {
+    throw new Error("Not yet implemented!");
+  },
   slack: async (connectorId: string) => {
     logger.info({ connectorId }, `Stopping Slack connector is a no-op.`);
     return new Ok(connectorId);
@@ -138,6 +149,9 @@ export const DELETE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCleaner
 > = {
+  confluence: () => {
+    throw new Error("Not yet implemented!");
+  },
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
   github: cleanupGithubConnector,
@@ -150,6 +164,9 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResumer
 > = {
+  confluence: () => {
+    throw new Error("Not yet implemented!");
+  },
   slack: async (connectorId: string) => {
     logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
     return new Ok(connectorId);
@@ -174,6 +191,9 @@ const toggleBotNotImplemented = async (
 };
 
 export const TOGGLE_BOT_BY_TYPE: Record<ConnectorProvider, BotToggler> = {
+  confluence: () => {
+    throw new Error("Not yet implemented!");
+  },
   slack: toggleSlackbot,
   notion: toggleBotNotImplemented,
   github: toggleBotNotImplemented,
@@ -196,6 +216,9 @@ export const GET_BOT_ENABLED_BY_TYPE: Record<
   ConnectorProvider,
   BotEnabledGetter
 > = {
+  confluence: () => {
+    throw new Error("Not yet implemented!");
+  },
   slack: getBotEnabled,
   notion: getBotEnabledNotImplemented,
   github: getBotEnabledNotImplemented,
@@ -206,6 +229,9 @@ export const GET_BOT_ENABLED_BY_TYPE: Record<
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
+    confluence: () => {
+      throw new Error("Not yet implemented!");
+    },
     slack: launchSlackSyncWorkflow,
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
@@ -219,6 +245,7 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorPermissionRetriever
 > = {
+  confluence: retrieveConfluenceConnectorPermissions,
   slack: retrieveSlackConnectorPermissions,
   github: retrieveGithubConnectorPermissions,
   notion: retrieveNotionConnectorPermissions,
@@ -231,6 +258,7 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorPermissionSetter
 > = {
+  confluence: setConfluenceConnectorPermissions,
   slack: setSlackConnectorPermissions,
   notion: async () => {
     return new Err(

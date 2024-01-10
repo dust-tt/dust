@@ -68,6 +68,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         maxMessages: parseInt(editingPlan.maxMessages.toString(), 10),
       },
       connections: {
+        isConfluenceAllowed: editingPlan.isIntercomAllowed,
         isSlackAllowed: editingPlan.isSlackAllowed,
         isNotionAllowed: editingPlan.isNotionAllowed,
         isGoogleDriveAllowed: editingPlan.isGoogleDriveAllowed,
@@ -185,6 +186,7 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Bot",
   },
+  // TODO(2024-01-10 flav) Add isConfluenceAllowed.
   isSlackAllowed: {
     type: "boolean",
     width: "tiny",
