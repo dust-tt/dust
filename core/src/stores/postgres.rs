@@ -2824,7 +2824,7 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "DELETE FROM databases \
-                WHERE sqlite_worker IN ($1)",
+                WHERE sqlite_worker = ANY($1)",
             )
             .await?;
         tx.execute(&stmt, &[&dead_worker_ids]).await?;
@@ -2833,7 +2833,7 @@ impl Store for PostgresStore {
         let stmt = tx
             .prepare(
                 "DELETE FROM sqlite_workers \
-                WHERE id IN ($1)",
+                WHERE id = ANY($1)",
             )
             .await?;
         tx.execute(&stmt, &[&dead_worker_ids]).await?;
