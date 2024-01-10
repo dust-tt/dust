@@ -70,7 +70,6 @@ export const AssistantPreviewExample = () => (
           pictureUrl={
             "https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
           }
-          subtitle={"Stanislas Polu, Pauline Pham"}
           variant={"sm"}
           onClick={() => {
             alert(`On click button clicked`);
