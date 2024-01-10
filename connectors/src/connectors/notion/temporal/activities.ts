@@ -41,7 +41,8 @@ import {
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
-  renderSectionForTitleAndContent,
+  renderMarkdownSection,
+  renderPrefixSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
@@ -1555,12 +1556,6 @@ export async function renderAndUpsertPageFromCache({
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
-  for (const p of parsedProperties) {
-    if (!p.text) continue;
-    // We skip the title as it is added separately as prefix to the top-level document section.
-    if (p.key === "title") continue;
-    renderedPage += `$${p.key}: ${p.text}\n`;
-  }
   renderedPage += "\n";
 
   let pageHasBody = false;
@@ -1730,8 +1725,8 @@ export async function renderAndUpsertPageFromCache({
     skipReason = "body_too_large";
   }
 
-  const createdTime = new Date(pageCacheEntry.createdTime).getTime();
-  const updatedTime = new Date(pageCacheEntry.lastEditedTime).getTime();
+  const createdTime = new Date(pageCacheEntry.createdTime);
+  const updatedTime = new Date(pageCacheEntry.lastEditedTime);
 
   if (!pageHasBody) {
     localLogger.info(
@@ -1748,10 +1743,32 @@ export async function renderAndUpsertPageFromCache({
       pageId,
       runTimestamp.toString()
     );
+    const titlePrefix = title ? `$title: ${title}\n` : null;
 
-    const content = renderSectionForTitleAndContent(
-      title || null,
-      renderedPage
+    const propsCreatedTime = createdTime.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Properties and tags are added as prefix to the document top level section
+    // section Title is in a separate prefix (both title and properties can be
+    // lenghty, this avoids cutting one entirely)
+    const content = renderPrefixSection(titlePrefix);
+    let propsPrefix = `${
+      title ? "\n" : ""
+    }$author: ${author}\n$created: ${propsCreatedTime}\n`;
+    for (const p of parsedProperties) {
+      if (!p.text) continue;
+      // We skip the title as it is added separately as prefix to the top-level document section.
+      if (p.key === "title") continue;
+      propsPrefix += `$${p.key}: ${p.text}\n`;
+    }
+
+    content.sections.push(
+      renderMarkdownSection(`${propsPrefix}\n`, renderedPage)
     );
 
     localLogger.info(
@@ -1766,13 +1783,13 @@ export async function renderAndUpsertPageFromCache({
       documentId,
       documentContent: content,
       documentUrl: pageCacheEntry.url,
-      timestampMs: updatedTime,
+      timestampMs: updatedTime.getTime(),
       tags: getTagsForPage({
         title,
         author,
         lastEditor,
-        createdTime,
-        updatedTime,
+        createdTime: createdTime.getTime(),
+        updatedTime: updatedTime.getTime(),
       }),
       parents,
       retries: 3,
