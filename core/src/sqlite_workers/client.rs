@@ -100,4 +100,23 @@ impl SqliteWorker {
             ))?,
         }
     }
+
+    pub async fn expire_all(&self) -> Result<()> {
+        let worker_url = self.url();
+
+        let req = Request::builder()
+            .method("DELETE")
+            .uri(format!("{}/databases", worker_url))
+            .body(Body::from(""))?;
+
+        let res = Client::new().request(req).await?;
+
+        match res.status().as_u16() {
+            200 => Ok(()),
+            s => Err(anyhow!(
+                "Failed to expire all databases on sqlite worker. Status: {}",
+                s
+            ))?,
+        }
+    }
 }
