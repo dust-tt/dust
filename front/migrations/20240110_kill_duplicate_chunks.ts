@@ -65,12 +65,10 @@ async function run() {
       } unique chunks in ${c.name}.`
     );
 
-    // if (duplicates.length > 0) {
-    //   await client.delete(c.name, { wait: true, points: duplicates });
-    //   console.log(
-    //     `DELETED ${duplicates.length} points from ${c.name} res=${r}`
-    //   );
-    // }
+    if (duplicates.length > 0) {
+      await client.delete(c.name, { wait: true, points: duplicates });
+      console.log(`DELETED ${duplicates.length} points from ${c.name}`);
+    }
 
     i++;
     if (i % 32 === 0) {
