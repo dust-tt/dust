@@ -24,14 +24,20 @@ import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
-import { uninstallSlack } from "@connectors/connectors/slack";
+import {
+  maybeLaunchSlackSyncWorkflowForChannelId,
+  uninstallSlack,
+} from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
-import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
+import {
+  launchSlackSyncOneThreadWorkflow,
+  launchSlackSyncWorkflow,
+} from "@connectors/connectors/slack/temporal/client";
 import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { SlackConfiguration } from "@connectors/lib/models/slack";
+import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
 
@@ -537,6 +543,33 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
       await throwOnError(toggleSlackbot(connector.id, true));
+      break;
+    }
+
+    case "sync-channel": {
+      const { channelId, wId } = args;
+
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+
+      const connector = await Connector.findOne({
+        where: {
+          workspaceId: wId,
+          type: "slack",
+        },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${wId}`);
+      }
+
+      await throwOnError(
+        maybeLaunchSlackSyncWorkflowForChannelId(connector.id, channelId)
+      );
+
       break;
     }
 
