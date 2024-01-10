@@ -53,6 +53,7 @@ export async function getSlackClient(
     apply: async function (target, thisArg, argumentsList) {
       try {
         // @ts-expect-error can't get typescript to be happy with this, but it works.
+        // eslint-disable-next-line @typescript-eslint/return-await
         return await Reflect.apply(target, thisArg, argumentsList);
       } catch (e) {
         // If we get rate limited, we throw a known error.

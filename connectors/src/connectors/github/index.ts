@@ -319,7 +319,7 @@ export async function retrieveGithubConnectorPermissions({
 
     const [latestDiscussion, latestIssue, repo] = await Promise.all([
       (async () => {
-        return await GithubDiscussion.findOne({
+        return GithubDiscussion.findOne({
           where: {
             connectorId: c.id,
             repoId: repoId.toString(),
@@ -329,7 +329,7 @@ export async function retrieveGithubConnectorPermissions({
         });
       })(),
       (async () => {
-        return await GithubIssue.findOne({
+        return GithubIssue.findOne({
           where: {
             connectorId: c.id,
             repoId: repoId.toString(),

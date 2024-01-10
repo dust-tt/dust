@@ -62,7 +62,7 @@ export async function workspaceFullSync(
             `${percentSync}%`
           );
           i++;
-          return await executeChild(syncOneChannel, {
+          return executeChild(syncOneChannel, {
             workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
             searchAttributes: {
               connectorId: [connectorId],

@@ -720,5 +720,5 @@ export async function googleDriveGarbageCollect(connectorId: ModelId) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
 
-  return await launchGoogleGarbageCollector(connectorId);
+  return launchGoogleGarbageCollector(connectorId);
 }

@@ -15,7 +15,7 @@ export async function countActiveSeatsInWorkspace(
   if (!workspace) {
     throw new Error(`Workspace not found for sId: ${workspaceId}`);
   }
-  return await Membership.count({
+  return Membership.count({
     where: {
       workspaceId: workspace.id,
       role: {

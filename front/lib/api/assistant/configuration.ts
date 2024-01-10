@@ -73,7 +73,7 @@ export async function getAgentConfiguration(
   }
 
   if (isGlobalAgentId(agentId)) {
-    return await getGlobalAgent(auth, agentId, null);
+    return getGlobalAgent(auth, agentId, null);
   }
 
   const user = auth.user();
@@ -388,7 +388,7 @@ export async function getAgentConfigurations(
         if (!user) {
           return [];
         }
-        return await AgentUserRelation.findAll({
+        return AgentUserRelation.findAll({
           where: {
             workspaceId: owner.id,
             userId: user?.id,
@@ -895,7 +895,7 @@ export async function createAgentActionConfiguration(
   }
 
   if (action.type === "retrieval_configuration") {
-    return await front_sequelize.transaction(async (t) => {
+    return front_sequelize.transaction(async (t) => {
       const retrievalConfig = await AgentRetrievalConfiguration.create(
         {
           sId: generateModelSId(),

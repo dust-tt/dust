@@ -168,7 +168,7 @@ export default function Subscription({
   const plan = subscription.plan;
   const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
 
-  const onClickProPlan = async () => await handleSubscribePlan();
+  const onClickProPlan = async () => handleSubscribePlan();
   const onClickEnterprisePlan = () => {
     window.open("mailto:team@dust.tt?subject=Upgrading to Enteprise plan");
   };
@@ -233,7 +233,7 @@ export default function Subscription({
                             : "Visit Dust's dashboard on Stripe"
                         }
                         disabled={isProcessing}
-                        onClick={async () => await handleGoToStripePortal()}
+                        onClick={async () => handleGoToStripePortal()}
                       />
                     </div>
                   </>

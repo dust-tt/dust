@@ -92,7 +92,7 @@ export async function getGoogleCredentials(
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
   }
-  return await nango_client().getConnection(
+  return nango_client().getConnection(
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
     nangoConnectionId,
     false
@@ -274,7 +274,7 @@ export async function syncFiles(
         if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
           throw new Error("Invalid file. File is: " + JSON.stringify(file));
         }
-        return await driveObjectToDustType(file, authCredentials);
+        return driveObjectToDustType(file, authCredentials);
       })
   );
   const subfolders = filesToSync
@@ -286,7 +286,7 @@ export async function syncFiles(
     filesToSync.map((file) => {
       return queue.add(async () => {
         if (!file.trashed) {
-          return await syncOneFile(
+          return syncOneFile(
             connectorId,
             authCredentials,
             dataSourceConfig,

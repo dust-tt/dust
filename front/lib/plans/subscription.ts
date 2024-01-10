@@ -132,7 +132,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     );
   }
 
-  return await front_sequelize.transaction(async (t) => {
+  return front_sequelize.transaction(async (t) => {
     // We end the active subscription if any
     if (activeSubscription) {
       await activeSubscription.update({

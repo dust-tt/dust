@@ -38,12 +38,12 @@ export async function getAccessTokenFromNango({
   useCache?: boolean;
 }) {
   if (useCache) {
-    return await _cachedGetAccessTokenFromNango({
+    return _cachedGetAccessTokenFromNango({
       connectionId,
       integrationId,
     });
   } else {
-    return await _getAccessTokenFromNango({ connectionId, integrationId });
+    return _getAccessTokenFromNango({ connectionId, integrationId });
   }
 }
 
@@ -84,13 +84,13 @@ export async function getConnectionFromNango({
   useCache?: boolean;
 }) {
   if (useCache) {
-    return await _getCachedConnectionFromNango({
+    return _getCachedConnectionFromNango({
       connectionId,
       integrationId,
       refreshToken,
     });
   } else {
-    return await _getConnectionFromNango({
+    return _getConnectionFromNango({
       connectionId,
       integrationId,
       refreshToken,

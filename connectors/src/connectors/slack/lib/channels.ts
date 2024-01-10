@@ -29,7 +29,7 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelName: string;
   connectorId: number;
 }): Promise<SlackChannelType> {
-  return await sequelize_conn.transaction(async (transaction) => {
+  return sequelize_conn.transaction(async (transaction) => {
     const connector = await Connector.findOne({
       where: {
         id: connectorId,
