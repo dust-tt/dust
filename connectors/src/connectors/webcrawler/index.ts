@@ -181,6 +181,13 @@ export async function cleanupWebcrawlerConnector(
   connectorId: string
 ): Promise<Result<void, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
+    await WebCrawlerPage.destroy({
+      where: {
+        connectorId: connectorId,
+      },
+      transaction,
+    });
+
     await WebCrawlerFolder.destroy({
       where: {
         connectorId: connectorId,
