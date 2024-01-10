@@ -259,13 +259,7 @@ export function renderSectionForTitleAndContent(
   return {
     prefix: `$title: ${title}\n\n`,
     content,
-    sections: [
-      {
-        prefix: null,
-        content,
-        sections: [],
-      },
-    ],
+    sections: [],
   };
 }
 
