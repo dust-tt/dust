@@ -31,7 +31,7 @@ const HANDLED_WEBHOOKS = {
   installation_repositories: new Set(["added", "removed"]),
   issues: new Set(["opened", "edited", "deleted"]),
   issue_comment: new Set(["created", "edited", "deleted"]),
-  pull_request: new Set(["opened", "edited"]),
+  pull_request: new Set(["opened", "edited", "closed"]),
   discussion: new Set(["created", "edited", "deleted"]),
   discussion_comment: new Set(["created", "edited", "deleted"]),
 } as Record<string, Set<string>>;
@@ -250,6 +250,8 @@ const _webhookGithubAPIHandler = async (
             jsonBody.pull_request.number,
             res
           );
+        } else if (jsonBody.action === "closed") {
+          // Syncing logic
         } else {
           assertNever(jsonBody.action);
         }
