@@ -125,6 +125,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
     plural: string;
   }
 > = {
+  confluence: { singular: "space", plural: "spaces" },
   notion: { singular: "page", plural: "pages" },
   google_drive: { singular: "folder", plural: "folders" },
   slack: { singular: "channel", plural: "channels" },
