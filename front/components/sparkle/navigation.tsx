@@ -10,6 +10,7 @@ import {
   PlanetIcon,
   RobotIcon,
   RobotSharedIcon,
+  ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
@@ -39,7 +40,7 @@ export type SubNavigationAdminId =
   | "members"
   | "developers"
   | "extract"
-  | "databases";
+  | "tables";
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
@@ -315,6 +316,13 @@ export const subNavigationAdmin = ({
           icon: ArrowUpOnSquareIcon,
           href: `/w/${owner.sId}/u/extract`,
           current: current === "extract",
+        },
+        {
+          id: "tables",
+          label: "Tables",
+          icon: ServerIcon,
+          href: `/w/${owner.sId}/tables`,
+          current: current === "tables",
         },
       ],
     });

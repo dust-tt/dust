@@ -2277,7 +2277,7 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "SELECT created, table_id, name, description, schema FROM tables \
-                WHERE data_source = $1 table_id = $2 LIMIT 1",
+                WHERE data_source = $1 AND table_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&data_source_row_id, &table_id]).await?;

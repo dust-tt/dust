@@ -15,8 +15,8 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const CreateTableFromCsvSchema = t.type({
-  tableName: t.string,
-  tableDescription: t.string,
+  name: t.string,
+  description: t.string,
   csv: t.string,
 });
 
@@ -79,7 +79,7 @@ async function handler(
         });
       }
 
-      const { tableName, tableDescription, csv } = bodyValidation.right;
+      const { name, description, csv } = bodyValidation.right;
       const csvRowsRes = await rowsFromCsv(csv);
       if (csvRowsRes.isErr()) {
         return apiError(req, res, {
@@ -103,8 +103,8 @@ async function handler(
       const tableRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
-        description: tableDescription,
-        name: tableName,
+        description,
+        name,
         tableId,
       });
 
@@ -114,7 +114,7 @@ async function handler(
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
             tableId,
-            tableName,
+            tableName: name,
             error: tableRes.error,
           },
           "Failed to upsert table."
@@ -142,7 +142,7 @@ async function handler(
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
             tableId,
-            tableName,
+            tableName: name,
             error: rowsRes.error,
           },
           "Failed to upsert rows."
