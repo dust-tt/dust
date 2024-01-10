@@ -17,7 +17,6 @@ interface BaseAssistantPreviewProps {
   description: string;
   name: string;
   pictureUrl: string;
-  subtitle: string;
   variant: AssistantPreviewVariant;
 }
 
@@ -29,6 +28,7 @@ type LargeVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   isAdded: boolean;
   isUpdatingList: boolean;
   isWorkspace: boolean;
+  subtitle: string;
 
   onShowDetailsClick?: () => void;
   onTestClick?: () => void;
