@@ -1756,21 +1756,13 @@ export async function renderAndUpsertPageFromCache({
       minute: "2-digit",
     });
 
-    const propsUpdatedTime = updatedTime.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
     // Properties and tags are added as prefix to the document top level section
     // section Title is in a separate prefix (both title and properties can be
     // lenghty, this avoids cutting one entirely)
     const content = renderPrefixSection(titlePrefix);
     let propsPrefix = `${
       title ? "\n" : ""
-    }$author: ${author}\n$last_editor: ${lastEditor}\n$created: ${propsCreatedTime}\n$last_edited: ${propsUpdatedTime}\n`;
+    }$author: ${author}\n$created: ${propsCreatedTime}\n`;
     for (const p of parsedProperties) {
       if (!p.text) continue;
       // We skip the title as it is added separately as prefix to the top-level document section.
