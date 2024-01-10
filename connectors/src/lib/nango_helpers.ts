@@ -72,6 +72,21 @@ const _getCachedConnectionFromNango = cacheWithRedis(
   NANGO_ACCESS_TOKEN_TTL_SECONDS * 1000
 );
 
+type NangoConnectionResponse = {
+  connection_id: string;
+  credentials: {
+    type: string;
+    access_token: string;
+    refresh_token: string;
+    expires_at: string;
+    expires_in: number;
+    raw: {
+      scope: string;
+      token_type: string;
+    };
+  };
+};
+
 export async function getConnectionFromNango({
   connectionId,
   integrationId,
@@ -82,7 +97,7 @@ export async function getConnectionFromNango({
   integrationId: string;
   refreshToken?: boolean;
   useCache?: boolean;
-}) {
+}): Promise<NangoConnectionResponse> {
   if (useCache) {
     return _getCachedConnectionFromNango({
       connectionId,
