@@ -72,8 +72,7 @@ const useEditorService = (editor: Editor | null) => {
       },
 
       resetWithMentions: (mentions: EditorMention[]) => {
-        editor?.commands.clearContent();
-        const chainCommands = editor?.chain().focus();
+        const chainCommands = editor?.chain().focus().clearContent();
 
         mentions.forEach(
           (m) =>
