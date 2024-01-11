@@ -323,11 +323,15 @@ export function renderDocumentTitleAndContent({
   title,
   createdAt,
   updatedAt,
+  author,
+  lastEditor,
   content,
 }: {
   title: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+  author?: string;
+  lastEditor?: string;
   content: CoreAPIDataSourceDocumentSection | null;
 }): CoreAPIDataSourceDocumentSection {
   if (title && title.trim()) {
@@ -341,6 +345,16 @@ export function renderDocumentTitleAndContent({
   }
   if (updatedAt) {
     c.prefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
+  }
+  if (author && lastEditor && author === lastEditor) {
+    c.prefix += `$author: ${author}\n`;
+  } else {
+    if (author) {
+      c.prefix += `$author: ${author}\n`;
+    }
+    if (lastEditor) {
+      c.prefix += `$lastEditor: ${lastEditor}\n`;
+    }
   }
   if (content) {
     c.sections.push(content);

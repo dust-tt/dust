@@ -513,6 +513,7 @@ async function syncOneFile(
     title: file.name,
     updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
     createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
+    lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
     content: documentContent
       ? { prefix: null, content: documentContent, sections: [] }
       : null,

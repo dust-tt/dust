@@ -1757,6 +1757,8 @@ export async function renderAndUpsertPageFromCache({
       title: title ?? null,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      author,
+      lastEditor,
       content: { prefix: null, content: renderedPage, sections: [] },
     });
 
