@@ -30,6 +30,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteFromDataSource,
+  renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
@@ -422,13 +423,13 @@ export async function syncNonThreaded(
   }
   messages.reverse();
 
-  const content = await formatMessagesForUpsert(
-    channelId,
+  const content = await formatMessagesForUpsert({
     channelName,
     messages,
+    isThread: false,
     connectorId,
-    client
-  );
+    slackClient: client,
+  });
 
   const startDate = new Date(startTsMs);
   const endDate = new Date(endTsMs);
@@ -598,13 +599,13 @@ export async function syncThread(
     return;
   }
 
-  const content = await formatMessagesForUpsert(
-    channelId,
+  const content = await formatMessagesForUpsert({
     channelName,
-    allMessages,
+    messages: allMessages,
+    isThread: true,
     connectorId,
-    slackClient
-  );
+    slackClient,
+  });
 
   const firstMessage = allMessages[0];
   let sourceUrl: string | undefined = undefined;
@@ -670,13 +671,19 @@ async function processMessageForMentions(
   return message;
 }
 
-export async function formatMessagesForUpsert(
-  channelId: string,
-  channelName: string,
-  messages: MessageElement[],
-  connectorId: ModelId,
-  slackClient: WebClient
-): Promise<CoreAPIDataSourceDocumentSection> {
+export async function formatMessagesForUpsert({
+  channelName,
+  messages,
+  isThread,
+  connectorId,
+  slackClient,
+}: {
+  channelName: string;
+  messages: MessageElement[];
+  isThread: boolean;
+  connectorId: ModelId;
+  slackClient: WebClient;
+}): Promise<CoreAPIDataSourceDocumentSection> {
   const data = await Promise.all(
     messages.map(async (message) => {
       const text = await processMessageForMentions(
@@ -694,6 +701,7 @@ export async function formatMessagesForUpsert(
       const messageDateStr = formatDateForUpsert(messageDate);
 
       return {
+        messageDate,
         dateStr: messageDateStr,
         userName,
         text: text,
@@ -703,22 +711,32 @@ export async function formatMessagesForUpsert(
     })
   );
 
-  const first = data[0];
-  if (!first) {
+  const first = data.at(0);
+  const last = data.at(-1);
+  if (!last || !first) {
     throw new Error("Cannot format empty list of messages");
   }
 
-  return {
-    prefix: `Thread in #${channelName} [${first.dateStr}]: ${
-      first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
-    }\n`,
-    content: null,
-    sections: data.map((d) => ({
-      prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
-      content: d.text + "\n",
-      sections: [],
-    })),
-  };
+  const title = isThread
+    ? `Thread in #${channelName}: ${
+        first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
+      }`
+    : `Messages in #${channelName}`;
+
+  return renderDocumentTitleAndContent({
+    title,
+    createdAt: first.messageDate,
+    updatedAt: last.messageDate,
+    content: {
+      prefix: null,
+      content: null,
+      sections: data.map((d) => ({
+        prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
+        content: d.text + "\n",
+        sections: [],
+      })),
+    },
+  });
 }
 
 export async function fetchUsers(connectorId: ModelId) {
