@@ -99,11 +99,7 @@ export async function getConnectorId(
 export async function getDoNotCancelOnTokenRevoked(
   workflowRunId: string
 ): Promise<boolean> {
-  const cacheHasWorkflowId = Object.prototype.hasOwnProperty.call(
-    DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE.hasOwnProperty,
-    workflowRunId
-  );
-  if (!cacheHasWorkflowId) {
+  if (!(workflowRunId in DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE)) {
     const client = await getTemporalClient();
     const workflowHandle = client.workflow.getHandle(workflowRunId);
     const described = await workflowHandle.describe();
