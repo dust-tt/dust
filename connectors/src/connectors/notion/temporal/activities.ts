@@ -268,37 +268,37 @@ export async function getPagesAndDatabasesToSync({
       skippedDatabaseIds
     );
   } catch (e) {
-    if (!(e instanceof Error) || !isNotionError(e)) {
-      throw e;
+    if (e instanceof Error && isNotionError(e)) {
+      // Sometimes a cursor will consistently fail with 500.
+      // In this case, there is not much we can do, so we just give up and move on.
+      // Notion workspaces are resynced daily so nothing is lost forever.
+      switch (e.code) {
+        case "internal_server_error":
+          if (Context.current().info.attempt > 20) {
+            localLogger.error(
+              {
+                error: e,
+                attempt: Context.current().info.attempt,
+              },
+              "Failed to get Notion search result page with cursor. Giving up and moving on"
+            );
+            return {
+              pageIds: [],
+              databaseIds: [],
+              nextCursor: null,
+            };
+          }
+          break;
+
+        case "unauthorized":
+          throw new ExternalOauthTokenError(e);
+
+        default:
+          throw e;
+      }
     }
 
-    // Sometimes a cursor will consistently fail with 500.
-    // In this case, there is not much we can do, so we just give up and move on.
-    // Notion workspaces are resynced daily so nothing is lost forever.
-    switch (e.code) {
-      case "internal_server_error":
-        if (Context.current().info.attempt > 20) {
-          localLogger.error(
-            {
-              error: e,
-              attempt: Context.current().info.attempt,
-            },
-            "Failed to get Notion search result page with cursor. Giving up and moving on"
-          );
-          return {
-            pageIds: [],
-            databaseIds: [],
-            nextCursor: null,
-          };
-        }
-        break;
-
-      case "unauthorized":
-        throw new ExternalOauthTokenError(e);
-
-      default:
-        throw e;
-    }
+    throw e;
   }
 
   const { pages, dbs, nextCursor } = res;
