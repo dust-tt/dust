@@ -59,10 +59,7 @@ import { generateModelSId } from "@app/lib/utils";
  */
 export async function getAgentConfigurationDetailedView(
   auth: Authenticator,
-  agentId: string,
-  preFetchedAgentConfiguration?: AgentConfiguration,
-  preFetchedUserRelation?: AgentUserRelation | null,
-  preFetchedDataSourceConfigurations?: AgentDataSourceConfiguration[]
+  agentId: string
 ): Promise<AgentConfigurationDetailedViewType | null> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -81,34 +78,32 @@ export async function getAgentConfigurationDetailedView(
 
   const [agent, userRelation] = await Promise.all([
     (async () => {
-      const agent =
-        preFetchedAgentConfiguration ??
-        (await AgentConfiguration.findOne({
-          where: {
-            sId: agentId,
-            workspaceId: owner.id,
+      const agent = await AgentConfiguration.findOne({
+        where: {
+          sId: agentId,
+          workspaceId: owner.id,
+        },
+        order: [["version", "DESC"]],
+        include: [
+          {
+            model: AgentGenerationConfiguration,
+            as: "generationConfiguration",
           },
-          order: [["version", "DESC"]],
-          include: [
-            {
-              model: AgentGenerationConfiguration,
-              as: "generationConfiguration",
-            },
-            {
-              model: AgentRetrievalConfiguration,
-              as: "retrievalConfiguration",
-            },
-            {
-              model: AgentDustAppRunConfiguration,
-              as: "dustAppRunConfiguration",
-            },
-            {
-              model: AgentDatabaseQueryConfiguration,
-              as: "databaseQueryConfiguration",
-            },
-          ],
-          limit: 1,
-        }));
+          {
+            model: AgentRetrievalConfiguration,
+            as: "retrievalConfiguration",
+          },
+          {
+            model: AgentDustAppRunConfiguration,
+            as: "dustAppRunConfiguration",
+          },
+          {
+            model: AgentDatabaseQueryConfiguration,
+            as: "databaseQueryConfiguration",
+          },
+        ],
+        limit: 1,
+      });
 
       return agent;
     })(),
@@ -116,9 +111,7 @@ export async function getAgentConfigurationDetailedView(
       if (!user) {
         return null;
       }
-      if (preFetchedUserRelation !== undefined) {
-        return preFetchedUserRelation;
-      }
+
       return AgentUserRelation.findOne({
         where: {
           workspaceId: owner.id,
@@ -143,26 +136,23 @@ export async function getAgentConfigurationDetailedView(
    * Retrieval configuration.
    */
   if (agent.retrievalConfigurationId) {
-    const dataSourcesConfig =
-      preFetchedDataSourceConfigurations !== undefined
-        ? preFetchedDataSourceConfigurations
-        : await AgentDataSourceConfiguration.findAll({
-            where: {
-              retrievalConfigurationId: agent.retrievalConfiguration?.id,
+    const dataSourcesConfig = await AgentDataSourceConfiguration.findAll({
+      where: {
+        retrievalConfigurationId: agent.retrievalConfiguration?.id,
+      },
+      include: [
+        {
+          model: DataSource,
+          as: "dataSource",
+          include: [
+            {
+              model: Workspace,
+              as: "workspace",
             },
-            include: [
-              {
-                model: DataSource,
-                as: "dataSource",
-                include: [
-                  {
-                    model: Workspace,
-                    as: "workspace",
-                  },
-                ],
-              },
-            ],
-          });
+          ],
+        },
+      ],
+    });
 
     const retrievalConfig = agent.retrievalConfiguration;
 
