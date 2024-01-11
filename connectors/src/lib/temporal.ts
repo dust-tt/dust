@@ -10,7 +10,9 @@ import fs from "fs-extra";
 
 // This is a singleton connection to the Temporal server.
 let TEMPORAL_CLIENT: Client | undefined;
-const WORKFLOW_ID2CONNECTOR_ID_CACHE: Record<string, ModelId> = {};
+
+const CONNECTOR_ID_CACHE: Record<string, ModelId> = {};
+const DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE: Record<string, boolean> = {};
 
 export async function getTemporalClient(): Promise<Client> {
   if (TEMPORAL_CLIENT) {
@@ -76,32 +78,48 @@ export async function getTemporalWorkerConnection(): Promise<{
 export async function getConnectorId(
   workflowRunId: string
 ): Promise<ModelId | null> {
-  if (!WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId]) {
+  if (!CONNECTOR_ID_CACHE[workflowRunId]) {
     const client = await getTemporalClient();
-    const workflowHandle = await client.workflow.getHandle(workflowRunId);
+    const workflowHandle = client.workflow.getHandle(workflowRunId);
     const described = await workflowHandle.describe();
     if (described.memo && described.memo.connectorId) {
       if (typeof described.memo.connectorId === "number") {
-        WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] =
-          described.memo.connectorId;
+        CONNECTOR_ID_CACHE[workflowRunId] = described.memo.connectorId;
       } else if (typeof described.memo.connectorId === "string") {
-        WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] = parseInt(
+        CONNECTOR_ID_CACHE[workflowRunId] = parseInt(
           described.memo.connectorId,
           10
         );
       }
     }
-    if (!WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId]) {
-      return null;
+  }
+  return CONNECTOR_ID_CACHE[workflowRunId] || null;
+}
+
+export async function getDoNotCancelOnTokenRevoked(
+  workflowRunId: string
+): Promise<boolean> {
+  if (!(workflowRunId in DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE)) {
+    const client = await getTemporalClient();
+    const workflowHandle = client.workflow.getHandle(workflowRunId);
+    const described = await workflowHandle.describe();
+    if (described.memo && described.memo.doNotCancelOnTokenRevoked) {
+      if (typeof described.memo.doNotCancelOnTokenRevoked === "boolean") {
+        DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] =
+          described.memo.doNotCancelOnTokenRevoked;
+      } else if (typeof described.memo.doNotCancelOnTokenRevoked === "string") {
+        DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] =
+          described.memo.doNotCancelOnTokenRevoked === "true";
+      }
     }
   }
-  return WORKFLOW_ID2CONNECTOR_ID_CACHE[workflowRunId] || null;
+  return DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] ?? false;
 }
 
 export async function cancelWorkflow(workflowId: string) {
   const client = await getTemporalClient();
   try {
-    const workflowHandle = await client.workflow.getHandle(workflowId);
+    const workflowHandle = client.workflow.getHandle(workflowId);
     await workflowHandle.cancel();
     return true;
   } catch (e) {
