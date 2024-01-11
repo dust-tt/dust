@@ -19,7 +19,7 @@ export function getTagsForPage({
   return tags.concat([
     `author:${author}`,
     `lastEditor:${lastEditor}`,
-    `lastEditedAt:${updatedTime}`,
     `createdAt:${createdTime}`,
+    `updatedAt:${updatedTime}`,
   ]);
 }

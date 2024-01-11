@@ -99,7 +99,7 @@ async function renderIssue(
   loggerArgs: Record<string, string | number>
 ): Promise<{
   issue: GithubIssueType;
-  lastUpdateTimestamp: number;
+  updatedAtTimestamp: number;
   content: CoreAPIDataSourceDocumentSection;
 }> {
   const localLogger = logger.child({
@@ -167,14 +167,14 @@ async function renderIssue(
     resultPage += 1;
   }
 
-  const lastUpdateTimestamp = Math.max(
+  const updatedAtTimestamp = Math.max(
     issue.updatedAt.getTime(),
     lastCommentUpdateTime ? lastCommentUpdateTime.getTime() : 0
   );
 
   return {
     issue,
-    lastUpdateTimestamp,
+    updatedAtTimestamp,
     content,
   };
 }
@@ -198,7 +198,7 @@ export async function githubUpsertIssueActivity(
 
   const {
     issue,
-    lastUpdateTimestamp,
+    updatedAtTimestamp,
     content: renderedIssue,
   } = await renderIssue(
     installationId,
@@ -214,7 +214,8 @@ export async function githubUpsertIssueActivity(
   const tags = [
     `title:${issue.title}`,
     `isPullRequest:${issue.isPullRequest}`,
-    `lasUpdatedAt:${issue.updatedAt.getTime()}`,
+    `createdAt:${issue.createdAt.getTime()}`,
+    `updatedAt:${issue.updatedAt.getTime()}`,
   ];
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
@@ -226,7 +227,7 @@ export async function githubUpsertIssueActivity(
     documentId,
     documentContent: renderedIssue,
     documentUrl: issue.url,
-    timestampMs: lastUpdateTimestamp,
+    timestampMs: updatedAtTimestamp,
     tags: tags,
     // The convention for parents is to use the external id string; it is ok for
     // repos, but not practical for issues since the external id is the
@@ -284,6 +285,8 @@ async function renderDiscussion(
 
   const content = renderDocumentTitleAndContent({
     title: `Discussion #${discussion.number} [${repoName}]: ${discussion.title}`,
+    createdAt: new Date(discussion.createdAt),
+    updatedAt: new Date(discussion.updatedAt),
     content: renderMarkdownSection(discussion.bodyText, { flavor: "gfm" }),
   });
 
@@ -400,7 +403,7 @@ export async function githubUpsertDiscussionActivity(
   const tags = [
     `title:${discussion.title}`,
     `author:${discussion.author ? discussion.author.login : "unknown"}`,
-    `lasUpdatedAt:${new Date(discussion.updatedAt).getTime()}`,
+    `updatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
   await upsertToDatasource({

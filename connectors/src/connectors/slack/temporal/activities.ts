@@ -448,8 +448,8 @@ export async function syncNonThreaded(
       sourceUrl = linkRes.permalink;
     }
   }
-  const lastMessage = messages[messages.length - 1];
-  const createdAt = lastMessage?.ts
+  const lastMessage = messages.at(-1);
+  const updatedAt = lastMessage?.ts
     ? parseInt(lastMessage.ts, 10) * 1000
     : undefined;
 
@@ -467,7 +467,7 @@ export async function syncNonThreaded(
     documentId,
     documentContent: content,
     documentUrl: sourceUrl,
-    timestampMs: createdAt,
+    timestampMs: updatedAt,
     tags,
     parents: [channelId],
     upsertContext: {
@@ -619,8 +619,8 @@ export async function syncThread(
       sourceUrl = linkRes.permalink;
     }
   }
-  const lastMessage = allMessages[allMessages.length - 1];
-  const createdAt = lastMessage?.ts
+  const lastMessage = allMessages.at(-1);
+  const updatedAt = lastMessage?.ts
     ? parseInt(lastMessage.ts, 10) * 1000
     : undefined;
 
@@ -638,7 +638,7 @@ export async function syncThread(
     documentId,
     documentContent: content,
     documentUrl: sourceUrl,
-    timestampMs: createdAt,
+    timestampMs: updatedAt,
     tags,
     parents: [channelId],
     upsertContext: {
