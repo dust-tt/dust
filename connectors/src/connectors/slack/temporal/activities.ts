@@ -717,10 +717,14 @@ export async function formatMessagesForUpsert({
     throw new Error("Cannot format empty list of messages");
   }
 
+  const title = isThread
+    ? `Thread in #${channelName}: ${
+        first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
+      }`
+    : `Messages in #${channelName}`;
+
   return renderDocumentTitleAndContent({
-    title: `${isThread ? "Thread" : "Messages"} in #${channelName}: ${
-      first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
-    }`,
+    title,
     createdAt: first.messageDate,
     updatedAt: last.messageDate,
     content: {
