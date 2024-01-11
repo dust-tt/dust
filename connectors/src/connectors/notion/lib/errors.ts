@@ -3,7 +3,7 @@
 import { APIErrorCode } from "@notionhq/client";
 const APIErrorCodeValues = Object.values(APIErrorCode);
 
-// does not fully represent the structure of errors returned by the Notion API.
+// Does not fully represent the structure of errors returned by the Notion API.
 interface NotionError extends Error {
   body: unknown;
   code: APIErrorCode;
