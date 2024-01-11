@@ -27,7 +27,7 @@ export async function runAllChecksActivity() {
     },
     {
       name: "check_notion_active_workflows",
-      check: () => checkNotionActiveWorkflows,
+      check: checkNotionActiveWorkflows,
       everyHour: 10,
     },
   ];
