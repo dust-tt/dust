@@ -52,7 +52,7 @@ const useAssistantUpdate = (
     const method = flow === "workspace" ? "PATCH" : "POST";
 
     const detailedAssitantRes = await fetch(
-      `/api/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {
         method: "GET",
         headers: {
@@ -67,8 +67,9 @@ const useAssistantUpdate = (
       );
     }
 
-    const detailedAgentConfiguration: AgentConfigurationDetailedViewType =
-      await detailedAssitantRes.json();
+    const detailedAgentConfiguration: {
+      agentConfiguration: AgentConfigurationDetailedViewType;
+    } = await detailedAssitantRes.json();
 
     const {
       action: agentAction,
@@ -76,7 +77,7 @@ const useAssistantUpdate = (
       name,
       description,
       pictureUrl,
-    } = detailedAgentConfiguration;
+    } = detailedAgentConfiguration.agentConfiguration;
 
     const body:
       | PostOrPatchAgentConfigurationRequestBody
@@ -84,7 +85,7 @@ const useAssistantUpdate = (
       flow === "workspace"
         ? {
             assistant: {
-              action: agentAction,
+              action: agentAction ?? null,
               description,
               generation,
               name,

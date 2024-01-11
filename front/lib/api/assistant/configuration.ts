@@ -346,8 +346,24 @@ export async function getAgentConfigurationListViews(
 
   const getAgentConfigurationsForQuery = async (
     agentsSequelizeQuery: FindOptions
-  ): Promise<AgentConfigurationListViewType[]> =>
-    (await AgentConfiguration.findAll(agentsSequelizeQuery)).map((a) => {
+  ): Promise<AgentConfigurationListViewType[]> => {
+    const agentsModels = await AgentConfiguration.findAll(agentsSequelizeQuery);
+    const userRelations = (
+      await AgentUserRelation.findAll({
+        where: {
+          workspaceId: owner.id,
+          agentConfiguration: {
+            [Op.in]: agentsModels.map((a) => a.sId),
+          },
+          userId: auth.user()?.id,
+        },
+      })
+    ).reduce((acc, relation) => {
+      acc[relation.agentConfiguration] = relation;
+      return acc;
+    }, {} as Record<string, AgentUserRelation>);
+
+    const agents = agentsModels.map((a) => {
       const generationConfig = a.generationConfiguration;
       let generation: AgentGenerationConfigurationType | null = null;
 
@@ -366,7 +382,8 @@ export async function getAgentConfigurationListViews(
           model,
         };
       }
-      return {
+
+      const config: AgentConfigurationListViewType = {
         id: a.id,
         sId: a.sId,
         version: a.version,
@@ -379,7 +396,17 @@ export async function getAgentConfigurationListViews(
         versionAuthorId: a.authorId,
         generation,
       };
+
+      config.userListStatus = agentUserListStatus({
+        agentConfiguration: config,
+        listStatusOverride: userRelations[a.sId]?.listStatusOverride || null,
+      });
+
+      return config;
     });
+
+    return agents;
+  };
 
   // Superuser view (all agents, to be used internally from poke).
   if (agentsGetView === "admin_internal") {
