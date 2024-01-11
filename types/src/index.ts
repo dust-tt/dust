@@ -8,6 +8,7 @@ export * from "./front/app";
 export * from "./front/assistant/actions/database_query";
 export * from "./front/assistant/actions/dust_app_run";
 export * from "./front/assistant/actions/retrieval";
+export * from "./front/assistant/actions/tables_query";
 export * from "./front/assistant/agent";
 export * from "./front/assistant/conversation";
 export * from "./front/data_source";

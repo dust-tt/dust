@@ -20,6 +20,7 @@ import { front_sequelize } from "@app/lib/databases";
 import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database_query";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 
@@ -102,6 +103,7 @@ export class AgentConfiguration extends Model<
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare authorId: ForeignKey<User["id"]>;
+
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
@@ -112,6 +114,11 @@ export class AgentConfiguration extends Model<
     AgentDustAppRunConfiguration["id"]
   > | null;
 
+  declare tablesQueryConfigurationId: ForeignKey<
+    AgentTablesQueryConfiguration["id"]
+  > | null;
+  // DEPRECATED
+  // TODO(fontanierh)
   declare databaseQueryConfigurationId: ForeignKey<
     AgentDatabaseQueryConfiguration["id"]
   > | null;
@@ -121,6 +128,7 @@ export class AgentConfiguration extends Model<
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
   declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
   declare databaseQueryConfiguration: NonAttribute<AgentDatabaseQueryConfiguration>;
+  declare tablesQueryConfiguration: NonAttribute<AgentTablesQueryConfiguration>;
 }
 AgentConfiguration.init(
   {
@@ -196,13 +204,14 @@ AgentConfiguration.init(
           "retrievalConfigurationId",
           "dustAppRunConfigurationId",
           "databaseQueryConfigurationId",
+          "tablesQueryConfigurationId",
         ];
         const nonNullActionTypes = actionsTypes.filter(
           (field) => agentConfiguration[field] != null
         );
         if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, or databaseQueryConfigurationId can be set"
+            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, databaseQueryConfigurationId, tablesQueryConfigurationId can be set"
           );
         }
       },
@@ -257,6 +266,16 @@ AgentDatabaseQueryConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentDatabaseQueryConfiguration, {
   as: "databaseQueryConfiguration",
   foreignKey: { name: "databaseQueryConfigurationId", allowNull: true }, // null = no Database action set for this Agent
+});
+
+// Agent config <> Tables config
+AgentTablesQueryConfiguration.hasOne(AgentConfiguration, {
+  as: "tablesQueryConfiguration",
+  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentTablesQueryConfiguration, {
+  as: "tablesQueryConfiguration",
+  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
 });
 
 // Agent config <> Author

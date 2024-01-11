@@ -10,6 +10,7 @@ import { front_sequelize } from "@app/lib/databases";
 /**
  * Agent Database Query Configuration
  */
+// TODO(fontanierh): DEPRECATED
 export class AgentDatabaseQueryConfiguration extends Model<
   InferAttributes<AgentDatabaseQueryConfiguration>,
   InferCreationAttributes<AgentDatabaseQueryConfiguration>
@@ -73,6 +74,7 @@ AgentDatabaseQueryConfiguration.init(
 
 /**
  * Agent Database Query Action
+ * // TODO(fontanierh): DEPRECATED
  */
 export class AgentDatabaseQueryAction extends Model<
   InferAttributes<AgentDatabaseQueryAction>,

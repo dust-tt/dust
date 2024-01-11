@@ -8,7 +8,7 @@ import { isActivatedStructuredDB } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-type GetTableResponseBody = {
+export type GetTableResponseBody = {
   table: CoreAPITable;
 };
 

@@ -10,17 +10,20 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationType,
   AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
+  DataSourceConfiguration,
+  DustAppRunConfigurationType,
   LightAgentConfigurationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { DustAppRunConfigurationType } from "@dust-tt/types";
-import type { DataSourceConfiguration } from "@dust-tt/types";
-import type { AgentConfigurationType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
+import {
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -124,6 +127,15 @@ export function AssistantDetails({
             Data source(s)
           </div>
           <DataSourcesSection dataSourceConfigurations={action.dataSources} />
+        </div>
+      ) : isTablesQueryConfiguration(action) ? (
+        <div className="flex flex-col gap-2">
+          <div className="text-lg font-bold text-element-800">Tables</div>
+          {/* <DatabaseQuerySection
+            databaseQueryConfig={assistant.action}
+            owner={owner}
+          />
+           */}
         </div>
       ) : null
     ) : null;
@@ -379,3 +391,17 @@ function ButtonsSection({
     </Button.List>
   );
 }
+
+// function TablesQuerySection({
+//   owner,
+//   tablesQueryConfig,
+// }: {
+//   owner: WorkspaceType;
+//   tablesQueryConfig: TablesQueryConfigurationType;
+// }) {
+//   const { table } = useTable({
+//     workspaceId: owner.sId,
+//     dataSourceName: tablesQueryConfig.dataSourceName,
+//     tableId: tablesQueryConfig.tableId,
+//   });
+// }

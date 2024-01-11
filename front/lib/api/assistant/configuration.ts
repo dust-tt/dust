@@ -48,6 +48,7 @@ import {
   Message,
   Workspace,
 } from "@app/lib/models";
+import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 

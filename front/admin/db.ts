@@ -40,6 +40,11 @@ import {
   XP1User,
 } from "@app/lib/models";
 import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
@@ -71,6 +76,10 @@ async function main() {
 
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
+  await AgentTablesQueryConfiguration.sync({ alter: true });
+  await AgentTablesQueryConfigurationTable.sync({ alter: true });
+  await AgentTablesQueryAction.sync({ alter: true });
+  // DEPRECATED
   await AgentDatabaseQueryConfiguration.sync({ alter: true });
   await AgentDatabaseQueryAction.sync({ alter: true });
 
