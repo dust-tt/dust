@@ -1,6 +1,7 @@
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
+  AgentConfigurationDetailedViewType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -14,7 +15,7 @@ import {
 } from "@dust-tt/types";
 import {
   AgentActionSpecification,
-  AgentConfigurationType,
+  AgentConfigurationListViewType,
 } from "@dust-tt/types";
 import {
   AgentMessageType,
@@ -30,6 +31,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runDatabaseQuery } from "@app/lib/api/assistant/actions/database_query";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
+import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
   renderConversationForModel,
@@ -46,7 +48,7 @@ import logger from "@app/logger/logger";
 // This method is used by actions to generate its inputs if needed.
 export async function generateActionInputs(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationDetailedViewType,
   specification: AgentActionSpecification,
   conversation: ConversationType,
   userMessage: UserMessageType
@@ -176,7 +178,7 @@ export async function generateActionInputs(
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationListViewType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -191,12 +193,22 @@ export async function* runAgent(
   | DatabaseQueryParamsEvent,
   void
 > {
+  const detailedConfiguration = await getAgentConfigurationDetailedView(
+    auth,
+    configuration.sId
+  );
+  if (!detailedConfiguration) {
+    throw new Error(
+      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
+    );
+  }
+
   // First run the action if a configuration is present.
-  if (configuration.action !== null) {
-    if (isRetrievalConfiguration(configuration.action)) {
+  if (detailedConfiguration.action !== null) {
+    if (isRetrievalConfiguration(detailedConfiguration.action)) {
       const eventStream = runRetrieval(
         auth,
-        configuration,
+        detailedConfiguration,
         conversation,
         userMessage,
         agentMessage
@@ -240,10 +252,10 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDustAppRunConfiguration(configuration.action)) {
+    } else if (isDustAppRunConfiguration(detailedConfiguration.action)) {
       const eventStream = runDustApp(
         auth,
-        configuration,
+        detailedConfiguration,
         conversation,
         userMessage,
         agentMessage
@@ -290,10 +302,10 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDatabaseQueryConfiguration(configuration.action)) {
+    } else if (isDatabaseQueryConfiguration(detailedConfiguration.action)) {
       const eventStream = runDatabaseQuery({
         auth,
-        configuration,
+        configuration: detailedConfiguration,
         conversation,
         userMessage,
         agentMessage,
@@ -339,7 +351,7 @@ export async function* runAgent(
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
-      })(configuration.action);
+      })(detailedConfiguration.action);
     }
   }
 
@@ -347,7 +359,7 @@ export async function* runAgent(
   if (configuration.generation !== null) {
     const eventStream = runGeneration(
       auth,
-      configuration,
+      detailedConfiguration,
       conversation,
       userMessage,
       agentMessage

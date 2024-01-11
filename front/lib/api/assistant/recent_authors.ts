@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationType,
+  AgentConfigurationListViewType,
   AgentRecentAuthors,
   UserType,
 } from "@dust-tt/types";
@@ -129,7 +129,7 @@ export async function getAgentRecentAuthors(
     agent,
     auth,
   }: {
-    agent: AgentConfigurationType;
+    agent: AgentConfigurationListViewType;
     auth: Authenticator;
   },
   members: UserType[]
@@ -171,7 +171,7 @@ export async function agentConfigurationWasUpdatedBy({
   agent,
   auth,
 }: {
-  agent: AgentConfigurationType;
+  agent: AgentConfigurationListViewType;
   auth: Authenticator;
 }) {
   const owner = auth.workspace();

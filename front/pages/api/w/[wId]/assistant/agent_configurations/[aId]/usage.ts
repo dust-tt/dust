@@ -3,7 +3,7 @@ import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -44,7 +44,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const agentConfiguration = await getAgentConfiguration(
+      const agentConfiguration = await getAgentConfigurationDetailedView(
         auth,
         req.query.aId as string
       );

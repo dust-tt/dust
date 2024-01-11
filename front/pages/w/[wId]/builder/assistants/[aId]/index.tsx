@@ -1,8 +1,13 @@
-import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  AgentConfigurationDetailedViewType,
+  DataSourceType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isDatabaseQueryConfiguration } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
+import {} from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
@@ -14,7 +19,7 @@ import AssistantBuilder, {
   BuilderFlow,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -31,7 +36,7 @@ export async function buildInitialState({
   dustApps,
 }: {
   dataSourceByName: Record<string, DataSourceType>;
-  config: AgentConfigurationType;
+  config: AgentConfigurationDetailedViewType;
   dustApps: AppType[];
 }) {
   const selectedResources: {
@@ -125,7 +130,7 @@ export const getServerSideProps: GetServerSideProps<{
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationDetailedViewType;
   flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -157,7 +162,7 @@ export const getServerSideProps: GetServerSideProps<{
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
     {} as Record<string, DataSourceType>
   );
-  const config = await getAgentConfiguration(
+  const config = await getAgentConfigurationDetailedView(
     auth,
     context.params?.aId as string
   );

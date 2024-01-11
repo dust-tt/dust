@@ -6,7 +6,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
+  AgentConfigurationDetailedViewType,
+  AgentConfigurationListViewType,
   DataSourceType,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
@@ -23,7 +24,10 @@ import React, { useContext } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfigurationDetailedView,
+  getAgentConfigurationListViews,
+} from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -43,7 +47,7 @@ export const getServerSideProps: GetServerSideProps<{
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: AgentConfigurationDetailedViewType[];
   slackbotEnabled?: boolean;
   gdrivePDFEnabled?: boolean;
   dataSourcesSynchronizedAgo: Record<string, string>;
@@ -85,11 +89,26 @@ export const getServerSideProps: GetServerSideProps<{
 
   const dataSources = await getDataSources(auth);
   const agentConfigurations = (
-    await getAgentConfigurations(auth, "admin_internal")
+    await getAgentConfigurationListViews(auth, "admin_internal")
   ).filter(
     (a) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
   );
+  const detailedAgentConfigurations = (
+    await Promise.all(
+      agentConfigurations.map((ac) =>
+        getAgentConfigurationDetailedView(auth, ac.sId)
+      )
+    )
+  ).reduce((acc, item, i) => {
+    if (item === null) {
+      throw new Error(
+        `Unreachable: could not fetch detailed agent configuration ${agentConfigurations[i].sId}`
+      );
+    }
+    acc.push(item);
+    return acc;
+  }, [] as AgentConfigurationDetailedViewType[]);
 
   // sort data source so that managed ones (i.e ones with a connector provider) are first
   dataSources.sort((a, b) => {
@@ -169,7 +188,7 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       planInvitation: planInvitation ?? null,
       dataSources,
-      agentConfigurations,
+      agentConfigurations: detailedAgentConfigurations,
       slackbotEnabled,
       gdrivePDFEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
@@ -309,7 +328,7 @@ const WorkspacePage = ({
   );
 
   const { submit: onAssistantArchive } = useSubmitFunction(
-    async (agentConfiguration: AgentConfigurationType) => {
+    async (agentConfiguration: AgentConfigurationListViewType) => {
       if (
         !window.confirm(
           `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`

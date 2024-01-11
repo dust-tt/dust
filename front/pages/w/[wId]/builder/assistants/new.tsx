@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationType,
+  AgentConfigurationDetailedViewType,
   AppType,
   DataSourceType,
   isDatabaseQueryConfiguration,
@@ -18,7 +18,7 @@ import AssistantBuilder, {
   BuilderFlow,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildInitialState } from "@app/pages/w/[wId]/builder/assistants/[aId]";
@@ -40,7 +40,7 @@ export const getServerSideProps: GetServerSideProps<{
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
-  agentConfiguration: AgentConfigurationType | null;
+  agentConfiguration: AgentConfigurationDetailedViewType | null;
   flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -67,9 +67,12 @@ export const getServerSideProps: GetServerSideProps<{
     {} as Record<string, DataSourceType>
   );
 
-  let config: AgentConfigurationType | null = null;
+  let config: AgentConfigurationDetailedViewType | null = null;
   if (context.query.duplicate && typeof context.query.duplicate === "string") {
-    config = await getAgentConfiguration(auth, context.query.duplicate);
+    config = await getAgentConfigurationDetailedView(
+      auth,
+      context.query.duplicate
+    );
 
     if (!config) {
       return {

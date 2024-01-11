@@ -5,6 +5,7 @@ import { promisify } from "util";
 const readFileAsync = promisify(fs.readFile);
 
 import {
+  AgentConfigurationDetailedViewType,
   ConnectorProvider,
   DataSourceType,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
@@ -17,7 +18,7 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import { AgentConfigurationType, GlobalAgentStatus } from "@dust-tt/types";
+import { GlobalAgentStatus } from "@dust-tt/types";
 import { PlanType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
@@ -64,7 +65,7 @@ class HelperAssistantPrompt {
  */
 async function _getHelperGlobalAgent(
   auth: Authenticator
-): Promise<AgentConfigurationType> {
+): Promise<AgentConfigurationDetailedViewType> {
   let prompt = "";
 
   const user = auth.user();
@@ -122,7 +123,7 @@ async function _getGPT35TurboGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   const status = settings ? settings.status : "active";
   return {
     id: -1,
@@ -153,7 +154,7 @@ async function _getGPT4GlobalAgent({
   plan,
 }: {
   plan: PlanType;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   const status =
     plan.code === FREE_TEST_PLAN_CODE ? "disabled_free_workspace" : "active";
   return {
@@ -185,7 +186,7 @@ async function _getClaudeInstantGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   const status = settings ? settings.status : "active";
   return {
     id: -1,
@@ -218,7 +219,7 @@ async function _getClaudeGlobalAgent({
 }: {
   settings: GlobalAgentSettings | null;
   plan: PlanType;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   const status =
     plan.code === FREE_TEST_PLAN_CODE ? "disabled_free_workspace" : "active";
   return {
@@ -251,7 +252,7 @@ async function _getMistralMediumGlobalAgent({
 }: {
   plan: PlanType;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   let status = settings?.status ?? "disabled_by_admin";
   if (plan.code === FREE_TEST_PLAN_CODE) {
     status = "disabled_free_workspace";
@@ -285,7 +286,7 @@ async function _getMistralSmallGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
@@ -315,7 +316,7 @@ async function _getGeminiProGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationDetailedViewType> {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
@@ -363,7 +364,7 @@ async function _getManagedDataSourceAgent(
     prompt: string;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationDetailedViewType | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -468,7 +469,7 @@ async function _getGoogleDriveGlobalAgent(
     settings: GlobalAgentSettings | null;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationDetailedViewType | null> {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "google_drive",
@@ -538,7 +539,7 @@ async function _getNotionGlobalAgent(
     settings: GlobalAgentSettings | null;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationDetailedViewType | null> {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "notion",
@@ -561,7 +562,7 @@ async function _getDustGlobalAgent(
     plan: PlanType;
     settings: GlobalAgentSettings | null;
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationDetailedViewType | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -672,7 +673,7 @@ export async function getGlobalAgent(
   auth: Authenticator,
   sId: string | number,
   preFetchedDataSources: DataSourceType[] | null
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationDetailedViewType | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
@@ -697,7 +698,7 @@ export async function getGlobalAgent(
   const settings = await GlobalAgentSettings.findOne({
     where: { workspaceId: owner.id, agentId: sId },
   });
-  let agentConfiguration: AgentConfigurationType | null = null;
+  let agentConfiguration: AgentConfigurationDetailedViewType | null = null;
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = await _getHelperGlobalAgent(auth);
@@ -762,7 +763,7 @@ export async function getGlobalAgent(
 
 export async function getGlobalAgents(
   auth: Authenticator
-): Promise<AgentConfigurationType[]> {
+): Promise<AgentConfigurationDetailedViewType[]> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
@@ -791,7 +792,7 @@ export async function getGlobalAgents(
     )
   );
 
-  const globalAgents: AgentConfigurationType[] = [];
+  const globalAgents: AgentConfigurationDetailedViewType[] = [];
 
   for (const agentFetcherResult of agentCandidates) {
     if (agentFetcherResult) {

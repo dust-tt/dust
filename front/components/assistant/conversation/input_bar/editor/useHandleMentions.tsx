@@ -1,4 +1,4 @@
-import { AgentConfigurationType, AgentMention } from "@dust-tt/types";
+import { AgentConfigurationListViewType, AgentMention } from "@dust-tt/types";
 import { useEffect, useMemo, useRef } from "react";
 
 import type {
@@ -8,7 +8,7 @@ import type {
 
 const useHandleMentions = (
   editorService: EditorService,
-  agentConfigurations: AgentConfigurationType[],
+  agentConfigurations: AgentConfigurationListViewType[],
   stickyMentions: AgentMention[] | undefined,
   selectedAssistant: AgentMention | null
 ) => {

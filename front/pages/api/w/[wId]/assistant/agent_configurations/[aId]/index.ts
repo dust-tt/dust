@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationType,
+  AgentConfigurationDetailedViewType,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
@@ -9,14 +9,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfiguration,
+  getAgentConfigurationDetailedView,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationDetailedViewType;
 };
 export type DeleteAgentConfigurationResponseBody = {
   success: boolean;
@@ -56,7 +56,10 @@ async function handler(
       },
     });
   }
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfigurationDetailedView(
+    auth,
+    req.query.aId as string
+  );
   if (
     !assistant ||
     (assistant.scope === "private" &&

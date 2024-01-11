@@ -1,4 +1,5 @@
 import {
+  AgentConfigurationDetailedViewType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
@@ -10,7 +11,7 @@ import {
   ModelConversationType,
   ModelMessageType,
 } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
+import {} from "@dust-tt/types";
 import {
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -35,7 +36,7 @@ import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationListViews } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -216,7 +217,7 @@ export async function renderConversationForModel({
 export async function constructPrompt(
   auth: Authenticator,
   userMessage: UserMessageType,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationDetailedViewType,
   fallbackPrompt?: string
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -243,7 +244,7 @@ export async function constructPrompt(
   if (meta.includes("{ASSISTANTS_LIST}")) {
     if (!auth.isUser())
       throw new Error("Unexpected unauthenticated call to `constructPrompt`");
-    const agents = await getAgentConfigurations(
+    const agents = await getAgentConfigurationListViews(
       auth,
       auth.user() ? "list" : "all"
     );
@@ -267,7 +268,7 @@ export async function constructPrompt(
 // create any state, only stream tokens and/or error and final success events.
 export async function* runGeneration(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationDetailedViewType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType

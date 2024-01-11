@@ -7,7 +7,7 @@ import {
   WorkspaceType,
 } from "@dust-tt/types";
 import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
+import { AgentConfigurationListViewType } from "@dust-tt/types";
 import {
   AgentMessageType,
   ContentFragmentContentType,
@@ -43,7 +43,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { renderRetrievalActionByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
@@ -302,10 +302,10 @@ async function batchRenderAgentMessages(
       const agents = (
         await Promise.all(
           agentConfigurationIds.map((agentConfigId) => {
-            return getAgentConfiguration(auth, agentConfigId);
+            return getAgentConfigurationDetailedView(auth, agentConfigId);
           })
         )
-      ).filter((a) => a !== null) as AgentConfigurationType[];
+      ).filter((a) => a !== null) as AgentConfigurationListViewType[];
       return agents;
     })(),
     (async () => {
@@ -961,7 +961,7 @@ export async function* postUserMessage(
             return (async () => {
               // `getAgentConfiguration` checks that we're only pulling a configuration from the
               // same workspace or a global one.
-              const configuration = await getAgentConfiguration(
+              const configuration = await getAgentConfigurationDetailedView(
                 auth,
                 mention.configurationId
               );
@@ -1422,7 +1422,7 @@ export async function* editUserMessage(
             return (async () => {
               // `getAgentConfiguration` checks that we're only pulling a configuration from the
               // same workspace or a global one.
-              const configuration = await getAgentConfiguration(
+              const configuration = await getAgentConfigurationDetailedView(
                 auth,
                 mention.configurationId
               );

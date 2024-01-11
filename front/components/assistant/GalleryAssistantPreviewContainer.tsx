@@ -1,6 +1,7 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
+  AgentConfigurationDetailedViewType,
+  AgentConfigurationListViewType,
   AgentUserListStatus,
   PlanType,
   PostOrPatchAgentConfigurationRequestBody,
@@ -19,17 +20,19 @@ import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/m
 type AssistantPreviewFlow = "personal" | "workspace";
 
 interface GalleryAssistantPreviewContainerProps {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationListViewType;
   flow: AssistantPreviewFlow;
   onShowDetails: () => void;
   onUpdate: () => void;
   owner: WorkspaceType;
   plan: PlanType | null;
-  setTestModalAssistant?: (agentConfiguration: AgentConfigurationType) => void;
+  setTestModalAssistant?: (
+    agentConfiguration: AgentConfigurationListViewType
+  ) => void;
 }
 
 const useAssistantUpdate = (
-  agentConfiguration: AgentConfigurationType,
+  agentConfiguration: AgentConfigurationListViewType,
   owner: WorkspaceType,
   sendNotification: (notification: NotificationType) => void,
   onSuccess: (isAdded: boolean) => void,
@@ -48,13 +51,32 @@ const useAssistantUpdate = (
         : `/api/w/${owner.sId}/members/me/agent_list_status`;
     const method = flow === "workspace" ? "PATCH" : "POST";
 
+    const detailedAssitantRes = await fetch(
+      `/api/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!detailedAssitantRes.ok) {
+      throw new Error(
+        (await detailedAssitantRes.json()).error.message ?? "Error fetching"
+      );
+    }
+
+    const detailedAgentConfiguration: AgentConfigurationDetailedViewType =
+      await detailedAssitantRes.json();
+
     const {
       action: agentAction,
       generation,
       name,
       description,
       pictureUrl,
-    } = agentConfiguration;
+    } = detailedAgentConfiguration;
 
     const body:
       | PostOrPatchAgentConfigurationRequestBody
@@ -123,7 +145,7 @@ export function GalleryAssistantPreviewContainer({
 
   // Function to determine if the assistant is added based on the flow and configuration.
   const determineIfAdded = (
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: AgentConfigurationListViewType,
     currentFlow: AssistantPreviewFlow
   ) => {
     return currentFlow === "personal"

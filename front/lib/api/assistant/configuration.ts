@@ -18,8 +18,9 @@ import {
 } from "@dust-tt/types";
 import {
   AgentActionConfigurationType,
+  AgentConfigurationDetailedViewType,
+  AgentConfigurationListViewType,
   AgentConfigurationScope,
-  AgentConfigurationType,
   AgentGenerationConfigurationType,
   AgentStatus,
 } from "@dust-tt/types";
@@ -56,13 +57,13 @@ import { generateModelSId } from "@app/lib/utils";
  * Get an agent configuration
  *
  */
-export async function getAgentConfiguration(
+export async function getAgentConfigurationDetailedView(
   auth: Authenticator,
   agentId: string,
   preFetchedAgentConfiguration?: AgentConfiguration,
   preFetchedUserRelation?: AgentUserRelation | null,
   preFetchedDataSourceConfigurations?: AgentDataSourceConfiguration[]
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationDetailedViewType | null> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -276,7 +277,7 @@ export async function getAgentConfiguration(
   /*
    * Final rendering.
    */
-  const agentConfiguration: AgentConfigurationType = {
+  const agentConfiguration: AgentConfigurationDetailedViewType = {
     id: agent.id,
     sId: agent.sId,
     version: agent.version,
@@ -304,11 +305,11 @@ export async function getAgentConfiguration(
  * match a prefix
  * @param agentsGetView the kind of list of agents we want to get, see AgentsGetViewType
  */
-export async function getAgentConfigurations(
+export async function getAgentConfigurationListViews(
   auth: Authenticator,
   agentsGetView: AgentsGetViewType,
   agentPrefix?: string
-): Promise<AgentConfigurationType[] | []> {
+): Promise<AgentConfigurationListViewType[] | []> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -316,8 +317,6 @@ export async function getAgentConfigurations(
   if (!auth.isUser()) {
     throw new Error("Unexpected `auth` from outside workspace.");
   }
-
-  const user = auth.user();
 
   const baseAgentsSequelizeQuery = {
     where: {
@@ -329,18 +328,6 @@ export async function getAgentConfigurations(
       {
         model: AgentGenerationConfiguration,
         as: "generationConfiguration",
-      },
-      {
-        model: AgentRetrievalConfiguration,
-        as: "retrievalConfiguration",
-      },
-      {
-        model: AgentDustAppRunConfiguration,
-        as: "dustAppRunConfiguration",
-      },
-      {
-        model: AgentDatabaseQueryConfiguration,
-        as: "databaseQueryConfiguration",
       },
     ],
   };
@@ -359,63 +346,40 @@ export async function getAgentConfigurations(
 
   const getAgentConfigurationsForQuery = async (
     agentsSequelizeQuery: FindOptions
-  ) => {
-    const agents = await AgentConfiguration.findAll(agentsSequelizeQuery);
+  ): Promise<AgentConfigurationListViewType[]> =>
+    (await AgentConfiguration.findAll(agentsSequelizeQuery)).map((a) => {
+      const generationConfig = a.generationConfiguration;
+      let generation: AgentGenerationConfigurationType | null = null;
 
-    const retrievalConfigurationIds = agents
-      .map((a) => a.retrievalConfigurationId)
-      .flatMap((id) => (id ? [id] : []));
-
-    const [dataSourcesConfigurations, userRelations] = await Promise.all([
-      AgentDataSourceConfiguration.findAll({
-        where: {
-          retrievalConfigurationId: { [Op.in]: retrievalConfigurationIds },
-        },
-        include: [
-          {
-            model: DataSource,
-            as: "dataSource",
-            include: [
-              {
-                model: Workspace,
-                as: "workspace",
-              },
-            ],
-          },
-        ],
-      }),
-      (async () => {
-        if (!user) {
-          return [];
+      if (generationConfig) {
+        const model = {
+          providerId: generationConfig.providerId,
+          modelId: generationConfig.modelId,
+        };
+        if (!isSupportedModel(model)) {
+          throw new Error(`Unknown model ${model.providerId}/${model.modelId}`);
         }
-        return AgentUserRelation.findAll({
-          where: {
-            workspaceId: owner.id,
-            userId: user?.id,
-            agentConfiguration: { [Op.in]: agents.map((a) => a.sId) },
-          },
-        });
-      })(),
-    ]);
-
-    return (
-      await Promise.all(
-        agents.map((a) =>
-          getAgentConfiguration(
-            auth,
-            a.sId,
-            a,
-            // Make sure to pass null so that it is not fetched again.
-            userRelations.find((r) => r.agentConfiguration === a.sId) || null,
-            dataSourcesConfigurations.filter(
-              (dsc) =>
-                dsc.retrievalConfigurationId === a.retrievalConfigurationId
-            )
-          )
-        )
-      )
-    ).filter((a) => a !== null) as AgentConfigurationType[];
-  };
+        generation = {
+          id: generationConfig.id,
+          prompt: generationConfig.prompt,
+          temperature: generationConfig.temperature,
+          model,
+        };
+      }
+      return {
+        id: a.id,
+        sId: a.sId,
+        version: a.version,
+        scope: a.scope,
+        userListStatus: null,
+        name: a.name,
+        pictureUrl: a.pictureUrl,
+        description: a.description,
+        status: a.status,
+        versionAuthorId: a.authorId,
+        generation,
+      };
+    });
 
   // Superuser view (all agents, to be used internally from poke).
   if (agentsGetView === "admin_internal") {
@@ -512,11 +476,10 @@ export async function getAgentConfigurations(
 
     const listAgentsPromise = getAgentConfigurationsForQuery(
       listAgentsSequelizeQuery
-    ).then(
-      (agents) =>
-        agents.filter((a) => {
-          return a.userListStatus === "in-list";
-        }) as AgentConfigurationType[]
+    ).then((agents) =>
+      agents.filter((a) => {
+        return a.userListStatus === "in-list";
+      })
     );
 
     return (
@@ -554,7 +517,7 @@ export async function getAgentConfigurations(
         return true;
       }
       return a.userListStatus === "in-list";
-    }) as AgentConfigurationType[];
+    });
     return [...localAgents, ...globalAgents];
   }
 
@@ -639,7 +602,7 @@ export async function createAgentConfiguration(
     action: AgentActionConfigurationType | null;
     agentConfigurationId?: string;
   }
-): Promise<Result<AgentConfigurationType, Error>> {
+): Promise<Result<AgentConfigurationDetailedViewType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -762,7 +725,7 @@ export async function createAgentConfiguration(
     /*
      * Final rendering.
      */
-    const agentConfiguration: AgentConfigurationType = {
+    const agentConfiguration: AgentConfigurationDetailedViewType = {
       id: agent.id,
       sId: agent.sId,
       version: agent.version,

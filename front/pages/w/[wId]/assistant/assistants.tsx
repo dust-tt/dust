@@ -19,7 +19,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
+  AgentConfigurationListViewType,
   AgentUserListStatus,
   UserType,
   WorkspaceType,
@@ -107,9 +107,8 @@ export default function PersonalAssistants({
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
-    null
-  );
+  const [showDetails, setShowDetails] =
+    useState<AgentConfigurationListViewType | null>(null);
 
   const viewAssistants = agentConfigurations.filter((a) => {
     if (view === "personal") {
@@ -125,9 +124,9 @@ export default function PersonalAssistants({
   });
 
   const [showRemovalModal, setShowRemovalModal] =
-    useState<AgentConfigurationType | null>(null);
+    useState<AgentConfigurationListViewType | null>(null);
   const [showDeletionModal, setShowDeletionModal] =
-    useState<AgentConfigurationType | null>(null);
+    useState<AgentConfigurationListViewType | null>(null);
 
   const tabs = [
     {
@@ -145,7 +144,7 @@ export default function PersonalAssistants({
   const sendNotification = useContext(SendNotificationsContext);
 
   const updateAgentUserListStatus = async (
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: AgentConfigurationListViewType,
     listStatus: AgentUserListStatus
   ) => {
     const body: PostAgentListStatusRequestBody = {

@@ -15,8 +15,12 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
+import {
+  AgentConfigurationListViewType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import {} from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -104,7 +108,9 @@ export default function WorkspaceAssistants({
 
   const isBuilder = owner.role === "builder" || owner.role === "admin";
 
-  const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
+  const handleToggleAgentStatus = async (
+    agent: AgentConfigurationListViewType
+  ) => {
     if (agent.status === "disabled_free_workspace") {
       setShowDisabledFreeWorkspacePopup(agent.sId);
       return;
@@ -135,9 +141,9 @@ export default function WorkspaceAssistants({
   };
 
   const [showDeletionModal, setShowDeletionModal] =
-    useState<AgentConfigurationType | null>(null);
+    useState<AgentConfigurationListViewType | null>(null);
   const [showRemoveFromWorkspaceModal, setShowRemoveFromWorkspaceModal] =
-    useState<AgentConfigurationType | null>(null);
+    useState<AgentConfigurationListViewType | null>(null);
 
   return (
     <AppLayout

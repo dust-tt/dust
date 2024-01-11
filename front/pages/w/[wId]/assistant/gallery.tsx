@@ -1,6 +1,6 @@
 import { Button, DropdownMenu, Page, Searchbar, Tab } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
+  AgentConfigurationListViewType,
   AgentsGetViewType,
   assertNever,
   PlanType,
@@ -102,7 +102,7 @@ export default function AssistantsGallery({
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
-  let agentsToDisplay: AgentConfigurationType[] = [];
+  let agentsToDisplay: AgentConfigurationListViewType[] = [];
 
   switch (orderBy) {
     case "name": {
@@ -147,11 +147,10 @@ export default function AssistantsGallery({
       assertNever(orderBy);
   }
 
-  const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
-    null
-  );
+  const [showDetails, setShowDetails] =
+    useState<AgentConfigurationListViewType | null>(null);
   const [testModalAssistant, setTestModalAssistant] =
-    useState<AgentConfigurationType | null>(null);
+    useState<AgentConfigurationListViewType | null>(null);
 
   const tabs = [
     {

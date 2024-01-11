@@ -1,6 +1,7 @@
 import {
   AgentActionConfigurationType,
-  AgentConfigurationType,
+  AgentConfigurationDetailedViewType,
+  AgentConfigurationListViewType,
   AgentGenerationConfigurationType,
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -17,7 +18,7 @@ import {
   createAgentActionConfiguration,
   createAgentConfiguration,
   createAgentGenerationConfiguration,
-  getAgentConfigurations,
+  getAgentConfigurationListViews,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { getMembers } from "@app/lib/api/workspace";
@@ -26,10 +27,10 @@ import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: AgentConfigurationListViewType[];
 };
 export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationListViewType;
 };
 
 async function handler(
@@ -99,12 +100,17 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getAgentConfigurations(auth, viewParam);
+      let agentConfigurations = await getAgentConfigurationListViews(
+        auth,
+        viewParam
+      );
       if (withUsage === "true") {
         agentConfigurations = await safeRedisClient(async (redis) => {
           return Promise.all(
             agentConfigurations.map(
-              async (agentConfiguration): Promise<AgentConfigurationType> => {
+              async (
+                agentConfiguration
+              ): Promise<AgentConfigurationListViewType> => {
                 return {
                   ...agentConfiguration,
                   usage: await getAgentUsage({
@@ -124,7 +130,9 @@ async function handler(
 
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
-            async (agentConfiguration): Promise<AgentConfigurationType> => {
+            async (
+              agentConfiguration
+            ): Promise<AgentConfigurationListViewType> => {
               return {
                 ...agentConfiguration,
                 lastAuthors: await getAgentRecentAuthors(
@@ -231,7 +239,7 @@ export async function createOrUpgradeAgentConfiguration(
     },
   }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
   agentConfigurationId?: string
-): Promise<Result<AgentConfigurationType, Error>> {
+): Promise<Result<AgentConfigurationDetailedViewType, Error>> {
   let generationConfig: AgentGenerationConfigurationType | null = null;
   if (generation)
     generationConfig = await createAgentGenerationConfiguration(auth, {
