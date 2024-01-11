@@ -317,6 +317,7 @@ function DataSourceResourceSelector({
 function getDisplayNameForDataSource(ds: DataSourceType) {
   if (ds.connectorProvider) {
     switch (ds.connectorProvider) {
+      case "confluence":
       case "slack":
       case "google_drive":
       case "github":

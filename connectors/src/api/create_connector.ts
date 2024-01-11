@@ -28,6 +28,7 @@ type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
 
 const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
   {
+    confluence: "oauth",
     github: "oauth",
     google_drive: "oauth",
     slack: "oauth",
