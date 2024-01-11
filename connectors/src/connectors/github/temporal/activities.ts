@@ -113,7 +113,7 @@ async function renderIssue(
     title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,
-    content: renderMarkdownSection(issue.body || "", { flavor: "gfm" }),
+    content: renderMarkdownSection(issue.body ?? "", { flavor: "gfm" }),
   });
 
   let resultPage = 1;
