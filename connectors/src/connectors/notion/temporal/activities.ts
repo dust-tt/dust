@@ -1558,13 +1558,18 @@ export async function renderAndUpsertPageFromCache({
     blocksByParentId,
   });
 
-  for (const p of parsedProperties) {
-    if (!p.text) continue;
-    // We skip the title as it is added separately as prefix to the top-level document section.
-    if (p.key === "title") continue;
-    renderedPageSection.sections.push({
+  // We skip the title as it is added separately as prefix to the top-level document section.
+  for (const [i, p] of parsedProperties
+    .filter((p) => p.key !== "title" && p.text)
+    .entries()) {
+    const propertyContent = `$${p.key}: ${p.text}\n`;
+    if (i < 3) {
+      renderedPageSection.prefix = renderedPageSection.prefix ?? "";
+      renderedPageSection.prefix += propertyContent;
+    }
+    renderedPageSection.sections.unshift({
       prefix: null,
-      content: `$${p.key}: ${p.text}\n`,
+      content: propertyContent,
       sections: [],
     });
   }
@@ -1983,13 +1988,30 @@ function renderPageSection({
   };
 
   // Change block parents so that H1/H2 blocks are treated as nesting
-  // for that we need to traverse with a topological sort
+  // for that we need to traverse with a topological sort, leafs treated first
+  const orderedParentIds = ["root"];
+  let i = 0;
+  while (i < orderedParentIds.length) {
+    const children = blocksByParentId[
+      orderedParentIds[i] as string
+    ] as NotionConnectorBlockCacheEntry[];
+    for (const child of children) {
+      if (blocksByParentId[child.notionBlockId])
+        orderedParentIds.push(child.notionBlockId);
+    }
+    i++;
+  }
+  orderedParentIds.reverse();
 
   const adaptedBlocksByParentId: Record<
     string,
     NotionConnectorBlockCacheEntry[]
   > = {};
-  for (const [parentId, blocks] of Object.entries(blocksByParentId)) {
+
+  for (const parentId of orderedParentIds) {
+    const blocks = blocksByParentId[
+      parentId
+    ] as NotionConnectorBlockCacheEntry[];
     blocks.sort((a, b) => a.indexInParent - b.indexInParent);
     let parentsPath = [parentId];
     for (const block of blocks) {
