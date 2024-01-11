@@ -9,7 +9,7 @@ export function getConnectorReplicaDbConnection() {
 }
 
 export function getFrontReplicaDbConnection() {
-  return new Sequelize(config.getConnectorsDatabaseReadReplicaUri() as string, {
+  return new Sequelize(config.getFrontDatabaseReadReplicaUri() as string, {
     logging: false,
   });
 }
