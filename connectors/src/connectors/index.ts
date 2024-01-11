@@ -3,6 +3,7 @@ import { ConnectorProvider, ModelId } from "@dust-tt/types";
 import {
   createConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
+  retrieveConfluenceObjectsTitles,
   setConfluenceConnectorPermissions,
   updateConfluenceConnector,
 } from "@connectors/connectors/confluence";
@@ -289,6 +290,7 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorBatchResourceTitleRetriever
 > = {
+  confluence: retrieveConfluenceObjectsTitles(),
   slack: retrieveSlackChannelsTitles,
   notion: retrieveNotionResourcesTitles,
   github: retrieveGithubReposTitles,
@@ -301,6 +303,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResourceParentsRetriever
 > = {
+  confluence: async () => new Ok([]), // Confluence is flat.
   notion: retrieveNotionResourceParents,
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
@@ -313,6 +316,9 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorConfigSetter
 > = {
+  confluence: () => {
+    throw new Error("Not implemented");
+  },
   slack: () => {
     throw new Error("Not implemented");
   },
@@ -335,6 +341,9 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorConfigGetter
 > = {
+  confluence: () => {
+    throw new Error("Not implemented");
+  },
   slack: () => {
     throw new Error("Not implemented");
   },
@@ -357,6 +366,9 @@ export const GARBAGE_COLLECT_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorGarbageCollector
 > = {
+  confluence: () => {
+    throw new Error("Not implemented");
+  },
   slack: () => {
     throw new Error("Not implemented");
   },
