@@ -1,4 +1,5 @@
 import { ModelId } from "@dust-tt/types";
+import { Context } from "@temporalio/activity";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
@@ -45,6 +46,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxConcurrency: CONCURRENCY,
 
       async requestHandler({ $, request, enqueueLinks }) {
+        Context.current().heartbeat({
+          type: "http_request",
+        });
         const extracted = new turndown()
           .remove(["style", "script", "iframe"])
           .turndown($.html());
@@ -122,10 +126,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           },
         });
 
-        await reportInitialSyncProgress(
-          connector.id,
-          `Crawled ${pageCount} pages.`
-        );
+        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
 
         pageCount++;
       },

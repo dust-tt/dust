@@ -1,3 +1,4 @@
+export * from "./connectors/api_handlers/create_connector";
 export * from "./core/data_source";
 export * from "./front/api_handlers/internal/agent_configuration";
 export * from "./front/api_handlers/internal/assistant";
@@ -42,3 +43,4 @@ export * from "./shared/cache";
 export * from "./shared/model_id";
 export * from "./shared/rate_limiter";
 export * from "./shared/utils/assert_never";
+export * from "./shared/utils/iots_utils";

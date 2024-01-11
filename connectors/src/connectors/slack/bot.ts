@@ -756,13 +756,13 @@ async function makeContentFragment(
     return new Err(new Error("Could not retrieve channel name"));
   }
 
-  const content = await formatMessagesForUpsert(
-    channelId,
-    channel.channel.name,
-    allMessages,
-    connector.id,
-    slackClient
-  );
+  const content = await formatMessagesForUpsert({
+    channelName: channel.channel.name,
+    messages: allMessages,
+    isThread: true,
+    connectorId: connector.id,
+    slackClient,
+  });
 
   let url: string | null = null;
   if (allMessages[0]?.ts) {

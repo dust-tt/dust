@@ -228,6 +228,21 @@ async fn databases_delete(
     )
 }
 
+async fn expire_all(
+    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let mut registry = state.registry.lock().await;
+    registry.clear();
+
+    (
+        axum::http::StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: None,
+        }),
+    )
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
@@ -255,6 +270,7 @@ fn main() {
         let state = Arc::new(WorkerState::new(databases_store));
 
         let router = Router::new()
+            .route("/databases", delete(expire_all))
             .route("/databases/:database_id", post(databases_query))
             .route("/databases/:database_id", delete(databases_delete))
             .layer(

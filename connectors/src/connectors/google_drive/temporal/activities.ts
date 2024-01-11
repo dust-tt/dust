@@ -7,7 +7,7 @@ import PQueue from "p-queue";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
-  renderSectionForTitleAndContent,
+  renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { HTTPError } from "@connectors/lib/error";
@@ -509,11 +509,15 @@ async function syncOneFile(
     return false;
   }
 
-  // Add the title of the file to the beginning of the document.
-  const content = renderSectionForTitleAndContent(
-    file.name,
-    documentContent || null
-  );
+  const content = renderDocumentTitleAndContent({
+    title: file.name,
+    updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
+    createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
+    lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
+    content: documentContent
+      ? { prefix: null, content: documentContent, sections: [] }
+      : null,
+  });
 
   if (documentContent === undefined) {
     logger.error(
@@ -530,7 +534,7 @@ async function syncOneFile(
   }
   const tags = [`title:${file.name}`];
   if (file.updatedAtMs) {
-    tags.push(`lastEditedAt:${file.updatedAtMs}`);
+    tags.push(`updatedAt:${file.updatedAtMs}`);
   }
   if (file.createdAtMs) {
     tags.push(`createdAt:${file.createdAtMs}`);

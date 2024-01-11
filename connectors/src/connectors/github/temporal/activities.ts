@@ -20,6 +20,7 @@ import {
 } from "@connectors/connectors/github/lib/github_api";
 import {
   deleteFromDataSource,
+  renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
@@ -98,7 +99,7 @@ async function renderIssue(
   loggerArgs: Record<string, string | number>
 ): Promise<{
   issue: GithubIssueType;
-  lastUpdateTimestamp: number;
+  updatedAtTimestamp: number;
   content: CoreAPIDataSourceDocumentSection;
 }> {
   const localLogger = logger.child({
@@ -108,11 +109,12 @@ async function renderIssue(
 
   const issue = await getIssue(installationId, repoName, login, issueNumber);
 
-  const content = renderMarkdownSection(
-    `Issue #${issue.number} [${repoName}]: ${issue.title}\n`,
-    issue.body || "",
-    { flavor: "gfm" }
-  );
+  const content = renderDocumentTitleAndContent({
+    title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
+    content: renderMarkdownSection(issue.body ?? "", { flavor: "gfm" }),
+  });
 
   let resultPage = 1;
   let lastCommentUpdateTime: Date | null = null;
@@ -147,11 +149,11 @@ async function renderIssue(
 
     for (const comment of comments) {
       if (comment.body) {
-        const c = renderMarkdownSection(
-          `>> ${renderGithubUser(comment.creator)}:\n`,
-          comment.body,
-          { flavor: "gfm" }
-        );
+        const c = {
+          prefix: `>> ${renderGithubUser(comment.creator)}:\n`,
+          content: null,
+          sections: [renderMarkdownSection(comment.body, { flavor: "gfm" })],
+        };
         content.sections.push(c);
       }
       if (
@@ -165,14 +167,14 @@ async function renderIssue(
     resultPage += 1;
   }
 
-  const lastUpdateTimestamp = Math.max(
+  const updatedAtTimestamp = Math.max(
     issue.updatedAt.getTime(),
     lastCommentUpdateTime ? lastCommentUpdateTime.getTime() : 0
   );
 
   return {
     issue,
-    lastUpdateTimestamp,
+    updatedAtTimestamp,
     content,
   };
 }
@@ -196,7 +198,7 @@ export async function githubUpsertIssueActivity(
 
   const {
     issue,
-    lastUpdateTimestamp,
+    updatedAtTimestamp,
     content: renderedIssue,
   } = await renderIssue(
     installationId,
@@ -212,7 +214,8 @@ export async function githubUpsertIssueActivity(
   const tags = [
     `title:${issue.title}`,
     `isPullRequest:${issue.isPullRequest}`,
-    `lasUpdatedAt:${issue.updatedAt.getTime()}`,
+    `createdAt:${issue.createdAt.getTime()}`,
+    `updatedAt:${issue.updatedAt.getTime()}`,
   ];
   if (issueAuthor) {
     tags.push(`author:${issueAuthor}`);
@@ -224,7 +227,7 @@ export async function githubUpsertIssueActivity(
     documentId,
     documentContent: renderedIssue,
     documentUrl: issue.url,
-    timestampMs: lastUpdateTimestamp,
+    timestampMs: updatedAtTimestamp,
     tags: tags,
     // The convention for parents is to use the external id string; it is ok for
     // repos, but not practical for issues since the external id is the
@@ -280,11 +283,12 @@ async function renderDiscussion(
     discussionNumber
   );
 
-  const content = renderMarkdownSection(
-    `Discussion #${discussion.number} [${repoName}]: ${discussion.title}\n`,
-    discussion.bodyText,
-    { flavor: "gfm" }
-  );
+  const content = renderDocumentTitleAndContent({
+    title: `Discussion #${discussion.number} [${repoName}]: ${discussion.title}`,
+    createdAt: new Date(discussion.createdAt),
+    updatedAt: new Date(discussion.updatedAt),
+    content: renderMarkdownSection(discussion.bodyText, { flavor: "gfm" }),
+  });
 
   let nextCursor: string | null = null;
 
@@ -311,9 +315,11 @@ async function renderDiscussion(
         prefix += "[ACCEPTED ANSWER] ";
       }
       prefix += `${comment.author?.login || "Unknown author"}:\n`;
-      const c = renderMarkdownSection(prefix, comment.bodyText, {
-        flavor: "gfm",
-      });
+      const c = {
+        prefix,
+        content: null,
+        sections: [renderMarkdownSection(comment.bodyText, { flavor: "gfm" })],
+      };
       content.sections.push(c);
 
       let nextChildCursor: string | null = null;
@@ -333,11 +339,13 @@ async function renderDiscussion(
           );
 
         for (const childComment of childComments) {
-          const cc = renderMarkdownSection(
-            `>> ${childComment.author?.login || "Unknown author"}:\n`,
-            childComment.bodyText,
-            { flavor: "gfm" }
-          );
+          const cc = {
+            prefix: `>> ${childComment.author?.login || "Unknown author"}:\n`,
+            content: null,
+            sections: [
+              renderMarkdownSection(comment.bodyText, { flavor: "gfm" }),
+            ],
+          };
           c.sections.push(cc);
         }
 
@@ -395,7 +403,7 @@ export async function githubUpsertDiscussionActivity(
   const tags = [
     `title:${discussion.title}`,
     `author:${discussion.author ? discussion.author.login : "unknown"}`,
-    `lasUpdatedAt:${new Date(discussion.updatedAt).getTime()}`,
+    `updatedAt:${new Date(discussion.updatedAt).getTime()}`,
   ];
 
   await upsertToDatasource({

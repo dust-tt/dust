@@ -2,7 +2,6 @@ import { Checkbox, Page } from "@dust-tt/sparkle";
 import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
 import { APIError } from "@dust-tt/types";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
@@ -68,47 +67,44 @@ export default function DataSourceNew({
   const [isEdited, setIsEdited] = useState(false);
   const [isValid, setIsValid] = useState(true);
 
-  const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
   const [assistantDefaultSelected, setAssistantDefaultSelected] =
     useState(true);
 
-  const [dataSourceDescription, setDataSourceDescription] = useState("");
+  const [dataSourceUrl, setDataSourceUrl] = useState("");
 
   const formValidation = useCallback(() => {
+    const urlRegex =
+      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+
     let edited = false;
     let valid = true;
 
     let exists = false;
     dataSources.forEach((d) => {
-      if (d.name == dataSourceName) {
+      if (d.name == dataSourceUrl) {
         exists = true;
       }
     });
     if (exists) {
       setDataSourceNameError("A Folder with the same name already exists");
       valid = false;
-    } else if (dataSourceName.length == 0) {
+    } else if (dataSourceUrl.length == 0) {
       valid = false;
       setDataSourceNameError("");
-    } else if (dataSourceName.startsWith("managed-")) {
+    } else if (dataSourceUrl.startsWith("managed-")) {
       setDataSourceNameError(
         "DataSource name cannot start with the prefix `managed-`"
       );
       valid = false;
-      // eslint-disable-next-line no-useless-escape
-    } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
+    } else if (!dataSourceUrl.match(urlRegex)) {
       setDataSourceNameError(
-        "DataSource name must only contain letters, numbers, and the characters `._-`"
+        "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
       );
       valid = false;
     } else {
       edited = true;
       setDataSourceNameError("");
-    }
-
-    if (dataSourceDescription.length > 0) {
-      edited = true;
     }
 
     if (assistantDefaultSelected === false) {
@@ -117,12 +113,7 @@ export default function DataSourceNew({
 
     setIsEdited(edited);
     setIsValid(valid);
-  }, [
-    dataSourceName,
-    dataSourceDescription,
-    dataSources,
-    assistantDefaultSelected,
-  ]);
+  }, [dataSources, assistantDefaultSelected, dataSourceUrl]);
 
   useEffect(() => {
     formValidation();
@@ -132,20 +123,21 @@ export default function DataSourceNew({
 
   const handleCreate = async () => {
     setIsSaving(true);
-    const res = await fetch(`/api/w/${owner.sId}/data_sources`, {
+    const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: dataSourceName,
-        description: dataSourceDescription,
         visibility: "private",
         assistantDefaultSelected,
+        url: dataSourceUrl,
+        type: "url",
+        provider: "webcrawler",
       }),
     });
     if (res.ok) {
-      await router.push(`/w/${owner.sId}/builder/data-sources/static`);
+      await router.push(`/w/${owner.sId}/builder/data-sources/public-urls`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setIsSaving(false);
@@ -167,15 +159,11 @@ export default function DataSourceNew({
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
           title="Create a Folder"
-          onSave={
-            isValid && isEdited && !isSaving
-              ? async () => {
-                  await handleCreate();
-                }
-              : undefined
-          }
+          onSave={isValid && isEdited && !isSaving ? handleCreate : undefined}
           onCancel={() => {
-            void router.push(`/w/${owner.sId}/builder/data-sources/static`);
+            void router.push(
+              `/w/${owner.sId}/builder/data-sources/public-urls`
+            );
           }}
         />
       }
@@ -183,8 +171,8 @@ export default function DataSourceNew({
     >
       <div className="flex flex-1 flex-col space-y-4">
         <Page.SectionHeader
-          title="Create a new Folder"
-          description="A Folder allows you to upload text documents (via API or manually) to make them available to your assistants."
+          title="Add a new public URL"
+          description="Provide the public URL to be added."
         />
         <div>
           <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
@@ -193,63 +181,28 @@ export default function DataSourceNew({
                 htmlFor="dataSourceName"
                 className="block text-sm font-medium text-gray-700"
               >
-                Folder Name
+                Public URL
               </label>
               <div className="mt-1 flex rounded-md shadow-sm">
-                <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 pl-3 pr-1 text-sm text-gray-500">
-                  {owner.name}
-                  <ChevronRightIcon
-                    className="h-5 w-5 flex-shrink-0 pt-0.5 text-gray-400"
-                    aria-hidden="true"
-                  />
-                </span>
                 <input
                   type="text"
-                  name="name"
-                  id="dataSourceName"
+                  name="url"
+                  id="dataSourceUrl"
                   className={classNames(
-                    "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
+                    "block w-full min-w-0 flex-1 rounded-md  text-sm",
                     dataSourceNameError
                       ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
                       : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                   )}
-                  value={dataSourceName}
-                  onChange={(e) => setDataSourceName(e.target.value)}
+                  value={dataSourceUrl}
+                  onChange={(e) => setDataSourceUrl(e.target.value)}
                 />
               </div>
               <p className="mt-2 text-sm text-gray-500">
-                Think GitHub repository names, short and memorable.
+                This is the highest level URL on the selected domain that will
+                be crawled.
               </p>
             </div>
-
-            <div className="sm:col-span-6">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="dataSourceDescription"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Description
-                </label>
-                <div className="text-sm font-normal text-gray-400">
-                  optional
-                </div>
-              </div>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  name="description"
-                  id="dataSourceDescription"
-                  className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
-                  value={dataSourceDescription}
-                  onChange={(e) => setDataSourceDescription(e.target.value)}
-                />
-              </div>
-              <p className="mt-2 text-sm text-gray-500">
-                A good description will help users discover and understand the
-                purpose of your Folder.
-              </p>
-            </div>
-
             <div className="mt-2 sm:col-span-6">
               <div className="flex justify-between">
                 <label
@@ -265,7 +218,7 @@ export default function DataSourceNew({
                   onChange={(checked) => setAssistantDefaultSelected(checked)}
                 />
                 <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  Make this Folder available to the{" "}
+                  Make this public URL available to the{" "}
                   <span className="font-semibold">@dust</span> assistant.
                 </p>
               </div>

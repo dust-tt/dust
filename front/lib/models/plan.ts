@@ -43,6 +43,7 @@ export class Plan extends Model<
   declare isManagedGoogleDriveAllowed: boolean;
   declare isManagedGithubAllowed: boolean;
   declare isManagedIntercomAllowed: boolean;
+  declare isManagedWebCrawlerAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -118,6 +119,10 @@ Plan.init(
       defaultValue: false,
     },
     isManagedIntercomAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isManagedWebCrawlerAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

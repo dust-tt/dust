@@ -33,6 +33,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   isManagedGoogleDriveAllowed: true,
   isManagedGithubAllowed: true,
   isManagedIntercomAllowed: true,
+  isManagedWebCrawlerAllowed: true,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,
