@@ -48,6 +48,7 @@ import {
   renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import {
   NotionConnectorBlockCacheEntry,
@@ -296,7 +297,7 @@ export async function getPagesAndDatabasesToSync({
         break;
 
       case "unauthorized":
-        throw new NotionExternalOauthTokenError(e);
+        throw new ExternalOauthTokenError(e);
 
       default:
         throw e;
