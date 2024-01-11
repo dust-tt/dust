@@ -11,6 +11,10 @@ import {
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import {
+  isNotionError,
+  NotionExternalOauthTokenError,
+} from "@connectors/connectors/notion/lib/errors";
+import {
   GARBAGE_COLLECT_MAX_DURATION_MS,
   isDuringGarbageCollectStartWindow,
 } from "@connectors/connectors/notion/lib/garbage_collect";
@@ -54,7 +58,11 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import {
+  syncFailed,
+  syncStarted,
+  syncSucceeded,
+} from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;
@@ -229,6 +237,7 @@ export async function getPagesAndDatabasesToSync({
 
   const localLogger = logger.child({
     ...loggerArgs,
+    connectorId: connector.id,
     dataSourceName: connector.dataSourceName,
     workspaceId: connector.workspaceId,
   });
@@ -261,35 +270,37 @@ export async function getPagesAndDatabasesToSync({
       skippedDatabaseIds
     );
   } catch (e) {
+    if (!(e instanceof Error) || !isNotionError(e)) {
+      throw e;
+    }
+
     // Sometimes a cursor will consistently fail with 500.
     // In this case, there is not much we can do, so we just give up and move on.
     // Notion workspaces are resynced daily so nothing is lost forever.
-    const potentialNotionError = e as {
-      body: unknown;
-      code: string;
-      status: number;
-    };
-    if (
-      potentialNotionError.code === "internal_server_error" &&
-      potentialNotionError.status === 500
-    ) {
-      if (Context.current().info.attempt > 20) {
-        localLogger.error(
-          {
-            error: potentialNotionError,
-            attempt: Context.current().info.attempt,
-          },
-          "Failed to get Notion search result page with cursor. Giving up and moving on"
-        );
-        return {
-          pageIds: [],
-          databaseIds: [],
-          nextCursor: null,
-        };
-      }
-    }
+    switch (e.code) {
+      case "internal_server_error":
+        if (Context.current().info.attempt > 20) {
+          localLogger.error(
+            {
+              error: e,
+              attempt: Context.current().info.attempt,
+            },
+            "Failed to get Notion search result page with cursor. Giving up and moving on"
+          );
+          return {
+            pageIds: [],
+            databaseIds: [],
+            nextCursor: null,
+          };
+        }
+        break;
 
-    throw e;
+      case "unauthorized":
+        throw new NotionExternalOauthTokenError(e);
+
+      default:
+        throw e;
+    }
   }
 
   const { pages, dbs, nextCursor } = res;
