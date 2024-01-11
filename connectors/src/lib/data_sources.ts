@@ -229,7 +229,7 @@ async function _updateDocumentParentsField({
   }
 }
 
-const MAX_TITLE_SECTION_PREFIX_LENGTH = 256;
+const MAX_SECTION_PREFIX_LENGTH = 256;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
 // provided should will not be augmented with `\n`, so it should include appropriate carriage
@@ -245,10 +245,10 @@ export function renderPrefixSection(
       sections: [],
     };
   }
-  if (prefix.length > MAX_TITLE_SECTION_PREFIX_LENGTH) {
+  if (prefix.length > MAX_SECTION_PREFIX_LENGTH) {
     return {
-      prefix: prefix.substring(0, MAX_TITLE_SECTION_PREFIX_LENGTH) + "...\n",
-      content: `... ${prefix.substring(MAX_TITLE_SECTION_PREFIX_LENGTH)}`,
+      prefix: prefix.substring(0, MAX_SECTION_PREFIX_LENGTH) + "...\n",
+      content: `... ${prefix.substring(MAX_SECTION_PREFIX_LENGTH)}`,
       sections: [],
     };
   }
