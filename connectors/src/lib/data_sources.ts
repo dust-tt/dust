@@ -310,10 +310,13 @@ export function renderMarkdownSection(
   return top;
 }
 
-export function renderSectionForTitleAndContent(
-  title: string | null,
-  content: CoreAPIDataSourceDocumentSection | null
-): CoreAPIDataSourceDocumentSection {
+export function renderSectionForTitleAndContent({
+  title,
+  content,
+}: {
+  title: string | null;
+  content: CoreAPIDataSourceDocumentSection | null;
+}): CoreAPIDataSourceDocumentSection {
   if (title && title.trim()) {
     title = `$title: ${title}\n\n`;
   } else {

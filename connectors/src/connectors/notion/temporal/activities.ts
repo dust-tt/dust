@@ -1753,10 +1753,10 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
-    const content = renderSectionForTitleAndContent(
-      title || null,
-      renderedPage
-    );
+    const content = renderSectionForTitleAndContent({
+      title,
+      content: { prefix: null, content: renderedPage, sections: [] },
+    });
 
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."

@@ -509,11 +509,12 @@ async function syncOneFile(
     return false;
   }
 
-  // Add the title of the file to the beginning of the document.
-  const content = renderSectionForTitleAndContent(
-    file.name,
-    documentContent || null
-  );
+  const content = renderSectionForTitleAndContent({
+    title: file.name,
+    content: documentContent
+      ? { prefix: null, content: documentContent, sections: [] }
+      : null,
+  });
 
   if (documentContent === undefined) {
     logger.error(
