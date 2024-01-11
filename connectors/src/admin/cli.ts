@@ -24,6 +24,8 @@ import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
+import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
+import { upsertPageWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
@@ -35,7 +37,11 @@ import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import { Result } from "@connectors/lib/result";
-import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
+import {
+  getTemporalClient,
+  terminateAllWorkflowsForConnectorId,
+} from "@connectors/lib/temporal";
+import logger from "@connectors/logger/logger";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -385,6 +391,49 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       return;
+    }
+    case "upsert-page": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.pageId) {
+        throw new Error("Missing --pageId argument");
+      }
+      const connector = await Connector.findOne({
+        where: {
+          type: "notion",
+          workspaceId: args.wId,
+          dataSourceName: "managed-notion",
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+        );
+      }
+      logger.info("Upserting page", { pageId: args.pageId });
+      const connectorId = connector.id;
+      const client = await getTemporalClient();
+      await client.workflow.start(upsertPageWorkflow, {
+        args: [
+          {
+            connectorId,
+            pageId: args.pageId,
+            runTimestamp: new Date().getTime(),
+            isBatchSync: false,
+            pageIndex: -1,
+          },
+        ],
+        taskQueue: QUEUE_NAME,
+        workflowId: `notion-test-upsert-page-${args.pageId}-connector-${connectorId}`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId: connectorId,
+        },
+      });
+      break;
     }
 
     default:
