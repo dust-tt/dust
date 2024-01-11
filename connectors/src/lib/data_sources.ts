@@ -346,11 +346,15 @@ export function renderDocumentTitleAndContent({
   if (updatedAt) {
     c.prefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
-  if (author) {
+  if (author && lastEditor && author === lastEditor) {
     c.prefix += `$author: ${author}\n`;
-  }
-  if (lastEditor) {
-    c.prefix += `$lastEditor: ${lastEditor}\n`;
+  } else {
+    if (author) {
+      c.prefix += `$author: ${author}\n`;
+    }
+    if (lastEditor) {
+      c.prefix += `$lastEditor: ${lastEditor}\n`;
+    }
   }
   if (content) {
     c.sections.push(content);
