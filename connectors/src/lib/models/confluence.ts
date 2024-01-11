@@ -9,9 +9,9 @@ import {
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 
-export class ConfluenceConfigurations extends Model<
-  InferAttributes<ConfluenceConfigurations>,
-  InferCreationAttributes<ConfluenceConfigurations>
+export class ConfluenceConfiguration extends Model<
+  InferAttributes<ConfluenceConfiguration>,
+  InferCreationAttributes<ConfluenceConfiguration>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -22,7 +22,7 @@ export class ConfluenceConfigurations extends Model<
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
-ConfluenceConfigurations.init(
+ConfluenceConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -54,12 +54,12 @@ ConfluenceConfigurations.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-Connector.hasOne(ConfluenceConfigurations);
+Connector.hasOne(ConfluenceConfiguration);
 
-// ConfluenceSpaces stores the global spaces selected by the user to sync.
-export class ConfluenceSpaces extends Model<
-  InferAttributes<ConfluenceSpaces>,
-  InferCreationAttributes<ConfluenceSpaces>
+// ConfluenceSpace stores the global spaces selected by the user to sync.
+export class ConfluenceSpace extends Model<
+  InferAttributes<ConfluenceSpace>,
+  InferCreationAttributes<ConfluenceSpace>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -67,7 +67,7 @@ export class ConfluenceSpaces extends Model<
   declare connectorId: ForeignKey<Connector["id"]>;
   declare spaceId: string;
 }
-ConfluenceSpaces.init(
+ConfluenceSpace.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -99,4 +99,4 @@ ConfluenceSpaces.init(
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
 );
-Connector.hasOne(ConfluenceSpaces);
+Connector.hasOne(ConfluenceSpace);

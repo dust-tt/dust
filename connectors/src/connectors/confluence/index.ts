@@ -13,8 +13,8 @@ import {
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
-  ConfluenceConfigurations,
-  ConfluenceSpaces,
+  ConfluenceConfiguration,
+  ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import {
   getAccessTokenFromNango,
@@ -62,7 +62,7 @@ export async function createConfluenceConnector(
         },
         { transaction }
       );
-      await ConfluenceConfigurations.create(
+      await ConfluenceConfiguration.create(
         {
           cloudId,
           connectorId: connector.id,
@@ -121,7 +121,7 @@ export async function retrieveConfluenceConnectorPermissions({
     return new Err(new Error("Connector not found"));
   }
 
-  const confluenceConfig = await ConfluenceConfigurations.findOne({
+  const confluenceConfig = await ConfluenceConfiguration.findOne({
     where: {
       connectorId: connectorId,
     },
@@ -145,7 +145,7 @@ export async function retrieveConfluenceConnectorPermissions({
     confluenceConfig.cloudId
   );
 
-  const syncedSpaces = await ConfluenceSpaces.findAll({
+  const syncedSpaces = await ConfluenceSpace.findAll({
     where: {
       connectorId: connectorId,
     },
@@ -190,7 +190,7 @@ export async function setConfluenceConnectorPermissions(
   for (const [id, permission] of Object.entries(permissions)) {
     // shouldFullSync = true;
     if (permission === "none") {
-      await ConfluenceSpaces.destroy({
+      await ConfluenceSpace.destroy({
         where: {
           connectorId,
           spaceId: id,
@@ -198,7 +198,7 @@ export async function setConfluenceConnectorPermissions(
       });
       // TODO(2024-01-09 flav) start a workflow to delete all pages within a Space.
     } else if (permission === "read") {
-      await ConfluenceSpaces.upsert({
+      await ConfluenceSpace.upsert({
         connectorId: connectorId,
         spaceId: id,
       });

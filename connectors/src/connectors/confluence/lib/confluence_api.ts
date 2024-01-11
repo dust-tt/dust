@@ -13,5 +13,5 @@ export async function getConfluenceCloudInformation(accessToken: string) {
 export function listConfluenceSpaces(accessToken: string, cloudId: string) {
   const client = new ConfluenceClient(accessToken, { cloudId });
 
-  return client.listGlobalSpaces();
+  return client.getGlobalSpaces();
 }
