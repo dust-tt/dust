@@ -229,39 +229,7 @@ async function _updateDocumentParentsField({
   }
 }
 
-const MAX_SECTION_PREFIX_LENGTH = 128;
-
-export function renderSectionForTitleAndContent(
-  title: string | null,
-  content: string | null
-): CoreAPIDataSourceDocumentSection {
-  if (!title || !title.trim()) {
-    return {
-      prefix: null,
-      content,
-      sections: [],
-    };
-  }
-
-  if (title.length > MAX_SECTION_PREFIX_LENGTH) {
-    return {
-      prefix: `$title: ${title.substring(0, MAX_SECTION_PREFIX_LENGTH)}...\n\n`,
-      content: `... ${title.substring(MAX_SECTION_PREFIX_LENGTH)}\n\n`,
-      sections: [
-        {
-          prefix: null,
-          content,
-          sections: [],
-        },
-      ],
-    };
-  }
-  return {
-    prefix: `$title: ${title}\n\n`,
-    content,
-    sections: [],
-  };
-}
+const MAX_TITLE_SECTION_PREFIX_LENGTH = 128;
 
 export function renderPrefixSection(
   prefix: string | null
@@ -273,10 +241,10 @@ export function renderPrefixSection(
       sections: [],
     };
   }
-  if (prefix.length > MAX_SECTION_PREFIX_LENGTH) {
+  if (prefix.length > MAX_TITLE_SECTION_PREFIX_LENGTH) {
     return {
-      prefix: prefix.substring(0, MAX_SECTION_PREFIX_LENGTH) + "...\n",
-      content: `... ${prefix.substring(MAX_SECTION_PREFIX_LENGTH)}\n`,
+      prefix: prefix.substring(0, MAX_TITLE_SECTION_PREFIX_LENGTH) + "...\n",
+      content: `... ${prefix.substring(MAX_TITLE_SECTION_PREFIX_LENGTH)}`,
       sections: [],
     };
   }
@@ -291,7 +259,6 @@ export function renderPrefixSection(
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
 export function renderMarkdownSection(
-  prefix: string | null,
   markdown: string,
   { flavor }: { flavor?: "gfm" } = {}
 ): CoreAPIDataSourceDocumentSection {
@@ -303,7 +270,7 @@ export function renderMarkdownSection(
     mdastExtensions: mdastExtensions,
   });
 
-  const top = renderPrefixSection(prefix);
+  const top = { prefix: null, content: null, sections: [] };
 
   let path: { depth: number; content: CoreAPIDataSourceDocumentSection }[] = [
     { depth: 0, content: top },
@@ -341,4 +308,20 @@ export function renderMarkdownSection(
   }
 
   return top;
+}
+
+export function renderSectionForTitleAndContent(
+  title: string | null,
+  content: CoreAPIDataSourceDocumentSection | null
+): CoreAPIDataSourceDocumentSection {
+  if (title && title.trim()) {
+    title = `$title: ${title}\n\n`;
+  } else {
+    title = null;
+  }
+  const c = renderPrefixSection(title);
+  if (content) {
+    c.sections.push(content);
+  }
+  return c;
 }
