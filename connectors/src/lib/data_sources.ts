@@ -310,7 +310,7 @@ export function renderMarkdownSection(
   return top;
 }
 
-export function renderSectionForTitleAndContent({
+export function renderDocumentForTitleAndContent({
   title,
   content,
 }: {

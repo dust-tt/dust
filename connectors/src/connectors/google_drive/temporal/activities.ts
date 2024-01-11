@@ -7,7 +7,7 @@ import PQueue from "p-queue";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
-  renderSectionForTitleAndContent,
+  renderDocumentForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { HTTPError } from "@connectors/lib/error";
@@ -509,7 +509,7 @@ async function syncOneFile(
     return false;
   }
 
-  const content = renderSectionForTitleAndContent({
+  const content = renderDocumentForTitleAndContent({
     title: file.name,
     content: documentContent
       ? { prefix: null, content: documentContent, sections: [] }
