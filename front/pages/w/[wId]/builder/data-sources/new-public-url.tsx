@@ -97,7 +97,6 @@ export default function DataSourceNew({
         "DataSource name cannot start with the prefix `managed-`"
       );
       valid = false;
-      // eslint-disable-next-line no-useless-escape
     } else if (!dataSourceUrl.match(urlRegex)) {
       setDataSourceNameError(
         "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
@@ -160,13 +159,7 @@ export default function DataSourceNew({
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
           title="Create a Folder"
-          onSave={
-            isValid && isEdited && !isSaving
-              ? async () => {
-                  await handleCreate();
-                }
-              : undefined
-          }
+          onSave={isValid && isEdited && !isSaving ? handleCreate : undefined}
           onCancel={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/public-urls`

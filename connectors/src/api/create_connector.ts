@@ -1,5 +1,16 @@
-import { assertNever, Result } from "@dust-tt/types";
+import {
+  assertNever,
+  ConnectorCreateRequestBodySchema,
+  ConnectorProvider,
+  CreateConnectorOAuthRequestBodySchema,
+  CreateConnectorUrlRequestBodySchema,
+  isConnectorProvider,
+  Result,
+} from "@dust-tt/types";
 import { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import {
@@ -11,49 +22,34 @@ import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorType } from "@connectors/types/connector";
-import { isConnectorProvider } from "@connectors/types/connector";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-
-type ConnectorCreateBase = {
-  workspaceAPIKey: string;
-  dataSourceName: string;
-  workspaceId: string;
-};
-
-type ConnectorCreateOAuth = ConnectorCreateBase & {
-  connectionId: string;
-  type: "oauth";
-};
-
-type ConnectorCreateUrl = ConnectorCreateBase & {
-  url: string;
-  type: "url";
-};
-
-type ConnectorCreateReqBody = ConnectorCreateOAuth | ConnectorCreateUrl;
 
 type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
 
+const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
+  {
+    github: "oauth",
+    google_drive: "oauth",
+    slack: "oauth",
+    notion: "oauth",
+    intercom: "oauth",
+    webcrawler: "url",
+  };
+
 const _createConnectorAPIHandler = async (
-  req: Request<
-    { connector_provider: string },
-    ConnectorCreateResBody,
-    ConnectorCreateReqBody
-  >,
+  req: Request<{ connector_provider: string }, ConnectorCreateResBody>,
   res: Response<ConnectorCreateResBody>
 ) => {
   try {
-    if (
-      !req.body.workspaceAPIKey ||
-      !req.body.dataSourceName ||
-      !req.body.workspaceId
-    ) {
+    const bodyValidation = ConnectorCreateRequestBodySchema.decode(req.body);
+    if (isLeft(bodyValidation)) {
+      const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
       return apiError(req, res, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Missing required parameters. Required : workspaceAPIKey,
-           dataSourceName, workspaceId. Optional: connectionId`,
+          message: `Invalid request body: ${pathError}`,
         },
       });
     }
@@ -68,20 +64,28 @@ const _createConnectorAPIHandler = async (
       });
     }
 
+    const { workspaceAPIKey, dataSourceName, workspaceId, connectorParams } =
+      bodyValidation.right;
+
     let connectorRes: Result<string, Error>;
-    switch (req.body.type) {
+    const createConnectorType =
+      provider2createConnectorType[req.params.connector_provider];
+    switch (createConnectorType) {
       case "oauth": {
         const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
           req.params.connector_provider
         ] as ConnectorCreatorOAuth;
 
+        const params = connectorParams as t.TypeOf<
+          typeof CreateConnectorOAuthRequestBodySchema
+        >;
         connectorRes = await connectorCreator(
           {
-            workspaceAPIKey: req.body.workspaceAPIKey,
-            dataSourceName: req.body.dataSourceName,
-            workspaceId: req.body.workspaceId,
+            workspaceAPIKey: workspaceAPIKey,
+            dataSourceName: dataSourceName,
+            workspaceId: workspaceId,
           },
-          req.body.connectionId
+          params.connectionId
         );
         break;
       }
@@ -89,19 +93,23 @@ const _createConnectorAPIHandler = async (
         const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
           req.params.connector_provider
         ] as ConnectorCreatorUrl;
+
+        const params = connectorParams as t.TypeOf<
+          typeof CreateConnectorUrlRequestBodySchema
+        >;
         connectorRes = await connectorCreator(
           {
-            workspaceAPIKey: req.body.workspaceAPIKey,
-            dataSourceName: req.body.dataSourceName,
-            workspaceId: req.body.workspaceId,
+            workspaceAPIKey: workspaceAPIKey,
+            dataSourceName: dataSourceName,
+            workspaceId: workspaceId,
           },
-          req.body.url
+          params.url
         );
         break;
       }
 
       default: {
-        assertNever(req.body);
+        assertNever(createConnectorType);
       }
     }
 

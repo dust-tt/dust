@@ -1,8 +1,7 @@
 import {
   assertNever,
-  CONNECTOR_PROVIDERS,
-  ConnectorProvider,
   DataSourceType,
+  isConnectorProvider,
 } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
@@ -94,7 +93,7 @@ async function handler(
 
       const { type, connectionId, url, provider } = bodyValidation.right;
 
-      if (!CONNECTOR_PROVIDERS.includes(provider as ConnectorProvider)) {
+      if (!isConnectorProvider(provider)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -103,7 +102,6 @@ async function handler(
           },
         });
       }
-      const certifiedProvider = provider as ConnectorProvider;
       // retrieve suffix GET parameter
       let suffix: string | null = null;
       if (req.query.suffix && typeof req.query.suffix === "string") {
@@ -124,11 +122,11 @@ async function handler(
       switch (type) {
         case "oauth": {
           dataSourceName = suffix
-            ? `managed-${certifiedProvider}-${suffix}`
-            : `managed-${certifiedProvider}`;
+            ? `managed-${provider}-${suffix}`
+            : `managed-${provider}`;
           dataSourceDescription = suffix
-            ? `Managed Data Source for ${certifiedProvider} (${suffix})`
-            : `Managed Data Source for ${certifiedProvider}`;
+            ? `Managed Data Source for ${provider} (${suffix})`
+            : `Managed Data Source for ${provider}`;
 
           break;
         }
@@ -147,7 +145,7 @@ async function handler(
       const dataSourceMaxChunkSize = 512;
 
       let isDataSourceAllowedInPlan: boolean;
-      switch (certifiedProvider) {
+      switch (provider) {
         case "slack":
           isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
           break;
@@ -274,13 +272,12 @@ async function handler(
             });
           }
           connectorsRes = await connectorsAPI.createConnector(
-            certifiedProvider,
+            provider,
             owner.sId,
             systemAPIKeyRes.value.secret,
             dataSourceName,
             {
               connectionId: connectionId,
-              type: "oauth",
             }
           );
           break;
@@ -296,13 +293,12 @@ async function handler(
             });
           }
           connectorsRes = await connectorsAPI.createConnector(
-            certifiedProvider,
+            provider,
             owner.sId,
             systemAPIKeyRes.value.secret,
             dataSourceName,
             {
               url,
-              type: "url",
             }
           );
           break;
@@ -344,7 +340,7 @@ async function handler(
 
       dataSource = await dataSource.update({
         connectorId: connectorsRes.value.id,
-        connectorProvider: certifiedProvider,
+        connectorProvider: provider,
       });
 
       return res.status(201).json({
@@ -355,7 +351,7 @@ async function handler(
           visibility: dataSource.visibility,
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
-          connectorProvider: certifiedProvider,
+          connectorProvider: provider,
           assistantDefaultSelected: true,
         },
         connector: connectorsRes.value,

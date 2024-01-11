@@ -12,6 +12,10 @@ export const CONNECTOR_PROVIDERS = [
 ] as const;
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
+export function isConnectorProvider(val: string): val is ConnectorProvider {
+  return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
+}
+
 export type DataSourceType = {
   id: ModelId;
   name: string;

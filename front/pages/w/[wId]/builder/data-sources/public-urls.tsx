@@ -133,9 +133,8 @@ export default function DataSourcesView({
                       label: "Add a public URL",
                       variant: "primary",
                       icon: PlusIcon,
-                      onClick: async () => {
-                        await handleCreateDataSource();
-                      },
+                      onClick: handleCreateDataSource,
+
                       disabled: isSubmittingCreateDataSource,
                     }
                   : undefined
@@ -158,9 +157,7 @@ export default function DataSourcesView({
         ) : (
           <EmptyCallToAction
             label="Create a new Folder"
-            onClick={async () => {
-              await handleCreateDataSource();
-            }}
+            onClick={handleCreateDataSource}
           />
         )}
 
