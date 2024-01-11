@@ -340,7 +340,7 @@ export function renderDocumentForTitleAndContent({
     c.prefix += `$createdAt: ${createdAt.toISOString()}\n`;
   }
   if (updatedAt) {
-    c.prefix += `$lastUpdatedAt: ${updatedAt.toISOString()}\n`;
+    c.prefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (content) {
     c.sections.push(content);
