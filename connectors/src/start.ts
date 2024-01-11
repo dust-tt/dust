@@ -31,5 +31,5 @@ runGoogleWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running notion worker")
 );
 runWebCrawlerWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running notion worker")
+  logger.error(errorFromAny(err), "Error running webcrawler worker")
 );
