@@ -242,6 +242,26 @@ export function addBlock(
         },
       });
       break;
+    case "database_schema":
+      s.splice(idx + 1, 0, {
+        type: "database_schema",
+        name: getNextName(spec, "DATABASE_SCHEMA"),
+        indent: 0,
+        spec: {},
+        config: {},
+      });
+      break;
+    case "database":
+      s.splice(idx + 1, 0, {
+        type: "database",
+        name: getNextName(spec, "DATABASE"),
+        indent: 0,
+        spec: {
+          query: "",
+        },
+        config: {},
+      });
+      break;
     default:
       s.splice(idx + 1, 0, {
         type: blockType,
@@ -550,6 +570,20 @@ export function dumpSpecification(
         if (block.spec.wait_for) {
           out += `  wait_for: \n\`\`\`\n${block.spec.wait_for}\n\`\`\`\n`;
         }
+        out += `}\n`;
+        out += "\n";
+        break;
+      }
+      case "database_schema": {
+        out += `database_schema ${block.name} { }\n`;
+        out += "\n";
+        break;
+      }
+      case "database": {
+        out += `database ${block.name} {\n`;
+        out += `  query: \n\`\`\`\n${escapeTripleBackticks(
+          block.spec.query
+        )}\n\`\`\`\n`;
         out += `}\n`;
         out += "\n";
         break;

@@ -13,7 +13,9 @@ export type BlockType =
   | "end"
   | "search"
   | "curl"
-  | "browser";
+  | "browser"
+  | "database_schema"
+  | "database";
 
 export type RunRunType = "deploy" | "local" | "execute";
 type Status = "running" | "succeeded" | "errored";
