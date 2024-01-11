@@ -229,12 +229,12 @@ async function _updateDocumentParentsField({
   }
 }
 
-const MAX_SECTION_PREFIX_LENGTH = 256;
+const MAX_SECTION_PREFIX_LENGTH = 192;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
-// provided should will not be augmented with `\n`, so it should include appropriate carriage
-// returns. If the prefix is too long (>256 chars), it will be truncated. The remained will be
-// returned as content of the resulting section.
+// provided will not be augmented with `\n`, so it should include appropriate carriage return. If
+// the prefix is too long (>256 chars), it will be truncated. The remained will be returned as
+// content of the resulting section.
 export function renderPrefixSection(
   prefix: string | null
 ): CoreAPIDataSourceDocumentSection {
