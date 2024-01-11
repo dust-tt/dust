@@ -361,3 +361,14 @@ export function renderDocumentTitleAndContent({
   }
   return c;
 }
+
+/* Compute document length by summing all prefix and content sizes for each section */
+export function sectionLength(
+  section: CoreAPIDataSourceDocumentSection
+): number {
+  return (
+    (section.prefix ? section.prefix.length : 0) +
+    (section.content ? section.content.length : 0) +
+    section.sections.reduce((acc, s) => acc + sectionLength(s), 0)
+  );
+}

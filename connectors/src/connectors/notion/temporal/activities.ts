@@ -43,6 +43,7 @@ import {
   MAX_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   renderPrefixSection,
+  sectionLength,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -1549,6 +1550,7 @@ export async function renderAndUpsertPageFromCache({
     });
   }
 
+  localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
@@ -1566,8 +1568,6 @@ export async function renderAndUpsertPageFromCache({
       sections: [],
     });
   }
-
-  localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
 
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving author and last editor from notion API."
@@ -1701,11 +1701,6 @@ export async function renderAndUpsertPageFromCache({
   let upsertTs: number | undefined = undefined;
   let skipReason: string | null = null;
 
-  // compute document length by summing all prefix and content sizes for each section
-  const sectionLength = (section: CoreAPIDataSourceDocumentSection): number =>
-    (section.prefix ? section.prefix.length : 0) +
-    (section.content ? section.content.length : 0) +
-    section.sections.reduce((acc, s) => acc + sectionLength(s), 0);
   const documentLength = sectionLength(renderedPageSection);
 
   if (documentLength > MAX_DOCUMENT_TXT_LEN) {
@@ -1983,11 +1978,13 @@ function renderPageSection({
 }): CoreAPIDataSourceDocumentSection {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
-    content: "",
+    content: null,
     sections: [],
   };
 
   // Change block parents so that H1/H2 blocks are treated as nesting
+  // for that we need to traverse with a topological sort
+
   const adaptedBlocksByParentId: Record<
     string,
     NotionConnectorBlockCacheEntry[]
@@ -2009,6 +2006,11 @@ function renderPageSection({
       }
     }
   }
+  logger.info(
+    "adaptedBlocksByParentId ===================================================="
+  );
+  console.log(blocksByParentId);
+  console.log(adaptedBlocksByParentId);
 
   const renderBlockSection = (
     b: NotionConnectorBlockCacheEntry,
@@ -2016,14 +2018,15 @@ function renderPageSection({
     indent = ""
   ): CoreAPIDataSourceDocumentSection => {
     // Initial rendering (remove base64 images from rendered block)
-    let renderedBlock = b.blockText ? `${indent}${b.blockText}\n` : "";
+    let renderedBlock = b.blockText ? `${indent}${b.blockText}` : "";
     renderedBlock = renderedBlock
       .trim()
-      .replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
+      .replace(/data:image\/[^;]+;base64,[^\n]+/g, "")
+      .concat("\n");
 
-    // Prefix for depths 0 and 1
+    // Prefix for depths 0 and 1, and only if children
     const blockSection =
-      depth < 2
+      depth < 2 && adaptedBlocksByParentId[b.notionBlockId]?.length
         ? renderPrefixSection(renderedBlock)
         : {
             prefix: null,
@@ -2032,7 +2035,7 @@ function renderPageSection({
           };
 
     // Recurse on children (Only indent if not heading)
-    const children = blocksByParentId[b.notionBlockId] ?? [];
+    const children = adaptedBlocksByParentId[b.notionBlockId] ?? [];
     children.sort((a, b) => a.indexInParent - b.indexInParent);
     if (b.blockType !== "heading_1" && b.blockType !== "heading_2") {
       indent = `- ${indent}`;
@@ -2048,6 +2051,6 @@ function renderPageSection({
   for (const block of topLevelBlocks) {
     renderedPageSection.sections.push(renderBlockSection(block, 0));
   }
-
+  console.log(renderedPageSection);
   return renderedPageSection;
 }
