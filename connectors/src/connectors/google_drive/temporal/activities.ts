@@ -511,6 +511,8 @@ async function syncOneFile(
 
   const content = renderDocumentForTitleAndContent({
     title: file.name,
+    updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
+    createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
     content: documentContent
       ? { prefix: null, content: documentContent, sections: [] }
       : null,

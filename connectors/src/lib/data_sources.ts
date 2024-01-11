@@ -229,7 +229,7 @@ async function _updateDocumentParentsField({
   }
 }
 
-const MAX_TITLE_SECTION_PREFIX_LENGTH = 128;
+const MAX_TITLE_SECTION_PREFIX_LENGTH = 256;
 
 export function renderPrefixSection(
   prefix: string | null
@@ -310,19 +310,31 @@ export function renderMarkdownSection(
   return top;
 }
 
+// Will render the document creating a prefix that contains a $title possibly truncated (whose
+// remainder is set as first content of the docuemnt) along with $createdAt and $lastUpdatedAt
 export function renderDocumentForTitleAndContent({
   title,
+  createdAt,
+  updatedAt,
   content,
 }: {
   title: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
   content: CoreAPIDataSourceDocumentSection | null;
 }): CoreAPIDataSourceDocumentSection {
   if (title && title.trim()) {
-    title = `$title: ${title}\n\n`;
+    title = `$title: ${title}\n`;
   } else {
     title = null;
   }
   const c = renderPrefixSection(title);
+  if (createdAt) {
+    c.prefix += `$createdAt: ${createdAt.toISOString()}\n`;
+  }
+  if (updatedAt) {
+    c.prefix += `$lastUpdatedAt: ${updatedAt.toISOString()}\n`;
+  }
   if (content) {
     c.sections.push(content);
   }

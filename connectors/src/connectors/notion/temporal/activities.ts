@@ -1734,8 +1734,8 @@ export async function renderAndUpsertPageFromCache({
     skipReason = "body_too_large";
   }
 
-  const createdTime = new Date(pageCacheEntry.createdTime).getTime();
-  const updatedTime = new Date(pageCacheEntry.lastEditedTime).getTime();
+  const createdAt = new Date(pageCacheEntry.createdTime);
+  const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
   if (!pageHasBody) {
     localLogger.info(
@@ -1755,6 +1755,8 @@ export async function renderAndUpsertPageFromCache({
 
     const content = renderDocumentForTitleAndContent({
       title: title ?? null,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
       content: { prefix: null, content: renderedPage, sections: [] },
     });
 
@@ -1770,13 +1772,13 @@ export async function renderAndUpsertPageFromCache({
       documentId,
       documentContent: content,
       documentUrl: pageCacheEntry.url,
-      timestampMs: updatedTime,
+      timestampMs: updatedAt.getTime(),
       tags: getTagsForPage({
         title,
         author,
         lastEditor,
-        createdTime,
-        updatedTime,
+        createdTime: createdAt.getTime(),
+        updatedTime: updatedAt.getTime(),
       }),
       parents,
       retries: 3,

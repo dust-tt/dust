@@ -111,6 +111,8 @@ async function renderIssue(
 
   const content = renderDocumentForTitleAndContent({
     title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
     content: renderMarkdownSection(issue.body || "", { flavor: "gfm" }),
   });
 
