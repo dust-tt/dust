@@ -533,7 +533,7 @@ async function syncOneFile(
   }
   const tags = [`title:${file.name}`];
   if (file.updatedAtMs) {
-    tags.push(`lastEditedAt:${file.updatedAtMs}`);
+    tags.push(`updatedAt:${file.updatedAtMs}`);
   }
   if (file.createdAtMs) {
     tags.push(`createdAt:${file.createdAtMs}`);
