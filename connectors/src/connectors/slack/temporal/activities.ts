@@ -711,8 +711,8 @@ export async function formatMessagesForUpsert({
     })
   );
 
-  const first = data[0];
-  const last = data[data.length - 1];
+  const first = data.at(0);
+  const last = data.at(-1);
   if (!last || !first) {
     throw new Error("Cannot format empty list of messages");
   }
