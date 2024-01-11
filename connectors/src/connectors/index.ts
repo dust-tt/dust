@@ -290,7 +290,7 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorBatchResourceTitleRetriever
 > = {
-  confluence: retrieveConfluenceObjectsTitles(),
+  confluence: retrieveConfluenceObjectsTitles,
   slack: retrieveSlackChannelsTitles,
   notion: retrieveNotionResourcesTitles,
   github: retrieveGithubReposTitles,
