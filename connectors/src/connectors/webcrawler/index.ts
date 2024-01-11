@@ -87,7 +87,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
       where: {
         connectorId: connector.id,
         webcrawlerConfigurationId: webCrawlerConfig.id,
-        id: parseInt(parentInternalId),
+        internalId: parentInternalId,
       },
     });
     if (!parent) {

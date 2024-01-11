@@ -202,7 +202,9 @@ function DataSourceResourceSelector({
     setParentsAreLoading(true);
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource?.name}/managed/parents`,
+        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+          dataSource?.name || ""
+        )}/managed/parents`,
         {
           method: "POST",
           headers: {

@@ -28,6 +28,7 @@ export type EditingPlanType = {
   isGoogleDriveAllowed: boolean;
   isGithubAllowed: boolean;
   isIntercomAllowed: boolean;
+  isWebCrawlerAllowed: boolean;
   maxMessages: string | number;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
@@ -48,6 +49,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isGoogleDriveAllowed: plan.limits.connections.isGoogleDriveAllowed,
     isGithubAllowed: plan.limits.connections.isGithubAllowed,
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
+    isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
@@ -73,6 +75,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isGoogleDriveAllowed: editingPlan.isGoogleDriveAllowed,
         isGithubAllowed: editingPlan.isGithubAllowed,
         isIntercomAllowed: editingPlan.isIntercomAllowed,
+        isWebCrawlerAllowed: editingPlan.isWebCrawlerAllowed,
       },
       dataSources: {
         count: parseInt(editingPlan.dataSourcesCount.toString(), 10),
@@ -102,6 +105,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isGoogleDriveAllowed: false,
   isGithubAllowed: false,
   isIntercomAllowed: false,
+  isWebCrawlerAllowed: false,
   maxMessages: "",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",

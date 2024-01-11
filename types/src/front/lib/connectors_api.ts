@@ -85,7 +85,13 @@ export class ConnectorsAPI {
     workspaceId: string,
     workspaceAPIKey: string,
     dataSourceName: string,
-    connectionId: string
+    connectorParams:
+      | {
+          connectionId: string;
+        }
+      | {
+          url: string;
+        }
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
       method: "POST",
@@ -94,7 +100,7 @@ export class ConnectorsAPI {
         workspaceId,
         workspaceAPIKey,
         dataSourceName,
-        connectionId,
+        connectorParams,
       }),
     });
 

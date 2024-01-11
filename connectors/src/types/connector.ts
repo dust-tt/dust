@@ -1,8 +1,4 @@
-import { CONNECTOR_PROVIDERS, ConnectorProvider } from "@dust-tt/types";
-
-export function isConnectorProvider(val: string): val is ConnectorProvider {
-  return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
-}
+import { ConnectorProvider } from "@dust-tt/types";
 
 export type ConnectorSyncStatus = "succeeded" | "failed";
 export type ConnectorErrorType = "oauth_token_revoked";

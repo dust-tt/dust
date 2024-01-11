@@ -25,6 +25,7 @@ export const PlanTypeSchema = t.type({
       isGoogleDriveAllowed: t.boolean,
       isGithubAllowed: t.boolean,
       isIntercomAllowed: t.boolean,
+      isWebCrawlerAllowed: t.boolean,
     }),
     dataSources: t.type({
       count: t.number,
@@ -93,6 +94,7 @@ async function handler(
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
             isGithubAllowed: plan.isManagedGithubAllowed,
             isIntercomAllowed: plan.isManagedIntercomAllowed,
+            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
           },
           dataSources: {
             count: plan.maxDataSourcesCount,
@@ -181,6 +183,7 @@ async function handler(
           body.limits.connections.isGoogleDriveAllowed,
         isManagedGithubAllowed: body.limits.connections.isGithubAllowed,
         isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
+        isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
