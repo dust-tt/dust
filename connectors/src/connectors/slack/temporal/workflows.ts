@@ -54,15 +54,11 @@ export async function workspaceFullSync(
     for (const channelId of input.channelIds) {
       promises.push(
         childWorkflowQueue.add(async () => {
-          const percentSync = Math.round(
-            (i / Math.max(promises.length, input.channelIds.length)) * 100
-          );
           await reportInitialSyncProgressActivity(
             connectorId,
-            `${percentSync}%`
+            `${i - 1}/${input.channelIds.length} channels`
           );
-          i++;
-          return executeChild(syncOneChannel, {
+          await executeChild(syncOneChannel, {
             workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
             searchAttributes: {
               connectorId: [connectorId],
@@ -70,6 +66,7 @@ export async function workspaceFullSync(
             args: [connectorId, channelId, false, fromTs],
             memo: workflowInfo().memo,
           });
+          i++;
         })
       );
     }
