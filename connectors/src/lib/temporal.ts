@@ -113,7 +113,7 @@ export async function getDoNotCancelOnTokenRevoked(
       }
     }
   }
-  return DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] || false;
+  return DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] ?? false;
 }
 
 export async function cancelWorkflow(workflowId: string) {
