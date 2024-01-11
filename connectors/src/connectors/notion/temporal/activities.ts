@@ -41,7 +41,7 @@ import {
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
-  renderDocumentForTitleAndContent,
+  renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -1753,7 +1753,7 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
-    const content = renderDocumentForTitleAndContent({
+    const content = renderDocumentTitleAndContent({
       title: title ?? null,
       createdAt: createdAt,
       updatedAt: updatedAt,

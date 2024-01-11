@@ -20,7 +20,7 @@ import {
 } from "@connectors/connectors/github/lib/github_api";
 import {
   deleteFromDataSource,
-  renderDocumentForTitleAndContent,
+  renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
@@ -109,7 +109,7 @@ async function renderIssue(
 
   const issue = await getIssue(installationId, repoName, login, issueNumber);
 
-  const content = renderDocumentForTitleAndContent({
+  const content = renderDocumentTitleAndContent({
     title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,
@@ -282,7 +282,7 @@ async function renderDiscussion(
     discussionNumber
   );
 
-  const content = renderDocumentForTitleAndContent({
+  const content = renderDocumentTitleAndContent({
     title: `Discussion #${discussion.number} [${repoName}]: ${discussion.title}`,
     content: renderMarkdownSection(discussion.bodyText, { flavor: "gfm" }),
   });

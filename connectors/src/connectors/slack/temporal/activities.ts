@@ -30,7 +30,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteFromDataSource,
-  renderDocumentForTitleAndContent,
+  renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { WorkflowError } from "@connectors/lib/error";
@@ -717,7 +717,7 @@ export async function formatMessagesForUpsert({
     throw new Error("Cannot format empty list of messages");
   }
 
-  return renderDocumentForTitleAndContent({
+  return renderDocumentTitleAndContent({
     title: `${isThread ? "Thread" : "Messages"} in #${channelName}: ${
       first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
     }`,

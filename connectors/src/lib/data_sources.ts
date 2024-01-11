@@ -319,7 +319,7 @@ export function renderMarkdownSection(
 // connectors. The title should not include any `\n`.
 // If the title is too long it will be truncated and the remainder of the title will be set as
 // content of the top-level section.
-export function renderDocumentForTitleAndContent({
+export function renderDocumentTitleAndContent({
   title,
   createdAt,
   updatedAt,
