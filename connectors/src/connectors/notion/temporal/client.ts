@@ -49,6 +49,7 @@ export async function launchNotionSyncWorkflow(
     },
     memo: {
       connectorId: connectorId,
+      doNotCancelOnTokenRevoked: true,
     },
   });
 

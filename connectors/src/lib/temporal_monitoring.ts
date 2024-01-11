@@ -11,7 +11,11 @@ import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
-import { cancelWorkflow, getConnectorId } from "./temporal";
+import {
+  cancelWorkflow,
+  getConnectorId,
+  getDoNotCancelOnTokenRevoked,
+} from "./temporal";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -114,18 +118,12 @@ export class ActivityInboundLogInterceptor
         if (connectorId) {
           await syncFailed(connectorId, "oauth_token_revoked");
 
-          // Probes in the workflowId to identify long running workflows (such as Notion workflows
-          // which are expected to be never canceled).
-          const LONG_RUNNING_WORKFLOWS_PROBES: string[] = ["notion"];
-
-          // If the workflow is a long running workflow, we don't cancel it.
-          const isLongRunningWorkflow = LONG_RUNNING_WORKFLOWS_PROBES.some(
-            (probe) => workflowId.includes(probe)
+          const doNotCancelOnTokenRevoked = await getDoNotCancelOnTokenRevoked(
+            workflowId
           );
-
-          if (isLongRunningWorkflow) {
+          if (doNotCancelOnTokenRevoked) {
             this.logger.info(
-              "Skipping cancelling long-running workflow because of expired token."
+              "Skipping cancelling workflow because of expired token."
             );
           } else {
             // We cancel the workflow only if it's not a long running workflow
