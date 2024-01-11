@@ -65,7 +65,9 @@ export class ConfluenceSpace extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<Connector["id"]>;
+  declare name: string;
   declare spaceId: string;
+  declare urlSuffix?: string;
 }
 ConfluenceSpace.init(
   {
@@ -83,6 +85,10 @@ ConfluenceSpace.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     spaceId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -91,6 +97,10 @@ ConfluenceSpace.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    urlSuffix: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

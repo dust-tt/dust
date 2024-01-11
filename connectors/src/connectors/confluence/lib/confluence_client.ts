@@ -14,19 +14,20 @@ const ConfluenceAccessibleResourcesCodec = t.array(
   ])
 );
 
+const ConfluenceSpaceCodec = t.intersection([
+  t.type({
+    id: t.string,
+    name: t.string,
+    _links: t.type({
+      webui: t.string,
+    }),
+  }),
+  CatchAllCodec,
+]);
+export type ConfluenceSpaceType = t.TypeOf<typeof ConfluenceSpaceCodec>;
+
 const ConfluenceListSpacesCodec = t.type({
-  results: t.array(
-    t.intersection([
-      t.type({
-        id: t.string,
-        name: t.string,
-        _links: t.type({
-          webui: t.string,
-        }),
-      }),
-      CatchAllCodec,
-    ])
-  ),
+  results: t.array(ConfluenceSpaceCodec),
 });
 
 const ConfluencePageCodec = t.intersection([

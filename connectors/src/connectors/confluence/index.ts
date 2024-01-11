@@ -10,16 +10,14 @@ import {
   getConfluenceCloudInformation,
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
+import { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import {
-  getAccessTokenFromNango,
-  getConnectionFromNango,
-} from "@connectors/lib/nango_helpers";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { Err, Ok, Result } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -96,6 +94,25 @@ export async function updateConfluenceConnector(
   throw new Error("Not implemented");
 }
 
+function createConnectorResourceFromSpace(
+  space: ConfluenceSpace | ConfluenceSpaceType,
+  baseUrl: string,
+  permission: ConnectorPermission
+): ConnectorResource {
+  return {
+    provider: "confluence",
+    internalId: space.id.toString(),
+    parentInternalId: null,
+    type: "folder",
+    title: space.name || "Unnamed Space",
+    sourceUrl: `${baseUrl}/wiki${space.urlSuffix}`,
+    expandable: false,
+    permission: permission,
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+  };
+}
+
 export async function retrieveConfluenceConnectorPermissions({
   connectorId,
   parentInternalId,
@@ -131,46 +148,33 @@ export async function retrieveConfluenceConnectorPermissions({
     return new Err(new Error("Confluence configuration not found"));
   }
 
-  const confluenceConnection = await getConnectionFromNango({
-    connectionId: connector.connectionId,
-    integrationId: getRequiredNangoConfluenceConnectorId(),
-    useCache: false,
-  });
-
-  const { access_token: confluenceAccessToken } =
-    confluenceConnection.credentials;
-
-  const spaces = await listConfluenceSpaces(
-    confluenceAccessToken,
-    confluenceConfig.cloudId
-  );
-
   const syncedSpaces = await ConfluenceSpace.findAll({
     where: {
       connectorId: connectorId,
     },
   });
 
-  const allSpaces: ConnectorResource[] = spaces.map((s) => {
-    const isSynced = syncedSpaces.some((ss) => ss.spaceId === s.id);
-
-    return {
-      provider: "confluence",
-      internalId: s.id,
-      parentInternalId: null,
-      type: "folder",
-      title: `${s.name}`,
-      sourceUrl: `${confluenceConfig.url}/wiki${s._links.webui}`,
-      expandable: false,
-      permission: isSynced ? "read" : "none",
-      dustDocumentId: null,
-      lastUpdatedAt: null,
-    };
-  });
-
-  // List synced spaces.
+  let allSpaces: ConnectorResource[] = [];
   if (filterPermission === "read") {
-    return new Ok(allSpaces.filter((s) => s.permission === "read"));
+    allSpaces = syncedSpaces.map((space) =>
+      createConnectorResourceFromSpace(
+        space,
+        confluenceConfig.url,
+        filterPermission
+      )
+    );
+  } else {
+    const spaces = await listConfluenceSpaces(connector, confluenceConfig);
+
+    allSpaces = spaces.map((space) => {
+      const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
+
+      return createConnectorResourceFromSpace(
+        space,
+        confluenceConfig.url,
+        isSynced ? "read" : "none"
+      );
+    });
   }
 
   return new Ok(allSpaces);
@@ -183,6 +187,15 @@ export async function setConfluenceConnectorPermissions(
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  let spaces: ConfluenceSpaceType[] = [];
+  // Fetch Confluence spaces only if the intention is to add new spaces to sync.
+  const shouldFetchConfluenceSpaces = Object.values(permissions).some(
+    (permission) => permission === "read"
+  );
+  if (shouldFetchConfluenceSpaces) {
+    spaces = await listConfluenceSpaces(connector);
   }
 
   // TODO(2024-01-10 flav) Uncomment in next PR.
@@ -198,9 +211,13 @@ export async function setConfluenceConnectorPermissions(
       });
       // TODO(2024-01-09 flav) start a workflow to delete all pages within a Space.
     } else if (permission === "read") {
+      const confluenceSpace = spaces.find((s) => s.id === id);
+
       await ConfluenceSpace.upsert({
         connectorId: connectorId,
+        name: confluenceSpace?.name ?? id,
         spaceId: id,
+        urlSuffix: confluenceSpace?._links.webui,
       });
     } else {
       return new Err(
