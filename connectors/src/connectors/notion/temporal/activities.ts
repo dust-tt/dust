@@ -10,7 +10,6 @@ import {
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
-import { isNotionError } from "@connectors/connectors/notion/lib/errors";
 import {
   GARBAGE_COLLECT_MAX_DURATION_MS,
   isDuringGarbageCollectStartWindow,
