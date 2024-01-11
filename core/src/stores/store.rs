@@ -261,7 +261,7 @@ pub trait Store {
 
     // SQLite Workers
     async fn sqlite_workers_list(&self) -> Result<Vec<SqliteWorker>>;
-    async fn sqlite_workers_upsert(&self, url: &str) -> Result<SqliteWorker>;
+    async fn sqlite_workers_upsert(&self, url: &str, ttl: u64) -> Result<(SqliteWorker, bool)>;
     async fn sqlite_workers_delete(&self, url: &str) -> Result<()>;
     async fn sqlite_workers_cleanup(&self, ttl: u64) -> Result<()>;
 

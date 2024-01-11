@@ -23,7 +23,7 @@ use dust::{
     project::{self},
     providers::provider::{provider, ProviderID},
     run,
-    sqlite_workers::client::{self},
+    sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::postgres,
     stores::store,
     utils::{self, error_response, APIError, APIResponse},
@@ -2128,20 +2128,42 @@ async fn sqlite_workers_heartbeat(
     extract::Json(payload): extract::Json<SQLiteWorkersUpsertOrDeletePayload>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match state.store.sqlite_workers_upsert(&payload.url).await {
+    match state
+        .store
+        .sqlite_workers_upsert(&payload.url, HEARTBEAT_INTERVAL_MS)
+        .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to upsert SQLite worker",
             Some(e),
         ),
-        Ok(_) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({"success": true})),
-            }),
-        ),
+        Ok((worker, is_new)) => {
+            if is_new {
+                // The worker has just been created or is "coming back to life".
+                // We have no guarantee that the worker's running databases are up-to-date, so we expire them all.
+                match worker.expire_all().await {
+                    Err(e) => {
+                        return error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to expire SQLite worker databases",
+                            Some(e),
+                        )
+                    }
+                    Ok(_) => (),
+                }
+            }
+
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({"success": true})),
+                }),
+            )
+        }
     }
 }
 

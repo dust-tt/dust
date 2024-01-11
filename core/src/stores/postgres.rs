@@ -2733,9 +2733,21 @@ impl Store for PostgresStore {
             .collect::<Result<Vec<_>>>()
     }
 
-    async fn sqlite_workers_upsert(&self, url: &str) -> Result<SqliteWorker> {
+    async fn sqlite_workers_upsert(&self, url: &str, ttl: u64) -> Result<(SqliteWorker, bool)> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
+
+        // First, check if the worker already exists.
+        let stmt = c
+            .prepare("SELECT last_heartbeat FROM sqlite_workers WHERE url = $1 LIMIT 1")
+            .await?;
+        let r = c.query(&stmt, &[&url.to_string()]).await?;
+
+        let already_alive = match r.len() {
+            0 => false,
+            1 => r[0].get::<usize, i64>(0) > (utils::now() - ttl) as i64,
+            _ => unreachable!(),
+        };
 
         let last_heartbeat = utils::now();
 
@@ -2758,7 +2770,10 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        Ok(SqliteWorker::new(url.to_string(), last_heartbeat))
+        Ok((
+            SqliteWorker::new(url.to_string(), last_heartbeat),
+            !already_alive,
+        ))
     }
 
     async fn sqlite_workers_delete(&self, url: &str) -> Result<()> {
