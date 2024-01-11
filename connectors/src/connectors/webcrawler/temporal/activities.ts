@@ -122,10 +122,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           },
         });
 
-        await reportInitialSyncProgress(
-          connector.id,
-          `Crawled ${pageCount} pages.`
-        );
+        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
 
         pageCount++;
       },

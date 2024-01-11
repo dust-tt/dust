@@ -56,7 +56,7 @@ export async function workspaceFullSync(
         childWorkflowQueue.add(async () => {
           await reportInitialSyncProgressActivity(
             connectorId,
-            `Processed ${i - 1}/${input.channelIds.length} channels.`
+            `${i - 1}/${input.channelIds.length} channels`
           );
           await executeChild(syncOneChannel, {
             workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
