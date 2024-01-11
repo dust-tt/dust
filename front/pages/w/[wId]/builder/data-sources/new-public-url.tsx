@@ -15,13 +15,6 @@ import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-function sanitizeDsName(url: string) {
-  return url
-    .replace(/https?:\/\//, "")
-    .replace(/\/$/, "")
-    .replace(/\//g, "-");
-}
-
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
   owner: WorkspaceType;
@@ -137,7 +130,6 @@ export default function DataSourceNew({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: sanitizeDsName(dataSourceUrl),
         visibility: "private",
         assistantDefaultSelected,
         url: dataSourceUrl,

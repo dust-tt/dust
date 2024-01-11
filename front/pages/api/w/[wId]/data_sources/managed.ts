@@ -31,6 +31,13 @@ const PostManagedDataSourceRequestBodySchema = t.type({
   url: t.union([t.string, t.undefined]),
 });
 
+function urlToDataSourceName(url: string) {
+  return url
+    .replace(/https?:\/\//, "")
+    .replace(/\/$/, "")
+    .replace(/\//g, "-");
+}
+
 export type PostManagedDataSourceResponseBody = {
   dataSource: DataSourceType;
   connector: ConnectorType;
@@ -111,13 +118,32 @@ async function handler(
           },
         });
       }
+      let dataSourceName : string;
+      let dataSourceDescription : string;
 
-      const dataSourceName = suffix
-        ? `managed-${certifiedProvider}-${suffix}`
-        : `managed-${certifiedProvider}`;
-      const dataSourceDescription = suffix
-        ? `Managed Data Source for ${certifiedProvider} (${suffix})`
-        : `Managed Data Source for ${certifiedProvider}`;
+      switch (type) {
+        case "oauth": {
+           dataSourceName = suffix
+          ? `managed-${certifiedProvider}-${suffix}`
+          : `managed-${certifiedProvider}`;
+         dataSourceDescription = suffix
+          ? `Managed Data Source for ${certifiedProvider} (${suffix})`
+          : `Managed Data Source for ${certifiedProvider}`;
+  
+          break;
+
+        }
+        case "url": {
+          
+          dataSourceName = urlToDataSourceName(url as string);
+          dataSourceDescription = url as string;
+          break;
+        }
+
+        default:
+          assertNever(type);
+      }
+
       const dataSourceProviderId = "openai";
       const dataSourceModelId = "text-embedding-ada-002";
       const dataSourceMaxChunkSize = 512;
