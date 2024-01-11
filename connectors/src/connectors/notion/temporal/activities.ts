@@ -56,11 +56,7 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import {
-  syncFailed,
-  syncStarted,
-  syncSucceeded,
-} from "@connectors/lib/sync_status";
+import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;
