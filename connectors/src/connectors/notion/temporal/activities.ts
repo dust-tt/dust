@@ -1,5 +1,5 @@
 import { ModelId } from "@dust-tt/types";
-import { isFullBlock, isFullPage } from "@notionhq/client";
+import { APIResponseError, isFullBlock, isFullPage } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
@@ -44,6 +44,7 @@ import {
   renderSectionForTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import {
   NotionConnectorBlockCacheEntry,
@@ -229,6 +230,7 @@ export async function getPagesAndDatabasesToSync({
 
   const localLogger = logger.child({
     ...loggerArgs,
+    connectorId: connector.id,
     dataSourceName: connector.dataSourceName,
     workspaceId: connector.workspaceId,
   });
@@ -261,31 +263,33 @@ export async function getPagesAndDatabasesToSync({
       skippedDatabaseIds
     );
   } catch (e) {
-    // Sometimes a cursor will consistently fail with 500.
-    // In this case, there is not much we can do, so we just give up and move on.
-    // Notion workspaces are resynced daily so nothing is lost forever.
-    const potentialNotionError = e as {
-      body: unknown;
-      code: string;
-      status: number;
-    };
-    if (
-      potentialNotionError.code === "internal_server_error" &&
-      potentialNotionError.status === 500
-    ) {
-      if (Context.current().info.attempt > 20) {
-        localLogger.error(
-          {
-            error: potentialNotionError,
-            attempt: Context.current().info.attempt,
-          },
-          "Failed to get Notion search result page with cursor. Giving up and moving on"
-        );
-        return {
-          pageIds: [],
-          databaseIds: [],
-          nextCursor: null,
-        };
+    if (APIResponseError.isAPIResponseError(e)) {
+      // Sometimes a cursor will consistently fail with 500.
+      // In this case, there is not much we can do, so we just give up and move on.
+      // Notion workspaces are resynced daily so nothing is lost forever.
+      switch (e.code) {
+        case "internal_server_error":
+          if (Context.current().info.attempt > 20) {
+            localLogger.error(
+              {
+                error: e,
+                attempt: Context.current().info.attempt,
+              },
+              "Failed to get Notion search result page with cursor. Giving up and moving on"
+            );
+            return {
+              pageIds: [],
+              databaseIds: [],
+              nextCursor: null,
+            };
+          }
+          break;
+
+        case "unauthorized":
+          throw new ExternalOauthTokenError(e);
+
+        default:
+          throw e;
       }
     }
 
