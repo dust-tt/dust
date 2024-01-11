@@ -156,7 +156,7 @@ export default function DataSourcesView({
           </div>
         ) : (
           <EmptyCallToAction
-            label="Create a new Folder"
+            label="Create a new Public URL"
             onClick={handleCreateDataSource}
           />
         )}

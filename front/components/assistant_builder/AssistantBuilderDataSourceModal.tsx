@@ -6,7 +6,7 @@ import {
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import { assertNever, ConnectorProvider, DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
@@ -153,11 +153,7 @@ function PickDataSource({
           )
           .map((ds) => (
             <Item.Navigation
-              label={
-                ds.connectorProvider
-                  ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name
-                  : ds.name
-              }
+              label={getDisplayNameForDataSource(ds)}
               icon={
                 ds.connectorProvider
                   ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
@@ -255,9 +251,7 @@ function DataSourceResourceSelector({
       <Page>
         <Page.Header
           title={`Select Data Sources in ${
-            CONNECTOR_CONFIGURATIONS[
-              dataSource?.connectorProvider as ConnectorProvider
-            ]?.name
+            dataSource ? getDisplayNameForDataSource(dataSource) : null
           }`}
           icon={
             CONNECTOR_CONFIGURATIONS[
@@ -318,4 +312,24 @@ function DataSourceResourceSelector({
       </Page>
     </Transition>
   );
+}
+
+function getDisplayNameForDataSource(ds: DataSourceType) {
+  if (ds.connectorProvider) {
+    switch (ds.connectorProvider) {
+      case "slack":
+      case "google_drive":
+      case "github":
+      case "intercom":
+      case "notion":
+        return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
+        break;
+      case "webcrawler":
+        return ds.name;
+      default:
+        assertNever(ds.connectorProvider);
+    }
+  } else {
+    return ds.name;
+  }
 }
