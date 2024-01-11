@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   AgentsGetViewType,
   DataSourceType,
 } from "@dust-tt/types";
@@ -491,7 +491,7 @@ export function useAgentConfiguration({
   agentConfigurationId: string;
 }) {
   const agentConfigurationFetcher: Fetcher<{
-    agentConfiguration: AgentConfigurationDetailedViewType;
+    agentConfiguration: AgentConfigurationType;
   }> = fetcher;
 
   const { data, error, mutate } = useSWR(

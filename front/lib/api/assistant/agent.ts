@@ -1,7 +1,7 @@
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -48,7 +48,7 @@ import logger from "@app/logger/logger";
 // This method is used by actions to generate its inputs if needed.
 export async function generateActionInputs(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   specification: AgentActionSpecification,
   conversation: ConversationType,
   userMessage: UserMessageType

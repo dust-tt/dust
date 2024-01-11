@@ -1,7 +1,7 @@
 import {
   AgentActionConfigurationType,
-  AgentConfigurationDetailedViewType,
   AgentConfigurationListViewType,
+  AgentConfigurationType,
   AgentGenerationConfigurationType,
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -239,7 +239,7 @@ export async function createOrUpgradeAgentConfiguration(
     },
   }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
   agentConfigurationId?: string
-): Promise<Result<AgentConfigurationDetailedViewType, Error>> {
+): Promise<Result<AgentConfigurationType, Error>> {
   let generationConfig: AgentGenerationConfigurationType | null = null;
   if (generation)
     generationConfig = await createAgentGenerationConfiguration(auth, {

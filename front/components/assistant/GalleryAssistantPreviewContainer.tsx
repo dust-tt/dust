@@ -1,7 +1,7 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationDetailedViewType,
   AgentConfigurationListViewType,
+  AgentConfigurationType,
   AgentUserListStatus,
   PlanType,
   PostOrPatchAgentConfigurationRequestBody,
@@ -68,7 +68,7 @@ const useAssistantUpdate = (
     }
 
     const detailedAgentConfiguration: {
-      agentConfiguration: AgentConfigurationDetailedViewType;
+      agentConfiguration: AgentConfigurationType;
     } = await detailedAssitantRes.json();
 
     const {

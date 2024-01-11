@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   AgentMessageType,
   cloneBaseConfig,
   ConversationType,
@@ -71,7 +71,7 @@ function getDatabaseQueryAppSpecification() {
  */
 export async function generateDatabaseQueryAppParams(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType
 ): Promise<
@@ -115,7 +115,7 @@ export async function* runDatabaseQuery({
   agentMessage,
 }: {
   auth: Authenticator;
-  configuration: AgentConfigurationDetailedViewType;
+  configuration: AgentConfigurationType;
   conversation: ConversationType;
   userMessage: UserMessageType;
   agentMessage: AgentMessageType;

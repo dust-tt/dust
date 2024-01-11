@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
@@ -217,7 +217,7 @@ export async function renderConversationForModel({
 export async function constructPrompt(
   auth: Authenticator,
   userMessage: UserMessageType,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   fallbackPrompt?: string
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -268,7 +268,7 @@ export async function constructPrompt(
 // create any state, only stream tokens and/or error and final success events.
 export async function* runGeneration(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType

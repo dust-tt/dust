@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/types";
 import {
   AgentActionSpecification,
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
 } from "@dust-tt/types";
 import {
   AgentMessageType,
@@ -192,7 +192,7 @@ export async function retrievalActionSpecification(
 /// potentially generating the query and relative time frame.
 export async function generateRetrievalParams(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType
 ): Promise<
@@ -426,7 +426,7 @@ const getRefs = () => {
 // error is expected to be stored by the caller on the parent agent message.
 export async function* runRetrieval(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType

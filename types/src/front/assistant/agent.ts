@@ -144,9 +144,8 @@ export type AgentConfigurationListViewType = {
   usage?: AgentUsageType;
 };
 
-export type AgentConfigurationDetailedViewType =
-  AgentConfigurationListViewType & {
-    // If undefined, no action performed, otherwise the action is
-    // performed (potentially NoOp eg autoSkip above).
-    action: AgentActionConfigurationType | null;
-  };
+export type AgentConfigurationType = AgentConfigurationListViewType & {
+  // If undefined, no action performed, otherwise the action is
+  // performed (potentially NoOp eg autoSkip above).
+  action: AgentActionConfigurationType | null;
+};

@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   AppType,
   DataSourceType,
   isDatabaseQueryConfiguration,
@@ -40,7 +40,7 @@ export const getServerSideProps: GetServerSideProps<{
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
-  agentConfiguration: AgentConfigurationDetailedViewType | null;
+  agentConfiguration: AgentConfigurationType | null;
   flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -67,7 +67,7 @@ export const getServerSideProps: GetServerSideProps<{
     {} as Record<string, DataSourceType>
   );
 
-  let config: AgentConfigurationDetailedViewType | null = null;
+  let config: AgentConfigurationType | null = null;
   if (context.query.duplicate && typeof context.query.duplicate === "string") {
     config = await getAgentConfigurationDetailedView(
       auth,

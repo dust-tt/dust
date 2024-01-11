@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   DataSourceType,
   UserType,
   WorkspaceType,
@@ -36,7 +36,7 @@ export async function buildInitialState({
   dustApps,
 }: {
   dataSourceByName: Record<string, DataSourceType>;
-  config: AgentConfigurationDetailedViewType;
+  config: AgentConfigurationType;
   dustApps: AppType[];
 }) {
   const selectedResources: {
@@ -130,7 +130,7 @@ export const getServerSideProps: GetServerSideProps<{
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
-  agentConfiguration: AgentConfigurationDetailedViewType;
+  agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);

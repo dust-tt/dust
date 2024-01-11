@@ -6,8 +6,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationDetailedViewType,
   AgentConfigurationListViewType,
+  AgentConfigurationType,
   DataSourceType,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
@@ -47,7 +47,7 @@ export const getServerSideProps: GetServerSideProps<{
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
-  agentConfigurations: AgentConfigurationDetailedViewType[];
+  agentConfigurations: AgentConfigurationType[];
   slackbotEnabled?: boolean;
   gdrivePDFEnabled?: boolean;
   dataSourcesSynchronizedAgo: Record<string, string>;
@@ -108,7 +108,7 @@ export const getServerSideProps: GetServerSideProps<{
     }
     acc.push(item);
     return acc;
-  }, [] as AgentConfigurationDetailedViewType[]);
+  }, [] as AgentConfigurationType[]);
 
   // sort data source so that managed ones (i.e ones with a connector provider) are first
   dataSources.sort((a, b) => {

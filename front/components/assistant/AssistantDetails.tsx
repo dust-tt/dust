@@ -23,7 +23,7 @@ import {
   DataSourceConfiguration,
   isRetrievalConfiguration,
 } from "@dust-tt/types";
-import { AgentConfigurationDetailedViewType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useContext, useState } from "react";
@@ -114,7 +114,7 @@ export function AssistantDetails({
   const ActionSection = ({
     action,
   }: {
-    action: AgentConfigurationDetailedViewType["action"];
+    action: AgentConfigurationType["action"];
   }) =>
     action ? (
       isDustAppRunConfiguration(action) ? (

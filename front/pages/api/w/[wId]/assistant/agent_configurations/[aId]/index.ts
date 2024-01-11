@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
@@ -16,7 +16,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationDetailedViewType;
+  agentConfiguration: AgentConfigurationType;
 };
 export type DeleteAgentConfigurationResponseBody = {
   success: boolean;

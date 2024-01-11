@@ -1,5 +1,5 @@
 import {
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
   CoreAPI,
   isRetrievalConfiguration,
   ReturnedAPIErrorType,
@@ -604,7 +604,7 @@ async function archiveConnectedAgents(auth: Authenticator) {
     }
     acc.push(item);
     return acc;
-  }, [] as AgentConfigurationDetailedViewType[]);
+  }, [] as AgentConfigurationType[]);
 
   // agentconfigurations with a retrieval action with at least a managed
   // data source

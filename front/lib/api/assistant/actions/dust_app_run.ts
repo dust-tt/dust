@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/types";
 import {
   AgentActionSpecification,
-  AgentConfigurationDetailedViewType,
+  AgentConfigurationType,
 } from "@dust-tt/types";
 import {
   AgentMessageType,
@@ -109,7 +109,7 @@ export async function dustAppRunActionSpecification(
 // Generates Dust app run parameters given the agent configuration and the conversation context.
 export async function generateDustAppRunParams(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   app: AppType,
@@ -223,7 +223,7 @@ export async function renderDustAppRunActionByModelId(
 // message.
 export async function* runDustApp(
   auth: Authenticator,
-  configuration: AgentConfigurationDetailedViewType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType

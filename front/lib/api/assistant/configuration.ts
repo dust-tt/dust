@@ -18,9 +18,9 @@ import {
 } from "@dust-tt/types";
 import {
   AgentActionConfigurationType,
-  AgentConfigurationDetailedViewType,
   AgentConfigurationListViewType,
   AgentConfigurationScope,
+  AgentConfigurationType,
   AgentGenerationConfigurationType,
   AgentStatus,
 } from "@dust-tt/types";
@@ -60,7 +60,7 @@ import { generateModelSId } from "@app/lib/utils";
 export async function getAgentConfigurationDetailedView(
   auth: Authenticator,
   agentId: string
-): Promise<AgentConfigurationDetailedViewType | null> {
+): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -267,7 +267,7 @@ export async function getAgentConfigurationDetailedView(
   /*
    * Final rendering.
    */
-  const agentConfiguration: AgentConfigurationDetailedViewType = {
+  const agentConfiguration: AgentConfigurationType = {
     id: agent.id,
     sId: agent.sId,
     version: agent.version,
@@ -619,7 +619,7 @@ export async function createAgentConfiguration(
     action: AgentActionConfigurationType | null;
     agentConfigurationId?: string;
   }
-): Promise<Result<AgentConfigurationDetailedViewType, Error>> {
+): Promise<Result<AgentConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -742,7 +742,7 @@ export async function createAgentConfiguration(
     /*
      * Final rendering.
      */
-    const agentConfiguration: AgentConfigurationDetailedViewType = {
+    const agentConfiguration: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
       version: agent.version,
