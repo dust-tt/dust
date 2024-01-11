@@ -644,7 +644,6 @@ function InviteSettingsModal({
             checked={isDomainWhitelisted}
             disabled={domainUpdating}
             onChange={(checked) => {
-              console.log("checked");
               setIsDomainWhitelisted(checked);
             }}
           />
