@@ -231,6 +231,10 @@ async function _updateDocumentParentsField({
 
 const MAX_TITLE_SECTION_PREFIX_LENGTH = 256;
 
+// The role of this function is to create a prefix from an arbitrary long string. The prefix
+// provided should will not be augmented with `\n`, so it should include appropriate carriage
+// returns. If the prefix is too long (>256 chars), it will be truncated. The remained will be
+// returned as content of the resulting section.
 export function renderPrefixSection(
   prefix: string | null
 ): CoreAPIDataSourceDocumentSection {
@@ -310,8 +314,11 @@ export function renderMarkdownSection(
   return top;
 }
 
-// Will render the document creating a prefix that contains a $title possibly truncated (whose
-// remainder is set as first content of the docuemnt) along with $createdAt and $lastUpdatedAt
+// Will render the document based on title, optional createdAt and updatedAt and a structured
+// content. The title, createdAt and updatedAt will be presented in a standardized way across
+// connectors. The title should not include any `\n`.
+// If the title is too long it will be truncated and the remainder of the title will be set as
+// content of the top-level section.
 export function renderDocumentForTitleAndContent({
   title,
   createdAt,
