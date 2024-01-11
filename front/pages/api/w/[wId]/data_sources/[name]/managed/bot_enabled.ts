@@ -75,8 +75,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const botEnabledRes = await connectorsAPI.getBotEnabled(
-        dataSource.connectorId
+      const botEnabledRes = await connectorsAPI.getConnectorConfig(
+        dataSource.connectorId,
+        "botEnabled"
       );
 
       if (botEnabledRes.isErr()) {
@@ -89,7 +90,9 @@ async function handler(
         });
       }
 
-      res.status(200).json(botEnabledRes.value);
+      res
+        .status(200)
+        .json({ botEnabled: botEnabledRes.value.configValue === "true" });
       return;
 
     case "POST":
@@ -116,9 +119,10 @@ async function handler(
         });
       }
 
-      const setBotEnabledRes = await connectorsAPI.setBotEnabled(
+      const setBotEnabledRes = await connectorsAPI.setConnectorConfig(
         dataSource.connectorId,
-        bodyValidation.right.botEnabled
+        "botEnabled",
+        bodyValidation.right.botEnabled ? "true" : "false"
       );
 
       if (setBotEnabledRes.isErr()) {

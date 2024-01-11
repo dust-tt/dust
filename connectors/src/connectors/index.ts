@@ -1,4 +1,4 @@
-import { ConnectorProvider, ModelId } from "@dust-tt/types";
+import { ConnectorProvider } from "@dust-tt/types";
 
 import {
   cleanupGithubConnector,
@@ -34,8 +34,6 @@ import {
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
 import {
-  BotEnabledGetter,
-  BotToggler,
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorConfigGetter,
@@ -65,17 +63,15 @@ import {
 import {
   cleanupSlackConnector,
   createSlackConnector,
+  getSlackConfig,
   retrieveSlackChannelsTitles,
   retrieveSlackConnectorPermissions,
+  setSlackConfig,
   setSlackConnectorPermissions,
   updateSlackConnector,
 } from "@connectors/connectors/slack";
-import {
-  getBotEnabled,
-  toggleSlackbot,
-} from "@connectors/connectors/slack/bot";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 import {
@@ -165,45 +161,6 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   },
 };
 
-const toggleBotNotImplemented = async (
-  connectorId: ModelId
-): Promise<Result<void, Error>> => {
-  return new Err(
-    new Error(`Toggling bot for connector ${connectorId} is not implemented.`)
-  );
-};
-
-export const TOGGLE_BOT_BY_TYPE: Record<ConnectorProvider, BotToggler> = {
-  slack: toggleSlackbot,
-  notion: toggleBotNotImplemented,
-  github: toggleBotNotImplemented,
-  google_drive: toggleBotNotImplemented,
-  intercom: toggleBotNotImplemented,
-  webcrawler: toggleBotNotImplemented,
-};
-
-const getBotEnabledNotImplemented = async (
-  connectorId: ModelId
-): Promise<Result<boolean, Error>> => {
-  return new Err(
-    new Error(
-      `Getting botEnabled for connector ${connectorId} is not implemented.`
-    )
-  );
-};
-
-export const GET_BOT_ENABLED_BY_TYPE: Record<
-  ConnectorProvider,
-  BotEnabledGetter
-> = {
-  slack: getBotEnabled,
-  notion: getBotEnabledNotImplemented,
-  github: getBotEnabledNotImplemented,
-  google_drive: getBotEnabledNotImplemented,
-  intercom: getBotEnabledNotImplemented,
-  webcrawler: getBotEnabledNotImplemented,
-};
-
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
     slack: launchSlackSyncWorkflow,
@@ -285,9 +242,7 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorConfigSetter
 > = {
-  slack: () => {
-    throw new Error("Not implemented");
-  },
+  slack: setSlackConfig,
   notion: async () => {
     throw new Error("Not implemented");
   },
@@ -307,9 +262,7 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorConfigGetter
 > = {
-  slack: () => {
-    throw new Error("Not implemented");
-  },
+  slack: getSlackConfig,
   notion: async () => {
     throw new Error("Not implemented");
   },

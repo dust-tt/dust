@@ -39,15 +39,6 @@ export type ConnectorResumer = (
   connectorId: string
 ) => Promise<Result<string, Error>>;
 
-export type BotToggler = (
-  connectorId: ModelId,
-  botEnabled: boolean
-) => Promise<Result<void, Error>>;
-
-export type BotEnabledGetter = (
-  connectorId: ModelId
-) => Promise<Result<boolean, Error>>;
-
 export type SyncConnector = (
   connectorId: string,
   fromTs: number | null

@@ -2,8 +2,15 @@ import { ModelId } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
-import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
+import {
+  getBotEnabled,
+  toggleSlackbot,
+} from "@connectors/connectors/slack/bot";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
@@ -628,4 +635,52 @@ export async function retrieveSlackChannelsTitles(
   }
 
   return new Ok(titles);
+}
+
+export const getSlackConfig: ConnectorConfigGetter = async function (
+  connectorId: ModelId,
+  configKey: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  switch (configKey) {
+    case "botEnabled": {
+      const botEnabledRes = await getBotEnabled(connectorId);
+      if (botEnabledRes.isErr()) {
+        return botEnabledRes;
+      }
+      return new Ok(botEnabledRes.value.toString());
+    }
+    default:
+      return new Err(new Error(`Invalid config key ${configKey}`));
+  }
+};
+
+export async function setSlackConfig(
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  switch (configKey) {
+    case "botEnabled": {
+      const res = await toggleSlackbot(connectorId, configValue === "true");
+      return res;
+    }
+
+    default: {
+      return new Err(new Error(`Invalid config key ${configKey}`));
+    }
+  }
 }
