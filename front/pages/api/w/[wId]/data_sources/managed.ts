@@ -118,23 +118,21 @@ async function handler(
           },
         });
       }
-      let dataSourceName : string;
-      let dataSourceDescription : string;
+      let dataSourceName: string;
+      let dataSourceDescription: string;
 
       switch (type) {
         case "oauth": {
-           dataSourceName = suffix
-          ? `managed-${certifiedProvider}-${suffix}`
-          : `managed-${certifiedProvider}`;
-         dataSourceDescription = suffix
-          ? `Managed Data Source for ${certifiedProvider} (${suffix})`
-          : `Managed Data Source for ${certifiedProvider}`;
-  
-          break;
+          dataSourceName = suffix
+            ? `managed-${certifiedProvider}-${suffix}`
+            : `managed-${certifiedProvider}`;
+          dataSourceDescription = suffix
+            ? `Managed Data Source for ${certifiedProvider} (${suffix})`
+            : `Managed Data Source for ${certifiedProvider}`;
 
+          break;
         }
         case "url": {
-          
           dataSourceName = urlToDataSourceName(url as string);
           dataSourceDescription = url as string;
           break;
