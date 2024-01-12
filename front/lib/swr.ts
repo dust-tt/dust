@@ -458,7 +458,9 @@ export function useAgentConfigurations({
     if (typeof agentsGetView === "string") {
       params.append("view", agentsGetView);
     } else {
-      params.append("conversationId", agentsGetView.conversationId);
+      if ("conversationId" in agentsGetView) {
+        params.append("conversationId", agentsGetView.conversationId);
+      }
     }
     if (includes.includes("usage")) {
       params.append("withUsage", "true");

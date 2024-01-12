@@ -1,7 +1,7 @@
 import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getLightAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -34,10 +34,11 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const agentConfigurations = await getLightAgentConfigurations(
+      const agentConfigurations = await getAgentConfigurations({
         auth,
-        "all"
-      );
+        agentsGetView: "all",
+        variant: "light",
+      });
       return res.status(200).json({
         agentConfigurations,
       });

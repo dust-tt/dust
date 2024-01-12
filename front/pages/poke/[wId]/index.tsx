@@ -24,10 +24,7 @@ import React, { useContext } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  getAgentConfigurations,
-  getLightAgentConfigurations,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -88,15 +85,16 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const dataSources = await getDataSources(auth);
+
   const agentConfigurations = (
-    await getLightAgentConfigurations(auth, "admin_internal")
+    await getAgentConfigurations({
+      auth,
+      agentsGetView: "admin_internal",
+      variant: "full",
+    })
   ).filter(
     (a) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
-  );
-  const detailedAgentConfigurations = await getAgentConfigurations(
-    auth,
-    agentConfigurations.map((a) => a.sId)
   );
 
   // sort data source so that managed ones (i.e ones with a connector provider) are first
@@ -177,7 +175,7 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       planInvitation: planInvitation ?? null,
       dataSources,
-      agentConfigurations: detailedAgentConfigurations,
+      agentConfigurations: agentConfigurations,
       slackbotEnabled,
       gdrivePDFEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,

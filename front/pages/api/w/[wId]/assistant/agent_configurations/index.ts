@@ -18,7 +18,7 @@ import {
   createAgentActionConfiguration,
   createAgentConfiguration,
   createAgentGenerationConfiguration,
-  getLightAgentConfigurations,
+  getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { getMembers } from "@app/lib/api/workspace";
@@ -100,10 +100,11 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getLightAgentConfigurations(
+      let agentConfigurations = await getAgentConfigurations({
         auth,
-        viewParam
-      );
+        agentsGetView: viewParam,
+        variant: "light",
+      });
       if (withUsage === "true") {
         agentConfigurations = await safeRedisClient(async (redis) => {
           return Promise.all(

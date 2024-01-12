@@ -11,7 +11,6 @@ import { promisify } from "util";
 import {
   archiveAgentConfiguration,
   getAgentConfigurations,
-  getLightAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { deleteDataSource } from "@app/lib/api/data_sources";
@@ -585,14 +584,11 @@ async function revokeUsersForDowngrade(auth: Authenticator) {
 }
 
 async function archiveConnectedAgents(auth: Authenticator) {
-  const agentConfigurationLights = await getLightAgentConfigurations(
+  const agentConfigurations = await getAgentConfigurations({
     auth,
-    "admin_internal"
-  );
-  const agentConfigurations = await getAgentConfigurations(
-    auth,
-    agentConfigurationLights.map((a) => a.sId)
-  );
+    agentsGetView: "admin_internal",
+    variant: "full",
+  });
 
   // agentconfigurations with a retrieval action with at least a managed
   // data source
