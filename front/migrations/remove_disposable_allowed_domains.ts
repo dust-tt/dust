@@ -31,15 +31,17 @@ makeScript({}, async ({ execute }) => {
       const firstAdminUser = await User.findOne({
         include: {
           model: Membership,
-          attributes: [], // Exclude Membership attributes from the final result
+          attributes: [], // Exclude Membership attributes from the final result.
           where: {
-            role: "admin", // Adjust as needed, if you're looking for a specific role
+            role: "admin",
+            workspaceId: workspace.id,
           },
+          required: true, //  /!\ Needed to ensure we retrieve users from the provided workspaceId!
         },
         where: {
           provider: "google",
         },
-        order: [["createdAt", "ASC"]], // Use ASC for the earliest signup
+        order: [["createdAt", "ASC"]], // Use ASC for the earliest signup.
         limit: 1,
       });
 
@@ -58,7 +60,8 @@ makeScript({}, async ({ execute }) => {
       }
 
       console.log(
-        `>> About to update workspace allowedDomain from ${workspace.allowedDomain} to ${newAllowedDomain} for workspace Id ${workspace.id}`
+        `>> About to update workspace allowedDomain from ${workspace.allowedDomain} to ${newAllowedDomain} for workspace Id ${workspace.id}:`,
+        workspace.allowedDomain === newAllowedDomain ? "[SAME]" : "[DIFFERENT]"
       );
 
       if (execute) {
