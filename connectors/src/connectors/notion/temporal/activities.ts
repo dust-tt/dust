@@ -2,6 +2,7 @@ import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
+import * as fs from "fs";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
@@ -1980,7 +1981,6 @@ export async function getDiscoveredResourcesFromCache(
  */
 function renderPageSection({
   blocksByParentId,
-  logger,
 }: {
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
   logger?: any;
@@ -2015,21 +2015,36 @@ function renderPageSection({
       parentId
     ] as NotionConnectorBlockCacheEntry[];
     blocks.sort((a, b) => a.indexInParent - b.indexInParent);
-    let parentsPath = [parentId];
+    let currentHeadings: { h1: string | null; h2: string | null } = {
+      h1: null,
+      h2: null,
+    };
     for (const block of blocks) {
-      const currentParentId = parentsPath[parentsPath.length - 1] as string;
-      adaptedBlocksByParentId[currentParentId] = [
-        ...(adaptedBlocksByParentId[currentParentId] ?? []),
-        block,
-      ];
       if (block.blockType === "heading_1") {
-        parentsPath = [parentId, block.notionBlockId];
+        adaptedBlocksByParentId[parentId] = [
+          ...(adaptedBlocksByParentId[parentId] ?? []),
+          block,
+        ];
+        currentHeadings.h1 = block.notionBlockId;
+        currentHeadings.h2 = null;
       } else if (block.blockType === "heading_2") {
-        parentsPath = parentsPath.slice(0, 2);
-        parentsPath.push(block.notionBlockId);
+        const h2ParentId = currentHeadings.h1 ?? parentId;
+        adaptedBlocksByParentId[h2ParentId] = [
+          ...(adaptedBlocksByParentId[h2ParentId] ?? []),
+          block,
+        ];
+        currentHeadings.h2 = block.notionBlockId;
+      } else {
+        const currentParentId =
+          currentHeadings.h2 ?? currentHeadings.h1 ?? parentId;
+        adaptedBlocksByParentId[currentParentId] = [
+          ...(adaptedBlocksByParentId[currentParentId] ?? []),
+          block,
+        ];
       }
     }
   }
+
   const renderBlockSection = (
     b: NotionConnectorBlockCacheEntry,
     depth: number,
@@ -2070,5 +2085,8 @@ function renderPageSection({
     renderedPageSection.sections.push(renderBlockSection(block, 0));
   }
   console.log(renderedPageSection);
+  // write rendered page to file
+  fs.writeFileSync("page.json", JSON.stringify(renderedPageSection, null, 2));
+
   return renderedPageSection;
 }
