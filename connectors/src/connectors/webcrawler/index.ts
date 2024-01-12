@@ -1,6 +1,9 @@
 import type { ConnectorResource, ModelId } from "@dust-tt/types";
 
-import { stableIdForUrl } from "@connectors/connectors/webcrawler/lib/utils";
+import {
+  normalizeFolderUrl,
+  stableIdForUrl,
+} from "@connectors/connectors/webcrawler/lib/utils";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
@@ -96,14 +99,6 @@ export async function retrieveWebcrawlerConnectorPermissions({
     parentUrl = parent.url;
   }
 
-  const folders = await WebCrawlerFolder.findAll({
-    where: {
-      connectorId: connector.id,
-      webcrawlerConfigurationId: webCrawlerConfig.id,
-      parentUrl: parentUrl,
-    },
-  });
-
   const pages = await WebCrawlerPage.findAll({
     where: {
       connectorId: connector.id,
@@ -112,8 +107,26 @@ export async function retrieveWebcrawlerConnectorPermissions({
     },
   });
 
+  const folders = await WebCrawlerFolder.findAll({
+    where: {
+      connectorId: connector.id,
+      webcrawlerConfigurationId: webCrawlerConfig.id,
+      parentUrl: parentUrl,
+    },
+  });
+
+  const normalizedPagesSet = new Set(
+    pages.map((p) => normalizeFolderUrl(p.url))
+  );
+  // List of folders that are also pages
+  const excludedFoldersSet = new Set(
+    folders.map((f) => f.url).filter((f) => normalizedPagesSet.has(f))
+  );
+
   return new Ok(
     folders
+      // We don't want to show folders that are also pages.
+      .filter((f) => !excludedFoldersSet.has(f.url))
       .map((folder): ConnectorResource => {
         return {
           provider: "webcrawler",
@@ -139,9 +152,18 @@ export async function retrieveWebcrawlerConnectorPermissions({
       })
       .concat(
         pages.map((page): ConnectorResource => {
+          const parsedUrl = new URL(page.url);
+          const isFileAndFolder = excludedFoldersSet.has(
+            normalizeFolderUrl(page.url)
+          );
           return {
             provider: "webcrawler",
-            internalId: page.documentId,
+            internalId: isFileAndFolder
+              ? stableIdForUrl({
+                  url: normalizeFolderUrl(page.url),
+                  ressourceType: "folder",
+                })
+              : page.documentId,
             parentInternalId: page.parentUrl
               ? stableIdForUrl({
                   url: page.parentUrl,
@@ -149,12 +171,12 @@ export async function retrieveWebcrawlerConnectorPermissions({
                 })
               : null,
             title:
-              new URL(page.url).pathname
+              parsedUrl.pathname
                 .split("/")
                 .filter((x) => x)
-                .pop() || page.url,
+                .pop() || parsedUrl.origin,
             sourceUrl: page.url,
-            expandable: false,
+            expandable: isFileAndFolder ? true : false,
             permission: "read",
             dustDocumentId: page.documentId,
             type: "file",
