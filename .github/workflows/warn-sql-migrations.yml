@@ -18,11 +18,15 @@ jobs:
 
       - name: Check for file changes
         run: |
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -E 'front/lib/models/|connectors/src/lib/models/')
+          echo "Checking for changed files..."
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -E 'front/lib/models/|connectors/src/lib/models/') || true
           if [ -n "$CHANGED_FILES" ]; then
+            echo "Changed files found:"
+            echo "$CHANGED_FILES"
             echo "::set-output name=modified::true"
             echo "::warning ::Files in 'front/lib/models/' or 'connectors/src/lib/models/' have been modified."
           else
+            echo "No changed files found."
             echo "::set-output name=modified::false"
           fi
 
