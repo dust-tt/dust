@@ -1561,7 +1561,6 @@ export async function renderAndUpsertPageFromCache({
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
-  localLogger.info("PROPERTY =======================", parsedProperties);
   for (const [i, p] of parsedProperties
     .filter((p) => p.key !== "title" && p.text)
     .entries()) {
@@ -1987,7 +1986,7 @@ function renderPageSection({
 }): CoreAPIDataSourceDocumentSection {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
-    content: null, // "\n", // add a newline to separate the page from the metadata above (title, author...)
+    content: "\n", // add a newline to separate the page from the metadata above (title, author...)
     sections: [],
   };
 
@@ -2084,9 +2083,5 @@ function renderPageSection({
   for (const block of topLevelBlocks) {
     renderedPageSection.sections.push(renderBlockSection(block, 0));
   }
-  console.log(renderedPageSection);
-  // write rendered page to file
-  fs.writeFileSync("page.json", JSON.stringify(renderedPageSection, null, 2));
-
   return renderedPageSection;
 }
