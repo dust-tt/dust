@@ -1,9 +1,9 @@
 import {
   AgentActionConfigurationType,
-  AgentConfigurationListViewType,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   GetAgentConfigurationsQuerySchema,
+  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBodySchema,
   Result,
 } from "@dust-tt/types";
@@ -18,7 +18,7 @@ import {
   createAgentActionConfiguration,
   createAgentConfiguration,
   createAgentGenerationConfiguration,
-  getAgentConfigurationListViews,
+  getLightAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { getMembers } from "@app/lib/api/workspace";
@@ -27,10 +27,10 @@ import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: AgentConfigurationListViewType[];
+  agentConfigurations: LightAgentConfigurationType[];
 };
 export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
 };
 
 async function handler(
@@ -100,7 +100,7 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getAgentConfigurationListViews(
+      let agentConfigurations = await getLightAgentConfigurations(
         auth,
         viewParam
       );
@@ -110,7 +110,7 @@ async function handler(
             agentConfigurations.map(
               async (
                 agentConfiguration
-              ): Promise<AgentConfigurationListViewType> => {
+              ): Promise<LightAgentConfigurationType> => {
                 return {
                   ...agentConfiguration,
                   usage: await getAgentUsage({
@@ -132,7 +132,7 @@ async function handler(
           agentConfigurations.map(
             async (
               agentConfiguration
-            ): Promise<AgentConfigurationListViewType> => {
+            ): Promise<LightAgentConfigurationType> => {
               return {
                 ...agentConfiguration,
                 lastAuthors: await getAgentRecentAuthors(

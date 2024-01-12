@@ -10,10 +10,10 @@ import {
   Popup,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationListViewType,
   AgentMention,
   ContentFragmentContentType,
   ConversationType,
+  LightAgentConfigurationType,
   MentionType,
   SubscriptionType,
   UserType,
@@ -150,7 +150,7 @@ export default function AssistantNew({
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMention | null>(null);
   const [showDetails, setShowDetails] =
-    useState<AgentConfigurationListViewType | null>(null);
+    useState<LightAgentConfigurationType | null>(null);
 
   const triggerInputAnimation = () => {
     setShouldAnimateInput(true);

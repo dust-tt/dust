@@ -1,4 +1,4 @@
-import { AgentConfigurationListViewType } from "@dust-tt/types";
+import { LightAgentConfigurationType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import { v4 as uuidv4 } from "uuid";
 
@@ -150,7 +150,7 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
 }
 
 export function filterAndSortAgents(
-  agents: AgentConfigurationListViewType[],
+  agents: LightAgentConfigurationType[],
   searchText: string
 ) {
   const lowerCaseSearchText = searchText.toLowerCase();

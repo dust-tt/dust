@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserListstatus } from "@app/lib/api/assistant/user_relation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -85,10 +85,7 @@ async function handler(
 
       const { agentId, listStatus } = bodyValidation.right;
 
-      const agentConfiguration = await getAgentConfigurationDetailedView(
-        auth,
-        agentId
-      );
+      const agentConfiguration = await getAgentConfiguration(auth, agentId);
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,

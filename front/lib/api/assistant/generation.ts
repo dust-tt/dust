@@ -36,7 +36,7 @@ import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { getAgentConfigurationListViews } from "@app/lib/api/assistant/configuration";
+import { getLightAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -244,7 +244,7 @@ export async function constructPrompt(
   if (meta.includes("{ASSISTANTS_LIST}")) {
     if (!auth.isUser())
       throw new Error("Unexpected unauthenticated call to `constructPrompt`");
-    const agents = await getAgentConfigurationListViews(
+    const agents = await getLightAgentConfigurations(
       auth,
       auth.user() ? "list" : "all"
     );

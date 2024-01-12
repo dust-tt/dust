@@ -1,5 +1,4 @@
 import {
-  AgentConfigurationType,
   CoreAPI,
   isRetrievalConfiguration,
   ReturnedAPIErrorType,
@@ -11,8 +10,8 @@ import { promisify } from "util";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfigurationDetailedView,
-  getAgentConfigurationListViews,
+  getAgentConfigurations,
+  getLightAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { deleteDataSource } from "@app/lib/api/data_sources";
@@ -586,29 +585,18 @@ async function revokeUsersForDowngrade(auth: Authenticator) {
 }
 
 async function archiveConnectedAgents(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurationListViews(
+  const agentConfigurationLights = await getLightAgentConfigurations(
     auth,
     "admin_internal"
   );
-  const detailedAgentConfigurations = (
-    await Promise.all(
-      agentConfigurations.map((ac) =>
-        getAgentConfigurationDetailedView(auth, ac.sId)
-      )
-    )
-  ).reduce((acc, item, i) => {
-    if (item === null) {
-      throw new Error(
-        `Unreachable: could not fetch detailed agent configuration ${agentConfigurations[i].sId}`
-      );
-    }
-    acc.push(item);
-    return acc;
-  }, [] as AgentConfigurationType[]);
+  const agentConfigurations = await getAgentConfigurations(
+    auth,
+    agentConfigurationLights.map((a) => a.sId)
+  );
 
   // agentconfigurations with a retrieval action with at least a managed
   // data source
-  const agentConfigurationsToArchive = detailedAgentConfigurations.filter(
+  const agentConfigurationsToArchive = agentConfigurations.filter(
     (ac) =>
       ac.action &&
       isRetrievalConfiguration(ac.action) &&

@@ -16,7 +16,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationListViewType,
+  LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -109,7 +109,7 @@ export default function WorkspaceAssistants({
   const isBuilder = owner.role === "builder" || owner.role === "admin";
 
   const handleToggleAgentStatus = async (
-    agent: AgentConfigurationListViewType
+    agent: LightAgentConfigurationType
   ) => {
     if (agent.status === "disabled_free_workspace") {
       setShowDisabledFreeWorkspacePopup(agent.sId);
@@ -141,9 +141,9 @@ export default function WorkspaceAssistants({
   };
 
   const [showDeletionModal, setShowDeletionModal] =
-    useState<AgentConfigurationListViewType | null>(null);
+    useState<LightAgentConfigurationType | null>(null);
   const [showRemoveFromWorkspaceModal, setShowRemoveFromWorkspaceModal] =
-    useState<AgentConfigurationListViewType | null>(null);
+    useState<LightAgentConfigurationType | null>(null);
 
   return (
     <AppLayout

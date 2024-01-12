@@ -19,7 +19,7 @@ import AssistantBuilder, {
   BuilderFlow,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
-import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -162,7 +162,7 @@ export const getServerSideProps: GetServerSideProps<{
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
     {} as Record<string, DataSourceType>
   );
-  const config = await getAgentConfigurationDetailedView(
+  const config = await getAgentConfiguration(
     auth,
     context.params?.aId as string
   );

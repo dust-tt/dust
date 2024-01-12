@@ -18,7 +18,7 @@ import AssistantBuilder, {
   BuilderFlow,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
-import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildInitialState } from "@app/pages/w/[wId]/builder/assistants/[aId]";
@@ -69,10 +69,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   let config: AgentConfigurationType | null = null;
   if (context.query.duplicate && typeof context.query.duplicate === "string") {
-    config = await getAgentConfigurationDetailedView(
-      auth,
-      context.query.duplicate
-    );
+    config = await getAgentConfiguration(auth, context.query.duplicate);
 
     if (!config) {
       return {

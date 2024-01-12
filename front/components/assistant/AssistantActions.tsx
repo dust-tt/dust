@@ -1,6 +1,6 @@
 import { Dialog } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationListViewType,
+  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
 } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
@@ -88,7 +88,7 @@ export function RemoveAssistantFromListDialog({
   onRemove,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onRemove: () => void;
@@ -152,7 +152,7 @@ export function RemoveAssistantFromWorkspaceDialog({
   onRemove,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onRemove: () => void;

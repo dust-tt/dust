@@ -9,7 +9,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfigurationDetailedView,
+  getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -56,10 +56,7 @@ async function handler(
       },
     });
   }
-  const assistant = await getAgentConfigurationDetailedView(
-    auth,
-    req.query.aId as string
-  );
+  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
   if (
     !assistant ||
     (assistant.scope === "private" &&

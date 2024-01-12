@@ -6,11 +6,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationListViewType,
   AgentConfigurationType,
   DataSourceType,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
+  LightAgentConfigurationType,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
@@ -25,8 +25,8 @@ import React, { useContext } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
-  getAgentConfigurationDetailedView,
-  getAgentConfigurationListViews,
+  getAgentConfigurations,
+  getLightAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -89,26 +89,15 @@ export const getServerSideProps: GetServerSideProps<{
 
   const dataSources = await getDataSources(auth);
   const agentConfigurations = (
-    await getAgentConfigurationListViews(auth, "admin_internal")
+    await getLightAgentConfigurations(auth, "admin_internal")
   ).filter(
     (a) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
   );
-  const detailedAgentConfigurations = (
-    await Promise.all(
-      agentConfigurations.map((ac) =>
-        getAgentConfigurationDetailedView(auth, ac.sId)
-      )
-    )
-  ).reduce((acc, item, i) => {
-    if (item === null) {
-      throw new Error(
-        `Unreachable: could not fetch detailed agent configuration ${agentConfigurations[i].sId}`
-      );
-    }
-    acc.push(item);
-    return acc;
-  }, [] as AgentConfigurationType[]);
+  const detailedAgentConfigurations = await getAgentConfigurations(
+    auth,
+    agentConfigurations.map((a) => a.sId)
+  );
 
   // sort data source so that managed ones (i.e ones with a connector provider) are first
   dataSources.sort((a, b) => {
@@ -328,7 +317,7 @@ const WorkspacePage = ({
   );
 
   const { submit: onAssistantArchive } = useSubmitFunction(
-    async (agentConfiguration: AgentConfigurationListViewType) => {
+    async (agentConfiguration: LightAgentConfigurationType) => {
       if (
         !window.confirm(
           `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`

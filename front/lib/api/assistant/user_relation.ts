@@ -1,13 +1,13 @@
 import {
-  AgentConfigurationListViewType,
   AgentUserListStatus,
   assertNever,
   Err,
+  LightAgentConfigurationType,
   Ok,
   Result,
 } from "@dust-tt/types";
 
-import { getAgentConfigurationDetailedView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 
@@ -15,7 +15,7 @@ export function agentUserListStatus({
   agentConfiguration,
   listStatusOverride,
 }: {
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
   listStatusOverride: AgentUserListStatus | null;
 }): AgentUserListStatus {
   if (listStatusOverride === null) {
@@ -41,10 +41,7 @@ export async function getAgentUserListStatus({
   auth: Authenticator;
   agentId: string;
 }): Promise<Result<AgentUserListStatus, Error>> {
-  const agentConfiguration = await getAgentConfigurationDetailedView(
-    auth,
-    agentId
-  );
+  const agentConfiguration = await getAgentConfiguration(auth, agentId);
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
 
@@ -89,10 +86,7 @@ export async function setAgentUserListstatus({
     Error
   >
 > {
-  const agentConfiguration = await getAgentConfigurationDetailedView(
-    auth,
-    agentId
-  );
+  const agentConfiguration = await getAgentConfiguration(auth, agentId);
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
 

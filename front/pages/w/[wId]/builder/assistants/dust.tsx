@@ -7,7 +7,7 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { AgentConfigurationListViewType, DataSourceType } from "@dust-tt/types";
+import { DataSourceType, LightAgentConfigurationType } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import {} from "@dust-tt/types";
 import { SubscriptionType } from "@dust-tt/types";
@@ -91,7 +91,7 @@ export default function EditDustAssistant({
   }
 
   const handleToggleAgentStatus = async (
-    agent: AgentConfigurationListViewType
+    agent: LightAgentConfigurationType
   ) => {
     if (agent.status === "disabled_missing_datasource") {
       sendNotification({

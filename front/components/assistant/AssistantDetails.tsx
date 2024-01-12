@@ -10,10 +10,10 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationListViewType,
   AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
+  LightAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   DustAppRunConfigurationType,
@@ -46,7 +46,7 @@ export function AssistantDetails({
   flow,
 }: {
   owner: WorkspaceType;
-  assistant: AgentConfigurationListViewType;
+  assistant: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onUpdate: () => void;
@@ -249,7 +249,7 @@ function ButtonsSection({
   flow,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
   detailsModalClose: () => void;
   onUpdate: () => void;
   onClose: () => void;

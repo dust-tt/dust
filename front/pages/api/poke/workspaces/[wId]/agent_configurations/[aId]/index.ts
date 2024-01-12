@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfigurationDetailedView,
+  getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -48,7 +48,7 @@ async function handler(
         });
       }
 
-      const agentConfiguration = await getAgentConfigurationDetailedView(
+      const agentConfiguration = await getAgentConfiguration(
         auth,
         req.query.aId as string
       );

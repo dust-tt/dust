@@ -1,6 +1,6 @@
 import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
-import { AgentConfigurationListViewType } from "@dust-tt/types";
+import { LightAgentConfigurationType } from "@dust-tt/types";
 import { AgentMention, MentionType } from "@dust-tt/types";
 import {
   createContext,
@@ -27,7 +27,7 @@ import { classNames } from "@app/lib/utils";
 function AgentMention({
   agentConfiguration,
 }: {
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
 }) {
   return (
     <div
@@ -56,7 +56,7 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  additionalAgentConfigurations?: AgentConfigurationListViewType[];
+  additionalAgentConfigurations?: LightAgentConfigurationType[];
 }) {
   const [contentFragmentBody, setContentFragmentBody] = useState<
     string | undefined
@@ -289,7 +289,7 @@ export function FixedAssistantInputBar({
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  additionalAgentConfigurations?: AgentConfigurationListViewType[];
+  additionalAgentConfigurations?: LightAgentConfigurationType[];
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">

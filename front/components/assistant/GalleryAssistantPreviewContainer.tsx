@@ -1,8 +1,8 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationListViewType,
   AgentConfigurationType,
   AgentUserListStatus,
+  LightAgentConfigurationType,
   PlanType,
   PostOrPatchAgentConfigurationRequestBody,
   WorkspaceType,
@@ -20,19 +20,19 @@ import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/m
 type AssistantPreviewFlow = "personal" | "workspace";
 
 interface GalleryAssistantPreviewContainerProps {
-  agentConfiguration: AgentConfigurationListViewType;
+  agentConfiguration: LightAgentConfigurationType;
   flow: AssistantPreviewFlow;
   onShowDetails: () => void;
   onUpdate: () => void;
   owner: WorkspaceType;
   plan: PlanType | null;
   setTestModalAssistant?: (
-    agentConfiguration: AgentConfigurationListViewType
+    agentConfiguration: LightAgentConfigurationType
   ) => void;
 }
 
 const useAssistantUpdate = (
-  agentConfiguration: AgentConfigurationListViewType,
+  agentConfiguration: LightAgentConfigurationType,
   owner: WorkspaceType,
   sendNotification: (notification: NotificationType) => void,
   onSuccess: (isAdded: boolean) => void,
@@ -146,7 +146,7 @@ export function GalleryAssistantPreviewContainer({
 
   // Function to determine if the assistant is added based on the flow and configuration.
   const determineIfAdded = (
-    agentConfiguration: AgentConfigurationListViewType,
+    agentConfiguration: LightAgentConfigurationType,
     currentFlow: AssistantPreviewFlow
   ) => {
     return currentFlow === "personal"

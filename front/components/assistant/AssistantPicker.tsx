@@ -7,7 +7,7 @@ import {
   Searchbar,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import { AgentConfigurationListViewType, WorkspaceType } from "@dust-tt/types";
+import { LightAgentConfigurationType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -22,8 +22,8 @@ export function AssistantPicker({
   size = "md",
 }: {
   owner: WorkspaceType;
-  assistants: AgentConfigurationListViewType[];
-  onItemClick: (assistant: AgentConfigurationListViewType) => void;
+  assistants: LightAgentConfigurationType[];
+  onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
   showBuilderButtons?: boolean;
   size?: "sm" | "md";

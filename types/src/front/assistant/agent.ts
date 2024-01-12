@@ -116,7 +116,7 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
-export type AgentConfigurationListViewType = {
+export type LightAgentConfigurationType = {
   id: ModelId;
 
   sId: string;
@@ -144,7 +144,7 @@ export type AgentConfigurationListViewType = {
   usage?: AgentUsageType;
 };
 
-export type AgentConfigurationType = AgentConfigurationListViewType & {
+export type AgentConfigurationType = LightAgentConfigurationType & {
   // If undefined, no action performed, otherwise the action is
   // performed (potentially NoOp eg autoSkip above).
   action: AgentActionConfigurationType | null;
