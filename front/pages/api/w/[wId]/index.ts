@@ -7,6 +7,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";
+import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostWorkspaceResponseBody = {
@@ -17,7 +18,7 @@ const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,
 });
 const WorkspaceAllowedDomainUpdateBodySchema = t.type({
-  allowedDomain: t.union([t.string, t.null]),
+  autoAddDomainUsers: t.boolean,
 });
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceNameUpdateBodySchema,
@@ -35,7 +36,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const user = auth.user();
+  if (!owner || !user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -69,6 +71,7 @@ async function handler(
           },
         });
       }
+      const { right: body } = bodyValidation;
 
       const w = await Workspace.findOne({
         where: { id: owner.id },
@@ -83,16 +86,26 @@ async function handler(
         });
       }
 
-      if (req.body.name) {
+      if ("name" in body) {
         await w.update({
-          name: req.body.name,
+          name: body.name,
         });
-        owner.name = req.body.name as string;
+        owner.name = body.name;
       } else {
-        await w.update({
-          allowedDomain: req.body.allowedDomain,
-        });
-        owner.allowedDomain = req.body.allowedDomain as string | null;
+        if (body.autoAddDomainUsers && user) {
+          const [, userEmailDomain] = user.email.split("@");
+          if (!isDisposableEmailDomain(userEmailDomain)) {
+            await w.update({
+              allowedDomain: userEmailDomain,
+            });
+            owner.allowedDomain = userEmailDomain;
+          }
+        } else {
+          await w.update({
+            allowedDomain: null,
+          });
+          owner.allowedDomain = null;
+        }
       }
 
       res.status(200).json({ workspace: owner });

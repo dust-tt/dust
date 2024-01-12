@@ -63,6 +63,7 @@ Workspace.init(
     },
     allowedDomain: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
     segmentation: {
       type: DataTypes.STRING,

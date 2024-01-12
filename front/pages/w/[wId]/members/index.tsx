@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  Checkbox,
   ChevronRightIcon,
   Chip,
   ClipboardIcon,
@@ -98,13 +99,16 @@ export default function WorkspaceAdmin({
           icon={UsersIcon}
           description="Invite and remove members, manage their rights."
         />
-        <InviteSettingsModal
-          showModal={inviteSettingsModalOpen}
-          onClose={() => {
-            setInviteSettingsModalOpen(false);
-          }}
-          owner={owner}
-        />
+        {user && (
+          <InviteSettingsModal
+            showModal={inviteSettingsModalOpen}
+            onClose={() => {
+              setInviteSettingsModalOpen(false);
+            }}
+            owner={owner}
+            user={user}
+          />
+        )}
         <Page.Vertical gap="xs">
           <Page.H variant="h5">Invitation link</Page.H>
           <Page.P variant="secondary">
@@ -575,14 +579,17 @@ function InviteSettingsModal({
   showModal,
   onClose,
   owner,
+  user,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
+  user: UserType;
 }) {
   const [domainUpdating, setDomainUpdating] = useState(false);
-  const [domainInput, setDomainInput] = useState(owner.allowedDomain || "");
-  const [allowedDomainError, setAllowedDomainError] = useState("");
+  const [isDomainWhitelisted, setIsDomainWhitelisted] = useState(
+    Boolean(owner.allowedDomain)
+  );
   const sendNotification = useContext(SendNotificationsContext);
   async function handleUpdateWorkspace(): Promise<void> {
     setDomainUpdating(true);
@@ -592,14 +599,14 @@ function InviteSettingsModal({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        allowedDomain: domainInput,
+        autoAddDomainUsers: isDomainWhitelisted,
       }),
     });
     if (!res.ok) {
       sendNotification({
         type: "error",
         title: "Update failed",
-        description: `Failed to update workspace with new domain ${domainInput}.`,
+        description: `Failed to enable auto-add for whitelisted domain.`,
       });
       setDomainUpdating(false);
     } else {
@@ -608,57 +615,56 @@ function InviteSettingsModal({
       window.location.reload();
     }
   }
-  function validDomain(): boolean {
-    let valid = true;
-    if (domainInput === null) {
-      setAllowedDomainError("");
-    } else {
-      // eslint-disable-next-line no-useless-escape
-      if (!domainInput.match(/^[a-z0-9\.\-]*$/)) {
-        setAllowedDomainError("Allowed domain must be a valid domain name.");
-        valid = false;
-      } else {
-        setAllowedDomainError("");
-      }
-    }
 
-    return valid;
-  }
+  const [, userEmailDomain] = user.email.split("@");
+  const showMewUI = false;
 
   return (
     <Modal
       isOpen={showModal}
       onClose={onClose}
       hasChanged={
-        domainInput !== owner.allowedDomain &&
-        !allowedDomainError &&
-        !domainUpdating
+        isDomainWhitelisted !== Boolean(owner.allowedDomain) && !domainUpdating
       }
-      title="Invitation link settings"
+      title="Workspace settings"
       variant="side-sm"
-      onSave={() => validDomain() && handleUpdateWorkspace()}
+      onSave={() => handleUpdateWorkspace()}
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          Any person with a Google Workspace email on corresponding domain name
-          will be allowed to join the workspace.
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="font-bold">Whitelisted email domain</div>
-          <Input
-            className="text-sm"
-            placeholder={"Company domain"}
-            value={domainInput}
-            name={""}
-            error={allowedDomainError}
-            showErrorLabel={true}
-            onChange={(e) => {
-              setDomainInput(e);
-              setAllowedDomainError("");
-            }}
-            disabled={domainUpdating}
-          />
-        </div>
+        {showMewUI ? (
+          <>
+            <p>
+              Should new users with the whitelisted email domain{" "}
+              <span className="font-bold">
+                {owner.allowedDomain ?? userEmailDomain}
+              </span>{" "}
+              be added to your workspace automatically?
+            </p>
+            <div className="flex flex-row items-center gap-1.5">
+              <Checkbox
+                variant="checkable"
+                className="ml-auto"
+                checked={isDomainWhitelisted}
+                disabled={domainUpdating}
+                onChange={(checked) => {
+                  setIsDomainWhitelisted(checked);
+                }}
+              />
+              <p className="flex grow">
+                Enable auto-add for whitelisted domain.
+              </p>
+            </div>
+            <p>
+              If unchecked, all new users will need an invitation to join your
+              workspace.
+            </p>
+          </>
+        ) : (
+          <p>
+            Any person with a Google Workspace email on corresponding domain
+            name will be allowed to join the workspace.
+          </p>
+        )}
       </div>
     </Modal>
   );
