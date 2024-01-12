@@ -1,3 +1,4 @@
+import { isNangoError } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import {
   ActivityExecuteInput,
@@ -86,26 +87,20 @@ export class ActivityInboundLogInterceptor
     } catch (err: unknown) {
       error = err;
 
-      const maybeNangoError = err as {
-        code?: string;
-        status?: number;
-        config?: { url?: string };
-      };
       if (
-        maybeNangoError.code === "ERR_BAD_RESPONSE" &&
-        maybeNangoError.status &&
-        [520, 522, 502, 500].includes(maybeNangoError.status) &&
-        maybeNangoError.config?.url?.includes("api.nango.dev")
+        isNangoError(err) &&
+        [520, 522, 502, 500].includes(err.status) &&
+        err.config?.url?.includes("api.nango.dev")
       ) {
         this.logger.info(
           {
-            raw_json_error: JSON.stringify(maybeNangoError, null, 2),
+            raw_json_error: JSON.stringify(err, null, 2),
           },
           "Got 5xx Bad Response from external API"
         );
         error = {
           __is_dust_error: true,
-          message: `Got ${maybeNangoError.status} Bad Response from Nango`,
+          message: `Got ${err.status} Bad Response from Nango`,
           type: "nango_5xx_bad_response",
         };
       }

@@ -41,6 +41,7 @@ export * from "./front/run";
 export * from "./front/user";
 export * from "./shared/cache";
 export * from "./shared/model_id";
+export * from "./shared/nango_errors";
 export * from "./shared/rate_limiter";
 export * from "./shared/utils/assert_never";
 export * from "./shared/utils/iots_utils";
