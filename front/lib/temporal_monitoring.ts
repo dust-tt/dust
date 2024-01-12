@@ -1,3 +1,4 @@
+import { isNangoError } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import {
   ActivityExecuteInput,
@@ -61,29 +62,38 @@ export class ActivityInboundLogInterceptor
     } finally {
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
-        let errorType = "unhandled_internal_activity_error";
-        if (error.__is_dust_error !== undefined) {
-          // this is a dust error
-          errorType = error.type;
-          this.logger.error(
-            { error, durationMs, attempt: this.context.info.attempt },
-            "Activity failed"
+        if (isNangoError(error) && error.status === 520) {
+          this.logger.info(
+            {
+              raw_json_error: JSON.stringify(error, null, 2),
+            },
+            "Got 5xx Bad Response from external API"
           );
         } else {
-          // unknown error type
-          this.logger.error(
-            {
-              error,
-              error_stack: error?.stack,
-              durationMs: durationMs,
-              attempt: this.context.info.attempt,
-            },
-            "Unhandled activity error"
-          );
-        }
+          let errorType = "unhandled_internal_activity_error";
+          if (error.__is_dust_error !== undefined) {
+            // this is a dust error
+            errorType = error.type;
+            this.logger.error(
+              { error, durationMs, attempt: this.context.info.attempt },
+              "Activity failed"
+            );
+          } else {
+            // unknown error type
+            this.logger.error(
+              {
+                error,
+                error_stack: error?.stack,
+                durationMs: durationMs,
+                attempt: this.context.info.attempt,
+              },
+              "Unhandled activity error"
+            );
+          }
 
-        tags.push(`error_type:${errorType}`);
-        statsDClient.increment("activity_failed.count", 1, tags);
+          tags.push(`error_type:${errorType}`);
+          statsDClient.increment("activity_failed.count", 1, tags);
+        }
       } else {
         this.logger.info({ durationMs: durationMs }, "Activity completed.");
         statsDClient.increment("activities_success.count", 1, tags);
