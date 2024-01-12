@@ -1551,14 +1551,16 @@ export async function renderAndUpsertPageFromCache({
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
+  const renderedPageSection = renderPageSection({
+    blocksByParentId,
+    logger: localLogger,
+  });
+  // Adding notion properties to the page rendering
+  // We skip the title as it is added separately as prefix to the top-level document section.
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
-  const renderedPageSection = renderPageSection({
-    blocksByParentId,
-  });
-
-  // We skip the title as it is added separately as prefix to the top-level document section.
+  localLogger.info("PROPERTY =======================", parsedProperties);
   for (const [i, p] of parsedProperties
     .filter((p) => p.key !== "title" && p.text)
     .entries()) {
@@ -1978,29 +1980,29 @@ export async function getDiscoveredResourcesFromCache(
  */
 function renderPageSection({
   blocksByParentId,
+  logger,
 }: {
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
+  logger?: any;
 }): CoreAPIDataSourceDocumentSection {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
-    content: null,
+    content: null, // "\n", // add a newline to separate the page from the metadata above (title, author...)
     sections: [],
   };
 
   // Change block parents so that H1/H2 blocks are treated as nesting
   // for that we need to traverse with a topological sort, leafs treated first
-  const orderedParentIds = ["root"];
-  let i = 0;
-  while (i < orderedParentIds.length) {
-    const children = blocksByParentId[
-      orderedParentIds[i] as string
-    ] as NotionConnectorBlockCacheEntry[];
+  let orderedParentIds: string[] = [];
+  const addNode = (nodeId: string) => {
+    const children = blocksByParentId[nodeId];
+    if (!children) return;
+    orderedParentIds.push(nodeId);
     for (const child of children) {
-      if (blocksByParentId[child.notionBlockId])
-        orderedParentIds.push(child.notionBlockId);
+      addNode(child.notionBlockId);
     }
-    i++;
-  }
+  };
+  addNode("root");
   orderedParentIds.reverse();
 
   const adaptedBlocksByParentId: Record<
@@ -2028,12 +2030,6 @@ function renderPageSection({
       }
     }
   }
-  logger.info(
-    "adaptedBlocksByParentId ===================================================="
-  );
-  console.log(blocksByParentId);
-  console.log(adaptedBlocksByParentId);
-
   const renderBlockSection = (
     b: NotionConnectorBlockCacheEntry,
     depth: number,
@@ -2056,7 +2052,7 @@ function renderPageSection({
             sections: [],
           };
 
-    // Recurse on children (Only indent if not heading)
+    // Recurse on children
     const children = adaptedBlocksByParentId[b.notionBlockId] ?? [];
     children.sort((a, b) => a.indexInParent - b.indexInParent);
     if (b.blockType !== "heading_1" && b.blockType !== "heading_2") {
