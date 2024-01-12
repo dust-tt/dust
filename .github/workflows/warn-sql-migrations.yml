@@ -17,6 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for file changes
+        id: file_changes
         run: |
           git fetch --no-tags --prune --depth=1 origin +refs/heads/main:refs/remotes/origin/main
 
