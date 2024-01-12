@@ -1,4 +1,4 @@
-const JUNK_EMAIL_DOMAINS = [
+const DISPOSABLE_EMAIL_DOMAINS = [
   "0-mail.com",
   "027168.com",
   "0815.su",
@@ -4771,6 +4771,6 @@ const JUNK_EMAIL_DOMAINS = [
   "zzz.pl",
 ];
 
-export function isJunkEmailDomain(emailDomain: string) {
-  return JUNK_EMAIL_DOMAINS.includes(emailDomain);
+export function isDisposableEmailDomain(emailDomain: string) {
+  return DISPOSABLE_EMAIL_DOMAINS.includes(emailDomain);
 }

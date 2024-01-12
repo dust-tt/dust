@@ -7,7 +7,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";
-import { isJunkEmailDomain } from "@app/lib/utils/junk_emails";
+import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostWorkspaceResponseBody = {
@@ -94,7 +94,7 @@ async function handler(
         const user = auth.user();
         if (body.autoAddDomainUsers && user) {
           const [, userEmailDomain] = user.email.split("@");
-          if (!isJunkEmailDomain(userEmailDomain)) {
+          if (!isDisposableEmailDomain(userEmailDomain)) {
             await w.update({
               allowedDomain: userEmailDomain,
             });
