@@ -17,7 +17,7 @@ jobs:
           node-version: '14'
 
       - name: Install dependencies
-        run: npm install --only=development
+        run: npm install
         working-directory: front
 
       - name: Run Danger for front
@@ -38,7 +38,7 @@ jobs:
           node-version: '14'
 
       - name: Install dependencies
-        run: npm install --only=development
+        run: npm install
         working-directory: connectors
 
       - name: Run Danger for connectors
