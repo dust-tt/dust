@@ -35,12 +35,14 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const {
   GA_TRACKING_ID = "",
+  NANGO_CONFLUENCE_CONNECTOR_ID = "",
   NANGO_SLACK_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
@@ -63,7 +65,7 @@ type DataSourceIntegration = {
   setupWithSuffix: string | null;
 };
 
-const REDIRECT_TO_EDIT_PERMISSIONS = ["google_drive", "slack"];
+const REDIRECT_TO_EDIT_PERMISSIONS = ["confluence", "google_drive", "slack"];
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType | null;
@@ -76,6 +78,7 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
   nangoConfig: {
     publicKey: string;
+    confluenceConnectorId: string;
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
@@ -235,6 +238,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,
+        confluenceConnectorId: NANGO_CONFLUENCE_CONNECTOR_ID,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
@@ -390,6 +394,7 @@ export default function DataSourcesView({
       if (connectorIsUsingNango(provider)) {
         // nango-based connectors
         const nangoConnectorId = {
+          confluence: nangoConfig.confluenceConnectorId,
           slack: nangoConfig.slackConnectorId,
           notion: nangoConfig.notionConnectorId,
           google_drive: nangoConfig.googleDriveConnectorId,
@@ -519,6 +524,11 @@ export default function DataSourcesView({
             .filter(
               (ds) => !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide
             )
+            .filter(
+              (ds) =>
+                !CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
+                  .dustWorkspaceOnly || isDevelopmentOrDustWorkspace(owner)
+            )
             .map((ds) => {
               return (
                 <ContextItem
@@ -548,6 +558,10 @@ export default function DataSourcesView({
                             let isDataSourceAllowedInPlan: boolean;
 
                             switch (ds.connectorProvider) {
+                              case "confluence":
+                                isDataSourceAllowedInPlan =
+                                  planConnectionsLimits.isConfluenceAllowed;
+                                break;
                               case "slack":
                                 isDataSourceAllowedInPlan =
                                   planConnectionsLimits.isSlackAllowed;

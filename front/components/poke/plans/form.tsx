@@ -1,5 +1,6 @@
 import {
   Checkbox,
+  ConfluenceLogo,
   DriveLogo,
   DropdownMenu,
   GithubLogo,
@@ -22,6 +23,7 @@ export type EditingPlanType = {
   name: string;
   stripeProductId: string;
   code: string;
+  isConfluenceAllowed: boolean;
   isSlackBotAllowed: boolean;
   isSlackAllowed: boolean;
   isNotionAllowed: boolean;
@@ -43,6 +45,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     name: plan.name,
     stripeProductId: plan.stripeProductId || "",
     code: plan.code,
+    isConfluenceAllowed: plan.limits.connections.isConfluenceAllowed,
     isSlackBotAllowed: plan.limits.assistant.isSlackBotAllowed,
     isSlackAllowed: plan.limits.connections.isSlackAllowed,
     isNotionAllowed: plan.limits.connections.isNotionAllowed,
@@ -70,6 +73,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         maxMessages: parseInt(editingPlan.maxMessages.toString(), 10),
       },
       connections: {
+        isConfluenceAllowed: editingPlan.isConfluenceAllowed,
         isSlackAllowed: editingPlan.isSlackAllowed,
         isNotionAllowed: editingPlan.isNotionAllowed,
         isGoogleDriveAllowed: editingPlan.isGoogleDriveAllowed,
@@ -99,6 +103,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   name: "",
   stripeProductId: "",
   code: "",
+  isConfluenceAllowed: false,
   isSlackBotAllowed: false,
   isSlackAllowed: false,
   isNotionAllowed: false,
@@ -188,6 +193,13 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Bot",
+  },
+  // TODO(2024-01-10 flav) Add isConfluenceAllowed.
+  isConfluenceAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Confluence",
+    IconComponent: () => <ConfluenceLogo className="h-4 w-4" />,
   },
   isSlackAllowed: {
     type: "boolean",

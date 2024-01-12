@@ -37,6 +37,7 @@ export class Plan extends Model<
   declare maxMessages: number;
   declare maxUsersInWorkspace: number;
   declare isSlackbotAllowed: boolean;
+  declare isManagedConfluenceAllowed: boolean;
   declare isManagedSlackAllowed: boolean;
   declare isManagedNotionAllowed: boolean;
   declare isManagedGoogleDriveAllowed: boolean;
@@ -93,6 +94,11 @@ Plan.init(
       allowNull: false,
     },
     isSlackbotAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    // TODO(2024-01-10 flav) Use a JSON Types field instead of group of booleans.
+    isManagedConfluenceAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

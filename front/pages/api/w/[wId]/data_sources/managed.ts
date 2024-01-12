@@ -146,6 +146,10 @@ async function handler(
 
       let isDataSourceAllowedInPlan: boolean;
       switch (provider) {
+        case "confluence":
+          isDataSourceAllowedInPlan =
+            plan.limits.connections.isConfluenceAllowed;
+          break;
         case "slack":
           isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
           break;

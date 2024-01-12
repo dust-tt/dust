@@ -32,6 +32,7 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   maxMessages: 50,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
+  isManagedConfluenceAllowed: false,
   isManagedSlackAllowed: false,
   isManagedNotionAllowed: false,
   isManagedGoogleDriveAllowed: false,
@@ -56,6 +57,8 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxMessages: -1,
     maxUsersInWorkspace: -1,
     isSlackbotAllowed: true,
+    // TODO(2024-01-10 flav) Set to `true` once released.
+    isManagedConfluenceAllowed: false,
     isManagedSlackAllowed: true,
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,

@@ -26,6 +26,8 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxMessages: -1,
   maxUsersInWorkspace: -1,
   isSlackbotAllowed: true,
+  // TODO(2024-01-10 flav) Set to `true` once released.
+  isManagedConfluenceAllowed: false,
   isManagedSlackAllowed: true,
   isManagedNotionAllowed: true,
   isManagedGoogleDriveAllowed: true,

@@ -21,6 +21,10 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   ConnectorProvider,
   { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
 > = {
+  confluence: {
+    selected: "read",
+    unselected: "none",
+  },
   slack: {
     selected: "read_write",
     unselected: "write",

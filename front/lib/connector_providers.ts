@@ -20,8 +20,23 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description: string;
     limitations: string | null;
     isNested: boolean;
+    dustWorkspaceOnly?: boolean;
   }
 > = {
+  confluence: {
+    name: "Confluence",
+    connectorProvider: "confluence",
+    isBuilt: true,
+    hide: false,
+    logoPath: "/static/intercom_32x32.png",
+    description:
+      "Grant tailored access to your organization's Confluence shared spaces.",
+    limitations: null,
+    // TODO(2023-10-01 flav) Debug SSR hydration issue with ConfluenceLogo.
+    logoComponent: IntercomLogo,
+    isNested: false,
+    dustWorkspaceOnly: true,
+  },
   notion: {
     name: "Notion",
     connectorProvider: "notion",

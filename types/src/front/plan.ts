@@ -4,6 +4,7 @@
  * */
 
 export type ManageDataSourcesLimitsType = {
+  isConfluenceAllowed: boolean;
   isSlackAllowed: boolean;
   isNotionAllowed: boolean;
   isGoogleDriveAllowed: boolean;

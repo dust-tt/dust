@@ -19,10 +19,11 @@ export type ConnectorSyncStatus = "succeeded" | "failed";
 export type ConnectorErrorType = "oauth_token_revoked";
 
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
-  "slack",
-  "notion",
+  "confluence",
   "google_drive",
   "intercom",
+  "notion",
+  "slack",
 ] as const;
 type ConnectorProviderUsingNango =
   (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];

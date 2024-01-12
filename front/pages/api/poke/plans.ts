@@ -20,6 +20,7 @@ export const PlanTypeSchema = t.type({
       maxMessages: t.number,
     }),
     connections: t.type({
+      isConfluenceAllowed: t.boolean,
       isSlackAllowed: t.boolean,
       isNotionAllowed: t.boolean,
       isGoogleDriveAllowed: t.boolean,
@@ -89,6 +90,7 @@ async function handler(
             maxMessages: plan.maxMessages,
           },
           connections: {
+            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
             isSlackAllowed: plan.isManagedSlackAllowed,
             isNotionAllowed: plan.isManagedNotionAllowed,
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
@@ -177,6 +179,7 @@ async function handler(
         stripeProductId: body.stripeProductId,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxMessages: body.limits.assistant.maxMessages,
+        isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
         isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
         isManagedNotionAllowed: body.limits.connections.isNotionAllowed,
         isManagedGoogleDriveAllowed:
