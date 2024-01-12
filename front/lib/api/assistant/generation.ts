@@ -11,7 +11,6 @@ import {
   ModelConversationType,
   ModelMessageType,
 } from "@dust-tt/types";
-import {} from "@dust-tt/types";
 import {
   isRetrievalActionType,
   isRetrievalConfiguration,
