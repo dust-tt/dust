@@ -1562,9 +1562,7 @@ export async function renderAndUpsertPageFromCache({
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
-  for (const [i, p] of parsedProperties
-    .filter((p) => p.key !== "title" && p.text)
-    .entries()) {
+  for (const p of parsedProperties.filter((p) => p.key !== "title" && p.text)) {
     const propertyContent = `$${p.key}: ${p.text}\n`;
     renderedPageSection.sections.unshift({
       prefix: null,
