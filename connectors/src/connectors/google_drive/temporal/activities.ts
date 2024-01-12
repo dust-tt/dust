@@ -509,6 +509,19 @@ async function syncOneFile(
     return false;
   }
 
+  if (!documentContent || documentContent.trim().length === 0) {
+    logger.info(
+      {
+        connectorId: connectorId,
+        documentId,
+        fileMimeType: file.mimeType,
+        fileId: file.id,
+        title: file.name,
+      },
+      "Skipping empty document"
+    );
+  }
+
   const content = renderDocumentTitleAndContent({
     title: file.name,
     updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
