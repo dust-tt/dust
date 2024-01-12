@@ -1046,3 +1046,39 @@ export async function agentNameIsAvailable(
 
   return !agent;
 }
+
+export async function setAgentScope(
+  auth: Authenticator,
+  agentId: string,
+  scope: AgentConfigurationScope
+): Promise<Result<{ agentId: string; scope: AgentConfigurationScope }, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  if (scope === "global") {
+    return new Err(new Error("Cannot set scope to global"));
+  }
+
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId: agentId,
+      status: "active",
+    },
+  });
+
+  if (!agent) {
+    return new Err(new Error(`Could not find agent ${agentId}`));
+  }
+
+  if (agent.scope === scope) {
+    return new Ok({ agentId, scope });
+  }
+
+  agent.scope = scope;
+  await agent.save();
+
+  return new Ok({ agentId, scope });
+}

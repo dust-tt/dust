@@ -1,10 +1,8 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
   AgentUserListStatus,
   LightAgentConfigurationType,
   PlanType,
-  PostOrPatchAgentConfigurationRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
@@ -47,9 +45,8 @@ const useAssistantUpdate = (
     const isAdding = action === "added";
     const url =
       flow === "workspace"
-        ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`
+        ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/scope`
         : `/api/w/${owner.sId}/members/me/agent_list_status`;
-    const method = flow === "workspace" ? "PATCH" : "POST";
 
     const fullAssistantRes = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
@@ -67,32 +64,12 @@ const useAssistantUpdate = (
       );
     }
 
-    const fullAssistantConfiguration: {
-      agentConfiguration: AgentConfigurationType;
-    } = await fullAssistantRes.json();
-
-    const {
-      action: agentAction,
-      generation,
-      name,
-      description,
-      pictureUrl,
-    } = fullAssistantConfiguration.agentConfiguration;
-
     const body:
-      | PostOrPatchAgentConfigurationRequestBody
+      | { scope: "workspace" | "published" }
       | PostAgentListStatusRequestBody =
       flow === "workspace"
         ? {
-            assistant: {
-              action: agentAction ?? null,
-              description,
-              generation,
-              name,
-              pictureUrl,
-              scope,
-              status: "active",
-            },
+            scope,
           }
         : {
             agentId: agentConfiguration.sId,
@@ -101,7 +78,7 @@ const useAssistantUpdate = (
 
     try {
       const response = await fetch(url, {
-        method,
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
