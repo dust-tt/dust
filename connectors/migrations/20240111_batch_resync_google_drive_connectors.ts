@@ -8,30 +8,13 @@ import { sequelize_conn } from "@connectors/lib/models";
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
-  if (argv._.length < 3) {
-    throw new Error(
-      "Expects size, batchNumber, batchSize as argument, eg: `cli medium 0 10`"
-    );
-  }
-
-  const [size, batchNumberStr, batchSizeStr] = argv._;
+  const { size, batchNumber, batchSize } = argv;
 
   if (!size || !["small", "large"].includes(size)) {
     throw new Error("size must be small or large");
   }
 
-  if (!batchNumberStr || !batchSizeStr) {
-    throw new Error("batchNumber and batchSize are required");
-  }
-
-  const batchNumber = parseInt(batchNumberStr, 10);
-  const batchSize = parseInt(batchSizeStr, 10);
-
-  if (isNaN(batchNumber) || isNaN(batchSize)) {
-    throw new Error("batchNumber and batchSize must be numbers");
-  }
-
-  if (batchNumber < 0) {
+  if (batchNumber === undefined || batchNumber < 0) {
     throw new Error("batchNumber must be positive");
   }
 
@@ -63,7 +46,7 @@ const main = async () => {
 
   let connectorsToResync = [];
 
-  if (batchSize !== -1) {
+  if (batchSize) {
     const start = batchNumber * batchSize;
     const end = start + batchSize;
     const batchesRemaining = Math.ceil((connectorIds.length - end) / batchSize);
