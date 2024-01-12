@@ -255,7 +255,7 @@ export async function syncFiles(
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
-      "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+      "nextPageToken, files(id, name, parents, mimeType, createdTime, lastModifyingUser, modifiedTime, trashed, webViewLink)",
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
   });
