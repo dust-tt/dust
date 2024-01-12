@@ -24,6 +24,7 @@ import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
+import { searchNotionPagesForQuery } from "@connectors/connectors/notion/lib/cli";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { upsertPageWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { uninstallSlack } from "@connectors/connectors/slack";
@@ -44,6 +45,31 @@ import {
 import logger from "@connectors/logger/logger";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
+
+async function getConnectorOrThrow({
+  connectorType,
+  workspaceId,
+}: {
+  connectorType: string;
+  workspaceId: string;
+}): Promise<Connector> {
+  if (!workspaceId) {
+    throw new Error("Missing workspace ID (wId)");
+  }
+  const connector = await Connector.findOne({
+    where: {
+      type: connectorType,
+      workspaceId: workspaceId,
+      dataSourceName: "managed-" + connectorType,
+    },
+  });
+  if (!connector) {
+    throw new Error(
+      `No connector found for ${connectorType} workspace with ID ${workspaceId}`
+    );
+  }
+  return connector;
+}
 
 const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   if (!args.wId) {
@@ -433,6 +459,25 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           connectorId: connectorId,
         },
       });
+      break;
+    }
+
+    case "search-pages": {
+      const { query, wId } = args;
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: wId,
+      });
+
+      const pages = await searchNotionPagesForQuery({
+        connectorId: connector.id,
+        connectionId: connector.connectionId,
+        query,
+      });
+
+      console.table(pages);
+
       break;
     }
 
