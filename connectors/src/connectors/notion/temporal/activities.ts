@@ -1552,6 +1552,10 @@ export async function renderAndUpsertPageFromCache({
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
   const renderedPageSection = renderPageSection({ blocksByParentId });
+  const documentLength = sectionLength(renderedPageSection);
+
+  // add a newline to separate the page from the metadata above (title, author...)
+  renderedPageSection.content = "\n";
 
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
@@ -1704,8 +1708,6 @@ export async function renderAndUpsertPageFromCache({
 
   let upsertTs: number | undefined = undefined;
   let skipReason: string | null = null;
-
-  const documentLength = sectionLength(renderedPageSection);
 
   if (documentLength > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info(
@@ -1982,7 +1984,7 @@ function renderPageSection({
 }): CoreAPIDataSourceDocumentSection {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
-    content: "\n", // add a newline to separate the page from the metadata above (title, author...)
+    content: null,
     sections: [],
   };
 
