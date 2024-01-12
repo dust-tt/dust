@@ -1,0 +1,39 @@
+name: SQL Migration required
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'front/lib/models/**'
+      - 'connectors/src/lib/models/**'
+
+jobs:
+  check-file-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for file changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -E 'front/lib/models/|connectors/src/lib/models/')
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "::set-output name=modified::true"
+            echo "::warning ::Files in 'front/lib/models/' or 'connectors/src/lib/models/' have been modified."
+          else
+            echo "::set-output name=modified::false"
+          fi
+
+      - name: Post a warning comment on PR
+        if: ${{ steps.file_changes.outputs.modified == 'true' }}
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const issue_number = context.issue.number;
+            github.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: '⚠️ Warning: Files in `front/lib/models/` or `connectors/src/lib/models/` have been modified. A migration is required!',
+            });
