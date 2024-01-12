@@ -572,7 +572,6 @@ export async function subscriptionForWorkspace(
           maxMessages: plan.maxMessages,
         },
         connections: {
-          isConfluenceAllowed: plan.isManagedConfluenceAllowed,
           isSlackAllowed: plan.isManagedSlackAllowed,
           isNotionAllowed: plan.isManagedNotionAllowed,
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,

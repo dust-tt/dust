@@ -75,7 +75,6 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
           maxMessages: freeTestPlan.maxMessages,
         },
         connections: {
-          isConfluenceAllowed: freeTestPlan.isManagedConfluenceAllowed,
           isSlackAllowed: freeTestPlan.isManagedSlackAllowed,
           isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
           isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
@@ -175,7 +174,6 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
             maxMessages: plan.maxMessages,
           },
           connections: {
-            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
             isSlackAllowed: plan.isManagedSlackAllowed,
             isNotionAllowed: plan.isManagedNotionAllowed,
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
@@ -341,7 +339,6 @@ export const getCheckoutUrlForUpgrade = async (
           maxMessages: plan.maxMessages,
         },
         connections: {
-          isConfluenceAllowed: plan.isManagedConfluenceAllowed,
           isSlackAllowed: plan.isManagedSlackAllowed,
           isNotionAllowed: plan.isManagedNotionAllowed,
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,

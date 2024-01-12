@@ -37,8 +37,6 @@ if (isDevelopment()) {
     maxUsersInWorkspace: 1000,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
-    // TODO(2024-01-10 flav) Set to `true` once released.
-    isManagedConfluenceAllowed: false,
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
