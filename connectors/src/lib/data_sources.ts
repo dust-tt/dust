@@ -339,6 +339,7 @@ export function renderDocumentTitleAndContent({
     title = null;
   }
   const c = renderPrefixSection(title);
+  c.prefix = c.prefix || "";
   if (createdAt) {
     c.prefix += `$createdAt: ${createdAt.toISOString()}\n`;
   }
@@ -358,6 +359,7 @@ export function renderDocumentTitleAndContent({
   if (content) {
     c.sections.push(content);
   }
+  if (c.prefix === "") c.prefix = null;
   return c;
 }
 
