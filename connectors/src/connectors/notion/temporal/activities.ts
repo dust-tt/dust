@@ -2,7 +2,6 @@ import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
-import * as fs from "fs";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
@@ -1552,10 +1551,8 @@ export async function renderAndUpsertPageFromCache({
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
-  const renderedPageSection = renderPageSection({
-    blocksByParentId,
-    logger: localLogger,
-  });
+  const renderedPageSection = renderPageSection({ blocksByParentId });
+
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
   const parsedProperties = parsePageProperties(
@@ -1982,7 +1979,6 @@ function renderPageSection({
   blocksByParentId,
 }: {
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
-  logger?: any;
 }): CoreAPIDataSourceDocumentSection {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
@@ -1992,7 +1988,7 @@ function renderPageSection({
 
   // Change block parents so that H1/H2 blocks are treated as nesting
   // for that we need to traverse with a topological sort, leafs treated first
-  let orderedParentIds: string[] = [];
+  const orderedParentIds: string[] = [];
   const addNode = (nodeId: string) => {
     const children = blocksByParentId[nodeId];
     if (!children) return;
@@ -2014,7 +2010,7 @@ function renderPageSection({
       parentId
     ] as NotionConnectorBlockCacheEntry[];
     blocks.sort((a, b) => a.indexInParent - b.indexInParent);
-    let currentHeadings: { h1: string | null; h2: string | null } = {
+    const currentHeadings: { h1: string | null; h2: string | null } = {
       h1: null,
       h2: null,
     };

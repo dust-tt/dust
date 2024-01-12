@@ -13,7 +13,7 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import { withRetries } from "./dust_front_api_helpers";
+import { withRetries } from "@connectors/lib/dust_front_api_helpers";
 
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
