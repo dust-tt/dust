@@ -51,7 +51,7 @@ const useAssistantUpdate = (
         : `/api/w/${owner.sId}/members/me/agent_list_status`;
     const method = flow === "workspace" ? "PATCH" : "POST";
 
-    const detailedAssitantRes = await fetch(
+    const fullAssistantRes = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {
         method: "GET",
@@ -61,15 +61,15 @@ const useAssistantUpdate = (
       }
     );
 
-    if (!detailedAssitantRes.ok) {
+    if (!fullAssistantRes.ok) {
       throw new Error(
-        (await detailedAssitantRes.json()).error.message ?? "Error fetching"
+        (await fullAssistantRes.json()).error.message ?? "Error fetching"
       );
     }
 
-    const detailedAgentConfiguration: {
+    const fullAssistantConfiguration: {
       agentConfiguration: AgentConfigurationType;
-    } = await detailedAssitantRes.json();
+    } = await fullAssistantRes.json();
 
     const {
       action: agentAction,
@@ -77,7 +77,7 @@ const useAssistantUpdate = (
       name,
       description,
       pictureUrl,
-    } = detailedAgentConfiguration.agentConfiguration;
+    } = fullAssistantConfiguration.agentConfiguration;
 
     const body:
       | PostOrPatchAgentConfigurationRequestBody
