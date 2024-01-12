@@ -7,10 +7,10 @@ export type ArgumentSpecs = {
 };
 
 // Define a type for the worker function.
-export type WorkerFunction<T> = (args: T) => Promise<void>;
+type WorkerFunction<T> = (args: T) => Promise<void>;
 
 // Define a utility type to infer the argument types from the argument specs.
-export type InferArgs<T> = {
+type InferArgs<T> = {
   [P in keyof T]: T[P] extends { type: "number" }
     ? number
     : T[P] extends { type: "boolean" }
