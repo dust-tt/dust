@@ -1,5 +1,5 @@
 import { ModelId } from "@dust-tt/types";
-import { Client } from "@notionhq/client";
+import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
 import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
@@ -47,5 +47,6 @@ export async function searchNotionPagesForQuery({
     type: p.object,
     title: "title" in p ? p.title[0]?.plain_text : "<unknown>",
     isSkipped: p.object === "database" && skippedDatabaseIds.has(p.id),
+    isFull: p.object === "database" ? isFullDatabase(p) : isFullPage(p),
   }));
 }
