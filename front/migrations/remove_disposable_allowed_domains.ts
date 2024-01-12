@@ -15,6 +15,7 @@ makeScript({}, async ({ execute }) => {
     },
   });
 
+  let updatedWorkspacesCount = 0;
   for (const workspace of workspaces) {
     if (!workspace.allowedDomain) {
       continue;
@@ -64,10 +65,18 @@ makeScript({}, async ({ execute }) => {
         workspace.allowedDomain === newAllowedDomain ? "[SAME]" : "[DIFFERENT]"
       );
 
+      const isSameEmailDomain = workspace.allowedDomain === newAllowedDomain;
+      if (isSameEmailDomain) {
+        continue;
+      }
+
       if (execute) {
         workspace.allowedDomain = newAllowedDomain;
         await workspace.save();
       }
+      updatedWorkspacesCount++;
     }
   }
+
+  console.log(`Updated allowedDomain on ${updatedWorkspacesCount} workspaces.`);
 });
