@@ -27,11 +27,11 @@ jobs:
           if [ -n "$CHANGED_FILES" ]; then
             echo "Changed files found:"
             echo "$CHANGED_FILES"
-            echo "{modified}={true}" >> $GITHUB_OUTPUT
+            echo "modified=true" >> $GITHUB_OUTPUT
             echo "::warning ::Files in 'front/lib/models/' or 'connectors/src/lib/models/' have been modified."
           else
             echo "No changed files found."
-            echo "{modified}={false}" >> $GITHUB_OUTPUT
+            echo "modified=false" >> $GITHUB_OUTPUT
           fi
 
       - name: check steps.file_changes.outputs.modified
