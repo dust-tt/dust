@@ -58,7 +58,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexation.",
     limitations:
-      "Files with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at team@dust.tt to enable PDF indexing.",
+      "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at team@dust.tt to enable PDF indexing.",
     logoComponent: DriveLogo,
     isNested: true,
   },
