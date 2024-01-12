@@ -16,10 +16,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install front dependencies
+        run: cd front && npm install
 
-      - name: Run Danger
-        run: npx danger ci
+      - name: Run front Danger
+        run: cd front && npx danger ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
