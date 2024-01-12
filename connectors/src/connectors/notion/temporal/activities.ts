@@ -1,5 +1,5 @@
 import { ModelId } from "@dust-tt/types";
-import { APIResponseError, isFullBlock, isFullPage } from "@notionhq/client";
+import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
@@ -263,7 +263,7 @@ export async function getPagesAndDatabasesToSync({
       skippedDatabaseIds
     );
   } catch (e) {
-    if (APIResponseError.isAPIResponseError(e)) {
+    if (isNotionClientError(e)) {
       // Sometimes a cursor will consistently fail with 500.
       // In this case, there is not much we can do, so we just give up and move on.
       // Notion workspaces are resynced daily so nothing is lost forever.
