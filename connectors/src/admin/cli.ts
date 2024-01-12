@@ -470,10 +470,11 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         workspaceId: wId,
       });
 
-      const pages = await searchNotionPagesForQuery(
-        connector.connectionId,
-        query
-      );
+      const pages = await searchNotionPagesForQuery({
+        connectorId: connector.id,
+        connectionId: connector.connectionId,
+        query,
+      });
 
       console.table(pages);
 
