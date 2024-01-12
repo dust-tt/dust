@@ -213,6 +213,7 @@ impl TokenizedSection {
         if let Some(c) = content.as_ref() {
             if (c.tokens.len() + prefixes_tokens_count) > max_chunk_size
                 || !section.sections.is_empty()
+                || prefix.is_some()
             {
                 let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
 
