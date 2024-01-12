@@ -36,7 +36,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const user = auth.user();
+  if (!owner || !user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -91,7 +92,6 @@ async function handler(
         });
         owner.name = body.name;
       } else {
-        const user = auth.user();
         if (body.autoAddDomainUsers && user) {
           const [, userEmailDomain] = user.email.split("@");
           if (!isDisposableEmailDomain(userEmailDomain)) {

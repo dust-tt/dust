@@ -617,6 +617,7 @@ function InviteSettingsModal({
   }
 
   const [, userEmailDomain] = user.email.split("@");
+  const showMewUI = false;
 
   return (
     <Modal
@@ -630,29 +631,40 @@ function InviteSettingsModal({
       onSave={() => handleUpdateWorkspace()}
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
-        <p>
-          Should new users with the whitelisted email domain{" "}
-          <span className="font-bold">
-            {owner.allowedDomain ?? userEmailDomain}
-          </span>{" "}
-          be added to your workspace automatically?
-        </p>
-        <div className="flex flex-row items-center gap-1.5">
-          <Checkbox
-            variant="checkable"
-            className="ml-auto"
-            checked={isDomainWhitelisted}
-            disabled={domainUpdating}
-            onChange={(checked) => {
-              setIsDomainWhitelisted(checked);
-            }}
-          />
-          <p className="flex grow">Enable auto-add for whitelisted domain.</p>
-        </div>
-        <p>
-          If unchecked, all new users will need an invitation to join your
-          workspace.
-        </p>
+        {showMewUI ? (
+          <>
+            <p>
+              Should new users with the whitelisted email domain{" "}
+              <span className="font-bold">
+                {owner.allowedDomain ?? userEmailDomain}
+              </span>{" "}
+              be added to your workspace automatically?
+            </p>
+            <div className="flex flex-row items-center gap-1.5">
+              <Checkbox
+                variant="checkable"
+                className="ml-auto"
+                checked={isDomainWhitelisted}
+                disabled={domainUpdating}
+                onChange={(checked) => {
+                  setIsDomainWhitelisted(checked);
+                }}
+              />
+              <p className="flex grow">
+                Enable auto-add for whitelisted domain.
+              </p>
+            </div>
+            <p>
+              If unchecked, all new users will need an invitation to join your
+              workspace.
+            </p>
+          </>
+        ) : (
+          <p>
+            Any person with a Google Workspace email on corresponding domain
+            name will be allowed to join the workspace.
+          </p>
+        )}
       </div>
     </Modal>
   );
