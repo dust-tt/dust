@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  danger:
+  danger-front:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -14,12 +14,35 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '14'
 
-      - name: Install front dependencies
-        run: cd front && npm install
+      - name: Install dependencies
+        run: npm install --only=development
+        working-directory: front
 
-      - name: Run front Danger
-        run: cd front && npx danger ci
+      - name: Run Danger for front
+        run: npx danger ci --dangerfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: front
+
+  danger-connectors:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+
+      - name: Install dependencies
+        run: npm install --only=development
+        working-directory: connectors
+
+      - name: Run Danger for connectors
+        run: npx danger ci --dangerfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: connectors
