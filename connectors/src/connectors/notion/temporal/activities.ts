@@ -1566,10 +1566,6 @@ export async function renderAndUpsertPageFromCache({
     .filter((p) => p.key !== "title" && p.text)
     .entries()) {
     const propertyContent = `$${p.key}: ${p.text}\n`;
-    if (i < 3) {
-      renderedPageSection.prefix = renderedPageSection.prefix ?? "";
-      renderedPageSection.prefix += propertyContent;
-    }
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -2059,7 +2055,7 @@ function renderPageSection({
 
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
-      depth < 1 && adaptedBlocksByParentId[b.notionBlockId]?.length
+      depth < 2 && adaptedBlocksByParentId[b.notionBlockId]?.length
         ? renderPrefixSection(renderedBlock)
         : {
             prefix: null,
