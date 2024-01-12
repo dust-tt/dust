@@ -1737,19 +1737,13 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
-    const contentFlat = sectionFullText(renderedPageSection);
-
     const content = renderDocumentTitleAndContent({
       title: title ?? null,
       createdAt: createdAt,
       updatedAt: updatedAt,
       author,
       lastEditor,
-      content: {
-        prefix: null,
-        content: contentFlat,
-        sections: [],
-      },
+      content: renderedPageSection,
     });
 
     localLogger.info(
