@@ -2053,6 +2053,9 @@ function renderPageSection({
       .trim()
       .replace(/data:image\/[^;]+;base64,[^\n]+/g, "")
       .concat("\n");
+    if (b.blockType === "heading_1" || b.blockType === "heading_2") {
+      renderedBlock = "\n" + renderedBlock;
+    }
 
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
