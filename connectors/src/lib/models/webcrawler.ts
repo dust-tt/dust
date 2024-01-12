@@ -121,6 +121,7 @@ export class WebCrawlerPage extends Model<
   declare parentUrl: string | null;
   declare url: string;
   declare documentId: string;
+  declare isAlsoFolder: boolean;
   declare connectorId: ForeignKey<Connector["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
@@ -157,6 +158,11 @@ WebCrawlerPage.init(
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    isAlsoFolder: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

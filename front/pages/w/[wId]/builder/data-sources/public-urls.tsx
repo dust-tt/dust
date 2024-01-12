@@ -3,11 +3,11 @@ import {
   Cog6ToothIcon,
   ContextItem,
   FolderOpenIcon,
-  LinkIcon,
   Page,
   PlusIcon,
   Popup,
 } from "@dust-tt/sparkle";
+import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -16,7 +16,7 @@ import { useState } from "react";
 
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -110,15 +110,15 @@ export default function DataSourcesView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({
+      subNavigation={subNavigationAssistants({
         owner,
         current: "data_sources_url",
       })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Public URLs"
-          icon={LinkIcon}
+          title="Websites"
+          icon={GlobeAltIcon}
           description="Manage public URLs as data sources for the workspace."
         />
 

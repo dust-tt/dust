@@ -6,7 +6,6 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
-  LinkIcon,
   PaperAirplaneIcon,
   PlanetIcon,
   RobotIcon,
@@ -14,11 +13,15 @@ import {
   ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
+import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import {
+  isActivatedPublicURLs,
+  isDevelopmentOrDustWorkspace,
+} from "@app/lib/development";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -34,15 +37,15 @@ export type SubNavigationAssistantsId =
   | "data_sources_managed"
   | "data_sources_static"
   | "workspace_assistants"
-  | "personal_assistants";
+  | "personal_assistants"
+  | "data_sources_url";
 export type SubNavigationAdminId =
   | "subscription"
   | "workspace"
   | "members"
   | "developers"
   | "extract"
-  | "tables"
-  | "data_sources_url";
+  | "tables";
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
@@ -204,32 +207,44 @@ export const subNavigationAssistants = ({
     menus: assistantMenus,
   });
 
+  const dataSourceItems: SparkleAppLayoutNavigation[] = [
+    {
+      id: "data_sources_managed",
+      label: "Connections",
+      icon: CloudArrowLeftRightIcon,
+      href: `/w/${owner.sId}/builder/data-sources/managed`,
+      current: current === "data_sources_managed",
+      subMenuLabel:
+        current === "data_sources_managed" ? subMenuLabel : undefined,
+      subMenu: current === "data_sources_managed" ? subMenu : undefined,
+    },
+    {
+      id: "data_sources_static",
+      label: "Folders",
+      icon: FolderOpenIcon,
+      href: `/w/${owner.sId}/builder/data-sources/static`,
+      current: current === "data_sources_static",
+      subMenuLabel:
+        current === "data_sources_static" ? subMenuLabel : undefined,
+      subMenu: current === "data_sources_static" ? subMenu : undefined,
+    },
+  ];
+  if (isActivatedPublicURLs(owner)) {
+    dataSourceItems.push({
+      id: "data_sources_url",
+      label: "Websites",
+      icon: GlobeAltIcon,
+      href: `/w/${owner.sId}/builder/data-sources/public-urls`,
+      current: current === "data_sources_url",
+      subMenuLabel: current === "data_sources_url" ? subMenuLabel : undefined,
+      subMenu: current === "data_sources_url" ? subMenu : undefined,
+    });
+  }
   nav.push({
     id: "data_sources",
     label: "Data Sources",
     variant: "secondary",
-    menus: [
-      {
-        id: "data_sources_managed",
-        label: "Connections",
-        icon: CloudArrowLeftRightIcon,
-        href: `/w/${owner.sId}/builder/data-sources/managed`,
-        current: current === "data_sources_managed",
-        subMenuLabel:
-          current === "data_sources_managed" ? subMenuLabel : undefined,
-        subMenu: current === "data_sources_managed" ? subMenu : undefined,
-      },
-      {
-        id: "data_sources_static",
-        label: "Folders",
-        icon: FolderOpenIcon,
-        href: `/w/${owner.sId}/builder/data-sources/static`,
-        current: current === "data_sources_static",
-        subMenuLabel:
-          current === "data_sources_static" ? subMenuLabel : undefined,
-        subMenu: current === "data_sources_static" ? subMenu : undefined,
-      },
-    ],
+    menus: dataSourceItems,
   });
 
   return nav;
@@ -325,15 +340,6 @@ export const subNavigationAdmin = ({
           icon: ServerIcon,
           href: `/w/${owner.sId}/tables`,
           current: current === "tables",
-        },
-        {
-          id: "data_sources_url",
-          label: "Public URLs",
-          icon: LinkIcon,
-          href: `/w/${owner.sId}/builder/data-sources/public-urls`,
-          current: current === "data_sources_url",
-          subMenuLabel: undefined,
-          subMenu: undefined,
         },
       ],
     });

@@ -312,7 +312,6 @@ function DataSourceResourceSelector({
     </Transition>
   );
 }
-
 function getDisplayNameForDataSource(ds: DataSourceType) {
   if (ds.connectorProvider) {
     switch (ds.connectorProvider) {
