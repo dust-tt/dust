@@ -1,7 +1,9 @@
 
 # start installing poppler tools for pdf text extraction
 FROM node:18.15.0 as build
- 
+
+RUN apt-get update && apt-get install -y vim
+
 WORKDIR /tmp/
 COPY ./connectors/admin/docker_build/install_poppler_tools.sh ./
 RUN chmod +x ./install_poppler_tools.sh
