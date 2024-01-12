@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
@@ -42,6 +42,7 @@ import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
+  renderPrefixSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -1500,17 +1501,11 @@ export async function renderAndUpsertPageFromCache({
       connectorId: connector.id,
     },
   });
-  const topLevelBlocks = blockCacheEntries.filter(
-    (b) => b.parentBlockId === null
-  );
-  topLevelBlocks.sort((a, b) => a.indexInParent - b.indexInParent);
 
   const blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]> = {};
   for (const blockCacheEntry of blockCacheEntries) {
-    if (!blockCacheEntry.parentBlockId) continue;
-
-    blocksByParentId[blockCacheEntry.parentBlockId] = [
-      ...(blocksByParentId[blockCacheEntry.parentBlockId] ?? []),
+    blocksByParentId[blockCacheEntry.parentBlockId || "root"] = [
+      ...(blocksByParentId[blockCacheEntry.parentBlockId || "root"] ?? []),
       blockCacheEntry,
     ];
   }
@@ -1554,42 +1549,25 @@ export async function renderAndUpsertPageFromCache({
     });
   }
 
-  localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
-  let renderedPage = "";
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
+  const renderedPageSection = renderPageSection({
+    blocksByParentId,
+  });
+
   for (const p of parsedProperties) {
     if (!p.text) continue;
     // We skip the title as it is added separately as prefix to the top-level document section.
     if (p.key === "title") continue;
-    renderedPage += `$${p.key}: ${p.text}\n`;
-  }
-  renderedPage += "\n";
-
-  let pageHasBody = false;
-
-  const renderBlock = (b: NotionConnectorBlockCacheEntry, indent = "") => {
-    if (b.blockText) {
-      pageHasBody = true;
-    }
-    let renderedBlock = b.blockText ? `${indent}${b.blockText}\n` : "";
-    const children = blocksByParentId[b.notionBlockId] ?? [];
-    children.sort((a, b) => a.indexInParent - b.indexInParent);
-    for (const child of children) {
-      renderedBlock += renderBlock(child, `- ${indent}`);
-    }
-    return `${renderedBlock}\n`;
-  };
-
-  for (const block of topLevelBlocks) {
-    renderedPage += renderBlock(block);
+    renderedPageSection.sections.push({
+      prefix: null,
+      content: `$${p.key}: ${p.text}\n`,
+      sections: [],
+    });
   }
 
-  // remove base64 images from rendered page
-  renderedPage = renderedPage
-    .trim()
-    .replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
+  localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
 
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving author and last editor from notion API."
@@ -1723,10 +1701,17 @@ export async function renderAndUpsertPageFromCache({
   let upsertTs: number | undefined = undefined;
   let skipReason: string | null = null;
 
-  if (renderedPage.length > MAX_DOCUMENT_TXT_LEN) {
+  // compute document length by summing all prefix and content sizes for each section
+  const sectionLength = (section: CoreAPIDataSourceDocumentSection): number =>
+    (section.prefix ? section.prefix.length : 0) +
+    (section.content ? section.content.length : 0) +
+    section.sections.reduce((acc, s) => acc + sectionLength(s), 0);
+  const documentLength = sectionLength(renderedPageSection);
+
+  if (documentLength > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info(
       {
-        renderedPageLength: renderedPage.length,
+        renderedPageLength: documentLength,
         maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
       },
       "notionRenderAndUpsertPageFromCache: Skipping page with too large body."
@@ -1737,7 +1722,7 @@ export async function renderAndUpsertPageFromCache({
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (!pageHasBody) {
+  if (documentLength === 0) {
     localLogger.info(
       "notionRenderAndUpsertPageFromCache: Not upserting page without body."
     );
@@ -1759,7 +1744,7 @@ export async function renderAndUpsertPageFromCache({
       updatedAt: updatedAt,
       author,
       lastEditor,
-      content: { prefix: null, content: renderedPage, sections: [] },
+      content: renderedPageSection,
     });
 
     localLogger.info(
@@ -1983,4 +1968,86 @@ export async function getDiscoveredResourcesFromCache(
     pageIds: discoveredPageIds,
     databaseIds: discoveredDatabaseIds,
   };
+}
+
+/** Render page sections according to Notion structure:
+ * - the natural nesting of blocks is used as structure,
+ * - H1 & H2 blocks add a level of nesting in addition to the "natural" nesting,
+ * - only the 2 first levels of nesting are used to create prefixes, similarly
+ *   to github, to avoid too many prefixes
+ */
+function renderPageSection({
+  blocksByParentId,
+}: {
+  blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
+}): CoreAPIDataSourceDocumentSection {
+  const renderedPageSection: CoreAPIDataSourceDocumentSection = {
+    prefix: null,
+    content: "",
+    sections: [],
+  };
+
+  // Change block parents so that H1/H2 blocks are treated as nesting
+  const adaptedBlocksByParentId: Record<
+    string,
+    NotionConnectorBlockCacheEntry[]
+  > = {};
+  for (const [parentId, blocks] of Object.entries(blocksByParentId)) {
+    blocks.sort((a, b) => a.indexInParent - b.indexInParent);
+    let parentsPath = [parentId];
+    for (const block of blocks) {
+      const currentParentId = parentsPath[parentsPath.length - 1] as string;
+      adaptedBlocksByParentId[currentParentId] = [
+        ...(adaptedBlocksByParentId[currentParentId] ?? []),
+        block,
+      ];
+      if (block.blockType === "heading_1") {
+        parentsPath = [parentId, block.notionBlockId];
+      } else if (block.blockType === "heading_2") {
+        parentsPath = parentsPath.slice(0, 2);
+        parentsPath.push(block.notionBlockId);
+      }
+    }
+  }
+
+  const renderBlockSection = (
+    b: NotionConnectorBlockCacheEntry,
+    depth: number,
+    indent = ""
+  ): CoreAPIDataSourceDocumentSection => {
+    // Initial rendering (remove base64 images from rendered block)
+    let renderedBlock = b.blockText ? `${indent}${b.blockText}\n` : "";
+    renderedBlock = renderedBlock
+      .trim()
+      .replace(/data:image\/[^;]+;base64,[^\n]+/g, "");
+
+    // Prefix for depths 0 and 1
+    const blockSection =
+      depth < 2
+        ? renderPrefixSection(renderedBlock)
+        : {
+            prefix: null,
+            content: renderedBlock,
+            sections: [],
+          };
+
+    // Recurse on children (Only indent if not heading)
+    const children = blocksByParentId[b.notionBlockId] ?? [];
+    children.sort((a, b) => a.indexInParent - b.indexInParent);
+    if (b.blockType !== "heading_1" && b.blockType !== "heading_2") {
+      indent = `- ${indent}`;
+    }
+    for (const child of children) {
+      blockSection.sections.push(renderBlockSection(child, depth + 1, indent));
+    }
+    return blockSection;
+  };
+
+  const topLevelBlocks = adaptedBlocksByParentId["root"] || [];
+  topLevelBlocks.sort((a, b) => a.indexInParent - b.indexInParent);
+  for (const block of topLevelBlocks) {
+    renderedPageSection.sections.push(renderBlockSection(block, 0));
+  }
+
+  return renderedPageSection;
 }
