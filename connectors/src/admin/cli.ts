@@ -475,7 +475,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         query
       );
 
-      console.log(">> pages:", JSON.stringify(pages.results));
+      console.table(pages);
 
       break;
     }

@@ -17,5 +17,9 @@ export async function searchNotionPagesForQuery(
     page_size: 20,
   });
 
-  return pages;
+  return pages.results.map((p) => ({
+    id: p.id,
+    type: p.object,
+    title: "title" in p ? p.title[0]?.plain_text : "<unknown>",
+  }));
 }
