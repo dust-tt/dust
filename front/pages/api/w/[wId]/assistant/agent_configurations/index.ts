@@ -3,7 +3,10 @@ import {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   GetAgentConfigurationsQuerySchema,
+  LightAgentConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  PostOrPatchLightAgentConfigurationRequestBody,
   Result,
 } from "@dust-tt/types";
 import { ReturnedAPIErrorType } from "@dust-tt/types";
@@ -217,22 +220,20 @@ export default withLogging(handler);
  * a new agent configuration. In both cases, it will return the new agent
  * configuration.
  **/
-export async function createOrUpgradeAgentConfiguration(
+export async function createOrUpgradeAgentConfiguration<
+  T extends "light" | "full"
+>(
   auth: Authenticator,
   {
-    assistant: {
-      generation,
-      action,
-      name,
-      description,
-      scope,
-      pictureUrl,
-      status,
-    },
-  }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
-  agentConfigurationId?: string
+    assistant,
+  }: T extends "light"
+    ? PostOrPatchLightAgentConfigurationRequestBody
+    : PostOrPatchAgentConfigurationRequestBody,
+  agentConfigurationId?: string,
+  variant: T
 ): Promise<Result<AgentConfigurationType, Error>> {
   let generationConfig: AgentGenerationConfigurationType | null = null;
+  const generation = assistant.generation;
   if (generation)
     generationConfig = await createAgentGenerationConfiguration(auth, {
       prompt: generation.prompt,
@@ -241,6 +242,9 @@ export async function createOrUpgradeAgentConfiguration(
     });
 
   let actionConfig: AgentActionConfigurationType | null = null;
+  const action:
+    | PostOrPatchAgentConfigurationRequestBody["assistant"]["action"]
+    | null = "action" in assistant ? assistant.action : null;
   if (action && action.type === "retrieval_configuration") {
     actionConfig = await createAgentActionConfiguration(auth, {
       type: "retrieval_configuration",
@@ -264,6 +268,10 @@ export async function createOrUpgradeAgentConfiguration(
       dataSourceId: action.dataSourceId,
       databaseId: action.databaseId,
     });
+  }
+
+  if (variant === "light") {
+    // We need to pull the full agent config to get the action.
   }
 
   return createAgentConfiguration(auth, {

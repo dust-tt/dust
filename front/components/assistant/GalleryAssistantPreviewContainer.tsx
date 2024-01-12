@@ -1,6 +1,5 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
   AgentUserListStatus,
   PlanType,
   PostOrPatchAgentConfigurationRequestBody,
@@ -46,15 +45,10 @@ const useAssistantUpdate = (
       flow === "workspace"
         ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`
         : `/api/w/${owner.sId}/members/me/agent_list_status`;
+
     const method = flow === "workspace" ? "PATCH" : "POST";
 
-    const {
-      action: agentAction,
-      generation,
-      name,
-      description,
-      pictureUrl,
-    } = agentConfiguration;
+    const { generation, name, description, pictureUrl } = agentConfiguration;
 
     const body:
       | PostOrPatchAgentConfigurationRequestBody
@@ -62,7 +56,6 @@ const useAssistantUpdate = (
       flow === "workspace"
         ? {
             assistant: {
-              action: agentAction,
               description,
               generation,
               name,

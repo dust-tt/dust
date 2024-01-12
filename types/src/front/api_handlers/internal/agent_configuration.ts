@@ -31,7 +31,7 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   ]),
 });
 
-export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
+export const PostOrPatchLightAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
     description: t.string,
@@ -41,61 +41,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       t.literal("workspace"),
       t.literal("published"),
       t.literal("private"),
-    ]),
-    action: t.union([
-      t.null,
-      t.type({
-        type: t.literal("retrieval_configuration"),
-        query: t.union([
-          t.type({
-            template: t.string,
-          }),
-          t.literal("auto"),
-          t.literal("none"),
-        ]),
-        relativeTimeFrame: t.union([
-          t.literal("auto"),
-          t.literal("none"),
-          t.type({
-            duration: t.number,
-            unit: TimeframeUnitCodec,
-          }),
-        ]),
-        topK: t.union([t.number, t.literal("auto")]),
-        dataSources: t.array(
-          t.type({
-            dataSourceId: t.string,
-            workspaceId: t.string,
-            filter: t.type({
-              tags: t.union([
-                t.type({
-                  in: t.array(t.string),
-                  not: t.array(t.string),
-                }),
-                t.null,
-              ]),
-              parents: t.union([
-                t.type({
-                  in: t.array(t.string),
-                  not: t.array(t.string),
-                }),
-                t.null,
-              ]),
-            }),
-          })
-        ),
-      }),
-      t.type({
-        type: t.literal("dust_app_run_configuration"),
-        appWorkspaceId: t.string,
-        appId: t.string,
-      }),
-      t.type({
-        type: t.literal("database_query_configuration"),
-        dataSourceWorkspaceId: t.string,
-        dataSourceId: t.string,
-        databaseId: t.string,
-      }),
     ]),
     generation: t.union([
       t.null,
@@ -115,6 +60,73 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     ]),
   }),
 });
+
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
+  PostOrPatchLightAgentConfigurationRequestBodySchema,
+  t.type({
+    assistant: t.type({
+      action: t.union([
+        t.null,
+        t.type({
+          type: t.literal("retrieval_configuration"),
+          query: t.union([
+            t.type({
+              template: t.string,
+            }),
+            t.literal("auto"),
+            t.literal("none"),
+          ]),
+          relativeTimeFrame: t.union([
+            t.literal("auto"),
+            t.literal("none"),
+            t.type({
+              duration: t.number,
+              unit: TimeframeUnitCodec,
+            }),
+          ]),
+          topK: t.union([t.number, t.literal("auto")]),
+          dataSources: t.array(
+            t.type({
+              dataSourceId: t.string,
+              workspaceId: t.string,
+              filter: t.type({
+                tags: t.union([
+                  t.type({
+                    in: t.array(t.string),
+                    not: t.array(t.string),
+                  }),
+                  t.null,
+                ]),
+                parents: t.union([
+                  t.type({
+                    in: t.array(t.string),
+                    not: t.array(t.string),
+                  }),
+                  t.null,
+                ]),
+              }),
+            })
+          ),
+        }),
+        t.type({
+          type: t.literal("dust_app_run_configuration"),
+          appWorkspaceId: t.string,
+          appId: t.string,
+        }),
+        t.type({
+          type: t.literal("database_query_configuration"),
+          dataSourceWorkspaceId: t.string,
+          dataSourceId: t.string,
+          databaseId: t.string,
+        }),
+      ]),
+    }),
+  }),
+]);
+
+export type PostOrPatchLightAgentConfigurationRequestBody = t.TypeOf<
+  typeof PostOrPatchLightAgentConfigurationRequestBodySchema
+>;
 
 export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
   typeof PostOrPatchAgentConfigurationRequestBodySchema
