@@ -956,40 +956,40 @@ mod tests {
         )
     }
 
-    // #[tokio::test]
-    // async fn test_splitter_bug_20240111() {
-    //     // Splitting issue with a section with no prefix but with content and childrens.
-    //     let section = Section {
-    //         prefix: Some("Ok a prefix\n".to_string()),
-    //         content: None,
-    //         sections: vec![Section {
-    //             prefix: None,
-    //             content: Some(
-    //                 "Then a section with no prefix, but content and children".to_string(),
-    //             ),
-    //             sections: vec![
-    //                 Section {
-    //                     prefix: Some("Prefix1".to_string()),
-    //                     content: Some("Text1".to_string()),
-    //                     sections: vec![],
-    //                 },
-    //                 Section {
-    //                     prefix: Some("Prefix2".to_string()),
-    //                     content: Some("Text2".to_string()),
-    //                     sections: vec![],
-    //                 },
-    //             ],
-    //         }],
-    //     };
+    #[tokio::test]
+    async fn test_splitter_bug_20240111() {
+        // Splitting issue with a section with no prefix but with content and childrens.
+        let section = Section {
+            prefix: Some("Ok a prefix\n".to_string()),
+            content: None,
+            sections: vec![Section {
+                prefix: None,
+                content: Some(
+                    "Then a section with no prefix, but content and children".to_string(),
+                ),
+                sections: vec![
+                    Section {
+                        prefix: Some("Prefix1".to_string()),
+                        content: Some("Text1".to_string()),
+                        sections: vec![],
+                    },
+                    Section {
+                        prefix: Some("Prefix2".to_string()),
+                        content: Some("Text2".to_string()),
+                        sections: vec![],
+                    },
+                ],
+            }],
+        };
 
-    //     let provider_id = ProviderID::OpenAI;
-    //     let model_id = "text-embedding-ada-002";
-    //     let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
-    //     // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
-    //     splitter(SplitterID::BaseV0)
-    //         .split(credentials, provider_id, model_id, 256, section)
-    //         .await
-    //         .unwrap();
-    // }
+        // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
+        splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 256, section)
+            .await
+            .unwrap();
+    }
 }
