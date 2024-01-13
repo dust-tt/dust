@@ -42,14 +42,6 @@ import logger from "@connectors/logger/logger";
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
-const GDRIVE_FILE_IDS_BLACKLIST: string[] = [
-  // "1IR3Ql2-QfGf9VUIqTqAunzYJi0pQNg3u",
-  // "1Seekzy_3m_P0blWP37mU2roMc5HYtULH",
-  // "1aUUY4nDPrM8YCxFybW_ClVud4TnqQC1w",
-  // "10Yaj4T-_UOzSaE7Ea0qEZLULU1noZWSX",
-  // "1YEfZGWPK_fULC3ZWb5vD6YYJKYJ1nUdG",
-];
-
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
@@ -514,17 +506,6 @@ async function syncOneFile(
     }
   } else {
     // We do not support this file type
-    return false;
-  }
-
-  if (GDRIVE_FILE_IDS_BLACKLIST.includes(file.id)) {
-    logger.info(
-      {
-        file_id: file.id,
-        title: file.name,
-      },
-      `File ID is blacklisted. Skipping`
-    );
     return false;
   }
 
