@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
 use fancy_regex::Regex;
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rustc_hash::FxHashMap as HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -106,48 +106,49 @@ pub fn cl100k_base() -> Result<CoreBPE> {
     )
 }
 
-pub fn anthropic_base_singleton() -> Arc<Mutex<CoreBPE>> {
+pub fn anthropic_base_singleton() -> Arc<RwLock<CoreBPE>> {
     lazy_static! {
-        static ref ANTHROPIC_BASE: Arc<Mutex<CoreBPE>> =
-            Arc::new(Mutex::new(anthropic_base().unwrap()));
+        static ref ANTHROPIC_BASE: Arc<RwLock<CoreBPE>> =
+            Arc::new(RwLock::new(anthropic_base().unwrap()));
     }
     ANTHROPIC_BASE.clone()
 }
 
-pub fn r50k_base_singleton() -> Arc<Mutex<CoreBPE>> {
+pub fn r50k_base_singleton() -> Arc<RwLock<CoreBPE>> {
     lazy_static! {
-        static ref R50K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(r50k_base().unwrap()));
+        static ref R50K_BASE: Arc<RwLock<CoreBPE>> = Arc::new(RwLock::new(r50k_base().unwrap()));
     }
     R50K_BASE.clone()
 }
 
-pub fn p50k_base_singleton() -> Arc<Mutex<CoreBPE>> {
+pub fn p50k_base_singleton() -> Arc<RwLock<CoreBPE>> {
     lazy_static! {
-        static ref P50K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(p50k_base().unwrap()));
+        static ref P50K_BASE: Arc<RwLock<CoreBPE>> = Arc::new(RwLock::new(p50k_base().unwrap()));
     }
     P50K_BASE.clone()
 }
 
-pub fn cl100k_base_singleton() -> Arc<Mutex<CoreBPE>> {
+pub fn cl100k_base_singleton() -> Arc<RwLock<CoreBPE>> {
     lazy_static! {
-        static ref CL100K_BASE: Arc<Mutex<CoreBPE>> = Arc::new(Mutex::new(cl100k_base().unwrap()));
+        static ref CL100K_BASE: Arc<RwLock<CoreBPE>> =
+            Arc::new(RwLock::new(cl100k_base().unwrap()));
     }
     CL100K_BASE.clone()
 }
 
-pub async fn decode_async(bpe: Arc<Mutex<CoreBPE>>, tokens: Vec<usize>) -> Result<String> {
-    task::spawn_blocking(move || bpe.lock().decode(tokens)).await?
+pub async fn decode_async(bpe: Arc<RwLock<CoreBPE>>, tokens: Vec<usize>) -> Result<String> {
+    task::spawn_blocking(move || bpe.read().decode(tokens)).await?
 }
 
-pub async fn encode_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<usize>> {
+pub async fn encode_async(bpe: Arc<RwLock<CoreBPE>>, text: &str) -> Result<Vec<usize>> {
     let text = text.to_string();
-    let r = task::spawn_blocking(move || bpe.lock().encode_with_special_tokens(&text)).await?;
+    let r = task::spawn_blocking(move || bpe.read().encode_with_special_tokens(&text)).await?;
     Ok(r)
 }
 
-pub async fn tokenize_async(bpe: Arc<Mutex<CoreBPE>>, text: &str) -> Result<Vec<(usize, String)>> {
+pub async fn tokenize_async(bpe: Arc<RwLock<CoreBPE>>, text: &str) -> Result<Vec<(usize, String)>> {
     let text = text.to_string();
-    let r = task::spawn_blocking(move || bpe.lock().tokenize(&text)).await?;
+    let r = task::spawn_blocking(move || bpe.read().tokenize(&text)).await?;
     Ok(r)
 }
 
@@ -818,7 +819,7 @@ mod tests {
         // println!("p50k_base_singleton load 1: {:?}", now.elapsed());
         // let now = std::time::Instant::now();
         {
-            let guard = bpe1.lock();
+            let guard = bpe1.read();
             let tokens =
                 guard.encode_with_special_tokens("This is a test         with a lot of spaces");
             guard.decode(tokens.clone()).unwrap();
@@ -830,7 +831,7 @@ mod tests {
         // println!("p50k_base_singleton load 2: {:?}", now.elapsed());
         // let now = std::time::Instant::now();
         {
-            let guard = bpe2.lock();
+            let guard = bpe2.read();
             let tokens =
                 guard.encode_with_special_tokens("This is a test         with a lot of spaces");
             guard.decode(tokens.clone()).unwrap();

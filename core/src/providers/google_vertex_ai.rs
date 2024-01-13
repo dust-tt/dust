@@ -4,7 +4,7 @@ use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
 use hyper_tls::HttpsConnector;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -255,7 +255,7 @@ impl GoogleVertexAiLLM {
         }
     }
 
-    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         cl100k_base_singleton()
     }
 }
