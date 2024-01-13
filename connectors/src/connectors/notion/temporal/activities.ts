@@ -1,8 +1,4 @@
-import {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  sectionFullText,
-} from "@dust-tt/types";
+import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
