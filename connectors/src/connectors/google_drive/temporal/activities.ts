@@ -46,7 +46,7 @@ const GDRIVE_FILE_IDS_BLACKLIST = [
   "1IR3Ql2-QfGf9VUIqTqAunzYJi0pQNg3u",
   "1Seekzy_3m_P0blWP37mU2roMc5HYtULH",
   "1aUUY4nDPrM8YCxFybW_ClVud4TnqQC1w",
-  "10Yaj4T-_UOzSaE7Ea0qEZLULU1noZWSX"
+  "10Yaj4T-_UOzSaE7Ea0qEZLULU1noZWSX",
 ];
 
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
@@ -526,8 +526,6 @@ async function syncOneFile(
     // We do not support this file type
     return false;
   }
-
-  if (document.)
 
   if (!documentContent || documentContent.trim().length === 0) {
     logger.info(
