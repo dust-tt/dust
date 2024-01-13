@@ -131,6 +131,7 @@ async function _upsertToDatasource({
     localLogger.error(
       {
         status: dustRequestResult.status,
+        elapsed,
       },
       "Error uploading document to Dust."
     );
