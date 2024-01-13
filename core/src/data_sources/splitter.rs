@@ -484,22 +484,35 @@ impl Splitter for BaseV0Splitter {
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
 
+        let mut now = utils::now();
+
         let tokenized_section =
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
 
         utils::info(&format!(
-            "Splitter: tokenized_section_tree_size={}",
-            tokenized_section.size()
+            "Splitter: tokenized_section_tree_size={} duration={}",
+            tokenized_section.size(),
+            utils::now() - now
         ));
+
+        now = utils::now();
 
         // We filter out whitespace only or empty strings which is possible to obtain if the section
         // passed have empty or whitespace only content.
-        Ok(tokenized_section
+        let chunks: Vec<String> = tokenized_section
             .chunks()
             .into_iter()
             .filter(|t| t.text.trim().len() > 0)
             .map(|t| t.text)
-            .collect())
+            .collect();
+
+        utils::info(&format!(
+            "Splitter: chunks_count={} duration={}",
+            chunks.len(),
+            utils::now() - now
+        ));
+
+        Ok(chunks)
     }
 }
 
