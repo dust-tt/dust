@@ -488,7 +488,7 @@ impl Splitter for BaseV0Splitter {
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
 
         utils::info(&format!(
-            "Splitter: chunks_count={}",
+            "Splitter: tokenized_section_tree_size={}",
             tokenized_section.size()
         ));
 
