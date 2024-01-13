@@ -2,7 +2,7 @@ use crate::data_sources::data_source::Section;
 use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
-use crate::utils::ParseError;
+use crate::utils::{self, ParseError};
 use anyhow::{anyhow, Result};
 use async_recursion::async_recursion;
 use async_trait::async_trait;
@@ -206,13 +206,14 @@ impl TokenizedSection {
 
         let mut sections: Vec<TokenizedSection> = vec![];
 
-        // Create new children for content if the section already has children, to enforce the invariant that
-        // content nodes are leaf nodes. Even if there are no children, but content overflows
-        // max_chunk_size, we split in multiple nodes to enforce the invariant that any content node
-        // fit in a `max_chunk_size`.
+        // Create new children for content if the section already has children or has a prefix, to
+        // enforce the invariant that content nodes are leaf nodes and don't have prefix (see
+        // tokens_count calculation at the end of this method). Even if there are no children, but
+        // content overflows max_chunk_size, we split in multiple nodes to enforce the invariant
+        // that any content node fit in a `max_chunk_size`.
         if let Some(c) = content.as_ref() {
             if (c.tokens.len() + prefixes_tokens_count) > max_chunk_size
-                // || !section.sections.is_empty()
+                || !section.sections.is_empty()
                 || prefix.is_some()
             {
                 let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
@@ -286,6 +287,10 @@ impl TokenizedSection {
             res.extend(section.dfs());
         }
         res
+    }
+
+    fn size(&self) -> usize {
+        return self.dfs().len();
     }
 
     /// This function materialize a chunk from a TokenizedSection node.
@@ -481,6 +486,11 @@ impl Splitter for BaseV0Splitter {
 
         let tokenized_section =
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
+
+        utils::info(&format!(
+            "Splitter: tokenized_section_tree_size={}",
+            tokenized_section.size()
+        ));
 
         // We filter out whitespace only or empty strings which is possible to obtain if the section
         // passed have empty or whitespace only content.
