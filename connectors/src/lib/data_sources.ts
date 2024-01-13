@@ -357,14 +357,7 @@ export function renderDocumentTitleAndContent({
     }
   }
   if (content) {
-    // TODO(spolu): hotfix incident 2024-01-13
-    const contentFlat = sectionFullText(content);
-
-    c.sections.push({
-      prefix: null,
-      content: contentFlat,
-      sections: [],
-    });
+    c.sections.push(content);
   }
   if (c.prefix === "") c.prefix = null;
   return c;
