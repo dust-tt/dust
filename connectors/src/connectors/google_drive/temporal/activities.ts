@@ -409,17 +409,6 @@ async function syncOneFile(
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     const drive = await getDriveClient(oauth2client);
 
-    if (GDRIVE_FILE_IDS_BLACKLIST.includes(file.id)) {
-      logger.info(
-        {
-          file_id: file.id,
-          title: file.name,
-        },
-        `File ID is blacklisted. Skipping`
-      );
-      return false;
-    }
-
     let res;
     try {
       res = await drive.files.get(
@@ -524,6 +513,17 @@ async function syncOneFile(
     }
   } else {
     // We do not support this file type
+    return false;
+  }
+
+  if (GDRIVE_FILE_IDS_BLACKLIST.includes(file.id)) {
+    logger.info(
+      {
+        file_id: file.id,
+        title: file.name,
+      },
+      `File ID is blacklisted. Skipping`
+    );
     return false;
   }
 
