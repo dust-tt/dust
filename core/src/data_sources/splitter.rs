@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
+use std::time::Instant;
 use std::{cmp, str::FromStr};
 use tokio::try_join;
 
@@ -481,15 +482,20 @@ impl Splitter for BaseV0Splitter {
         max_chunk_size: usize,
         section: Section,
     ) -> Result<Vec<String>> {
+        let start = Instant::now();
+
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
+
+        let duration = start.elapsed();
 
         let tokenized_section =
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
 
         utils::info(&format!(
-            "Splitter: tokenized_section_tree_size={}",
-            tokenized_section.size()
+            "Splitter: tokenized_section_tree_size={} embedder_duration={}ms",
+            tokenized_section.size(),
+            duration.as_millis()
         ));
 
         // We filter out whitespace only or empty strings which is possible to obtain if the section
