@@ -11,7 +11,7 @@ use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -198,7 +198,7 @@ impl MistralAILLM {
         mistral_messages
     }
 
-    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         return p50k_base_singleton();
     }
 
