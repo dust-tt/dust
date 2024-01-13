@@ -809,7 +809,7 @@ impl DataSource {
                 let debug_path = format!("{}/{}/debug.json", bucket_path, document_hash);
                 Object::create(
                     &bucket,
-                    serde_json::to_string(&text).unwrap().as_bytes().to_vec(),
+                    serde_json::to_string(&text).unwrap().into_bytes(),
                     &debug_path,
                     "application/json",
                 )
