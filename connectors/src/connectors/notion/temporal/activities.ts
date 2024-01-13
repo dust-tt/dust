@@ -1,4 +1,8 @@
-import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import {
+  CoreAPIDataSourceDocumentSection,
+  ModelId,
+  sectionFullText,
+} from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
@@ -1733,13 +1737,19 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
+    const contentFlat = sectionFullText(renderedPageSection);
+
     const content = renderDocumentTitleAndContent({
       title: title ?? null,
       createdAt: createdAt,
       updatedAt: updatedAt,
       author,
       lastEditor,
-      content: renderedPageSection,
+      content: {
+        prefix: null,
+        content: contentFlat,
+        sections: [],
+      },
     });
 
     localLogger.info(
