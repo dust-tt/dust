@@ -42,6 +42,13 @@ import logger from "@connectors/logger/logger";
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
+const GDRIVE_FILE_IDS_BLACKLIST = [
+  "1IR3Ql2-QfGf9VUIqTqAunzYJi0pQNg3u",
+  "1Seekzy_3m_P0blWP37mU2roMc5HYtULH",
+  "1aUUY4nDPrM8YCxFybW_ClVud4TnqQC1w",
+  "10Yaj4T-_UOzSaE7Ea0qEZLULU1noZWSX",
+];
+
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
@@ -509,6 +516,17 @@ async function syncOneFile(
     return false;
   }
 
+  if (GDRIVE_FILE_IDS_BLACKLIST.includes(file.id)) {
+    logger.info(
+      {
+        file_id: file.id,
+        title: file.name,
+      },
+      `File ID is blacklisted. Skipping`
+    );
+    return false;
+  }
+
   if (!documentContent || documentContent.trim().length === 0) {
     logger.info(
       {
@@ -520,6 +538,8 @@ async function syncOneFile(
       },
       "Skipping empty document"
     );
+
+    return false;
   }
 
   const content = renderDocumentTitleAndContent({
