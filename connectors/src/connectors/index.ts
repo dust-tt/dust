@@ -38,7 +38,9 @@ import {
   fullResyncIntercomConnector,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
+  retrieveIntercomObjectsParents,
   retrieveIntercomResourcesTitles,
+  setIntercomConnectorPermissions,
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
@@ -225,13 +227,7 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
     );
   },
   google_drive: setGoogleDriveConnectorPermissions,
-  intercom: async () => {
-    return new Err(
-      new Error(
-        `Setting Intercom connector permissions is not implemented yet.`
-      )
-    );
-  },
+  intercom: setIntercomConnectorPermissions,
   webcrawler: async () => {
     return new Err(
       new Error(`Setting Webcrawler connector permissions is not applicable.`)
@@ -261,7 +257,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
   github: async () => new Ok([]), // Github is flat,
-  intercom: async () => new Ok([]), // Intercom is not truly flat as we can put articles & collections inside collections but will handle this later
+  intercom: retrieveIntercomObjectsParents,
   webcrawler: retrieveWebCrawlerObjectsParents,
 };
 
