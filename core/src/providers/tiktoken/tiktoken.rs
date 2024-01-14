@@ -800,10 +800,10 @@ mod tests {
     use rustc_hash::FxHashMap as HashMap;
 
     use crate::providers::tiktoken::tiktoken::byte_pair_split;
+    use crate::providers::tiktoken::tiktoken::cl100k_base;
     use crate::providers::tiktoken::tiktoken::p50k_base;
     use crate::providers::tiktoken::tiktoken::p50k_base_singleton;
     use crate::providers::tiktoken::tiktoken::r50k_base;
-    use crate::providers::tiktoken::tiktoken::cl100k_base;
     use crate::providers::tiktoken::tiktoken::tokenize_async;
 
     #[test]
