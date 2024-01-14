@@ -132,17 +132,25 @@ export async function cancelWorkflow(workflowId: string) {
 
 export async function terminateAllWorkflowsForConnectorId(
   connectorId: ModelId
-): Promise<boolean> {
+) {
   const client = await getTemporalClient();
+
   const workflowInfos = client.workflow.list({
     query: `ExecutionStatus = 'Running' AND connectorId = ${connectorId}`,
   });
-  const promises = [];
+
   for await (const handle of workflowInfos) {
     const workflowHandle = client.workflow.getHandle(handle.workflowId);
-    promises.push(workflowHandle.terminate());
+    try {
+      await workflowHandle.terminate();
+    } catch (err) {
+      // Intentionally ignore errors that indicate the workflow no longer exists.
+      if (err instanceof WorkflowNotFoundError) {
+        continue;
+      }
+      throw err;
+    }
   }
-  await Promise.all(promises);
 
-  return true;
+  return;
 }
