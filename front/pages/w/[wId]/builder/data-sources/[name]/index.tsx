@@ -729,6 +729,7 @@ function ManagedDataSourceView({
                     case "confluence":
                     case "google_drive":
                     case "slack":
+                    case "intercom":
                       return (
                         <>
                           <Button
@@ -753,7 +754,6 @@ function ManagedDataSourceView({
                       );
                     case "notion":
                     case "github":
-                    case "intercom":
                       return (
                         <Button
                           label="Add / Remove data, manage permissions"
