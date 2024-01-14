@@ -146,7 +146,7 @@ export async function terminateAllWorkflowsForConnectorId(
     } catch (err) {
       // Intentionally ignore errors that indicate the workflow no longer exists.
       if (err instanceof WorkflowNotFoundError) {
-        return;
+        continue;
       }
       throw err;
     }
