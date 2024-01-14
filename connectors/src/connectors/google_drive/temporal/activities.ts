@@ -509,20 +509,7 @@ async function syncOneFile(
     return false;
   }
 
-  if (!documentContent || documentContent.trim().length === 0) {
-    logger.info(
-      {
-        connectorId: connectorId,
-        documentId,
-        fileMimeType: file.mimeType,
-        fileId: file.id,
-        title: file.name,
-      },
-      "Skipping empty document"
-    );
-
-    return false;
-  }
+  documentContent = documentContent?.trim();
 
   const content = renderDocumentTitleAndContent({
     title: file.name,
@@ -561,7 +548,10 @@ async function syncOneFile(
 
   let upsertTimestampMs: number | undefined = undefined;
 
-  if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+  if (
+    documentContent.length > 0 &&
+    documentContent.length <= MAX_DOCUMENT_TXT_LEN
+  ) {
     const parents = (
       await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
     ).map((f) => f.id);
@@ -590,7 +580,7 @@ async function syncOneFile(
         documentLen: documentContent.length,
         title: file.name,
       },
-      `Document too big to be upserted. Skipping`
+      `Document is empty or too big to be upserted. Skipping`
     );
   }
 
