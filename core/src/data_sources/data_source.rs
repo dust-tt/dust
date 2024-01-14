@@ -800,29 +800,6 @@ impl DataSource {
             hash: String,
         }
 
-        match document_id {
-            "gdrive-1IR3Ql2-QfGf9VUIqTqAunzYJi0pQNg3u"
-            | "gdrive-1Seekzy_3m_P0blWP37mU2roMc5HYtULH"
-            | "gdrive-10Yaj4T-_UOzSaE7Ea0qEZLULU1noZWSX"
-            | "gdrive-1aUUY4nDPrM8YCxFybW_ClVud4TnqQC1w"
-            | "gdrive-1YEfZGWPK_fULC3ZWb5vD6YYJKYJ1nUdG" => {
-                let debug_path = format!("{}/{}/debug.json", bucket_path, document_hash);
-                Object::create(
-                    &bucket,
-                    serde_json::to_string(&text).unwrap().into_bytes(),
-                    &debug_path,
-                    "application/json",
-                )
-                .await?;
-                utils::done(&format!(
-                    "Uploaded buggy document: data_source_id={} document_id={} debug_path={}",
-                    self.data_source_id, document_id, debug_path
-                ));
-                panic!("BUGGY document `{}`", document_id);
-            }
-            _ => (),
-        };
-
         // Split text in chunks.
         let splits = splitter(self.config.splitter_id)
             .split(
