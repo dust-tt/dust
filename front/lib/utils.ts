@@ -136,17 +136,12 @@ export function subFilter(a: string, b: string) {
 }
 
 export function compareForFuzzySort(query: string, a: string, b: string) {
-  // Find the index of the token in both strings.
-  const indexA = a.toLowerCase().indexOf(query);
-  const indexB = b.toLowerCase().indexOf(query);
-
-  // If the token index is the same, compare the strings lexicographically.
-  if (indexA === indexB) {
+  const distanceToQuery = (s: string) =>
+    s.length - query.length + s.indexOf(query.charAt(0));
+  if (distanceToQuery(a) === distanceToQuery(b)) {
     return a.localeCompare(b);
   }
-
-  // Otherwise, sort based on the index of the token's first occurrence.
-  return indexA - indexB;
+  return distanceToQuery(a) - distanceToQuery(b);
 }
 
 export function filterAndSortAgents(
