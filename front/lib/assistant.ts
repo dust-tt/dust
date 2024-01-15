@@ -1,4 +1,4 @@
-import { AgentConfigurationType } from "@dust-tt/types";
+import { LightAgentConfigurationType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS, SupportedModel } from "@dust-tt/types";
 
 export function isLargeModel(model: unknown): model is SupportedModel {
@@ -66,8 +66,8 @@ const CUSTOM_ORDER: string[] = [
 // This function implements our general strategy to sort agents to users (input bar, assistant list,
 // agent suggestions...).
 export function compareAgentsForSort(
-  a: AgentConfigurationType,
-  b: AgentConfigurationType
+  a: LightAgentConfigurationType,
+  b: LightAgentConfigurationType
 ) {
   // Check for 'dust'
   if (a.sId === GLOBAL_AGENTS_SID.DUST) return -1;
