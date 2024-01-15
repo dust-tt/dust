@@ -27,9 +27,11 @@ const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 async function createWorkspace(session: any) {
   const [, emailDomain] = session.user.email.split("@");
 
-  // Use domain only when email is verified and non-disposable.
+  // Use domain only when email is verified on Google Workspace and non-disposable.
+  const isEmailVerified =
+    session.provider.provider !== "google" && session.user.email_verified;
   const verifiedDomain =
-    session.user.email_verified && !isDisposableEmailDomain(emailDomain)
+    isEmailVerified && !isDisposableEmailDomain(emailDomain)
       ? emailDomain
       : null;
 
