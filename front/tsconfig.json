@@ -17,8 +17,7 @@
     "downlevelIteration": true,
     "paths": {
       "@app/*": ["./*"]
-    },
-    "sourceMap": true
+    }
   },
   "include": [
     "global.d.ts",
