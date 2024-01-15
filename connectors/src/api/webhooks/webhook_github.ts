@@ -14,6 +14,7 @@ import {
   isRepositoriesRemovedPayload,
 } from "@connectors/connectors/github/lib/github_webhooks";
 import {
+  launchGithubCodeSyncWorkflow,
   launchGithubDiscussionGarbageCollectWorkflow,
   launchGithubDiscussionSyncWorkflow,
   launchGithubIssueGarbageCollectWorkflow,
@@ -22,7 +23,10 @@ import {
   launchGithubReposSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import { Connector } from "@connectors/lib/models";
-import { GithubConnectorState } from "@connectors/lib/models/github";
+import {
+  GithubCodeRepository,
+  GithubConnectorState,
+} from "@connectors/lib/models/github";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
@@ -251,7 +255,13 @@ const _webhookGithubAPIHandler = async (
             res
           );
         } else if (jsonBody.action === "closed") {
-          // Syncing logic
+          return syncCode(
+            enabledConnectors,
+            jsonBody.organization.login,
+            jsonBody.repository.name,
+            jsonBody.repository.id,
+            res
+          );
         } else {
           assertNever(jsonBody.action);
         }
@@ -372,6 +382,106 @@ async function garbageCollectRepos(
           );
           hasErrors = true;
         }
+      }
+    })
+  );
+
+  if (hasErrors) {
+    res.status(500).end();
+  } else {
+    res.status(200).end();
+  }
+}
+
+async function syncCode(
+  connectors: Connector[],
+  orgLogin: string,
+  repoName: string,
+  repoId: number,
+  res: Response<GithubWebhookResBody>
+) {
+  let hasErrors = false;
+
+  await Promise.all(
+    connectors.map(async (c) => {
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: c.id,
+          repoId: repoId.toString(),
+        },
+      });
+
+      if (!githubCodeRepository) {
+        // We don't have a GithubCodeRepository object for this repo which means it's not synced so
+        // we can just return.
+        logger.info(
+          {
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+          },
+          "githubCodeSync: skipping, GithubCodeRepository not found"
+        );
+        return;
+      }
+
+      const SYNCING_INTERVAL = 1000 * 60 * 60 * 8; // 8 day
+      if (
+        githubCodeRepository.lastSeenAt.getTime() >
+        Date.now() - SYNCING_INTERVAL
+      ) {
+        // We've synced this repo in the last SYNCING_INTERVAL so we can just return.
+        logger.info(
+          {
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+            lastSeenAt: githubCodeRepository.lastSeenAt,
+          },
+          "githubCodeSync: skipping, GithubCodeRepository still fresh"
+        );
+        return;
+      }
+
+      try {
+        logger.info(
+          {
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+            lastSeenAt: githubCodeRepository.lastSeenAt,
+          },
+          "githubCodeSync: Starting workflow"
+        );
+        // We signal the workflow to start the sync of the repo.
+        await launchGithubCodeSyncWorkflow(
+          c.id.toString(),
+          orgLogin,
+          repoName,
+          repoId
+        );
+
+        // And finally update the lastSeenAt. Multiple PR merge can race through that logic but
+        // since we debounce the code sync workflow 10s this will result in only one actual workflow
+        // running safely.
+        await githubCodeRepository.update({
+          lastSeenAt: new Date(),
+        });
+      } catch (err) {
+        logger.error(
+          {
+            err,
+            connectorId: c.id,
+            orgLogin,
+            repoName,
+            repoId,
+          },
+          "githubCodeSync: Failed to launch workflow"
+        );
+        hasErrors = true;
       }
     })
   );

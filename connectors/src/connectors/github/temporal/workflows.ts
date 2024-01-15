@@ -240,16 +240,15 @@ export async function githubRepoSyncWorkflow(
     await Promise.all(promises);
   }
 
-  // Start child workflow to sync code.
-  const childWorkflowId = `${workflowInfo().workflowId}-codeSync`;
-  await executeChild(githubCodeSyncWorkflow, {
-    workflowId: childWorkflowId,
-    searchAttributes: {
-      connectorId: [parseInt(connectorId)],
-    },
-    args: [dataSourceConfig, githubInstallationId, repoName, repoId, repoLogin],
-    parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-    memo: workflowInfo().memo,
+  // Start code syncing activity.
+  await githubCodeSyncActivity({
+    dataSourceConfig,
+    installationId: githubInstallationId,
+    repoLogin,
+    repoName,
+    repoId,
+    loggerArgs,
+    isBatchSync: true,
   });
 }
 
@@ -268,15 +267,35 @@ export async function githubCodeSyncWorkflow(
     repoLogin,
   };
 
-  await githubCodeSyncActivity({
-    dataSourceConfig,
-    installationId: githubInstallationId,
-    repoLogin,
-    repoName,
-    repoId,
-    loggerArgs,
-    isBatchSync: true,
+  let signaled = false;
+  let debounceCount = 0;
+
+  setHandler(newWebhookSignal, () => {
+    signaled = true;
   });
+
+  while (signaled) {
+    signaled = false;
+    // The main motivation for debouncing here is to ensure that concurrent PR merges don't launch
+    // multiple workflows. In the webhook for PR merge we send a signal after updating the
+    // GithubCodeRepository.lastSeenAt (if was older than the sync interval), but we can still race
+    // at this layer for a few seconds, hence the use of signals here.
+    await sleep(10000);
+    if (signaled) {
+      debounceCount += 1;
+      continue;
+    }
+    await githubCodeSyncActivity({
+      dataSourceConfig,
+      installationId: githubInstallationId,
+      repoLogin,
+      repoName,
+      repoId,
+      loggerArgs: { ...loggerArgs, debounceCount },
+      isBatchSync: true,
+    });
+    await githubSaveSuccessSyncActivity(dataSourceConfig);
+  }
 }
 
 export async function githubIssueSyncWorkflow(
