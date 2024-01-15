@@ -152,10 +152,15 @@ export async function launchGithubCodeSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const githubInstallationId = connector.connectionId;
 
-  await client.workflow.start(githubCodeSyncWorkflow, {
+  await client.workflow.signalWithStart(githubCodeSyncWorkflow, {
     args: [dataSourceConfig, githubInstallationId, repoName, repoId, repoLogin],
     taskQueue: QUEUE_NAME,
     workflowId: getCodeSyncWorkflowId(dataSourceConfig, repoId),
+    searchAttributes: {
+      connectorId: [parseInt(connectorId)],
+    },
+    signal: newWebhookSignal,
+    signalArgs: undefined,
     memo: {
       connectorId: connectorId,
     },

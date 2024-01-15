@@ -159,6 +159,70 @@ GithubDiscussion.init(
 );
 Connector.hasMany(GithubDiscussion);
 
+export class GithubCodeRepository extends Model<
+  InferAttributes<GithubCodeRepository>,
+  InferCreationAttributes<GithubCodeRepository>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare lastSeenAt: CreationOptional<Date>;
+
+  declare repoId: string;
+  declare repoLogin: string;
+  declare repoName: string;
+
+  declare sourceUrl: string;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+GithubCodeRepository.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    repoId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    repoLogin: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    repoName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [{ fields: ["connectorId", "repoId"], unique: true }],
+    modelName: "github_code_repositories",
+  }
+);
+Connector.hasMany(GithubCodeRepository);
+
 export class GithubCodeFile extends Model<
   InferAttributes<GithubCodeFile>,
   InferCreationAttributes<GithubCodeFile>

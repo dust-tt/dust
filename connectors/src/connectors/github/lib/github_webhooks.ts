@@ -92,10 +92,15 @@ export function isCommentPayload(payload: unknown): payload is CommentPayload {
 const PullRequestSchema = t.type({
   id: t.number,
   number: t.number,
+  merged: t.boolean,
 });
 
 const PullRequestPayloadSchema = t.type({
-  action: t.union([t.literal("opened"), t.literal("edited")]),
+  action: t.union([
+    t.literal("opened"),
+    t.literal("edited"),
+    t.literal("closed"),
+  ]),
   pull_request: PullRequestSchema,
   organization: OrganizationSchema,
   repository: RepositorySchema,

@@ -697,9 +697,7 @@ export async function processRepository({
 
     // Iterate over the files in the temp directory.
     for await (const file of getFiles(tempDir)) {
-      // get file extension
       const ext = extname(file).toLowerCase();
-      // get file size
       const { size } = await fs.stat(file);
 
       const isWithelisted =
