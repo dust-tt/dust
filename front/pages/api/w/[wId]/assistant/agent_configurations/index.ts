@@ -3,6 +3,7 @@ import {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   GetAgentConfigurationsQuerySchema,
+  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBodySchema,
   Result,
 } from "@dust-tt/types";
@@ -26,10 +27,10 @@ import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
 };
 export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
 };
 
 async function handler(
@@ -99,12 +100,18 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getAgentConfigurations(auth, viewParam);
+      let agentConfigurations = await getAgentConfigurations({
+        auth,
+        agentsGetView: viewParam,
+        variant: "light",
+      });
       if (withUsage === "true") {
         agentConfigurations = await safeRedisClient(async (redis) => {
           return Promise.all(
             agentConfigurations.map(
-              async (agentConfiguration): Promise<AgentConfigurationType> => {
+              async (
+                agentConfiguration
+              ): Promise<LightAgentConfigurationType> => {
                 return {
                   ...agentConfiguration,
                   usage: await getAgentUsage({
@@ -124,7 +131,9 @@ async function handler(
 
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
-            async (agentConfiguration): Promise<AgentConfigurationType> => {
+            async (
+              agentConfiguration
+            ): Promise<LightAgentConfigurationType> => {
               return {
                 ...agentConfiguration,
                 lastAuthors: await getAgentRecentAuthors(

@@ -1,6 +1,7 @@
 import {
   AgentActionEvent,
   AgentActionSuccessEvent,
+  AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -14,7 +15,7 @@ import {
 } from "@dust-tt/types";
 import {
   AgentActionSpecification,
-  AgentConfigurationType,
+  LightAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   AgentMessageType,
@@ -30,6 +31,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runDatabaseQuery } from "@app/lib/api/assistant/actions/database_query";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
   renderConversationForModel,
@@ -176,7 +178,7 @@ export async function generateActionInputs(
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: LightAgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -191,12 +193,23 @@ export async function* runAgent(
   | DatabaseQueryParamsEvent,
   void
 > {
+  const fullConfiguration = await getAgentConfiguration(
+    auth,
+    configuration.sId
+  );
+
+  if (!fullConfiguration) {
+    throw new Error(
+      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
+    );
+  }
+
   // First run the action if a configuration is present.
-  if (configuration.action !== null) {
-    if (isRetrievalConfiguration(configuration.action)) {
+  if (fullConfiguration.action !== null) {
+    if (isRetrievalConfiguration(fullConfiguration.action)) {
       const eventStream = runRetrieval(
         auth,
-        configuration,
+        fullConfiguration,
         conversation,
         userMessage,
         agentMessage
@@ -240,10 +253,10 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDustAppRunConfiguration(configuration.action)) {
+    } else if (isDustAppRunConfiguration(fullConfiguration.action)) {
       const eventStream = runDustApp(
         auth,
-        configuration,
+        fullConfiguration,
         conversation,
         userMessage,
         agentMessage
@@ -290,10 +303,10 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDatabaseQueryConfiguration(configuration.action)) {
+    } else if (isDatabaseQueryConfiguration(fullConfiguration.action)) {
       const eventStream = runDatabaseQuery({
         auth,
-        configuration,
+        configuration: fullConfiguration,
         conversation,
         userMessage,
         agentMessage,
@@ -339,7 +352,7 @@ export async function* runAgent(
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
-      })(configuration.action);
+      })(fullConfiguration.action);
     }
   }
 
@@ -347,7 +360,7 @@ export async function* runAgent(
   if (configuration.generation !== null) {
     const eventStream = runGeneration(
       auth,
-      configuration,
+      fullConfiguration,
       conversation,
       userMessage,
       agentMessage

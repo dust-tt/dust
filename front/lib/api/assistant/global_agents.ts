@@ -5,6 +5,7 @@ import { promisify } from "util";
 const readFileAsync = promisify(fs.readFile);
 
 import {
+  AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
@@ -17,9 +18,8 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import { AgentConfigurationType, GlobalAgentStatus } from "@dust-tt/types";
-import { PlanType } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import {} from "@dust-tt/types";
+import { DustAPI, GlobalAgentStatus, PlanType } from "@dust-tt/types";
 
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -761,8 +761,13 @@ export async function getGlobalAgent(
 }
 
 export async function getGlobalAgents(
-  auth: Authenticator
+  auth: Authenticator,
+  agentIds?: string[]
 ): Promise<AgentConfigurationType[]> {
+  if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
+    throw new Error("Invalid agentIds.");
+  }
+
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
@@ -786,7 +791,7 @@ export async function getGlobalAgents(
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = await Promise.all(
-    Object.values(GLOBAL_AGENTS_SID).map((sId) =>
+    Object.values(agentIds ?? GLOBAL_AGENTS_SID).map((sId) =>
       getGlobalAgent(auth, sId, preFetchedDataSources)
     )
   );

@@ -7,8 +7,8 @@ import {
   IconButton,
 } from "@dust-tt/sparkle";
 import {
-  AgentConfigurationType,
   AgentMention,
+  LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
@@ -23,8 +23,8 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { classNames } from "@app/lib/utils";
 
 export interface InputBarContainerProps {
-  allAssistants: AgentConfigurationType[];
-  agentConfigurations: AgentConfigurationType[];
+  allAssistants: LightAgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
   disableAttachment: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
