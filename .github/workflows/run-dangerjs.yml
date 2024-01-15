@@ -14,14 +14,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '18'
 
       - name: Install dependencies
-        run: npm install
-        working-directory: front
+        run: cd front && npm install
 
       - name: Run Danger for front
-        run: npx danger ci --dangerfile
+        run: cd front && npx danger ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: front
