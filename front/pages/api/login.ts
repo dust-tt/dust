@@ -16,6 +16,7 @@ import {
 } from "@app/lib/plans/subscription";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
+import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
@@ -160,11 +161,14 @@ async function handler(
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
           const [, emailDomain] = session.user.email.split("@");
+          const allowedDomain =
+            session.user.email_verified &&
+            !isDisposableEmailDomain(emailDomain);
           const w = await Workspace.create({
             sId: generateModelSId(),
             name: session.user.username,
             // Only set allowedDomain if the email was verified.
-            allowedDomain: session.user.email_verified ? emailDomain : null,
+            allowedDomain: allowedDomain ?? null,
           });
 
           await _createAndLogMembership({
