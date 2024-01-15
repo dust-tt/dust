@@ -6,7 +6,7 @@ import {
   PublicPostConversationsRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
 } from "../../front/api_handlers/public/assistant";
-import { LightAgentConfigurationType } from "../../front/assistant/agent";
+import { AgentConfigurationType } from "../../front/assistant/agent";
 import {
   AgentMessageType,
   ContentFragmentType,
@@ -464,7 +464,7 @@ export class DustAPI {
     if (json.error) {
       return new Err(json.error as DustAPIErrorResponse);
     }
-    return new Ok(json.agentConfigurations as LightAgentConfigurationType[]);
+    return new Ok(json.agentConfigurations as AgentConfigurationType[]);
   }
 
   async postContentFragment({

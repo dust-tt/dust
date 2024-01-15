@@ -7,14 +7,11 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import {
-  APIError,
-  DataSourceType,
-  LightAgentConfigurationType,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import { DataSourceType } from "@dust-tt/types";
+import { UserType, WorkspaceType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
+import { SubscriptionType } from "@dust-tt/types";
+import { APIError } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
@@ -93,9 +90,7 @@ export default function EditDustAssistant({
     return null;
   }
 
-  const handleToggleAgentStatus = async (
-    agent: LightAgentConfigurationType
-  ) => {
+  const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
     if (agent.status === "disabled_missing_datasource") {
       sendNotification({
         title: "Dust Assistant",

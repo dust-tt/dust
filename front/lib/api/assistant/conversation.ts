@@ -7,7 +7,7 @@ import {
   WorkspaceType,
 } from "@dust-tt/types";
 import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
-import { LightAgentConfigurationType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import {
   AgentMessageType,
   ContentFragmentContentType,
@@ -305,7 +305,7 @@ async function batchRenderAgentMessages(
             return getAgentConfiguration(auth, agentConfigId);
           })
         )
-      ).filter((a) => a !== null) as LightAgentConfigurationType[];
+      ).filter((a) => a !== null) as AgentConfigurationType[];
       return agents;
     })(),
     (async () => {

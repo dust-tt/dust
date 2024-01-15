@@ -1,8 +1,8 @@
 import {
   AgentActionType,
+  AgentConfigurationType,
   AgentMessageType,
   ConversationType,
-  LightAgentConfigurationType,
   ModelId,
   RetrievalDocumentType,
   sectionFullText,
@@ -346,7 +346,7 @@ async function botAnswerMessage(
         slackChannelId: slackChannel,
       },
     });
-    let agentConfigurationToMention: LightAgentConfigurationType | null = null;
+    let agentConfigurationToMention: AgentConfigurationType | null = null;
 
     if (channel && channel.agentConfigurationId) {
       agentConfigurationToMention =
@@ -362,7 +362,7 @@ async function botAnswerMessage(
       });
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
-      let defaultAssistant: LightAgentConfigurationType | null = null;
+      let defaultAssistant: AgentConfigurationType | null = null;
       defaultAssistant =
         agentConfigurations.find((ac) => ac.sId === "dust") || null;
       if (!defaultAssistant || defaultAssistant.status !== "active") {

@@ -98,7 +98,6 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  * Global agents enabled for the workspace are always returned with all the views.
  */
 export type AgentsGetViewType =
-  | { agentId: string }
   | "list"
   | { conversationId: string }
   | "all"
@@ -117,16 +116,13 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
-export type LightAgentConfigurationType = {
+export type AgentConfigurationType = {
   id: ModelId;
 
   sId: string;
   version: number;
   // Global agents have a null authorId, others have a non-null authorId
   versionAuthorId: ModelId | null;
-
-  // If undefined, no text generation.
-  generation: AgentGenerationConfigurationType | null;
 
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
@@ -139,14 +135,16 @@ export type LightAgentConfigurationType = {
   description: string;
   pictureUrl: string;
 
-  // `lastAuthors` is expensive to compute, so we only compute it when needed.
-  lastAuthors?: AgentRecentAuthors;
-  // Usage is expensive to compute, so we only compute it when needed.
-  usage?: AgentUsageType;
-};
-
-export type AgentConfigurationType = LightAgentConfigurationType & {
   // If undefined, no action performed, otherwise the action is
   // performed (potentially NoOp eg autoSkip above).
   action: AgentActionConfigurationType | null;
+
+  // If undefined, no text generation.
+  generation: AgentGenerationConfigurationType | null;
+
+  // Usage is expensive to compute, so we only compute it when needed.
+  usage?: AgentUsageType;
+
+  // `lastAuthors` is expensive to compute, so we only compute it when needed.
+  lastAuthors?: AgentRecentAuthors;
 };

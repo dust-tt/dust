@@ -584,12 +584,10 @@ async function revokeUsersForDowngrade(auth: Authenticator) {
 }
 
 async function archiveConnectedAgents(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurations({
+  const agentConfigurations = await getAgentConfigurations(
     auth,
-    agentsGetView: "admin_internal",
-    variant: "full",
-  });
-
+    "admin_internal"
+  );
   // agentconfigurations with a retrieval action with at least a managed
   // data source
   const agentConfigurationsToArchive = agentConfigurations.filter(

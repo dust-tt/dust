@@ -1,5 +1,4 @@
 import {
-  AgentConfigurationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
@@ -11,6 +10,7 @@ import {
   ModelConversationType,
   ModelMessageType,
 } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import {
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -243,11 +243,10 @@ export async function constructPrompt(
   if (meta.includes("{ASSISTANTS_LIST}")) {
     if (!auth.isUser())
       throw new Error("Unexpected unauthenticated call to `constructPrompt`");
-    const agents = await getAgentConfigurations({
+    const agents = await getAgentConfigurations(
       auth,
-      agentsGetView: auth.user() ? "list" : "all",
-      variant: "light",
-    });
+      auth.user() ? "list" : "all"
+    );
     meta = meta.replaceAll(
       "{ASSISTANTS_LIST}",
       agents

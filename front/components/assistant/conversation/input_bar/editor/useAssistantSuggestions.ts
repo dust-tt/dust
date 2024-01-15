@@ -1,10 +1,10 @@
-import { LightAgentConfigurationType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { compareAgentsForSort } from "@app/lib/assistant";
 
 const useAssistantSuggestions = (
-  agentConfigurations: LightAgentConfigurationType[]
+  agentConfigurations: AgentConfigurationType[]
 ) => {
   // `useMemo` will ensure that suggestions is only recalculated when `agentConfigurations` changes.
   const suggestions = useMemo(() => {
