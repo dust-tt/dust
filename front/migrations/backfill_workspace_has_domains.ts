@@ -1,8 +1,7 @@
 import { Op } from "sequelize";
 
-import { Membership, User, Workspace } from "@app/lib/models";
+import { Workspace } from "@app/lib/models";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace";
-import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { makeScript } from "@app/migrations/helpers";
 
 makeScript({}, async ({ execute }) => {
@@ -23,9 +22,12 @@ makeScript({}, async ({ execute }) => {
     }
 
     try {
-      await WorkspaceHasDomain.create({
-        domain: workspace.allowedDomain,
-      });
+      if (execute) {
+        await WorkspaceHasDomain.create({
+          domain: workspace.allowedDomain,
+        });
+      }
+
       updatedWorkspacesCount++;
     } catch (err) {
       console.log(
