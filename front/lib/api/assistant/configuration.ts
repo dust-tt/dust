@@ -346,7 +346,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
         }
 
         const dataSourcesConfig =
-          agentDatasourceConfigurations[retrievalConfig.id];
+          agentDatasourceConfigurations[retrievalConfig.id] ?? [];
         let topK: number | "auto" = "auto";
         if (retrievalConfig.topKMode === "custom") {
           if (!retrievalConfig.topK) {
