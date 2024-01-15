@@ -16,6 +16,7 @@ import {
 } from "@app/lib/plans/subscription";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
+import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
@@ -159,9 +160,16 @@ async function handler(
         // If there is no invte, we create a personal workspace for the user, otherwise the user
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
+          const [, emailDomain] = session.user.email.split("@");
+          // Only set `allowedDomain` if the email is verified and not disposable.
+          const allowedDomain =
+            session.user.email_verified && !isDisposableEmailDomain(emailDomain)
+              ? emailDomain
+              : null;
           const w = await Workspace.create({
             sId: generateModelSId(),
             name: session.user.username,
+            allowedDomain,
           });
 
           await _createAndLogMembership({
