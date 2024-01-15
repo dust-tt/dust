@@ -15,7 +15,6 @@ import {
 } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import * as t from "io-ts";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -24,6 +23,7 @@ import {
   getSlackUserInfo,
   isUserAllowedToUseChatbot,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -683,10 +683,6 @@ async function makeContentFragment(
 > {
   let allMessages: MessageElement[] = [];
 
-  let next_cursor = undefined;
-
-  let shouldTake = false;
-
   const slackBotMessages = await SlackChatBotMessage.findAll({
     where: {
       connectorId: connector.id,
@@ -694,48 +690,28 @@ async function makeContentFragment(
       threadTs: threadTs,
     },
   });
-
-  do {
-    const replies: ConversationsRepliesResponse =
-      await slackClient.conversations.replies({
-        channel: channelId,
-        ts: threadTs,
-        cursor: next_cursor,
-        limit: 100,
-      });
-    // Despite the typing, in practice `replies` can be undefined at times.
-    if (!replies) {
-      return new Err(
-        new Error(
-          "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
-        )
-      );
+  const replies = await getRepliesFromThread({
+    slackClient,
+    channelId,
+    threadTs,
+  });
+  let shouldTake = false;
+  for (const reply of replies) {
+    if (reply.ts === startingAtTs) {
+      // Signal that we must take all the messages starting from this one.
+      shouldTake = true;
     }
-    if (replies.error) {
-      throw new Error(replies.error);
+    if (!reply.user) {
+      continue;
     }
-    if (!replies.messages) {
-      break;
-    }
-    for (const m of replies.messages) {
-      if (m.ts === startingAtTs) {
-        // Signal that we must take all the messages starting from this one.
-        shouldTake = true;
-      }
-      if (!m.user) {
+    if (shouldTake) {
+      if (slackBotMessages.find((sbm) => sbm.messageTs === reply.ts)) {
+        // If this message is a mention to the bot, we don't send it as a content fragment.
         continue;
       }
-      if (shouldTake) {
-        if (slackBotMessages.find((sbm) => sbm.messageTs === m.ts)) {
-          // If this message is a mention to the bot, we don't send it as a content fragment.
-          continue;
-        }
-        allMessages.push(m);
-      }
+      allMessages.push(reply);
     }
-
-    next_cursor = replies.response_metadata?.next_cursor;
-  } while (next_cursor);
+  }
 
   const botUserId = await getBotUserIdMemoized(connector.id);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
