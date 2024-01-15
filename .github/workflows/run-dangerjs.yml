@@ -1,6 +1,8 @@
 name: Run DangerJS
 
 on:
+  label:
+    types: [created, deleted]
   pull_request:
     branches: [ main ]
 
