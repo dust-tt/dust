@@ -193,8 +193,6 @@ async function handler(
         // If there is no invte, we create a personal workspace for the user, otherwise the user
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
-          // We keep `allowedDomain` until we have full support around `WorkspaceHasDomain`.
-
           const workspace = await createWorkspace(session);
           await _createAndLogMembership({
             workspace,
