@@ -132,39 +132,46 @@ export const getServerSideProps: GetServerSideProps<{
     })
   );
 
-  // Get slackbot enabled status
-  const slackConnectorId = dataSources.find(
-    (ds) => ds.connectorProvider === "slack"
-  )?.connectorId;
+  const [slackBotEnabled, gdrivePDFEnabled] = await Promise.all([
+    // Get slackbot enabled status
+    (async () => {
+      const slackConnectorId = dataSources.find(
+        (ds) => ds.connectorProvider === "slack"
+      )?.connectorId;
+      let slackBotEnabled = false;
+      if (slackConnectorId) {
+        const botEnabledRes = await connectorsAPI.getConnectorConfig(
+          slackConnectorId,
+          "botEnabled"
+        );
+        if (botEnabledRes.isErr()) {
+          throw botEnabledRes.error;
+        }
+        slackBotEnabled = botEnabledRes.value.configValue === "true";
+      }
+      return slackBotEnabled;
+    })(),
+    // Get Gdrive PDF enabled status
+    (async () => {
+      const gdriveConnectorId = dataSources.find(
+        (ds) => ds.connectorProvider === "google_drive"
+      )?.connectorId;
 
-  let slackbotEnabled = false;
-  if (slackConnectorId) {
-    const botEnabledRes = await connectorsAPI.getConnectorConfig(
-      slackConnectorId,
-      "botEnabled"
-    );
-    if (botEnabledRes.isErr()) {
-      throw botEnabledRes.error;
-    }
-    slackbotEnabled = botEnabledRes.value.configValue === "true";
-  }
-  // Get Gdrive PDF enabled status
-  const gdriveConnectorId = dataSources.find(
-    (ds) => ds.connectorProvider === "google_drive"
-  )?.connectorId;
-
-  let gdrivePDFEnabled = false;
-  if (gdriveConnectorId) {
-    const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
-      gdriveConnectorId,
-      "pdfEnabled"
-    );
-    if (gdrivePDFEnabledRes.isErr()) {
-      throw gdrivePDFEnabledRes.error;
-    }
-    gdrivePDFEnabled =
-      gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
-  }
+      let gdrivePDFEnabled = false;
+      if (gdriveConnectorId) {
+        const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
+          gdriveConnectorId,
+          "pdfEnabled"
+        );
+        if (gdrivePDFEnabledRes.isErr()) {
+          throw gdrivePDFEnabledRes.error;
+        }
+        gdrivePDFEnabled =
+          gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
+      }
+      return gdrivePDFEnabled;
+    })(),
+  ]);
 
   const planInvitation = await getPlanInvitation(auth);
 
@@ -176,7 +183,7 @@ export const getServerSideProps: GetServerSideProps<{
       planInvitation: planInvitation ?? null,
       dataSources,
       agentConfigurations: agentConfigurations,
-      slackbotEnabled,
+      slackBotEnabled,
       gdrivePDFEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
     },

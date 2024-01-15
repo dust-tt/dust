@@ -11,9 +11,11 @@ import {
   cleanupGithubConnector,
   createGithubConnector,
   fullResyncGithubConnector,
+  getGithubConfig,
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
   retrieveGithubReposTitles,
+  setGithubConfig,
   stopGithubConnector,
   updateGithubConnector,
 } from "@connectors/connectors/github";
@@ -274,9 +276,7 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   notion: async () => {
     throw new Error("Not implemented");
   },
-  github: async () => {
-    throw new Error("Not implemented");
-  },
+  github: setGithubConfig,
   google_drive: setGoogleDriveConfig,
   intercom: async () => {
     throw new Error("Not implemented");
@@ -297,9 +297,7 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
   notion: async () => {
     throw new Error("Not implemented");
   },
-  github: async () => {
-    throw new Error("Not implemented");
-  },
+  github: getGithubConfig,
   google_drive: getGoogleDriveConfig,
   intercom: async () => {
     throw new Error("Not implemented");
