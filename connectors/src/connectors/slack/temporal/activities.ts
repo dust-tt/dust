@@ -545,7 +545,7 @@ export async function syncThread(
 
   let allMessages: MessageElement[] = [];
 
-  let next_cursor = undefined;
+  let next_cursor: string | undefined = undefined;
 
   do {
     try {
@@ -554,7 +554,7 @@ export async function syncThread(
           channel: channelId,
           ts: threadTs,
           cursor: next_cursor,
-          limit: 100,
+          limit: 200,
         });
       // Despite the typing, in practice `replies` can be undefined at times.
       if (!replies) {
@@ -572,10 +572,20 @@ export async function syncThread(
       if (!replies.messages) {
         break;
       }
-      allMessages = allMessages.concat(
-        replies.messages.filter((m) => !!m.user)
-      );
+
+      // Messages are returned in the following order:
+      // [[mainMessage, m7, m8, m9], [mainMessage, m4, m5, m6], [mainMessage, m1, m2, m3]]
+      //     ^ page 1                      ^ page 2                      ^ page 3
+
       next_cursor = replies.response_metadata?.next_cursor;
+      if (!next_cursor) {
+        // Last page, we keep the first message, which is the thread main message.
+        allMessages = replies.messages.concat(allMessages);
+      } else {
+        // Not the last page, we remove the first message, which is always the thread main message.
+        allMessages = replies.messages.slice(1).concat(allMessages);
+      }
+      allMessages = allMessages.filter((m) => !!m.user);
     } catch (e) {
       const slackError = e as CodedError;
       if (slackError.code === ErrorCode.PlatformError) {
