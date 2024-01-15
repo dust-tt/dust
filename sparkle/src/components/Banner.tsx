@@ -5,16 +5,19 @@ import { XMark } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 interface BannerProps {
+  allowDismiss: boolean;
   classNames: string;
   ctaLabel?: string;
   hidden: boolean;
   label: string;
   onClick?: () => void;
+  onDismiss?: () => void;
   title: string;
 }
 
 // Define defaultProps for the Banner component.
 Banner.defaultProps = {
+  allowDismiss: true,
   classNames: "",
   hidden: false,
 };
@@ -53,7 +56,12 @@ export function Banner(props: BannerProps) {
       <div className="s-flex s-flex-1 s-justify-end">
         <a
           className="focus-visible:outline-offset-[-4px] s--m-3 s-p-3"
-          onClick={() => setIsDismissed(true)}
+          onClick={() => {
+            setIsDismissed(true);
+            if (props.onDismiss) {
+              props.onDismiss();
+            }
+          }}
         >
           <span className="s-sr-only">Dismiss</span>
           <XMark className="s-h-5 s-w-5 s-text-white" aria-hidden="true" />
