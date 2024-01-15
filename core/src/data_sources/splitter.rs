@@ -183,21 +183,10 @@ impl TokenizedSection {
             None => "",
         };
 
-        println!("Tokenizing section: {}", path);
-
         let (prefix, mut content) = try_join!(
             TokenizedText::from(embedder, section.prefix.as_ref()),
             TokenizedText::from(embedder, section.content.as_ref())
         )?;
-
-        match content.as_ref() {
-            Some(c) => {
-                println!("Tokenized content: tokens={}", c.tokens.len());
-            }
-            None => {
-                println!("Tokenized content: None");
-            }
-        };
 
         // Add the new prefix to the list of prefixes to be passed down children.
         match prefix.as_ref() {
@@ -1017,23 +1006,24 @@ mod tests {
             .unwrap();
     }
 
-    // #[tokio::test]
-    // async fn test_splitter_bug_20240112() {
-    //     let bstr = "\t\t\t\t\t\t\r\n";
-    //     let section = Section {
-    //         prefix: None,
-    //         content: bstr.repeat(8192).into(),
-    //         sections: vec![],
-    //     };
+    #[tokio::test]
+    #[ignore] // ignored as it's high CPU
+    async fn test_splitter_bug_20240112() {
+        let bstr = "\t\t\t\t\t\t\r\n";
+        let section = Section {
+            prefix: None,
+            content: bstr.repeat(8192).into(),
+            sections: vec![],
+        };
 
-    //     let provider_id = ProviderID::OpenAI;
-    //     let model_id = "text-embedding-ada-002";
-    //     let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
-    //     // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
-    //     splitter(SplitterID::BaseV0)
-    //         .split(credentials, provider_id, model_id, 256, section)
-    //         .await
-    //         .unwrap();
-    // }
+        // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
+        splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 256, section)
+            .await
+            .unwrap();
+    }
 }
