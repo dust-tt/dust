@@ -1,7 +1,7 @@
 import { DatabaseQueryActionType } from "../../front/assistant/actions/database_query";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
-import { AgentConfigurationType } from "../../front/assistant/agent";
+import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 
@@ -109,7 +109,7 @@ export type AgentMessageType = {
   version: number;
   parentMessageId: string | null;
 
-  configuration: AgentConfigurationType;
+  configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
   content: string | null;

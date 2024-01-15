@@ -34,7 +34,11 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const agentConfigurations = await getAgentConfigurations(auth, "all");
+      const agentConfigurations = await getAgentConfigurations({
+        auth,
+        agentsGetView: "all",
+        variant: "light",
+      });
       return res.status(200).json({
         agentConfigurations,
       });
