@@ -100,7 +100,7 @@ Plan.init(
     // TODO(2024-01-10 flav) Use a JSON Types field instead of group of booleans.
     isManagedConfluenceAllowed: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: false,
     },
     isManagedSlackAllowed: {
       type: DataTypes.BOOLEAN,
