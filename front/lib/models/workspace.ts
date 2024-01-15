@@ -118,7 +118,7 @@ WorkspaceHasDomain.init(
   {
     modelName: "workspace_has_domains",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["domain", "domainAutoJoinEnabled"] }],
+    indexes: [{ unique: true, fields: ["domain"] }],
   }
 );
 Workspace.hasMany(WorkspaceHasDomain, {
