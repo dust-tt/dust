@@ -17,7 +17,6 @@ import {
   Channel,
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
-import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -26,6 +25,7 @@ import {
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
@@ -545,59 +545,24 @@ export async function syncThread(
 
   let allMessages: MessageElement[] = [];
 
-  let next_cursor: string | undefined = undefined;
-
-  do {
-    try {
-      const replies: ConversationsRepliesResponse =
-        await slackClient.conversations.replies({
-          channel: channelId,
-          ts: threadTs,
-          cursor: next_cursor,
-          limit: 200,
-        });
-      // Despite the typing, in practice `replies` can be undefined at times.
-      if (!replies) {
-        const workflowError: WorkflowError = {
-          type: "transient_upstream_activity_error",
-          message:
-            "Received unexpected undefined replies from Slack API in syncThread (generally transient)",
-          __is_dust_error: true,
-        };
-        throw workflowError;
+  try {
+    allMessages = await getRepliesFromThread({
+      slackClient,
+      channelId,
+      threadTs,
+    });
+    allMessages = allMessages.filter((m) => !!m.user);
+  } catch (e) {
+    const slackError = e as CodedError;
+    if (slackError.code === ErrorCode.PlatformError) {
+      const platformError = slackError as WebAPIPlatformError;
+      if (platformError.data.error === "thread_not_found") {
+        // If the thread is not found we just return and don't upsert anything.
+        return;
       }
-      if (replies.error) {
-        throw new Error(replies.error);
-      }
-      if (!replies.messages) {
-        break;
-      }
-
-      // Messages are returned in the following order:
-      // [[mainMessage, m7, m8, m9], [mainMessage, m4, m5, m6], [mainMessage, m1, m2, m3]]
-      //     ^ page 1                      ^ page 2                      ^ page 3
-
-      next_cursor = replies.response_metadata?.next_cursor;
-      if (!next_cursor) {
-        // Last page, we keep the first message, which is the thread main message.
-        allMessages = replies.messages.concat(allMessages);
-      } else {
-        // Not the last page, we remove the first message, which is always the thread main message.
-        allMessages = replies.messages.slice(1).concat(allMessages);
-      }
-      allMessages = allMessages.filter((m) => !!m.user);
-    } catch (e) {
-      const slackError = e as CodedError;
-      if (slackError.code === ErrorCode.PlatformError) {
-        const platformError = slackError as WebAPIPlatformError;
-        if (platformError.data.error === "thread_not_found") {
-          // If the thread is not found we just return and don't upsert anything.
-          return;
-        }
-      }
-      throw e;
     }
-  } while (next_cursor);
+    throw e;
+  }
 
   const documentId = `slack-${channelId}-thread-${threadTs}`;
 
