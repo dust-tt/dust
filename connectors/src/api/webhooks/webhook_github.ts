@@ -255,13 +255,17 @@ const _webhookGithubAPIHandler = async (
             res
           );
         } else if (jsonBody.action === "closed") {
-          return syncCode(
-            enabledConnectors,
-            jsonBody.organization.login,
-            jsonBody.repository.name,
-            jsonBody.repository.id,
-            res
-          );
+          if (jsonBody.pull_request.merged) {
+            return syncCode(
+              enabledConnectors,
+              jsonBody.organization.login,
+              jsonBody.repository.name,
+              jsonBody.repository.id,
+              res
+            );
+          } else {
+            return res.status(200).end();
+          }
         } else {
           assertNever(jsonBody.action);
         }
@@ -426,7 +430,7 @@ async function syncCode(
         return;
       }
 
-      const SYNCING_INTERVAL = 1000 * 60 * 60 * 8; // 8 day
+      const SYNCING_INTERVAL = 1000 * 60 * 60 * 8; // 8h
       if (
         githubCodeRepository.lastSeenAt.getTime() >
         Date.now() - SYNCING_INTERVAL
