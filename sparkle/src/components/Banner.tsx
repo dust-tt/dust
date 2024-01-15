@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { Button } from "@sparkle/_index";
 import { XMark } from "@sparkle/icons/solid";
@@ -23,7 +23,11 @@ Banner.defaultProps = {
 };
 
 export function Banner(props: BannerProps) {
-  const [isDismissed, setIsDismissed] = useState(props.hidden ?? false);
+  const [isDismissed, setIsDismissed] = useState(true);
+
+  useEffect(() => {
+    setIsDismissed(props.hidden);
+  }, [props.hidden]);
 
   return isDismissed ? (
     <></>
