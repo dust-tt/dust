@@ -159,9 +159,12 @@ async function handler(
         // If there is no invte, we create a personal workspace for the user, otherwise the user
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
+          const [, emailDomain] = session.user.email.split("@");
           const w = await Workspace.create({
             sId: generateModelSId(),
             name: session.user.username,
+            // Only set allowedDomain if the email was verified.
+            allowedDomain: session.user.email_verified ? emailDomain : null,
           });
 
           await _createAndLogMembership({
