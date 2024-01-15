@@ -416,7 +416,7 @@ const WorkspacePage = ({
   const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
     try {
       const r = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/bot_enabled`,
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
         {
           method: "POST",
           headers: {
