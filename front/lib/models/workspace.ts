@@ -24,7 +24,7 @@ export class Workspace extends Model<
 
   declare allowedDomain: string | null;
   declare description: string | null;
-  declare domainAutoJoinEnabled: boolean;
+  declare domainAutoJoinEnabled: CreationOptional<boolean>;
   declare name: string;
   declare segmentation: WorkspaceSegmentationType;
   declare sId: string;
