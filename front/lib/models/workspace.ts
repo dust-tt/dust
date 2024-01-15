@@ -22,11 +22,12 @@ export class Workspace extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare upgradedAt: Date | null;
 
-  declare sId: string;
-  declare name: string;
-  declare description: string | null;
   declare allowedDomain: string | null;
+  declare description: string | null;
+  declare domainAutoJoinEnabled: boolean;
+  declare name: string;
   declare segmentation: WorkspaceSegmentationType;
+  declare sId: string;
   declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
@@ -54,6 +55,10 @@ Workspace.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    domainAutoJoinEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: "false",
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -73,7 +78,10 @@ Workspace.init(
   {
     modelName: "workspace",
     sequelize: front_sequelize,
-    indexes: [{ unique: true, fields: ["sId"] }],
+    indexes: [
+      { unique: true, fields: ["sId"] },
+      { fields: ["allowedDomain", "domainAutoJoinEnabled"] },
+    ],
   }
 );
 
