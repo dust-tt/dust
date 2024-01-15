@@ -17,6 +17,7 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
   "slack",
   "google_drive",
+  "intercom",
 ]);
 
 export default function ConnectorPermissionsModal({
