@@ -113,8 +113,19 @@ export async function buildInitialState({
     }
   }
 
-  const tableQueryConfiguration: AssistantBuilderInitialState["tableQueryConfiguration"] =
+  let tableQueryConfiguration: AssistantBuilderInitialState["tableQueryConfiguration"] =
     null;
+
+  if (
+    isTablesQueryConfiguration(config.action) &&
+    config.action.tables.length
+  ) {
+    tableQueryConfiguration = {
+      workspaceId: config.action.tables[0].workspaceId,
+      tableId: config.action.tables[0].tableId,
+      dataSourceId: config.action.tables[0].dataSourceId,
+    };
+  }
 
   return {
     dataSourceConfigurations,

@@ -186,13 +186,3 @@ AgentTablesQueryAction.init(
     sequelize: front_sequelize,
   }
 );
-
-AgentTablesQueryConfiguration.hasMany(AgentTablesQueryAction, {
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
-});
-
-AgentTablesQueryAction.belongsTo(AgentTablesQueryConfiguration, {
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
-});
