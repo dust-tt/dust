@@ -45,8 +45,9 @@ export const getServerSideProps: GetServerSideProps<{
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
   agentConfigurations: AgentConfigurationType[];
-  slackbotEnabled?: boolean;
-  gdrivePDFEnabled?: boolean;
+  slackBotEnabled: boolean;
+  gdrivePDFEnabled: boolean;
+  githubCodeSyncEnabled: boolean;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
   const wId = context.params?.wId;
@@ -132,39 +133,70 @@ export const getServerSideProps: GetServerSideProps<{
     })
   );
 
-  // Get slackbot enabled status
-  const slackConnectorId = dataSources.find(
-    (ds) => ds.connectorProvider === "slack"
-  )?.connectorId;
+  const [slackBotEnabled, gdrivePDFEnabled, githubCodeSyncEnabled] =
+    await Promise.all([
+      // Get slackbot enabled status
+      (async () => {
+        const slackConnectorId = dataSources.find(
+          (ds) => ds.connectorProvider === "slack"
+        )?.connectorId;
+        let slackBotEnabled = false;
+        if (slackConnectorId) {
+          const botEnabledRes = await connectorsAPI.getConnectorConfig(
+            slackConnectorId,
+            "botEnabled"
+          );
+          if (botEnabledRes.isErr()) {
+            throw botEnabledRes.error;
+          }
+          slackBotEnabled = botEnabledRes.value.configValue === "true";
+        }
+        return slackBotEnabled;
+      })(),
+      // Get Gdrive PDF enabled status
+      (async () => {
+        const gdriveConnectorId = dataSources.find(
+          (ds) => ds.connectorProvider === "google_drive"
+        )?.connectorId;
 
-  let slackbotEnabled = false;
-  if (slackConnectorId) {
-    const botEnabledRes = await connectorsAPI.getConnectorConfig(
-      slackConnectorId,
-      "botEnabled"
-    );
-    if (botEnabledRes.isErr()) {
-      throw botEnabledRes.error;
-    }
-    slackbotEnabled = botEnabledRes.value.configValue === "true";
-  }
-  // Get Gdrive PDF enabled status
-  const gdriveConnectorId = dataSources.find(
-    (ds) => ds.connectorProvider === "google_drive"
-  )?.connectorId;
+        let gdrivePDFEnabled = false;
+        if (gdriveConnectorId) {
+          const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
+            gdriveConnectorId,
+            "pdfEnabled"
+          );
+          if (gdrivePDFEnabledRes.isErr()) {
+            throw gdrivePDFEnabledRes.error;
+          }
+          gdrivePDFEnabled =
+            gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
+        }
+        return gdrivePDFEnabled;
+      })(),
+      // Get Github Code Sync enabled status
+      (async () => {
+        const githubConnectorId = dataSources.find(
+          (ds) => ds.connectorProvider === "github"
+        )?.connectorId;
 
-  let gdrivePDFEnabled = false;
-  if (gdriveConnectorId) {
-    const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
-      gdriveConnectorId,
-      "pdfEnabled"
-    );
-    if (gdrivePDFEnabledRes.isErr()) {
-      throw gdrivePDFEnabledRes.error;
-    }
-    gdrivePDFEnabled =
-      gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
-  }
+        let githubCodeSyncEnabled = false;
+        if (githubConnectorId) {
+          const githubConnectorEnabledRes =
+            await connectorsAPI.getConnectorConfig(
+              githubConnectorId,
+              "codeSyncEnabled"
+            );
+          if (githubConnectorEnabledRes.isErr()) {
+            throw githubConnectorEnabledRes.error;
+          }
+          githubCodeSyncEnabled =
+            githubConnectorEnabledRes.value.configValue === "true"
+              ? true
+              : false;
+        }
+        return githubCodeSyncEnabled;
+      })(),
+    ]);
 
   const planInvitation = await getPlanInvitation(auth);
 
@@ -176,8 +208,9 @@ export const getServerSideProps: GetServerSideProps<{
       planInvitation: planInvitation ?? null,
       dataSources,
       agentConfigurations: agentConfigurations,
-      slackbotEnabled,
+      slackBotEnabled,
       gdrivePDFEnabled,
+      githubCodeSyncEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
     },
   };
@@ -189,8 +222,9 @@ const WorkspacePage = ({
   planInvitation,
   dataSources,
   agentConfigurations,
-  slackbotEnabled,
+  slackBotEnabled,
   gdrivePDFEnabled,
+  githubCodeSyncEnabled,
   dataSourcesSynchronizedAgo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -213,7 +247,7 @@ const WorkspacePage = ({
       if (!r.ok) {
         throw new Error("Failed to upgrade workspace.");
       }
-      await router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while upgrading the workspace.");
@@ -234,7 +268,7 @@ const WorkspacePage = ({
       if (!r.ok) {
         throw new Error("Failed to downgrade workspace.");
       }
-      await router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while downgrading the workspace.");
@@ -283,7 +317,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to delete data source.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while deleting the data source.");
@@ -306,7 +340,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to update workspace.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while updating the workspace.");
@@ -337,7 +371,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to archive agent configuration.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert(
@@ -382,14 +416,15 @@ const WorkspacePage = ({
   const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
     try {
       const r = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/bot_enabled`,
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            botEnabled: !slackbotEnabled,
+            configKey: "botEnabled",
+            botEnabled: `${!slackBotEnabled}`,
           }),
         }
       );
@@ -428,6 +463,31 @@ const WorkspacePage = ({
     }
   });
 
+  const { submit: onGithubCodeSyncToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-github/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "codeSyncEnabled",
+            configValue: `${!githubCodeSyncEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
   const { submit: onUpgradeOrInviteToPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
@@ -451,7 +511,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to invite workspace to enterprise plan.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while inviting to enterprise plan.");
@@ -691,11 +751,11 @@ const WorkspacePage = ({
                     <div>
                       Slackbot enabled?{" "}
                       <span className="font-medium">
-                        {JSON.stringify(slackbotEnabled)}
+                        {JSON.stringify(slackBotEnabled)}
                       </span>
                     </div>
                     <SliderToggle
-                      selected={slackbotEnabled}
+                      selected={slackBotEnabled}
                       onClick={onSlackbotToggle}
                     />
                   </div>
@@ -711,6 +771,20 @@ const WorkspacePage = ({
                     <SliderToggle
                       selected={gdrivePDFEnabled}
                       onClick={onGdrivePDFToggle}
+                    />
+                  </div>
+                )}
+                {ds.connectorProvider === "github" && (
+                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                    <div>
+                      Code sync enabled?{" "}
+                      <span className="font-medium">
+                        {JSON.stringify(githubCodeSyncEnabled)}
+                      </span>
+                    </div>
+                    <SliderToggle
+                      selected={githubCodeSyncEnabled}
+                      onClick={onGithubCodeSyncToggle}
                     />
                   </div>
                 )}

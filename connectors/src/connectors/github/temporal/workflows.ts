@@ -94,7 +94,6 @@ export async function githubFullSyncWorkflow(
               repo.name,
               repo.id,
               repo.login,
-              connectorId,
               syncCodeOnly,
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
@@ -136,7 +135,6 @@ export async function githubReposSyncWorkflow(
             repo.name,
             repo.id,
             orgLogin,
-            connectorId,
             false,
           ],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
@@ -156,7 +154,6 @@ export async function githubRepoSyncWorkflow(
   repoName: string,
   repoId: number,
   repoLogin: string,
-  connectorId: string,
   syncCodeOnly: boolean
 ) {
   const loggerArgs = {

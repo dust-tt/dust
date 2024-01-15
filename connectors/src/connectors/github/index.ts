@@ -21,7 +21,10 @@ import {
   ConnectorResource,
 } from "@connectors/types/resources";
 
-import { ConnectorPermissionRetriever } from "../interface";
+import {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "../interface";
 
 type GithubInstallationId = string;
 
@@ -414,4 +417,84 @@ export async function retrieveGithubReposTitles(
   }
 
   return new Ok(repoTitles);
+}
+
+export const getGithubConfig: ConnectorConfigGetter = async function (
+  connectorId: ModelId,
+  configKey: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  switch (configKey) {
+    case "codeSyncEnabled": {
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        return new Err(
+          new Error(`Connector state not found (connectorId: ${connector.id})`)
+        );
+      }
+
+      return new Ok(connectorState.codeSyncEnabled.toString());
+    }
+    default:
+      return new Err(new Error(`Invalid config key ${configKey}`));
+  }
+};
+
+export async function setGithubConfig(
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  switch (configKey) {
+    case "codeSyncEnabled": {
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        return new Err(
+          new Error(`Connector state not found (connectorId: ${connector.id})`)
+        );
+      }
+
+      await connectorState.update({
+        codeSyncEnabled: configValue === "true",
+      });
+
+      // launch full-resync workflow, code sync only (to be launched on enable and disable to sync
+      // or properly clean up the code).
+      await launchGithubFullSyncWorkflow({
+        connectorId: connector.id.toString(),
+        syncCodeOnly: true,
+      });
+
+      return new Ok(void 0);
+    }
+
+    default: {
+      return new Err(new Error(`Invalid config key ${configKey}`));
+    }
+  }
 }
