@@ -161,14 +161,15 @@ async function handler(
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
           const [, emailDomain] = session.user.email.split("@");
+          // Only set `allowedDomain` if the email is verified and not disposable.
           const allowedDomain =
-            session.user.email_verified &&
-            !isDisposableEmailDomain(emailDomain);
+            session.user.email_verified && !isDisposableEmailDomain(emailDomain)
+              ? emailDomain
+              : null;
           const w = await Workspace.create({
             sId: generateModelSId(),
             name: session.user.username,
-            // Only set allowedDomain if the email was verified.
-            allowedDomain: allowedDomain ?? null,
+            allowedDomain,
           });
 
           await _createAndLogMembership({
