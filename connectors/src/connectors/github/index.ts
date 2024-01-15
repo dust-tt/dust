@@ -8,6 +8,9 @@ import {
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
+  GithubCodeDirectory,
+  GithubCodeFile,
+  GithubCodeRepository,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
@@ -313,70 +316,158 @@ export async function retrieveGithubConnectorPermissions({
 
     return new Ok(resources);
   } else {
-    // If parentInternalId is set this means we are fetching the children of a repository. For now
-    // we only support issues and discussions.
-    const repoId = parseInt(parentInternalId, 10);
-    if (isNaN(repoId)) {
-      return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
-    }
+    if (parentInternalId.startsWith("github-code-")) {
+      const [files, directories] = await Promise.all([
+        (async () => {
+          return GithubCodeFile.findAll({
+            where: {
+              connectorId: c.id,
+              parentInternalId,
+            },
+          });
+        })(),
+        (async () => {
+          return GithubCodeDirectory.findAll({
+            where: {
+              connectorId: c.id,
+              parentInternalId,
+            },
+          });
+        })(),
+      ]);
 
-    const [latestDiscussion, latestIssue, repo] = await Promise.all([
-      (async () => {
-        return GithubDiscussion.findOne({
-          where: {
-            connectorId: c.id,
-            repoId: repoId.toString(),
-          },
-          limit: 1,
-          order: [["updatedAt", "DESC"]],
-        });
-      })(),
-      (async () => {
-        return GithubIssue.findOne({
-          where: {
-            connectorId: c.id,
-            repoId: repoId.toString(),
-          },
-          limit: 1,
-          order: [["updatedAt", "DESC"]],
-        });
-      })(),
-      getRepo(githubInstallationId, repoId),
-    ]);
-
-    const resources: ConnectorResource[] = [];
-
-    if (latestIssue) {
-      resources.push({
-        provider: c.type,
-        internalId: `${repoId}-issues`,
-        parentInternalId,
-        type: "database",
-        title: "Issues",
-        sourceUrl: repo.url + "/issues",
-        expandable: false,
-        permission: "read" as ConnectorPermission,
-        dustDocumentId: null,
-        lastUpdatedAt: latestIssue.updatedAt.getTime(),
+      files.sort((a, b) => {
+        return a.fileName.localeCompare(b.fileName);
       });
-    }
-
-    if (latestDiscussion) {
-      resources.push({
-        provider: c.type,
-        internalId: `${repoId}-discussions`,
-        parentInternalId,
-        type: "channel",
-        title: "Discussions",
-        sourceUrl: repo.url + "/discussions",
-        expandable: false,
-        permission: "read" as ConnectorPermission,
-        dustDocumentId: null,
-        lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+      directories.sort((a, b) => {
+        return a.dirName.localeCompare(b.dirName);
       });
-    }
 
-    return new Ok(resources);
+      const resources: ConnectorResource[] = [];
+
+      directories.forEach((directory) => {
+        resources.push({
+          provider: c.type,
+          internalId: directory.internalId,
+          parentInternalId,
+          type: "folder",
+          title: directory.dirName,
+          sourceUrl: directory.sourceUrl,
+          expandable: true,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: directory.updatedAt.getTime(),
+        });
+      });
+
+      files.forEach((file) => {
+        resources.push({
+          provider: c.type,
+          internalId: file.documentId,
+          parentInternalId,
+          type: "file",
+          title: file.fileName,
+          sourceUrl: file.sourceUrl,
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: file.documentId,
+          lastUpdatedAt: file.updatedAt.getTime(),
+        });
+      });
+
+      return new Ok(resources);
+    } else {
+      // If parentInternalId is set and does not start with `github-code` it means that it is
+      // supposed to be the repoId. We support issues and discussions and also want to add the code
+      // repo resource if it exists (code sync enabled).
+      const repoId = parseInt(parentInternalId, 10);
+      if (isNaN(repoId)) {
+        return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+      }
+
+      const [latestDiscussion, latestIssue, repo, codeRepo] = await Promise.all(
+        [
+          (async () => {
+            return GithubDiscussion.findOne({
+              where: {
+                connectorId: c.id,
+                repoId: repoId.toString(),
+              },
+              limit: 1,
+              order: [["updatedAt", "DESC"]],
+            });
+          })(),
+          (async () => {
+            return GithubIssue.findOne({
+              where: {
+                connectorId: c.id,
+                repoId: repoId.toString(),
+              },
+              limit: 1,
+              order: [["updatedAt", "DESC"]],
+            });
+          })(),
+          getRepo(githubInstallationId, repoId),
+          (async () => {
+            return GithubCodeRepository.findOne({
+              where: {
+                connectorId: c.id,
+                repoId: repoId.toString(),
+              },
+            });
+          })(),
+        ]
+      );
+
+      const resources: ConnectorResource[] = [];
+
+      if (latestIssue) {
+        resources.push({
+          provider: c.type,
+          internalId: `${repoId}-issues`,
+          parentInternalId,
+          type: "database",
+          title: "Issues",
+          sourceUrl: repo.url + "/issues",
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: latestIssue.updatedAt.getTime(),
+        });
+      }
+
+      if (latestDiscussion) {
+        resources.push({
+          provider: c.type,
+          internalId: `${repoId}-discussions`,
+          parentInternalId,
+          type: "channel",
+          title: "Discussions",
+          sourceUrl: repo.url + "/discussions",
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+        });
+      }
+
+      if (codeRepo) {
+        resources.push({
+          provider: c.type,
+          internalId: `github-code-${repoId}`,
+          parentInternalId,
+          type: "folder",
+          title: "Code",
+          sourceUrl: repo.url,
+          expandable: true,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: codeRepo.updatedAt.getTime(),
+        });
+      }
+
+      return new Ok(resources);
+    }
   }
 }
 
