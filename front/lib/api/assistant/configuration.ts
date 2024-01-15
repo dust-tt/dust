@@ -185,9 +185,11 @@ export async function getAgentConfigurations<V extends "light" | "full">({
             return Promise.resolve([]);
           }
           return AgentConfiguration.findAll({
-            ...baseAgentsSequelizeQuery,
             where: {
-              ...baseAgentsSequelizeQuery.where,
+              workspaceId: owner.id,
+              ...(agentPrefix
+                ? { name: { [Op.iLike]: `${agentPrefix}%` } }
+                : {}),
               sId: agentsGetView.agentId,
             },
           });
