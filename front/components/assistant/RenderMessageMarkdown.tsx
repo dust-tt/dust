@@ -4,7 +4,7 @@ import {
   IconButton,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { LightAgentConfigurationType } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import { RetrievalDocumentType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
@@ -163,7 +163,7 @@ export function RenderMessageMarkdown({
 }: {
   content: string;
   blinkingCursor: boolean;
-  agentConfigurations?: LightAgentConfigurationType[];
+  agentConfigurations?: AgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
   return (
@@ -261,7 +261,7 @@ function MentionBlock({
   agentConfiguration,
 }: {
   agentName: string;
-  agentConfiguration?: LightAgentConfigurationType;
+  agentConfiguration?: AgentConfigurationType;
 }) {
   const statusText =
     !agentConfiguration || agentConfiguration?.status === "archived"

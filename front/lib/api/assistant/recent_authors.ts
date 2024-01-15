@@ -1,6 +1,6 @@
 import {
+  AgentConfigurationType,
   AgentRecentAuthors,
-  LightAgentConfigurationType,
   UserType,
 } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
@@ -129,7 +129,7 @@ export async function getAgentRecentAuthors(
     agent,
     auth,
   }: {
-    agent: LightAgentConfigurationType;
+    agent: AgentConfigurationType;
     auth: Authenticator;
   },
   members: UserType[]
@@ -171,7 +171,7 @@ export async function agentConfigurationWasUpdatedBy({
   agent,
   auth,
 }: {
-  agent: LightAgentConfigurationType;
+  agent: AgentConfigurationType;
   auth: Authenticator;
 }) {
   const owner = auth.workspace();

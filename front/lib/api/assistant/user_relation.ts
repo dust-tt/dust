@@ -1,8 +1,8 @@
 import {
+  AgentConfigurationType,
   AgentUserListStatus,
   assertNever,
   Err,
-  LightAgentConfigurationType,
   Ok,
   Result,
 } from "@dust-tt/types";
@@ -15,7 +15,7 @@ export function agentUserListStatus({
   agentConfiguration,
   listStatusOverride,
 }: {
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration: AgentConfigurationType;
   listStatusOverride: AgentUserListStatus | null;
 }): AgentUserListStatus {
   if (listStatusOverride === null) {

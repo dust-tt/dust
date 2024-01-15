@@ -1,12 +1,8 @@
-import {
-  AgentConfigurationType,
-  DataSourceType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
 import { isDatabaseQueryConfiguration } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
+import { AgentConfigurationType } from "@dust-tt/types";
 import { AppType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";

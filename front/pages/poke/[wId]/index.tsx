@@ -10,7 +10,6 @@ import {
   DataSourceType,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
-  LightAgentConfigurationType,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
@@ -85,13 +84,8 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const dataSources = await getDataSources(auth);
-
   const agentConfigurations = (
-    await getAgentConfigurations({
-      auth,
-      agentsGetView: "admin_internal",
-      variant: "full",
-    })
+    await getAgentConfigurations(auth, "admin_internal")
   ).filter(
     (a) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
@@ -175,7 +169,7 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       planInvitation: planInvitation ?? null,
       dataSources,
-      agentConfigurations: agentConfigurations,
+      agentConfigurations,
       slackbotEnabled,
       gdrivePDFEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
@@ -315,7 +309,7 @@ const WorkspacePage = ({
   );
 
   const { submit: onAssistantArchive } = useSubmitFunction(
-    async (agentConfiguration: LightAgentConfigurationType) => {
+    async (agentConfiguration: AgentConfigurationType) => {
       if (
         !window.confirm(
           `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`

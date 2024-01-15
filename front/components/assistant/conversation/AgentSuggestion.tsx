@@ -1,9 +1,9 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
 import {
+  AgentConfigurationType,
   ConversationType,
   isAgentMention,
   isUserMessageType,
-  LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -38,7 +38,7 @@ export function AgentSuggestion({
   const {
     submit: handleSelectSuggestion,
     isSubmitting: isSelectingSuggestion,
-  } = useSubmitFunction(async (agent: LightAgentConfigurationType) => {
+  } = useSubmitFunction(async (agent: AgentConfigurationType) => {
     const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
     const mRes = await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
@@ -118,8 +118,8 @@ export function AgentSuggestion({
    * mentioned, use the shared `compareAgentsForSort` function.
    */
   function compareAgentSuggestions(
-    a: LightAgentConfigurationType,
-    b: LightAgentConfigurationType
+    a: AgentConfigurationType,
+    b: AgentConfigurationType
   ) {
     // index of last user message in conversation mentioning agent a
     const aIndex = conversation.content.findLastIndex((ms) =>

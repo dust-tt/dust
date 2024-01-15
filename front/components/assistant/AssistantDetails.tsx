@@ -13,7 +13,6 @@ import {
   AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
-  LightAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   DustAppRunConfigurationType,
@@ -32,7 +31,7 @@ import ReactMarkdown from "react-markdown";
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
+import { useAgentUsage, useApp } from "@app/lib/swr";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
@@ -46,7 +45,7 @@ export function AssistantDetails({
   flow,
 }: {
   owner: WorkspaceType;
-  assistant: LightAgentConfigurationType;
+  assistant: AgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onUpdate: () => void;
@@ -56,11 +55,6 @@ export function AssistantDetails({
     workspaceId: owner.sId,
     agentConfigurationId: assistant.sId,
   });
-  const detailedConfig = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: assistant.sId,
-  });
-
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
       <Avatar
@@ -111,23 +105,21 @@ export function AssistantDetails({
     </div>
   );
 
-  const ActionSection = ({
-    action,
-  }: {
-    action: AgentConfigurationType["action"];
-  }) =>
-    action ? (
-      isDustAppRunConfiguration(action) ? (
+  const ActionSection = () =>
+    assistant.action ? (
+      isDustAppRunConfiguration(assistant.action) ? (
         <div className="flex flex-col gap-2">
           <div className="text-lg font-bold text-element-800">Action</div>
-          <DustAppSection dustApp={action} owner={owner} />
+          <DustAppSection dustApp={assistant.action} owner={owner} />
         </div>
-      ) : isRetrievalConfiguration(action) ? (
+      ) : isRetrievalConfiguration(assistant.action) ? (
         <div className="flex flex-col gap-2">
           <div className="text-lg font-bold text-element-800">
             Data source(s)
           </div>
-          <DataSourcesSection dataSourceConfigurations={action.dataSources} />
+          <DataSourcesSection
+            dataSourceConfigurations={assistant.action.dataSources}
+          />
         </div>
       ) : null
     ) : null;
@@ -156,9 +148,7 @@ export function AssistantDetails({
           isLoading={agentUsage.isAgentUsageLoading}
           isError={agentUsage.isAgentUsageError}
         />
-        <ActionSection
-          action={detailedConfig.agentConfiguration?.action || null}
-        />
+        <ActionSection />
       </div>
     </Modal>
   );
@@ -249,7 +239,7 @@ function ButtonsSection({
   flow,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration: AgentConfigurationType;
   detailsModalClose: () => void;
   onUpdate: () => void;
   onClose: () => void;
