@@ -183,7 +183,7 @@ function StandardDataSourceView({
     <div className="pt-6">
       <Page.Vertical gap="xl" align="stretch">
         <Page.SectionHeader
-          title={`Folder ${dataSource.name}`}
+          title={dataSource.name}
           description={
             isActivatedSDB
               ? "Use this page to view and upload documents and databases to your Folder."
