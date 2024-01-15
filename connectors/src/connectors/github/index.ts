@@ -467,7 +467,7 @@ export async function setGithubConfig(
   }
 
   switch (configKey) {
-    case "botEnabled": {
+    case "codeSyncEnabled": {
       const connectorState = await GithubConnectorState.findOne({
         where: {
           connectorId: connector.id,

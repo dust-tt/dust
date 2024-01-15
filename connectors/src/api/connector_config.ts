@@ -132,7 +132,25 @@ const _setConnectorConfig = async (
     });
   }
   const setter = SET_CONNECTOR_CONFIG_BY_TYPE[connector.type];
-  await setter(connector.id, req.params.config_key, req.body.configValue);
+  const setConfigRes = await setter(
+    connector.id,
+    req.params.config_key,
+    req.body.configValue
+  );
+  if (setConfigRes.isErr()) {
+    return apiError(
+      req,
+      res,
+      {
+        api_error: {
+          type: "internal_server_error",
+          message: `Unable to set config value for connector ${connector.id} and key ${req.params.config_key}`,
+        },
+        status_code: 500,
+      },
+      setConfigRes.error
+    );
+  }
 
   return res.status(200).json({
     connectorId: connector.id,
