@@ -1941,9 +1941,9 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentDustAppRunActionId: event.action.id,
           });
-        } else if (event.action.type === "database_query_action") {
+        } else if (event.action.type === "tables_query_action") {
           await agentMessageRow.update({
-            agentDatabaseQueryActionId: event.action.id,
+            agentTablesQueryActionId: event.action.id,
           });
         } else {
           ((action: never) => {
@@ -1987,8 +1987,8 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
-      case "database_query_params":
-      case "database_query_output":
+      case "tables_query_params":
+      case "tables_query_output":
         yield event;
         break;
       case "generation_tokens":

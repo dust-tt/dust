@@ -128,8 +128,8 @@ export function AgentMessage({
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
-      case "database_query_params":
-      case "database_query_output":
+      case "tables_query_params":
+      case "tables_query_output":
         setStreamedAgentMessage((m) => {
           return { ...m, action: event.action };
         });

@@ -1,13 +1,13 @@
 import type { AgentActionType } from "@dust-tt/types";
 import {
-  isDatabaseQueryActionType,
   isDustAppRunActionType,
+  isRetrievalActionType,
+  isTablesQueryActionType,
 } from "@dust-tt/types";
-import { isRetrievalActionType } from "@dust-tt/types";
 
-import DatabaseQueryAction from "@app/components/assistant/conversation/DatabaseQueryAction";
 import DustAppRunAction from "@app/components/assistant/conversation/DustAppRunAction";
 import RetrievalAction from "@app/components/assistant/conversation/RetrievalAction";
+import TablesQueryAction from "@app/components/assistant/conversation/TablesQueryAction";
 
 export function AgentAction({ action }: { action: AgentActionType }) {
   if (isRetrievalActionType(action)) {
@@ -24,10 +24,10 @@ export function AgentAction({ action }: { action: AgentActionType }) {
       </div>
     );
   }
-  if (isDatabaseQueryActionType(action)) {
+  if (isTablesQueryActionType(action)) {
     return (
       <div className="pb-4">
-        <DatabaseQueryAction databaseQueryAction={action} />
+        <TablesQueryAction tablesQueryAction={action} />
       </div>
     );
   }

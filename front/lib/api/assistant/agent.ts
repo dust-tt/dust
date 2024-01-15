@@ -1,39 +1,37 @@
 import type {
   AgentActionEvent,
+  AgentActionSpecification,
   AgentActionSuccessEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
-  DatabaseQueryParamsEvent,
-  GenerationTokensEvent,
-} from "@dust-tt/types";
-import type {
-  AgentActionSpecification,
-  LightAgentConfigurationType,
-} from "@dust-tt/types";
-import type {
   AgentMessageType,
   ConversationType,
+  GenerationTokensEvent,
+  LightAgentConfigurationType,
+  Result,
+  TablesQueryParamsEvent,
   UserMessageType,
 } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
 import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+  Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
-  isDatabaseQueryConfiguration,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  Ok,
 } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { runDatabaseQuery } from "@app/lib/api/assistant/actions/database_query";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
+import { runTablesQuery } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
@@ -189,7 +187,7 @@ export async function* runAgent(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | DatabaseQueryParamsEvent,
+  | TablesQueryParamsEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -302,8 +300,8 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDatabaseQueryConfiguration(fullConfiguration.action)) {
-      const eventStream = runDatabaseQuery({
+    } else if (isTablesQueryConfiguration(fullConfiguration.action)) {
+      const eventStream = runTablesQuery({
         auth,
         configuration: fullConfiguration,
         conversation,
@@ -312,11 +310,11 @@ export async function* runAgent(
       });
       for await (const event of eventStream) {
         switch (event.type) {
-          case "database_query_params":
-          case "database_query_output":
+          case "tables_query_params":
+          case "tables_query_output":
             yield event;
             break;
-          case "database_query_error":
+          case "tables_query_error":
             yield {
               type: "agent_error",
               created: event.created,
@@ -328,7 +326,7 @@ export async function* runAgent(
               },
             };
             return;
-          case "database_query_success":
+          case "tables_query_success":
             yield {
               type: "agent_action_success",
               created: event.created,

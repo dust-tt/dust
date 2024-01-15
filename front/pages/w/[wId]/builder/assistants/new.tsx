@@ -8,9 +8,9 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  isDatabaseQueryConfiguration,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
+  isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
@@ -43,7 +43,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataSourceConfigurations: Record<string, DataSourceConfig> | null;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
+  tableQueryConfiguration: AssistantBuilderInitialState["tableQueryConfiguration"];
   agentConfiguration: AgentConfigurationType | null;
   flow: BuilderFlow;
 }> = async (context) => {
@@ -91,7 +91,7 @@ export const getServerSideProps: GetServerSideProps<{
   const {
     dataSourceConfigurations,
     dustAppConfiguration,
-    databaseQueryConfiguration,
+    tableQueryConfiguration,
   } = config
     ? await buildInitialState({
         config,
@@ -101,7 +101,7 @@ export const getServerSideProps: GetServerSideProps<{
     : {
         dataSourceConfigurations: null,
         dustAppConfiguration: null,
-        databaseQueryConfiguration: null,
+        tableQueryConfiguration: null,
       };
 
   return {
@@ -115,7 +115,7 @@ export const getServerSideProps: GetServerSideProps<{
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
-      databaseQueryConfiguration: databaseQueryConfiguration,
+      tableQueryConfiguration,
       agentConfiguration: config,
       flow,
     },
@@ -132,7 +132,7 @@ export default function CreateAssistant({
   dataSourceConfigurations,
   dustApps,
   dustAppConfiguration,
-  databaseQueryConfiguration,
+  tableQueryConfiguration,
   agentConfiguration,
   flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -167,8 +167,8 @@ export default function CreateAssistant({
       actionMode = "DUST_APP_RUN";
     }
 
-    if (isDatabaseQueryConfiguration(agentConfiguration.action)) {
-      actionMode = "DATABASE_QUERY";
+    if (isTablesQueryConfiguration(agentConfiguration.action)) {
+      actionMode = "TABLE_QUERY";
     }
     if (agentConfiguration.scope === "global") {
       throw new Error("Cannot edit global assistant");
@@ -192,7 +192,7 @@ export default function CreateAssistant({
               timeFrame,
               dataSourceConfigurations,
               dustAppConfiguration,
-              databaseQueryConfiguration,
+              tableQueryConfiguration,
               scope: "private",
               handle: `${agentConfiguration.name}_Copy`,
               description: agentConfiguration.description,

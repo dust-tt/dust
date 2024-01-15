@@ -1,5 +1,3 @@
-import { AgentActionConfigurationType } from "../../../front/assistant/agent";
-import { AgentActionType } from "../../../front/assistant/conversation";
 import { ModelId } from "../../../shared/model_id";
 
 export type DustAppRunConfigurationType = {
@@ -11,18 +9,6 @@ export type DustAppRunConfigurationType = {
   appWorkspaceId: string;
   appId: string;
 };
-
-export function isDustAppRunConfiguration(
-  arg: AgentActionConfigurationType | null
-): arg is DustAppRunConfigurationType {
-  return arg !== null && arg.type && arg.type === "dust_app_run_configuration";
-}
-
-export function isDustAppRunActionType(
-  arg: AgentActionType
-): arg is DustAppRunActionType {
-  return arg.type === "dust_app_run_action";
-}
 
 export type DustAppParameters = {
   [key: string]: string | number | boolean;

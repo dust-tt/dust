@@ -1,29 +1,27 @@
 import type {
-  AgentMention,
-  AgentUserListStatus,
-  LightAgentConfigurationType,
-  Result,
-  SupportedModel,
-} from "@dust-tt/types";
-import type { DustAppRunConfigurationType } from "@dust-tt/types";
-import type {
-  AgentsGetViewType,
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-  RetrievalQuery,
-  RetrievalTimeframe,
-} from "@dust-tt/types";
-import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
+  AgentMention,
+  AgentsGetViewType,
   AgentStatus,
+  AgentUserListStatus,
+  DataSourceConfiguration,
+  LightAgentConfigurationType,
+  Result,
+  RetrievalQuery,
+  RetrievalTimeframe,
+  SupportedModel,
 } from "@dust-tt/types";
-import type { DatabaseQueryConfigurationType } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import { isTemplatedQuery, isTimeFrame } from "@dust-tt/types";
-import { isSupportedModel } from "@dust-tt/types";
+import {
+  assertNever,
+  Err,
+  isSupportedModel,
+  isTemplatedQuery,
+  isTimeFrame,
+  Ok,
+} from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 import { Op, UniqueConstraintError } from "sequelize";
 
@@ -37,7 +35,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
-  AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
@@ -48,7 +45,10 @@ import {
   Message,
   Workspace,
 } from "@app/lib/models";
-import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
@@ -230,15 +230,15 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   const dustAppRunConfigIds = agentConfigurations
     .filter((a) => a.dustAppRunConfigurationId !== null)
     .map((a) => a.dustAppRunConfigurationId as number);
-  const databaseQueryConfigIds = agentConfigurations
-    .filter((a) => a.databaseQueryConfigurationId !== null)
-    .map((a) => a.databaseQueryConfigurationId as number);
+  const tablesQueryConfigurationsIds = agentConfigurations
+    .filter((a) => a.tablesQueryConfigurationId !== null)
+    .map((a) => a.tablesQueryConfigurationId as number);
 
   const [
     generationConfigs,
     retrievalConfigs,
     dustAppRunConfigs,
-    databaseQueryConfigs,
+    tablesQueryConfigs,
     agentUserRelations,
   ] = await Promise.all([
     generationConfigIds.length > 0
@@ -256,11 +256,11 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           where: { id: { [Op.in]: dustAppRunConfigIds } },
         }).then(byId)
       : Promise.resolve({} as Record<number, AgentDustAppRunConfiguration>),
-    databaseQueryConfigIds.length > 0 && variant === "full"
-      ? AgentDatabaseQueryConfiguration.findAll({
-          where: { id: { [Op.in]: databaseQueryConfigIds } },
+    tablesQueryConfigurationsIds.length > 0 && variant === "full"
+      ? AgentTablesQueryConfiguration.findAll({
+          where: { id: { [Op.in]: tablesQueryConfigurationsIds } },
         }).then(byId)
-      : Promise.resolve({} as Record<number, AgentDatabaseQueryConfiguration>),
+      : Promise.resolve({} as Record<number, AgentTablesQueryConfiguration>),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -305,13 +305,25 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     return acc;
   }, {} as Record<number, AgentDataSourceConfiguration[]>);
 
+  const agentTablesConfigurationTables = (
+    Object.values(tablesQueryConfigs).length
+      ? await AgentTablesQueryConfigurationTable.findAll({
+          where: {
+            tablesQueryConfigurationId: {
+              [Op.in]: Object.values(tablesQueryConfigs).map((r) => r.id),
+            },
+          },
+        })
+      : []
+  ).reduce((acc, tablesConfigurationTable) => {
+    acc[tablesConfigurationTable.id] = acc[tablesConfigurationTable.id] || [];
+    acc[tablesConfigurationTable.id].push(tablesConfigurationTable);
+    return acc;
+  }, {} as Record<number, AgentTablesQueryConfigurationTable[]>);
+
   let agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
-    let action:
-      | RetrievalConfigurationType
-      | DustAppRunConfigurationType
-      | DatabaseQueryConfigurationType
-      | null = null;
+    let action: AgentActionConfigurationType | null = null;
 
     if (variant === "full") {
       if (agent.retrievalConfigurationId) {
@@ -326,6 +338,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 
         const dataSourcesConfig =
           agentDatasourceConfigurations[retrievalConfig.id] ?? [];
+
+        if (!dataSourcesConfig) {
+          throw new Error(
+            `Couldn't find data sources configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
+          );
+        }
+
         let topK: number | "auto" = "auto";
         if (retrievalConfig.topKMode === "custom") {
           if (!retrievalConfig.topK) {
@@ -379,23 +398,36 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
         };
-      } else if (agent.databaseQueryConfigurationId) {
-        const databaseQueryConfig =
-          databaseQueryConfigs[agent.databaseQueryConfigurationId];
+      } else if (agent.tablesQueryConfigurationId) {
+        const tablesQueryConfig =
+          tablesQueryConfigs[agent.tablesQueryConfigurationId];
 
-        if (!databaseQueryConfig) {
+        if (!tablesQueryConfig) {
           throw new Error(
-            `Couldn't find action configuration for Database configuration ${agent.databaseQueryConfigurationId}}`
+            `Couldn't find action configuration for Tables configuration ${agent.tablesQueryConfigurationId}}`
+          );
+        }
+
+        const tablesQueryConfigTables =
+          agentTablesConfigurationTables[tablesQueryConfig.id];
+
+        if (!tablesQueryConfigTables) {
+          throw new Error(
+            `Couldn't find tables for Tables configuration ${agent.tablesQueryConfigurationId}}`
           );
         }
 
         action = {
-          id: databaseQueryConfig.id,
-          sId: databaseQueryConfig.sId,
-          type: "database_query_configuration",
-          dataSourceWorkspaceId: databaseQueryConfig.dataSourceWorkspaceId,
-          dataSourceId: databaseQueryConfig.dataSourceId,
-          databaseId: databaseQueryConfig.databaseId,
+          id: tablesQueryConfig.id,
+          sId: tablesQueryConfig.sId,
+          type: "tables_query_configuration",
+          tables: tablesQueryConfigTables.map((tablesQueryConfigTable) => {
+            return {
+              dataSourceId: tablesQueryConfigTable.dataSourceId,
+              workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
+              tableId: tablesQueryConfigTable.tableId,
+            };
+          }),
         };
       }
     }
@@ -657,10 +689,8 @@ export async function createAgentConfiguration(
               action?.type === "retrieval_configuration" ? action?.id : null,
             dustAppRunConfigurationId:
               action?.type === "dust_app_run_configuration" ? action?.id : null,
-            databaseQueryConfigurationId:
-              action?.type === "database_query_configuration"
-                ? action?.id
-                : null,
+            tablesQueryConfigurationId:
+              action?.type === "tables_query_configuration" ? action?.id : null,
           },
           {
             transaction: t,
@@ -794,10 +824,12 @@ export async function createAgentActionConfiguration(
         appId: string;
       }
     | {
-        type: "database_query_configuration";
-        dataSourceWorkspaceId: string;
-        dataSourceId: string;
-        databaseId: string;
+        type: "tables_query_configuration";
+        tables: Array<{
+          workspaceId: string;
+          dataSourceId: string;
+          tableId: string;
+        }>;
       }
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
@@ -858,21 +890,35 @@ export async function createAgentActionConfiguration(
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
     };
-  } else if (action.type === "database_query_configuration") {
-    const databaseQueryConfig = await AgentDatabaseQueryConfiguration.create({
-      sId: generateModelSId(),
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
+  } else if (action.type === "tables_query_configuration") {
+    return front_sequelize.transaction(async (t) => {
+      const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
+        {
+          sId: generateModelSId(),
+        },
+        { transaction: t }
+      );
+      await Promise.all(
+        action.tables.map((table) =>
+          AgentTablesQueryConfigurationTable.create(
+            {
+              tablesQueryConfigurationId: tablesQueryConfig.id,
+              dataSourceId: table.dataSourceId,
+              dataSourceWorkspaceId: table.workspaceId,
+              tableId: table.tableId,
+            },
+            { transaction: t }
+          )
+        )
+      );
+
+      return {
+        id: tablesQueryConfig.id,
+        sId: tablesQueryConfig.sId,
+        type: "tables_query_configuration",
+        tables: action.tables,
+      };
     });
-    return {
-      id: databaseQueryConfig.id,
-      sId: databaseQueryConfig.sId,
-      type: "database_query_configuration",
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
-    };
   } else {
     throw new Error("Cannot create AgentActionConfiguration: unknow type");
   }

@@ -6,7 +6,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { DatabaseQueryActionType } from "@dust-tt/types";
+import type { TablesQueryActionType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
@@ -16,20 +16,20 @@ const SyntaxHighlighter = dynamic(
   { ssr: false }
 );
 
-export default function DatabaseQueryAction({
-  databaseQueryAction,
+export default function TablesQueryAction({
+  tablesQueryAction,
 }: {
-  databaseQueryAction: DatabaseQueryActionType;
+  tablesQueryAction: TablesQueryActionType;
 }) {
   const [isOutputExpanded, setIsOutputExpanded] = useState(false);
 
   // Extracting question from the params
-  const params = databaseQueryAction.params;
+  const params = tablesQueryAction.params;
   const question =
     typeof params?.question === "string" ? params.question : null;
 
   // Extracting query and result from the output
-  const output = databaseQueryAction.output;
+  const output = tablesQueryAction.output;
   const query = typeof output?.query === "string" ? output.query : null;
   const noQuery = output?.no_query === true;
   const results = output?.results;

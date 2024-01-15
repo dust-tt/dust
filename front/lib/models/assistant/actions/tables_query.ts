@@ -48,6 +48,7 @@ AgentTablesQueryConfiguration.init(
       {
         unique: true,
         fields: ["sId"],
+        name: "agent_tables_query_configuration_s_id",
       },
     ],
     sequelize: front_sequelize,
@@ -66,7 +67,9 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare dataSourceId: string;
   declare tableId: string;
 
-  declare tablesQueryConfigurationId: ForeignKey<AgentTablesQueryConfiguration>;
+  declare tablesQueryConfigurationId: ForeignKey<
+    AgentTablesQueryConfiguration["id"]
+  >;
 }
 
 AgentTablesQueryConfigurationTable.init(
@@ -116,6 +119,7 @@ AgentTablesQueryConfigurationTable.init(
           "tableId",
           "tablesQueryConfigurationId",
         ],
+        name: "agent_tables_query_configuration_table_unique",
       },
     ],
     sequelize: front_sequelize,
@@ -139,7 +143,7 @@ export class AgentTablesQueryAction extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare tablesQueryConfigurationId: ForeignKey<AgentTablesQueryConfiguration>;
+  declare tablesQueryConfigurationId: string;
 
   declare params: unknown | null;
   declare output: unknown | null;
@@ -164,7 +168,7 @@ AgentTablesQueryAction.init(
     },
 
     tablesQueryConfigurationId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
       allowNull: false,
     },
 

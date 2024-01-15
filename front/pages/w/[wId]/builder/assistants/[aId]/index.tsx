@@ -1,15 +1,18 @@
 import type {
   AgentConfigurationType,
+  AppType,
   DataSourceType,
+  PlanType,
+  SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import { isDatabaseQueryConfiguration } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+} from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import type {
@@ -110,13 +113,13 @@ export async function buildInitialState({
     }
   }
 
-  const databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"] =
+  const tableQueryConfiguration: AssistantBuilderInitialState["tableQueryConfiguration"] =
     null;
 
   return {
     dataSourceConfigurations,
     dustAppConfiguration,
-    databaseQueryConfiguration,
+    tableQueryConfiguration,
   };
 }
 
@@ -130,7 +133,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataSourceConfigurations: Record<string, DataSourceConfig>;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
+  tableQueryConfiguration: AssistantBuilderInitialState["tableQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
 }> = async (context) => {
@@ -190,7 +193,7 @@ export const getServerSideProps: GetServerSideProps<{
   const {
     dataSourceConfigurations,
     dustAppConfiguration,
-    databaseQueryConfiguration,
+    tableQueryConfiguration,
   } = await buildInitialState({
     config,
     dataSourceByName,
@@ -208,7 +211,7 @@ export const getServerSideProps: GetServerSideProps<{
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
-      databaseQueryConfiguration: databaseQueryConfiguration,
+      tableQueryConfiguration,
       agentConfiguration: config,
       flow,
     },
@@ -225,7 +228,7 @@ export default function EditAssistant({
   dataSourceConfigurations,
   dustApps,
   dustAppConfiguration,
-  databaseQueryConfiguration,
+  tableQueryConfiguration,
   agentConfiguration,
   flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -259,8 +262,8 @@ export default function EditAssistant({
     actionMode = "DUST_APP_RUN";
   }
 
-  if (isDatabaseQueryConfiguration(agentConfiguration.action)) {
-    actionMode = "DATABASE_QUERY";
+  if (isTablesQueryConfiguration(agentConfiguration.action)) {
+    actionMode = "TABLE_QUERY";
   }
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global assistant");
@@ -281,7 +284,7 @@ export default function EditAssistant({
         timeFrame,
         dataSourceConfigurations,
         dustAppConfiguration,
-        databaseQueryConfiguration,
+        tableQueryConfiguration,
         scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,

@@ -2,8 +2,6 @@
  * Data Source configuration
  */
 
-import { AgentActionConfigurationType } from "../../../front/assistant/agent";
-import { AgentActionType } from "../../../front/assistant/conversation";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
 
@@ -74,12 +72,6 @@ export type RetrievalConfigurationType = {
   // autoSkip: boolean;
 };
 
-export function isRetrievalConfiguration(
-  arg: AgentActionConfigurationType | null
-): arg is RetrievalConfigurationType {
-  return arg !== null && arg.type && arg.type === "retrieval_configuration";
-}
-
 /**
  * Retrieval action
  */
@@ -100,12 +92,6 @@ export type RetrievalDocumentType = {
     score: number | null;
   }[];
 };
-
-export function isRetrievalActionType(
-  arg: AgentActionType
-): arg is RetrievalActionType {
-  return arg.type === "retrieval_action";
-}
 
 export type RetrievalActionType = {
   id: ModelId; // AgentRetrieval.
