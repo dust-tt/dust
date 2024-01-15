@@ -46,36 +46,38 @@ makeScript({}, async ({ execute }) => {
         limit: 1,
       });
 
+      // If we don't find any admin with a Google workspace email's address. They probably signed through GitHub. Remove the `allowedDomain`.
       if (!firstAdminUser) {
         console.error(
-          `Not first admin found for workspace ${workspace.id} -- Skipping.`
+          `Not first admin with Google provider found for workspace ${workspace.id} -- Removing.`
         );
-        continue;
-      }
 
-      const [, adminEmailDomain] = firstAdminUser.email.split("@");
-      if (isDisposableEmailDomain(adminEmailDomain)) {
         newAllowedDomain = null;
       } else {
-        newAllowedDomain = adminEmailDomain;
+        const [, adminEmailDomain] = firstAdminUser.email.split("@");
+        if (isDisposableEmailDomain(adminEmailDomain)) {
+          newAllowedDomain = null;
+        } else {
+          newAllowedDomain = adminEmailDomain;
+        }
       }
-
-      console.log(
-        `>> About to update workspace allowedDomain from ${workspace.allowedDomain} to ${newAllowedDomain} for workspace Id ${workspace.id}:`,
-        workspace.allowedDomain === newAllowedDomain ? "[SAME]" : "[DIFFERENT]"
-      );
-
-      const isSameEmailDomain = workspace.allowedDomain === newAllowedDomain;
-      if (isSameEmailDomain) {
-        continue;
-      }
-
-      if (execute) {
-        workspace.allowedDomain = newAllowedDomain;
-        await workspace.save();
-      }
-      updatedWorkspacesCount++;
     }
+
+    console.log(
+      `>> About to update workspace allowedDomain from ${workspace.allowedDomain} to ${newAllowedDomain} for workspace Id ${workspace.id}:`,
+      workspace.allowedDomain === newAllowedDomain ? "[SAME]" : "[DIFFERENT]"
+    );
+
+    const isSameEmailDomain = workspace.allowedDomain === newAllowedDomain;
+    if (isSameEmailDomain) {
+      continue;
+    }
+
+    if (execute) {
+      workspace.allowedDomain = newAllowedDomain;
+      await workspace.save();
+    }
+    updatedWorkspacesCount++;
   }
 
   console.log(`Updated allowedDomain on ${updatedWorkspacesCount} workspaces.`);
