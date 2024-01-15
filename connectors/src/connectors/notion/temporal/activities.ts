@@ -100,6 +100,18 @@ export async function fetchDatabaseChildPages({
       notionDatabaseId: databaseId,
     },
   });
+
+  if (notionDbModel?.skipReason) {
+    logger.info(
+      { skipReason: notionDbModel.skipReason },
+      "Skipping database with skip reason"
+    );
+    return {
+      pageIds: [],
+      nextCursor: null,
+    };
+  }
+
   const isDbFirstSync =
     !notionDbModel ||
     !notionDbModel.firstSeenTs ||
@@ -1099,7 +1111,26 @@ export async function cacheBlockChildren({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+
+  const notionPageModel = await NotionPage.findOne({
+    where: {
+      connectorId: connector.id,
+      notionPageId: pageId,
+    },
+  });
+
+  if (notionPageModel?.skipReason) {
+    logger.info(
+      { skipReason: notionPageModel.skipReason },
+      "Skipping page with skip reason"
+    );
+    return {
+      nextCursor: null,
+      blocksWithChildren: [],
+      blocksCount: 0,
+      childDatabases: [],
+    };
+  }
 
   const localLogger = logger.child({
     ...loggerArgs,
@@ -1110,9 +1141,7 @@ export async function cacheBlockChildren({
     workspaceId: connector.workspaceId,
   });
 
-  localLogger.info(
-    "notionBlockChildrenResultPageActivity: Retrieving connector."
-  );
+  const accessToken = await getNotionAccessToken(connector.connectionId);
 
   localLogger.info(
     "notionBlockChildrenResultPageActivity: Retrieving result page from Notion API."
@@ -1241,9 +1270,23 @@ export async function cacheDatabaseChildren({
     dataSourceName: connector.dataSourceName,
   });
 
-  localLogger.info(
-    "notionDatabaseChildrenResultPageActivity: Retrieving connector."
-  );
+  const notionDatabaseModel = await NotionDatabase.findOne({
+    where: {
+      connectorId: connector.id,
+      notionDatabaseId: databaseId,
+    },
+  });
+
+  if (notionDatabaseModel?.skipReason) {
+    localLogger.info(
+      { skipReason: notionDatabaseModel.skipReason },
+      "Skipping database with skip reason"
+    );
+    return {
+      nextCursor: null,
+      childrenCount: 0,
+    };
+  }
 
   localLogger.info(
     "notionDatabaseChildrenResultPageActivity: Retrieving result page from Notion API."
@@ -1481,6 +1524,22 @@ export async function renderAndUpsertPageFromCache({
   });
 
   localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Retrieving Notion page from connectors DB."
+  );
+  const notionPageInDb = await getNotionPageFromConnectorsDb(
+    connectorId,
+    pageId
+  );
+
+  if (notionPageInDb?.skipReason) {
+    localLogger.info(
+      { skipReason: notionPageInDb.skipReason },
+      "Skipping page with skip reason"
+    );
+    return;
+  }
+
+  localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving page from cache."
   );
   const pageCacheEntry = await NotionConnectorPageCacheEntry.findOne({
@@ -1681,14 +1740,6 @@ export async function renderAndUpsertPageFromCache({
       });
     }
   }
-
-  localLogger.info(
-    "notionRenderAndUpsertPageFromCache: Retrieving Notion page from connectors DB."
-  );
-  const notionPageInDb = await getNotionPageFromConnectorsDb(
-    connectorId,
-    pageId
-  );
 
   const createdOrMoved =
     parentType !== notionPageInDb?.parentType ||
