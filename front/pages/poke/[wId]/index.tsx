@@ -9,6 +9,7 @@ import {
   AgentConfigurationType,
   DataSourceType,
   isDustAppRunConfiguration,
+  isPaidPlanType,
   isRetrievalConfiguration,
   LightAgentConfigurationType,
   WorkspaceSegmentationType,
@@ -651,7 +652,7 @@ const WorkspacePage = ({
                           variant="secondaryWarning"
                           onClick={onDowngrade}
                           disabled={
-                            subscription.plan.code === FREE_TEST_PLAN_CODE ||
+                            !isPaidPlanType(subscription.plan) ||
                             workspaceHasManagedDataSources
                           }
                         />
@@ -661,9 +662,7 @@ const WorkspacePage = ({
                           label="Upgrade to free upgraded plan"
                           variant="tertiary"
                           onClick={onUpgrade}
-                          disabled={
-                            subscription.plan.code !== FREE_TEST_PLAN_CODE
-                          }
+                          disabled={isPaidPlanType(subscription.plan)}
                         />
                       </div>
                     </div>

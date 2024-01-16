@@ -1,4 +1,10 @@
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  FREE_BILLING_TYPES,
+  RoleType,
+  UserType,
+  WorkspaceType,
+  isPaidPlanType,
+} from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustAPICredentials } from "@dust-tt/types";
 import { Err, Ok, Result } from "@dust-tt/types";
@@ -324,6 +330,10 @@ export class Authenticator {
 
   plan(): PlanType | null {
     return this._subscription ? this._subscription.plan : null;
+  }
+
+  isOnPaidPlan(): boolean {
+    return isPaidPlanType(this.plan());
   }
 
   /**

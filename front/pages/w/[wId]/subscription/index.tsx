@@ -7,7 +7,7 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
+import { isPaidPlanType, UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -131,7 +131,7 @@ export default function Subscription({
         if (content.checkoutUrl) {
           await router.push(content.checkoutUrl);
         } else if (content.success) {
-          await router.reload(); // We cannot swr the plan so we just reload the page.
+          router.reload(); // We cannot swr the plan so we just reload the page.
         }
       }
     });
@@ -166,7 +166,7 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
+  const chipColor = !isPaidPlanType(plan) ? "emerald" : "sky";
 
   const onClickProPlan = async () => handleSubscribePlan();
   const onClickEnterprisePlan = () => {

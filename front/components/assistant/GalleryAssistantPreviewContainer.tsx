@@ -1,6 +1,7 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import {
   AgentUserListStatus,
+  isPaidPlanType,
   LightAgentConfigurationType,
   PlanType,
   WorkspaceType,
@@ -12,7 +13,6 @@ import {
   SendNotificationsContext,
 } from "@app/components/sparkle/Notification";
 import { isLargeModel } from "@app/lib/assistant";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewFlow = "personal" | "workspace";
@@ -176,7 +176,7 @@ export function GalleryAssistantPreviewContainer({
 
   const isGlobal = scope === "global";
   const isAddedToWorkspace = flow === "workspace" && isAdded;
-  const hasAccessToLargeModels = plan?.code !== FREE_TEST_PLAN_CODE;
+  const hasAccessToLargeModels = isPaidPlanType(plan);
   const eligibleForTesting =
     hasAccessToLargeModels || !isLargeModel(generation?.model);
   const isTestable = !isGlobal && !isAdded && eligibleForTesting;

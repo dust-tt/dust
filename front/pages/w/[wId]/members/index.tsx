@@ -15,7 +15,12 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import {
+  isPaidPlanType,
+  RoleType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { MembershipInvitationType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
@@ -153,8 +158,7 @@ export default function WorkspaceAdmin({
                     size="sm"
                     icon={Cog6ToothIcon}
                     onClick={() => {
-                      if (plan.code === FREE_TEST_PLAN_CODE)
-                        setShowNoInviteLinkPopup(true);
+                      if (!isPaidPlanType(plan)) setShowNoInviteLinkPopup(true);
                       else setInviteSettingsModalOpen(true);
                     }}
                   />
@@ -278,8 +282,7 @@ export default function WorkspaceAdmin({
                 size="sm"
                 icon={PlusIcon}
                 onClick={() => {
-                  if (plan.code === FREE_TEST_PLAN_CODE)
-                    setShowNoInviteFreePlanPopup(true);
+                  if (!isPaidPlanType(plan)) setShowNoInviteFreePlanPopup(true);
                   else if (subscription.paymentFailingSince)
                     setShowNoInviteFailedPaymentPopup(true);
                   else setInviteEmailModalOpen(true);
