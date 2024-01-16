@@ -26,7 +26,7 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import logger from "@app/logger/logger";
 
 /**
- * Model rendering of DatabaseQueryAction.
+ * Model rendering of TablesQueryAction.
  */
 
 export function renderTablesQueryActionForModel(
@@ -49,7 +49,7 @@ export function renderTablesQueryActionForModel(
 }
 
 /**
- * Generate the specification for the DatabaseQuery app.
+ * Generate the specification for the TablesQuery app.
  * This is the instruction given to the LLM to understand the task.
  */
 function getTablesQueryAppSpecification() {
@@ -69,7 +69,7 @@ function getTablesQueryAppSpecification() {
 }
 
 /**
- * Generate the parameters for the DatabaseQuery app.
+ * Generate the parameters for the TablesQuery app.
  */
 export async function generateTablesQueryAppParams(
   auth: Authenticator,

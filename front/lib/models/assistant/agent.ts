@@ -17,7 +17,6 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database_query";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
@@ -117,17 +116,11 @@ export class AgentConfiguration extends Model<
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
   > | null;
-  // DEPRECATED
-  // TODO(fontanierh)
-  declare databaseQueryConfigurationId: ForeignKey<
-    AgentDatabaseQueryConfiguration["id"]
-  > | null;
 
   declare author: NonAttribute<User>;
   declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
   declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
   declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
-  declare databaseQueryConfiguration: NonAttribute<AgentDatabaseQueryConfiguration>;
   declare tablesQueryConfiguration: NonAttribute<AgentTablesQueryConfiguration>;
 }
 AgentConfiguration.init(
@@ -203,7 +196,6 @@ AgentConfiguration.init(
         const actionsTypes: (keyof AgentConfiguration)[] = [
           "retrievalConfigurationId",
           "dustAppRunConfigurationId",
-          "databaseQueryConfigurationId",
           "tablesQueryConfigurationId",
         ];
         const nonNullActionTypes = actionsTypes.filter(
@@ -211,7 +203,7 @@ AgentConfiguration.init(
         );
         if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, databaseQueryConfigurationId, tablesQueryConfigurationId can be set"
+            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, tablesQueryConfigurationId can be set"
           );
         }
       },
@@ -256,16 +248,6 @@ AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
   as: "dustAppRunConfiguration",
   foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
-});
-
-// Agent config <> Database config
-AgentDatabaseQueryConfiguration.hasOne(AgentConfiguration, {
-  as: "databaseQueryConfiguration",
-  foreignKey: { name: "databaseQueryConfigurationId", allowNull: true }, // null = no Database action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentDatabaseQueryConfiguration, {
-  as: "databaseQueryConfiguration",
-  foreignKey: { name: "databaseQueryConfigurationId", allowNull: true }, // null = no Database action set for this Agent
 });
 
 // Agent config <> Tables config
