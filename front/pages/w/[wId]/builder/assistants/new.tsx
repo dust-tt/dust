@@ -43,7 +43,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataSourceConfigurations: Record<string, DataSourceConfig> | null;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  tableQueryConfiguration: AssistantBuilderInitialState["tableQueryConfiguration"];
+  tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   agentConfiguration: AgentConfigurationType | null;
   flow: BuilderFlow;
 }> = async (context) => {
@@ -91,7 +91,7 @@ export const getServerSideProps: GetServerSideProps<{
   const {
     dataSourceConfigurations,
     dustAppConfiguration,
-    tableQueryConfiguration,
+    tablesQueryConfiguration,
   } = config
     ? await buildInitialState({
         config,
@@ -101,7 +101,7 @@ export const getServerSideProps: GetServerSideProps<{
     : {
         dataSourceConfigurations: null,
         dustAppConfiguration: null,
-        tableQueryConfiguration: null,
+        tablesQueryConfiguration: {},
       };
 
   return {
@@ -115,7 +115,7 @@ export const getServerSideProps: GetServerSideProps<{
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
-      tableQueryConfiguration,
+      tablesQueryConfiguration,
       agentConfiguration: config,
       flow,
     },
@@ -132,7 +132,7 @@ export default function CreateAssistant({
   dataSourceConfigurations,
   dustApps,
   dustAppConfiguration,
-  tableQueryConfiguration,
+  tablesQueryConfiguration,
   agentConfiguration,
   flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -168,7 +168,7 @@ export default function CreateAssistant({
     }
 
     if (isTablesQueryConfiguration(agentConfiguration.action)) {
-      actionMode = "TABLE_QUERY";
+      actionMode = "TABLES_QUERY";
     }
     if (agentConfiguration.scope === "global") {
       throw new Error("Cannot edit global assistant");
@@ -192,7 +192,7 @@ export default function CreateAssistant({
               timeFrame,
               dataSourceConfigurations,
               dustAppConfiguration,
-              tableQueryConfiguration,
+              tablesQueryConfiguration,
               scope: "private",
               handle: `${agentConfiguration.name}_Copy`,
               description: agentConfiguration.description,

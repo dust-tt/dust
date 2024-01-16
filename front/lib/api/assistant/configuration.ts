@@ -316,8 +316,11 @@ export async function getAgentConfigurations<V extends "light" | "full">({
         })
       : []
   ).reduce((acc, tablesConfigurationTable) => {
-    acc[tablesConfigurationTable.id] = acc[tablesConfigurationTable.id] || [];
-    acc[tablesConfigurationTable.id].push(tablesConfigurationTable);
+    acc[tablesConfigurationTable.tablesQueryConfigurationId] =
+      acc[tablesConfigurationTable.tablesQueryConfigurationId] || [];
+    acc[tablesConfigurationTable.tablesQueryConfigurationId].push(
+      tablesConfigurationTable
+    );
     return acc;
   }, {} as Record<number, AgentTablesQueryConfigurationTable[]>);
 
@@ -409,13 +412,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
         }
 
         const tablesQueryConfigTables =
-          agentTablesConfigurationTables[tablesQueryConfig.id];
-
-        if (!tablesQueryConfigTables) {
-          throw new Error(
-            `Couldn't find tables for Tables configuration ${agent.tablesQueryConfigurationId}}`
-          );
-        }
+          agentTablesConfigurationTables[tablesQueryConfig.id] ?? [];
 
         action = {
           id: tablesQueryConfig.id,

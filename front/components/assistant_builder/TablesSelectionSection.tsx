@@ -1,4 +1,10 @@
-import { Button, ContextItem, ServerIcon, TrashIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContextItem,
+  PlusIcon,
+  ServerIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
 import { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
@@ -6,13 +12,13 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 export default function TablesSelectionSection({
   show,
-  tableQueryConfiguration,
+  tablesQueryConfiguration,
   openTableModal,
   onDelete,
   canSelectTable,
 }: {
   show: boolean;
-  tableQueryConfiguration: AssistantBuilderTableConfiguration | null;
+  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
   openTableModal: () => void;
   onDelete?: (sId: string) => void;
   canSelectTable: boolean;
@@ -38,35 +44,53 @@ export default function TablesSelectionSection({
       <div>
         <div className="flex flex-row items-start">
           <div className="pb-3 text-sm font-bold text-element-900">
-            Select a Table:
+            Select Tables:
           </div>
+          <div className="flex-grow" />
+          {Object.keys(tablesQueryConfiguration).length > 0 && (
+            <Button
+              labelVisible={true}
+              label="Add tables"
+              variant="primary"
+              size="sm"
+              icon={PlusIcon}
+              onClick={openTableModal}
+              disabled={!canSelectTable}
+              hasMagnifying={false}
+            />
+          )}
         </div>
-        {!tableQueryConfiguration ? (
+        {!Object.keys(tablesQueryConfiguration).length ? (
           <EmptyCallToAction
-            label="Select Table"
+            label="Add Tables"
             disabled={!canSelectTable}
             onClick={openTableModal}
           />
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">
-            <ContextItem
-              key={`${tableQueryConfiguration.dataSourceId}/${tableQueryConfiguration.tableId}`}
-              title={tableQueryConfiguration.tableId} // TODO: fetch table name
-              visual={<ContextItem.Visual visual={ServerIcon} />}
-              action={
-                <Button.List>
-                  <Button
-                    icon={TrashIcon}
-                    variant="secondaryWarning"
-                    label="Remove"
-                    labelVisible={false}
-                    onClick={() => {
-                      onDelete?.(tableQueryConfiguration.dataSourceId);
-                    }}
-                  />
-                </Button.List>
-              }
-            ></ContextItem>
+            {Object.values(tablesQueryConfiguration).map((t) => {
+              const tableKey = `${t.workspaceId}/${t.dataSourceId}/${t.tableId}`;
+              return (
+                <ContextItem
+                  title={t.tableId} // TODO: fetch table name
+                  visual={<ContextItem.Visual visual={ServerIcon} />}
+                  key={tableKey}
+                  action={
+                    <Button.List>
+                      <Button
+                        icon={TrashIcon}
+                        variant="secondaryWarning"
+                        label="Remove"
+                        labelVisible={false}
+                        onClick={() => {
+                          onDelete?.(tableKey);
+                        }}
+                      />
+                    </Button.List>
+                  }
+                />
+              );
+            })}
           </ContextItem.List>
         )}
       </div>

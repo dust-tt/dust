@@ -10,7 +10,7 @@ import { CoreAPITable, DataSourceType } from "@dust-tt/types";
 import { WorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -22,26 +22,18 @@ export default function AssistantBuilderTablesModal({
   onSave,
   owner,
   dataSources,
-  currentTable,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
-  onSave: (params: AssistantBuilderTableConfiguration | null) => void;
+  onSave: (params: AssistantBuilderTableConfiguration) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
-  currentTable: AssistantBuilderTableConfiguration | null;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
 
   const [selectedTable, setSelectedTable] =
     useState<AssistantBuilderTableConfiguration | null>(null);
-
-  useEffect(() => {
-    if (currentTable) {
-      setSelectedTable(currentTable);
-    }
-  }, [currentTable]);
 
   const onClose = () => {
     setOpen(false);
@@ -55,20 +47,19 @@ export default function AssistantBuilderTablesModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      onSave={() => onSave(selectedTable)}
-      hasChanged={
-        currentTable?.workspaceId !== selectedTable?.workspaceId ||
-        currentTable?.dataSourceId !== selectedTable?.dataSourceId ||
-        currentTable?.tableId !== selectedTable?.tableId
-      }
+      onSave={() => {
+        if (selectedTable) {
+          onSave(selectedTable);
+        }
+      }}
+      hasChanged={!!selectedTable}
       variant="full-screen"
-      title="Select a Table"
+      title="Select Tables"
     >
       <div className="w-full pt-12">
         {!selectedDataSource ? (
           <PickDataSource
             dataSources={dataSources}
-            show={!currentTable}
             onPick={(ds: DataSourceType) => {
               setSelectedDataSource(ds);
             }}
@@ -77,7 +68,6 @@ export default function AssistantBuilderTablesModal({
           <PickTable
             owner={owner}
             dataSource={selectedDataSource}
-            show={!currentTable}
             onPick={(table: CoreAPITable) => {
               const config = {
                 workspaceId: owner.sId,
@@ -100,15 +90,13 @@ export default function AssistantBuilderTablesModal({
 
 function PickDataSource({
   dataSources,
-  show,
   onPick,
 }: {
   dataSources: DataSourceType[];
-  show: boolean;
   onPick: (dataSource: DataSourceType) => void;
 }) {
   return (
-    <Transition show={show} className="mx-auto max-w-6xl">
+    <Transition show={true} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header
           title="Select a Table in your Data sources"
@@ -134,7 +122,7 @@ function PickDataSource({
                         .logoComponent
                     : CloudArrowDownIcon
                 }
-                key={ds.name}
+                key={ds.id}
                 onClick={() => {
                   onPick(ds);
                 }}
@@ -149,13 +137,11 @@ function PickDataSource({
 const PickTable = ({
   owner,
   dataSource,
-  show,
   onPick,
   onBack,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  show: boolean;
   onPick: (table: CoreAPITable) => void;
   onBack?: () => void;
 }) => {
@@ -165,7 +151,7 @@ const PickTable = ({
   });
 
   return (
-    <Transition show={show} className="mx-auto max-w-6xl">
+    <Transition show={true} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header
           title="Select a Table in your Data Sources"
@@ -193,7 +179,7 @@ const PickTable = ({
                           .logoComponent
                       : ServerIcon
                   }
-                  key={dataSource.name}
+                  key={`${table.data_source_id}/${table.table_id}`}
                   onClick={() => {
                     onPick(table);
                   }}

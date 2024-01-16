@@ -104,7 +104,7 @@ const BASIC_ACTION_MODES = ["GENERIC", "RETRIEVAL_SEARCH"] as const;
 const ADVANCED_ACTION_MODES = [
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
-  "TABLE_QUERY",
+  "TABLES_QUERY",
 ] as const;
 
 type ActionMode =
@@ -116,7 +116,7 @@ const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   RETRIEVAL_SEARCH: "Search in data sources",
   RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
   DUST_APP_RUN: "Run a Dust app",
-  TABLE_QUERY: "Query a table",
+  TABLES_QUERY: "Query a table",
 };
 
 // Retrieval Action
@@ -170,7 +170,7 @@ type AssistantBuilderState = {
     unit: TimeframeUnit;
   };
   dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
-  tableQueryConfiguration: AssistantBuilderTableConfiguration | null;
+  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
   handle: string | null;
   description: string | null;
   scope: Exclude<AgentConfigurationScope, "global">;
@@ -193,7 +193,7 @@ export type AssistantBuilderInitialState = {
     | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
-  tableQueryConfiguration: AssistantBuilderState["tableQueryConfiguration"];
+  tablesQueryConfiguration: AssistantBuilderState["tablesQueryConfiguration"];
   handle: string;
   description: string;
   scope: Exclude<AgentConfigurationScope, "global">;
@@ -232,7 +232,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
     unit: "month",
   },
   dustAppConfiguration: null,
-  tableQueryConfiguration: null,
+  tablesQueryConfiguration: {},
   handle: null,
   scope: "private",
   description: null,
@@ -293,7 +293,8 @@ export default function AssistantBuilder({
             ...DEFAULT_ASSISTANT_STATE.timeFrame,
           },
           dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-          tableQueryConfiguration: initialBuilderState.tableQueryConfiguration,
+          tablesQueryConfiguration:
+            initialBuilderState.tablesQueryConfiguration,
           handle: initialBuilderState.handle,
           description: initialBuilderState.description,
           scope: initialBuilderState.scope,
@@ -483,8 +484,8 @@ export default function AssistantBuilder({
       }
     }
 
-    if (builderState.actionMode === "TABLE_QUERY") {
-      if (!builderState.tableQueryConfiguration) {
+    if (builderState.actionMode === "TABLES_QUERY") {
+      if (!builderState.tablesQueryConfiguration) {
         valid = false;
       }
     }
@@ -498,7 +499,7 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
-    builderState.tableQueryConfiguration,
+    builderState.tablesQueryConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
   ]);
@@ -587,18 +588,11 @@ export default function AssistantBuilder({
         }
         break;
 
-      case "TABLE_QUERY":
-        if (builderState.tableQueryConfiguration) {
-          const config = builderState.tableQueryConfiguration;
+      case "TABLES_QUERY":
+        if (builderState.tablesQueryConfiguration) {
           actionParam = {
             type: "tables_query_configuration",
-            tables: [
-              {
-                workspaceId: config.workspaceId,
-                dataSourceId: config.dataSourceId,
-                tableId: config.tableId,
-              },
-            ],
+            tables: Object.values(builderState.tablesQueryConfiguration),
           };
         }
         break;
@@ -626,6 +620,8 @@ export default function AssistantBuilder({
         },
       },
     };
+
+    console.log(JSON.stringify(body, null, 2));
 
     const res = await fetch(
       !agentConfigurationId
@@ -741,10 +737,12 @@ export default function AssistantBuilder({
           setEdited(true);
           setBuilderState((state) => ({
             ...state,
-            tableQueryConfiguration: t,
+            tablesQueryConfiguration: {
+              ...state.tablesQueryConfiguration,
+              [`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`]: t,
+            },
           }));
         }}
-        currentTable={builderState.tableQueryConfiguration}
       />
       <AvatarPicker
         owner={owner}
@@ -1058,7 +1056,7 @@ export default function AssistantBuilder({
                     >
                       {ADVANCED_ACTION_MODES.filter((key) => {
                         return (
-                          key !== "TABLE_QUERY" ||
+                          key !== "TABLES_QUERY" ||
                           isActivatedStructuredDB(owner)
                         );
                       }).map((key) => (
@@ -1254,23 +1252,28 @@ export default function AssistantBuilder({
                 canSelectDustApp={dustApps.length !== 0}
               />
             </ActionModeSection>
-            <ActionModeSection show={builderState.actionMode === "TABLE_QUERY"}>
+            <ActionModeSection
+              show={builderState.actionMode === "TABLES_QUERY"}
+            >
               <div className="text-sm text-element-700">
                 The assistant will generate a SQL query from your request,
                 execute it on the tables selected and retrieve the results.
               </div>
               <TablesSelectionSection
-                show={builderState.actionMode === "TABLE_QUERY"}
-                tableQueryConfiguration={builderState.tableQueryConfiguration}
+                show={builderState.actionMode === "TABLES_QUERY"}
+                tablesQueryConfiguration={builderState.tablesQueryConfiguration}
                 openTableModal={() => {
                   setShowTableModal(true);
                 }}
-                onDelete={() => {
+                onDelete={(key) => {
                   setEdited(true);
                   setBuilderState((state) => {
+                    const tablesQueryConfiguration =
+                      state.tablesQueryConfiguration;
+                    delete tablesQueryConfiguration[key];
                     return {
                       ...state,
-                      tableQueryConfiguration: null,
+                      tablesQueryConfiguration,
                     };
                   });
                 }}
