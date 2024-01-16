@@ -20,7 +20,6 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isUpgraded } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -132,7 +131,7 @@ export default function Subscription({
         if (content.checkoutUrl) {
           await router.push(content.checkoutUrl);
         } else if (content.success) {
-          router.reload(); // We cannot swr the plan so we just reload the page.
+          await router.reload(); // We cannot swr the plan so we just reload the page.
         }
       }
     });
@@ -167,7 +166,7 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
+  const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
 
   const onClickProPlan = async () => handleSubscribePlan();
   const onClickEnterprisePlan = () => {

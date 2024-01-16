@@ -29,7 +29,6 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isUpgraded } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -652,7 +651,7 @@ const WorkspacePage = ({
                           variant="secondaryWarning"
                           onClick={onDowngrade}
                           disabled={
-                            !isUpgraded(subscription.plan) ||
+                            subscription.plan.code === FREE_TEST_PLAN_CODE ||
                             workspaceHasManagedDataSources
                           }
                         />
@@ -662,7 +661,9 @@ const WorkspacePage = ({
                           label="Upgrade to free upgraded plan"
                           variant="tertiary"
                           onClick={onUpgrade}
-                          disabled={isUpgraded(subscription.plan)}
+                          disabled={
+                            subscription.plan.code !== FREE_TEST_PLAN_CODE
+                          }
                         />
                       </div>
                     </div>

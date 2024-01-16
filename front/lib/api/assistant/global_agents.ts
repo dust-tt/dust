@@ -18,11 +18,12 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import { DustAPI, GlobalAgentStatus } from "@dust-tt/types";
+import { DustAPI, GlobalAgentStatus, PlanType } from "@dust-tt/types";
 
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 
 class HelperAssistantPrompt {
@@ -81,15 +82,20 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const model = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      };
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+  const model =
+    plan.code === FREE_TEST_PLAN_CODE
+      ? {
+          providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+          modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        }
+      : {
+          providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+          modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        };
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -145,11 +151,12 @@ async function _getGPT35TurboGlobalAgent({
 }
 
 async function _getGPT4GlobalAgent({
-  auth,
+  plan,
 }: {
-  auth: Authenticator;
+  plan: PlanType;
 }): Promise<AgentConfigurationType> {
-  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
+  const status =
+    plan.code === FREE_TEST_PLAN_CODE ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -209,13 +216,14 @@ async function _getClaudeInstantGlobalAgent({
 }
 
 async function _getClaudeGlobalAgent({
-  auth,
   settings,
+  plan,
 }: {
-  auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  plan: PlanType;
 }): Promise<AgentConfigurationType> {
-  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
+  const status =
+    plan.code === FREE_TEST_PLAN_CODE ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE,
@@ -242,14 +250,14 @@ async function _getClaudeGlobalAgent({
 }
 
 async function _getMistralMediumGlobalAgent({
-  auth,
+  plan,
   settings,
 }: {
-  auth: Authenticator;
+  plan: PlanType;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   let status = settings?.status ?? "disabled_by_admin";
-  if (!auth.isUpgraded()) {
+  if (plan.code === FREE_TEST_PLAN_CODE) {
     status = "disabled_free_workspace";
   }
 
@@ -368,6 +376,11 @@ async function _getManagedDataSourceAgent(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
   // Check if deactivated by an admin
@@ -426,15 +439,16 @@ async function _getManagedDataSourceAgent(
     generation: {
       id: -1,
       prompt,
-      model: !auth.isUpgraded()
-        ? {
-            providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-          }
-        : {
-            providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-          },
+      model:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? {
+              providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+            }
+          : {
+              providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+            },
       temperature: 0.4,
     },
     action: {
@@ -551,8 +565,10 @@ async function _getNotionGlobalAgent(
 async function _getDustGlobalAgent(
   auth: Authenticator,
   {
+    plan,
     settings,
   }: {
+    plan: PlanType;
     settings: GlobalAgentSettings | null;
   }
 ): Promise<AgentConfigurationType | null> {
@@ -629,15 +645,16 @@ async function _getDustGlobalAgent(
       id: -1,
       prompt:
         "Assist the user based on the retrieved data from their workspace. Unlesss the user explicitely asks for a detailed answer, you goal is to provide a quick answer to their question.",
-      model: !auth.isUpgraded()
-        ? {
-            providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-          }
-        : {
-            providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-          },
+      model:
+        plan.code === FREE_TEST_PLAN_CODE
+          ? {
+              providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+            }
+          : {
+              providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+              modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+            },
       temperature: 0.4,
     },
     action: {
@@ -674,6 +691,11 @@ export async function getGlobalAgent(
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
   }
 
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+
   if (preFetchedDataSources === null) {
     const prodCredentials = await prodAPICredentialsForOwner(owner);
     const api = new DustAPI(prodCredentials, logger);
@@ -697,18 +719,18 @@ export async function getGlobalAgent(
       agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = await _getGPT4GlobalAgent({ auth });
+      agentConfiguration = await _getGPT4GlobalAgent({ plan });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE:
-      agentConfiguration = await _getClaudeGlobalAgent({ auth, settings });
+      agentConfiguration = await _getClaudeGlobalAgent({ settings, plan });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
       agentConfiguration = await _getMistralMediumGlobalAgent({
+        plan,
         settings,
-        auth,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
@@ -742,7 +764,7 @@ export async function getGlobalAgent(
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
-      agentConfiguration = await _getDustGlobalAgent(auth, { settings });
+      agentConfiguration = await _getDustGlobalAgent(auth, { plan, settings });
       break;
     default:
       return null;

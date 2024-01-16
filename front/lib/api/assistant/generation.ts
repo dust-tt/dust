@@ -38,6 +38,7 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -279,7 +280,8 @@ export async function* runGeneration(
   void
 > {
   const owner = auth.workspace();
-  if (!owner) {
+  const plan = auth.plan();
+  if (!owner || !plan) {
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
@@ -302,7 +304,7 @@ export async function* runGeneration(
 
   let model = c.model;
 
-  if (isLargeModel(model) && !auth.isUpgraded()) {
+  if (isLargeModel(model) && plan.code === FREE_TEST_PLAN_CODE) {
     yield {
       type: "generation_error",
       created: Date.now(),
