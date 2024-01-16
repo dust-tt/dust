@@ -77,6 +77,56 @@ Workspace.init(
   }
 );
 
+export class WorkspaceHasDomain extends Model<
+  InferAttributes<WorkspaceHasDomain>,
+  InferCreationAttributes<WorkspaceHasDomain>
+> {
+  declare createdAt: CreationOptional<Date>;
+  declare domain: string;
+  declare domainAutoJoinEnabled: CreationOptional<boolean>;
+  declare id: CreationOptional<number>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+}
+WorkspaceHasDomain.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    domainAutoJoinEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    domain: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "workspace_has_domains",
+    sequelize: front_sequelize,
+    indexes: [{ unique: true, fields: ["domain"] }],
+  }
+);
+Workspace.hasMany(WorkspaceHasDomain, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+WorkspaceHasDomain.belongsTo(Workspace);
+
 export class Membership extends Model<
   InferAttributes<Membership>,
   InferCreationAttributes<Membership>

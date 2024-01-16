@@ -10,6 +10,7 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import { WorkspaceHasDomain } from "@app/lib/models/workspace";
 import {
   internalSubscribeWorkspaceToFreeTestPlan,
   updateWorkspacePerSeatSubscriptionUsage,
@@ -22,6 +23,38 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { authOptions } from "./auth/[...nextauth]";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
+
+async function createWorkspace(session: any) {
+  const [, emailDomain] = session.user.email.split("@");
+
+  // Use domain only when email is verified on Google Workspace and non-disposable.
+  const isEmailVerified =
+    session.provider.provider !== "google" && session.user.email_verified;
+  const verifiedDomain =
+    isEmailVerified && !isDisposableEmailDomain(emailDomain)
+      ? emailDomain
+      : null;
+
+  const workspace = await Workspace.create({
+    sId: generateModelSId(),
+    name: session.user.username,
+    // TODO(2024-01-15 flav) Deprecate after full release of `WorkflowHasDomain`.
+    allowedDomain: verifiedDomain,
+  });
+
+  if (verifiedDomain) {
+    try {
+      await WorkspaceHasDomain.create({
+        domain: verifiedDomain,
+      });
+    } catch (err) {
+      // `WorkspaceHasDomain` table has a unique constraint on the domain column.
+      // Suppress any creation errors to prevent disruption of the login process.
+    }
+  }
+
+  return workspace;
+}
 
 async function handler(
   req: NextApiRequest,
@@ -160,26 +193,15 @@ async function handler(
         // If there is no invte, we create a personal workspace for the user, otherwise the user
         // will be added to the workspace they were invited to (either by email or by domain) below.
         if (!workspaceInvite && !membershipInvite) {
-          const [, emailDomain] = session.user.email.split("@");
-          // Only set `allowedDomain` if the email is verified and not disposable.
-          const allowedDomain =
-            session.user.email_verified && !isDisposableEmailDomain(emailDomain)
-              ? emailDomain
-              : null;
-          const w = await Workspace.create({
-            sId: generateModelSId(),
-            name: session.user.username,
-            allowedDomain,
-          });
-
+          const workspace = await createWorkspace(session);
           await _createAndLogMembership({
-            workspace: w,
+            workspace,
             userId: user.id,
             role: "admin",
           });
 
           await internalSubscribeWorkspaceToFreeTestPlan({
-            workspaceId: w.sId,
+            workspaceId: workspace.sId,
           });
           isAdminOnboarding = true;
         }

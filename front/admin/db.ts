@@ -35,6 +35,7 @@ import {
   UserMessage,
   UserMetadata,
   Workspace,
+  WorkspaceHasDomain,
   XP1Run,
   XP1User,
 } from "@app/lib/models";
@@ -49,6 +50,7 @@ async function main() {
   await User.sync({ alter: true });
   await UserMetadata.sync({ alter: true });
   await Workspace.sync({ alter: true });
+  await WorkspaceHasDomain.sync({ alter: true });
   await Membership.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
   await App.sync({ alter: true });
