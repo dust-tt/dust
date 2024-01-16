@@ -256,17 +256,23 @@ export async function renderPrefixSection(
       sections: [],
     };
   }
-  let finalPrefix = prefix;
-  if (prefix.length > MAX_PREFIX_CHARS) {
-    finalPrefix = prefix.substring(0, MAX_PREFIX_CHARS);
-  }
-  const tokens = (await tokenize(finalPrefix, dataSourceConfig)).map(
-    (token) => token[1]
-  );
-  if (tokens.length <= MAX_PREFIX_TOKENS) {
+  const tokens = (
+    await tokenize(prefix.substring(0, MAX_PREFIX_CHARS), dataSourceConfig)
+  ).map((token) => token[1]);
+
+  if (tokens.length <= MAX_PREFIX_TOKENS && prefix.length <= MAX_PREFIX_CHARS) {
     return {
-      prefix: prefix,
+      prefix,
       content: null,
+      sections: [],
+    };
+  } else if (
+    tokens.length <= MAX_PREFIX_TOKENS &&
+    prefix.length > MAX_PREFIX_CHARS
+  ) {
+    return {
+      prefix: prefix.substring(0, prefix.length - 4) + "...\n", // account for the ellipsis
+      content: `...${prefix.substring(prefix.length - 4)}`,
       sections: [],
     };
   }
@@ -314,7 +320,7 @@ async function _tokenize(
     throw new Error(`Error tokenizing text: ${dustRequestResult}`);
   }
 }
-const tokenize = cacheWithRedis(
+export const tokenize = cacheWithRedis(
   _tokenize,
   (text, ds) => `tokenize:${text}-${ds.dataSourceName}-${ds.workspaceId}`,
   60 * 60 * 24
@@ -377,6 +383,7 @@ export async function renderMarkdownSection(
   return top;
 }
 
+const MAX_AUTHOR_CHAR_LENGTH = 512;
 // Will render the document based on title, optional createdAt and updatedAt and a structured
 // content. The title, createdAt and updatedAt will be presented in a standardized way across
 // connectors. The title should not include any `\n`.
@@ -462,3 +469,17 @@ export function sectionLength(
     section.sections.reduce((acc, s) => acc + sectionLength(s), 0)
   );
 }
+
+async function test() {
+  const res = await _tokenize(
+    "had to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issue",
+    {
+      workspaceAPIKey: "sk-e5a6952ea5561e0044ad6590a87f7374",
+      workspaceId: "d64b211dc7",
+      dataSourceName: "managed-notion",
+    }
+  );
+  console.log(res);
+  console.log(res.length);
+}
+test();
