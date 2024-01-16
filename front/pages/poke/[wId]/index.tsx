@@ -799,13 +799,18 @@ const WorkspacePage = ({
               >
                 <div className="flex items-center justify-between">
                   <h3 className="mb-2 text-lg font-semibold">{a.name}</h3>
-                  <Button
-                    label="Archive"
-                    variant="secondaryWarning"
-                    onClick={() => {
-                      void onAssistantArchive(a);
-                    }}
-                  />
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      label="Archive"
+                      variant="secondaryWarning"
+                      onClick={() => {
+                        void onAssistantArchive(a);
+                      }}
+                    />
+                    <Link href={`/poke/${owner.sId}/assistants/${a.sId}`}>
+                      <Button label="History" variant="secondary" />
+                    </Link>
+                  </div>
                 </div>
                 <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
                   {a.description}

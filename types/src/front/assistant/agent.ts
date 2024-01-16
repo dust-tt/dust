@@ -98,7 +98,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  * Global agents enabled for the workspace are always returned with all the views.
  */
 export type AgentsGetViewType =
-  | { agentId: string }
+  | { agentId: string; allVersions?: boolean }
   | "list"
   | { conversationId: string }
   | "all"
