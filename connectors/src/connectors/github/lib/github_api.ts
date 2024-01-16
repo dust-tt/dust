@@ -717,7 +717,7 @@ export async function processRepository({
 
         console.log(file, path, fileName);
 
-        const pathInternalIds = [];
+        const parents = [];
 
         for (let i = 0; i < path.length; i++) {
           const p = `github-code-${repoId}-dir-${path
@@ -726,13 +726,11 @@ export async function processRepository({
           const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
             .toString("hex")
             .substring(0, 16)}`;
-          console.log(
-            "PARENT",
-            path.slice(0, i + 1).join("/"),
-            p,
-            pathInternalId
-          );
-          pathInternalIds.push(pathInternalId);
+          parents.push({
+            internalId: pathInternalId,
+            dirName: path[i] as string,
+            dirPath: path.splice(0, i + 1),
+          });
         }
 
         const documentId = `github-code-${repoId}-file-${blake3(
@@ -742,9 +740,9 @@ export async function processRepository({
           .substring(0, 16)}`;
 
         const parentInternalId =
-          pathInternalIds.length === 0
+          parents.length === 0
             ? null
-            : (pathInternalIds[pathInternalIds.length - 1] as string);
+            : (parents[parents.length - 1]?.internalId as string);
 
         // Files
         files.push({
@@ -757,44 +755,41 @@ export async function processRepository({
           sizeBytes: size,
           documentId,
           parentInternalId,
-          parents: pathInternalIds,
+          parents: parents.map((p) => p.internalId),
           localFilePath: file,
         });
 
-        for (const pathInternalId of pathInternalIds) {
-        }
+        console.log("PARENTS", parents);
 
         // Directories
-        if (parentInternalId && !seenDirs[parentInternalId]) {
-          seenDirs[parentInternalId] = true;
+        for (let i = 0; i < parents.length; i++) {
+          const p = parents[i];
+          if (p && !seenDirs[p.internalId]) {
+            seenDirs[p.internalId] = true;
 
-          const dirName = path[path.length - 1] || "";
-          const dirPath = path.slice(0, -1);
-          const internalId = parentInternalId;
-          const dirParentInternalId =
-            pathInternalIds.length === 2
-              ? null
-              : (pathInternalIds[pathInternalIds.length - 2] as string);
+            const dirParent = parents[i - 1];
+            const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
-          console.log(
-            "DIR INSERT",
-            dirName,
-            dirPath,
-            internalId,
-            dirParentInternalId,
-            pathInternalIds.slice(0, -1)
-          );
-          directories.push({
-            dirName,
-            dirPath,
-            sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-              dirPath.join("/"),
-              dirName
-            )}`,
-            internalId,
-            parentInternalId: dirParentInternalId,
-            parents: pathInternalIds.slice(0, -1),
-          });
+            console.log(
+              "DIR INSERT",
+              p.dirName,
+              p.dirPath,
+              p.internalId,
+              dirParentInternalId,
+              parents.slice(0, i)
+            );
+            directories.push({
+              dirName: p.dirName,
+              dirPath: p.dirPath,
+              sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
+                p.dirPath.join("/"),
+                p.dirName
+              )}`,
+              internalId: p.internalId,
+              parentInternalId: dirParentInternalId,
+              parents: parents.slice(0, i).map((p) => p.internalId),
+            });
+          }
         }
       } else {
         console.log("SKIPPING", file, isWithelisted, isUnderLimit);
