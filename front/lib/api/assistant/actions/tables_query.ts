@@ -138,18 +138,6 @@ export async function* runTablesQuery({
       "Unexpected action configuration received in `runQueryTables`"
     );
   }
-  if (c.tables.some((t) => t.workspaceId !== owner.sId)) {
-    yield {
-      type: "tables_query_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "tables_query_parameters_generation_error",
-        message: "Cannot access the tables linked to this action.",
-      },
-    };
-  }
 
   // Generating inputs
   const inputRes = await generateTablesQueryAppParams(
@@ -189,7 +177,6 @@ export async function* runTablesQuery({
     action: {
       id: action.id,
       type: "tables_query_action",
-      tables: c.tables,
       params: action.params as Record<string, string | number | boolean>,
       output: action.output as Record<string, string | number | boolean>,
     },
@@ -305,7 +292,6 @@ export async function* runTablesQuery({
           action: {
             id: action.id,
             type: "tables_query_action",
-            tables: c.tables,
             params: action.params as Record<string, string | number | boolean>,
             output: tmpOutput as Record<string, string | number | boolean>,
           },
@@ -336,7 +322,6 @@ export async function* runTablesQuery({
     action: {
       id: action.id,
       type: "tables_query_action",
-      tables: c.tables,
       params: action.params as Record<string, string | number | boolean>,
       output: action.output as Record<string, string | number | boolean>,
     },

@@ -15,12 +15,6 @@ export type TablesQueryActionType = {
   id: ModelId;
   type: "tables_query_action";
 
-  tables: Array<{
-    workspaceId: string;
-    dataSourceId: string;
-    tableId: string;
-  }>;
-
   params: Record<string, string | number | boolean>;
   output: Record<string, string | number | boolean> | null;
 };

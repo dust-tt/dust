@@ -2,6 +2,7 @@ import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   GenerationTokensEvent,
+  TablesQueryActionType,
   UserMessageErrorEvent,
   UserMessageNewEvent,
   WorkspaceType,
@@ -52,7 +53,6 @@ import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
-  AgentDatabaseQueryAction,
   AgentDustAppRunAction,
   AgentMessage,
   Conversation,
@@ -62,6 +62,7 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
@@ -290,7 +291,7 @@ async function batchRenderAgentMessages(
     agentConfigurations,
     agentRetrievalActions,
     agentDustAppRunActions,
-    agentDatabaseQueryActions,
+    agentTablesQueryActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -347,7 +348,7 @@ async function batchRenderAgentMessages(
       });
     })(),
     (async () => {
-      const actions = await AgentDatabaseQueryAction.findAll({
+      const actions = await AgentTablesQueryAction.findAll({
         where: {
           id: {
             [Op.in]: agentMessages
@@ -359,12 +360,9 @@ async function batchRenderAgentMessages(
       return actions.map((action) => {
         return {
           id: action.id,
-          type: "database_query_action",
-          dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-          dataSourceId: action.dataSourceId,
-          databaseId: action.databaseId,
-          params: action.params,
-          output: action.output,
+          type: "tables_query_action",
+          params: action.params as Record<string, string | number | boolean>,
+          output: action.output as Record<string, string | number | boolean>,
         };
       });
     })(),
@@ -387,12 +385,11 @@ async function batchRenderAgentMessages(
       action = agentDustAppRunActions.find(
         (a) => a.id === agentMessage.agentDustAppRunActionId
       );
-    } else if (agentMessage.agentDatabaseQueryActionId) {
-      action = agentDatabaseQueryActions.find(
-        (a) => a.id === agentMessage.agentDatabaseQueryActionId
+    } else if (agentMessage.agentTablesQueryActionId) {
+      action = agentTablesQueryActions.find(
+        (a) => a.id === agentMessage.agentTablesQueryActionId
       );
     }
-
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === message.agentMessage?.agentConfigurationId
     );
