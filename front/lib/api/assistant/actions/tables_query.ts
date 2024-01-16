@@ -169,7 +169,7 @@ export async function* runTablesQuery({
     output,
   });
 
-  const event: TablesQueryParamsEvent = {
+  yield {
     type: "tables_query_params",
     created: Date.now(),
     configurationId: configuration.sId,
@@ -181,8 +181,6 @@ export async function* runTablesQuery({
       output: action.output as Record<string, string | number | boolean>,
     },
   };
-
-  yield event;
 
   // Generating configuration
   const config = cloneBaseConfig(
@@ -211,7 +209,7 @@ export async function* runTablesQuery({
   );
 
   if (res.isErr()) {
-    const errorEvent: TablesQueryErrorEvent = {
+    yield {
       type: "tables_query_error",
       created: Date.now(),
       configurationId: configuration.sId,
@@ -221,7 +219,6 @@ export async function* runTablesQuery({
         message: `Error running TablesQuery app: ${res.error.message}`,
       },
     };
-    yield errorEvent;
     return;
   }
 
@@ -236,7 +233,7 @@ export async function* runTablesQuery({
         },
         "Error running query_tables app"
       );
-      const errorEvent: TablesQueryErrorEvent = {
+      yield {
         type: "tables_query_error",
         created: Date.now(),
         configurationId: configuration.sId,
@@ -246,7 +243,6 @@ export async function* runTablesQuery({
           message: `Error running TablesQuery app: ${event.content.message}`,
         },
       };
-      yield errorEvent;
       return;
     }
     if (event.type === "block_execution") {
@@ -261,7 +257,7 @@ export async function* runTablesQuery({
           },
           "Error running query_tables app"
         );
-        const errorEvent: TablesQueryErrorEvent = {
+        yield {
           type: "tables_query_error",
           created: Date.now(),
           configurationId: configuration.sId,
@@ -271,7 +267,6 @@ export async function* runTablesQuery({
             message: `Error running TablesQuery app: ${e.error}`,
           },
         };
-        yield errorEvent;
         return;
       }
 
@@ -284,7 +279,7 @@ export async function* runTablesQuery({
           tmpOutput = { no_query: true };
         }
 
-        const queryOutputEvent: TablesQueryOutputEvent = {
+        yield {
           type: "tables_query_output",
           created: Date.now(),
           configurationId: configuration.sId,
@@ -296,8 +291,6 @@ export async function* runTablesQuery({
             output: tmpOutput as Record<string, string | number | boolean>,
           },
         };
-
-        yield queryOutputEvent;
       }
 
       if (event.content.block_name === "OUTPUT" && e.value) {
@@ -314,7 +307,7 @@ export async function* runTablesQuery({
     output,
   });
 
-  const successEvent: TablesQuerySuccessEvent = {
+  yield {
     type: "tables_query_success",
     created: Date.now(),
     configurationId: configuration.sId,
@@ -326,7 +319,5 @@ export async function* runTablesQuery({
       output: action.output as Record<string, string | number | boolean>,
     },
   };
-
-  yield successEvent;
   return;
 }
