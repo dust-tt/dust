@@ -2240,6 +2240,30 @@ async fn tokenize(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct FakeTokenize {
+    text: String,
+    ds_name: String,
+    credentials: Option<run::Credentials>,
+}
+async fn fake_tokenize(
+    extract::Json(payload): extract::Json<FakeTokenize>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Just log the text and ds name
+    utils::info(&format!(
+        "Fake tokenize: text: {}, ds_name: {}",
+        payload.text, payload.ds_name
+    ));
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({ "text": payload.text })),
+        }),
+    )
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
@@ -2405,6 +2429,7 @@ fn main() {
         .route("/sqlite_workers", delete(sqlite_workers_delete))
         // Misc
         .route("/tokenize", post(tokenize))
+        .route("/fake_tokenize", post(fake_tokenize))
 
         // Extensions
         .layer(DefaultBodyLimit::disable())

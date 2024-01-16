@@ -825,6 +825,28 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
+  async fakeTokenize({
+    text,
+    ds_name,
+  }: {
+    text: string;
+    ds_name: string;
+  }): Promise<CoreAPIResponse<{ data: string }>> {
+    const credentials = dustManagedCredentials();
+    const response = await fetch(`${CORE_API}/fake_tokenize`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        ds_name,
+        credentials,
+      }),
+    });
+    return _resultFromResponse(response);
+  }
+
   async upsertTable({
     projectId,
     dataSourceName,
