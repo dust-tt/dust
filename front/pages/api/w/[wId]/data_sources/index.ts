@@ -139,7 +139,7 @@ async function handler(
           splitter_id: "base_v0",
           max_chunk_size: dataSourceMaxChunkSize,
           qdrant_config:
-            !auth.isOnPaidPlan() && NODE_ENV === "production"
+            auth.isOnPaidPlan() && NODE_ENV === "production"
               ? {
                   cluster: "dedicated-1",
                   shadow_write_cluster: null,
