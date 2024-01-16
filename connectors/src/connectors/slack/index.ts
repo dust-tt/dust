@@ -445,13 +445,10 @@ export async function retrieveSlackConnectorPermissions({
       },
     }),
   ]);
-  const localChannelsById = localChannels.reduce(
-    (acc, ch) => {
-      acc[ch.slackChannelId] = ch;
-      return acc;
-    },
-    {} as Record<string, SlackChannel>
-  );
+  const localChannelsById = localChannels.reduce((acc, ch) => {
+    acc[ch.slackChannelId] = ch;
+    return acc;
+  }, {} as Record<string, SlackChannel>);
 
   for (const remoteChannel of remoteChannels) {
     if (!remoteChannel.id || !remoteChannel.name) {

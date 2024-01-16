@@ -1176,7 +1176,7 @@ export async function* iteratePaginatedAPIWithRetries<
   Args extends {
     start_cursor?: string;
   },
-  Item,
+  Item
 >(
   listFn: (args: Args) => Promise<IPaginatedList<Item>>,
   firstPageArgs: Args,

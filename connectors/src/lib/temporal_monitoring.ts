@@ -114,8 +114,9 @@ export class ActivityInboundLogInterceptor
         if (connectorId) {
           await syncFailed(connectorId, "oauth_token_revoked");
 
-          const doNotCancelOnTokenRevoked =
-            await getDoNotCancelOnTokenRevoked(workflowId);
+          const doNotCancelOnTokenRevoked = await getDoNotCancelOnTokenRevoked(
+            workflowId
+          );
           if (doNotCancelOnTokenRevoked) {
             this.logger.info(
               "Skipping cancelling workflow because of expired token."
