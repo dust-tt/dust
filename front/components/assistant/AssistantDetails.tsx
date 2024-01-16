@@ -134,7 +134,7 @@ export function AssistantDetails({
       ) : isTablesQueryConfiguration(action) ? (
         <div className="flex flex-col gap-2">
           <div className="text-lg font-bold text-element-800">Tables</div>
-          <TablesQuerySection owner={owner} tablesQueryConfig={action} />
+          <TablesQuerySection tablesQueryConfig={action} />
         </div>
       ) : null
     ) : null;
@@ -392,20 +392,20 @@ function ButtonsSection({
 }
 
 function TablesQuerySection({
-  owner,
   tablesQueryConfig,
 }: {
-  owner: WorkspaceType;
   tablesQueryConfig: TablesQueryConfigurationType;
 }) {
   const [tables, setTables] = useState<CoreAPITable[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isError, setIsError] = useState<boolean>(false);
 
   const getTables = useCallback(async () => {
     const tableEndpoints = tablesQueryConfig.tables.map(
       (t) =>
-        `/api/w/${t.workspaceId}/data_sources/${t.dataSourceId}/table/${t.tableId}`
+        `/api/w/${t.workspaceId}/data_sources/${t.dataSourceId}/tables/${t.tableId}`
     );
+
     const results = await Promise.all(
       tableEndpoints.map((endpoint) =>
         fetch(endpoint, {
@@ -414,26 +414,27 @@ function TablesQuerySection({
         })
       )
     );
+
+    const tablesParsed = [];
     for (const res of results) {
       if (!res.ok) {
         throw new Error((await res.json()).error.message);
       }
+      tablesParsed.push((await res.json()).table);
     }
-    const res = await fetch(`/api/w/${owner.sId}/database/tables/T{}`);
-    if (!res.ok) {
-      throw new Error((await res.json()).error.message);
-    }
-    const data = await res.json();
-    setTables(data.tables);
-  }, [owner.sId, tablesQueryConfig.tables]);
+
+    setTables(tablesParsed);
+  }, [tablesQueryConfig.tables]);
 
   useEffect(() => {
-    if (tablesQueryConfig.tables || isLoading) {
+    if (!tablesQueryConfig.tables || isLoading || isError || tables?.length) {
       return;
     }
     setIsLoading(true);
-    getTables().finally(() => setIsLoading(false));
-  }, [getTables, isLoading, tablesQueryConfig.tables]);
+    getTables()
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [getTables, isLoading, tablesQueryConfig.tables, tables?.length, isError]);
 
   if (isLoading) {
     return (
@@ -455,12 +456,15 @@ function TablesQuerySection({
     <div className="flex flex-col gap-2">
       <div>The following tables are queried before answering:</div>
       {tables.map((t) => (
-        <>
+        <div
+          className="flex flex-row items-center gap-2"
+          key={`${t.data_source_id}/${t.table_id}`}
+        >
           <div>
             <ServerIcon />
           </div>
           <div key={`${t.data_source_id}/${t.table_id}`}>{t.name}</div>
-        </>
+        </div>
       ))}
     </div>
   );
