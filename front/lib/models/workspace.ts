@@ -108,7 +108,7 @@ WorkspaceHasDomain.init(
     },
     domainAutoJoinEnabled: {
       type: DataTypes.BOOLEAN,
-      defaultValue: "false",
+      defaultValue: false,
     },
     domain: {
       type: DataTypes.STRING,
