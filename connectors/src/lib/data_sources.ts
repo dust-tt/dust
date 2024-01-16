@@ -451,17 +451,3 @@ export function sectionLength(
     section.sections.reduce((acc, s) => acc + sectionLength(s), 0)
   );
 }
-
-async function test() {
-  const res = await _tokenize(
-    "had to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issuehad to be redone from scratch following markdown parsing issue",
-    {
-      workspaceAPIKey: "sk-e5a6952ea5561e0044ad6590a87f7374",
-      workspaceId: "d64b211dc7",
-      dataSourceName: "managed-notion",
-    }
-  );
-  console.log(res);
-  console.log(res.length);
-}
-test();
