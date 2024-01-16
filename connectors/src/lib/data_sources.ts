@@ -1,6 +1,5 @@
 import type {
   cacheWithRedis,
-  CoreAPI,
   CoreAPIDataSourceDocumentSection,
   CoreAPITokenType,
   EMBEDDING_CONFIG,
