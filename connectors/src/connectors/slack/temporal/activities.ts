@@ -24,6 +24,7 @@ import {
   joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -786,19 +787,32 @@ export async function getUserName(
     return fromCache;
   }
 
-  const info = await slackClient.users.info({ user: slackUserId });
+  try {
+    const info = await slackClient.users.info({ user: slackUserId });
 
-  if (info && info.user) {
-    const displayName = info.user.profile?.display_name;
-    const realName = info.user.profile?.real_name;
-    const userName = displayName || realName || info.user.name;
+    if (info && info.user) {
+      const displayName = info.user.profile?.display_name;
+      const realName = info.user.profile?.real_name;
+      const userName = displayName || realName || info.user.name;
 
-    if (userName) {
-      await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-      return info.user.name;
+      if (userName) {
+        await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
+        return info.user.name;
+      }
     }
+
+    return undefined;
+  } catch (err) {
+    if (isSlackWebAPIPlatformError(err)) {
+      if (err.data.error === "user_not_found") {
+        logger.info({ connectorId, slackUserId }, "Slack user not found.");
+
+        return undefined;
+      }
+    }
+
+    throw err;
   }
-  return;
 }
 
 function getUserCacheKey(userId: string, connectorId: ModelId) {
