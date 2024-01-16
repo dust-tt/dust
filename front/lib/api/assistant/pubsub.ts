@@ -35,6 +35,7 @@ import {
   postUserMessage,
   retryAgentMessage,
 } from "./conversation";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 
 export async function postUserMessageWithPubSub(
   auth: Authenticator,
@@ -55,6 +56,9 @@ export async function postUserMessageWithPubSub(
   let rateLimitKey: string | undefined = "";
   if (auth.user()?.id) {
     maxPerTimeframe = 50;
+    if (auth.plan() && auth.plan()?.code !== FREE_TEST_PLAN_CODE) {
+      maxPerTimeframe = 200;
+    }
     timeframeSeconds = 60 * 60 * 3;
     rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
   } else {
