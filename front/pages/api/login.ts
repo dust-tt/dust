@@ -50,6 +50,8 @@ async function createWorkspace(session: any) {
     try {
       await WorkspaceHasDomain.create({
         domain: verifiedDomain,
+        domainAutoJoinEnabled: false,
+        workspaceId: workspace.id,
       });
     } catch (err) {
       // `WorkspaceHasDomain` table has a unique constraint on the domain column.
