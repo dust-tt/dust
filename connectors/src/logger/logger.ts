@@ -12,6 +12,11 @@ const defaultPinoOptions: LoggerOptions = {
     },
   },
   level: LOG_LEVEL,
+  redact: [
+    // Redact Axios config.
+    "error.config.headers.Authorization",
+    "error.response.config.headers.Authorization",
+  ],
 };
 
 const devOptions = {
