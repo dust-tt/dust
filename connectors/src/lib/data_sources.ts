@@ -179,6 +179,44 @@ export async function deleteFromDataSource(
   }
 }
 
+export async function tokenize({
+  text,
+  dataSourceConfig,
+}: {
+  text: string;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  const localLogger = logger.child({ text });
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tokenize`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.post(endpoint, { text }, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error tokenizing text.");
+    throw e;
+  }
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    return dustRequestResult.data.tokens;
+  } else {
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        data: dustRequestResult.data,
+      },
+      "Error tokenizing text."
+    );
+    throw new Error(`Error tokenizing text: ${dustRequestResult}`);
+  }
+}
+
 export const updateDocumentParentsField = withRetries(
   _updateDocumentParentsField
 );
@@ -246,6 +284,7 @@ const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
 // the prefix is too long (> MAX_PREFIX_TOKENS), it will be truncated. The remained will be returned as
 // content of the resulting section.
 export async function renderPrefixSection(
+  dataSourceConfig: DataSourceConfig,
   prefix: string | null
 ): Promise<CoreAPIDataSourceDocumentSection> {
   if (!prefix || !prefix.trim()) {
@@ -300,6 +339,7 @@ const getTokens = cacheWithRedis(
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
 export async function renderMarkdownSection(
+  dsConfig: DataSourceConfig,
   markdown: string,
   { flavor }: { flavor?: "gfm" } = {}
 ): Promise<CoreAPIDataSourceDocumentSection> {
@@ -327,6 +367,7 @@ export async function renderMarkdownSection(
       }
 
       const c = await renderPrefixSection(
+        dsConfig,
         toMarkdown(child, { extensions: [gfmToMarkdown()] })
       );
       last.content.sections.push(c);
@@ -357,6 +398,7 @@ export async function renderMarkdownSection(
 // If the title is too long it will be truncated and the remainder of the title will be set as
 // content of the top-level section.
 export async function renderDocumentTitleAndContent({
+  dataSourceConfig,
   title,
   createdAt,
   updatedAt,
@@ -364,6 +406,7 @@ export async function renderDocumentTitleAndContent({
   lastEditor,
   content,
 }: {
+  dataSourceConfig: DataSourceConfig;
   title: string | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -376,7 +419,9 @@ export async function renderDocumentTitleAndContent({
   } else {
     title = null;
   }
-  const titleSection = title ? await renderPrefixSection(title) : null;
+  const titleSection = title
+    ? await renderPrefixSection(dataSourceConfig, title)
+    : null;
   let metaPrefix: string | null = "";
   if (createdAt) {
     metaPrefix += `$createdAt: ${createdAt.toISOString()}\n`;
@@ -394,7 +439,9 @@ export async function renderDocumentTitleAndContent({
       metaPrefix += `$lastEditor: ${lastEditor}\n`;
     }
   }
-  const metaSection = metaPrefix ? await renderPrefixSection(metaPrefix) : null;
+  const metaSection = metaPrefix
+    ? await renderPrefixSection(dataSourceConfig, metaPrefix)
+    : null;
   if (metaSection && titleSection) {
     titleSection.sections.push(metaSection);
 

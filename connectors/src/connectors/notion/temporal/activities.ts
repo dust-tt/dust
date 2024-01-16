@@ -38,6 +38,7 @@ import type {
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/connectors/notion/lib/types";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
@@ -59,6 +60,7 @@ import {
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+import { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;
 
@@ -1514,6 +1516,7 @@ export async function renderAndUpsertPageFromCache({
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const dsConfig = dataSourceConfigFromConnector(connector);
   const accessToken = await getNotionAccessToken(connector.connectionId);
 
   const localLogger = logger.child({
@@ -1610,7 +1613,10 @@ export async function renderAndUpsertPageFromCache({
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
-  const renderedPageSection = await renderPageSection({ blocksByParentId });
+  const renderedPageSection = await renderPageSection({
+    dsConfig,
+    blocksByParentId,
+  });
   const documentLength = sectionLength(renderedPageSection);
 
   // add a newline to separate the page from the metadata above (title, author...)
@@ -1785,6 +1791,7 @@ export async function renderAndUpsertPageFromCache({
     );
 
     const content = await renderDocumentTitleAndContent({
+      dataSourceConfig: dsConfig,
       title: title ?? null,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -1797,11 +1804,7 @@ export async function renderAndUpsertPageFromCache({
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
     );
     await upsertToDatasource({
-      dataSourceConfig: {
-        dataSourceName: connector.dataSourceName,
-        workspaceId: connector.workspaceId,
-        workspaceAPIKey: connector.workspaceAPIKey,
-      },
+      dataSourceConfig: dsConfig,
       documentId,
       documentContent: content,
       documentUrl: pageCacheEntry.url,
@@ -2023,8 +2026,10 @@ export async function getDiscoveredResourcesFromCache(
  *   to github, to avoid too many prefixes
  */
 async function renderPageSection({
+  dsConfig,
   blocksByParentId,
 }: {
+  dsConfig: DataSourceConfig;
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
@@ -2105,7 +2110,7 @@ async function renderPageSection({
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
       depth < 1 && adaptedBlocksByParentId[b.notionBlockId]?.length
-        ? await renderPrefixSection(renderedBlock)
+        ? await renderPrefixSection(dsConfig, renderedBlock)
         : {
             prefix: null,
             content: renderedBlock,
