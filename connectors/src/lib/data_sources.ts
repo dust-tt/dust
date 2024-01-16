@@ -256,6 +256,7 @@ export async function renderPrefixSection(
       sections: [],
     };
   }
+  prefix = prefix.trim();
   const tokens = (
     await tokenize(prefix.substring(0, MAX_PREFIX_CHARS), dataSourceConfig)
   ).map((token) => token[1]);
