@@ -67,7 +67,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isActivatedStructuredDB } from "@app/lib/development";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -307,10 +307,9 @@ export default function AssistantBuilder({
           scope: defaultScope,
           generationSettings: {
             ...DEFAULT_ASSISTANT_STATE.generationSettings,
-            modelSettings:
-              plan.code === FREE_TEST_PLAN_CODE
-                ? GPT_3_5_TURBO_MODEL_CONFIG
-                : GPT_4_TURBO_MODEL_CONFIG,
+            modelSettings: !isUpgraded(plan)
+              ? GPT_3_5_TURBO_MODEL_CONFIG
+              : GPT_4_TURBO_MODEL_CONFIG,
           },
         }
   );
@@ -1531,9 +1530,7 @@ function AdvancedSettings({
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="bottomRight">
                 {usedModelConfigs
-                  .filter(
-                    (m) => !(m.largeModel && plan.code === FREE_TEST_PLAN_CODE)
-                  )
+                  .filter((m) => !(m.largeModel && !isUpgraded(plan)))
                   .map((modelConfig) => (
                     <DropdownMenu.Item
                       key={modelConfig.modelId}

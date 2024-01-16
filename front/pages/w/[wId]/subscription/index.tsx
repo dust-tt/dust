@@ -23,6 +23,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  isUpgraded,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
@@ -131,7 +132,7 @@ export default function Subscription({
         if (content.checkoutUrl) {
           await router.push(content.checkoutUrl);
         } else if (content.success) {
-          await router.reload(); // We cannot swr the plan so we just reload the page.
+          router.reload(); // We cannot swr the plan so we just reload the page.
         }
       }
     });
@@ -166,7 +167,7 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
+  const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
 
   const onClickProPlan = async () => handleSubscribePlan();
   const onClickEnterprisePlan = () => {
