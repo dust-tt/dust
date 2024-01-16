@@ -24,12 +24,16 @@ import { authOptions } from "./auth/[...nextauth]";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 
+function isGoogleSession(session: any) {
+  return session.provider.provider === "google";
+}
+
 async function createWorkspace(session: any) {
   const [, emailDomain] = session.user.email.split("@");
 
   // Use domain only when email is verified on Google Workspace and non-disposable.
   const isEmailVerified =
-    session.provider.provider !== "google" && session.user.email_verified;
+    isGoogleSession(session) && session.user.email_verified;
   const verifiedDomain =
     isEmailVerified && !isDisposableEmailDomain(emailDomain)
       ? emailDomain
@@ -54,6 +58,32 @@ async function createWorkspace(session: any) {
   }
 
   return workspace;
+}
+
+async function findWorkspaceWithWhitelistedDomain(session: any) {
+  const { user } = session;
+
+  if (!isGoogleSession(session) || !user.email_verified) {
+    return;
+  }
+
+  const [, userEmailDomain] = user.email.split("@");
+  const workspaceWithWhitelistedDomain = await WorkspaceHasDomain.findOne({
+    attributes: ["workspaceId"],
+    where: {
+      domain: userEmailDomain,
+      domainAutoJoinEnabled: true,
+    },
+    include: [
+      {
+        model: Workspace,
+        as: "workspace",
+        required: true,
+      },
+    ],
+  });
+
+  return workspaceWithWhitelistedDomain?.workspace;
 }
 
 async function handler(
@@ -81,10 +111,12 @@ async function handler(
   let workspaceInvite: null | Workspace = null;
   let isAdminOnboarding = false;
 
-  if (req.query.wId) {
+  const { inviteToken, wId } = req.query;
+  // TODO(2024-01-16 flav) Remove once auto join whitelisted domains is fully released.
+  if (wId && typeof wId === "string") {
     workspaceInvite = await Workspace.findOne({
       where: {
-        sId: req.query.wId as string,
+        sId: wId,
       },
     });
 
@@ -126,8 +158,7 @@ async function handler(
   // `inviteToken`, meaning the user is going through the invite by email flow.
   let membershipInvite: MembershipInvitation | null = null;
 
-  if (req.query.inviteToken) {
-    const inviteToken = req.query.inviteToken as string;
+  if (inviteToken && typeof inviteToken === "string") {
     const decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
       membershipInvitationId: number;
     };
@@ -165,8 +196,12 @@ async function handler(
   if (user) {
     // Update the user object from the updated session information.
     user.username = session.user.username;
-    user.email = session.user.email;
     user.name = session.user.name;
+
+    // We only update the user's email if the session is not from Google.
+    if (!isGoogleSession(session)) {
+      user.email = session.user.email;
+    }
 
     if (!user.firstName && !user.lastName) {
       const { firstName, lastName } = guessFirstandLastNameFromFullName(
@@ -179,8 +214,9 @@ async function handler(
     await user.save();
   }
 
-  // The user does not exist. We create it and create a personal workspace if there is no invite
-  // associated with the login request.
+  let autoJoinWorkspaceWithDomain: Workspace | undefined;
+
+  // Create a new user and a personal workspace if no invite or auto-join workspace is available.
   if (!user) {
     const { firstName, lastName } = guessFirstandLastNameFromFullName(
       session.user.name
@@ -196,9 +232,13 @@ async function handler(
       lastName,
     });
 
-    // If there is no invte, we create a personal workspace for the user, otherwise the user
+    autoJoinWorkspaceWithDomain = await findWorkspaceWithWhitelistedDomain(
+      session
+    );
+
+    // If there is no invite, we create a personal workspace for the user, otherwise the user
     // will be added to the workspace they were invited to (either by email or by domain) below.
-    if (!workspaceInvite && !membershipInvite) {
+    if (!workspaceInvite && !membershipInvite && !autoJoinWorkspaceWithDomain) {
       const workspace = await createWorkspace(session);
       await _createAndLogMembership({
         workspace,
@@ -216,18 +256,20 @@ async function handler(
   let targetWorkspace: Workspace | null = null;
 
   // `workspaceInvite` flow: we know we can add the user to the workspace as all the checks
-  // have been run. Simply create the membership if does not alreayd exist.
-  if (workspaceInvite) {
+  // have been run. Simply create the membership if does not already exist.
+  const selectedWorkspaceInvite =
+    workspaceInvite ?? autoJoinWorkspaceWithDomain;
+  if (selectedWorkspaceInvite) {
     let m = await Membership.findOne({
       where: {
         userId: user.id,
-        workspaceId: workspaceInvite.id,
+        workspaceId: selectedWorkspaceInvite.id,
       },
     });
 
     if (!m) {
       m = await _createAndLogMembership({
-        workspace: workspaceInvite,
+        workspace: selectedWorkspaceInvite,
         userId: user.id,
         role: "user",
       });
@@ -244,7 +286,7 @@ async function handler(
       });
     }
 
-    targetWorkspace = workspaceInvite;
+    targetWorkspace = selectedWorkspaceInvite;
   }
 
   // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
