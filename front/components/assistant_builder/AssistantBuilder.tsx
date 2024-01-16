@@ -20,7 +20,6 @@ import {
   ConnectorProvider,
   DataSourceType,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  isPaidPlanType,
 } from "@dust-tt/types";
 import { UserType, WorkspaceType } from "@dust-tt/types";
 import {
@@ -68,6 +67,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isActivatedStructuredDB } from "@app/lib/development";
+import { isUpgraded } from "@app/lib/plans/free_plans";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -307,7 +307,7 @@ export default function AssistantBuilder({
           scope: defaultScope,
           generationSettings: {
             ...DEFAULT_ASSISTANT_STATE.generationSettings,
-            modelSettings: !isPaidPlanType(plan)
+            modelSettings: !isUpgraded(plan)
               ? GPT_3_5_TURBO_MODEL_CONFIG
               : GPT_4_TURBO_MODEL_CONFIG,
           },
@@ -1530,7 +1530,7 @@ function AdvancedSettings({
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="bottomRight">
                 {usedModelConfigs
-                  .filter((m) => !(m.largeModel && !isPaidPlanType(plan)))
+                  .filter((m) => !(m.largeModel && !isUpgraded(plan)))
                   .map((modelConfig) => (
                     <DropdownMenu.Item
                       key={modelConfig.modelId}

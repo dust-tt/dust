@@ -19,7 +19,11 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
+import {
+  FREE_TEST_PLAN_DATA,
+  PlanAttributes,
+  isUpgraded,
+} from "@app/lib/plans/free_plans";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -328,11 +332,7 @@ export class Authenticator {
   }
 
   isUpgraded(): boolean {
-    const plan = this.plan();
-    if (!plan) {
-      return false;
-    }
-    return plan.code !== FREE_TEST_PLAN_CODE;
+    return isUpgraded(this.plan());
   }
 
   /**

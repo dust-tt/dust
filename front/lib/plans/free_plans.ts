@@ -5,6 +5,7 @@ import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { PlanType } from "@dust-tt/types";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -89,4 +90,9 @@ export const upsertFreePlans = async () => {
       console.log(`Free plan ${planData.code} updated.`);
     }
   }
+};
+
+export const isUpgraded = (plan: PlanType | null): boolean => {
+  if (!plan) return false;
+  return plan.code !== FREE_UPGRADED_PLAN_CODE;
 };

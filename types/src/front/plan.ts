@@ -43,25 +43,6 @@ export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 export const SUBSCRIPTION_STATUSES = ["active", "ended"] as const;
 export type SubscriptionStatusType = (typeof SUBSCRIPTION_STATUSES)[number];
 
-export function isFreeBillingType(
-  billingType: FreeBillingType | PaidBillingType
-): billingType is FreeBillingType {
-  return billingType in FREE_BILLING_TYPES;
-}
-
-export function isPaidBillingType(
-  billingType: FreeBillingType | PaidBillingType
-): billingType is PaidBillingType {
-  return billingType in PAID_BILLING_TYPES;
-}
-
-export function isPaidPlanType(plan: PlanType | null): boolean {
-  if (!plan) {
-    return false;
-  }
-  return isPaidBillingType(plan.billingType);
-}
-
 export type PlanType = {
   code: string;
   name: string;
