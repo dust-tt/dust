@@ -12,7 +12,7 @@ import {
   SendNotificationsContext,
 } from "@app/components/sparkle/Notification";
 import { isLargeModel } from "@app/lib/assistant";
-import { isUpgraded } from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewFlow = "personal" | "workspace";
@@ -176,7 +176,7 @@ export function GalleryAssistantPreviewContainer({
 
   const isGlobal = scope === "global";
   const isAddedToWorkspace = flow === "workspace" && isAdded;
-  const hasAccessToLargeModels = isUpgraded(plan);
+  const hasAccessToLargeModels = plan?.code !== FREE_TEST_PLAN_CODE;
   const eligibleForTesting =
     hasAccessToLargeModels || !isLargeModel(generation?.model);
   const isTestable = !isGlobal && !isAdded && eligibleForTesting;
