@@ -833,7 +833,7 @@ export class CoreAPI {
     text: string;
     projectId: string;
     dataSourceName: string;
-  }): Promise<CoreAPIResponse<{ data: string }>> {
+  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tokenize`,
       {
