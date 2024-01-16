@@ -120,6 +120,8 @@ export type AgentRecentAuthors = readonly string[];
 export type LightAgentConfigurationType = {
   id: ModelId;
 
+  versionCreatedAt: string | null;
+
   sId: string;
   version: number;
   // Global agents have a null authorId, others have a non-null authorId

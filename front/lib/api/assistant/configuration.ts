@@ -448,6 +448,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
+      versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
       userListStatus: null,
@@ -699,6 +700,7 @@ export async function createAgentConfiguration(
     const agentConfiguration: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
+      versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       versionAuthorId: agent.authorId,
       scope: agent.scope,

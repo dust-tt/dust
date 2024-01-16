@@ -99,28 +99,30 @@ const DataSourcePage = ({
                   }
                 >
                   <ContextItem.Description>
-                    <div className="pt-2 text-sm text-element-700">
-                      {a.generation?.prompt}
-                    </div>
-                    <div className="pt-2 text-sm text-element-700">
-                      model: {`${JSON.stringify(a.generation?.model, null, 2)}`}
-                    </div>
-                    {a.action && isRetrievalConfiguration(a.action) && (
-                      <div className="mb-2 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Data Sources:</div>
-                        {a.action.dataSources.map((ds) => (
-                          <div key={ds.dataSourceId}>{ds.dataSourceId}</div>
-                        ))}
+                    <div className="gap8 flex flex-col">
+                      <div>Created at: {`${a.versionCreatedAt}`}</div>
+                      <div className="pt-2 text-sm text-element-700">
+                        {a.generation?.prompt}
                       </div>
-                    )}
-                    {a.action && isDustAppRunConfiguration(a.action) && (
-                      <div className="mb-2 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Dust app:</div>
-                        <div>
-                          {a.action.appWorkspaceId}/{a.action.appId}
+                      <div className="pt-2 text-sm text-element-700">
+                        model:{" "}
+                        {`${JSON.stringify(a.generation?.model, null, 2)}`}
+                      </div>
+                      {a.action && isRetrievalConfiguration(a.action) && (
+                        <div className="mb-2 flex-col text-sm text-gray-600">
+                          <div className="font-bold">Data Sources:</div>
+                          {JSON.stringify(a.action.dataSources, null, 2)}
                         </div>
-                      </div>
-                    )}
+                      )}
+                      {a.action && isDustAppRunConfiguration(a.action) && (
+                        <div className="mb-2 flex-col text-sm text-gray-600">
+                          <div className="font-bold">Dust app:</div>
+                          <div>
+                            {a.action.appWorkspaceId}/{a.action.appId}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </ContextItem.Description>
                 </ContextItem>
               ))}
