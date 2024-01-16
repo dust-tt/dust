@@ -564,6 +564,7 @@ const EXTENSION_WHITELIST = [
   ".cc",
   ".cpp",
   ".hpp",
+  ".sh",
 ];
 
 const FILENAME_WHITELIST = [
@@ -714,17 +715,24 @@ export async function processRepository({
           .slice(1, -1);
         const fileName = basename(file);
 
+        console.log(file, path, fileName);
+
         const pathInternalIds = [];
 
         for (let i = 0; i < path.length; i++) {
           const p = `github-code-${repoId}-dir-${path
             .slice(0, i + 1)
             .join("/")}`;
-          pathInternalIds.push(
-            `github-code-${repoId}-dir-${blake3(p)
-              .toString("hex")
-              .substring(0, 16)}`
+          const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
+            .toString("hex")
+            .substring(0, 16)}`;
+          console.log(
+            "PARENT",
+            path.slice(0, i + 1).join("/"),
+            p,
+            pathInternalId
           );
+          pathInternalIds.push(pathInternalId);
         }
 
         const documentId = `github-code-${repoId}-file-${blake3(
@@ -753,6 +761,9 @@ export async function processRepository({
           localFilePath: file,
         });
 
+        // for (const pathInternalId of pathInternalIds) {
+        // }
+
         // Directories
         if (parentInternalId && !seenDirs[parentInternalId]) {
           seenDirs[parentInternalId] = true;
@@ -765,6 +776,14 @@ export async function processRepository({
               ? null
               : (pathInternalIds[pathInternalIds.length - 2] as string);
 
+          console.log(
+            "DIR INSERT",
+            dirName,
+            dirPath,
+            internalId,
+            dirParentInternalId,
+            pathInternalIds.slice(0, -1)
+          );
           directories.push({
             dirName,
             dirPath,
@@ -777,6 +796,8 @@ export async function processRepository({
             parents: pathInternalIds.slice(0, -1),
           });
         }
+      } else {
+        console.log("SKIPPING", file, isWithelisted, isUnderLimit);
       }
     }
 
