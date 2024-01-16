@@ -7,7 +7,8 @@ import type {
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   DatabaseQueryParamsEvent,
-  GenerationTokensEvent} from "@dust-tt/types";
+  GenerationTokensEvent,
+} from "@dust-tt/types";
 import type {
   AgentActionSpecification,
   LightAgentConfigurationType,

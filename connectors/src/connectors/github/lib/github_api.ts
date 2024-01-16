@@ -14,7 +14,8 @@ import { extract } from "tar";
 
 import type {
   DiscussionCommentNode,
-  DiscussionNode} from "@connectors/connectors/github/lib/github_graphql";
+  DiscussionNode,
+} from "@connectors/connectors/github/lib/github_graphql";
 import {
   ErrorPayloadSchema,
   GetDiscussionCommentRepliesPayloadSchema,

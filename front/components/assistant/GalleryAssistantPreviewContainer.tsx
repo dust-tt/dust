@@ -7,11 +7,8 @@ import type {
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
-import type {
-  NotificationType} from "@app/components/sparkle/Notification";
-import {
-  SendNotificationsContext,
-} from "@app/components/sparkle/Notification";
+import type { NotificationType } from "@app/components/sparkle/Notification";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isLargeModel } from "@app/lib/assistant";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";

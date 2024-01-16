@@ -9,12 +9,17 @@ import type {
   AgentConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
-  WorkspaceSegmentationType} from "@dust-tt/types";
+  WorkspaceSegmentationType,
+} from "@dust-tt/types";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
 import {
   isDustAppRunConfiguration,
-  isRetrievalConfiguration
+  isRetrievalConfiguration,
 } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";

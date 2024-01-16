@@ -2,13 +2,9 @@ import type {
   APIError,
   ConnectorProvider,
   DataSourceType,
-  Result} from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  Err,
-  Ok
+  Result,
 } from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getMembers } from "@app/lib/api/workspace";

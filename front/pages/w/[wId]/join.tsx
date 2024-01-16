@@ -60,8 +60,8 @@ export const getServerSideProps: GetServerSideProps<{
   const onboardingType: OnboardingType = cId
     ? "domain_conversation_link"
     : token
-    ? "email_invite"
-    : "domain_invite_link";
+      ? "email_invite"
+      : "domain_invite_link";
 
   // Redirect to 404 if in a flow where we need allowed domain and domain is not allowed.
   if (

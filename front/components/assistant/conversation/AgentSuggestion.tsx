@@ -3,11 +3,9 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   UserMessageType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  isAgentMention,
-  isUserMessageType
+  WorkspaceType,
 } from "@dust-tt/types";
+import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";

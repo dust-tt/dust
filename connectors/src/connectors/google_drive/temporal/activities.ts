@@ -23,7 +23,7 @@ import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
-import type { CreationAttributes} from "sequelize";
+import type { CreationAttributes } from "sequelize";
 import { literal, Op } from "sequelize";
 
 import { registerWebhook } from "@connectors/connectors/google_drive/lib";

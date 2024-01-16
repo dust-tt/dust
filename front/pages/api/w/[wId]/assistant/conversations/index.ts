@@ -2,11 +2,10 @@ import type {
   ContentFragmentType,
   ConversationType,
   ConversationWithoutContentType,
-  UserMessageType} from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
-import {
-  InternalPostConversationsRequestBodySchema
+  UserMessageType,
 } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { InternalPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";

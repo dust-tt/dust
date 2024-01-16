@@ -21,12 +21,8 @@ import React from "react";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
 
-import type {
-  SidebarNavigation,
-  TopNavigationId} from "./navigation";
-import {
-  topNavigation
-} from "./navigation";
+import type { SidebarNavigation, TopNavigationId } from "./navigation";
+import { topNavigation } from "./navigation";
 
 function NavigationBar({
   user,

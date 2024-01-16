@@ -17,18 +17,13 @@ import type {
   ConnectorProvider,
   DataSourceType,
   UserType,
-  WorkspaceType} from "@dust-tt/types";
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type {
-  ConnectorType} from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
-import {
-  assertNever
-} from "@dust-tt/types";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI
-} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";

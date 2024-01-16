@@ -4,14 +4,8 @@ import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { MessageReactionType } from "@dust-tt/types";
 import type { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import type {
-  ComponentType,
-  MouseEventHandler} from "react";
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import type { ComponentType, MouseEventHandler } from "react";
+import { useEffect, useRef, useState } from "react";
 import React from "react";
 import { mutate } from "swr";
 

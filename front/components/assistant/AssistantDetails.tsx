@@ -15,18 +15,12 @@ import type {
   ConnectorProvider,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
-import type {
-  DustAppRunConfigurationType} from "@dust-tt/types";
-import type {
-  DataSourceConfiguration} from "@dust-tt/types";
+import type { DustAppRunConfigurationType } from "@dust-tt/types";
+import type { DataSourceConfiguration } from "@dust-tt/types";
 import type { AgentConfigurationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import {
-  isDustAppRunConfiguration,
-} from "@dust-tt/types";
-import {
-  isRetrievalConfiguration,
-} from "@dust-tt/types";
+import { isDustAppRunConfiguration } from "@dust-tt/types";
+import { isRetrievalConfiguration } from "@dust-tt/types";
 import Link from "next/link";
 import { useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";

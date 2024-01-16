@@ -1,5 +1,4 @@
-import type {
-  Icon} from "@dust-tt/sparkle";
+import type { Icon } from "@dust-tt/sparkle";
 import {
   Button,
   DropdownMenu,

@@ -17,7 +17,8 @@ import type {
   ConversationWithoutContentType,
   MentionType,
   UserMessageContext,
-  UserMessageType} from "@dust-tt/types";
+  UserMessageType,
+} from "@dust-tt/types";
 import type { PlanType } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type {
@@ -34,7 +35,7 @@ import {
   isAgentMention,
   isAgentMessageType,
   isUserMention,
-  isUserMessageType
+  isUserMessageType,
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";

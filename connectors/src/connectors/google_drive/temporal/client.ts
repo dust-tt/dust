@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import { rateLimiter, RateLimitError } from "@dust-tt/types";
-import type { WorkflowHandle} from "@temporalio/client";
+import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";

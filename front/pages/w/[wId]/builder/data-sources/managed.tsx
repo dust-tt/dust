@@ -17,12 +17,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type {
-  ConnectorType} from "@dust-tt/types";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI
-} from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
+import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -353,8 +349,8 @@ function ConfirmationModal({
                 isLoading
                   ? "Connecting..."
                   : dataSource.connectorProvider === "google_drive"
-                  ? "Acknowledge and Connect"
-                  : "Connect"
+                    ? "Acknowledge and Connect"
+                    : "Connect"
               }
             />
           </div>
@@ -620,10 +616,10 @@ export default function DataSourcesView({
                           const label = !ds.isBuilt
                             ? "Preview"
                             : !isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ] && !ds.fetchConnectorError
-                            ? "Connect"
-                            : "Connecting...";
+                                  ds.connectorProvider as ConnectorProvider
+                                ] && !ds.fetchConnectorError
+                              ? "Connect"
+                              : "Connecting...";
 
                           if (!ds || !ds.connector) {
                             return (

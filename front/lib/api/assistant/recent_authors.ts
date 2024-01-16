@@ -79,9 +79,8 @@ async function populateAuthorIdsFromDb({
   agentId: string;
   workspaceId: string;
 }) {
-  const recentAuthorIdsWithVersion = await fetchRecentAuthorIdsWithVersion(
-    agentId
-  );
+  const recentAuthorIdsWithVersion =
+    await fetchRecentAuthorIdsWithVersion(agentId);
 
   if (recentAuthorIdsWithVersion.length === 0) {
     return [];

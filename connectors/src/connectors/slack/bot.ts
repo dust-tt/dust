@@ -5,16 +5,14 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   RetrievalDocumentType,
-  UserMessageType} from "@dust-tt/types";
+  UserMessageType,
+} from "@dust-tt/types";
 import type {
   AgentGenerationSuccessEvent,
-  PublicPostContentFragmentRequestBodySchema} from "@dust-tt/types";
-import {
-  sectionFullText
+  PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import {
-  DustAPI
-} from "@dust-tt/types";
+import { sectionFullText } from "@dust-tt/types";
+import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type * as t from "io-ts";

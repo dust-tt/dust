@@ -2,11 +2,9 @@ import type {
   CreationOptional,
   ForeignKey,
   InferAttributes,
-  InferCreationAttributes} from "sequelize";
-import {
-  DataTypes,
-  Model,
+  InferCreationAttributes,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import { DataSource } from "@app/lib/models/data_source";

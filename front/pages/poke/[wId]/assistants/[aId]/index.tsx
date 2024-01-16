@@ -1,6 +1,5 @@
 import { Avatar, ContextItem, Page } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationType} from "@dust-tt/types";
+import type { AgentConfigurationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import {
   isDustAppRunConfiguration,

@@ -74,10 +74,13 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       const remoteChannels = (
         await getChannels(parseInt(connectorId), false)
       ).flatMap((c) => (c.id && c.name ? [{ id: c.id, name: c.name }] : []));
-      const remoteChannelsById = remoteChannels.reduce((acc, ch) => {
-        acc[ch.id] = ch;
-        return acc;
-      }, {} as Record<string, { id: string; name: string }>);
+      const remoteChannelsById = remoteChannels.reduce(
+        (acc, ch) => {
+          acc[ch.id] = ch;
+          return acc;
+        },
+        {} as Record<string, { id: string; name: string }>
+      );
       const createdChannels = await Promise.all(
         missingSlackChannelIds.map((slackChannelId) => {
           const remoteChannel = remoteChannelsById[slackChannelId];

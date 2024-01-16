@@ -183,8 +183,8 @@ export default function SerpAPISetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                            ? "Enabling..."
-                            : "Enable"
+                              ? "Enabling..."
+                              : "Enable"
                         }
                       />
                     ) : (

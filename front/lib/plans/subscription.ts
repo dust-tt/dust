@@ -1,5 +1,9 @@
 import type { WorkspaceType } from "@dust-tt/types";
-import type { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import type { Authenticator } from "@app/lib/auth";

@@ -616,10 +616,13 @@ export async function retrieveGoogleDriveObjectsTitles(
     },
   });
 
-  const titles = googleDriveFiles.reduce((acc, curr) => {
-    acc[curr.driveFileId] = curr.name;
-    return acc;
-  }, {} as Record<string, string>);
+  const titles = googleDriveFiles.reduce(
+    (acc, curr) => {
+      acc[curr.driveFileId] = curr.name;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
   return new Ok(titles);
 }

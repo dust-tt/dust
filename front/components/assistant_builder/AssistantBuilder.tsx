@@ -18,28 +18,26 @@ import {
 import type {
   AgentConfigurationScope,
   ConnectorProvider,
-  DataSourceType} from "@dust-tt/types";
+  DataSourceType,
+} from "@dust-tt/types";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type {
-  SupportedModel} from "@dust-tt/types";
+import type { SupportedModel } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import {
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-} from "@dust-tt/types";
+import { GEMINI_PRO_DEFAULT_MODEL_CONFIG } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG
+  MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import type { ReactNode} from "react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";

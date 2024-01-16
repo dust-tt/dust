@@ -1578,10 +1578,13 @@ export async function renderAndUpsertPageFromCache({
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         b.childDatabaseTitle!,
     }))
-    .reduce((acc, { id, title }) => {
-      acc[id] = title;
-      return acc;
-    }, {} as Record<string, string>);
+    .reduce(
+      (acc, { id, title }) => {
+        acc[id] = title;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
 
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving child database pages from cache."

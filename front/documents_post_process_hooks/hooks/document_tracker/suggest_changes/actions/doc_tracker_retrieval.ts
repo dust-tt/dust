@@ -15,9 +15,8 @@ export async function callDocTrackerRetrievalAction(
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
 
-  config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(
-    workspaceId
-  );
+  config.SEMANTIC_SEARCH.data_sources =
+    await getTrackableDataSources(workspaceId);
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
 
   const res = await callAction({

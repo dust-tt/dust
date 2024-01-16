@@ -9,10 +9,10 @@ import {
   Tab,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import type { ChangeEvent} from "react";
+import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import React from "react";
-import type { Crop} from "react-image-crop";
+import type { Crop } from "react-image-crop";
 import ReactCrop, { centerCrop, makeAspectCrop } from "react-image-crop";
 
 import { classNames } from "@app/lib/utils";

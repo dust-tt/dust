@@ -123,10 +123,13 @@ async function handler(
         await Promise.all(
           stripeProductIds.map((stripeProductId) => getProduct(stripeProductId))
         )
-      ).reduce((acc, product) => {
-        acc[product.id] = product;
-        return acc;
-      }, {} as { [key: string]: Stripe.Product });
+      ).reduce(
+        (acc, product) => {
+          acc[product.id] = product;
+          return acc;
+        },
+        {} as { [key: string]: Stripe.Product }
+      );
 
       res.status(200).json({
         plans: plans.map((plan) => ({

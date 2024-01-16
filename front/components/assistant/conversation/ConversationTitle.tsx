@@ -12,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { ConversationType } from "@dust-tt/types";
-import type { MouseEvent} from "react";
+import type { MouseEvent } from "react";
 import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 

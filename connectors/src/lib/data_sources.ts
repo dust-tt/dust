@@ -1,9 +1,8 @@
 import type {
   CoreAPIDataSourceDocumentSection,
-  PostDataSourceDocumentRequestBody} from "@dust-tt/types";
-import {
-  sectionFullText,
+  PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
+import { sectionFullText } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";

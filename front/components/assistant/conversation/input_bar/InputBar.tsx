@@ -13,9 +13,7 @@ import {
 import { mutate } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import type {
-  InputBarContainerProps,
-} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";

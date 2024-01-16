@@ -3,14 +3,16 @@ import type {
   AgentUserListStatus,
   LightAgentConfigurationType,
   Result,
-  SupportedModel} from "@dust-tt/types";
+  SupportedModel,
+} from "@dust-tt/types";
 import type { DustAppRunConfigurationType } from "@dust-tt/types";
 import type {
   AgentsGetViewType,
   DataSourceConfiguration,
   RetrievalConfigurationType,
   RetrievalQuery,
-  RetrievalTimeframe} from "@dust-tt/types";
+  RetrievalTimeframe,
+} from "@dust-tt/types";
 import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
@@ -19,17 +21,10 @@ import type {
   AgentStatus,
 } from "@dust-tt/types";
 import type { DatabaseQueryConfigurationType } from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  Ok
-} from "@dust-tt/types";
-import {
-  isTemplatedQuery,
-  isTimeFrame
-} from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
+import { isTemplatedQuery, isTimeFrame } from "@dust-tt/types";
 import { isSupportedModel } from "@dust-tt/types";
-import type { Transaction} from "sequelize";
+import type { Transaction } from "sequelize";
 import { Op, UniqueConstraintError } from "sequelize";
 
 import {
@@ -217,10 +212,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   })();
 
   function byId<T extends { id: number }>(list: T[]): Record<string, T> {
-    return list.reduce((acc, item) => {
-      acc[item.id] = item;
-      return acc;
-    }, {} as Record<number, T>);
+    return list.reduce(
+      (acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      },
+      {} as Record<number, T>
+    );
   }
 
   const configurationIds = agentConfigurations.map((a) => a.id);
@@ -272,10 +270,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
             userId: user.id,
           },
         }).then((relations) =>
-          relations.reduce((acc, relation) => {
-            acc[relation.agentConfiguration] = relation;
-            return acc;
-          }, {} as Record<string, AgentUserRelation>)
+          relations.reduce(
+            (acc, relation) => {
+              acc[relation.agentConfiguration] = relation;
+              return acc;
+            },
+            {} as Record<string, AgentUserRelation>
+          )
         )
       : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
@@ -290,12 +291,15 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           },
         })
       : []
-  ).reduce((acc, dsConfig) => {
-    acc[dsConfig.retrievalConfigurationId] =
-      acc[dsConfig.retrievalConfigurationId] || [];
-    acc[dsConfig.retrievalConfigurationId].push(dsConfig);
-    return acc;
-  }, {} as Record<number, AgentDataSourceConfiguration[]>);
+  ).reduce(
+    (acc, dsConfig) => {
+      acc[dsConfig.retrievalConfigurationId] =
+        acc[dsConfig.retrievalConfigurationId] || [];
+      acc[dsConfig.retrievalConfigurationId].push(dsConfig);
+      return acc;
+    },
+    {} as Record<number, AgentDataSourceConfiguration[]>
+  );
 
   const dataSourceIds = Object.values(agentDatasourceConfigurations)
     .flat()
@@ -310,10 +314,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           },
         })
       : []
-  ).reduce((acc, ds) => {
-    acc[ds.id] = ds;
-    return acc;
-  }, {} as Record<number, DataSource>);
+  ).reduce(
+    (acc, ds) => {
+      acc[ds.id] = ds;
+      return acc;
+    },
+    {} as Record<number, DataSource>
+  );
 
   const workspaceIds = Object.values(dataSources).map((ds) => ds.workspaceId);
   const dataSourceWorkspaces = (
@@ -326,10 +333,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           },
         })
       : []
-  ).reduce((acc, ws) => {
-    acc[ws.id] = ws;
-    return acc;
-  }, {} as Record<number, Workspace>);
+  ).reduce(
+    (acc, ws) => {
+      acc[ws.id] = ws;
+      return acc;
+    },
+    {} as Record<number, Workspace>
+  );
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {

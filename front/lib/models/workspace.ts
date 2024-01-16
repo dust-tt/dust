@@ -4,11 +4,9 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute} from "sequelize";
-import {
-  DataTypes,
-  Model
+  NonAttribute,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import type { Subscription } from "@app/lib/models/plan";

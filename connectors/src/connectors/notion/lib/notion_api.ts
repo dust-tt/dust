@@ -1,12 +1,11 @@
 import { cacheWithRedis } from "@dust-tt/types";
-import type {
-  LogLevel} from "@notionhq/client";
+import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
   Client,
   isFullBlock,
   isFullDatabase,
-  isFullPage
+  isFullPage,
 } from "@notionhq/client";
 import type {
   BlockObjectResponse,
@@ -1177,7 +1176,7 @@ export async function* iteratePaginatedAPIWithRetries<
   Args extends {
     start_cursor?: string;
   },
-  Item
+  Item,
 >(
   listFn: (args: Args) => Promise<IPaginatedList<Item>>,
   firstPageArgs: Args,

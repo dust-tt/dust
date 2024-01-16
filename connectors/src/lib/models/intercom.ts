@@ -2,11 +2,9 @@ import type {
   CreationOptional,
   ForeignKey,
   InferAttributes,
-  InferCreationAttributes} from "sequelize";
-import {
-  DataTypes,
-  Model,
+  InferCreationAttributes,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 

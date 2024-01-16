@@ -1,10 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 import type {
   WorkflowExecutionDescription,
-  WorkflowHandle} from "@temporalio/client";
-import {
-  WorkflowNotFoundError,
+  WorkflowHandle,
 } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";

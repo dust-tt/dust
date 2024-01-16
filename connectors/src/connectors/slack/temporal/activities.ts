@@ -1,16 +1,11 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId} from "@dust-tt/types";
-import {
-  cacheWithRedis
-} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIPlatformError,
-  WebClient} from "@slack/web-api";
-import {
-  ErrorCode
+  WebClient,
 } from "@slack/web-api";
+import { ErrorCode } from "@slack/web-api";
 import type {
   ConversationsHistoryResponse,
   MessageElement,

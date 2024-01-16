@@ -5,11 +5,9 @@ import type {
   MentionType,
   Result,
   UserType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  Err,
-  Ok
+  WorkspaceType,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";

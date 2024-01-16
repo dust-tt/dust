@@ -12,8 +12,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useSWRConfig } from "swr";
 
-import type {
-  EditingPlanType} from "@app/components/poke/plans/form";
+import type { EditingPlanType } from "@app/components/poke/plans/form";
 import {
   Field,
   fromPlanType,

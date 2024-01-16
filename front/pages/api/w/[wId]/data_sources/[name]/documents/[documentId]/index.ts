@@ -1,5 +1,4 @@
-import type {
-  CoreAPILightDocument} from "@dust-tt/types";
+import type { CoreAPILightDocument } from "@dust-tt/types";
 import type { DocumentType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {

@@ -1,6 +1,10 @@
 import { Button, Tab } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type { AppType, BlockRunConfig, SpecificationType } from "@dust-tt/types";
+import type {
+  AppType,
+  BlockRunConfig,
+  SpecificationType,
+} from "@dust-tt/types";
 import type { DatasetType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { TraceType } from "@dust-tt/types";

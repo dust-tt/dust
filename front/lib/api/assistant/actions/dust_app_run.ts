@@ -6,9 +6,7 @@ import type {
   ModelId,
   ModelMessageType,
 } from "@dust-tt/types";
-import type {
-  DustAppParameters,
-  DustAppRunActionType} from "@dust-tt/types";
+import type { DustAppParameters, DustAppRunActionType } from "@dust-tt/types";
 import type {
   AgentActionSpecification,
   AgentConfigurationType,
@@ -21,13 +19,11 @@ import type {
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import {
-  isDustAppRunConfiguration,
-} from "@dust-tt/types";
+import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import type { Authenticator} from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models";

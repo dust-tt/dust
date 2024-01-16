@@ -1,4 +1,4 @@
-import type { AgentMessageType} from "@dust-tt/types";
+import type { AgentMessageType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isAgentMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";

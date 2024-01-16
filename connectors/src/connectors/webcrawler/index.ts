@@ -221,10 +221,13 @@ export async function retrieveWebCrawlerObjectsTitles(
     },
   });
 
-  const titles = googleDriveFiles.reduce((acc, curr) => {
-    acc[curr.url] = curr.url;
-    return acc;
-  }, {} as Record<string, string>);
+  const titles = googleDriveFiles.reduce(
+    (acc, curr) => {
+      acc[curr.url] = curr.url;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
   return new Ok(titles);
 }

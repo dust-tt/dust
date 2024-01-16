@@ -1,10 +1,9 @@
 import type {
   EventSchemaPropertiesTypeForModel,
   EventSchemaPropertyType,
-  ExtractedEventPropertyType} from "@dust-tt/types";
-import {
-  eventSchemaPropertyAllTypes
+  ExtractedEventPropertyType,
 } from "@dust-tt/types";
+import { eventSchemaPropertyAllTypes } from "@dust-tt/types";
 
 /**
  * We start with: 

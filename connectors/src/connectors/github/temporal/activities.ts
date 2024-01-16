@@ -6,7 +6,8 @@ import { Op } from "sequelize";
 
 import type {
   GithubIssue as GithubIssueType,
-  GithubUser} from "@connectors/connectors/github/lib/github_api";
+  GithubUser,
+} from "@connectors/connectors/github/lib/github_api";
 import {
   cleanUpProcessRepository,
   getDiscussion,

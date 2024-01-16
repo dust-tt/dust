@@ -3,11 +3,9 @@ import type {
   CodedError,
   UsersInfoResponse,
   WebAPIHTTPError,
-  WebAPIPlatformError} from "@slack/web-api";
-import {
-  ErrorCode,
-  WebClient,
+  WebAPIPlatformError,
 } from "@slack/web-api";
+import { ErrorCode, WebClient } from "@slack/web-api";
 
 import type { WorkflowError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";

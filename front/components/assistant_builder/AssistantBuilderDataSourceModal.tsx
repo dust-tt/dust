@@ -13,11 +13,8 @@ import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import type {
-  AssistantBuilderDataSourceConfiguration} from "@app/components/assistant_builder/AssistantBuilder";
-import {
-  CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
@@ -218,10 +215,13 @@ function DataSourceResourceSelector({
       }
       const json: GetConnectorResourceParentsResponseBody = await res.json();
       setParentsById(
-        json.resources.reduce((acc, r) => {
-          acc[r.internalId] = new Set(r.parents);
-          return acc;
-        }, {} as Record<string, Set<string>>)
+        json.resources.reduce(
+          (acc, r) => {
+            acc[r.internalId] = new Set(r.parents);
+            return acc;
+          },
+          {} as Record<string, Set<string>>
+        )
       );
     } catch (e) {
       setParentsAreError(true);

@@ -3,11 +3,12 @@ import type {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   LightAgentConfigurationType,
-  Result} from "@dust-tt/types";
+  Result,
+} from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   GetAgentConfigurationsQuerySchema,
-  PostOrPatchAgentConfigurationRequestBodySchema
+  PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
@@ -90,8 +91,8 @@ async function handler(
       const viewParam = view
         ? view
         : conversationId
-        ? { conversationId }
-        : "all";
+          ? { conversationId }
+          : "all";
       if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
         return apiError(req, res, {
           status_code: 404,

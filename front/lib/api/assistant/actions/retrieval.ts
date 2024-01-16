@@ -9,7 +9,8 @@ import type {
   RetrievalActionType,
   RetrievalConfigurationType,
   RetrievalDocumentType,
-  TimeFrame} from "@dust-tt/types";
+  TimeFrame,
+} from "@dust-tt/types";
 import type {
   AgentActionSpecification,
   AgentConfigurationType,
@@ -20,9 +21,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import {
-  isRetrievalConfiguration
-} from "@dust-tt/types";
+import { isRetrievalConfiguration } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 

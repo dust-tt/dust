@@ -14,9 +14,10 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import type {
   AssistantBuilderInitialState,
-  BuilderFlow} from "@app/components/assistant_builder/AssistantBuilder";
+  BuilderFlow,
+} from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
-  BUILDER_FLOWS
+  BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";

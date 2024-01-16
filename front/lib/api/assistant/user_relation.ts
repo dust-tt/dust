@@ -1,12 +1,9 @@
 import type {
   AgentUserListStatus,
   LightAgentConfigurationType,
-  Result} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  Ok
+  Result,
 } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";

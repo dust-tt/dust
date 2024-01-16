@@ -289,10 +289,13 @@ export function AgentMessage({
       agentMessageToRender.action.documents
     ) {
       setReferences(
-        agentMessageToRender.action.documents.reduce((acc, d) => {
-          acc[d.reference] = d;
-          return acc;
-        }, {} as { [key: string]: RetrievalDocumentType })
+        agentMessageToRender.action.documents.reduce(
+          (acc, d) => {
+            acc[d.reference] = d;
+            return acc;
+          },
+          {} as { [key: string]: RetrievalDocumentType }
+        )
       );
     }
   }, [agentMessageToRender.action]);

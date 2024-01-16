@@ -5,10 +5,9 @@ import type {
   PlanType,
   SubscriptionType,
   UserType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  assertNever
+  WorkspaceType,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";

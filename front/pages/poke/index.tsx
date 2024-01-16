@@ -1,6 +1,6 @@
 import type { UserType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import type { ChangeEvent} from "react";
+import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";

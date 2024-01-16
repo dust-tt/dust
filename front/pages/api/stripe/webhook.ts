@@ -1,9 +1,5 @@
-import type {
-  ReturnedAPIErrorType} from "@dust-tt/types";
-import {
-  CoreAPI,
-  isRetrievalConfiguration
-} from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
@@ -517,9 +513,8 @@ async function handler(
               endDate: new Date(),
             });
             const workspaceId = activeSubscription.workspace.sId;
-            const auth = await Authenticator.internalAdminForWorkspace(
-              workspaceId
-            );
+            const auth =
+              await Authenticator.internalAdminForWorkspace(workspaceId);
             await revokeUsersForDowngrade(auth);
             await archiveConnectedAgents(auth);
             await deleteConnectedDatasources(auth);

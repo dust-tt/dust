@@ -480,10 +480,13 @@ export async function retrieveNotionResourcesTitles(
     .concat(
       dbs.map((db) => ({ internalId: db.notionDatabaseId, title: db.title }))
     )
-    .reduce((acc, { internalId, title }) => {
-      acc[internalId] = title ?? null;
-      return acc;
-    }, {} as Record<string, string | null>);
+    .reduce(
+      (acc, { internalId, title }) => {
+        acc[internalId] = title ?? null;
+        return acc;
+      },
+      {} as Record<string, string | null>
+    );
 
   return new Ok(titles);
 }

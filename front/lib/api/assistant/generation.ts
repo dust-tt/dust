@@ -5,17 +5,19 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   ModelConversationType,
-  ModelMessageType} from "@dust-tt/types";
+  ModelMessageType,
+} from "@dust-tt/types";
 import type {
   AgentMessageType,
   ConversationType,
-  UserMessageType} from "@dust-tt/types";
+  UserMessageType,
+} from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import {
   GPT_4_32K_MODEL_ID,
   GPT_4_MODEL_CONFIG,
   isDatabaseQueryActionType,
-  isDustAppRunActionType
+  isDustAppRunActionType,
 } from "@dust-tt/types";
 import {
   isRetrievalActionType,
@@ -24,7 +26,7 @@ import {
 import {
   isAgentMessageType,
   isContentFragmentType,
-  isUserMessageType
+  isUserMessageType,
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";

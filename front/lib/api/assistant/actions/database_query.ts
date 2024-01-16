@@ -9,13 +9,14 @@ import type {
   DatabaseQuerySuccessEvent,
   ModelMessageType,
   Result,
-  UserMessageType} from "@dust-tt/types";
+  UserMessageType,
+} from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
   isDatabaseQueryConfiguration,
-  Ok
+  Ok,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";

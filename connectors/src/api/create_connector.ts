@@ -2,11 +2,12 @@ import type {
   ConnectorProvider,
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
-  Result} from "@dust-tt/types";
+  Result,
+} from "@dust-tt/types";
 import {
   assertNever,
   ConnectorCreateRequestBodySchema,
-  isConnectorProvider
+  isConnectorProvider,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";

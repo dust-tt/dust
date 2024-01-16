@@ -286,8 +286,8 @@ async function rowsFromCsv(
           return lowerV === "true"
             ? true
             : lowerV === "false"
-            ? false
-            : undefined;
+              ? false
+              : undefined;
         },
         // string
         (v: string) => v,
@@ -325,12 +325,15 @@ async function rowsFromCsv(
   const nbRows = (Object.values(parsedValuesByCol)[0] || []).length;
   const rows: CoreAPIRow[] = [];
   for (let i = 0; i < nbRows; i++) {
-    const record = header.reduce((acc, h) => {
-      const parsedValues = parsedValuesByCol[h];
-      acc[h] =
-        parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
-      return acc;
-    }, {} as Record<string, RowValue>);
+    const record = header.reduce(
+      (acc, h) => {
+        const parsedValues = parsedValuesByCol[h];
+        acc[h] =
+          parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
+        return acc;
+      },
+      {} as Record<string, RowValue>
+    );
 
     rows.push({ row_id: i.toString(), value: record });
   }

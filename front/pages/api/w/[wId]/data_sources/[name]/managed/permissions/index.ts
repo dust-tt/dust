@@ -1,11 +1,6 @@
-import type {
-  ConnectorPermission,
-  ConnectorResource} from "@dust-tt/types";
+import type { ConnectorPermission, ConnectorResource } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-} from "@dust-tt/types";
+import { assertNever, ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
