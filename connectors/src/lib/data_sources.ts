@@ -384,7 +384,7 @@ export async function renderMarkdownSection(
   return top;
 }
 
-const MAX_AUTHOR_CHAR_LENGTH = 512;
+const MAX_AUTHOR_CHAR_LENGTH = 48;
 // Will render the document based on title, optional createdAt and updatedAt and a structured
 // content. The title, createdAt and updatedAt will be presented in a standardized way across
 // connectors. The title should not include any `\n`.
@@ -407,14 +407,14 @@ export async function renderDocumentTitleAndContent({
   lastEditor?: string;
   content: CoreAPIDataSourceDocumentSection | null;
 }): Promise<CoreAPIDataSourceDocumentSection> {
+  author = author?.substring(0, MAX_AUTHOR_CHAR_LENGTH);
+  lastEditor = lastEditor?.substring(0, MAX_AUTHOR_CHAR_LENGTH);
   if (title && title.trim()) {
     title = `$title: ${title}\n`;
   } else {
     title = null;
   }
-  const titleSection = title
-    ? await renderPrefixSection(dataSourceConfig, title)
-    : null;
+  const c = await renderPrefixSection(dataSourceConfig, title);
   let metaPrefix: string | null = "";
   if (createdAt) {
     metaPrefix += `$createdAt: ${createdAt.toISOString()}\n`;
@@ -432,32 +432,13 @@ export async function renderDocumentTitleAndContent({
       metaPrefix += `$lastEditor: ${lastEditor}\n`;
     }
   }
-  const metaSection = metaPrefix
-    ? await renderPrefixSection(dataSourceConfig, metaPrefix)
-    : null;
-  if (metaSection && titleSection) {
-    titleSection.sections.push(metaSection);
-
-    if (content) {
-      metaSection.sections.push(content);
-    }
-    return titleSection;
-  } else if (metaSection) {
-    if (content) {
-      metaSection.sections.push(content);
-    }
-    return metaSection;
-  } else if (titleSection) {
-    if (content) {
-      titleSection.sections.push(content);
-    }
-    return titleSection;
+  if (metaPrefix) {
+    c.prefix += metaPrefix;
   }
-  return {
-    prefix: null,
-    content: null,
-    sections: content ? [content] : [],
-  };
+  if (content) {
+    c.sections.push(content);
+  }
+  return c;
 }
 
 /* Compute document length by summing all prefix and content sizes for each section */
