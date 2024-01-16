@@ -786,19 +786,26 @@ export async function getUserName(
     return fromCache;
   }
 
-  const info = await slackClient.users.info({ user: slackUserId });
+  try {
+    const info = await slackClient.users.info({ user: slackUserId });
 
-  if (info && info.user) {
-    const displayName = info.user.profile?.display_name;
-    const realName = info.user.profile?.real_name;
-    const userName = displayName || realName || info.user.name;
+    if (info && info.user) {
+      const displayName = info.user.profile?.display_name;
+      const realName = info.user.profile?.real_name;
+      const userName = displayName || realName || info.user.name;
 
-    if (userName) {
-      await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-      return info.user.name;
+      if (userName) {
+        await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
+        return info.user.name;
+      }
     }
+
+    return undefined;
+  } catch (err) {
+    logger.info({ connectorId, slackUserId }, "Slack user not found.");
+
+    return undefined;
   }
-  return;
 }
 
 function getUserCacheKey(userId: string, connectorId: ModelId) {
