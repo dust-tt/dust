@@ -108,18 +108,16 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 
   const globalAgentsIds =
     typeof agentsGetView === "object" && "agentId" in agentsGetView
-      ? [agentsGetView.agentId]
+      ? [agentsGetView.agentId].filter((id) => isGlobalAgentId(id))
       : undefined;
 
-  let globalAgentsPromise = getGlobalAgents(
-    auth,
-    globalAgentsIds?.filter((id) => isGlobalAgentId(id))
-  ).then((globals) =>
-    globals.filter(
-      (a) =>
-        !agentPrefix ||
-        a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
-    )
+  let globalAgentsPromise = getGlobalAgents(auth, globalAgentsIds).then(
+    (globals) =>
+      globals.filter(
+        (a) =>
+          !agentPrefix ||
+          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+      )
   );
 
   if (agentsGetView === "global") {
