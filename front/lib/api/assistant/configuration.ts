@@ -276,9 +276,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
       : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
 
-  const agentDatasourceConfigurations = (
+  const agentDatasourceConfigurationsPromise = (
     Object.values(retrievalConfigs).length
-      ? await AgentDataSourceConfiguration.findAll({
+      ? AgentDataSourceConfiguration.findAll({
           where: {
             retrievalConfigurationId: {
               [Op.in]: Object.values(retrievalConfigs).map((r) => r.id),
@@ -297,32 +297,42 @@ export async function getAgentConfigurations<V extends "light" | "full">({
             },
           ],
         })
-      : []
-  ).reduce((acc, dsConfig) => {
-    acc[dsConfig.retrievalConfigurationId] =
-      acc[dsConfig.retrievalConfigurationId] || [];
-    acc[dsConfig.retrievalConfigurationId].push(dsConfig);
-    return acc;
-  }, {} as Record<number, AgentDataSourceConfiguration[]>);
+      : Promise.resolve([])
+  ).then((dsConfigs) =>
+    dsConfigs.reduce((acc, dsConfig) => {
+      acc[dsConfig.retrievalConfigurationId] =
+        acc[dsConfig.retrievalConfigurationId] || [];
+      acc[dsConfig.retrievalConfigurationId].push(dsConfig);
+      return acc;
+    }, {} as Record<number, AgentDataSourceConfiguration[]>)
+  );
 
-  const agentTablesConfigurationTables = (
+  const agentTablesConfigurationTablesPromise = (
     Object.values(tablesQueryConfigs).length
-      ? await AgentTablesQueryConfigurationTable.findAll({
+      ? AgentTablesQueryConfigurationTable.findAll({
           where: {
             tablesQueryConfigurationId: {
               [Op.in]: Object.values(tablesQueryConfigs).map((r) => r.id),
             },
           },
         })
-      : []
-  ).reduce((acc, tablesConfigurationTable) => {
-    acc[tablesConfigurationTable.tablesQueryConfigurationId] =
-      acc[tablesConfigurationTable.tablesQueryConfigurationId] || [];
-    acc[tablesConfigurationTable.tablesQueryConfigurationId].push(
-      tablesConfigurationTable
-    );
-    return acc;
-  }, {} as Record<number, AgentTablesQueryConfigurationTable[]>);
+      : Promise.resolve([])
+  ).then((tablesConfigurationTables) =>
+    tablesConfigurationTables.reduce((acc, tablesConfigurationTable) => {
+      acc[tablesConfigurationTable.tablesQueryConfigurationId] =
+        acc[tablesConfigurationTable.tablesQueryConfigurationId] || [];
+      acc[tablesConfigurationTable.tablesQueryConfigurationId].push(
+        tablesConfigurationTable
+      );
+      return acc;
+    }, {} as Record<number, AgentTablesQueryConfigurationTable[]>)
+  );
+
+  const [agentDatasourceConfigurations, agentTablesConfigurationTables] =
+    await Promise.all([
+      agentDatasourceConfigurationsPromise,
+      agentTablesConfigurationTablesPromise,
+    ]);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
