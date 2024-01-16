@@ -107,10 +107,8 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   }
 
   const globalAgentsIds =
-    typeof agentsGetView === "object" &&
-    "agentId" in agentsGetView &&
-    isGlobalAgentId(agentsGetView.agentId)
-      ? [agentsGetView.agentId]
+    typeof agentsGetView === "object" && "agentId" in agentsGetView
+      ? [agentsGetView.agentId].filter((id) => isGlobalAgentId(id))
       : undefined;
 
   let globalAgentsPromise = getGlobalAgents(auth, globalAgentsIds).then(
@@ -193,7 +191,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
               sId: agentsGetView.agentId,
             },
             order: [["version", "DESC"]],
-            limit: 1,
+            ...(agentsGetView.allVersions ? {} : { limit: 1 }),
           });
         }
         if (
@@ -450,6 +448,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
+      versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
       userListStatus: null,
@@ -701,6 +700,7 @@ export async function createAgentConfiguration(
     const agentConfiguration: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
+      versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       versionAuthorId: agent.authorId,
       scope: agent.scope,
