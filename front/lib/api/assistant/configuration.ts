@@ -192,6 +192,8 @@ export async function getAgentConfigurations<V extends "light" | "full">({
                 : {}),
               sId: agentsGetView.agentId,
             },
+            order: [["version", "DESC"]],
+            limit: 1,
           });
         }
         if (
