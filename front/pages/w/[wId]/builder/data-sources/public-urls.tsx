@@ -8,9 +8,9 @@ import {
   PlusIcon,
   Popup,
 } from "@dust-tt/sparkle";
-import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 

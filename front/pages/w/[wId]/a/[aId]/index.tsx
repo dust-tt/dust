@@ -6,18 +6,18 @@ import {
   SparklesIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import {
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   BlockRunConfig,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { BlockType } from "@dust-tt/types";
-import { CoreAPIErrorResponse } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { BlockType } from "@dust-tt/types";
+import type { CoreAPIErrorResponse } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";

@@ -14,8 +14,8 @@ import {
   ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";

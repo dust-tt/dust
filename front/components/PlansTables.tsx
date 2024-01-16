@@ -1,5 +1,5 @@
 import { Button, PriceTable, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
-import { PlanType } from "@dust-tt/types";
+import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
 

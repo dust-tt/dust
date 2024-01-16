@@ -1,20 +1,22 @@
+import type {
+  FreeBillingType,
+  PaidBillingType,
+  SubscriptionStatusType} from "@dust-tt/types";
 import {
   FREE_BILLING_TYPES,
-  FreeBillingType,
   PAID_BILLING_TYPES,
-  PaidBillingType,
-  SUBSCRIPTION_STATUSES,
-  SubscriptionStatusType,
+  SUBSCRIPTION_STATUSES
 } from "@dust-tt/types";
-import {
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  Model,
   NonAttribute,
-  Transaction,
+  Transaction} from "sequelize";
+import {
+  DataTypes,
+  Model
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";

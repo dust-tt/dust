@@ -1,8 +1,8 @@
-import { AgentUserListStatus } from "@dust-tt/types";
+import type { AgentUserListStatus } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserListstatus } from "@app/lib/api/assistant/user_relation";

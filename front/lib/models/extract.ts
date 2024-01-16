@@ -1,10 +1,11 @@
-import { EventSchemaPropertyType, EventSchemaStatus } from "@dust-tt/types";
-import {
+import type { EventSchemaPropertyType, EventSchemaStatus } from "@dust-tt/types";
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
-  InferCreationAttributes,
+  InferCreationAttributes} from "sequelize";
+import {
+  DataTypes,
   Model,
 } from "sequelize";
 

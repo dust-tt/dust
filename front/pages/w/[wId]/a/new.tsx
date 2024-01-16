@@ -1,10 +1,10 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 

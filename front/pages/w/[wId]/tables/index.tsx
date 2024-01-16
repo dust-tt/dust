@@ -9,15 +9,15 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import {
+import type {
   CoreAPITable,
   DataSourceType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React, { useContext, useRef } from "react";
 import { useSWRConfig } from "swr";
 

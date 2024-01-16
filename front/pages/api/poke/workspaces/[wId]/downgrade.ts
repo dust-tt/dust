@@ -1,6 +1,6 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";

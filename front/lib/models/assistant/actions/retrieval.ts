@@ -1,12 +1,13 @@
-import { TimeframeUnit } from "@dust-tt/types";
-import {
+import type { TimeframeUnit } from "@dust-tt/types";
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  Model,
-  NonAttribute,
+  NonAttribute} from "sequelize";
+import {
+  DataTypes,
+  Model
 } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";

@@ -1,12 +1,12 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { WorkspaceType } from "@dust-tt/types";
-import {
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { BlockType, RunType } from "@dust-tt/types";
+import type { BlockType, RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";

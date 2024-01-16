@@ -1,4 +1,4 @@
-import { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
+import type { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
 import { useEffect, useMemo, useRef } from "react";
 
 import type {

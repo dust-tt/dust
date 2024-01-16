@@ -1,6 +1,7 @@
 import { Button, PlusIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
-import React, { ComponentType, MouseEvent } from "react";
+import type { ComponentType, MouseEvent } from "react";
+import React from "react";
 
 import { classNames } from "@app/lib/utils";
 

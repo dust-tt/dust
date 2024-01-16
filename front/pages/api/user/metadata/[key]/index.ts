@@ -1,6 +1,6 @@
-import { UserMetadataType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { UserMetadataType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
 import { getSession, getUserFromSession } from "@app/lib/auth";

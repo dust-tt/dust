@@ -1,8 +1,8 @@
-import { DocumentType } from "@dust-tt/types";
+import type { DocumentType } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { JSONSchemaType } from "ajv";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { JSONSchemaType } from "ajv";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";

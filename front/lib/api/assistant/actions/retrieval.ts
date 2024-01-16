@@ -1,33 +1,35 @@
-import {
+import type {
   ModelId,
   ModelMessageType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
 } from "@dust-tt/types";
-import {
-  isRetrievalConfiguration,
+import type {
   RetrievalActionType,
   RetrievalConfigurationType,
   RetrievalDocumentType,
-  TimeFrame,
-} from "@dust-tt/types";
-import {
+  TimeFrame} from "@dust-tt/types";
+import type {
   AgentActionSpecification,
   AgentConfigurationType,
 } from "@dust-tt/types";
-import {
+import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import {
+  isRetrievalConfiguration
+} from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   AgentRetrievalAction,

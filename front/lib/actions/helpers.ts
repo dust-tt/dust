@@ -1,10 +1,13 @@
-import { Action, cloneBaseConfig } from "@dust-tt/types";
-import {
-  DustAPI,
+import type { Action} from "@dust-tt/types";
+import type {
   DustAPIErrorResponse,
-  DustAppConfigType,
+  DustAppConfigType} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import { cloneBaseConfig } from "@dust-tt/types";
+import {
+  DustAPI
 } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 

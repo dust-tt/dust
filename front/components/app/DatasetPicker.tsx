@@ -1,6 +1,6 @@
 import { ChevronDownIcon } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 

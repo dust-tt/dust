@@ -9,11 +9,12 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import {
-  assertNever,
+import type {
   FreeBillingType,
   PaidBillingType,
-  PlanType,
+  PlanType} from "@dust-tt/types";
+import {
+  assertNever
 } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 

@@ -1,6 +1,6 @@
-import { AgentUsageType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { AgentUsageType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";

@@ -1,31 +1,34 @@
-import {
+import type {
   AgentConfigurationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
+  ModelConversationType,
+  ModelMessageType} from "@dust-tt/types";
+import type {
+  AgentMessageType,
+  ConversationType,
+  UserMessageType} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import {
   GPT_4_32K_MODEL_ID,
   GPT_4_MODEL_CONFIG,
   isDatabaseQueryActionType,
-  isDustAppRunActionType,
-  ModelConversationType,
-  ModelMessageType,
+  isDustAppRunActionType
 } from "@dust-tt/types";
 import {
   isRetrievalActionType,
   isRetrievalConfiguration,
 } from "@dust-tt/types";
 import {
-  AgentMessageType,
-  ConversationType,
   isAgentMessageType,
   isContentFragmentType,
-  isUserMessageType,
-  UserMessageType,
+  isUserMessageType
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -37,7 +40,7 @@ import {
 } from "@app/lib/api/assistant/actions/retrieval";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";

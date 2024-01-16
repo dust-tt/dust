@@ -1,13 +1,13 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { ChevronDownIcon } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import {
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { BlockType, RunType } from "@dust-tt/types";
+import type { BlockType, RunType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";

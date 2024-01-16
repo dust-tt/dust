@@ -1,12 +1,12 @@
-import {
+import type {
   RoleType,
   UserType,
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { MembershipInvitationType } from "@dust-tt/types";
+import type { MembershipInvitationType } from "@dust-tt/types";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   Membership,
   MembershipInvitation,

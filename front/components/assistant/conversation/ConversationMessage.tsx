@@ -1,12 +1,13 @@
 import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { MessageReactionType } from "@dust-tt/types";
-import { Emoji, EmojiMartData } from "@emoji-mart/data";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { MessageReactionType } from "@dust-tt/types";
+import type { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import {
+import type {
   ComponentType,
-  MouseEventHandler,
+  MouseEventHandler} from "react";
+import {
   useEffect,
   useRef,
   useState,

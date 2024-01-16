@@ -1,7 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import { IncomingForm } from "formidable";
 import fs from "fs";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withLogging } from "@app/logger/withlogging";
 

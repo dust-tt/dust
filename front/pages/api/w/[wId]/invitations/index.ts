@@ -1,7 +1,7 @@
-import { MembershipInvitationType } from "@dust-tt/types";
+import type { MembershipInvitationType } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getPendingInvitations } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";

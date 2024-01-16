@@ -1,12 +1,13 @@
-import {
+import type {
   EventSchemaType,
   ExtractEventAppResponseResults,
 } from "@dust-tt/types";
+import type { CoreAPITokenType } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { CoreAPI, CoreAPITokenType } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
 
 import { runAction } from "@app/lib/actions/server";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { findMarkersIndexes } from "@app/lib/extract_event_markers";
 import { formatPropertiesForModel } from "@app/lib/extract_events_properties";
 import logger from "@app/logger/logger";

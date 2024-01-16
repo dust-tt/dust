@@ -1,10 +1,10 @@
 import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
-import { KeyType } from "@dust-tt/types";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
+import type { KeyType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";

@@ -19,6 +19,7 @@ module.exports = {
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/no-explicit-any": 0,
+    "@typescript-eslint/consistent-type-imports": "error",
     "no-case-declarations": 0,
     "react-hooks/rules-of-hooks": 0,
     "@next/next/no-img-element": 0,

@@ -1,9 +1,9 @@
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";

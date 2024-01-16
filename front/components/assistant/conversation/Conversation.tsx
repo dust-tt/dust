@@ -1,14 +1,15 @@
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import {
-  AgentMention,
-  isAgentMention,
-  isUserMessageType,
-} from "@dust-tt/types";
-import { AgentGenerationCancelledEvent } from "@dust-tt/types";
-import {
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  AgentMention} from "@dust-tt/types";
+import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
+import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   UserMessageNewEvent,
+} from "@dust-tt/types";
+import {
+  isAgentMention,
+  isUserMessageType,
 } from "@dust-tt/types";
 import { useCallback, useEffect, useRef } from "react";
 

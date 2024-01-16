@@ -1,5 +1,5 @@
 import { Modal } from "@dust-tt/sparkle";
-import { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 export default function ManagedDataSourceDocumentModal({

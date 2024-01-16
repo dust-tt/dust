@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DataSource, Workspace } from "@app/lib/models";
 import { withLogging } from "@app/logger/withlogging";

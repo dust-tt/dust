@@ -1,7 +1,7 @@
-import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
-import { DocumentType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { DocumentType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";

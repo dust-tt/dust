@@ -1,14 +1,15 @@
 import { Button, DropdownMenu, Page, Searchbar, Tab } from "@dust-tt/sparkle";
-import {
+import type {
   AgentsGetViewType,
-  assertNever,
   LightAgentConfigurationType,
   PlanType,
   SubscriptionType,
   UserType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  assertNever
 } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 

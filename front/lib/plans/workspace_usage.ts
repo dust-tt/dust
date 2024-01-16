@@ -1,4 +1,4 @@
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";

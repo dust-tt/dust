@@ -1,5 +1,7 @@
-import { Err, Ok, Result } from "@dust-tt/types";
-import Ajv, { JSONSchemaType } from "ajv";
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import type { JSONSchemaType } from "ajv";
+import Ajv from "ajv";
 
 const ajv = new Ajv({
   coerceTypes: true,

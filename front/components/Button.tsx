@@ -1,9 +1,10 @@
+import type {
+  Icon} from "@dust-tt/sparkle";
 import {
   Button,
   DropdownMenu,
   GithubLogo,
   GoogleLogo,
-  Icon,
   LoginIcon,
   Modal,
   RocketIcon,

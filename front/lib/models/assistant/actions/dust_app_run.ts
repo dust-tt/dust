@@ -1,9 +1,10 @@
-import { DustAppParameters } from "@dust-tt/types";
-import {
+import type { DustAppParameters } from "@dust-tt/types";
+import type {
   CreationOptional,
-  DataTypes,
   InferAttributes,
-  InferCreationAttributes,
+  InferCreationAttributes} from "sequelize";
+import {
+  DataTypes,
   Model,
 } from "sequelize";
 
