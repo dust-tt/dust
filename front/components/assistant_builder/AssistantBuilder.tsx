@@ -621,8 +621,6 @@ export default function AssistantBuilder({
       },
     };
 
-    console.log(JSON.stringify(body, null, 2));
-
     const res = await fetch(
       !agentConfigurationId
         ? `/api/w/${owner.sId}/assistant/agent_configurations`
@@ -743,6 +741,7 @@ export default function AssistantBuilder({
             },
           }));
         }}
+        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
       />
       <AvatarPicker
         owner={owner}

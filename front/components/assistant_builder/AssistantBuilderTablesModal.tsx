@@ -22,12 +22,14 @@ export default function AssistantBuilderTablesModal({
   onSave,
   owner,
   dataSources,
+  tablesQueryConfiguration,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   onSave: (params: AssistantBuilderTableConfiguration) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
+  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
@@ -81,6 +83,7 @@ export default function AssistantBuilderTablesModal({
             onBack={() => {
               setSelectedDataSource(null);
             }}
+            tablesQueryConfiguration={tablesQueryConfiguration}
           />
         )}
       </div>
@@ -139,16 +142,26 @@ const PickTable = ({
   dataSource,
   onPick,
   onBack,
+  tablesQueryConfiguration,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   onPick: (table: CoreAPITable) => void;
   onBack?: () => void;
+  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
 }) => {
   const { tables } = useTables({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });
+
+  const tablesToDisplay = tables.filter(
+    (t) =>
+      !tablesQueryConfiguration?.[
+        `${owner.sId}/${dataSource.name}/${t.table_id}`
+      ]
+  );
+  const isAllSelected = !!tables.length && !tablesToDisplay.length;
 
   return (
     <Transition show={true} className="mx-auto max-w-6xl">
@@ -158,6 +171,14 @@ const PickTable = ({
           icon={ServerIcon}
         />
 
+        {isAllSelected && (
+          <div className="flex h-full w-full flex-col">
+            <div className=" text-gray-500">
+              All tables from this DataSource are already selected.
+            </div>
+          </div>
+        )}
+
         {tables.length === 0 && (
           <div className="flex h-full w-full flex-col">
             <div className=" text-gray-500">
@@ -166,8 +187,8 @@ const PickTable = ({
           </div>
         )}
 
-        {tables.length > 0 &&
-          tables
+        {!!tablesToDisplay.length &&
+          tablesToDisplay
             .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0))
             .map((table) => {
               return (
