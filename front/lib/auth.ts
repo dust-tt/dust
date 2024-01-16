@@ -28,6 +28,7 @@ import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
+import { FREE_TEST_PLAN_CODE } from "./plans/plan_codes";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
@@ -331,8 +332,12 @@ export class Authenticator {
     return this._subscription ? this._subscription.plan : null;
   }
 
-  isOnPaidPlan(): boolean {
-    return isPaidPlanType(this.plan());
+  isUpgraded(): boolean {
+    const plan = this.plan();
+    if (!plan) {
+      return false;
+    }
+    return plan.code !== FREE_TEST_PLAN_CODE;
   }
 
   /**

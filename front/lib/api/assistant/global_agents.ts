@@ -81,7 +81,7 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const model = !auth.isOnPaidPlan()
+  const model = !auth.isUpgraded()
     ? {
         providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -149,7 +149,7 @@ async function _getGPT4GlobalAgent({
 }: {
   auth: Authenticator;
 }): Promise<AgentConfigurationType> {
-  const status = !auth.isOnPaidPlan() ? "disabled_free_workspace" : "active";
+  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -215,7 +215,7 @@ async function _getClaudeGlobalAgent({
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  const status = !auth.isOnPaidPlan() ? "disabled_free_workspace" : "active";
+  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE,
@@ -249,7 +249,7 @@ async function _getMistralMediumGlobalAgent({
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
   let status = settings?.status ?? "disabled_by_admin";
-  if (!auth.isOnPaidPlan()) {
+  if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
@@ -426,7 +426,7 @@ async function _getManagedDataSourceAgent(
     generation: {
       id: -1,
       prompt,
-      model: !auth.isOnPaidPlan()
+      model: !auth.isUpgraded()
         ? {
             providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
             modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -629,7 +629,7 @@ async function _getDustGlobalAgent(
       id: -1,
       prompt:
         "Assist the user based on the retrieved data from their workspace. Unlesss the user explicitely asks for a detailed answer, you goal is to provide a quick answer to their question.",
-      model: !auth.isOnPaidPlan()
+      model: !auth.isUpgraded()
         ? {
             providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
             modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,

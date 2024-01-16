@@ -64,7 +64,7 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  let model: { providerId: string; modelId: string } = !auth.isOnPaidPlan()
+  let model: { providerId: string; modelId: string } = !auth.isUpgraded()
     ? {
         providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -74,7 +74,7 @@ export async function generateActionInputs(
         modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       };
 
-  const contextSize = !auth.isOnPaidPlan()
+  const contextSize = !auth.isUpgraded()
     ? GPT_3_5_TURBO_MODEL_CONFIG.contextSize
     : GPT_4_32K_MODEL_CONFIG.contextSize;
 

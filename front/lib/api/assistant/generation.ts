@@ -302,7 +302,7 @@ export async function* runGeneration(
 
   let model = c.model;
 
-  if (isLargeModel(model) && !auth.isOnPaidPlan()) {
+  if (isLargeModel(model) && !auth.isUpgraded()) {
     yield {
       type: "generation_error",
       created: Date.now(),
