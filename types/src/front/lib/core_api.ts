@@ -825,6 +825,28 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
+  async dataSourceTokenize({
+    text,
+    projectId,
+    dataSourceName,
+  }: {
+    text: string;
+    projectId: string;
+    dataSourceName: string;
+  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tokenize`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      }
+    );
+    return _resultFromResponse(response);
+  }
+
   async upsertTable({
     projectId,
     dataSourceName,

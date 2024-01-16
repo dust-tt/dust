@@ -1124,6 +1124,59 @@ async fn data_sources_register(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct DataSourcesTokenizePayload {
+    text: String,
+}
+async fn data_sources_tokenize(
+    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
+    extract::Json(payload): extract::Json<DataSourcesTokenizePayload>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => {
+                let config = ds.config().clone();
+                let llm = provider(config.provider_id).llm(config.model_id);
+                match llm.tokenize(&payload.text).await {
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to tokenize text",
+                        Some(e),
+                    ),
+                    Ok(tokens) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "tokens": tokens,
+                            })),
+                        }),
+                    ),
+                }
+            }
+        },
+    }
+}
+
 async fn data_sources_retrieve(
     extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
     extract::Extension(state): extract::Extension<Arc<APIState>>,
@@ -2335,6 +2388,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id",
             get(data_sources_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tokenize",
+            post(data_sources_tokenize),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/versions",
