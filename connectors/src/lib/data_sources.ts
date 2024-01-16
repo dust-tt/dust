@@ -278,7 +278,7 @@ export async function renderPrefixSection(
 }
 
 async function _getTokens(text: string) {
-  const tokensRes = (await new CoreAPI(logger)).tokenize({
+  const tokensRes = await new CoreAPI(logger).tokenize({
     text: text,
     modelId: EMBEDDING_CONFIG.model_id,
     providerId: EMBEDDING_CONFIG.provider_id,
