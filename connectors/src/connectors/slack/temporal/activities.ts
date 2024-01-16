@@ -24,6 +24,7 @@ import {
   joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -802,9 +803,15 @@ export async function getUserName(
 
     return undefined;
   } catch (err) {
-    logger.info({ connectorId, slackUserId }, "Slack user not found.");
+    if (isSlackWebAPIPlatformError(err)) {
+      if (err.data.error === "user_not_found") {
+        logger.info({ connectorId, slackUserId }, "Slack user not found.");
 
-    return undefined;
+        return undefined;
+      }
+    }
+
+    throw err;
   }
 }
 
