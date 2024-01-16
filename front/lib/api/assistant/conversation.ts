@@ -2,7 +2,6 @@ import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   GenerationTokensEvent,
-  TablesQueryActionType,
   UserMessageErrorEvent,
   UserMessageNewEvent,
   WorkspaceType,
@@ -352,8 +351,8 @@ async function batchRenderAgentMessages(
         where: {
           id: {
             [Op.in]: agentMessages
-              .filter((m) => m.agentMessage?.agentDatabaseQueryActionId)
-              .map((m) => m.agentMessage?.agentDatabaseQueryActionId as number),
+              .filter((m) => m.agentMessage?.agentTablesQueryActionId)
+              .map((m) => m.agentMessage?.agentTablesQueryActionId as number),
           },
         },
       });
