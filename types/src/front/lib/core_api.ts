@@ -825,25 +825,25 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async fakeTokenize({
+  async dataSourceTokenize({
     text,
-    ds_name,
+    projectId,
+    dataSourceName,
   }: {
     text: string;
-    ds_name: string;
+    projectId: string;
+    dataSourceName: string;
   }): Promise<CoreAPIResponse<{ data: string }>> {
-    const credentials = dustManagedCredentials();
-    const response = await fetch(`${CORE_API}/fake_tokenize`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        ds_name,
-        credentials,
-      }),
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tokenize`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      }
+    );
     return _resultFromResponse(response);
   }
 
