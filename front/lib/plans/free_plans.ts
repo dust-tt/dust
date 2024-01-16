@@ -1,4 +1,3 @@
-import { PlanType } from "@dust-tt/types";
 import { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
