@@ -761,8 +761,8 @@ export async function processRepository({
           localFilePath: file,
         });
 
-        // for (const pathInternalId of pathInternalIds) {
-        // }
+        for (const pathInternalId of pathInternalIds) {
+        }
 
         // Directories
         if (parentInternalId && !seenDirs[parentInternalId]) {
