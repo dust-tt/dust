@@ -1,9 +1,4 @@
-import {
-  isPaidPlanType,
-  RoleType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustAPICredentials } from "@dust-tt/types";
 import { Err, Ok, Result } from "@dust-tt/types";
@@ -25,10 +20,10 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
-import { FREE_TEST_PLAN_CODE } from "./plans/plan_codes";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
