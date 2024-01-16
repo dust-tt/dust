@@ -2,6 +2,7 @@ import type {
   cacheWithRedis,
   CoreAPI,
   CoreAPIDataSourceDocumentSection,
+  CoreAPITokenType,
   EMBEDDING_CONFIG,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
@@ -179,44 +180,6 @@ export async function deleteFromDataSource(
   }
 }
 
-export async function tokenize({
-  text,
-  dataSourceConfig,
-}: {
-  text: string;
-  dataSourceConfig: DataSourceConfig;
-}) {
-  const localLogger = logger.child({ text });
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tokenize`;
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
-    },
-  };
-
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axios.post(endpoint, { text }, dustRequestConfig);
-  } catch (e) {
-    localLogger.error({ error: e }, "Error tokenizing text.");
-    throw e;
-  }
-
-  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    return dustRequestResult.data.tokens;
-  } else {
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-        data: dustRequestResult.data,
-      },
-      "Error tokenizing text."
-    );
-    throw new Error(`Error tokenizing text: ${dustRequestResult}`);
-  }
-}
-
 export const updateDocumentParentsField = withRetries(
   _updateDocumentParentsField
 );
@@ -298,7 +261,9 @@ export async function renderPrefixSection(
   if (prefix.length > MAX_PREFIX_CHARS) {
     finalPrefix = prefix.substring(0, MAX_PREFIX_CHARS);
   }
-  const tokens = (await getTokens(finalPrefix)).map((token) => token[1]);
+  const tokens = (await tokenize(finalPrefix, dataSourceConfig)).map(
+    (token) => token[1]
+  );
   if (tokens.length <= MAX_PREFIX_TOKENS) {
     return {
       prefix: prefix,
@@ -316,22 +281,43 @@ export async function renderPrefixSection(
   };
 }
 
-async function _getTokens(text: string) {
-  const tokensRes = await new CoreAPI(logger).tokenize({
-    text: text,
-    modelId: EMBEDDING_CONFIG.model_id,
-    providerId: EMBEDDING_CONFIG.provider_id,
-  });
-  if (tokensRes.isErr()) {
-    logger.error({ error: tokensRes.error }, "Error tokenizing text.");
-    throw new Error(JSON.stringify(tokensRes.error));
-  }
-  return tokensRes.value.tokens;
-}
+async function _tokenize(
+  text: string,
+  dataSourceConfig: DataSourceConfig
+): Promise<CoreAPITokenType[]> {
+  const localLogger = logger.child({ text });
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tokenize`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
 
-const getTokens = cacheWithRedis(
-  _getTokens,
-  (text: string) => `getTokens:${text}`,
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.post(endpoint, { text }, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error tokenizing text.");
+    throw e;
+  }
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    return dustRequestResult.data.tokens;
+  } else {
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        data: dustRequestResult.data,
+      },
+      "Error tokenizing text."
+    );
+    throw new Error(`Error tokenizing text: ${dustRequestResult}`);
+  }
+}
+const tokenize = cacheWithRedis(
+  _tokenize,
+  (text, ds) => `tokenize:${text}-${ds.dataSourceName}-${ds.workspaceId}`,
   60 * 60 * 24
 );
 
