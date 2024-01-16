@@ -25,6 +25,7 @@ makeScript({}, async ({ execute }) => {
       if (execute) {
         await WorkspaceHasDomain.create({
           domain: workspace.allowedDomain,
+          domainAutoJoinEnabled: true,
         });
       }
 
