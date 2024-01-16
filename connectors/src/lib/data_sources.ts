@@ -1,5 +1,8 @@
 import type {
+  cacheWithRedis,
+  CoreAPI,
   CoreAPIDataSourceDocumentSection,
+  EMBEDDING_CONFIG,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import { sectionFullText } from "@dust-tt/types";
@@ -230,15 +233,21 @@ async function _updateDocumentParentsField({
   }
 }
 
-const MAX_SECTION_PREFIX_LENGTH = 192;
+// allows for 4 full prefixes before hitting half of the max chunk size (approx.
+// 256 chars for 512 token chunks)
+const MAX_PREFIX_TOKENS = EMBEDDING_CONFIG.max_chunk_size / 8;
+// Limit on chars to avoid tokenizing too much text uselessly on documents with
+// large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
+// limit can be large and should be large to avoid underusing prexfixes
+const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
 // provided will not be augmented with `\n`, so it should include appropriate carriage return. If
-// the prefix is too long (>256 chars), it will be truncated. The remained will be returned as
+// the prefix is too long (> MAX_PREFIX_TOKENS), it will be truncated. The remained will be returned as
 // content of the resulting section.
-export function renderPrefixSection(
+export async function renderPrefixSection(
   prefix: string | null
-): CoreAPIDataSourceDocumentSection {
+): Promise<CoreAPIDataSourceDocumentSection> {
   if (!prefix || !prefix.trim()) {
     return {
       prefix: null,
@@ -246,27 +255,54 @@ export function renderPrefixSection(
       sections: [],
     };
   }
-  if (prefix.length > MAX_SECTION_PREFIX_LENGTH) {
+  let finalPrefix = prefix;
+  if (prefix.length > MAX_PREFIX_CHARS) {
+    finalPrefix = prefix.substring(0, MAX_PREFIX_CHARS);
+  }
+  const tokens = (await getTokens(finalPrefix)).map((token) => token[1]);
+  if (tokens.length <= MAX_PREFIX_TOKENS) {
     return {
-      prefix: prefix.substring(0, MAX_SECTION_PREFIX_LENGTH) + "...\n",
-      content: `... ${prefix.substring(MAX_SECTION_PREFIX_LENGTH)}`,
+      prefix: prefix,
+      content: null,
       sections: [],
     };
   }
+  const prefixTextLength =
+    tokens.slice(0, MAX_PREFIX_TOKENS).reduce((acc, t) => acc + t.length, 0) -
+    4; // account for the ellipsis
   return {
-    prefix,
-    content: null,
+    prefix: prefix.substring(0, prefixTextLength) + "...\n",
+    content: `...${prefix.substring(prefixTextLength)}`,
     sections: [],
   };
 }
 
+async function _getTokens(text: string) {
+  const tokensRes = (await new CoreAPI(logger)).tokenize({
+    text: text,
+    modelId: EMBEDDING_CONFIG.model_id,
+    providerId: EMBEDDING_CONFIG.provider_id,
+  });
+  if (tokensRes.isErr()) {
+    logger.error({ error: tokensRes.error }, "Error tokenizing text.");
+    throw new Error(JSON.stringify(tokensRes.error));
+  }
+  return tokensRes.value.tokens;
+}
+
+const getTokens = cacheWithRedis(
+  _getTokens,
+  (text: string) => `getTokens:${text}`,
+  60 * 60 * 24
+);
+
 /// This function is used to render markdown from (alternatively GFM format) to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
-export function renderMarkdownSection(
+export async function renderMarkdownSection(
   markdown: string,
   { flavor }: { flavor?: "gfm" } = {}
-): CoreAPIDataSourceDocumentSection {
+): Promise<CoreAPIDataSourceDocumentSection> {
   const extensions = flavor === "gfm" ? [gfm()] : [];
   const mdastExtensions = flavor === "gfm" ? [gfmFromMarkdown()] : [];
 
@@ -290,7 +326,7 @@ export function renderMarkdownSection(
         throw new Error("Unreachable");
       }
 
-      const c = renderPrefixSection(
+      const c = await renderPrefixSection(
         toMarkdown(child, { extensions: [gfmToMarkdown()] })
       );
       last.content.sections.push(c);
@@ -320,7 +356,7 @@ export function renderMarkdownSection(
 // connectors. The title should not include any `\n`.
 // If the title is too long it will be truncated and the remainder of the title will be set as
 // content of the top-level section.
-export function renderDocumentTitleAndContent({
+export async function renderDocumentTitleAndContent({
   title,
   createdAt,
   updatedAt,
@@ -334,35 +370,54 @@ export function renderDocumentTitleAndContent({
   author?: string;
   lastEditor?: string;
   content: CoreAPIDataSourceDocumentSection | null;
-}): CoreAPIDataSourceDocumentSection {
+}): Promise<CoreAPIDataSourceDocumentSection> {
   if (title && title.trim()) {
     title = `$title: ${title}\n`;
   } else {
     title = null;
   }
-  const c = renderPrefixSection(title);
-  c.prefix = c.prefix || "";
+  const titleSection = title ? await renderPrefixSection(title) : null;
+  let metaPrefix: string | null = "";
   if (createdAt) {
-    c.prefix += `$createdAt: ${createdAt.toISOString()}\n`;
+    metaPrefix += `$createdAt: ${createdAt.toISOString()}\n`;
   }
   if (updatedAt) {
-    c.prefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
+    metaPrefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (author && lastEditor && author === lastEditor) {
-    c.prefix += `$author: ${author}\n`;
+    metaPrefix += `$author: ${author}\n`;
   } else {
     if (author) {
-      c.prefix += `$author: ${author}\n`;
+      metaPrefix += `$author: ${author}\n`;
     }
     if (lastEditor) {
-      c.prefix += `$lastEditor: ${lastEditor}\n`;
+      metaPrefix += `$lastEditor: ${lastEditor}\n`;
     }
   }
-  if (content) {
-    c.sections.push(content);
+  const metaSection = metaPrefix ? await renderPrefixSection(metaPrefix) : null;
+  if (metaSection && titleSection) {
+    titleSection.sections.push(metaSection);
+
+    if (content) {
+      metaSection.sections.push(content);
+    }
+    return titleSection;
+  } else if (metaSection) {
+    if (content) {
+      metaSection.sections.push(content);
+    }
+    return metaSection;
+  } else if (titleSection) {
+    if (content) {
+      titleSection.sections.push(content);
+    }
+    return titleSection;
   }
-  if (c.prefix === "") c.prefix = null;
-  return c;
+  return {
+    prefix: null,
+    content: null,
+    sections: content ? [content] : [],
+  };
 }
 
 /* Compute document length by summing all prefix and content sizes for each section */
