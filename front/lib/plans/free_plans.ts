@@ -1,3 +1,4 @@
+import { PlanType } from "@dust-tt/types";
 import { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
@@ -89,4 +90,16 @@ export const upsertFreePlans = async () => {
       console.log(`Free plan ${planData.code} updated.`);
     }
   }
+};
+
+/**
+ * `isUpgraded` returns true if the plan has access to all features of Dust, including large
+ * language models (meaning it's either a paid plan or free plan with (eg friends and family, or
+ * free trial plan)).
+ *
+ * Note: We didn't go for isFree or isPayingWorkspace as we have "upgraded" plans that are free.
+ */
+export const isUpgraded = (plan: PlanType | null): boolean => {
+  if (!plan) return false;
+  return plan.code !== FREE_TEST_PLAN_CODE;
 };

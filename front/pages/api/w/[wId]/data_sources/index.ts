@@ -7,7 +7,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -140,7 +139,7 @@ async function handler(
           splitter_id: "base_v0",
           max_chunk_size: dataSourceMaxChunkSize,
           qdrant_config:
-            plan.code !== FREE_TEST_PLAN_CODE && NODE_ENV === "production"
+            auth.isUpgraded() && NODE_ENV === "production"
               ? {
                   cluster: "dedicated-1",
                   shadow_write_cluster: null,
