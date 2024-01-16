@@ -91,6 +91,7 @@ export default async function handler(
       }
       const tokens = coreTokenizeRes.value.tokens;
       res.status(200).json({ tokens });
+      return;
     }
 
     default:
