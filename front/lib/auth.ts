@@ -1,9 +1,8 @@
 import {
-  FREE_BILLING_TYPES,
+  isPaidPlanType,
   RoleType,
   UserType,
   WorkspaceType,
-  isPaidPlanType,
 } from "@dust-tt/types";
 import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustAPICredentials } from "@dust-tt/types";
