@@ -116,7 +116,7 @@ const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   RETRIEVAL_SEARCH: "Search in data sources",
   RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
   DUST_APP_RUN: "Run a Dust app",
-  TABLES_QUERY: "Query a table",
+  TABLES_QUERY: "Query a set of tables",
 };
 
 // Retrieval Action
