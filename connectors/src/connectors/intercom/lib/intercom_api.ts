@@ -1,4 +1,5 @@
-import { ArticleObject, Client, CollectionObject } from "intercom-client";
+import type { ArticleObject, CollectionObject } from "intercom-client";
+import { Client } from "intercom-client";
 
 import { HTTPError } from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";

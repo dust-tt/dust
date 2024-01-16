@@ -37,7 +37,7 @@ import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
-import { Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
 import {
   getTemporalClient,
   terminateAllWorkflowsForConnectorId,

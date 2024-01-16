@@ -1,6 +1,7 @@
-import {
+import type {
   WorkflowExecutionDescription,
-  WorkflowHandle,
+  WorkflowHandle} from "@temporalio/client";
+import {
   WorkflowNotFoundError,
 } from "@temporalio/client";
 

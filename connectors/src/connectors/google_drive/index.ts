@@ -1,12 +1,12 @@
+import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import { drive_v3 } from "googleapis";
-import { GaxiosResponse } from "googleapis-common";
+import type { GaxiosResponse } from "googleapis-common";
 
 import {
   getLocalParents,
   registerWebhook,
 } from "@connectors/connectors/google_drive/lib";
-import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GoogleDriveConfig,
@@ -19,8 +19,8 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import {
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type {
   ConnectorPermission,
   ConnectorResource,
   ConnectorResourceType,
@@ -41,7 +41,7 @@ import {
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 const {

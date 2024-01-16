@@ -8,7 +8,7 @@ import {
   Sequelize,
 } from "sequelize";
 
-import {
+import type {
   ConnectorErrorType,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";

@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
 export type ConnectorSyncStatus = "succeeded" | "failed";
 export type ConnectorErrorType = "oauth_token_revoked";

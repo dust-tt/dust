@@ -1,13 +1,14 @@
 import { cacheWithRedis } from "@dust-tt/types";
+import type {
+  LogLevel} from "@notionhq/client";
 import {
   APIResponseError,
   Client,
   isFullBlock,
   isFullDatabase,
-  isFullPage,
-  LogLevel,
+  isFullPage
 } from "@notionhq/client";
-import {
+import type {
   BlockObjectResponse,
   GetDatabaseResponse,
   GetPageResponse,
@@ -17,9 +18,9 @@ import {
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { Logger } from "pino";
+import type { Logger } from "pino";
 
-import {
+import type {
   PageObjectProperties,
   ParsedNotionBlock,
   ParsedNotionDatabase,

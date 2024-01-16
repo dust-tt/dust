@@ -1,4 +1,4 @@
-import { Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import parseArgs from "minimist";
 import readline from "readline";
 

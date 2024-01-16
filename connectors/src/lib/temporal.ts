@@ -1,8 +1,9 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import type {
+  ConnectionOptions} from "@temporalio/client";
 import {
   Client,
   Connection,
-  ConnectionOptions,
   WorkflowNotFoundError,
 } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";

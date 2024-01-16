@@ -8,13 +8,14 @@ import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
 import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
-import { Readable } from "stream";
+import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
-import {
+import type {
   DiscussionCommentNode,
-  DiscussionNode,
+  DiscussionNode} from "@connectors/connectors/github/lib/github_graphql";
+import {
   ErrorPayloadSchema,
   GetDiscussionCommentRepliesPayloadSchema,
   GetDiscussionCommentsPayloadSchema,

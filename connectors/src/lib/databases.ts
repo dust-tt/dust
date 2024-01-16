@@ -1,4 +1,4 @@
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { withRetries } from "./dust_front_api_helpers";
 

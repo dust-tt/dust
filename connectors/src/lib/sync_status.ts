@@ -1,8 +1,9 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
 import { Connector } from "@connectors/lib/models";
-import { Err, Ok, Result } from "@connectors/lib/result";
-import {
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
+import type {
   ConnectorErrorType,
   ConnectorSyncStatus,
 } from "@connectors/types/connector";

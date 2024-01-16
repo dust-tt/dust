@@ -3,7 +3,7 @@ import {
   UnknownHTTPResponseError,
 } from "@notionhq/client";
 import { APIErrorCode, APIResponseError } from "@notionhq/client";
-import {
+import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,

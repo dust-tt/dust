@@ -1,13 +1,14 @@
 import { isNangoError } from "@dust-tt/types";
-import { Context } from "@temporalio/activity";
-import {
+import type { Context } from "@temporalio/activity";
+import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
 import tracer from "dd-trace";
 
-import logger, { Logger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";

@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
 import {
   getRepo,
@@ -15,16 +15,17 @@ import {
   GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import {
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
 
-import {
+import type {
   ConnectorConfigGetter,
   ConnectorPermissionRetriever,
 } from "../interface";

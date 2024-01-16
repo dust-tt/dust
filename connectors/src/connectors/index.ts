@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
 import {
   createConfluenceConnector,
@@ -42,7 +42,7 @@ import {
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
-import {
+import type {
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorConfigGetter,

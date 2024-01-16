@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import StatsD from "hot-shots";
 
-import { APIErrorWithStatusCode } from "@connectors/lib/error";
+import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 
 import logger from "./logger";
 

@@ -1,21 +1,23 @@
-import {
+import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
   RetrievalDocumentType,
-  sectionFullText,
-  UserMessageType,
+  UserMessageType} from "@dust-tt/types";
+import type {
+  AgentGenerationSuccessEvent,
+  PublicPostContentFragmentRequestBodySchema} from "@dust-tt/types";
+import {
+  sectionFullText
 } from "@dust-tt/types";
 import {
-  AgentGenerationSuccessEvent,
-  DustAPI,
-  PublicPostContentFragmentRequestBodySchema,
+  DustAPI
 } from "@dust-tt/types";
-import { WebClient } from "@slack/web-api";
-import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import * as t from "io-ts";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import type * as t from "io-ts";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
@@ -30,7 +32,8 @@ import {
   SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models/slack";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 import {

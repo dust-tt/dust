@@ -1,6 +1,6 @@
-import { WebClient } from "@slack/web-api";
-import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import type { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 
 // The pagination logic for getting all the messages of a Slack thread
 // is a bit complicated, so we put it in a separate function.

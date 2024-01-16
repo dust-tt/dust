@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { zip } from "fp-ts/lib/Array";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
