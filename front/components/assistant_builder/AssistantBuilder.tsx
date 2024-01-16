@@ -67,7 +67,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isActivatedStructuredDB } from "@app/lib/development";
-import { isUpgraded } from "@app/lib/plans/free_plans";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 

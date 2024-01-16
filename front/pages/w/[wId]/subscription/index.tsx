@@ -20,10 +20,10 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isUpgraded } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  isUpgraded,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
