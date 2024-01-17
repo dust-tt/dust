@@ -11,6 +11,10 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
   AgentConfiguration,
   AgentGenerationConfiguration,
   GlobalAgentSettings,
@@ -50,6 +54,8 @@ export {
   AgentMessage,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
   App,
   Clone,
   Conversation,
