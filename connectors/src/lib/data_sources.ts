@@ -259,54 +259,35 @@ export async function renderPrefixSection(
     };
   }
 
-  // if too many chars in the prefix, we have to split AND check for tokens
-  if (prefix.length > MAX_PREFIX_CHARS) {
-    const tokens = (
-      await tokenize(prefix.substring(0, MAX_PREFIX_CHARS), dataSourceConfig)
-    ).map((token) => token[1]);
+  const tokens = (
+    await tokenize(prefix.substring(0, MAX_PREFIX_CHARS), dataSourceConfig)
+  ).map((token) => token[1]);
 
-    // if in truncated prefix, we don't have too many tokens, we can split
-    // directly via chars
-    if (tokens.length <= MAX_PREFIX_TOKENS) {
+  if (tokens.length <= MAX_PREFIX_TOKENS) {
+    if (prefix.length <= MAX_PREFIX_CHARS) {
       return {
-        prefix: prefix.substring(0, MAX_PREFIX_CHARS - 4) + "...\n", // account for the ellipsis
+        prefix,
+        content: null,
+        sections: [],
+      };
+    } else {
+      return {
+        // - 4 to account for the ellipsis
+        prefix: prefix.substring(0, MAX_PREFIX_CHARS - 4) + "...\n",
         content: "..." + prefix.substring(MAX_PREFIX_CHARS - 4),
         sections: [],
       };
     }
-
-    // otherwise, we split via tokens
+  } else {
     const prefixTextLength = tokens
       .slice(0, MAX_PREFIX_TOKENS)
       .reduce((acc, t) => acc + t.length, 0);
     return {
-      prefix: prefix.substring(0, prefixTextLength - 4) + "...\n", // account for the ellipsis
-      content: `...${prefix.substring(prefixTextLength - 4)}`,
+      prefix: prefix.substring(0, prefixTextLength - 4) + "...\n",
+      content: "..." + prefix.substring(prefixTextLength - 4),
       sections: [],
     };
   }
-
-  // if not too many chars, we split only if too many tokens
-  const tokens = (await tokenize(prefix, dataSourceConfig)).map(
-    (token) => token[1]
-  );
-
-  if (tokens.length <= MAX_PREFIX_TOKENS) {
-    return {
-      prefix: prefix,
-      content: null,
-      sections: [],
-    };
-  }
-
-  const prefixTextLength = tokens
-    .slice(0, MAX_PREFIX_TOKENS)
-    .reduce((acc, t) => acc + t.length, 0);
-  return {
-    prefix: prefix.substring(0, prefixTextLength - 4) + "...\n",
-    content: `...${prefix.substring(prefixTextLength - 4)}`,
-    sections: [],
-  };
 }
 
 export const tokenize = cacheWithRedis(
