@@ -5,8 +5,9 @@ function failMigrationAck() {
     "Files in `front/lib/models/` or `connectors/src/lib/models/` have been modified. " +
       `Addition and deletion should be in 2 separate PRs:
       1. Addition: migrate and deploy
-      2. Deletion: deploy and migrate` +
-      `Please add the \`migration-ack\` label to acknowledge that a migration will be needed once merged into 'main'.`
+      2. Deletion: deploy and migrate
+
+      Please add the \`migration-ack\` label to acknowledge that a migration will be needed once merged into 'main'.`
   );
 }
 
