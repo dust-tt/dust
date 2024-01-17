@@ -1,36 +1,40 @@
-import {
+import type {
   AgentConfigurationType,
   AgentsGetViewType,
   DataSourceType,
 } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
-import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { RunRunType } from "@dust-tt/types";
-import { ConnectorPermission } from "@dust-tt/types";
-import useSWR, { Fetcher } from "swr";
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
+  ConversationMessageReactions,
+  ConversationType,
+} from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { RunRunType } from "@dust-tt/types";
+import type { ConnectorPermission } from "@dust-tt/types";
+import type { Fetcher } from "swr";
+import useSWR from "swr";
 
-import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
-import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
-import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
-import { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
-import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
-import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
-import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
-import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
-import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
-import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
-import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
-import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
-import { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
-import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
-import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
-import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
-import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
-import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
+import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
+import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
+import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
+import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
+import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
+import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
+import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import type { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
+import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
+import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
+import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
+import type { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {

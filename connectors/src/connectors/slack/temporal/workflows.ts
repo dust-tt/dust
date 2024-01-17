@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,

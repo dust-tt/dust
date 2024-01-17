@@ -1,8 +1,8 @@
-import {
+import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
-  WorkflowNotFoundError,
 } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";

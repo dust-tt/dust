@@ -1,4 +1,4 @@
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
 import { useRef } from "react";

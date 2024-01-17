@@ -9,22 +9,18 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import {
+import type {
   AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
-import {
-  DustAppRunConfigurationType,
-  isDustAppRunConfiguration,
-} from "@dust-tt/types";
-import {
-  DataSourceConfiguration,
-  isRetrievalConfiguration,
-} from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import type { DustAppRunConfigurationType } from "@dust-tt/types";
+import type { DataSourceConfiguration } from "@dust-tt/types";
+import type { AgentConfigurationType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { isDustAppRunConfiguration } from "@dust-tt/types";
+import { isRetrievalConfiguration } from "@dust-tt/types";
 import Link from "next/link";
 import { useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -33,7 +29,7 @@ import { DeleteAssistantDialog } from "@app/components/assistant/AssistantAction
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 

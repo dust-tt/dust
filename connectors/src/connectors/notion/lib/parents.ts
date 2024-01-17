@@ -1,4 +1,5 @@
-import { cacheWithRedis, ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
 
 import {
@@ -9,7 +10,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 
 /** Compute the parents field for a notion pageOrDb See the [Design

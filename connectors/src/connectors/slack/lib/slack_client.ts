@@ -1,14 +1,14 @@
-import { ModelId } from "@dust-tt/types";
-import {
+import type { ModelId } from "@dust-tt/types";
+import type {
   CodedError,
-  ErrorCode,
   UsersInfoResponse,
   WebAPIHTTPError,
   WebAPIPlatformError,
-  WebClient,
 } from "@slack/web-api";
+import { ErrorCode, WebClient } from "@slack/web-api";
 
-import { ExternalOauthTokenError, WorkflowError } from "@connectors/lib/error";
+import type { WorkflowError } from "@connectors/lib/error";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;

@@ -1,11 +1,11 @@
 import { Avatar, ContextItem, Page } from "@dust-tt/sparkle";
+import type { AgentConfigurationType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import {
-  AgentConfigurationType,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
 } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";

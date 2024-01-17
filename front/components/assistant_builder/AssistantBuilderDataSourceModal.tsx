@@ -6,19 +6,18 @@ import {
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { assertNever, ConnectorProvider, DataSourceType } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import type { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import type * as React from "react";
+import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  AssistantBuilderDataSourceConfiguration,
-  CONNECTOR_PROVIDER_TO_RESOURCE_NAME,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
+import type { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,

@@ -8,7 +8,7 @@ import {
 } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
-import { ConnectorPermission } from "@connectors/types/resources";
+import type { ConnectorPermission } from "@connectors/types/resources";
 
 export class SlackConfiguration extends Model<
   InferAttributes<SlackConfiguration>,

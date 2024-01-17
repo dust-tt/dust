@@ -1,19 +1,21 @@
-import {
-  assertNever,
-  ConnectorCreateRequestBodySchema,
+import type {
   ConnectorProvider,
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
-  isConnectorProvider,
   Result,
 } from "@dust-tt/types";
-import { Request, Response } from "express";
+import {
+  assertNever,
+  ConnectorCreateRequestBodySchema,
+  isConnectorProvider,
+} from "@dust-tt/types";
+import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
+import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import {
+import type {
   ConnectorCreatorOAuth,
   ConnectorCreatorUrl,
 } from "@connectors/connectors/interface";
@@ -21,8 +23,8 @@ import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorType } from "@connectors/types/connector";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { ConnectorType } from "@connectors/types/connector";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
 

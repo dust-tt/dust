@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
-import { AssistantBuilderDustAppConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderDustAppConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 export default function DustAppSelectionSection({

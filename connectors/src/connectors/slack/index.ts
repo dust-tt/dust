@@ -1,8 +1,8 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
-import {
+import type {
   ConnectorConfigGetter,
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
@@ -31,9 +31,9 @@ import {
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import {
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";

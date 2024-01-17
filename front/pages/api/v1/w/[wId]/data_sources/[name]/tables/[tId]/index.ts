@@ -1,5 +1,6 @@
-import { CoreAPI, CoreAPITable } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { CoreAPITable } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";

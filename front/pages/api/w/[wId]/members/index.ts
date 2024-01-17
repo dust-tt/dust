@@ -1,5 +1,5 @@
-import { UserType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { UserType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";

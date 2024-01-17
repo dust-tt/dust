@@ -5,13 +5,13 @@ import {
   Square3Stack3DStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import {
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { BlockType, RunType } from "@dust-tt/types";
+import type { BlockType, RunType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import NewBlock from "@app/components/app/NewBlock";

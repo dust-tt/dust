@@ -10,9 +10,10 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { ConversationType } from "@dust-tt/types";
-import React, { MouseEvent, useRef, useState } from "react";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ConversationType } from "@dust-tt/types";
+import type { MouseEvent } from "react";
+import React, { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";

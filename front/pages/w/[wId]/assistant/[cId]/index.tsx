@@ -1,7 +1,7 @@
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AgentMention, MentionType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 

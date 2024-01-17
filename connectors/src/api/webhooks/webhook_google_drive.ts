@@ -1,8 +1,8 @@
 import { RateLimitError } from "@dust-tt/types";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
-import { APIErrorWithStatusCode } from "@connectors/lib/error";
+import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { GoogleDriveWebhook } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";

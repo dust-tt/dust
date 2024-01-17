@@ -1,4 +1,4 @@
-import { Context } from "@temporalio/activity";
+import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/github/temporal/activities";

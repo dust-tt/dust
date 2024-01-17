@@ -1,9 +1,10 @@
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
-import { DustAPICredentials } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
-import { APIErrorWithStatusCode } from "@dust-tt/types";
-import {
+import type { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { DustAPICredentials } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import type { APIErrorWithStatusCode } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import type {
   GetServerSidePropsContext,
   NextApiRequest,
   NextApiResponse,
@@ -19,7 +20,8 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";

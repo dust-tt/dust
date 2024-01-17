@@ -1,10 +1,10 @@
 import "@app/styles/global.css";
 
 import { SparkleContext } from "@dust-tt/sparkle";
-import { AppProps } from "next/app";
+import type { AppProps } from "next/app";
 import Link from "next/link";
 import { SessionProvider } from "next-auth/react";
-import { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import { NotificationArea } from "@app/components/sparkle/Notification";
 

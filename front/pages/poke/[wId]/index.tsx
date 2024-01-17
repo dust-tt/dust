@@ -5,19 +5,25 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import {
+import type {
   AgentConfigurationType,
   DataSourceType,
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
   LightAgentConfigurationType,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
+import {
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+} from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";

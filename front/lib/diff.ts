@@ -1,4 +1,4 @@
-import { Diff } from "@dust-tt/types";
+import type { Diff } from "@dust-tt/types";
 import diff from "fast-diff";
 
 export function diffStrings(text1: string, text2: string): Diff[] {

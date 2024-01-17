@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
 import { client_side_new_id } from "@app/lib/utils";
 

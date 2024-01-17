@@ -1,21 +1,23 @@
-import {
+import type {
   AgentConfigurationType,
   DataSourceType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { isDatabaseQueryConfiguration } from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import AssistantBuilder, {
+import type {
   AssistantBuilderInitialState,
-  BUILDER_FLOWS,
   BuilderFlow,
+} from "@app/components/assistant_builder/AssistantBuilder";
+import AssistantBuilder, {
+  BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";

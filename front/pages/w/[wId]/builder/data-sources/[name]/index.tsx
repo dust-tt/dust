@@ -13,22 +13,19 @@ import {
   SlackLogo,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import {
-  assertNever,
+import type {
   ConnectorProvider,
   DataSourceType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI,
-  ConnectorType,
-} from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 

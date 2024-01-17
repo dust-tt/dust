@@ -7,13 +7,13 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { PlanType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { PlanType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useSWRConfig } from "swr";
 
+import type { EditingPlanType } from "@app/components/poke/plans/form";
 import {
-  EditingPlanType,
   Field,
   fromPlanType,
   PLAN_FIELDS,

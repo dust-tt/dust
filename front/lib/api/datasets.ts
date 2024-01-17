@@ -1,8 +1,8 @@
-import { AppType } from "@dust-tt/types";
-import { DatasetSchema, DatasetType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { Dataset } from "@app/lib/models";
 import logger from "@app/logger/logger";
 

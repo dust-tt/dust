@@ -1,14 +1,14 @@
 import { Dialog } from "@dust-tt/sparkle";
-import {
+import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
 } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useAgentConfiguration } from "@app/lib/swr";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 export function DeleteAssistantDialog({
   owner,

@@ -1,5 +1,5 @@
-import { RequestError } from "@octokit/types";
-import {
+import type { RequestError } from "@octokit/types";
+import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,

@@ -1,4 +1,4 @@
-import { ConnectorResource, ModelId } from "@dust-tt/types";
+import type { ConnectorResource, ModelId } from "@dust-tt/types";
 
 import { stableIdForUrl } from "@connectors/connectors/webcrawler/lib/utils";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
@@ -11,7 +11,7 @@ import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-import { ConnectorPermissionRetriever } from "../interface";
+import type { ConnectorPermissionRetriever } from "../interface";
 import {
   launchCrawlWebsiteWorkflow,
   stopCrawlWebsiteWorkflow,

@@ -15,11 +15,11 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
-import { MembershipInvitationType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { MembershipInvitationType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";

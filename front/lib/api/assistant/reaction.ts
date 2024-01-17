@@ -1,12 +1,12 @@
-import { UserType } from "@dust-tt/types";
-import {
+import type { UserType } from "@dust-tt/types";
+import type {
   ConversationMessageReactions,
   ConversationType,
   ConversationWithoutContentType,
   MessageReactionType,
 } from "@dust-tt/types";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { Message, MessageReaction } from "@app/lib/models";
 
 /**

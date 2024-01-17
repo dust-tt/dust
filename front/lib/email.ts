@@ -4,7 +4,7 @@
  */
 import sgMail from "@sendgrid/mail";
 
-import { XP1User } from "@app/lib/models";
+import type { XP1User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
 const { SENDGRID_API_KEY = "", XP1_CHROME_WEB_STORE_URL } = process.env;

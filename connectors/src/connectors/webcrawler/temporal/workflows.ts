@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";

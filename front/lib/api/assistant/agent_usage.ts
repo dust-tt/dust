@@ -1,4 +1,4 @@
-import { AgentUsageType, ModelId } from "@dust-tt/types";
+import type { AgentUsageType, ModelId } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 

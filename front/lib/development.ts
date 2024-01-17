@@ -1,4 +1,4 @@
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 
 const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";

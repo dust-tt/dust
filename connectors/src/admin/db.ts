@@ -1,4 +1,4 @@
-import { Sequelize } from "sequelize";
+import type { Sequelize } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {

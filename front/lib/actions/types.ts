@@ -1,4 +1,4 @@
-import { ActionResponseBase } from "@dust-tt/types";
+import type { ActionResponseBase } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 

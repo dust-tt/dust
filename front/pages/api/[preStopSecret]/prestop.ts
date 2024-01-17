@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";

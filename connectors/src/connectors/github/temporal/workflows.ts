@@ -9,7 +9,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/github/temporal/activities";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { newWebhookSignal } from "./signals";
 import { getFullSyncWorkflowId, getReposSyncWorkflowId } from "./utils";

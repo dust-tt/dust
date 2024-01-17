@@ -1,11 +1,13 @@
-import { CoreAPI, CoreAPIRow } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
+import type { CoreAPIRow } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
+import { CoreAPI } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";

@@ -5,12 +5,12 @@ import {
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
-import {
+import type {
   ConnectorProvider,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ConnectorPermission } from "@dust-tt/types";
+import type { ConnectorPermission } from "@dust-tt/types";
 import { useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";

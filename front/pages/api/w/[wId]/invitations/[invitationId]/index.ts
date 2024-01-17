@@ -1,5 +1,5 @@
-import { MembershipInvitationType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { MembershipInvitationType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";

@@ -1,9 +1,11 @@
 import { Nango } from "@nangohq/node";
 import axios from "axios";
 
-import { ExternalOauthTokenError, WorkflowError } from "@connectors/lib/error";
+import type { WorkflowError } from "@connectors/lib/error";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 
-import { Err, Ok, Result } from "./result";
+import type { Result } from "./result";
+import { Err, Ok } from "./result";
 
 const { NANGO_SECRET_KEY } = process.env;
 

@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";

@@ -1,9 +1,10 @@
-import {
+import type {
   CoreAPIDataSourceDocumentSection,
   PostDataSourceDocumentRequestBody,
-  sectionFullText,
 } from "@dust-tt/types";
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { sectionFullText } from "@dust-tt/types";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -12,7 +13,7 @@ import { gfm } from "micromark-extension-gfm";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {

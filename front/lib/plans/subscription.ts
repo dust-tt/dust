@@ -1,12 +1,17 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
-import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,

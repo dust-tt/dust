@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
@@ -7,11 +7,12 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { APIErrorWithStatusCode } from "@connectors/lib/error";
+import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
 import { Ok } from "@connectors/lib/result";
-import mainLogger, { Logger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 type SlackWebhookReqBody = {

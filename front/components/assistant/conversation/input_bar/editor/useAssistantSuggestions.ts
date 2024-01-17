@@ -1,4 +1,4 @@
-import { LightAgentConfigurationType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { compareAgentsForSort } from "@app/lib/assistant";

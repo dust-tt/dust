@@ -1,7 +1,7 @@
 import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { LightAgentConfigurationType } from "@dust-tt/types";
-import { AgentMention, MentionType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type { AgentMention, MentionType } from "@dust-tt/types";
 import {
   createContext,
   Fragment,
@@ -13,9 +13,8 @@ import {
 import { mutate } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import InputBarContainer, {
-  InputBarContainerProps,
-} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";

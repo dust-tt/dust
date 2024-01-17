@@ -1,9 +1,6 @@
-import {
-  CoreAPI,
-  isRetrievalConfiguration,
-  ReturnedAPIErrorType,
-} from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";

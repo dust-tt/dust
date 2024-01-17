@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   executeChild,
@@ -10,7 +10,7 @@ import {
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
 import { newWebhookSignal } from "./signals";

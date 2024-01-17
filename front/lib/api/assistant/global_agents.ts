@@ -4,12 +4,13 @@ import { promisify } from "util";
 
 const readFileAsync = promisify(fs.readFile);
 
-import {
+import type {
   AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
+import type { GlobalAgentStatus } from "@dust-tt/types";
+import { GEMINI_PRO_DEFAULT_MODEL_CONFIG } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -18,10 +19,11 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import { DustAPI, GlobalAgentStatus } from "@dust-tt/types";
+import { DustAPI } from "@dust-tt/types";
 
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
-import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 

@@ -9,7 +9,7 @@ import {
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import {
+import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -20,8 +20,9 @@ import {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isRetrievalActionType, RetrievalDocumentType } from "@dust-tt/types";
-import { AgentMessageType, MessageReactionType } from "@dust-tt/types";
+import type { RetrievalDocumentType } from "@dust-tt/types";
+import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
+import { isRetrievalActionType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";

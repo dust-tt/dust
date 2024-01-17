@@ -1,9 +1,9 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
-import { Result } from "@connectors/lib/result";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import {
+import type { Result } from "@connectors/lib/result";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";

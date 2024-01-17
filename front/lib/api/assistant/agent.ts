@@ -1,4 +1,4 @@
-import {
+import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentConfigurationType,
@@ -8,24 +8,27 @@ import {
   AgentMessageSuccessEvent,
   DatabaseQueryParamsEvent,
   GenerationTokensEvent,
+} from "@dust-tt/types";
+import type {
+  AgentActionSpecification,
+  LightAgentConfigurationType,
+} from "@dust-tt/types";
+import type {
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   isDatabaseQueryConfiguration,
 } from "@dust-tt/types";
-import {
-  AgentActionSpecification,
-  LightAgentConfigurationType,
-} from "@dust-tt/types";
-import {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@dust-tt/types";
 import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { isRetrievalConfiguration } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runDatabaseQuery } from "@app/lib/api/assistant/actions/database_query";
@@ -37,7 +40,7 @@ import {
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
 /**

@@ -1,10 +1,10 @@
 import { Modal, Page } from "@dust-tt/sparkle";
-import {
+import type {
   ConnectorProvider,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ConnectorPermission, ConnectorType } from "@dust-tt/types";
+import type { ConnectorPermission, ConnectorType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
 

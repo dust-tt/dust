@@ -8,7 +8,7 @@ import {
   PlusIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import { DatasetEntry, DatasetSchema, DatasetType } from "@dust-tt/types";
+import type { DatasetEntry, DatasetSchema, DatasetType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";

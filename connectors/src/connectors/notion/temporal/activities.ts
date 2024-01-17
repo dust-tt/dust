@@ -1,4 +1,4 @@
-import { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
@@ -34,7 +34,7 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import {
+import type {
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/connectors/notion/lib/types";

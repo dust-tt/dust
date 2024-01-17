@@ -10,7 +10,8 @@ import {
   TriangleIcon,
 } from "@dust-tt/sparkle";
 import classNames from "classnames";
-import React, { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
+import React from "react";
 
 const defaultGridClasses =
   "grid grid-cols-12 gap-x-6 gap-y-8 px-6 md:px-12 lg:px-20 2xl:px-0";
