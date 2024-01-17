@@ -567,6 +567,8 @@ const EXTENSION_WHITELIST = [
   ".sh",
 ];
 
+const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
+
 const FILENAME_WHITELIST = [
   "README",
   "Dockerfile",
@@ -704,7 +706,9 @@ export async function processRepository({
       const { size } = await fs.stat(file);
 
       const isWithelisted =
-        EXTENSION_WHITELIST.includes(ext) || FILENAME_WHITELIST.includes(file);
+        (EXTENSION_WHITELIST.includes(ext) ||
+          FILENAME_WHITELIST.includes(file)) &&
+        !SUFFIX_BLACKLIST.some((suffix) => file.endsWith(suffix));
 
       const isUnderLimit = size < 1024 * 1024;
 
@@ -715,10 +719,7 @@ export async function processRepository({
           .slice(1, -1);
         const fileName = basename(file);
 
-        console.log(file, path, fileName);
-
         const parents = [];
-
         for (let i = 0; i < path.length; i++) {
           const p = `github-code-${repoId}-dir-${path
             .slice(0, i + 1)
@@ -729,7 +730,7 @@ export async function processRepository({
           parents.push({
             internalId: pathInternalId,
             dirName: path[i] as string,
-            dirPath: path.splice(0, i + 1),
+            dirPath: path.slice(0, i),
           });
         }
 
@@ -759,8 +760,6 @@ export async function processRepository({
           localFilePath: file,
         });
 
-        console.log("PARENTS", parents);
-
         // Directories
         for (let i = 0; i < parents.length; i++) {
           const p = parents[i];
@@ -770,14 +769,6 @@ export async function processRepository({
             const dirParent = parents[i - 1];
             const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
-            console.log(
-              "DIR INSERT",
-              p.dirName,
-              p.dirPath,
-              p.internalId,
-              dirParentInternalId,
-              parents.slice(0, i)
-            );
             directories.push({
               dirName: p.dirName,
               dirPath: p.dirPath,
@@ -791,8 +782,6 @@ export async function processRepository({
             });
           }
         }
-      } else {
-        console.log("SKIPPING", file, isWithelisted, isUnderLimit);
       }
     }
 
