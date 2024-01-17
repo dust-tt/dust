@@ -101,11 +101,6 @@ AgentTablesQueryConfigurationTable.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-
-    tablesQueryConfigurationId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
   },
   {
     modelName: "agent_tables_query_configuration_table",
