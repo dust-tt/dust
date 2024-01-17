@@ -1,9 +1,9 @@
 import crypto from "crypto";
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 const {
   DUST_CONNECTORS_SECRET,

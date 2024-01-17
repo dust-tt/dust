@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -6,7 +6,7 @@ import * as reporter from "io-ts-reporters";
 import { SET_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type SetConnectorPermissionsRes =
   | { success: true }

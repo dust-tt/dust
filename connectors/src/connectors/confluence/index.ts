@@ -1,27 +1,28 @@
-import {
+import type {
   ConnectorPermission,
   ConnectorResource,
   ModelId,
 } from "@dust-tt/types";
-import { ConnectorsAPIErrorResponse } from "@dust-tt/types";
+import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
   getConfluenceCloudInformation,
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
-import { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
-import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
+import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 

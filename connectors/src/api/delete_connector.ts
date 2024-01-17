@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import {
   DELETE_CONNECTOR_BY_TYPE,
@@ -7,7 +7,7 @@ import {
 import { Connector } from "@connectors/lib/models";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorDeleteReqBody = {
   dataSourceName: string;

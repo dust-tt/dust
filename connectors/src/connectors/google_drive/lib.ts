@@ -1,8 +1,9 @@
-import { cacheWithRedis, ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
+import type { Connector } from "@connectors/lib/models";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 

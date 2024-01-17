@@ -1,6 +1,6 @@
 import { cacheWithRedis } from "@dust-tt/types";
 
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 import { nango_client } from "./nango_client";
 

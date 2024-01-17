@@ -7,7 +7,7 @@ import {
   Model,
 } from "sequelize";
 
-import {
+import type {
   NotionBlockType,
   PageObjectProperties,
 } from "@connectors/connectors/notion/lib/types";

@@ -1,9 +1,13 @@
-import { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import type {
+  GithubIssue as GithubIssueType,
+  GithubUser,
+} from "@connectors/connectors/github/lib/github_api";
 import {
   cleanUpProcessRepository,
   getDiscussion,
@@ -14,8 +18,6 @@ import {
   getRepoDiscussionsPage,
   getRepoIssuesPage,
   getReposPage,
-  GithubIssue as GithubIssueType,
-  GithubUser,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -35,7 +37,7 @@ import {
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({
   provider: "github",

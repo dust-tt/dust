@@ -1,9 +1,9 @@
-import { ModelId } from "@dust-tt/types";
-import {
+import type { ModelId } from "@dust-tt/types";
+import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
-  WorkflowNotFoundError,
 } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";
@@ -12,7 +12,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceInfo } from "@connectors/types/data_source_config";
+import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 

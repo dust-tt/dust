@@ -1,5 +1,6 @@
 import fs from "fs/promises";
-import { GaxiosError, GaxiosResponse } from "googleapis-common";
+import type { GaxiosResponse } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 import StatsD from "hot-shots";
 import os from "os";
 import PQueue from "p-queue";
@@ -13,15 +14,17 @@ import {
 import { HTTPError } from "@connectors/lib/error";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
-import { cacheWithRedis, ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
+import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
-import { CreationAttributes, literal, Op } from "sequelize";
+import type { CreationAttributes } from "sequelize";
+import { literal, Op } from "sequelize";
 
 import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";

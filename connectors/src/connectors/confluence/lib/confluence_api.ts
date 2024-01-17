@@ -1,8 +1,8 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
-import { Connector } from "@connectors/lib/models";
+import type { Connector } from "@connectors/lib/models";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 

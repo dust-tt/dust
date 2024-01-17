@@ -1,4 +1,4 @@
-import { ConnectorResourceType } from "@dust-tt/types";
+import type { ConnectorResourceType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 
 // Generate a stable id for a given url and ressource type

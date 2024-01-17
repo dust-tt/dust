@@ -1,19 +1,16 @@
-import {
-  cacheWithRedis,
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-} from "@dust-tt/types";
-import {
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
+import type {
   CodedError,
-  ErrorCode,
   WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
-import {
+import { ErrorCode } from "@slack/web-api";
+import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import {
+import type {
   Channel,
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
@@ -34,7 +31,7 @@ import {
   renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { WorkflowError } from "@connectors/lib/error";
+import type { WorkflowError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
@@ -42,7 +39,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 

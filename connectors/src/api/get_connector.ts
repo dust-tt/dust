@@ -1,11 +1,11 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import { Connector } from "@connectors/lib/models";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorType } from "@connectors/types/connector";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { ConnectorType } from "@connectors/types/connector";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type GetConnectorRes = ConnectorType | ConnectorsAPIErrorResponse;
 
