@@ -38,7 +38,8 @@ function checkDeployPlanSection() {
   const s = PRDescription.split("\n");
   console.log("PRDescription:", JSON.stringify(s, null, 2), s.length);
 
-  const deployPlanSectionRegex = /## Deploy Plan.*?\n([\s\S]*?)(?=<!--|\n##|$)/;
+  const deployPlanSectionRegex =
+    /## Deploy Plan.*?\r\n([\s\S]*?)(?=<!--|\n##|$)/;
 
   const match = PRDescription.match(deployPlanSectionRegex);
   console.log(">> match:", match);
