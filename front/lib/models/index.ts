@@ -43,7 +43,6 @@ import {
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
-import { XP1Run, XP1User } from "@app/lib/models/xp1";
 
 export {
   AgentConfiguration,
@@ -84,6 +83,4 @@ export {
   UserMetadata,
   Workspace,
   WorkspaceHasDomain,
-  XP1Run,
-  XP1User,
 };

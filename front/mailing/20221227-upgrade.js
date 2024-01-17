@@ -1,8 +1,6 @@
 import sgMail from "@sendgrid/mail";
 
-import { XP1User } from "../lib/models.js";
-
-const { SENDGRID_API_KEY, LIVE = false } = process.env;
+const { SENDGRID_API_KEY } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);
 
 export const sendUpgradeEmail = async (user) => {
@@ -52,27 +50,27 @@ Looking forward to hearing from you.
   console.log("UPGRADE & ACTIVATION KEY SENT", user.email);
 };
 
-async function main() {
-  let users = await (
-    await XP1User.findAll()
-  ).filter((u) => {
-    return u.id <= 236;
-  });
-
-  users.forEach((u) => {
-    console.log("USER", u.id, u.email);
-  });
-
-  if (LIVE && LIVE === "true") {
-    console.log("SENDING EMAILS");
-    await Promise.all(
-      users.map((u) => {
-        return sendUpgradeEmail(u);
-      })
-    );
-  }
-
-  process.exit(0);
-}
-
-await main();
+// async function main() {
+//   let users = await (
+//     await XP1User.findAll()
+//   ).filter((u) => {
+//     return u.id <= 236;
+//   });
+//
+//   users.forEach((u) => {
+//     console.log("USER", u.id, u.email);
+//   });
+//
+//   if (LIVE && LIVE === "true") {
+//     console.log("SENDING EMAILS");
+//     await Promise.all(
+//       users.map((u) => {
+//         return sendUpgradeEmail(u);
+//       })
+//     );
+//   }
+//
+//   process.exit(0);
+// }
+//
+// await main();
