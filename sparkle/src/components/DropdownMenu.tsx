@@ -228,6 +228,7 @@ interface DropdownItemProps {
   visual?: string | React.ReactNode;
   icon?: ComponentType;
   onClick?: () => void;
+  selected?: boolean;
   hasChildren?: boolean;
   children?: React.ReactNode;
 }
@@ -243,6 +244,7 @@ DropdownMenu.Item = function ({
   onClick,
   hasChildren,
   children,
+  selected = false,
 }: DropdownItemProps) {
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
@@ -266,6 +268,7 @@ DropdownMenu.Item = function ({
           visual={visual}
           icon={icon}
           description={description}
+          selected={selected}
         />
       )}
     </Menu.Item>

@@ -61,6 +61,7 @@ export const DropdownExample = () => {
             <DropdownMenu.Item
               label="Shared Assistant"
               href="#"
+              selected
               icon={UserGroupIcon}
             />
             <DropdownMenu.Item

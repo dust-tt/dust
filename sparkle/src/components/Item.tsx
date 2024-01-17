@@ -224,6 +224,7 @@ Item.Navigation = function (props: NavigationListItemProps) {
 interface DropdownListItemProps {
   style?: "default" | "warning";
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  selected?: boolean;
   disabled?: boolean;
   label: string;
   description?: string;
