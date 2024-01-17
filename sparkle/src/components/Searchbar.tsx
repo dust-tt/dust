@@ -40,8 +40,10 @@ export function Searchbar({
           "s-w-full s-rounded-full s-bg-structure-50 s-font-normal s-placeholder-element-600",
           "s-ring-structure-200 focus:s-ring-action-300",
           "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark",
-          size === "sm" ? "s-text-base" : "s-text-sm",
-          size === "sm" ? "s-py-1.5 s-pl-4 s-pr-8" : "s-py-1 s-pl-4 s-pr-8",
+          size === "sm" ? "s-text-sm" : "s-text-xs",
+          size === "sm"
+            ? "s-h-[34px] s-pl-4 s-pr-8 s-pt-1.5"
+            : "s-h-[26px] s-pl-3 s-pr-6 s-pt-1.5",
           "s-transition-all s-duration-300 s-ease-out",
           className ?? "",
           disabled
@@ -56,7 +58,12 @@ export function Searchbar({
         onKeyDown={onKeyDown}
         disabled={disabled}
       />
-      <div className="s-absolute s-right-0 s-top-0 s-flex s-h-full s-items-center s-pr-3">
+      <div
+        className={classNames(
+          "s-absolute s-right-0 s-top-0 s-flex s-h-full s-items-center",
+          size === "sm" ? "s-pr-3" : "s-pr-2"
+        )}
+      >
         {value && onChange ? (
           <IconButton
             icon={XMarkIcon}

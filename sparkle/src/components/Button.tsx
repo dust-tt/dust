@@ -44,10 +44,10 @@ const textClasses = {
 };
 
 const sizeClasses = {
-  xs: "s-gap-x-1 s-px-3 s-py-1.5",
-  sm: "s-gap-x-1 s-px-4 s-py-2",
-  md: "s-gap-x-1.5 s-px-5 s-py-3",
-  lg: "s-gap-x-3 s-px-6 s-py-4",
+  xs: "s-gap-x-1 s-px-3 s-h-7",
+  sm: "s-gap-x-1 s-px-4 s-h-9",
+  md: "s-gap-x-1.5 s-px-5 s-h-12",
+  lg: "s-gap-x-3 s-px-6 s-h-16",
 };
 
 const sizeAvatarClasses = {
