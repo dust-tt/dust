@@ -37,7 +37,7 @@ export function ContextItem({
             ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 active:s-bg-structure-100"
             : ""
         )}
-        onClick={onClick} // attach the onClick handler here
+        onClick={onClick}
       >
         <div className="s-flex">{visual}</div>
         <div className="s-flex s-grow s-flex-col s-gap-1">
