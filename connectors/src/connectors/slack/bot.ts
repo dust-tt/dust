@@ -24,6 +24,7 @@ import {
   isUserAllowedToUseChatbot,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -734,6 +735,7 @@ async function makeContentFragment(
   }
 
   const content = await formatMessagesForUpsert({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
     channelName: channel.channel.name,
     messages: allMessages,
     isThread: true,

@@ -2,7 +2,7 @@ import type {
   CoreAPIDataSourceDocumentSection,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { sectionFullText } from "@dust-tt/types";
+import { DustAPI, EMBEDDING_CONFIG, sectionFullText } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -230,15 +230,22 @@ async function _updateDocumentParentsField({
   }
 }
 
-const MAX_SECTION_PREFIX_LENGTH = 192;
+// allows for 4 full prefixes before hitting half of the max chunk size (approx.
+// 256 chars for 512 token chunks)
+const MAX_PREFIX_TOKENS = EMBEDDING_CONFIG.max_chunk_size / 8;
+// Limit on chars to avoid tokenizing too much text uselessly on documents with
+// large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
+// limit can be large and should be large to avoid underusing prexfixes
+const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
 // provided will not be augmented with `\n`, so it should include appropriate carriage return. If
-// the prefix is too long (>256 chars), it will be truncated. The remained will be returned as
+// the prefix is too long (> MAX_PREFIX_TOKENS), it will be truncated. The remained will be returned as
 // content of the resulting section.
-export function renderPrefixSection(
+export async function renderPrefixSection(
+  dataSourceConfig: DataSourceConfig,
   prefix: string | null
-): CoreAPIDataSourceDocumentSection {
+): Promise<CoreAPIDataSourceDocumentSection> {
   if (!prefix || !prefix.trim()) {
     return {
       prefix: null,
@@ -246,27 +253,57 @@ export function renderPrefixSection(
       sections: [],
     };
   }
-  if (prefix.length > MAX_SECTION_PREFIX_LENGTH) {
-    return {
-      prefix: prefix.substring(0, MAX_SECTION_PREFIX_LENGTH) + "...\n",
-      content: `... ${prefix.substring(MAX_SECTION_PREFIX_LENGTH)}`,
-      sections: [],
-    };
-  }
+  let targetPrefix = prefix.substring(0, MAX_PREFIX_CHARS);
+  let targetContent =
+    prefix.length > MAX_PREFIX_CHARS ? prefix.substring(MAX_PREFIX_CHARS) : "";
+
+  const tokens = await tokenize(targetPrefix, dataSourceConfig);
+
+  targetPrefix = tokens
+    .slice(0, MAX_PREFIX_TOKENS)
+    .map((t) => t[1])
+    .join("");
+  targetContent =
+    tokens
+      .slice(MAX_PREFIX_TOKENS)
+      .map((t) => t[1])
+      .join("") + targetContent;
+
   return {
-    prefix,
-    content: null,
+    prefix: targetContent ? targetPrefix + "...\n" : targetPrefix,
+    content: targetContent ? "..." + targetContent : null,
     sections: [],
   };
+}
+
+async function tokenize(text: string, ds: DataSourceConfig) {
+  const dustAPI = new DustAPI(
+    {
+      apiKey: ds.workspaceAPIKey,
+      workspaceId: ds.workspaceId,
+    },
+    logger,
+    { useLocalInDev: true }
+  );
+  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceName);
+  if (tokensRes.isErr()) {
+    logger.error(
+      { error: tokensRes.error },
+      `Error tokenizing text for ${ds.dataSourceName}`
+    );
+    throw new Error(`Error tokenizing text for ${ds.dataSourceName}`);
+  }
+  return tokensRes.value;
 }
 
 /// This function is used to render markdown from (alternatively GFM format) to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
-export function renderMarkdownSection(
+export async function renderMarkdownSection(
+  dsConfig: DataSourceConfig,
   markdown: string,
   { flavor }: { flavor?: "gfm" } = {}
-): CoreAPIDataSourceDocumentSection {
+): Promise<CoreAPIDataSourceDocumentSection> {
   const extensions = flavor === "gfm" ? [gfm()] : [];
   const mdastExtensions = flavor === "gfm" ? [gfmFromMarkdown()] : [];
 
@@ -290,7 +327,8 @@ export function renderMarkdownSection(
         throw new Error("Unreachable");
       }
 
-      const c = renderPrefixSection(
+      const c = await renderPrefixSection(
+        dsConfig,
         toMarkdown(child, { extensions: [gfmToMarkdown()] })
       );
       last.content.sections.push(c);
@@ -315,12 +353,14 @@ export function renderMarkdownSection(
   return top;
 }
 
+const MAX_AUTHOR_CHAR_LENGTH = 48;
 // Will render the document based on title, optional createdAt and updatedAt and a structured
 // content. The title, createdAt and updatedAt will be presented in a standardized way across
 // connectors. The title should not include any `\n`.
 // If the title is too long it will be truncated and the remainder of the title will be set as
 // content of the top-level section.
-export function renderDocumentTitleAndContent({
+export async function renderDocumentTitleAndContent({
+  dataSourceConfig,
   title,
   createdAt,
   updatedAt,
@@ -328,40 +368,45 @@ export function renderDocumentTitleAndContent({
   lastEditor,
   content,
 }: {
+  dataSourceConfig: DataSourceConfig;
   title: string | null;
   createdAt?: Date;
   updatedAt?: Date;
   author?: string;
   lastEditor?: string;
   content: CoreAPIDataSourceDocumentSection | null;
-}): CoreAPIDataSourceDocumentSection {
+}): Promise<CoreAPIDataSourceDocumentSection> {
+  author = author?.substring(0, MAX_AUTHOR_CHAR_LENGTH);
+  lastEditor = lastEditor?.substring(0, MAX_AUTHOR_CHAR_LENGTH);
   if (title && title.trim()) {
     title = `$title: ${title}\n`;
   } else {
     title = null;
   }
-  const c = renderPrefixSection(title);
-  c.prefix = c.prefix || "";
+  const c = await renderPrefixSection(dataSourceConfig, title);
+  let metaPrefix: string | null = "";
   if (createdAt) {
-    c.prefix += `$createdAt: ${createdAt.toISOString()}\n`;
+    metaPrefix += `$createdAt: ${createdAt.toISOString()}\n`;
   }
   if (updatedAt) {
-    c.prefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
+    metaPrefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (author && lastEditor && author === lastEditor) {
-    c.prefix += `$author: ${author}\n`;
+    metaPrefix += `$author: ${author}\n`;
   } else {
     if (author) {
-      c.prefix += `$author: ${author}\n`;
+      metaPrefix += `$author: ${author}\n`;
     }
     if (lastEditor) {
-      c.prefix += `$lastEditor: ${lastEditor}\n`;
+      metaPrefix += `$lastEditor: ${lastEditor}\n`;
     }
+  }
+  if (metaPrefix) {
+    c.prefix = c.prefix ? c.prefix + metaPrefix : metaPrefix;
   }
   if (content) {
     c.sections.push(content);
   }
-  if (c.prefix === "") c.prefix = null;
   return c;
 }
 

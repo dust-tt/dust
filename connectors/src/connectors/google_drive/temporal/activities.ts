@@ -514,7 +514,8 @@ async function syncOneFile(
 
   documentContent = documentContent?.trim();
 
-  const content = renderDocumentTitleAndContent({
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig,
     title: file.name,
     updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
     createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,

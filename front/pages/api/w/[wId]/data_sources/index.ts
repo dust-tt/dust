@@ -1,6 +1,6 @@
 import type { DataSourceType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
-import { dustManagedCredentials } from "@dust-tt/types";
+import { dustManagedCredentials, EMBEDDING_CONFIG } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -107,10 +107,6 @@ async function handler(
         });
       }
 
-      const dataSourceProviderId = "openai";
-      const dataSourceModelId = "text-embedding-ada-002";
-      const dataSourceMaxChunkSize = 512;
-
       const coreAPI = new CoreAPI(logger);
 
       const dustProject = await coreAPI.createProject();
@@ -134,10 +130,10 @@ async function handler(
         projectId: dustProject.value.project.project_id.toString(),
         dataSourceId: req.body.name as string,
         config: {
-          provider_id: dataSourceProviderId,
-          model_id: dataSourceModelId,
-          splitter_id: "base_v0",
-          max_chunk_size: dataSourceMaxChunkSize,
+          provider_id: EMBEDDING_CONFIG.provider_id,
+          model_id: EMBEDDING_CONFIG.model_id,
+          splitter_id: EMBEDDING_CONFIG.splitter_id,
+          max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
           qdrant_config:
             auth.isUpgraded() && NODE_ENV === "production"
               ? {

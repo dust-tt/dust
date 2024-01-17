@@ -38,6 +38,7 @@ import type {
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/connectors/notion/lib/types";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
@@ -59,6 +60,7 @@ import {
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;
 
@@ -1514,6 +1516,7 @@ export async function renderAndUpsertPageFromCache({
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const dsConfig = dataSourceConfigFromConnector(connector);
   const accessToken = await getNotionAccessToken(connector.connectionId);
 
   const localLogger = logger.child({
@@ -1610,7 +1613,10 @@ export async function renderAndUpsertPageFromCache({
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
-  const renderedPageSection = renderPageSection({ blocksByParentId });
+  const renderedPageSection = await renderPageSection({
+    dsConfig,
+    blocksByParentId,
+  });
   const documentLength = sectionLength(renderedPageSection);
 
   // add a newline to separate the page from the metadata above (title, author...)
@@ -1784,7 +1790,8 @@ export async function renderAndUpsertPageFromCache({
       runTimestamp.toString()
     );
 
-    const content = renderDocumentTitleAndContent({
+    const content = await renderDocumentTitleAndContent({
+      dataSourceConfig: dsConfig,
       title: title ?? null,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -1797,11 +1804,7 @@ export async function renderAndUpsertPageFromCache({
       "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
     );
     await upsertToDatasource({
-      dataSourceConfig: {
-        dataSourceName: connector.dataSourceName,
-        workspaceId: connector.workspaceId,
-        workspaceAPIKey: connector.workspaceAPIKey,
-      },
+      dataSourceConfig: dsConfig,
       documentId,
       documentContent: content,
       documentUrl: pageCacheEntry.url,
@@ -2022,11 +2025,13 @@ export async function getDiscoveredResourcesFromCache(
  * - only the 2 first levels of nesting are used to create prefixes, similarly
  *   to github, to avoid too many prefixes
  */
-function renderPageSection({
+async function renderPageSection({
+  dsConfig,
   blocksByParentId,
 }: {
+  dsConfig: DataSourceConfig;
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
-}): CoreAPIDataSourceDocumentSection {
+}): Promise<CoreAPIDataSourceDocumentSection> {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
     content: null,
@@ -2087,11 +2092,11 @@ function renderPageSection({
     }
   }
 
-  const renderBlockSection = (
+  const renderBlockSection = async (
     b: NotionConnectorBlockCacheEntry,
     depth: number,
     indent = ""
-  ): CoreAPIDataSourceDocumentSection => {
+  ): Promise<CoreAPIDataSourceDocumentSection> => {
     // Initial rendering (remove base64 images from rendered block)
     let renderedBlock = b.blockText ? `${indent}${b.blockText}` : "";
     renderedBlock = renderedBlock
@@ -2104,8 +2109,8 @@ function renderPageSection({
 
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
-      depth < 1 && adaptedBlocksByParentId[b.notionBlockId]?.length
-        ? renderPrefixSection(renderedBlock)
+      depth < 2 && adaptedBlocksByParentId[b.notionBlockId]?.length
+        ? await renderPrefixSection(dsConfig, renderedBlock)
         : {
             prefix: null,
             content: renderedBlock,
@@ -2119,7 +2124,9 @@ function renderPageSection({
       indent = `- ${indent}`;
     }
     for (const child of children) {
-      blockSection.sections.push(renderBlockSection(child, depth + 1, indent));
+      blockSection.sections.push(
+        await renderBlockSection(child, depth + 1, indent)
+      );
     }
     return blockSection;
   };
@@ -2127,7 +2134,7 @@ function renderPageSection({
   const topLevelBlocks = adaptedBlocksByParentId["root"] || [];
   topLevelBlocks.sort((a, b) => a.indexInParent - b.indexInParent);
   for (const block of topLevelBlocks) {
-    renderedPageSection.sections.push(renderBlockSection(block, 0));
+    renderedPageSection.sections.push(await renderBlockSection(block, 0));
   }
   return renderedPageSection;
 }
