@@ -2,6 +2,7 @@ import type {
   cacheWithRedis,
   CoreAPIDataSourceDocumentSection,
   CoreAPITokenType,
+  DustAPI,
   EMBEDDING_CONFIG,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
@@ -287,42 +288,25 @@ export async function renderPrefixSection(
   };
 }
 
-async function _tokenize(
-  text: string,
-  dataSourceConfig: DataSourceConfig
-): Promise<CoreAPITokenType[]> {
-  const localLogger = logger.child({ text });
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tokenize`;
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
-    },
-  };
-
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axios.post(endpoint, { text }, dustRequestConfig);
-  } catch (e) {
-    localLogger.error({ error: e }, "Error tokenizing text.");
-    throw e;
-  }
-
-  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    return dustRequestResult.data.tokens;
-  } else {
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-        data: dustRequestResult.data,
-      },
-      "Error tokenizing text."
-    );
-    throw new Error(`Error tokenizing text: ${dustRequestResult}`);
-  }
-}
 export const tokenize = cacheWithRedis(
-  _tokenize,
+  async (text: string, ds: DataSourceConfig) => {
+    const dustAPI = new DustAPI(
+      {
+        apiKey: ds.workspaceAPIKey,
+        workspaceId: ds.workspaceId,
+      },
+      logger
+    );
+    const tokensRes = await dustAPI.tokenize(text, ds.dataSourceName);
+    if (tokensRes.isErr()) {
+      logger.error(
+        { error: tokensRes.error },
+        `Error tokenizing text for ${ds.dataSourceName}`
+      );
+      throw new Error(`Error tokenizing text for ${ds.dataSourceName}`);
+    }
+    return tokensRes.value;
+  },
   (text, ds) => `tokenize:${text}-${ds.dataSourceName}-${ds.workspaceId}`,
   60 * 60 * 24
 );
