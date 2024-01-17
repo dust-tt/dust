@@ -69,7 +69,7 @@ export default function DataSourceNew({
 
   const [dataSourceNameError, setDataSourceNameError] = useState("");
   const [assistantDefaultSelected, setAssistantDefaultSelected] =
-    useState(true);
+    useState(false);
 
   const [dataSourceUrl, setDataSourceUrl] = useState("");
 
