@@ -41,7 +41,6 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 
 /**
@@ -68,10 +67,7 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const plan = auth.plan();
-  const isFree = !plan || plan.code === FREE_TEST_PLAN_CODE;
-
-  let model: { providerId: string; modelId: string } = isFree
+  let model: { providerId: string; modelId: string } = !auth.isUpgraded()
     ? {
         providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -81,7 +77,7 @@ export async function generateActionInputs(
         modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       };
 
-  const contextSize = isFree
+  const contextSize = !auth.isUpgraded()
     ? GPT_3_5_TURBO_MODEL_CONFIG.contextSize
     : GPT_4_32K_MODEL_CONFIG.contextSize;
 

@@ -22,6 +22,7 @@ import {
 } from "@app/lib/models";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
@@ -326,6 +327,10 @@ export class Authenticator {
 
   plan(): PlanType | null {
     return this._subscription ? this._subscription.plan : null;
+  }
+
+  isUpgraded(): boolean {
+    return isUpgraded(this.plan());
   }
 
   /**

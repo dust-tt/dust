@@ -28,7 +28,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 
@@ -153,8 +153,7 @@ export default function WorkspaceAdmin({
                     size="sm"
                     icon={Cog6ToothIcon}
                     onClick={() => {
-                      if (plan.code === FREE_TEST_PLAN_CODE)
-                        setShowNoInviteLinkPopup(true);
+                      if (!isUpgraded(plan)) setShowNoInviteLinkPopup(true);
                       else setInviteSettingsModalOpen(true);
                     }}
                   />
@@ -278,8 +277,7 @@ export default function WorkspaceAdmin({
                 size="sm"
                 icon={PlusIcon}
                 onClick={() => {
-                  if (plan.code === FREE_TEST_PLAN_CODE)
-                    setShowNoInviteFreePlanPopup(true);
+                  if (!isUpgraded(plan)) setShowNoInviteFreePlanPopup(true);
                   else if (subscription.paymentFailingSince)
                     setShowNoInviteFailedPaymentPopup(true);
                   else setInviteEmailModalOpen(true);

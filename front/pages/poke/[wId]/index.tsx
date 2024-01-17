@@ -38,6 +38,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
@@ -657,7 +658,7 @@ const WorkspacePage = ({
                           variant="secondaryWarning"
                           onClick={onDowngrade}
                           disabled={
-                            subscription.plan.code === FREE_TEST_PLAN_CODE ||
+                            !isUpgraded(subscription.plan) ||
                             workspaceHasManagedDataSources
                           }
                         />
@@ -667,9 +668,7 @@ const WorkspacePage = ({
                           label="Upgrade to free upgraded plan"
                           variant="tertiary"
                           onClick={onUpgrade}
-                          disabled={
-                            subscription.plan.code !== FREE_TEST_PLAN_CODE
-                          }
+                          disabled={isUpgraded(subscription.plan)}
                         />
                       </div>
                     </div>
