@@ -34,7 +34,10 @@ function checkMigrationLabel() {
 
 function checkDeployPlanSection() {
   const PRDescription = danger.github.pr.body;
-  const deployPlanSectionRegex = /## Deploy Plan\n([\s\S]*?)(?=\n##|\n\n|$)/;
+
+  console.log("PRDescription:", PRDescription);
+
+  const deployPlanSectionRegex = /## Deploy Plan.*?\n([\s\S]*?)(?=<!--|\n##|$)/;
 
   const match = PRDescription.match(deployPlanSectionRegex);
   console.log(">> match:", match);
