@@ -87,6 +87,7 @@ export class WorkspaceHasDomain extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare workspace?: NonAttribute<Workspace>;
 }
 WorkspaceHasDomain.init(
   {

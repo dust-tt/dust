@@ -149,11 +149,14 @@ export default function Welcome({
               Let's check a few things.
             </p>
           </div>
-          <div>
-            <p>
-              Your email is <span className="font-bold">{user.email}</span>.
-            </p>
-          </div>
+          {!isAdmin && (
+            <div>
+              <p>
+                You will be joining the workspace:{" "}
+                <span className="font-bold">{owner.name}</span>.
+              </p>
+            </div>
+          )}
           <div>
             <p className="pb-2">Your name is:</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
