@@ -152,7 +152,7 @@ export default function Welcome({
           {!isAdmin && (
             <div>
               <p>
-                Your will be joining the workspace of{" "}
+                You will be joining the workspace:{" "}
                 <span className="font-bold">{owner.name}</span>.
               </p>
             </div>

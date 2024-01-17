@@ -66,7 +66,7 @@ async function findWorkspaceWithWhitelistedDomain(session: any) {
   const { user } = session;
 
   if (!isGoogleSession(session) || !user.email_verified) {
-    return;
+    return undefined;
   }
 
   const [, userEmailDomain] = user.email.split("@");
@@ -135,10 +135,7 @@ async function handler(
         });
       }
 
-      if (
-        session.provider.provider !== "google" ||
-        !session.user.email_verified
-      ) {
+      if (!isGoogleSession(session) || !session.user.email_verified) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
