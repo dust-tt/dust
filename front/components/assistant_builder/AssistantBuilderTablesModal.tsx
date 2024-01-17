@@ -6,13 +6,13 @@ import {
   Page,
   ServerIcon,
 } from "@dust-tt/sparkle";
-import { CoreAPITable, DataSourceType } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import type { CoreAPITable, DataSourceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import type * as React from "react";
+import * as React from "react";
 import { useState } from "react";
 
-import { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useTables } from "@app/lib/swr";
 

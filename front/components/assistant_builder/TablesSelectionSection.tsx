@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
-import { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 export default function TablesSelectionSection({
