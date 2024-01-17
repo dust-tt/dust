@@ -71,7 +71,7 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       plan,
       gaTrackingId: GA_TRACKING_ID,
-      workspaceVerifiedDomain: workspaceVerifiedDomain,
+      workspaceVerifiedDomain,
     },
   };
 };
@@ -86,7 +86,8 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
-  const [isActivateSSOOpened, setIsActivateSSOOpened] = useState(false);
+  const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
+    useState(false);
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
@@ -108,9 +109,9 @@ export default function WorkspaceAdmin({
         />
         <DomainAutoJoinModal
           domainAutoJoinEnabled={domainAutoJoinEnabled}
-          isOpen={isActivateSSOOpened}
+          isOpen={isActivateAutoJoinOpened}
           onClose={() => {
-            setIsActivateSSOOpened(false);
+            setIsActivateAutoJoinOpened(false);
           }}
           domain={domain}
           owner={owner}
@@ -135,7 +136,7 @@ export default function WorkspaceAdmin({
                   if (!isUpgraded(plan)) {
                     setShowNoInviteLinkPopup(true);
                   } else {
-                    setIsActivateSSOOpened(true);
+                    setIsActivateAutoJoinOpened(true);
                   }
                 }}
               />
@@ -148,7 +149,7 @@ export default function WorkspaceAdmin({
                   if (!isUpgraded(plan)) {
                     setShowNoInviteLinkPopup(true);
                   } else {
-                    setIsActivateSSOOpened(true);
+                    setIsActivateAutoJoinOpened(true);
                   }
                 }}
               />
