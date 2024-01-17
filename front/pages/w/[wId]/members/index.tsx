@@ -155,7 +155,7 @@ export default function WorkspaceAdmin({
               <Popup
                 show={showNoInviteLinkPopup}
                 chipLabel="Free plan"
-                description="You cannot enable Google SSO workspace auto join with the free plan. Upgrade your plan to invite other members."
+                description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
                 buttonLabel="Check Dust plans"
                 buttonClick={() => {
                   void router.push(`/w/${owner.sId}/subscription`);
