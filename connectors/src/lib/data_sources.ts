@@ -256,7 +256,6 @@ export async function renderPrefixSection(
       sections: [],
     };
   }
-  prefix = prefix.trim();
   const tokens = (
     await tokenize(prefix.substring(0, MAX_PREFIX_CHARS), dataSourceConfig)
   ).map((token) => token[1]);
@@ -294,7 +293,8 @@ export const tokenize = cacheWithRedis(
         apiKey: ds.workspaceAPIKey,
         workspaceId: ds.workspaceId,
       },
-      logger
+      logger,
+      { useLocalInDev: true }
     );
     const tokensRes = await dustAPI.tokenize(text, ds.dataSourceName);
     if (tokensRes.isErr()) {

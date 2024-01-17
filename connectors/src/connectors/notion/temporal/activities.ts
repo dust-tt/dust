@@ -2109,7 +2109,7 @@ async function renderPageSection({
 
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
-      depth < 1 && adaptedBlocksByParentId[b.notionBlockId]?.length
+      depth < 2 && adaptedBlocksByParentId[b.notionBlockId]?.length
         ? await renderPrefixSection(dsConfig, renderedBlock)
         : {
             prefix: null,
