@@ -83,107 +83,102 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             return req;
           },
         });
-        void processQueue.add(async () => {
-          const extracted = new turndown()
-            .remove(["style", "script", "iframe"])
-            .turndown($.html());
+        const extracted = new turndown()
+          .remove(["style", "script", "iframe"])
+          .turndown($.html());
 
-          const pageTitle = $("title").text();
+        const pageTitle = $("title").text();
 
-          const folders = getAllFoldersForUrl(request.url);
-          for (const folder of folders) {
-            if (createdFolders.has(folder)) {
-              continue;
-            }
-
-            const logicalParent = isTopFolder(request.url)
-              ? null
-              : getFolderForUrl(folder);
-            await WebCrawlerFolder.upsert({
-              url: folder,
-              parentUrl: logicalParent,
-              connectorId: connector.id,
-              webcrawlerConfigurationId: webCrawlerConfig.id,
-              internalId: stableIdForUrl({
-                url: folder,
-                ressourceType: "folder",
-              }),
-            });
-
-            createdFolders.add(folder);
+        const folders = getAllFoldersForUrl(request.url);
+        for (const folder of folders) {
+          if (createdFolders.has(folder)) {
+            continue;
           }
-          const documentId = stableIdForUrl({
-            url: request.url,
-            ressourceType: "file",
-          });
 
-          await WebCrawlerPage.upsert({
-            url: request.url,
-            parentUrl: isTopFolder(request.url)
-              ? null
-              : getFolderForUrl(request.url),
+          const logicalParent = isTopFolder(request.url)
+            ? null
+            : getFolderForUrl(folder);
+          await WebCrawlerFolder.upsert({
+            url: folder,
+            parentUrl: logicalParent,
             connectorId: connector.id,
             webcrawlerConfigurationId: webCrawlerConfig.id,
-            documentId: documentId,
-            title: pageTitle,
+            internalId: stableIdForUrl({
+              url: folder,
+              ressourceType: "folder",
+            }),
           });
 
-          Context.current().heartbeat({
-            type: "upserting",
-          });
-
-          try {
-            if (
-              extracted.length > 0 &&
-              extracted.length <= MAX_DOCUMENT_TXT_LEN
-            ) {
-              await upsertToDatasource({
-                dataSourceConfig,
-                documentId: documentId,
-                documentContent: {
-                  prefix: pageTitle,
-                  content: extracted,
-                  sections: [],
-                },
-                documentUrl: request.url,
-                timestampMs: new Date().getTime(),
-                tags: [`title:${pageTitle.substring(0, 300)}`],
-                parents: getParentsForPage(request.url, false),
-                upsertContext: {
-                  sync_type: "batch",
-                },
-              });
-            } else {
-              logger.info(
-                {
-                  documentId,
-                  connectorId,
-                  configId: webCrawlerConfig.id,
-                  documentLen: extracted.length,
-                  title: pageTitle,
-                },
-                `Document is empty or too big to be upserted. Skipping`
-              );
-              return;
-            }
-          } catch (e) {
-            upsertingError++;
-            logger.error(
-              {
-                error: e,
-                connectorId: connector.id,
-                configId: webCrawlerConfig.id,
-              },
-              "Webcrawler error while upserting document"
-            );
-            // Since we failed upserting, we want to fail the current Temporal activity
-            // and let the workflow retry it.
-            await crawler.teardown();
-          }
-
-          pageCount++;
-          await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
+          createdFolders.add(folder);
+        }
+        const documentId = stableIdForUrl({
+          url: request.url,
+          ressourceType: "file",
         });
+
+        await WebCrawlerPage.upsert({
+          url: request.url,
+          parentUrl: isTopFolder(request.url)
+            ? null
+            : getFolderForUrl(request.url),
+          connectorId: connector.id,
+          webcrawlerConfigurationId: webCrawlerConfig.id,
+          documentId: documentId,
+          title: pageTitle,
+        });
+
+        Context.current().heartbeat({
+          type: "upserting",
+        });
+
+        try {
+          if (
+            extracted.length > 0 &&
+            extracted.length <= MAX_DOCUMENT_TXT_LEN
+          ) {
+            await upsertToDatasource({
+              dataSourceConfig,
+              documentId: documentId,
+              documentContent: {
+                prefix: pageTitle,
+                content: extracted,
+                sections: [],
+              },
+              documentUrl: request.url,
+              timestampMs: new Date().getTime(),
+              tags: [`title:${pageTitle.substring(0, 300)}`],
+              parents: getParentsForPage(request.url, false),
+              upsertContext: {
+                sync_type: "batch",
+              },
+            });
+          } else {
+            logger.info(
+              {
+                documentId,
+                connectorId,
+                configId: webCrawlerConfig.id,
+                documentLen: extracted.length,
+                title: pageTitle,
+              },
+              `Document is empty or too big to be upserted. Skipping`
+            );
+            return;
+          }
+        } catch (e) {
+          upsertingError++;
+          logger.error(
+            {
+              error: e,
+              connectorId: connector.id,
+              configId: webCrawlerConfig.id,
+            },
+            "Webcrawler error while upserting document"
+          );
+        }
+
+        pageCount++;
+        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
       },
       failedRequestHandler: async () => {
         crawlingError++;
@@ -196,6 +191,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   await crawler.run([webCrawlerConfig.url]);
+
   await crawler.teardown();
 
   await processQueue.onIdle();
