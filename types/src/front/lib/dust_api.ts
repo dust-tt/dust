@@ -1,4 +1,5 @@
 import { createParser } from "eventsource-parser";
+import { CoreAPITokenType } from "front/lib/core_api";
 import * as t from "io-ts";
 
 import {
@@ -6,7 +7,7 @@ import {
   PublicPostConversationsRequestBodySchema,
   PublicPostMessagesRequestBodySchema,
 } from "../../front/api_handlers/public/assistant";
-import { AgentConfigurationType } from "../../front/assistant/agent";
+import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import {
   AgentMessageType,
   ContentFragmentType,
@@ -464,7 +465,7 @@ export class DustAPI {
     if (json.error) {
       return new Err(json.error as DustAPIErrorResponse);
     }
-    return new Ok(json.agentConfigurations as AgentConfigurationType[]);
+    return new Ok(json.agentConfigurations as LightAgentConfigurationType[]);
   }
 
   async postContentFragment({
@@ -697,5 +698,29 @@ export class DustAPI {
       return new Err(json.error as DustAPIErrorResponse);
     }
     return new Ok(json.conversation as ConversationType);
+  }
+
+  async tokenize(
+    text: string,
+    dataSourceName: string
+  ): Promise<Result<CoreAPITokenType[], DustAPIErrorResponse>> {
+    const urlSafeName = encodeURIComponent(dataSourceName);
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${urlSafeName}/tokenize`;
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+      body: JSON.stringify({
+        text,
+      }),
+    });
+    const dustRequestResult = await res.json();
+    if (dustRequestResult.error) {
+      return new Err(dustRequestResult.error as DustAPIErrorResponse);
+    }
+    return new Ok(dustRequestResult.tokens as CoreAPITokenType[]);
   }
 }

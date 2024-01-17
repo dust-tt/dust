@@ -1,21 +1,19 @@
-import {
-  AgentConfigurationType,
+import type {
   AgentUserListStatus,
-  assertNever,
-  Err,
-  Ok,
+  LightAgentConfigurationType,
   Result,
 } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 
 export function agentUserListStatus({
   agentConfiguration,
   listStatusOverride,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   listStatusOverride: AgentUserListStatus | null;
 }): AgentUserListStatus {
   if (listStatusOverride === null) {
@@ -42,6 +40,7 @@ export async function getAgentUserListStatus({
   agentId: string;
 }): Promise<Result<AgentUserListStatus, Error>> {
   const agentConfiguration = await getAgentConfiguration(auth, agentId);
+
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
 

@@ -1,13 +1,14 @@
 import { Dialog } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
+  LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
 } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import { useAgentConfiguration } from "@app/lib/swr";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 export function DeleteAssistantDialog({
   owner,
@@ -87,7 +88,7 @@ export function RemoveAssistantFromListDialog({
   onRemove,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onRemove: () => void;
@@ -151,12 +152,17 @@ export function RemoveAssistantFromWorkspaceDialog({
   onRemove,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onRemove: () => void;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
+
+  const { agentConfiguration: detailedConfig } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration.sId,
+  });
 
   return (
     <Dialog
@@ -166,6 +172,9 @@ export function RemoveAssistantFromWorkspaceDialog({
       validateLabel="Remove"
       validateVariant="primaryWarning"
       onValidate={async () => {
+        if (!detailedConfig) {
+          throw new Error("Agent configuration not found");
+        }
         const body: PostOrPatchAgentConfigurationRequestBody = {
           assistant: {
             name: agentConfiguration.name,
@@ -173,7 +182,7 @@ export function RemoveAssistantFromWorkspaceDialog({
             pictureUrl: agentConfiguration.pictureUrl,
             status: "active",
             scope: "published",
-            action: agentConfiguration.action,
+            action: detailedConfig.action,
             generation: agentConfiguration.generation,
           },
         };

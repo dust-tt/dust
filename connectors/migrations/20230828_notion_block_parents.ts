@@ -6,6 +6,7 @@
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import { getBlockParentMemoized } from "@connectors/connectors/notion/lib/notion_api";
 import { Connector } from "@connectors/lib/models";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -16,13 +17,9 @@ const logger = mainLogger.child({
   migration: "20230828_notion_block_parents",
 });
 
+const { getRequiredNangoNotionConnectorId } = notionConfig;
+
 async function main() {
-  const { NANGO_NOTION_CONNECTOR_ID } = process.env;
-
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
   const pagesAffected = await NotionPage.findAll({
     where: {
       parentType: "block",
@@ -64,7 +61,7 @@ async function main() {
       continue;
     }
     const notionAccessToken = await nango_client().getToken(
-      NANGO_NOTION_CONNECTOR_ID,
+      getRequiredNangoNotionConnectorId(),
       connector.connectionId
     );
     notionAccessTokenByConnectorId[connector.id] = notionAccessToken;

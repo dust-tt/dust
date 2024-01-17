@@ -2,12 +2,13 @@ use crate::data_sources::data_source::Section;
 use crate::providers::embedder::Embedder;
 use crate::providers::provider::{provider, ProviderID};
 use crate::run::Credentials;
-use crate::utils::ParseError;
+use crate::utils::{self, ParseError};
 use anyhow::{anyhow, Result};
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::fmt;
 use std::{cmp, str::FromStr};
 use tokio::try_join;
 
@@ -32,6 +33,12 @@ impl TokenizedText {
             }
             None => Ok(None),
         }
+    }
+}
+
+impl fmt::Display for TokenizedText {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TokText: {} ({} tokens)", self.text, self.tokens.len())
     }
 }
 
@@ -113,7 +120,7 @@ async fn split_text(
 ///
 /// As a remainder prefixes are propagated to childrens during chunking.
 ///
-/// During the construction of the tokenized tree, we also enforce that all content + inherihted
+/// During the construction of the tokenized tree, we also enforce that all content + inherited
 /// prefix hold in max_chunk_size. When that's not the case, we split the content and add childrens
 /// to the node (without prefix of their own since these splits don't induce new prefixes and will
 /// inherit of the current node). We also dissociate content from the node as a children if the node
@@ -134,6 +141,32 @@ pub struct TokenizedSection {
     pub tokens_count: usize,
     pub content: Option<TokenizedText>,
     pub sections: Vec<TokenizedSection>,
+}
+
+impl fmt::Display for TokenizedSection {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let prefixes = self
+            .prefixes
+            .iter()
+            .map(|(_, tokenized_text)| tokenized_text.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let sections = self
+            .sections
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<String>>()
+            .join(", ");
+        let content = match self.content.as_ref() {
+            Some(c) => c.to_string(),
+            None => "None".to_string(),
+        };
+        write!(
+            f,
+            "TSection: {{ prefixes: [{}],\n content: {},\n sections: [{}] }}\n",
+            prefixes, content, sections
+        )
+    }
 }
 
 impl TokenizedSection {
@@ -173,12 +206,16 @@ impl TokenizedSection {
 
         let mut sections: Vec<TokenizedSection> = vec![];
 
-        // Create new children for content if a prefix is present to enforce the invariant that
-        // content nodes are leaf nodes. Even if prefix is not present but content overflows
-        // max_chunk_size, we split in multiple nodes to enforce the invariant that any content node
-        // fit in a `max_chunk_size`.
+        // Create new children for content if the section already has children or has a prefix, to
+        // enforce the invariant that content nodes are leaf nodes and don't have prefix (see
+        // tokens_count calculation at the end of this method). Even if there are no children, but
+        // content overflows max_chunk_size, we split in multiple nodes to enforce the invariant
+        // that any content node fit in a `max_chunk_size`.
         if let Some(c) = content.as_ref() {
-            if (c.tokens.len() + prefixes_tokens_count) > max_chunk_size || prefix.is_some() {
+            if (c.tokens.len() + prefixes_tokens_count) > max_chunk_size
+                || !section.sections.is_empty()
+                || prefix.is_some()
+            {
                 let effective_max_chunk_size = max_chunk_size - prefixes_tokens_count;
 
                 let splits = match c.tokens.len() > effective_max_chunk_size {
@@ -225,7 +262,7 @@ impl TokenizedSection {
             max_chunk_size,
             prefixes,
             // The tokens_count is `prefixes_tokens_count` to which we add:
-            // - (for contet leaf nodes) the sum of the content tokens
+            // - (for content leaf nodes) the sum of the content tokens
             // OR
             // - (for non content nodes) the tokens_count of the childrens to which we remove
             // childrens times the `prefixes_tokens_count` as they would not be repeated in children
@@ -250,6 +287,10 @@ impl TokenizedSection {
             res.extend(section.dfs());
         }
         res
+    }
+
+    fn size(&self) -> usize {
+        return self.dfs().len();
     }
 
     /// This function materialize a chunk from a TokenizedSection node.
@@ -443,17 +484,35 @@ impl Splitter for BaseV0Splitter {
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
 
+        let mut now = utils::now();
+
         let tokenized_section =
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
 
+        utils::info(&format!(
+            "Splitter: tokenized_section_tree_size={} duration={}",
+            tokenized_section.size(),
+            utils::now() - now
+        ));
+
+        now = utils::now();
+
         // We filter out whitespace only or empty strings which is possible to obtain if the section
         // passed have empty or whitespace only content.
-        Ok(tokenized_section
+        let chunks: Vec<String> = tokenized_section
             .chunks()
             .into_iter()
             .filter(|t| t.text.trim().len() > 0)
             .map(|t| t.text)
-            .collect())
+            .collect();
+
+        utils::info(&format!(
+            "Splitter: chunks_count={} duration={}",
+            chunks.len(),
+            utils::now() - now
+        ));
+
+        Ok(chunks)
     }
 }
 
@@ -908,5 +967,63 @@ mod tests {
              >> @spolu [20230908 10:16]:\n:100:\n\
              >> @spolu [20230908 10:16]:\n\"Factory\" :p\n"
         )
+    }
+
+    #[tokio::test]
+    async fn test_splitter_bug_20240111() {
+        // Splitting issue with a section with no prefix but with content and childrens.
+        let section = Section {
+            prefix: Some("Ok a prefix\n".to_string()),
+            content: None,
+            sections: vec![Section {
+                prefix: None,
+                content: Some(
+                    "Then a section with no prefix, but content and children".to_string(),
+                ),
+                sections: vec![
+                    Section {
+                        prefix: Some("Prefix1".to_string()),
+                        content: Some("Text1".to_string()),
+                        sections: vec![],
+                    },
+                    Section {
+                        prefix: Some("Prefix2".to_string()),
+                        content: Some("Text2".to_string()),
+                        sections: vec![],
+                    },
+                ],
+            }],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
+        splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 256, section)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[ignore] // ignored as it's high CPU
+    async fn test_splitter_bug_20240112() {
+        let bstr = "\t\t\t\t\t\t\r\n";
+        let section = Section {
+            prefix: None,
+            content: bstr.repeat(8192).into(),
+            sections: vec![],
+        };
+
+        let provider_id = ProviderID::OpenAI;
+        let model_id = "text-embedding-ada-002";
+        let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
+
+        // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
+        splitter(SplitterID::BaseV0)
+            .split(credentials, provider_id, model_id, 256, section)
+            .await
+            .unwrap();
     }
 }

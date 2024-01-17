@@ -19,10 +19,11 @@ export type ConnectorSyncStatus = "succeeded" | "failed";
 export type ConnectorErrorType = "oauth_token_revoked";
 
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
-  "slack",
-  "notion",
+  "confluence",
   "google_drive",
   "intercom",
+  "notion",
+  "slack",
 ] as const;
 type ConnectorProviderUsingNango =
   (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];
@@ -85,7 +86,13 @@ export class ConnectorsAPI {
     workspaceId: string,
     workspaceAPIKey: string,
     dataSourceName: string,
-    connectionId: string
+    connectorParams:
+      | {
+          connectionId: string;
+        }
+      | {
+          url: string;
+        }
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(`${CONNECTORS_API}/connectors/create/${provider}`, {
       method: "POST",
@@ -94,7 +101,7 @@ export class ConnectorsAPI {
         workspaceId,
         workspaceAPIKey,
         dataSourceName,
-        connectionId,
+        connectorParams,
       }),
     });
 
@@ -239,46 +246,6 @@ export class ConnectorsAPI {
       method: "GET",
       headers: this.getDefaultHeaders(),
     });
-
-    return this._resultFromResponse(res);
-  }
-
-  async getBotEnabled(connectorId: string): Promise<
-    ConnectorsAPIResponse<{
-      botEnabled: boolean;
-    }>
-  > {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
-      {
-        method: "GET",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async setBotEnabled(
-    connectorId: string,
-    botEnabled: boolean
-  ): Promise<
-    ConnectorsAPIResponse<{
-      botEnabled: boolean;
-    }>
-  > {
-    const headers = this.getDefaultHeaders();
-
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${connectorId}/bot_enabled`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          botEnabled,
-        }),
-      }
-    );
 
     return this._resultFromResponse(res);
   }

@@ -1,12 +1,11 @@
-import { QueryTypes, Sequelize } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 import { getCoreDocuments } from "@app/production_checks/lib/managed_ds";
+import {
+  getConnectorReplicaDbConnection,
+  getFrontReplicaDbConnection,
+} from "@app/production_checks/lib/utils";
 import { CheckFunction } from "@app/production_checks/types/check";
-
-const {
-  CONNECTORS_DATABASE_READ_REPLICA_URI,
-  FRONT_DATABASE_READ_REPLICA_URI,
-} = process.env;
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,
@@ -15,18 +14,8 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   reportFailure,
   heartbeat
 ) => {
-  const connectorsSequelize = new Sequelize(
-    CONNECTORS_DATABASE_READ_REPLICA_URI as string,
-    {
-      logging: false,
-    }
-  );
-  const frontSequelize = new Sequelize(
-    FRONT_DATABASE_READ_REPLICA_URI as string,
-    {
-      logging: false,
-    }
-  );
+  const connectorsSequelize = getConnectorReplicaDbConnection();
+  const frontSequelize = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
     await frontSequelize.query(
       `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,

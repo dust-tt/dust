@@ -1,12 +1,17 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
-import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -63,6 +68,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
     stripeCustomerId: null,
     startDate: null,
     endDate: null,
+    paymentFailingSince: null,
     plan: {
       code: freeTestPlan.code,
       name: freeTestPlan.name,
@@ -74,11 +80,13 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
           maxMessages: freeTestPlan.maxMessages,
         },
         connections: {
+          isConfluenceAllowed: freeTestPlan.isManagedConfluenceAllowed,
           isSlackAllowed: freeTestPlan.isManagedSlackAllowed,
           isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
           isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
           isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
           isIntercomAllowed: freeTestPlan.isManagedIntercomAllowed,
+          isWebCrawlerAllowed: freeTestPlan.isManagedWebCrawlerAllowed,
         },
         dataSources: {
           count: freeTestPlan.maxDataSourcesCount,
@@ -101,8 +109,10 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
  */
 export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   workspaceId,
+  planCode = FREE_UPGRADED_PLAN_CODE,
 }: {
   workspaceId: string;
+  planCode?: string;
 }): Promise<SubscriptionType> => {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -111,12 +121,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     throw new Error(`Cannot find workspace ${workspaceId}`);
   }
   const plan = await Plan.findOne({
-    where: { code: FREE_UPGRADED_PLAN_CODE },
+    where: { code: planCode },
   });
   if (!plan) {
-    throw new Error(
-      `Cannot subscribe to plan ${FREE_UPGRADED_PLAN_CODE}:  not found.`
-    );
+    throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
   }
 
   const now = new Date();
@@ -127,11 +135,11 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   });
   if (activeSubscription && activeSubscription.planId === plan.id) {
     throw new Error(
-      `Cannot subscribe to plan ${FREE_UPGRADED_PLAN_CODE}:  already subscribed.`
+      `Cannot subscribe to plan ${planCode}:  already subscribed.`
     );
   }
 
-  return await front_sequelize.transaction(async (t) => {
+  return front_sequelize.transaction(async (t) => {
     // We end the active subscription if any
     if (activeSubscription) {
       await activeSubscription.update({
@@ -160,6 +168,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       stripeCustomerId: newSubscription.stripeCustomerId,
       startDate: newSubscription.startDate.getTime(),
       endDate: newSubscription.endDate?.getTime() || null,
+      paymentFailingSince: null,
       plan: {
         code: plan.code,
         name: plan.name,
@@ -171,11 +180,13 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
             maxMessages: plan.maxMessages,
           },
           connections: {
+            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
             isSlackAllowed: plan.isManagedSlackAllowed,
             isNotionAllowed: plan.isManagedNotionAllowed,
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
             isGithubAllowed: plan.isManagedGithubAllowed,
             isIntercomAllowed: plan.isManagedIntercomAllowed,
+            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
           },
           dataSources: {
             count: plan.maxDataSourcesCount,
@@ -196,10 +207,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
 /**
  * Internal function to create a PlanInvitation for the workspace.
  */
-export const pokeInviteWorkspaceToEnterprisePlan = async (
+export const pokeUpgradeOrInviteWorkspaceToPlan = async (
   auth: Authenticator,
   planCode: string
-): Promise<PlanInvitationType> => {
+): Promise<PlanInvitationType | void> => {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find workspace}");
@@ -224,6 +235,15 @@ export const pokeInviteWorkspaceToEnterprisePlan = async (
     throw new Error(
       `Cannot subscribe to plan ${planCode}: already subscribed.`
     );
+  }
+
+  // If plan is a free plan, we subscribe immediately no need for an invitation
+  if (plan.billingType === "free" && plan.stripeProductId === null) {
+    await internalSubscribeWorkspaceToFreeUpgradedPlan({
+      workspaceId: owner.sId,
+      planCode: plan.code,
+    });
+    return;
   }
 
   const invitation = await getPlanInvitation(auth);
@@ -326,11 +346,13 @@ export const getCheckoutUrlForUpgrade = async (
           maxMessages: plan.maxMessages,
         },
         connections: {
+          isConfluenceAllowed: plan.isManagedConfluenceAllowed,
           isSlackAllowed: plan.isManagedSlackAllowed,
           isNotionAllowed: plan.isManagedNotionAllowed,
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
           isGithubAllowed: plan.isManagedGithubAllowed,
           isIntercomAllowed: plan.isManagedIntercomAllowed,
+          isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
         },
         dataSources: {
           count: plan.maxDataSourcesCount,

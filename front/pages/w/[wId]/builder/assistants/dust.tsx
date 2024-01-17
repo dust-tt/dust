@@ -7,12 +7,15 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { DataSourceType } from "@dust-tt/types";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type {
+  APIError,
+  DataSourceType,
+  LightAgentConfigurationType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
 
@@ -22,6 +25,7 @@ import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -90,7 +94,9 @@ export default function EditDustAssistant({
     return null;
   }
 
-  const handleToggleAgentStatus = async (agent: AgentConfigurationType) => {
+  const handleToggleAgentStatus = async (
+    agent: LightAgentConfigurationType
+  ) => {
     if (agent.status === "disabled_missing_datasource") {
       sendNotification({
         title: "Dust Assistant",
@@ -224,12 +230,7 @@ export default function EditDustAssistant({
                     {sortedDatasources.map((ds) => (
                       <ContextItem
                         key={ds.id}
-                        title={
-                          ds.connectorProvider
-                            ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                                .name
-                            : ds.name
-                        }
+                        title={getDisplayNameForDataSource(ds)}
                         visual={
                           <ContextItem.Visual
                             visual={

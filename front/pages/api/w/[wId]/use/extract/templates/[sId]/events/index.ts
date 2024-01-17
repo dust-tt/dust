@@ -1,6 +1,6 @@
-import { ExtractedEventType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { ExtractedEventType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getExtractedEvents } from "@app/lib/api/extract";
 import { getEventSchema } from "@app/lib/api/extract";

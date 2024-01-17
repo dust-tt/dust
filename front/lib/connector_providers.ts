@@ -1,11 +1,12 @@
 import {
   DriveLogo,
   GithubLogo,
+  GlobeAltIcon,
   IntercomLogo,
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
@@ -13,18 +14,32 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: string;
     connectorProvider: ConnectorProvider;
     isBuilt: boolean;
-    logoPath: string;
+    hide: boolean;
     logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
     description: string;
     limitations: string | null;
     isNested: boolean;
+    dustWorkspaceOnly?: boolean;
   }
 > = {
+  confluence: {
+    name: "Confluence",
+    connectorProvider: "confluence",
+    isBuilt: true,
+    hide: false,
+    description:
+      "Grant tailored access to your organization's Confluence shared spaces.",
+    limitations: null,
+    // TODO(2023-10-01 flav) Debug SSR hydration issue with ConfluenceLogo.
+    logoComponent: IntercomLogo,
+    isNested: false,
+    dustWorkspaceOnly: true,
+  },
   notion: {
     name: "Notion",
     connectorProvider: "notion",
     isBuilt: true,
-    logoPath: "/static/notion_32x32.png",
+    hide: false,
     description:
       "Authorize granular access to your company's Notion workspace, by top-level pages.",
     limitations: "External files and content behind links are not indexed.",
@@ -35,11 +50,11 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Google Drive™",
     connectorProvider: "google_drive",
     isBuilt: true,
-    logoPath: "/static/google_drive_32x32.png",
+    hide: false,
     description:
       "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexation.",
     limitations:
-      "Files with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at team@dust.tt to enable PDF indexing.",
+      "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at team@dust.tt to enable PDF indexing.",
     logoComponent: DriveLogo,
     isNested: true,
   },
@@ -47,7 +62,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Slack",
     connectorProvider: "slack",
     isBuilt: true,
-    logoPath: "/static/slack_32x32.png",
+    hide: false,
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
@@ -58,7 +73,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "GitHub",
     connectorProvider: "github",
     isBuilt: true,
-    logoPath: "/static/github_black_32x32.png",
+    hide: false,
     description:
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexation is coming soon.",
     limitations:
@@ -70,11 +85,21 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Intercom",
     connectorProvider: "intercom",
     isBuilt: false,
-    logoPath: "/static/intercom_32x32.png",
+    hide: false,
     description:
-      "Authorize granular access to your company's Intercom Help Centers. Dust does not access your conversations.",
+      "Authorize access to your Intercom Help Center Collections & Articles. Conversations coming soon.",
     limitations: null,
     logoComponent: IntercomLogo,
-    isNested: false,
+    isNested: true,
+  },
+  webcrawler: {
+    name: "Web Crawler",
+    connectorProvider: "webcrawler",
+    isBuilt: true,
+    hide: true,
+    description: "Crawl a website.",
+    limitations: null,
+    logoComponent: GlobeAltIcon,
+    isNested: true,
   },
 };

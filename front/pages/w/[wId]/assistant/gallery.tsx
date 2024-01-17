@@ -1,14 +1,14 @@
 import { Button, DropdownMenu, Page, Searchbar, Tab } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
   AgentsGetViewType,
-  assertNever,
+  LightAgentConfigurationType,
   PlanType,
   SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { assertNever } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -102,7 +102,7 @@ export default function AssistantsGallery({
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
-  let agentsToDisplay: AgentConfigurationType[] = [];
+  let agentsToDisplay: LightAgentConfigurationType[] = [];
 
   switch (orderBy) {
     case "name": {
@@ -147,11 +147,10 @@ export default function AssistantsGallery({
       assertNever(orderBy);
   }
 
-  const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
-    null
-  );
+  const [showDetails, setShowDetails] =
+    useState<LightAgentConfigurationType | null>(null);
   const [testModalAssistant, setTestModalAssistant] =
-    useState<AgentConfigurationType | null>(null);
+    useState<LightAgentConfigurationType | null>(null);
 
   const tabs = [
     {

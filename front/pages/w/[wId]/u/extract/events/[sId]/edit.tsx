@@ -1,9 +1,9 @@
 import { ArrowUpOnSquareIcon, Button, Page } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 

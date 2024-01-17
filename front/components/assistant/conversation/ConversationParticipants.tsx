@@ -1,5 +1,5 @@
 import { Avatar } from "@dust-tt/sparkle";
-import { ConversationType } from "@dust-tt/types";
+import type { ConversationType } from "@dust-tt/types";
 import React from "react";
 
 export function ConversationParticipants({

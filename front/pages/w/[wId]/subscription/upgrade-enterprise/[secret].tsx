@@ -1,4 +1,4 @@
-import { GetServerSideProps } from "next";
+import type { GetServerSideProps } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";

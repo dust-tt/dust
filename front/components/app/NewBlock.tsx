@@ -1,6 +1,6 @@
 import { Button } from "@dust-tt/sparkle";
-import { SpecificationType, WorkspaceType } from "@dust-tt/types";
-import { BlockType } from "@dust-tt/types";
+import type { SpecificationType, WorkspaceType } from "@dust-tt/types";
+import type { BlockType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
@@ -103,16 +103,16 @@ export default function NewBlock({
   if (isActivatedStructuredDB(owner)) {
     blocks.push(
       {
-        type: "database",
-        typeNames: ["database"],
-        name: "Database",
-        description: "Query a database.",
-      },
-      {
         type: "database_schema",
         typeNames: ["database_schema"],
         name: "Database Schema",
         description: "Retrieve the schema of a database.",
+      },
+      {
+        type: "database",
+        typeNames: ["database"],
+        name: "Database",
+        description: "Query a database.",
       }
     );
   }

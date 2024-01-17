@@ -1,11 +1,11 @@
-import {
-  AgentConfigurationType,
+import type {
   AgentRecentAuthors,
+  LightAgentConfigurationType,
   UserType,
 } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 
@@ -129,7 +129,7 @@ export async function getAgentRecentAuthors(
     agent,
     auth,
   }: {
-    agent: AgentConfigurationType;
+    agent: LightAgentConfigurationType;
     auth: Authenticator;
   },
   members: UserType[]
@@ -171,7 +171,7 @@ export async function agentConfigurationWasUpdatedBy({
   agent,
   auth,
 }: {
-  agent: AgentConfigurationType;
+  agent: LightAgentConfigurationType;
   auth: Authenticator;
 }) {
   const owner = auth.workspace();

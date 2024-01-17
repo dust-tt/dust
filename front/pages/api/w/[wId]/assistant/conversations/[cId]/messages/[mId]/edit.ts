@@ -1,9 +1,10 @@
-import { isUserMessageType, UserMessageType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { UserMessageType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { isUserMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";

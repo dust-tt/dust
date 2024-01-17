@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   Button,
   Chip,
   ExternalLinkIcon,
@@ -6,9 +7,9 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect } from "react";
@@ -22,6 +23,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  isUpgraded,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
@@ -130,7 +132,7 @@ export default function Subscription({
         if (content.checkoutUrl) {
           await router.push(content.checkoutUrl);
         } else if (content.success) {
-          await router.reload(); // We cannot swr the plan so we just reload the page.
+          router.reload(); // We cannot swr the plan so we just reload the page.
         }
       }
     });
@@ -165,9 +167,9 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = plan.code === FREE_TEST_PLAN_CODE ? "emerald" : "sky";
+  const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
 
-  const onClickProPlan = async () => await handleSubscribePlan();
+  const onClickProPlan = async () => handleSubscribePlan();
   const onClickEnterprisePlan = () => {
     window.open("mailto:team@dust.tt?subject=Upgrading to Enteprise plan");
   };
@@ -215,12 +217,24 @@ export default function Subscription({
                     <Page.H variant="h5">Payment, invoicing & billing</Page.H>
                     <div className="pt-2">
                       <Button
-                        icon={ExternalLinkIcon}
+                        icon={
+                          subscription.paymentFailingSince
+                            ? ArrowPathIcon
+                            : ExternalLinkIcon
+                        }
                         size="sm"
-                        variant="secondary"
-                        label="Visit Dust's dashboard on Stripe"
+                        variant={
+                          subscription.paymentFailingSince
+                            ? "secondaryWarning"
+                            : "secondary"
+                        }
+                        label={
+                          subscription.paymentFailingSince
+                            ? "Update your payment method"
+                            : "Visit Dust's dashboard on Stripe"
+                        }
                         disabled={isProcessing}
-                        onClick={async () => await handleGoToStripePortal()}
+                        onClick={async () => handleGoToStripePortal()}
                       />
                     </div>
                   </>

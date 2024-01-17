@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
@@ -7,11 +7,12 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { APIErrorWithStatusCode } from "@connectors/lib/error";
+import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
 import { Ok } from "@connectors/lib/result";
-import logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 type SlackWebhookReqBody = {
@@ -39,13 +40,27 @@ type SlackWebhookResBody =
   | null
   | APIErrorWithStatusCode;
 
-async function handleChatBot(req: Request, res: Response) {
-  const slackMessage = req.body.event.text;
+async function handleChatBot(req: Request, res: Response, logger: Logger) {
+  const { event } = req.body;
+
+  const slackMessage = event.text;
   const slackTeamId = req.body.team_id;
-  const slackChannel = req.body.event.channel;
-  const slackUserId = req.body.event.user;
-  const slackMessageTs = req.body.event.ts;
-  const slackThreadTs = req.body.event.thread_ts || null;
+  const slackChannel = event.channel;
+  const slackUserId = event.user;
+  const slackMessageTs = event.ts;
+  const slackThreadTs = event.thread_ts || null;
+
+  logger.info(
+    {
+      event: {
+        channel: slackChannel,
+        teamId: slackTeamId,
+        userId: slackUserId,
+      },
+    },
+    "Processing app mention"
+  );
+
   if (
     !slackMessage ||
     !slackTeamId ||
@@ -102,6 +117,7 @@ const _webhookSlackAPIHandler = async (
   }
 
   if (req.body.type === "event_callback") {
+    const { team_id: teamId } = req.body;
     if (!req.body.team_id) {
       return apiError(req, res, {
         api_error: {
@@ -111,31 +127,48 @@ const _webhookSlackAPIHandler = async (
         status_code: 400,
       });
     }
+
+    const logger = mainLogger.child({
+      connectorType: "slack",
+      slackTeamId: teamId,
+    });
+
     const slackConfigurations = await SlackConfiguration.findAll({
       where: {
-        slackTeamId: req.body.team_id,
+        slackTeamId: teamId,
       },
     });
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {
           type: "connector_configuration_not_found",
-          message: `Slack configuration not found for teamId ${req.body.team_id}`,
+          message: `Slack configuration not found for teamId ${teamId}`,
         },
         status_code: 404,
       });
     }
 
-    switch (req.body.event?.type) {
+    const { event } = req.body;
+    logger.info(
+      {
+        event: {
+          type: event?.type,
+          channelType: event?.channel_type,
+        },
+      },
+      "Processing webhook event"
+    );
+
+    switch (event?.type) {
       case "app_mention": {
-        await handleChatBot(req, res);
+        await handleChatBot(req, res, logger);
         break;
       }
       /**
        * `message` handler.
        */
       case "message": {
-        if (!req.body.team_id) {
+        if (!teamId) {
           return apiError(req, res, {
             api_error: {
               type: "invalid_request_error",
@@ -144,15 +177,15 @@ const _webhookSlackAPIHandler = async (
             status_code: 400,
           });
         }
-        if (req.body.event?.channel_type === "im") {
+        if (event?.channel_type === "im") {
           //Got a private message
-          if (req.body.event.subtype === "message_changed") {
+          if (event.subtype === "message_changed") {
             // Ignore message_changed events in private messages
             return res.status(200).send();
           }
           const slackConfig = await SlackConfiguration.findOne({
             where: {
-              slackTeamId: req.body.team_id,
+              slackTeamId: teamId,
               botEnabled: true,
             },
           });
@@ -160,7 +193,7 @@ const _webhookSlackAPIHandler = async (
             return apiError(req, res, {
               api_error: {
                 type: "connector_configuration_not_found",
-                message: `Slack configuration not found for teamId ${req.body.team_id}. Are you sure the bot is not enabled?`,
+                message: `Slack configuration not found for teamId ${teamId}. Are you sure the bot is not enabled?`,
               },
               status_code: 404,
             });
@@ -177,15 +210,15 @@ const _webhookSlackAPIHandler = async (
           }
 
           const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
-          if (req.body.event?.user === myUserId) {
+          if (event?.user === myUserId) {
             // Message sent from the bot itself.
             return res.status(200).send();
           }
           // Message from an actual user (a human)
-          await handleChatBot(req, res);
+          await handleChatBot(req, res, logger);
           break;
-        } else if (req.body.event?.channel_type === "channel") {
-          if (!req.body.event?.channel) {
+        } else if (event?.channel_type === "channel") {
+          if (!event?.channel) {
             return apiError(req, res, {
               api_error: {
                 type: "invalid_request_error",
@@ -195,11 +228,11 @@ const _webhookSlackAPIHandler = async (
             });
           }
 
-          const channel = req.body.event.channel;
+          const channel = event.channel;
           let err: Error | null = null;
 
-          if (req.body.event?.thread_ts) {
-            const thread_ts = req.body.event.thread_ts;
+          if (event?.thread_ts) {
+            const thread_ts = event.thread_ts;
             const results = await Promise.all(
               slackConfigurations.map(async (c) => {
                 const slackChannel = await SlackChannel.findOne({
@@ -241,8 +274,8 @@ const _webhookSlackAPIHandler = async (
                 err = r.error;
               }
             }
-          } else if (req.body.event?.ts) {
-            const ts = req.body.event.ts;
+          } else if (event?.ts) {
+            const ts = event.ts;
             const results = await Promise.all(
               slackConfigurations.map(async (c) => {
                 const slackChannel = await SlackChannel.findOne({
@@ -305,11 +338,12 @@ const _webhookSlackAPIHandler = async (
           } else {
             logger.info(
               {
-                type: req.body.event.type,
-                channel: req.body.event.channel,
-                ts: req.body.event.ts,
-                thread_ts: req.body.event.thread_ts,
-                user: req.body.event.user,
+                type: event.type,
+                channel: event.channel,
+                ts: event.ts,
+                thread_ts: event.thread_ts,
+                user: event.user,
+                slackTeamId: teamId,
               },
               `Successfully processed Slack Webhook`
             );
@@ -324,7 +358,7 @@ const _webhookSlackAPIHandler = async (
        */
       case "channel_left":
       case "channel_deleted": {
-        if (!req.body.event?.channel) {
+        if (!event?.channel) {
           return apiError(req, res, {
             api_error: {
               type: "invalid_request_error",
@@ -359,7 +393,7 @@ const _webhookSlackAPIHandler = async (
         } else {
           logger.info(
             {
-              type: req.body.event.type,
+              type: event.type,
             },
             `Successfully processed Slack Webhook`
           );

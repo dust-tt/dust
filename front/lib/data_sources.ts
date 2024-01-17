@@ -1,36 +1,7 @@
-import { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
+import type { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
-export function getProviderLogoPathForDataSource(
-  ds: DataSourceType
-): string | null {
-  const provider = ds.connectorProvider;
-
-  if (!provider) {
-    return null;
-  }
-
-  switch (provider) {
-    case "notion":
-      return `/static/notion_32x32.png`;
-
-    case "slack":
-      return `/static/slack_32x32.png`;
-
-    case "github":
-      return `/static/github_black_32x32.png`;
-    case "google_drive":
-      return `/static/google_drive_32x32.png`;
-    case "intercom":
-      return `/static/intercom_32x32.png`;
-    default:
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ((_provider: never) => {
-        // cannot happen
-        // this is to make sure we handle all cases
-      })(provider);
-      return null;
-  }
-}
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
@@ -39,4 +10,25 @@ export function getDisplayNameForDocument(document: CoreAPIDocument): string {
     return document.document_id;
   }
   return titleTag.substring(titleTagPrefix.length);
+}
+
+export function getDisplayNameForDataSource(ds: DataSourceType) {
+  if (ds.connectorProvider) {
+    switch (ds.connectorProvider) {
+      case "confluence":
+      case "slack":
+      case "google_drive":
+      case "github":
+      case "intercom":
+      case "notion":
+        return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
+        break;
+      case "webcrawler":
+        return ds.name;
+      default:
+        assertNever(ds.connectorProvider);
+    }
+  } else {
+    return ds.name;
+  }
 }

@@ -1,4 +1,4 @@
-import {
+import type {
   AgentMessageType,
   ConversationType,
   GenerationTokensEvent,
@@ -7,8 +7,8 @@ import {
   UserMessageContext,
   UserMessageType,
 } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
-import {
+import type { Result } from "@dust-tt/types";
+import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -16,15 +16,16 @@ import {
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
-import {
+import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { rateLimiter } from "@dust-tt/types";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models";
 import { redisClient } from "@app/lib/redis";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -55,6 +56,9 @@ export async function postUserMessageWithPubSub(
   let rateLimitKey: string | undefined = "";
   if (auth.user()?.id) {
     maxPerTimeframe = 50;
+    if (auth.isUpgraded()) {
+      maxPerTimeframe = 200;
+    }
     timeframeSeconds = 60 * 60 * 3;
     rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
   } else {
@@ -157,8 +161,8 @@ async function handleUserMessageEvents(
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":
-              case "database_query_params":
-              case "database_query_output":
+              case "tables_query_params":
+              case "tables_query_output":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
@@ -282,8 +286,8 @@ export async function retryAgentMessageWithPubSub(
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":
-              case "database_query_params":
-              case "database_query_output":
+              case "tables_query_params":
+              case "tables_query_output":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":

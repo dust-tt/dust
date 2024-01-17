@@ -1,9 +1,10 @@
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
-import { DustAPICredentials } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
-import { APIErrorWithStatusCode } from "@dust-tt/types";
-import {
+import type { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { DustAPICredentials } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import type { APIErrorWithStatusCode } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import type {
   GetServerSidePropsContext,
   NextApiRequest,
   NextApiResponse,
@@ -19,7 +20,9 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
-import { FREE_TEST_PLAN_DATA, PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
@@ -73,7 +76,7 @@ export class Authenticator {
   static async fromSession(session: any, wId: string): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       (async () => {
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             sId: wId,
           },
@@ -83,7 +86,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return await User.findOne({
+          return User.findOne({
             where: {
               provider: session.provider.provider,
               providerId: session.provider.id.toString(),
@@ -140,7 +143,7 @@ export class Authenticator {
         if (!wId) {
           return null;
         }
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             sId: wId,
           },
@@ -150,7 +153,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return await User.findOne({
+          return User.findOne({
             where: {
               provider: session.provider.provider,
               providerId: session.provider.id.toString(),
@@ -186,14 +189,14 @@ export class Authenticator {
   ): Promise<{ auth: Authenticator; keyWorkspaceId: string }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             sId: wId,
           },
         });
       })(),
       (async () => {
-        return await Workspace.findOne({
+        return Workspace.findOne({
           where: {
             id: key.workspaceId,
           },
@@ -326,6 +329,10 @@ export class Authenticator {
     return this._subscription ? this._subscription.plan : null;
   }
 
+  isUpgraded(): boolean {
+    return isUpgraded(this.plan());
+  }
+
   /**
    * This is a convenience method to get the user from the Authenticator. The returned UserType
    * object won't have the user's workspaces set.
@@ -366,7 +373,7 @@ export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<any> {
-  return await getServerSession(req, res, authOptions);
+  return getServerSession(req, res, authOptions);
 }
 
 /**
@@ -519,6 +526,7 @@ export async function subscriptionForWorkspace(
       "stripeCustomerId",
       "startDate",
       "endDate",
+      "paymentFailingSince",
     ],
     where: { workspaceId: w.id, status: "active" },
     include: [
@@ -558,6 +566,8 @@ export async function subscriptionForWorkspace(
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,
     startDate: startDate?.getTime() || null,
     endDate: endDate?.getTime() || null,
+    paymentFailingSince:
+      activeSubscription?.paymentFailingSince?.getTime() || null,
     plan: {
       code: plan.code,
       name: plan.name,
@@ -569,11 +579,13 @@ export async function subscriptionForWorkspace(
           maxMessages: plan.maxMessages,
         },
         connections: {
+          isConfluenceAllowed: plan.isManagedConfluenceAllowed,
           isSlackAllowed: plan.isManagedSlackAllowed,
           isNotionAllowed: plan.isManagedNotionAllowed,
           isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
           isGithubAllowed: plan.isManagedGithubAllowed,
           isIntercomAllowed: plan.isManagedIntercomAllowed,
+          isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
         },
         dataSources: {
           count: plan.maxDataSourcesCount,

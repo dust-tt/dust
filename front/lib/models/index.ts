@@ -1,9 +1,5 @@
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
-  AgentDatabaseQueryAction,
-  AgentDatabaseQueryConfiguration,
-} from "@app/lib/models/assistant/actions/database_query";
-import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
@@ -14,6 +10,10 @@ import {
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
+import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+} from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
@@ -41,13 +41,11 @@ import {
   Membership,
   MembershipInvitation,
   Workspace,
+  WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
-import { XP1Run, XP1User } from "@app/lib/models/xp1";
 
 export {
   AgentConfiguration,
-  AgentDatabaseQueryAction,
-  AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
@@ -55,6 +53,8 @@ export {
   AgentMessage,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
   App,
   Clone,
   Conversation,
@@ -82,6 +82,5 @@ export {
   UserMessage,
   UserMetadata,
   Workspace,
-  XP1Run,
-  XP1User,
+  WorkspaceHasDomain,
 };

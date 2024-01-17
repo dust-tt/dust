@@ -1,16 +1,16 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { WorkspaceType } from "@dust-tt/types";
-import {
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { BlockType, RunType } from "@dust-tt/types";
+import type { BlockType, RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
-import DatabasePicker from "@app/components/database/DatabasePicker";
+import TablePicker from "@app/components/tables/TablePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
@@ -70,18 +70,19 @@ export default function Database({
         <div className="flex flex-col flex-col gap-2 pt-4 xl:flex-row">
           <div className="flex flex-col xl:flex-row xl:space-x-2">
             <div className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-              Database:
+              Table:
             </div>
             <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
               <DataSourcePicker
                 owner={owner}
                 readOnly={readOnly}
                 currentDataSources={
-                  block.config.database?.data_source_id
+                  block.config.tables?.[0]
                     ? [
                         {
-                          data_source_id: block.config.database.data_source_id,
-                          workspace_id: block.config.database.workspace_id,
+                          data_source_id:
+                            block.config.tables?.[0].data_source_id,
+                          workspace_id: block.config.tables?.[0].workspace_id,
                         },
                       ]
                     : []
@@ -92,7 +93,10 @@ export default function Database({
                   }
                   const ds = dataSources[0];
                   const b = shallowBlockClone(block);
-                  b.config.database = {
+                  if (!b.config.tables) {
+                    b.config.tables = [];
+                  }
+                  b.config.tables[0] = {
                     workspace_id: ds.workspace_id,
                     data_source_id: ds.data_source_id,
                   };
@@ -101,20 +105,20 @@ export default function Database({
               />
             </div>
           </div>
-          {block.config.database?.data_source_id && (
+          {block.config.tables?.[0] && (
             <div className="flex flex-col xl:flex-row xl:space-x-2">
               <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                <DatabasePicker
+                <TablePicker
                   owner={owner}
                   dataSource={{
-                    workspace_id: block.config.database.workspace_id,
-                    data_source_id: block.config.database.data_source_id,
+                    workspace_id: block.config.tables?.[0].workspace_id,
+                    data_source_id: block.config.tables?.[0].data_source_id,
                   }}
                   readOnly={readOnly}
-                  currentDatabaseId={block.config.database?.database_id}
-                  onDatabaseUpdate={(database) => {
+                  currentTableId={block.config.tables?.[0].table_id}
+                  onTableUpdate={(table) => {
                     const b = shallowBlockClone(block);
-                    b.config.database.database_id = database.database_id;
+                    block.config.tables[0].table_id = table.table_id;
                     onBlockUpdate(b);
                   }}
                 />
@@ -122,7 +126,7 @@ export default function Database({
             </div>
           )}
         </div>
-        {block.config.database?.database_id && (
+        {block.config.tables?.[0].table_id && (
           <div>
             <div className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
               query:

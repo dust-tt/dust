@@ -1,0 +1,2 @@
+DELETE FROM databases_rows;
+DROP TABLE databases_rows;

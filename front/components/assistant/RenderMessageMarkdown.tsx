@@ -4,12 +4,13 @@ import {
   IconButton,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { AgentConfigurationType } from "@dust-tt/types";
-import { RetrievalDocumentType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type { RetrievalDocumentType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
-import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { ReactMarkdownProps } from "react-markdown/lib/complex-types";
+import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import {
@@ -163,7 +164,7 @@ export function RenderMessageMarkdown({
 }: {
   content: string;
   blinkingCursor: boolean;
-  agentConfigurations?: AgentConfigurationType[];
+  agentConfigurations?: LightAgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
   return (
@@ -261,7 +262,7 @@ function MentionBlock({
   agentConfiguration,
 }: {
   agentName: string;
-  agentConfiguration?: AgentConfigurationType;
+  agentConfiguration?: LightAgentConfigurationType;
 }) {
   const statusText =
     !agentConfiguration || agentConfiguration?.status === "archived"
@@ -538,9 +539,9 @@ function LiBlock({ children }: { children: React.ReactNode }) {
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return (
-    <p className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
       {children}
-    </p>
+    </div>
   );
 }
 

@@ -1,12 +1,12 @@
-import { CredentialsType } from "@dust-tt/types";
-import { RunType } from "@dust-tt/types";
+import type { CredentialsType } from "@dust-tt/types";
+import type { RunType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";

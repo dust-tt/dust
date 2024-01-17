@@ -6,8 +6,11 @@ import {
   DocumentTextIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { ConnectorPermission, ConnectorResourceType } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ConnectorResourceType,
+} from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 

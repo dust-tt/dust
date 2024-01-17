@@ -6,9 +6,9 @@ import {
   CubeIcon,
   DocumentTextIcon,
 } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { AppType, SpecificationType } from "@dust-tt/types";
-import { RunConfig, RunType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { AppType, SpecificationType } from "@dust-tt/types";
+import type { RunConfig, RunType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";

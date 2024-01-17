@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
 /**
  * This type represents the permission associated with a ConnectorResource. For now the only

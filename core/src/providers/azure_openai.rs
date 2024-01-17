@@ -17,7 +17,7 @@ use hyper::header;
 use hyper::{body::Buf, http::StatusCode, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::prelude::*;
@@ -179,7 +179,7 @@ impl AzureOpenAILLM {
         .parse::<Uri>()?)
     }
 
-    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
                 "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
@@ -606,7 +606,7 @@ impl AzureOpenAIEmbedder {
         .parse::<Uri>()?)
     }
 
-    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
                 "text-embedding-ada-002" => cl100k_base_singleton(),

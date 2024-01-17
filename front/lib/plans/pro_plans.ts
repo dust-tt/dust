@@ -1,4 +1,4 @@
-import { Attributes } from "sequelize";
+import type { Attributes } from "sequelize";
 
 import { isDevelopment } from "@app/lib/development";
 import { Plan } from "@app/lib/models";
@@ -37,10 +37,13 @@ if (isDevelopment()) {
     maxUsersInWorkspace: 1000,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
+    // TODO(2024-01-10 flav) Set to `true` once released.
+    isManagedConfluenceAllowed: false,
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
     isManagedIntercomAllowed: true,
+    isManagedWebCrawlerAllowed: true,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,

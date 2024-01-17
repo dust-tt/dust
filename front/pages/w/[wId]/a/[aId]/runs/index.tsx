@@ -1,9 +1,9 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { RunRunType, RunStatus } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { RunRunType, RunStatus } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";

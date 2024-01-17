@@ -5,18 +5,25 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import {
+import type {
   AgentConfigurationType,
   DataSourceType,
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
+  LightAgentConfigurationType,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanInvitationType, PlanType, SubscriptionType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  PlanInvitationType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
+import {
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+} from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
@@ -31,6 +38,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
@@ -44,8 +52,9 @@ export const getServerSideProps: GetServerSideProps<{
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
   agentConfigurations: AgentConfigurationType[];
-  slackbotEnabled?: boolean;
-  gdrivePDFEnabled?: boolean;
+  slackBotEnabled: boolean;
+  gdrivePDFEnabled: boolean;
+  githubCodeSyncEnabled: boolean;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
   const wId = context.params?.wId;
@@ -84,8 +93,13 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   const dataSources = await getDataSources(auth);
+
   const agentConfigurations = (
-    await getAgentConfigurations(auth, "admin_internal")
+    await getAgentConfigurations({
+      auth,
+      agentsGetView: "admin_internal",
+      variant: "full",
+    })
   ).filter(
     (a) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
@@ -126,36 +140,70 @@ export const getServerSideProps: GetServerSideProps<{
     })
   );
 
-  // Get slackbot enabled status
-  const slackConnectorId = dataSources.find(
-    (ds) => ds.connectorProvider === "slack"
-  )?.connectorId;
+  const [slackBotEnabled, gdrivePDFEnabled, githubCodeSyncEnabled] =
+    await Promise.all([
+      // Get slackbot enabled status
+      (async () => {
+        const slackConnectorId = dataSources.find(
+          (ds) => ds.connectorProvider === "slack"
+        )?.connectorId;
+        let slackBotEnabled = false;
+        if (slackConnectorId) {
+          const botEnabledRes = await connectorsAPI.getConnectorConfig(
+            slackConnectorId,
+            "botEnabled"
+          );
+          if (botEnabledRes.isErr()) {
+            throw botEnabledRes.error;
+          }
+          slackBotEnabled = botEnabledRes.value.configValue === "true";
+        }
+        return slackBotEnabled;
+      })(),
+      // Get Gdrive PDF enabled status
+      (async () => {
+        const gdriveConnectorId = dataSources.find(
+          (ds) => ds.connectorProvider === "google_drive"
+        )?.connectorId;
 
-  let slackbotEnabled = false;
-  if (slackConnectorId) {
-    const botEnabledRes = await connectorsAPI.getBotEnabled(slackConnectorId);
-    if (botEnabledRes.isErr()) {
-      throw botEnabledRes.error;
-    }
-    slackbotEnabled = botEnabledRes.value.botEnabled;
-  }
-  // Get Gdrive PDF enabled status
-  const gdriveConnectorId = dataSources.find(
-    (ds) => ds.connectorProvider === "google_drive"
-  )?.connectorId;
+        let gdrivePDFEnabled = false;
+        if (gdriveConnectorId) {
+          const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
+            gdriveConnectorId,
+            "pdfEnabled"
+          );
+          if (gdrivePDFEnabledRes.isErr()) {
+            throw gdrivePDFEnabledRes.error;
+          }
+          gdrivePDFEnabled =
+            gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
+        }
+        return gdrivePDFEnabled;
+      })(),
+      // Get Github Code Sync enabled status
+      (async () => {
+        const githubConnectorId = dataSources.find(
+          (ds) => ds.connectorProvider === "github"
+        )?.connectorId;
 
-  let gdrivePDFEnabled = false;
-  if (gdriveConnectorId) {
-    const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
-      gdriveConnectorId,
-      "pdfEnabled"
-    );
-    if (gdrivePDFEnabledRes.isErr()) {
-      throw gdrivePDFEnabledRes.error;
-    }
-    gdrivePDFEnabled =
-      gdrivePDFEnabledRes.value.configValue === "true" ? true : false;
-  }
+        let githubCodeSyncEnabled = false;
+        if (githubConnectorId) {
+          const githubConnectorEnabledRes =
+            await connectorsAPI.getConnectorConfig(
+              githubConnectorId,
+              "codeSyncEnabled"
+            );
+          if (githubConnectorEnabledRes.isErr()) {
+            throw githubConnectorEnabledRes.error;
+          }
+          githubCodeSyncEnabled =
+            githubConnectorEnabledRes.value.configValue === "true"
+              ? true
+              : false;
+        }
+        return githubCodeSyncEnabled;
+      })(),
+    ]);
 
   const planInvitation = await getPlanInvitation(auth);
 
@@ -166,9 +214,10 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       planInvitation: planInvitation ?? null,
       dataSources,
-      agentConfigurations,
-      slackbotEnabled,
+      agentConfigurations: agentConfigurations,
+      slackBotEnabled,
       gdrivePDFEnabled,
+      githubCodeSyncEnabled,
       dataSourcesSynchronizedAgo: synchronizedAgoByDsName,
     },
   };
@@ -180,8 +229,9 @@ const WorkspacePage = ({
   planInvitation,
   dataSources,
   agentConfigurations,
-  slackbotEnabled,
+  slackBotEnabled,
   gdrivePDFEnabled,
+  githubCodeSyncEnabled,
   dataSourcesSynchronizedAgo,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -204,7 +254,7 @@ const WorkspacePage = ({
       if (!r.ok) {
         throw new Error("Failed to upgrade workspace.");
       }
-      await router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while upgrading the workspace.");
@@ -225,7 +275,7 @@ const WorkspacePage = ({
       if (!r.ok) {
         throw new Error("Failed to downgrade workspace.");
       }
-      await router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while downgrading the workspace.");
@@ -274,7 +324,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to delete data source.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while deleting the data source.");
@@ -297,7 +347,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to update workspace.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while updating the workspace.");
@@ -306,7 +356,7 @@ const WorkspacePage = ({
   );
 
   const { submit: onAssistantArchive } = useSubmitFunction(
-    async (agentConfiguration: AgentConfigurationType) => {
+    async (agentConfiguration: LightAgentConfigurationType) => {
       if (
         !window.confirm(
           `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`
@@ -328,7 +378,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to archive agent configuration.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert(
@@ -373,14 +423,15 @@ const WorkspacePage = ({
   const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
     try {
       const r = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/bot_enabled`,
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            botEnabled: !slackbotEnabled,
+            configKey: "botEnabled",
+            botEnabled: `${!slackBotEnabled}`,
           }),
         }
       );
@@ -419,7 +470,32 @@ const WorkspacePage = ({
     }
   });
 
-  const { submit: onInviteToEnterprisePlan } = useSubmitFunction(
+  const { submit: onGithubCodeSyncToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-github/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "codeSyncEnabled",
+            configValue: `${!githubCodeSyncEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
+  const { submit: onUpgradeOrInviteToPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
         !window.confirm(
@@ -442,7 +518,7 @@ const WorkspacePage = ({
         if (!r.ok) {
           throw new Error("Failed to invite workspace to enterprise plan.");
         }
-        await router.reload();
+        router.reload();
       } catch (e) {
         console.error(e);
         window.alert("An error occurred while inviting to enterprise plan.");
@@ -535,7 +611,7 @@ const WorkspacePage = ({
               {plans && (
                 <div className="pt-8">
                   <Collapsible>
-                    <Collapsible.Button label="Invite to enterprise plan" />
+                    <Collapsible.Button label="Invite or Upgrade to plan" />
                     <Collapsible.Panel>
                       <div className="flex flex-col gap-2 pt-4">
                         {plans.map((p) => {
@@ -552,8 +628,12 @@ const WorkspacePage = ({
                             <div key={p.code}>
                               <Button
                                 variant="secondary"
-                                label={`${p.name} (${p.code})`}
-                                onClick={() => onInviteToEnterprisePlan(p)}
+                                label={
+                                  p.billingType === "free"
+                                    ? `Upgrade to free plan: ${p.code}`
+                                    : `Invite to paid plan: ${p.code}`
+                                }
+                                onClick={() => onUpgradeOrInviteToPlan(p)}
                                 disabled={[
                                   subscription.plan.code,
                                   planInvitation?.planCode ?? "",
@@ -578,7 +658,7 @@ const WorkspacePage = ({
                           variant="secondaryWarning"
                           onClick={onDowngrade}
                           disabled={
-                            subscription.plan.code === FREE_TEST_PLAN_CODE ||
+                            !isUpgraded(subscription.plan) ||
                             workspaceHasManagedDataSources
                           }
                         />
@@ -588,9 +668,7 @@ const WorkspacePage = ({
                           label="Upgrade to free upgraded plan"
                           variant="tertiary"
                           onClick={onUpgrade}
-                          disabled={
-                            subscription.plan.code !== FREE_TEST_PLAN_CODE
-                          }
+                          disabled={isUpgraded(subscription.plan)}
                         />
                       </div>
                     </div>
@@ -678,11 +756,11 @@ const WorkspacePage = ({
                     <div>
                       Slackbot enabled?{" "}
                       <span className="font-medium">
-                        {JSON.stringify(slackbotEnabled)}
+                        {JSON.stringify(slackBotEnabled)}
                       </span>
                     </div>
                     <SliderToggle
-                      selected={slackbotEnabled}
+                      selected={slackBotEnabled}
                       onClick={onSlackbotToggle}
                     />
                   </div>
@@ -701,6 +779,20 @@ const WorkspacePage = ({
                     />
                   </div>
                 )}
+                {ds.connectorProvider === "github" && (
+                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                    <div>
+                      Code sync enabled?{" "}
+                      <span className="font-medium">
+                        {JSON.stringify(githubCodeSyncEnabled)}
+                      </span>
+                    </div>
+                    <SliderToggle
+                      selected={githubCodeSyncEnabled}
+                      onClick={onGithubCodeSyncToggle}
+                    />
+                  </div>
+                )}
               </div>
             ))}
 
@@ -712,13 +804,18 @@ const WorkspacePage = ({
               >
                 <div className="flex items-center justify-between">
                   <h3 className="mb-2 text-lg font-semibold">{a.name}</h3>
-                  <Button
-                    label="Archive"
-                    variant="secondaryWarning"
-                    onClick={() => {
-                      void onAssistantArchive(a);
-                    }}
-                  />
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      label="Archive"
+                      variant="secondaryWarning"
+                      onClick={() => {
+                        void onAssistantArchive(a);
+                      }}
+                    />
+                    <Link href={`/poke/${owner.sId}/assistants/${a.sId}`}>
+                      <Button label="History" variant="secondary" />
+                    </Link>
+                  </div>
                 </div>
                 <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
                   {a.description}

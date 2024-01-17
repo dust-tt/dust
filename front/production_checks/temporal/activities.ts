@@ -2,6 +2,7 @@ import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
+import { checkNotionActiveWorkflows } from "@app/production_checks/checks/check_notion_active_workflows";
 import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
 import { nangoConnectionIdCleanupSlack } from "@app/production_checks/checks/nango_connection_id_cleanup_slack";
 import { scrubDeletedCoreDocumentVersionsCheck } from "@app/production_checks/checks/scrub_deleted_core_document_versions";
@@ -23,6 +24,11 @@ export async function runAllChecksActivity() {
       name: "scrub_deleted_core_document_versions",
       check: scrubDeletedCoreDocumentVersionsCheck,
       everyHour: 8,
+    },
+    {
+      name: "check_notion_active_workflows",
+      check: checkNotionActiveWorkflows,
+      everyHour: 1,
     },
   ];
   await runAllChecks(checks);

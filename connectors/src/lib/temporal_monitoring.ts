@@ -1,17 +1,23 @@
-import { Context } from "@temporalio/activity";
-import {
+import { isNangoError } from "@dust-tt/types";
+import type { Context } from "@temporalio/activity";
+import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
 import tracer from "dd-trace";
 
-import logger, { Logger } from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
+import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
-import { cancelWorkflow, getConnectorId } from "./temporal";
+import {
+  cancelWorkflow,
+  getConnectorId,
+  getDoNotCancelOnTokenRevoked,
+} from "./temporal";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -74,31 +80,28 @@ export class ActivityInboundLogInterceptor
             this.context.info.workflowExecution.runId
           );
 
-          return await next(input);
+          return next(input);
         }
       );
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
-      const maybeNangoError = err as {
-        code?: string;
-        status?: number;
-        config?: { url?: string };
-      };
+      error = err;
+
       if (
-        maybeNangoError.code === "ERR_BAD_RESPONSE" &&
-        maybeNangoError.status &&
-        [522, 502, 500].includes(maybeNangoError.status)
+        isNangoError(err) &&
+        [520, 522, 502, 500].includes(err.status) &&
+        err.config?.url?.includes("api.nango.dev")
       ) {
         this.logger.info(
           {
-            raw_json_error: JSON.stringify(maybeNangoError, null, 2),
+            raw_json_error: JSON.stringify(err, null, 2),
           },
           "Got 5xx Bad Response from external API"
         );
-        throw {
+        error = {
           __is_dust_error: true,
-          message: `Got ${maybeNangoError.status} Bad Response from Nango`,
+          message: `Got ${err.status} Bad Response from Nango`,
           type: "nango_5xx_bad_response",
         };
       }
@@ -111,11 +114,20 @@ export class ActivityInboundLogInterceptor
         if (connectorId) {
           await syncFailed(connectorId, "oauth_token_revoked");
 
-          this.logger.info("Cancelling workflow because of expired token.");
-          await cancelWorkflow(workflowId);
+          const doNotCancelOnTokenRevoked = await getDoNotCancelOnTokenRevoked(
+            workflowId
+          );
+          if (doNotCancelOnTokenRevoked) {
+            this.logger.info(
+              "Skipping cancelling workflow because of expired token."
+            );
+          } else {
+            // We cancel the workflow only if it's not a long running workflow
+            this.logger.info("Cancelling workflow because of expired token.");
+            await cancelWorkflow(workflowId);
+          }
         }
       }
-      error = err;
       throw err;
     } finally {
       const durationMs = new Date().getTime() - startTime.getTime();

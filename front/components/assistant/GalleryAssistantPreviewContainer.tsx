@@ -1,35 +1,34 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
   AgentUserListStatus,
+  LightAgentConfigurationType,
   PlanType,
-  PostOrPatchAgentConfigurationRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
-import {
-  NotificationType,
-  SendNotificationsContext,
-} from "@app/components/sparkle/Notification";
+import type { NotificationType } from "@app/components/sparkle/Notification";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isLargeModel } from "@app/lib/assistant";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewFlow = "personal" | "workspace";
 
 interface GalleryAssistantPreviewContainerProps {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   flow: AssistantPreviewFlow;
   onShowDetails: () => void;
   onUpdate: () => void;
   owner: WorkspaceType;
   plan: PlanType | null;
-  setTestModalAssistant?: (agentConfiguration: AgentConfigurationType) => void;
+  setTestModalAssistant?: (
+    agentConfiguration: LightAgentConfigurationType
+  ) => void;
 }
 
 const useAssistantUpdate = (
-  agentConfiguration: AgentConfigurationType,
+  agentConfiguration: LightAgentConfigurationType,
   owner: WorkspaceType,
   sendNotification: (notification: NotificationType) => void,
   onSuccess: (isAdded: boolean) => void,
@@ -44,32 +43,31 @@ const useAssistantUpdate = (
     const isAdding = action === "added";
     const url =
       flow === "workspace"
-        ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`
+        ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/scope`
         : `/api/w/${owner.sId}/members/me/agent_list_status`;
-    const method = flow === "workspace" ? "PATCH" : "POST";
 
-    const {
-      action: agentAction,
-      generation,
-      name,
-      description,
-      pictureUrl,
-    } = agentConfiguration;
+    const fullAssistantRes = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!fullAssistantRes.ok) {
+      throw new Error(
+        (await fullAssistantRes.json()).error.message ?? "Error fetching"
+      );
+    }
 
     const body:
-      | PostOrPatchAgentConfigurationRequestBody
+      | { scope: "workspace" | "published" }
       | PostAgentListStatusRequestBody =
       flow === "workspace"
         ? {
-            assistant: {
-              action: agentAction,
-              description,
-              generation,
-              name,
-              pictureUrl,
-              scope,
-              status: "active",
-            },
+            scope,
           }
         : {
             agentId: agentConfiguration.sId,
@@ -78,7 +76,7 @@ const useAssistantUpdate = (
 
     try {
       const response = await fetch(url, {
-        method,
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -123,7 +121,7 @@ export function GalleryAssistantPreviewContainer({
 
   // Function to determine if the assistant is added based on the flow and configuration.
   const determineIfAdded = (
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: LightAgentConfigurationType,
     currentFlow: AssistantPreviewFlow
   ) => {
     return currentFlow === "personal"
@@ -176,7 +174,7 @@ export function GalleryAssistantPreviewContainer({
 
   const isGlobal = scope === "global";
   const isAddedToWorkspace = flow === "workspace" && isAdded;
-  const hasAccessToLargeModels = plan?.code !== FREE_TEST_PLAN_CODE;
+  const hasAccessToLargeModels = isUpgraded(plan);
   const eligibleForTesting =
     hasAccessToLargeModels || !isLargeModel(generation?.model);
   const isTestable = !isGlobal && !isAdded && eligibleForTesting;

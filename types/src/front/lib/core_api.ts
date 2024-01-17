@@ -22,6 +22,13 @@ import { LoggerInterface } from "../../shared/logger";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
+export const EMBEDDING_CONFIG = {
+  model_id: "text-embedding-ada-002",
+  provider_id: "openai",
+  splitter_id: "base_v0",
+  max_chunk_size: 512,
+};
+
 export type CoreAPIErrorResponse = {
   message: string;
   code: string;
@@ -77,33 +84,26 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
-export type CoreAPIDatabase = {
-  created: number;
-  data_source_id: string;
-  database_id: string;
-  name: string;
-};
-
-export type CoreAPIDatabaseTableSchema = Record<
+export type CoreAPITableSchema = Record<
   string,
   "int" | "float" | "text" | "bool" | "datetime"
 >;
 
-export type CoreAPIDatabaseTable = {
+export type CoreAPITable = {
   created: number;
-  database_id: string;
   table_id: string;
+  data_source_id: string;
   name: string;
   description: string;
-  schema: CoreAPIDatabaseTableSchema;
+  schema: CoreAPITableSchema;
 };
 
-export type CoreAPIDatabaseRow = {
+export type CoreAPIRow = {
   row_id: string;
   value: Record<string, unknown>;
 };
 
-export type CoreAPIDatabaseResult = {
+export type CoreAPIQueryResult = {
   value: Record<string, unknown>;
 };
 
@@ -832,115 +832,43 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async createDatabase({
+  async dataSourceTokenize({
+    text,
     projectId,
     dataSourceName,
-    databaseId,
-    name,
   }: {
+    text: string;
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
-    name: string;
-  }): Promise<CoreAPIResponse<{ database: CoreAPIDatabase }>> {
+  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tokenize`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          database_id: databaseId,
-          name: name,
-        }),
+        body: JSON.stringify({ text }),
       }
     );
-
     return _resultFromResponse(response);
   }
 
-  async getDatabase({
+  async upsertTable({
     projectId,
     dataSourceName,
-    databaseId,
-  }: {
-    projectId: string;
-    dataSourceName: string;
-    databaseId: string;
-  }): Promise<CoreAPIResponse<{ database: CoreAPIDatabase }>> {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}`,
-      {
-        method: "GET",
-      }
-    );
-
-    return _resultFromResponse(response);
-  }
-
-  async getDatabases({
-    projectId,
-    dataSourceName,
-    offset,
-    limit,
-  }: {
-    projectId: string;
-    dataSourceName: string;
-    offset: number;
-    limit: number;
-  }): Promise<
-    CoreAPIResponse<{
-      databases: CoreAPIDatabase[];
-      offset: number;
-      limit: number;
-      total: number;
-    }>
-  > {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases?offset=${offset}&limit=${limit}`,
-      { method: "GET" }
-    );
-
-    return _resultFromResponse(response);
-  }
-
-  async deleteDatabase({
-    projectId,
-    dataSourceName,
-    databaseId,
-  }: {
-    projectId: string;
-    dataSourceName: string;
-    databaseId: string;
-  }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    return _resultFromResponse(response);
-  }
-
-  async upsertDatabaseTable({
-    projectId,
-    dataSourceName,
-    databaseId,
     tableId,
     name,
     description,
   }: {
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
     tableId: string;
     name: string;
     description: string;
-  }): Promise<CoreAPIResponse<{ table: CoreAPIDatabaseTable }>> {
+  }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables`,
       {
         method: "POST",
         headers: {
@@ -957,19 +885,17 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async getDatabaseTable({
+  async getTable({
     projectId,
     dataSourceName,
-    databaseId,
     tableId,
   }: {
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
     tableId: string;
-  }): Promise<CoreAPIResponse<{ table: CoreAPIDatabaseTable }>> {
+  }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}`,
       {
         method: "GET",
       }
@@ -978,22 +904,19 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async getDatabaseTables({
+  async getTables({
     projectId,
     dataSourceName,
-    databaseId,
   }: {
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
   }): Promise<
     CoreAPIResponse<{
-      database: CoreAPIDatabase;
-      tables: CoreAPIDatabaseTable[];
+      tables: CoreAPITable[];
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables`,
       {
         method: "GET",
       }
@@ -1002,23 +925,21 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async upsertDatabaseRows({
+  async upsertTableRows({
     projectId,
     dataSourceName,
-    databaseId,
     tableId,
     rows,
     truncate,
   }: {
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
     tableId: string;
-    rows: CoreAPIDatabaseRow[];
+    rows: CoreAPIRow[];
     truncate?: boolean;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows`,
       {
         method: "POST",
         headers: {
@@ -1034,21 +955,19 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async getDatabaseRow({
+  async getTableRow({
     projectId,
     dataSourceName,
-    databaseId,
     tableId,
     rowId,
   }: {
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
     tableId: string;
     rowId: string;
-  }): Promise<CoreAPIResponse<{ row: CoreAPIDatabaseRow }>> {
+  }): Promise<CoreAPIResponse<{ row: CoreAPIRow }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows/${rowId}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows/${rowId}`,
       {
         method: "GET",
       }
@@ -1057,30 +976,28 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
-  async getDatabaseRows({
+  async getTableRows({
     projectId,
     dataSourceName,
-    databaseId,
     tableId,
     limit,
     offset,
   }: {
     projectId: string;
     dataSourceName: string;
-    databaseId: string;
     tableId: string;
     limit: number;
     offset: number;
   }): Promise<
     CoreAPIResponse<{
-      rows: CoreAPIDatabaseRow[];
+      rows: CoreAPIRow[];
       offset: number;
       limit: number;
       total: number;
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       }
@@ -1090,33 +1007,31 @@ export class CoreAPI {
   }
 
   async queryDatabase({
-    projectId,
-    dataSourceName,
-    databaseId,
+    tables,
     query,
   }: {
-    projectId: string;
-    dataSourceName: string;
-    databaseId: string;
+    tables: Array<{
+      project_id: string;
+      data_source_id: string;
+      table_id: string;
+    }>;
     query: string;
   }): Promise<
     CoreAPIResponse<{
-      schema: CoreAPIDatabaseTableSchema;
-      results: CoreAPIDatabaseResult[];
+      schema: CoreAPITableSchema;
+      results: CoreAPIQueryResult[];
     }>
   > {
-    const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/databases/${databaseId}/query`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: query,
-        }),
-      }
-    );
+    const response = await fetch(`${CORE_API}/query_database`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: query,
+        tables: tables,
+      }),
+    });
 
     return _resultFromResponse(response);
   }

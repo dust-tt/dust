@@ -1,8 +1,8 @@
 import { ArrowUpOnSquareIcon, Button, Page } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 

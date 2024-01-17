@@ -1,7 +1,7 @@
-import { UserMetadataType } from "@dust-tt/types";
+import type { UserMetadataType } from "@dust-tt/types";
 import { useSWRConfig } from "swr";
 
-import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 
 /**
  * Client-side: retrieves a metadata value for the current user. See also `useUserMetadata` for an

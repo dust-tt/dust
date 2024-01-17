@@ -1,4 +1,4 @@
-import { BlockRunConfig, SpecificationType } from "@dust-tt/types";
+import type { BlockRunConfig, SpecificationType } from "@dust-tt/types";
 
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
   const c = {} as { [key: string]: any };
@@ -94,13 +94,13 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
       case "database_schema":
         c[spec[i].name] = {
           type: "database_schema",
-          database: spec[i].config?.database,
+          tables: spec[i].config?.tables,
         };
         break;
       case "database":
         c[spec[i].name] = {
           type: "database",
-          database: spec[i].config?.database,
+          tables: spec[i].config?.tables,
         };
         break;
       case "data":

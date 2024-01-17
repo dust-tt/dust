@@ -1,4 +1,5 @@
 import {
+  AssistantPreview,
   Avatar,
   BookOpenIcon,
   Button,
@@ -8,23 +9,22 @@ import {
   Page,
   Popup,
 } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
   AgentMention,
   ContentFragmentContentType,
   ConversationType,
+  LightAgentConfigurationType,
   MentionType,
   SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { AssistantPreview } from "@app/components/assistant/AssistantPreview";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
@@ -149,9 +149,8 @@ export default function AssistantNew({
   const [greeting, setGreeting] = useState<string>("");
   const [selectedAssistant, setSelectedAssistant] =
     useState<AgentMention | null>(null);
-  const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
-    null
-  );
+  const [showDetails, setShowDetails] =
+    useState<LightAgentConfigurationType | null>(null);
 
   const triggerInputAnimation = () => {
     setShouldAnimateInput(true);
@@ -257,24 +256,22 @@ export default function AssistantNew({
                               key={agent.sId}
                               className="cursor-pointer"
                               onClick={() => {
-                                setSelectedAssistant({
-                                  configurationId: agent.sId,
-                                });
-                                setShouldAnimateInput(true);
+                                setShowDetails(agent);
                               }}
                             >
                               <AssistantPreview
-                                agentConfiguration={agent}
+                                variant="sm"
+                                name={agent.name}
+                                description={agent.description}
+                                pictureUrl={agent.pictureUrl}
                                 key={agent.sId}
-                                owner={owner}
-                                onShowDetails={() => {
-                                  setShowDetails(agent);
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent event from bubbling up to <a> tag
+                                  setSelectedAssistant({
+                                    configurationId: agent.sId,
+                                  });
+                                  setShouldAnimateInput(true);
                                 }}
-                                onUpdate={async () => {
-                                  await mutateAgentConfigurations();
-                                }}
-                                variant="home"
-                                flow="personal"
                               />
                             </a>
                           ))}

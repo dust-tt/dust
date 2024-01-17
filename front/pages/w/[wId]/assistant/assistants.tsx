@@ -18,14 +18,14 @@ import {
   UserIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
   AgentUserListStatus,
+  LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useContext, useState } from "react";
 
@@ -45,7 +45,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -107,9 +107,8 @@ export default function PersonalAssistants({
     });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const [showDetails, setShowDetails] = useState<AgentConfigurationType | null>(
-    null
-  );
+  const [showDetails, setShowDetails] =
+    useState<LightAgentConfigurationType | null>(null);
 
   const viewAssistants = agentConfigurations.filter((a) => {
     if (view === "personal") {
@@ -125,9 +124,9 @@ export default function PersonalAssistants({
   });
 
   const [showRemovalModal, setShowRemovalModal] =
-    useState<AgentConfigurationType | null>(null);
+    useState<LightAgentConfigurationType | null>(null);
   const [showDeletionModal, setShowDeletionModal] =
-    useState<AgentConfigurationType | null>(null);
+    useState<LightAgentConfigurationType | null>(null);
 
   const tabs = [
     {
@@ -145,7 +144,7 @@ export default function PersonalAssistants({
   const sendNotification = useContext(SendNotificationsContext);
 
   const updateAgentUserListStatus = async (
-    agentConfiguration: AgentConfigurationType,
+    agentConfiguration: LightAgentConfigurationType,
     listStatus: AgentUserListStatus
   ) => {
     const body: PostAgentListStatusRequestBody = {

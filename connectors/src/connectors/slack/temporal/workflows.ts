@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -54,19 +54,19 @@ export async function workspaceFullSync(
     for (const channelId of input.channelIds) {
       promises.push(
         childWorkflowQueue.add(async () => {
-          const percentSync = Math.round(
-            (i / Math.max(promises.length, input.channelIds.length)) * 100
-          );
           await reportInitialSyncProgressActivity(
             connectorId,
-            `${percentSync}%`
+            `${i - 1}/${input.channelIds.length} channels`
           );
-          i++;
-          return await executeChild(syncOneChannel, {
+          await executeChild(syncOneChannel, {
             workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+            searchAttributes: {
+              connectorId: [connectorId],
+            },
             args: [connectorId, channelId, false, fromTs],
             memo: workflowInfo().memo,
           });
+          i++;
         })
       );
     }
@@ -76,6 +76,9 @@ export async function workspaceFullSync(
 
   await executeChild(slackGarbageCollectorWorkflow, {
     workflowId: slackGarbageCollectorWorkflowId(connectorId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
     args: [connectorId],
     memo: workflowInfo().memo,
   });

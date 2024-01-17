@@ -1,32 +1,38 @@
-import {
+import type {
   AgentActionType,
-  AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+  LightAgentConfigurationType,
   ModelId,
   RetrievalDocumentType,
-  sectionFullText,
   UserMessageType,
 } from "@dust-tt/types";
-import {
+import type {
   AgentGenerationSuccessEvent,
-  DustAPI,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import { WebClient } from "@slack/web-api";
-import { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
-import * as t from "io-ts";
+import { sectionFullText } from "@dust-tt/types";
+import { DustAPI } from "@dust-tt/types";
+import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import type * as t from "io-ts";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  getSlackUserInfo,
+  isUserAllowedToUseChatbot,
+} from "@connectors/connectors/slack/lib/slack_client";
+import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models/slack";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 import {
@@ -82,7 +88,8 @@ export async function botAnswerMessageWithErrorHandling(
       slackUserId,
       slackMessageTs,
       slackThreadTs,
-      connector
+      connector,
+      slackConfig
     );
     if (res.isErr()) {
       logger.error(
@@ -147,7 +154,8 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null,
-  connector: Connector
+  connector: Connector,
+  slackConfig: SlackConfiguration
 ): Promise<Result<AgentGenerationSuccessEvent, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -164,14 +172,20 @@ async function botAnswerMessage(
 
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
-  const slackUserInfo = await slackClient.users.info({
-    user: slackUserId,
-  });
+  const slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
 
   if (!slackUserInfo.ok || !slackUserInfo.user) {
     throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
   }
-  if (slackUserInfo.user.profile?.team !== slackTeamId) {
+
+  const hasChatbotAccess = await isUserAllowedToUseChatbot(
+    slackClient,
+    slackUserInfo,
+    slackChannel,
+    slackTeamId,
+    slackConfig.whitelistedDomains
+  );
+  if (!hasChatbotAccess) {
     return new Err(
       new SlackExternalUserError(
         "Hi there. Sorry, but I can only answer to members of the workspace where I am installed."
@@ -334,7 +348,7 @@ async function botAnswerMessage(
         slackChannelId: slackChannel,
       },
     });
-    let agentConfigurationToMention: AgentConfigurationType | null = null;
+    let agentConfigurationToMention: LightAgentConfigurationType | null = null;
 
     if (channel && channel.agentConfigurationId) {
       agentConfigurationToMention =
@@ -350,7 +364,7 @@ async function botAnswerMessage(
       });
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
-      let defaultAssistant: AgentConfigurationType | null = null;
+      let defaultAssistant: LightAgentConfigurationType | null = null;
       defaultAssistant =
         agentConfigurations.find((ac) => ac.sId === "dust") || null;
       if (!defaultAssistant || defaultAssistant.status !== "active") {
@@ -671,10 +685,6 @@ async function makeContentFragment(
 > {
   let allMessages: MessageElement[] = [];
 
-  let next_cursor = undefined;
-
-  let shouldTake = false;
-
   const slackBotMessages = await SlackChatBotMessage.findAll({
     where: {
       connectorId: connector.id,
@@ -682,48 +692,28 @@ async function makeContentFragment(
       threadTs: threadTs,
     },
   });
-
-  do {
-    const replies: ConversationsRepliesResponse =
-      await slackClient.conversations.replies({
-        channel: channelId,
-        ts: threadTs,
-        cursor: next_cursor,
-        limit: 100,
-      });
-    // Despite the typing, in practice `replies` can be undefined at times.
-    if (!replies) {
-      return new Err(
-        new Error(
-          "Received unexpected undefined replies from Slack API in syncThread (generally transient)"
-        )
-      );
+  const replies = await getRepliesFromThread({
+    slackClient,
+    channelId,
+    threadTs,
+  });
+  let shouldTake = false;
+  for (const reply of replies) {
+    if (reply.ts === startingAtTs) {
+      // Signal that we must take all the messages starting from this one.
+      shouldTake = true;
     }
-    if (replies.error) {
-      throw new Error(replies.error);
+    if (!reply.user) {
+      continue;
     }
-    if (!replies.messages) {
-      break;
-    }
-    for (const m of replies.messages) {
-      if (m.ts === startingAtTs) {
-        // Signal that we must take all the messages starting from this one.
-        shouldTake = true;
-      }
-      if (!m.user) {
+    if (shouldTake) {
+      if (slackBotMessages.find((sbm) => sbm.messageTs === reply.ts)) {
+        // If this message is a mention to the bot, we don't send it as a content fragment.
         continue;
       }
-      if (shouldTake) {
-        if (slackBotMessages.find((sbm) => sbm.messageTs === m.ts)) {
-          // If this message is a mention to the bot, we don't send it as a content fragment.
-          continue;
-        }
-        allMessages.push(m);
-      }
+      allMessages.push(reply);
     }
-
-    next_cursor = replies.response_metadata?.next_cursor;
-  } while (next_cursor);
+  }
 
   const botUserId = await getBotUserIdMemoized(connector.id);
   allMessages = allMessages.filter((m) => m.user !== botUserId);
@@ -744,13 +734,14 @@ async function makeContentFragment(
     return new Err(new Error("Could not retrieve channel name"));
   }
 
-  const content = await formatMessagesForUpsert(
-    channelId,
-    channel.channel.name,
-    allMessages,
-    connector.id,
-    slackClient
-  );
+  const content = await formatMessagesForUpsert({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    channelName: channel.channel.name,
+    messages: allMessages,
+    isThread: true,
+    connectorId: connector.id,
+    slackClient,
+  });
 
   let url: string | null = null;
   if (allMessages[0]?.ts) {

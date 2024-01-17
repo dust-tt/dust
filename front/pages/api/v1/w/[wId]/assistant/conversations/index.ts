@@ -1,13 +1,13 @@
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
-import {
+import type {
   ContentFragmentType,
   ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   createConversation,

@@ -1,4 +1,4 @@
-import { DataSourceInfo } from "@connectors/types/data_source_config";
+import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 export function getFullSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
   return `workflow-github-full-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
@@ -6,6 +6,13 @@ export function getFullSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
 
 export function getReposSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
   return `workflow-github-repos-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
+}
+
+export function getCodeSyncWorkflowId(
+  dataSourceInfo: DataSourceInfo,
+  repoId: number
+) {
+  return `workflow-github-code-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}`;
 }
 
 export function getIssueSyncWorkflowId(

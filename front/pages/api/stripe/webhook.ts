@@ -1,9 +1,6 @@
-import {
-  CoreAPI,
-  isRetrievalConfiguration,
-  ReturnedAPIErrorType,
-} from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
@@ -19,6 +16,7 @@ import { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   sendAdminDowngradeTooMuchDataEmail,
+  sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
   sendOpsDowngradeTooMuchDataEmail,
   sendReactivateSubscriptionEmail,
@@ -31,6 +29,7 @@ import {
   Workspace,
 } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -94,7 +93,11 @@ async function handler(
           },
         });
       }
+      let subscription;
       let stripeSubscription;
+      let invoice;
+      const now = new Date();
+
       switch (event.type) {
         case "checkout.session.completed":
           // Payment is successful and the stripe subscription is created.
@@ -159,7 +162,6 @@ async function handler(
             }
 
             await front_sequelize.transaction(async (t) => {
-              const now = new Date();
               const activeSubscription = await Subscription.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
@@ -308,20 +310,114 @@ async function handler(
           }
         case "invoice.paid":
           // This is what confirms the subscription is active and payments are being made.
-          // Should we store the last invoice date in the subscription?
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
+          invoice = event.data.object as Stripe.Invoice;
+          if (typeof invoice.subscription !== "string") {
+            return _returnStripeApiError(
+              req,
+              res,
+              "invoice.paid",
+              "Subscription in event is not a string."
+            );
+          }
+          // Setting subscription payment status to succeeded
+          subscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: invoice.subscription },
+            include: [Workspace],
+          });
+          if (!subscription) {
+            return _returnStripeApiError(
+              req,
+              res,
+              "invoice.paid",
+              "Subscription not found."
+            );
+          }
+          await subscription.update({ paymentFailingSince: null });
           break;
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
-          // We keep active and email the user and us to manually manage those cases first?
+          // We log it on the Subscription to display a banner and email the admins.
           logger.warn(
             { event },
             "[Stripe Webhook] Received invoice.payment_failed event."
           );
+          invoice = event.data.object as Stripe.Invoice;
+
+          // If the invoice is for a subscription creation, we don't need to do anything
+          if (invoice.billing_reason === "subscription_create") {
+            return res.status(200).json({ success: true });
+          }
+
+          if (typeof invoice.subscription !== "string") {
+            return _returnStripeApiError(
+              req,
+              res,
+              "invoice.payment_failed",
+              "Subscription in event is not a string."
+            );
+          }
+
+          // Logging that we have a failed payment
+          subscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: invoice.subscription },
+            include: [Workspace],
+          });
+          if (!subscription) {
+            return _returnStripeApiError(
+              req,
+              res,
+              "invoice.payment_failed",
+              "Subscription not found."
+            );
+          }
+
+          // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have been retried.
+          // Previously, there was an error in how we handled the cancellation of subscriptions.
+          // This change ensures that we return a success status if the subscription is already marked as "ended".
+          if (subscription.status === "ended") {
+            return res.status(200).json({ success: true });
+          }
+
+          if (subscription.paymentFailingSince === null) {
+            await subscription.update({ paymentFailingSince: now });
+          }
+
+          // Send email to admins + customer email who subscribed in Stripe
+          const auth = await Authenticator.internalAdminForWorkspace(
+            subscription.workspace.sId
+          );
+          const owner = auth.workspace();
+          const subscriptionType = auth.subscription();
+          if (!owner || !subscriptionType) {
+            return _returnStripeApiError(
+              req,
+              res,
+              "invoice.payment_failed",
+              "Couldn't get owner or subscription from `auth`."
+            );
+          }
+          const adminEmails = (await getMembers(auth, "admin")).map(
+            (u) => u.email
+          );
+          const customerEmail = invoice.customer_email;
+          if (customerEmail && !adminEmails.includes(customerEmail)) {
+            adminEmails.push(customerEmail);
+          }
+          const portalUrl = await createCustomerPortalSession({
+            owner,
+            subscription: subscriptionType,
+          });
+          for (const adminEmail of adminEmails) {
+            await sendAdminSubscriptionPaymentFailedEmail(
+              adminEmail,
+              portalUrl
+            );
+          }
           break;
         case "customer.subscription.updated":
           // Occurs when the subscription is updated:
@@ -449,6 +545,21 @@ async function handler(
   }
 }
 
+function _returnStripeApiError(
+  req: NextApiRequest,
+  res: NextApiResponse<GetResponseBody | ReturnedAPIErrorType>,
+  event: string,
+  message: string
+) {
+  return apiError(req, res, {
+    status_code: 500,
+    api_error: {
+      type: "internal_server_error",
+      message: `[Stripe Webhook][${event}] ${message}`,
+    },
+  });
+}
+
 /**
  * Remove everybody except the most tenured admin
  * @param workspaceId
@@ -478,10 +589,12 @@ async function revokeUsersForDowngrade(auth: Authenticator) {
 }
 
 async function archiveConnectedAgents(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurations(
+  const agentConfigurations = await getAgentConfigurations({
     auth,
-    "admin_internal"
-  );
+    agentsGetView: "admin_internal",
+    variant: "full",
+  });
+
   // agentconfigurations with a retrieval action with at least a managed
   // data source
   const agentConfigurationsToArchive = agentConfigurations.filter(

@@ -1,12 +1,12 @@
 import { Modal } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
   AgentMention,
   ConversationType,
+  LightAgentConfigurationType,
   MentionType,
   UserType,
 } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
@@ -26,7 +26,7 @@ export function TryAssistantModal({
 }: {
   owner: WorkspaceType;
   user: UserType;
-  assistant: AgentConfigurationType;
+  assistant: LightAgentConfigurationType;
   onClose: () => void;
 }) {
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([

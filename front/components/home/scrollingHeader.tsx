@@ -1,5 +1,6 @@
 import classNames from "classnames";
-import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 // Define your scroll limit here
 const SCROLL_LIMIT_1 = 12;

@@ -1,44 +1,40 @@
-import {
-  AgentMention,
-  AgentUserListStatus,
-  Err,
-  Ok,
-  Result,
-  SupportedModel,
-} from "@dust-tt/types";
-import { DustAppRunConfigurationType } from "@dust-tt/types";
-import {
-  AgentsGetViewType,
-  DataSourceConfiguration,
-  isTemplatedQuery,
-  isTimeFrame,
-  RetrievalConfigurationType,
-  RetrievalQuery,
-  RetrievalTimeframe,
-} from "@dust-tt/types";
-import {
+import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
+  AgentMention,
+  AgentsGetViewType,
   AgentStatus,
+  AgentUserListStatus,
+  DataSourceConfiguration,
+  LightAgentConfigurationType,
+  Result,
+  RetrievalQuery,
+  RetrievalTimeframe,
+  SupportedModel,
 } from "@dust-tt/types";
-import { isSupportedModel } from "@dust-tt/types";
-import { DatabaseQueryConfigurationType } from "@dust-tt/types";
-import { FindOptions, Op, Transaction, UniqueConstraintError } from "sequelize";
+import {
+  assertNever,
+  Err,
+  isSupportedModel,
+  isTemplatedQuery,
+  isTimeFrame,
+  Ok,
+} from "@dust-tt/types";
+import type { Transaction } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 
 import {
-  getGlobalAgent,
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
-  AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
@@ -49,6 +45,10 @@ import {
   Message,
   Workspace,
 } from "@app/lib/models";
+import {
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
@@ -58,11 +58,29 @@ import { generateModelSId } from "@app/lib/utils";
  */
 export async function getAgentConfiguration(
   auth: Authenticator,
-  agentId: string,
-  preFetchedAgentConfiguration?: AgentConfiguration,
-  preFetchedUserRelation?: AgentUserRelation | null,
-  preFetchedDataSourceConfigurations?: AgentDataSourceConfiguration[]
+  agentId: string
 ): Promise<AgentConfigurationType | null> {
+  const res = await getAgentConfigurations({
+    auth,
+    agentsGetView: { agentId },
+    variant: "full",
+  });
+  return res[0] || null;
+}
+
+export async function getAgentConfigurations<V extends "light" | "full">({
+  auth,
+  agentsGetView,
+  agentPrefix,
+  variant,
+}: {
+  auth: Authenticator;
+  agentsGetView: AgentsGetViewType;
+  agentPrefix?: string;
+  variant: V;
+}): Promise<
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
+> {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -72,252 +90,42 @@ export async function getAgentConfiguration(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  if (isGlobalAgentId(agentId)) {
-    return await getGlobalAgent(auth, agentId, null);
-  }
-
   const user = auth.user();
 
-  const [agent, userRelation] = await Promise.all([
-    (async () => {
-      const agent =
-        preFetchedAgentConfiguration ??
-        (await AgentConfiguration.findOne({
-          where: {
-            sId: agentId,
-            workspaceId: owner.id,
-          },
-          order: [["version", "DESC"]],
-          include: [
-            {
-              model: AgentGenerationConfiguration,
-              as: "generationConfiguration",
-            },
-            {
-              model: AgentRetrievalConfiguration,
-              as: "retrievalConfiguration",
-            },
-            {
-              model: AgentDustAppRunConfiguration,
-              as: "dustAppRunConfiguration",
-            },
-            {
-              model: AgentDatabaseQueryConfiguration,
-              as: "databaseQueryConfiguration",
-            },
-          ],
-          limit: 1,
-        }));
-
-      return agent;
-    })(),
-    (async () => {
-      if (!user) {
-        return null;
-      }
-      if (preFetchedUserRelation !== undefined) {
-        return preFetchedUserRelation;
-      }
-      return AgentUserRelation.findOne({
-        where: {
-          workspaceId: owner.id,
-          agentConfiguration: agentId,
-          userId: user.id,
-        },
-      });
-    })(),
-  ]);
-
-  if (!agent) {
-    return null;
+  if (
+    agentsGetView === "admin_internal" &&
+    !auth.isDustSuperUser() &&
+    !auth.isAdmin()
+  ) {
+    throw new Error(
+      "superuser view is for dust superusers or internal admin auths only."
+    );
+  }
+  if (agentsGetView === "list" && !user) {
+    throw new Error("List view is specific to a user.");
   }
 
-  let action:
-    | RetrievalConfigurationType
-    | DustAppRunConfigurationType
-    | DatabaseQueryConfigurationType
-    | null = null;
+  const globalAgentsIds =
+    typeof agentsGetView === "object" && "agentId" in agentsGetView
+      ? [agentsGetView.agentId].filter((id) => isGlobalAgentId(id))
+      : undefined;
 
-  /*
-   * Retrieval configuration.
-   */
-  if (agent.retrievalConfigurationId) {
-    const dataSourcesConfig =
-      preFetchedDataSourceConfigurations !== undefined
-        ? preFetchedDataSourceConfigurations
-        : await AgentDataSourceConfiguration.findAll({
-            where: {
-              retrievalConfigurationId: agent.retrievalConfiguration?.id,
-            },
-            include: [
-              {
-                model: DataSource,
-                as: "dataSource",
-                include: [
-                  {
-                    model: Workspace,
-                    as: "workspace",
-                  },
-                ],
-              },
-            ],
-          });
+  let globalAgentsPromise = getGlobalAgents(auth, globalAgentsIds).then(
+    (globals) =>
+      globals.filter(
+        (a) =>
+          !agentPrefix ||
+          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+      )
+  );
 
-    const retrievalConfig = agent.retrievalConfiguration;
-
-    if (!retrievalConfig) {
-      throw new Error(
-        `Couldn't find action configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
-      );
-    }
-
-    let topK: number | "auto" = "auto";
-    if (retrievalConfig.topKMode === "custom") {
-      if (!retrievalConfig.topK) {
-        // unreachable
-        throw new Error(
-          `Couldn't find topK for retrieval configuration ${agent.retrievalConfigurationId}} with 'custom' topK mode`
-        );
-      }
-
-      topK = retrievalConfig.topK;
-    }
-
-    action = {
-      id: retrievalConfig.id,
-      sId: retrievalConfig.sId,
-      type: "retrieval_configuration",
-      query: renderRetrievalQueryType(retrievalConfig),
-      relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
-      topK,
-      dataSources: dataSourcesConfig.map((dsConfig) => {
-        return {
-          dataSourceId: dsConfig.dataSource.name,
-          workspaceId: dsConfig.dataSource.workspace.sId,
-          filter: {
-            tags:
-              dsConfig.tagsIn && dsConfig.tagsNotIn
-                ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-                : null,
-            parents:
-              dsConfig.parentsIn && dsConfig.parentsNotIn
-                ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
-                : null,
-          },
-        };
-      }),
-    };
+  if (agentsGetView === "global") {
+    return globalAgentsPromise;
   }
 
-  /*
-   * DustAppRun configuration.
-   */
-  if (agent.dustAppRunConfigurationId) {
-    const dustAppRunConfig = agent.dustAppRunConfiguration;
-
-    if (!dustAppRunConfig) {
-      throw new Error(
-        `Couldn't find action configuration for DustAppRun configuration ${agent.dustAppRunConfigurationId}}`
-      );
-    }
-
-    action = {
-      id: dustAppRunConfig.id,
-      sId: dustAppRunConfig.sId,
-      type: "dust_app_run_configuration",
-      appWorkspaceId: dustAppRunConfig.appWorkspaceId,
-      appId: dustAppRunConfig.appId,
-    };
-  }
-
-  /*
-   * DatabaseQuery configuration.
-   */
-  if (agent.databaseQueryConfigurationId) {
-    const databaseQueryConfig = agent.databaseQueryConfiguration;
-    if (!databaseQueryConfig) {
-      throw new Error(
-        `Couldn't find action configuration for Database configuration ${agent.databaseQueryConfigurationId}}`
-      );
-    }
-
-    action = {
-      id: databaseQueryConfig.id,
-      sId: databaseQueryConfig.sId,
-      type: "database_query_configuration",
-      dataSourceWorkspaceId: databaseQueryConfig.dataSourceWorkspaceId,
-      dataSourceId: databaseQueryConfig.dataSourceId,
-      databaseId: databaseQueryConfig.databaseId,
-    };
-  }
-
-  /*
-   * Generation configuraiton.
-   */
-  const generationConfig = agent.generationConfiguration;
-  let generation: AgentGenerationConfigurationType | null = null;
-
-  if (generationConfig) {
-    const model = {
-      providerId: generationConfig.providerId,
-      modelId: generationConfig.modelId,
-    };
-    if (!isSupportedModel(model)) {
-      throw new Error(`Unknown model ${model.providerId}/${model.modelId}`);
-    }
-    generation = {
-      id: generationConfig.id,
-      prompt: generationConfig.prompt,
-      temperature: generationConfig.temperature,
-      model,
-    };
-  }
-
-  /*
-   * Final rendering.
-   */
-  const agentConfiguration: AgentConfigurationType = {
-    id: agent.id,
-    sId: agent.sId,
-    version: agent.version,
-    scope: agent.scope,
-    userListStatus: null,
-    name: agent.name,
-    pictureUrl: agent.pictureUrl,
-    description: agent.description,
-    status: agent.status,
-    action: action,
-    generation,
-    versionAuthorId: agent.authorId,
-  };
-
-  agentConfiguration.userListStatus = agentUserListStatus({
-    agentConfiguration,
-    listStatusOverride: userRelation?.listStatusOverride || null,
-  });
-
-  return agentConfiguration;
-}
-
-/**
- * Get agent configurations for the workspace, optionally whose names
- * match a prefix
- * @param agentsGetView the kind of list of agents we want to get, see AgentsGetViewType
- */
-export async function getAgentConfigurations(
-  auth: Authenticator,
-  agentsGetView: AgentsGetViewType,
-  agentPrefix?: string
-): Promise<AgentConfigurationType[] | []> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  if (!auth.isUser()) {
-    throw new Error("Unexpected `auth` from outside workspace.");
-  }
-
-  const user = auth.user();
+  globalAgentsPromise = globalAgentsPromise.then((globals) =>
+    globals.filter((a) => a.status === "active")
+  );
 
   const baseAgentsSequelizeQuery = {
     where: {
@@ -325,241 +133,376 @@ export async function getAgentConfigurations(
       status: "active",
       ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
     },
-    include: [
-      {
-        model: AgentGenerationConfiguration,
-        as: "generationConfiguration",
-      },
-      {
-        model: AgentRetrievalConfiguration,
-        as: "retrievalConfiguration",
-      },
-      {
-        model: AgentDustAppRunConfiguration,
-        as: "dustAppRunConfiguration",
-      },
-      {
-        model: AgentDatabaseQueryConfiguration,
-        as: "databaseQueryConfiguration",
-      },
-    ],
   };
 
-  const getGlobalAgentConfigurations = async ({
-    activeOnly,
-  }: {
-    activeOnly: boolean;
-  }) =>
-    (await getGlobalAgents(auth)).filter(
-      (a) =>
-        (!activeOnly || a.status === "active") &&
-        (!agentPrefix ||
-          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase()))
-    );
-
-  const getAgentConfigurationsForQuery = async (
-    agentsSequelizeQuery: FindOptions
-  ) => {
-    const agents = await AgentConfiguration.findAll(agentsSequelizeQuery);
-
-    const retrievalConfigurationIds = agents
-      .map((a) => a.retrievalConfigurationId)
-      .flatMap((id) => (id ? [id] : []));
-
-    const [dataSourcesConfigurations, userRelations] = await Promise.all([
-      AgentDataSourceConfiguration.findAll({
-        where: {
-          retrievalConfigurationId: { [Op.in]: retrievalConfigurationIds },
-        },
-        include: [
-          {
-            model: DataSource,
-            as: "dataSource",
-            include: [
-              {
-                model: Workspace,
-                as: "workspace",
-              },
-            ],
-          },
-        ],
-      }),
-      (async () => {
-        if (!user) {
-          return [];
-        }
-        return await AgentUserRelation.findAll({
+  const agentConfigurations: AgentConfiguration[] = await (() => {
+    switch (agentsGetView) {
+      case "admin_internal":
+        return AgentConfiguration.findAll({
+          ...baseAgentsSequelizeQuery,
+        });
+      case "all":
+        return AgentConfiguration.findAll({
+          ...baseAgentsSequelizeQuery,
           where: {
-            workspaceId: owner.id,
-            userId: user?.id,
-            agentConfiguration: { [Op.in]: agents.map((a) => a.sId) },
+            ...baseAgentsSequelizeQuery.where,
+            scope: { [Op.in]: ["workspace", "published"] },
           },
         });
-      })(),
-    ]);
+      case "workspace":
+        return AgentConfiguration.findAll({
+          ...baseAgentsSequelizeQuery,
+          where: {
+            ...baseAgentsSequelizeQuery.where,
+            scope: { [Op.in]: ["workspace"] },
+          },
+        });
+      case "published":
+        return AgentConfiguration.findAll({
+          ...baseAgentsSequelizeQuery,
+          where: {
+            ...baseAgentsSequelizeQuery.where,
+            scope: { [Op.in]: ["published"] },
+          },
+        });
+      case "list":
+        return AgentConfiguration.findAll({
+          ...baseAgentsSequelizeQuery,
+          where: {
+            ...baseAgentsSequelizeQuery.where,
+            [Op.or]: [
+              { scope: { [Op.in]: ["workspace", "published"] } },
+              { authorId: user?.id },
+            ],
+          },
+        });
+      default:
+        if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
+          if (isGlobalAgentId(agentsGetView.agentId)) {
+            return Promise.resolve([]);
+          }
+          return AgentConfiguration.findAll({
+            where: {
+              workspaceId: owner.id,
+              ...(agentPrefix
+                ? { name: { [Op.iLike]: `${agentPrefix}%` } }
+                : {}),
+              sId: agentsGetView.agentId,
+            },
+            order: [["version", "DESC"]],
+            ...(agentsGetView.allVersions ? {} : { limit: 1 }),
+          });
+        }
+        if (
+          typeof agentsGetView === "object" &&
+          "conversationId" in agentsGetView
+        ) {
+          return AgentConfiguration.findAll({
+            ...baseAgentsSequelizeQuery,
+            where: {
+              ...baseAgentsSequelizeQuery.where,
+              [Op.or]: [
+                { scope: { [Op.in]: ["workspace", "published"] } },
+                { authorId: user?.id },
+              ],
+            },
+          });
+        }
+        assertNever(agentsGetView);
+    }
+  })();
 
-    return (
-      await Promise.all(
-        agents.map((a) =>
-          getAgentConfiguration(
-            auth,
-            a.sId,
-            a,
-            // Make sure to pass null so that it is not fetched again.
-            userRelations.find((r) => r.agentConfiguration === a.sId) || null,
-            dataSourcesConfigurations.filter(
-              (dsc) =>
-                dsc.retrievalConfigurationId === a.retrievalConfigurationId
-            )
-          )
+  function byId<T extends { id: number }>(list: T[]): Record<string, T> {
+    return list.reduce((acc, item) => {
+      acc[item.id] = item;
+      return acc;
+    }, {} as Record<number, T>);
+  }
+
+  const configurationIds = agentConfigurations.map((a) => a.id);
+  const configurationSIds = agentConfigurations.map((a) => a.sId);
+  const generationConfigIds = agentConfigurations
+    .filter((a) => a.generationConfigurationId !== null)
+    .map((a) => a.generationConfigurationId as number);
+  const retrievalConfigIds = agentConfigurations
+    .filter((a) => a.retrievalConfigurationId !== null)
+    .map((a) => a.retrievalConfigurationId as number);
+  const dustAppRunConfigIds = agentConfigurations
+    .filter((a) => a.dustAppRunConfigurationId !== null)
+    .map((a) => a.dustAppRunConfigurationId as number);
+  const tablesQueryConfigurationsIds = agentConfigurations
+    .filter((a) => a.tablesQueryConfigurationId !== null)
+    .map((a) => a.tablesQueryConfigurationId as number);
+
+  const [
+    generationConfigs,
+    retrievalConfigs,
+    dustAppRunConfigs,
+    tablesQueryConfigs,
+    agentUserRelations,
+  ] = await Promise.all([
+    generationConfigIds.length > 0
+      ? AgentGenerationConfiguration.findAll({
+          where: { id: { [Op.in]: generationConfigIds } },
+        }).then(byId)
+      : Promise.resolve({} as Record<number, AgentGenerationConfiguration>),
+    retrievalConfigIds.length > 0 && variant === "full"
+      ? AgentRetrievalConfiguration.findAll({
+          where: { id: { [Op.in]: retrievalConfigIds } },
+        }).then(byId)
+      : Promise.resolve({} as Record<number, AgentRetrievalConfiguration>),
+    dustAppRunConfigIds.length > 0 && variant === "full"
+      ? AgentDustAppRunConfiguration.findAll({
+          where: { id: { [Op.in]: dustAppRunConfigIds } },
+        }).then(byId)
+      : Promise.resolve({} as Record<number, AgentDustAppRunConfiguration>),
+    tablesQueryConfigurationsIds.length > 0 && variant === "full"
+      ? AgentTablesQueryConfiguration.findAll({
+          where: { id: { [Op.in]: tablesQueryConfigurationsIds } },
+        }).then(byId)
+      : Promise.resolve({} as Record<number, AgentTablesQueryConfiguration>),
+    user && configurationIds.length > 0
+      ? AgentUserRelation.findAll({
+          where: {
+            agentConfiguration: { [Op.in]: configurationSIds },
+            userId: user.id,
+          },
+        }).then((relations) =>
+          relations.reduce((acc, relation) => {
+            acc[relation.agentConfiguration] = relation;
+            return acc;
+          }, {} as Record<string, AgentUserRelation>)
         )
-      )
-    ).filter((a) => a !== null) as AgentConfigurationType[];
-  };
+      : Promise.resolve({} as Record<string, AgentUserRelation>),
+  ]);
 
-  // Superuser view (all agents, to be used internally from poke).
-  if (agentsGetView === "admin_internal") {
-    if (!auth.isDustSuperUser() && !auth.isAdmin()) {
-      throw new Error(
-        "superuser view is for dust superusers or internal admin auths only."
+  const agentDatasourceConfigurationsPromise = (
+    Object.values(retrievalConfigs).length
+      ? AgentDataSourceConfiguration.findAll({
+          where: {
+            retrievalConfigurationId: {
+              [Op.in]: Object.values(retrievalConfigs).map((r) => r.id),
+            },
+          },
+          include: [
+            {
+              model: DataSource,
+              as: "dataSource",
+              include: [
+                {
+                  model: Workspace,
+                  as: "workspace",
+                },
+              ],
+            },
+          ],
+        })
+      : Promise.resolve([])
+  ).then((dsConfigs) =>
+    dsConfigs.reduce((acc, dsConfig) => {
+      acc[dsConfig.retrievalConfigurationId] =
+        acc[dsConfig.retrievalConfigurationId] || [];
+      acc[dsConfig.retrievalConfigurationId].push(dsConfig);
+      return acc;
+    }, {} as Record<number, AgentDataSourceConfiguration[]>)
+  );
+
+  const agentTablesConfigurationTablesPromise = (
+    Object.values(tablesQueryConfigs).length
+      ? AgentTablesQueryConfigurationTable.findAll({
+          where: {
+            tablesQueryConfigurationId: {
+              [Op.in]: Object.values(tablesQueryConfigs).map((r) => r.id),
+            },
+          },
+        })
+      : Promise.resolve([])
+  ).then((tablesConfigurationTables) =>
+    tablesConfigurationTables.reduce((acc, tablesConfigurationTable) => {
+      acc[tablesConfigurationTable.tablesQueryConfigurationId] =
+        acc[tablesConfigurationTable.tablesQueryConfigurationId] || [];
+      acc[tablesConfigurationTable.tablesQueryConfigurationId].push(
+        tablesConfigurationTable
       );
-    }
-    return (
-      await Promise.all([
-        getAgentConfigurationsForQuery(baseAgentsSequelizeQuery),
-        getGlobalAgentConfigurations({ activeOnly: true }),
-      ])
-    ).flat();
-  }
+      return acc;
+    }, {} as Record<number, AgentTablesQueryConfigurationTable[]>)
+  );
 
-  // All view (published + workspace agents + globals).
-  if (agentsGetView === "all") {
-    const allAgentsSequelizeQuery = {
-      ...baseAgentsSequelizeQuery,
-      where: {
-        ...baseAgentsSequelizeQuery.where,
-        scope: { [Op.in]: ["published", "workspace"] },
-      },
-    };
-    return (
-      await Promise.all([
-        getAgentConfigurationsForQuery(allAgentsSequelizeQuery),
-        getGlobalAgentConfigurations({ activeOnly: true }),
-      ])
-    ).flat();
-  }
-
-  // Workspace view (only workspace agents).
-  if (agentsGetView === "workspace") {
-    const workspaceAgentsSequelizeQuery = {
-      ...baseAgentsSequelizeQuery,
-      where: {
-        ...baseAgentsSequelizeQuery.where,
-        scope: { [Op.in]: ["workspace"] },
-      },
-    };
-    return (
-      await Promise.all([
-        getAgentConfigurationsForQuery(workspaceAgentsSequelizeQuery),
-        [],
-      ])
-    ).flat();
-  }
-
-  // Published view (only published agents).
-  if (agentsGetView === "published") {
-    const publishedAgentsSequelizeQuery = {
-      ...baseAgentsSequelizeQuery,
-      where: {
-        ...baseAgentsSequelizeQuery.where,
-        scope: { [Op.in]: ["published"] },
-      },
-    };
-    return (
-      await Promise.all([
-        getAgentConfigurationsForQuery(publishedAgentsSequelizeQuery),
-        [],
-      ])
-    ).flat();
-  }
-
-  if (agentsGetView === "global") {
-    return (
-      await Promise.all([
-        [],
-        getGlobalAgentConfigurations({ activeOnly: false }),
-      ])
-    ).flat();
-  }
-
-  // List view (user agents list).
-  if (agentsGetView === "list") {
-    const user = auth.user();
-    if (!user) {
-      throw new Error("List view is specific to a user.");
-    }
-
-    const listAgentsSequelizeQuery = {
-      ...baseAgentsSequelizeQuery,
-      where: {
-        ...baseAgentsSequelizeQuery.where,
-        [Op.or]: [
-          { scope: { [Op.in]: ["published", "workspace"] } },
-          { authorId: user.id },
-        ],
-      },
-    };
-
-    const listAgentsPromise = getAgentConfigurationsForQuery(
-      listAgentsSequelizeQuery
-    ).then(
-      (agents) =>
-        agents.filter((a) => {
-          return a.userListStatus === "in-list";
-        }) as AgentConfigurationType[]
-    );
-
-    return (
-      await Promise.all([
-        listAgentsPromise,
-        getGlobalAgentConfigurations({ activeOnly: true }),
-      ])
-    ).flat();
-  }
-
-  // Conversation view (user agents list + agents mentioned in the conversation).
-  if (typeof agentsGetView === "object" && agentsGetView.conversationId) {
-    const user = auth.user();
-    if (!user) {
-      throw new Error("Conversation view is specific to a user.");
-    }
-    const conversationAgentsSequelizeQuery = {
-      ...baseAgentsSequelizeQuery,
-      where: {
-        ...baseAgentsSequelizeQuery.where,
-        [Op.or]: [
-          { scope: { [Op.in]: ["published", "workspace"] } },
-          { authorId: user.id },
-        ],
-      },
-    };
-    const [agents, mentions, globalAgents] = await Promise.all([
-      getAgentConfigurationsForQuery(conversationAgentsSequelizeQuery),
-      getConversationMentions(agentsGetView.conversationId),
-      getGlobalAgentConfigurations({ activeOnly: true }),
+  const [agentDatasourceConfigurations, agentTablesConfigurationTables] =
+    await Promise.all([
+      agentDatasourceConfigurationsPromise,
+      agentTablesConfigurationTablesPromise,
     ]);
+
+  let agentConfigurationTypes: AgentConfigurationType[] = [];
+  for (const agent of agentConfigurations) {
+    let action: AgentActionConfigurationType | null = null;
+
+    if (variant === "full") {
+      if (agent.retrievalConfigurationId) {
+        const retrievalConfig =
+          retrievalConfigs[agent.retrievalConfigurationId];
+
+        if (!retrievalConfig) {
+          throw new Error(
+            `Couldn't find action configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
+          );
+        }
+
+        const dataSourcesConfig =
+          agentDatasourceConfigurations[retrievalConfig.id] ?? [];
+
+        let topK: number | "auto" = "auto";
+        if (retrievalConfig.topKMode === "custom") {
+          if (!retrievalConfig.topK) {
+            // unreachable
+            throw new Error(
+              `Couldn't find topK for retrieval configuration ${agent.retrievalConfigurationId}} with 'custom' topK mode`
+            );
+          }
+
+          topK = retrievalConfig.topK;
+        }
+
+        action = {
+          id: retrievalConfig.id,
+          sId: retrievalConfig.sId,
+          type: "retrieval_configuration",
+          query: renderRetrievalQueryType(retrievalConfig),
+          relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
+          topK,
+          dataSources: dataSourcesConfig.map((dsConfig) => {
+            return {
+              dataSourceId: dsConfig.dataSource.name,
+              workspaceId: dsConfig.dataSource.workspace.sId,
+              filter: {
+                tags:
+                  dsConfig.tagsIn && dsConfig.tagsNotIn
+                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
+                    : null,
+                parents:
+                  dsConfig.parentsIn && dsConfig.parentsNotIn
+                    ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
+                    : null,
+              },
+            };
+          }),
+        };
+      } else if (agent.dustAppRunConfigurationId) {
+        const dustAppRunConfig =
+          dustAppRunConfigs[agent.dustAppRunConfigurationId];
+
+        if (!dustAppRunConfig) {
+          throw new Error(
+            `Couldn't find action configuration for DustAppRun configuration ${agent.dustAppRunConfigurationId}}`
+          );
+        }
+
+        action = {
+          id: dustAppRunConfig.id,
+          sId: dustAppRunConfig.sId,
+          type: "dust_app_run_configuration",
+          appWorkspaceId: dustAppRunConfig.appWorkspaceId,
+          appId: dustAppRunConfig.appId,
+        };
+      } else if (agent.tablesQueryConfigurationId) {
+        const tablesQueryConfig =
+          tablesQueryConfigs[agent.tablesQueryConfigurationId];
+
+        if (!tablesQueryConfig) {
+          throw new Error(
+            `Couldn't find action configuration for Tables configuration ${agent.tablesQueryConfigurationId}}`
+          );
+        }
+
+        const tablesQueryConfigTables =
+          agentTablesConfigurationTables[tablesQueryConfig.id] ?? [];
+
+        action = {
+          id: tablesQueryConfig.id,
+          sId: tablesQueryConfig.sId,
+          type: "tables_query_configuration",
+          tables: tablesQueryConfigTables.map((tablesQueryConfigTable) => {
+            return {
+              dataSourceId: tablesQueryConfigTable.dataSourceId,
+              workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
+              tableId: tablesQueryConfigTable.tableId,
+            };
+          }),
+        };
+      }
+    }
+
+    let generation: AgentGenerationConfigurationType | null = null;
+
+    if (agent.generationConfigurationId) {
+      const generationConfig =
+        generationConfigs[agent.generationConfigurationId];
+      const model = {
+        providerId: generationConfig.providerId,
+        modelId: generationConfig.modelId,
+      };
+      if (!isSupportedModel(model)) {
+        throw new Error(`Unknown model ${model.providerId}/${model.modelId}`);
+      }
+      generation = {
+        id: generationConfig.id,
+        prompt: generationConfig.prompt,
+        temperature: generationConfig.temperature,
+        model,
+      };
+    }
+
+    const agentConfigurationType: AgentConfigurationType = {
+      id: agent.id,
+      sId: agent.sId,
+      versionCreatedAt: agent.createdAt.toISOString(),
+      version: agent.version,
+      scope: agent.scope,
+      userListStatus: null,
+      name: agent.name,
+      pictureUrl: agent.pictureUrl,
+      description: agent.description,
+      status: agent.status,
+      action,
+      generation,
+      versionAuthorId: agent.authorId,
+    };
+
+    agentConfigurationType.userListStatus = agentUserListStatus({
+      agentConfiguration: agentConfigurationType,
+      listStatusOverride:
+        agentUserRelations[agent.sId]?.listStatusOverride ?? null,
+    });
+
+    agentConfigurationTypes.push(agentConfigurationType);
+  }
+
+  if (agentsGetView === "list") {
+    agentConfigurationTypes = agentConfigurationTypes.filter((a) => {
+      return a.userListStatus === "in-list";
+    });
+  }
+
+  if (typeof agentsGetView === "object" && "conversationId" in agentsGetView) {
+    const mentions = await getConversationMentions(
+      agentsGetView.conversationId
+    );
     const mentionedAgentIds = mentions.map((m) => m.configurationId);
-    const localAgents = agents.filter((a) => {
+    agentConfigurationTypes = agentConfigurationTypes.filter((a) => {
       if (mentionedAgentIds.includes(a.sId)) {
         return true;
       }
       return a.userListStatus === "in-list";
-    }) as AgentConfigurationType[];
-    return [...localAgents, ...globalAgents];
+    });
   }
 
-  throw new Error(`Unknown agentsGetView ${agentsGetView}`);
+  return globalAgentsPromise.then((globalAgents) => [
+    ...agentConfigurationTypes,
+    ...globalAgents,
+  ]);
 }
+
 async function getConversationMentions(
   conversationId: string
 ): Promise<AgentMention[]> {
@@ -747,10 +690,8 @@ export async function createAgentConfiguration(
               action?.type === "retrieval_configuration" ? action?.id : null,
             dustAppRunConfigurationId:
               action?.type === "dust_app_run_configuration" ? action?.id : null,
-            databaseQueryConfigurationId:
-              action?.type === "database_query_configuration"
-                ? action?.id
-                : null,
+            tablesQueryConfigurationId:
+              action?.type === "tables_query_configuration" ? action?.id : null,
           },
           {
             transaction: t,
@@ -765,6 +706,7 @@ export async function createAgentConfiguration(
     const agentConfiguration: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
+      versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       versionAuthorId: agent.authorId,
       scope: agent.scope,
@@ -883,10 +825,12 @@ export async function createAgentActionConfiguration(
         appId: string;
       }
     | {
-        type: "database_query_configuration";
-        dataSourceWorkspaceId: string;
-        dataSourceId: string;
-        databaseId: string;
+        type: "tables_query_configuration";
+        tables: Array<{
+          workspaceId: string;
+          dataSourceId: string;
+          tableId: string;
+        }>;
       }
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
@@ -895,7 +839,7 @@ export async function createAgentActionConfiguration(
   }
 
   if (action.type === "retrieval_configuration") {
-    return await front_sequelize.transaction(async (t) => {
+    return front_sequelize.transaction(async (t) => {
       const retrievalConfig = await AgentRetrievalConfiguration.create(
         {
           sId: generateModelSId(),
@@ -947,21 +891,35 @@ export async function createAgentActionConfiguration(
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
     };
-  } else if (action.type === "database_query_configuration") {
-    const databaseQueryConfig = await AgentDatabaseQueryConfiguration.create({
-      sId: generateModelSId(),
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
+  } else if (action.type === "tables_query_configuration") {
+    return front_sequelize.transaction(async (t) => {
+      const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
+        {
+          sId: generateModelSId(),
+        },
+        { transaction: t }
+      );
+      await Promise.all(
+        action.tables.map((table) =>
+          AgentTablesQueryConfigurationTable.create(
+            {
+              tablesQueryConfigurationId: tablesQueryConfig.id,
+              dataSourceId: table.dataSourceId,
+              dataSourceWorkspaceId: table.workspaceId,
+              tableId: table.tableId,
+            },
+            { transaction: t }
+          )
+        )
+      );
+
+      return {
+        id: tablesQueryConfig.id,
+        sId: tablesQueryConfig.sId,
+        type: "tables_query_configuration",
+        tables: action.tables,
+      };
     });
-    return {
-      id: databaseQueryConfig.id,
-      sId: databaseQueryConfig.sId,
-      type: "database_query_configuration",
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
-    };
   } else {
     throw new Error("Cannot create AgentActionConfiguration: unknow type");
   }
@@ -1127,4 +1085,40 @@ export async function agentNameIsAvailable(
   });
 
   return !agent;
+}
+
+export async function setAgentScope(
+  auth: Authenticator,
+  agentId: string,
+  scope: AgentConfigurationScope
+): Promise<Result<{ agentId: string; scope: AgentConfigurationScope }, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  if (scope === "global") {
+    return new Err(new Error("Cannot set scope to global"));
+  }
+
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId: agentId,
+      status: "active",
+    },
+  });
+
+  if (!agent) {
+    return new Err(new Error(`Could not find agent ${agentId}`));
+  }
+
+  if (agent.scope === scope) {
+    return new Ok({ agentId, scope });
+  }
+
+  agent.scope = scope;
+  await agent.save();
+
+  return new Ok({ agentId, scope });
 }

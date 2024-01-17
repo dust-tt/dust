@@ -1,7 +1,5 @@
 import {
   AgentConfiguration,
-  AgentDatabaseQueryAction,
-  AgentDatabaseQueryConfiguration,
   AgentDataSourceConfiguration,
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
@@ -35,9 +33,13 @@ import {
   UserMessage,
   UserMetadata,
   Workspace,
-  XP1Run,
-  XP1User,
+  WorkspaceHasDomain,
 } from "@app/lib/models";
+import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentUserRelation,
   GlobalAgentSettings,
@@ -49,6 +51,7 @@ async function main() {
   await User.sync({ alter: true });
   await UserMetadata.sync({ alter: true });
   await Workspace.sync({ alter: true });
+  await WorkspaceHasDomain.sync({ alter: true });
   await Membership.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
   await App.sync({ alter: true });
@@ -69,8 +72,9 @@ async function main() {
 
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
-  await AgentDatabaseQueryConfiguration.sync({ alter: true });
-  await AgentDatabaseQueryAction.sync({ alter: true });
+  await AgentTablesQueryConfiguration.sync({ alter: true });
+  await AgentTablesQueryConfigurationTable.sync({ alter: true });
+  await AgentTablesQueryAction.sync({ alter: true });
 
   await AgentGenerationConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
@@ -91,9 +95,6 @@ async function main() {
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
-
-  await XP1User.sync({ alter: true });
-  await XP1Run.sync({ alter: true });
 
   process.exit(0);
 }

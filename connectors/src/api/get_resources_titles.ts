@@ -1,11 +1,11 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
-import { Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 const GetResourcesTitlesRequestBodySchema = t.type({

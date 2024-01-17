@@ -1,7 +1,14 @@
-import { Sequelize } from "sequelize";
+import type { Sequelize } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
+  ConfluenceConfiguration,
+  ConfluenceSpace,
+} from "@connectors/lib/models/confluence";
+import {
+  GithubCodeDirectory,
+  GithubCodeFile,
+  GithubCodeRepository,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
@@ -16,6 +23,7 @@ import {
 import {
   IntercomArticle,
   IntercomCollection,
+  IntercomHelpCenter,
 } from "@connectors/lib/models/intercom";
 import {
   NotionConnectorBlockCacheEntry,
@@ -31,10 +39,17 @@ import {
   SlackConfiguration,
   SlackMessages,
 } from "@connectors/lib/models/slack";
+import {
+  WebCrawlerConfiguration,
+  WebCrawlerFolder,
+  WebCrawlerPage,
+} from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
 
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
+  await ConfluenceConfiguration.sync({ alter: true });
+  await ConfluenceSpace.sync({ alter: true });
   await SlackConfiguration.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
@@ -45,6 +60,9 @@ async function main(): Promise<void> {
   await GithubConnectorState.sync({ alter: true });
   await GithubIssue.sync({ alter: true });
   await GithubDiscussion.sync({ alter: true });
+  await GithubCodeRepository.sync({ alter: true });
+  await GithubCodeFile.sync({ alter: true });
+  await GithubCodeDirectory.sync({ alter: true });
   await GoogleDriveFolders.sync({ alter: true });
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
@@ -53,8 +71,12 @@ async function main(): Promise<void> {
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
   await GoogleDriveConfig.sync({ alter: true });
+  await IntercomHelpCenter.sync({ alter: true });
   await IntercomCollection.sync({ alter: true });
   await IntercomArticle.sync({ alter: true });
+  await WebCrawlerConfiguration.sync({ alter: true });
+  await WebCrawlerFolder.sync({ alter: true });
+  await WebCrawlerPage.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

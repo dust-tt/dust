@@ -1,13 +1,10 @@
 import { Nango } from "@nangohq/node";
-import { QueryTypes, Sequelize } from "sequelize";
+import { QueryTypes } from "sequelize";
 
+import { getConnectorReplicaDbConnection } from "@app/production_checks/lib/utils";
 import { CheckFunction } from "@app/production_checks/types/check";
 
-const {
-  CONNECTORS_DATABASE_READ_REPLICA_URI,
-  NANGO_SECRET_KEY,
-  NANGO_SLACK_CONNECTOR_ID,
-} = process.env;
+const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 export const nangoConnectionIdCleanupSlack: CheckFunction = async (
   checkName,
@@ -22,19 +19,9 @@ export const nangoConnectionIdCleanupSlack: CheckFunction = async (
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("Env var NANGO_SLACK_CONNECTOR_ID is not defined");
   }
-  if (!CONNECTORS_DATABASE_READ_REPLICA_URI) {
-    throw new Error(
-      "Env var CONNECTORS_DATABASE_READ_REPLICA_URI is not defined"
-    );
-  }
 
   // Get all the Slack configurations in the database
-  const connectorsSequelize = new Sequelize(
-    CONNECTORS_DATABASE_READ_REPLICA_URI,
-    {
-      logging: false,
-    }
-  );
+  const connectorsSequelize = getConnectorReplicaDbConnection();
   const dbSlackConfigurationsData: { id: number; slackTeamId: string }[] =
     await connectorsSequelize.query(
       `SELECT id, "slackTeamId" FROM "slack_configurations"`,

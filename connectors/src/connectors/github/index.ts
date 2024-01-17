@@ -1,4 +1,4 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
 import {
   getRepo,
@@ -8,20 +8,27 @@ import {
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
+  GithubCodeDirectory,
+  GithubCodeFile,
+  GithubCodeRepository,
   GithubConnectorState,
   GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import {
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
 
-import { ConnectorPermissionRetriever } from "../interface";
+import type {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "../interface";
 
 type GithubInstallationId = string;
 
@@ -52,13 +59,17 @@ export async function createGithubConnector(
         {
           connectorId: connector.id,
           webhooksEnabledAt: new Date(),
+          codeSyncEnabled: false,
         },
         { transaction }
       );
 
       return connector;
     });
-    await launchGithubFullSyncWorkflow(connector.id.toString());
+    await launchGithubFullSyncWorkflow({
+      connectorId: connector.id.toString(),
+      syncCodeOnly: false,
+    });
     return new Ok(connector.id.toString());
   } catch (err) {
     logger.error({ error: err }, "Error creating github connector");
@@ -179,7 +190,10 @@ export async function resumeGithubConnector(
       webhooksEnabledAt: new Date(),
     });
 
-    await launchGithubFullSyncWorkflow(connector.id.toString());
+    await launchGithubFullSyncWorkflow({
+      connectorId: connector.id.toString(),
+      syncCodeOnly: false,
+    });
 
     return new Ok(connector.id.toString());
   } catch (err) {
@@ -198,7 +212,10 @@ export async function fullResyncGithubConnector(
   }
 
   try {
-    await launchGithubFullSyncWorkflow(connectorId);
+    await launchGithubFullSyncWorkflow({
+      connectorId: connectorId,
+      syncCodeOnly: false,
+    });
     return new Ok(connectorId);
   } catch (err) {
     return new Err(err as Error);
@@ -300,70 +317,158 @@ export async function retrieveGithubConnectorPermissions({
 
     return new Ok(resources);
   } else {
-    // If parentInternalId is set this means we are fetching the children of a repository. For now
-    // we only support issues and discussions.
-    const repoId = parseInt(parentInternalId, 10);
-    if (isNaN(repoId)) {
-      return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
-    }
+    if (parentInternalId.startsWith("github-code-")) {
+      const [files, directories] = await Promise.all([
+        (async () => {
+          return GithubCodeFile.findAll({
+            where: {
+              connectorId: c.id,
+              parentInternalId,
+            },
+          });
+        })(),
+        (async () => {
+          return GithubCodeDirectory.findAll({
+            where: {
+              connectorId: c.id,
+              parentInternalId,
+            },
+          });
+        })(),
+      ]);
 
-    const [latestDiscussion, latestIssue, repo] = await Promise.all([
-      (async () => {
-        return await GithubDiscussion.findOne({
-          where: {
-            connectorId: c.id,
-            repoId: repoId.toString(),
-          },
-          limit: 1,
-          order: [["updatedAt", "DESC"]],
-        });
-      })(),
-      (async () => {
-        return await GithubIssue.findOne({
-          where: {
-            connectorId: c.id,
-            repoId: repoId.toString(),
-          },
-          limit: 1,
-          order: [["updatedAt", "DESC"]],
-        });
-      })(),
-      getRepo(githubInstallationId, repoId),
-    ]);
-
-    const resources: ConnectorResource[] = [];
-
-    if (latestIssue) {
-      resources.push({
-        provider: c.type,
-        internalId: `${repoId}-issues`,
-        parentInternalId,
-        type: "database",
-        title: "Issues",
-        sourceUrl: repo.url + "/issues",
-        expandable: false,
-        permission: "read" as ConnectorPermission,
-        dustDocumentId: null,
-        lastUpdatedAt: latestIssue.updatedAt.getTime(),
+      files.sort((a, b) => {
+        return a.fileName.localeCompare(b.fileName);
       });
-    }
-
-    if (latestDiscussion) {
-      resources.push({
-        provider: c.type,
-        internalId: `${repoId}-discussions`,
-        parentInternalId,
-        type: "channel",
-        title: "Discussions",
-        sourceUrl: repo.url + "/discussions",
-        expandable: false,
-        permission: "read" as ConnectorPermission,
-        dustDocumentId: null,
-        lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+      directories.sort((a, b) => {
+        return a.dirName.localeCompare(b.dirName);
       });
-    }
 
-    return new Ok(resources);
+      const resources: ConnectorResource[] = [];
+
+      directories.forEach((directory) => {
+        resources.push({
+          provider: c.type,
+          internalId: directory.internalId,
+          parentInternalId,
+          type: "folder",
+          title: directory.dirName,
+          sourceUrl: directory.sourceUrl,
+          expandable: true,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: directory.updatedAt.getTime(),
+        });
+      });
+
+      files.forEach((file) => {
+        resources.push({
+          provider: c.type,
+          internalId: file.documentId,
+          parentInternalId,
+          type: "file",
+          title: file.fileName,
+          sourceUrl: file.sourceUrl,
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: file.documentId,
+          lastUpdatedAt: file.updatedAt.getTime(),
+        });
+      });
+
+      return new Ok(resources);
+    } else {
+      // If parentInternalId is set and does not start with `github-code` it means that it is
+      // supposed to be the repoId. We support issues and discussions and also want to add the code
+      // repo resource if it exists (code sync enabled).
+      const repoId = parseInt(parentInternalId, 10);
+      if (isNaN(repoId)) {
+        return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
+      }
+
+      const [latestDiscussion, latestIssue, repo, codeRepo] = await Promise.all(
+        [
+          (async () => {
+            return GithubDiscussion.findOne({
+              where: {
+                connectorId: c.id,
+                repoId: repoId.toString(),
+              },
+              limit: 1,
+              order: [["updatedAt", "DESC"]],
+            });
+          })(),
+          (async () => {
+            return GithubIssue.findOne({
+              where: {
+                connectorId: c.id,
+                repoId: repoId.toString(),
+              },
+              limit: 1,
+              order: [["updatedAt", "DESC"]],
+            });
+          })(),
+          getRepo(githubInstallationId, repoId),
+          (async () => {
+            return GithubCodeRepository.findOne({
+              where: {
+                connectorId: c.id,
+                repoId: repoId.toString(),
+              },
+            });
+          })(),
+        ]
+      );
+
+      const resources: ConnectorResource[] = [];
+
+      if (latestIssue) {
+        resources.push({
+          provider: c.type,
+          internalId: `${repoId}-issues`,
+          parentInternalId,
+          type: "database",
+          title: "Issues",
+          sourceUrl: repo.url + "/issues",
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: latestIssue.updatedAt.getTime(),
+        });
+      }
+
+      if (latestDiscussion) {
+        resources.push({
+          provider: c.type,
+          internalId: `${repoId}-discussions`,
+          parentInternalId,
+          type: "channel",
+          title: "Discussions",
+          sourceUrl: repo.url + "/discussions",
+          expandable: false,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
+        });
+      }
+
+      if (codeRepo) {
+        resources.push({
+          provider: c.type,
+          internalId: `github-code-${repoId}`,
+          parentInternalId,
+          type: "folder",
+          title: "Code",
+          sourceUrl: repo.url,
+          expandable: true,
+          permission: "read" as ConnectorPermission,
+          dustDocumentId: null,
+          lastUpdatedAt: codeRepo.updatedAt.getTime(),
+        });
+      }
+
+      return new Ok(resources);
+    }
   }
 }
 
@@ -404,4 +509,84 @@ export async function retrieveGithubReposTitles(
   }
 
   return new Ok(repoTitles);
+}
+
+export const getGithubConfig: ConnectorConfigGetter = async function (
+  connectorId: ModelId,
+  configKey: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  switch (configKey) {
+    case "codeSyncEnabled": {
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        return new Err(
+          new Error(`Connector state not found (connectorId: ${connector.id})`)
+        );
+      }
+
+      return new Ok(connectorState.codeSyncEnabled.toString());
+    }
+    default:
+      return new Err(new Error(`Invalid config key ${configKey}`));
+  }
+};
+
+export async function setGithubConfig(
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  switch (configKey) {
+    case "codeSyncEnabled": {
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        return new Err(
+          new Error(`Connector state not found (connectorId: ${connector.id})`)
+        );
+      }
+
+      await connectorState.update({
+        codeSyncEnabled: configValue === "true",
+      });
+
+      // launch full-resync workflow, code sync only (to be launched on enable and disable to sync
+      // or properly clean up the code).
+      await launchGithubFullSyncWorkflow({
+        connectorId: connector.id.toString(),
+        syncCodeOnly: true,
+      });
+
+      return new Ok(void 0);
+    }
+
+    default: {
+      return new Err(new Error(`Invalid config key ${configKey}`));
+    }
+  }
 }

@@ -8,10 +8,12 @@ import {
   Modal,
   Tab,
 } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { ChangeEvent, useRef, useState } from "react";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ChangeEvent } from "react";
+import { useRef, useState } from "react";
 import React from "react";
-import ReactCrop, { centerCrop, Crop, makeAspectCrop } from "react-image-crop";
+import type { Crop } from "react-image-crop";
+import ReactCrop, { centerCrop, makeAspectCrop } from "react-image-crop";
 
 import { classNames } from "@app/lib/utils";
 

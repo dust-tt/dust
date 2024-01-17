@@ -1,6 +1,7 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
+import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -18,17 +19,19 @@ import {
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import { ConnectorResource } from "@connectors/types/resources";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type { ConnectorResource } from "@connectors/types/resources";
 
-import { ConnectorPermissionRetriever } from "../interface";
+import type { ConnectorPermissionRetriever } from "../interface";
 import { getParents } from "./lib/parents";
 
-const { NANGO_NOTION_CONNECTOR_ID } = process.env;
+const { getRequiredNangoNotionConnectorId } = notionConfig;
+
 const logger = mainLogger.child({ provider: "notion" });
 
 export async function createNotionConnector(
@@ -37,13 +40,9 @@ export async function createNotionConnector(
 ): Promise<Result<string, Error>> {
   const nangoConnectionId = connectionId;
 
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
   const notionAccessToken = await getAccessTokenFromNango({
     connectionId: nangoConnectionId,
-    integrationId: NANGO_NOTION_CONNECTOR_ID,
+    integrationId: getRequiredNangoNotionConnectorId(),
     useCache: false,
   });
 
@@ -88,10 +87,6 @@ export async function updateNotionConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -110,12 +105,12 @@ export async function updateNotionConnector(
   if (connectionId) {
     const oldConnectionId = c.connectionId;
     const connectionRes = await nango_client().getConnection(
-      NANGO_NOTION_CONNECTOR_ID,
+      getRequiredNangoNotionConnectorId(),
       oldConnectionId,
       false
     );
     const newConnectionRes = await nango_client().getConnection(
-      NANGO_NOTION_CONNECTOR_ID,
+      getRequiredNangoNotionConnectorId(),
       connectionId,
       false
     );
@@ -142,14 +137,15 @@ export async function updateNotionConnector(
     }
 
     await c.update({ connectionId });
-    nangoDeleteConnection(oldConnectionId, NANGO_NOTION_CONNECTOR_ID).catch(
-      (e) => {
-        logger.error(
-          { error: e, oldConnectionId },
-          "Error deleting old Nango connection"
-        );
-      }
-    );
+    nangoDeleteConnection(
+      oldConnectionId,
+      getRequiredNangoNotionConnectorId()
+    ).catch((e) => {
+      logger.error(
+        { error: e, oldConnectionId },
+        "Error deleting old Nango connection"
+      );
+    });
   }
 
   return new Ok(c.id.toString());
@@ -312,12 +308,9 @@ export async function cleanupNotionConnector(
 }
 
 async function deleteNangoConnection(connectionId: NangoConnectionId) {
-  if (!NANGO_NOTION_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
   const nangoRes = await nangoDeleteConnection(
     connectionId,
-    NANGO_NOTION_CONNECTOR_ID
+    getRequiredNangoNotionConnectorId()
   );
   if (nangoRes.isErr()) {
     logger.error(

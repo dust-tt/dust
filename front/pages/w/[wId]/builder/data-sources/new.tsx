@@ -1,9 +1,9 @@
 import { Checkbox, Page } from "@dust-tt/sparkle";
-import { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
+import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
@@ -256,7 +256,7 @@ export default function DataSourceNew({
                   htmlFor="assistantDefaultSelected"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Availability to @dust
+                  Availability to the @dust assistant
                 </label>
               </div>
               <div className="mt-2 flex items-center">

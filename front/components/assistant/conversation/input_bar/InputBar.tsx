@@ -1,7 +1,7 @@
 import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
-import { AgentMention, MentionType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type { AgentMention, MentionType } from "@dust-tt/types";
 import {
   createContext,
   Fragment,
@@ -13,9 +13,8 @@ import {
 import { mutate } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import InputBarContainer, {
-  InputBarContainerProps,
-} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -27,7 +26,7 @@ import { classNames } from "@app/lib/utils";
 function AgentMention({
   agentConfiguration,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
 }) {
   return (
     <div
@@ -56,7 +55,7 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  additionalAgentConfigurations?: AgentConfigurationType[];
+  additionalAgentConfigurations?: LightAgentConfigurationType[];
 }) {
   const [contentFragmentBody, setContentFragmentBody] = useState<
     string | undefined
@@ -289,7 +288,7 @@ export function FixedAssistantInputBar({
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  additionalAgentConfigurations?: AgentConfigurationType[];
+  additionalAgentConfigurations?: LightAgentConfigurationType[];
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">

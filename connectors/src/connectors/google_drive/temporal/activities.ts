@@ -1,5 +1,6 @@
 import fs from "fs/promises";
-import { GaxiosError, GaxiosResponse } from "googleapis-common";
+import type { GaxiosResponse } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 import StatsD from "hot-shots";
 import os from "os";
 import PQueue from "p-queue";
@@ -7,21 +8,23 @@ import PQueue from "p-queue";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
-  renderSectionForTitleAndContent,
+  renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { HTTPError } from "@connectors/lib/error";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
-import { cacheWithRedis, ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
+import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import { drive_v3 } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
-import { CreationAttributes, literal, Op } from "sequelize";
+import type { CreationAttributes } from "sequelize";
+import { literal, Op } from "sequelize";
 
 import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -92,7 +95,7 @@ export async function getGoogleCredentials(
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
   }
-  return await nango_client().getConnection(
+  return nango_client().getConnection(
     NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
     nangoConnectionId,
     false
@@ -255,7 +258,7 @@ export async function syncFiles(
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields:
-      "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+      "nextPageToken, files(id, name, parents, mimeType, createdTime, lastModifyingUser, modifiedTime, trashed, webViewLink)",
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
   });
@@ -274,7 +277,7 @@ export async function syncFiles(
         if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
           throw new Error("Invalid file. File is: " + JSON.stringify(file));
         }
-        return await driveObjectToDustType(file, authCredentials);
+        return driveObjectToDustType(file, authCredentials);
       })
   );
   const subfolders = filesToSync
@@ -286,7 +289,7 @@ export async function syncFiles(
     filesToSync.map((file) => {
       return queue.add(async () => {
         if (!file.trashed) {
-          return await syncOneFile(
+          return syncOneFile(
             connectorId,
             authCredentials,
             dataSourceConfig,
@@ -509,11 +512,18 @@ async function syncOneFile(
     return false;
   }
 
-  // Add the title of the file to the beginning of the document.
-  const content = renderSectionForTitleAndContent(
-    file.name,
-    documentContent || null
-  );
+  documentContent = documentContent?.trim();
+
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: file.name,
+    updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
+    createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
+    lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
+    content: documentContent
+      ? { prefix: null, content: documentContent, sections: [] }
+      : null,
+  });
 
   if (documentContent === undefined) {
     logger.error(
@@ -530,7 +540,7 @@ async function syncOneFile(
   }
   const tags = [`title:${file.name}`];
   if (file.updatedAtMs) {
-    tags.push(`lastEditedAt:${file.updatedAtMs}`);
+    tags.push(`updatedAt:${file.updatedAtMs}`);
   }
   if (file.createdAtMs) {
     tags.push(`createdAt:${file.createdAtMs}`);
@@ -542,7 +552,10 @@ async function syncOneFile(
 
   let upsertTimestampMs: number | undefined = undefined;
 
-  if (documentContent.length <= MAX_DOCUMENT_TXT_LEN) {
+  if (
+    documentContent.length > 0 &&
+    documentContent.length <= MAX_DOCUMENT_TXT_LEN
+  ) {
     const parents = (
       await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
     ).map((f) => f.id);
@@ -571,7 +584,7 @@ async function syncOneFile(
         documentLen: documentContent.length,
         title: file.name,
       },
-      `Document too big to be upserted. Skipping`
+      `Document is empty or too big to be upserted. Skipping`
     );
   }
 

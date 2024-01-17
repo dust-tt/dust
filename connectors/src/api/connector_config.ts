@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,7 +9,7 @@ import {
 } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 const ConfigSetReqBodySchema = t.type({
   configValue: t.string,
@@ -132,7 +132,25 @@ const _setConnectorConfig = async (
     });
   }
   const setter = SET_CONNECTOR_CONFIG_BY_TYPE[connector.type];
-  await setter(connector.id, req.params.config_key, req.body.configValue);
+  const setConfigRes = await setter(
+    connector.id,
+    req.params.config_key,
+    req.body.configValue
+  );
+  if (setConfigRes.isErr()) {
+    return apiError(
+      req,
+      res,
+      {
+        api_error: {
+          type: "internal_server_error",
+          message: `Unable to set config value for connector ${connector.id} and key ${req.params.config_key}`,
+        },
+        status_code: 500,
+      },
+      setConfigRes.error
+    );
+  }
 
   return res.status(200).json({
     connectorId: connector.id,

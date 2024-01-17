@@ -1,20 +1,23 @@
-import { ModelId } from "@dust-tt/types";
-import {
-  CodedError,
-  ErrorCode,
-  WebAPIPlatformError,
-  WebClient,
-} from "@slack/web-api";
+import type { ModelId } from "@dust-tt/types";
+import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
-import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import type {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
+import {
+  getBotEnabled,
+  toggleSlackbot,
+} from "@connectors/connectors/slack/bot";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -28,9 +31,9 @@ import {
 import { Err, Ok, type Result } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import {
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
@@ -245,8 +248,9 @@ export async function uninstallSlack(nangoConnectionId: string) {
   }
 
   const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
-  const slackClient = await getSlackClient(slackAccessToken);
+
   try {
+    const slackClient = await getSlackClient(slackAccessToken);
     await slackClient.auth.test();
     const deleteRes = await slackClient.apps.uninstall({
       client_id: SLACK_CLIENT_ID,
@@ -260,25 +264,14 @@ export async function uninstallSlack(nangoConnectionId: string) {
       );
     }
   } catch (e) {
-    const slackError = e as CodedError;
-    let shouldThrow = true;
-
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = e as WebAPIPlatformError;
-      if (
-        ["account_inactive", "invalid_auth"].includes(platformError.data.error)
-      ) {
-        shouldThrow = false;
-        logger.info(
-          {
-            nangoConnectionId,
-          },
-          `Slack auth is invalid, skipping uninstallation of the Slack app`
-        );
-      }
-    }
-
-    if (shouldThrow) {
+    if (e instanceof ExternalOauthTokenError) {
+      logger.info(
+        {
+          nangoConnectionId,
+        },
+        `Slack auth is invalid, skipping uninstallation of the Slack app`
+      );
+    } else {
       throw e;
     }
   }
@@ -642,4 +635,52 @@ export async function retrieveSlackChannelsTitles(
   }
 
   return new Ok(titles);
+}
+
+export const getSlackConfig: ConnectorConfigGetter = async function (
+  connectorId: ModelId,
+  configKey: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  switch (configKey) {
+    case "botEnabled": {
+      const botEnabledRes = await getBotEnabled(connectorId);
+      if (botEnabledRes.isErr()) {
+        return botEnabledRes;
+      }
+      return new Ok(botEnabledRes.value.toString());
+    }
+    default:
+      return new Err(new Error(`Invalid config key ${configKey}`));
+  }
+};
+
+export async function setSlackConfig(
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+
+  switch (configKey) {
+    case "botEnabled": {
+      const res = await toggleSlackbot(connectorId, configValue === "true");
+      return res;
+    }
+
+    default: {
+      return new Err(new Error(`Invalid config key ${configKey}`));
+    }
+  }
 }

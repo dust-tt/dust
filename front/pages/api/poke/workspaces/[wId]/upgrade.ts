@@ -1,11 +1,11 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
   internalSubscribeWorkspaceToFreeUpgradedPlan,
-  pokeInviteWorkspaceToEnterprisePlan,
+  pokeUpgradeOrInviteWorkspaceToPlan,
 } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -45,7 +45,7 @@ async function handler(
           workspaceId: owner.sId,
         });
       } else {
-        await pokeInviteWorkspaceToEnterprisePlan(auth, planCode);
+        await pokeUpgradeOrInviteWorkspaceToPlan(auth, planCode);
       }
 
       return res.status(200).json({

@@ -1,42 +1,44 @@
-import {
+import type {
   AgentActionEvent,
+  AgentActionSpecification,
   AgentActionSuccessEvent,
+  AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
-  DatabaseQueryParamsEvent,
+  AgentMessageType,
+  ConversationType,
   GenerationTokensEvent,
+  LightAgentConfigurationType,
+  Result,
+  TablesQueryParamsEvent,
+  UserMessageType,
+} from "@dust-tt/types";
+import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+  Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
-  isDatabaseQueryConfiguration,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  Ok,
 } from "@dust-tt/types";
-import {
-  AgentActionSpecification,
-  AgentConfigurationType,
-} from "@dust-tt/types";
-import {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { runDatabaseQuery } from "@app/lib/api/assistant/actions/database_query";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
+import { runTablesQuery } from "@app/lib/api/assistant/actions/tables_query";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
-import { Authenticator } from "@app/lib/auth";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
 /**
@@ -63,10 +65,7 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const plan = auth.plan();
-  const isFree = !plan || plan.code === FREE_TEST_PLAN_CODE;
-
-  let model: { providerId: string; modelId: string } = isFree
+  let model: { providerId: string; modelId: string } = !auth.isUpgraded()
     ? {
         providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -76,7 +75,7 @@ export async function generateActionInputs(
         modelId: GPT_4_32K_MODEL_CONFIG.modelId,
       };
 
-  const contextSize = isFree
+  const contextSize = !auth.isUpgraded()
     ? GPT_3_5_TURBO_MODEL_CONFIG.contextSize
     : GPT_4_32K_MODEL_CONFIG.contextSize;
 
@@ -176,7 +175,7 @@ export async function generateActionInputs(
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runAgent(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: LightAgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -188,15 +187,26 @@ export async function* runAgent(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | DatabaseQueryParamsEvent,
+  | TablesQueryParamsEvent,
   void
 > {
+  const fullConfiguration = await getAgentConfiguration(
+    auth,
+    configuration.sId
+  );
+
+  if (!fullConfiguration) {
+    throw new Error(
+      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
+    );
+  }
+
   // First run the action if a configuration is present.
-  if (configuration.action !== null) {
-    if (isRetrievalConfiguration(configuration.action)) {
+  if (fullConfiguration.action !== null) {
+    if (isRetrievalConfiguration(fullConfiguration.action)) {
       const eventStream = runRetrieval(
         auth,
-        configuration,
+        fullConfiguration,
         conversation,
         userMessage,
         agentMessage
@@ -240,10 +250,10 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDustAppRunConfiguration(configuration.action)) {
+    } else if (isDustAppRunConfiguration(fullConfiguration.action)) {
       const eventStream = runDustApp(
         auth,
-        configuration,
+        fullConfiguration,
         conversation,
         userMessage,
         agentMessage
@@ -290,21 +300,21 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDatabaseQueryConfiguration(configuration.action)) {
-      const eventStream = runDatabaseQuery({
+    } else if (isTablesQueryConfiguration(fullConfiguration.action)) {
+      const eventStream = runTablesQuery({
         auth,
-        configuration,
+        configuration: fullConfiguration,
         conversation,
         userMessage,
         agentMessage,
       });
       for await (const event of eventStream) {
         switch (event.type) {
-          case "database_query_params":
-          case "database_query_output":
+          case "tables_query_params":
+          case "tables_query_output":
             yield event;
             break;
-          case "database_query_error":
+          case "tables_query_error":
             yield {
               type: "agent_error",
               created: event.created,
@@ -316,7 +326,7 @@ export async function* runAgent(
               },
             };
             return;
-          case "database_query_success":
+          case "tables_query_success":
             yield {
               type: "agent_action_success",
               created: event.created,
@@ -339,7 +349,7 @@ export async function* runAgent(
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
-      })(configuration.action);
+      })(fullConfiguration.action);
     }
   }
 
@@ -347,7 +357,7 @@ export async function* runAgent(
   if (configuration.generation !== null) {
     const eventStream = runGeneration(
       auth,
-      configuration,
+      fullConfiguration,
       conversation,
       userMessage,
       agentMessage

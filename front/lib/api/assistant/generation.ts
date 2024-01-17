@@ -1,44 +1,45 @@
-import {
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
-  GPT_4_32K_MODEL_ID,
-  GPT_4_MODEL_CONFIG,
-  isDatabaseQueryActionType,
-  isDustAppRunActionType,
   ModelConversationType,
   ModelMessageType,
-} from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
-import {
-  isRetrievalActionType,
-  isRetrievalConfiguration,
-} from "@dust-tt/types";
-import {
-  AgentMessageType,
-  ConversationType,
-  isAgentMessageType,
-  isContentFragmentType,
-  isUserMessageType,
+  Result,
   UserMessageType,
 } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
+import {
+  assertNever,
+  cloneBaseConfig,
+  CoreAPI,
+  DustProdActionRegistry,
+  Err,
+  GPT_4_32K_MODEL_ID,
+  GPT_4_MODEL_CONFIG,
+  isAgentMessageType,
+  isContentFragmentType,
+  isDustAppRunActionType,
+  isRetrievalActionType,
+  isRetrievalConfiguration,
+  isTablesQueryActionType,
+  isUserMessageType,
+  Ok,
+} from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDatabaseQueryActionForModel } from "@app/lib/api/assistant/actions/database_query";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -83,14 +84,10 @@ export async function renderConversationForModel({
           }
         } else if (isDustAppRunActionType(m.action)) {
           messages.unshift(renderDustAppRunActionForModel(m.action));
-        } else if (isDatabaseQueryActionType(m.action)) {
-          messages.unshift(renderDatabaseQueryActionForModel(m.action));
+        } else if (isTablesQueryActionType(m.action)) {
+          messages.unshift(renderTablesQueryActionForModel(m.action));
         } else {
-          return new Err(
-            new Error(
-              "Unsupported action type during conversation model rendering"
-            )
-          );
+          assertNever(m.action);
         }
       }
       if (m.content) {
@@ -243,10 +240,11 @@ export async function constructPrompt(
   if (meta.includes("{ASSISTANTS_LIST}")) {
     if (!auth.isUser())
       throw new Error("Unexpected unauthenticated call to `constructPrompt`");
-    const agents = await getAgentConfigurations(
+    const agents = await getAgentConfigurations({
       auth,
-      auth.user() ? "list" : "all"
-    );
+      agentsGetView: auth.user() ? "list" : "all",
+      variant: "light",
+    });
     meta = meta.replaceAll(
       "{ASSISTANTS_LIST}",
       agents
@@ -279,8 +277,7 @@ export async function* runGeneration(
   void
 > {
   const owner = auth.workspace();
-  const plan = auth.plan();
-  if (!owner || !plan) {
+  if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
@@ -303,7 +300,7 @@ export async function* runGeneration(
 
   let model = c.model;
 
-  if (isLargeModel(model) && plan.code === FREE_TEST_PLAN_CODE) {
+  if (isLargeModel(model) && !auth.isUpgraded()) {
     yield {
       type: "generation_error",
       created: Date.now(),

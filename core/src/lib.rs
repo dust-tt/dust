@@ -66,11 +66,14 @@ pub mod blocks {
 pub mod sqlite_workers {
     pub mod client;
     pub mod sqlite_database;
-    pub mod store;
 }
 
 pub mod deno {
     pub mod script;
+}
+
+pub mod databases_store {
+    pub mod store;
 }
 
 pub mod consts;

@@ -1,9 +1,9 @@
-import { PlanType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { PlanType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import Stripe from "stripe";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -20,11 +20,13 @@ export const PlanTypeSchema = t.type({
       maxMessages: t.number,
     }),
     connections: t.type({
+      isConfluenceAllowed: t.boolean,
       isSlackAllowed: t.boolean,
       isNotionAllowed: t.boolean,
       isGoogleDriveAllowed: t.boolean,
       isGithubAllowed: t.boolean,
       isIntercomAllowed: t.boolean,
+      isWebCrawlerAllowed: t.boolean,
     }),
     dataSources: t.type({
       count: t.number,
@@ -88,11 +90,13 @@ async function handler(
             maxMessages: plan.maxMessages,
           },
           connections: {
+            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
             isSlackAllowed: plan.isManagedSlackAllowed,
             isNotionAllowed: plan.isManagedNotionAllowed,
             isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
             isGithubAllowed: plan.isManagedGithubAllowed,
             isIntercomAllowed: plan.isManagedIntercomAllowed,
+            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
           },
           dataSources: {
             count: plan.maxDataSourcesCount,
@@ -175,12 +179,14 @@ async function handler(
         stripeProductId: body.stripeProductId,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxMessages: body.limits.assistant.maxMessages,
+        isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
         isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
         isManagedNotionAllowed: body.limits.connections.isNotionAllowed,
         isManagedGoogleDriveAllowed:
           body.limits.connections.isGoogleDriveAllowed,
         isManagedGithubAllowed: body.limits.connections.isGithubAllowed,
         isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
+        isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

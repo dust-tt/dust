@@ -1,12 +1,14 @@
-import { ModelId } from "@dust-tt/types";
-import {
+import type { ModelId } from "@dust-tt/types";
+import type {
   CodedError,
-  ErrorCode,
+  UsersInfoResponse,
   WebAPIHTTPError,
-  WebClient,
+  WebAPIPlatformError,
 } from "@slack/web-api";
+import { ErrorCode, WebClient } from "@slack/web-api";
 
-import { WorkflowError } from "@connectors/lib/error";
+import type { WorkflowError } from "@connectors/lib/error";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -51,6 +53,7 @@ export async function getSlackClient(
     apply: async function (target, thisArg, argumentsList) {
       try {
         // @ts-expect-error can't get typescript to be happy with this, but it works.
+        // eslint-disable-next-line @typescript-eslint/return-await
         return await Reflect.apply(target, thisArg, argumentsList);
       } catch (e) {
         // If we get rate limited, we throw a known error.
@@ -80,6 +83,16 @@ export async function getSlackClient(
             throw workflowError;
           }
         }
+        if (slackError.code === ErrorCode.PlatformError) {
+          const platformError = e as WebAPIPlatformError;
+          if (
+            ["account_inactive", "invalid_auth"].includes(
+              platformError.data.error
+            )
+          ) {
+            throw new ExternalOauthTokenError();
+          }
+        }
         throw e;
       }
     },
@@ -88,6 +101,68 @@ export async function getSlackClient(
   const proxied = new Proxy(slackClient, handler);
 
   return proxied;
+}
+
+export async function getSlackUserInfo(slackClient: WebClient, userId: string) {
+  return slackClient.users.info({
+    user: userId,
+  });
+}
+
+async function getSlackConversationInfo(
+  slackClient: WebClient,
+  channelId: string
+) {
+  return slackClient.conversations.info({ channel: channelId });
+}
+
+// Verify the Slack user is not an external guest to the workspace.
+// An exception is made for users from domains on the whitelist,
+// allowing them to interact with the bot in public channels.
+// See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619
+export async function isUserAllowedToUseChatbot(
+  slackClient: WebClient,
+  slackUserInfo: UsersInfoResponse,
+  slackChanneId: string,
+  slackTeamId: string,
+  whitelistedDomains?: readonly string[]
+): Promise<boolean> {
+  if (!slackUserInfo.user) {
+    return false;
+  }
+
+  const {
+    is_restricted,
+    is_stranger: isStranger,
+    is_ultra_restricted,
+    profile,
+  } = slackUserInfo.user;
+
+  const isInWorkspace = profile?.team === slackTeamId;
+  if (!isInWorkspace) {
+    return false;
+  }
+
+  const isGuest = is_restricted || is_ultra_restricted;
+  const isExternal = isGuest || isStranger;
+
+  if (isExternal) {
+    const userDomain = profile?.email?.split("@")[1];
+    // Ensure the domain matches exactly.
+    const isWhitelistedDomain = userDomain
+      ? whitelistedDomains?.includes(userDomain) ?? false
+      : false;
+
+    const slackConversationInfo = await getSlackConversationInfo(
+      slackClient,
+      slackChanneId
+    );
+
+    const isChannelPublic = !slackConversationInfo.channel?.is_private;
+    return isChannelPublic && isWhitelistedDomain;
+  }
+
+  return true;
 }
 
 export async function getSlackAccessToken(

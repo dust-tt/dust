@@ -1,0 +1,5 @@
+DELETE FROM databases_tables;
+DROP TABLE databases_tables;
+
+DELETE FROM databases;
+DROP TABLE databases;

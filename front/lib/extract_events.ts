@@ -1,11 +1,11 @@
 import { Op } from "sequelize";
 
-import {
+import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
 } from "@app/documents_post_process_hooks/hooks";
 import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   _getMaxTextContentToProcess,
   _runExtractEventApp,

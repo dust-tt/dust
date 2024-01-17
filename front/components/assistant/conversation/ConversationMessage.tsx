@@ -1,16 +1,11 @@
 import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { MessageReactionType } from "@dust-tt/types";
-import { Emoji, EmojiMartData } from "@emoji-mart/data";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { MessageReactionType } from "@dust-tt/types";
+import type { Emoji, EmojiMartData } from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-import {
-  ComponentType,
-  MouseEventHandler,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import type { ComponentType, MouseEventHandler } from "react";
+import { useEffect, useRef, useState } from "react";
 import React from "react";
 import { mutate } from "swr";
 
@@ -248,7 +243,7 @@ export function ConversationMessage({
                     emoji={nativeEmoji}
                     count={reaction.users.length.toString()}
                     onClick={async () =>
-                      await handleEmoji({
+                      handleEmoji({
                         emoji: reaction.emoji,
                         isToRemove: hasReacted,
                       })

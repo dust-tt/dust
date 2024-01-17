@@ -1,19 +1,20 @@
-import { WorkspaceType } from "@dust-tt/types";
-import {
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { BlockType, RunType } from "@dust-tt/types";
+import type { BlockType, RunType } from "@dust-tt/types";
 import TextareaAutosize from "react-textarea-autosize";
+
+import Database from "@app/components/app/blocks/Database";
+import DatabaseSchema from "@app/components/app/blocks/DatabaseSchema";
 
 import Browser from "./blocks/Browser";
 import Chat from "./blocks/Chat";
 import Code from "./blocks/Code";
 import Curl from "./blocks/Curl";
 import Data from "./blocks/Data";
-import Database from "./blocks/Database";
-import DatabaseSchema from "./blocks/DatabaseSchema";
 import DataSource from "./blocks/DataSource";
 import Input from "./blocks/Input";
 import LLM from "./blocks/LLM";

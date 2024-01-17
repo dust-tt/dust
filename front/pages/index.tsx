@@ -16,13 +16,13 @@ import {
   OpenaiWhiteLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signIn } from "next-auth/react";
-import { ParsedUrlQuery } from "querystring";
+import type { ParsedUrlQuery } from "querystring";
 import React, { useEffect, useRef, useState } from "react";
 import { useCookies } from "react-cookie";
 

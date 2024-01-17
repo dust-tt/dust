@@ -1,15 +1,16 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
 import { validateAccessToken } from "@connectors/connectors/intercom/lib/intercom_api";
-import { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector } from "@connectors/lib/models";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { Err, Ok, Result } from "@connectors/lib/result";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import { ConnectorResource } from "@connectors/types/resources";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type { ConnectorResource } from "@connectors/types/resources";
 
 const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 

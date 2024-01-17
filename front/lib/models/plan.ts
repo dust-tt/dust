@@ -1,23 +1,22 @@
-import {
-  FREE_BILLING_TYPES,
+import type {
   FreeBillingType,
-  PAID_BILLING_TYPES,
   PaidBillingType,
-  SUBSCRIPTION_PAYMENT_STATUSES,
-  SUBSCRIPTION_STATUSES,
-  SubscriptionPaymentStatusType,
   SubscriptionStatusType,
 } from "@dust-tt/types";
 import {
+  FREE_BILLING_TYPES,
+  PAID_BILLING_TYPES,
+  SUBSCRIPTION_STATUSES,
+} from "@dust-tt/types";
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  Model,
   NonAttribute,
   Transaction,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
@@ -39,11 +38,13 @@ export class Plan extends Model<
   declare maxMessages: number;
   declare maxUsersInWorkspace: number;
   declare isSlackbotAllowed: boolean;
+  declare isManagedConfluenceAllowed: boolean;
   declare isManagedSlackAllowed: boolean;
   declare isManagedNotionAllowed: boolean;
   declare isManagedGoogleDriveAllowed: boolean;
   declare isManagedGithubAllowed: boolean;
   declare isManagedIntercomAllowed: boolean;
+  declare isManagedWebCrawlerAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -97,6 +98,11 @@ Plan.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // TODO(2024-01-10 flav) Use a JSON Types field instead of group of booleans.
+    isManagedConfluenceAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     isManagedSlackAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -114,6 +120,10 @@ Plan.init(
       defaultValue: false,
     },
     isManagedIntercomAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isManagedWebCrawlerAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
@@ -150,7 +160,8 @@ export class Subscription extends Model<
 
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
-  declare paymentStatus: SubscriptionPaymentStatusType | null;
+  declare paymentFailingSince: Date | null;
+
   declare startDate: Date;
   declare endDate: Date | null;
 
@@ -191,12 +202,9 @@ Subscription.init(
         isIn: [SUBSCRIPTION_STATUSES],
       },
     },
-    paymentStatus: {
-      type: DataTypes.STRING,
+    paymentFailingSince: {
+      type: DataTypes.DATE,
       allowNull: true,
-      validate: {
-        isIn: [SUBSCRIPTION_PAYMENT_STATUSES],
-      },
     },
     startDate: {
       type: DataTypes.DATE,

@@ -10,32 +10,32 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import {
+import type {
+  AgentConfigurationType,
   AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
-  DatabaseQueryConfigurationType,
-  isDatabaseQueryConfiguration,
-} from "@dust-tt/types";
-import {
-  DustAppRunConfigurationType,
-  isDustAppRunConfiguration,
-} from "@dust-tt/types";
-import {
+  CoreAPITable,
   DataSourceConfiguration,
-  isRetrievalConfiguration,
+  DustAppRunConfigurationType,
+  LightAgentConfigurationType,
+  TablesQueryConfigurationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
+import {
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+} from "@dust-tt/types";
 import Link from "next/link";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useAgentUsage, useApp, useDatabase } from "@app/lib/swr";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
@@ -48,7 +48,7 @@ export function AssistantDetails({
   flow,
 }: {
   owner: WorkspaceType;
-  assistant: AgentConfigurationType;
+  assistant: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   onUpdate: () => void;
@@ -58,6 +58,11 @@ export function AssistantDetails({
     workspaceId: owner.sId,
     agentConfigurationId: assistant.sId,
   });
+  const detailedConfig = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistant.sId,
+  });
+
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
       <Avatar
@@ -108,29 +113,28 @@ export function AssistantDetails({
     </div>
   );
 
-  const ActionSection = () =>
-    assistant.action ? (
-      isDustAppRunConfiguration(assistant.action) ? (
+  const ActionSection = ({
+    action,
+  }: {
+    action: AgentConfigurationType["action"];
+  }) =>
+    action ? (
+      isDustAppRunConfiguration(action) ? (
         <div className="flex flex-col gap-2">
           <div className="text-lg font-bold text-element-800">Action</div>
-          <DustAppSection dustApp={assistant.action} owner={owner} />
+          <DustAppSection dustApp={action} owner={owner} />
         </div>
-      ) : isRetrievalConfiguration(assistant.action) ? (
+      ) : isRetrievalConfiguration(action) ? (
         <div className="flex flex-col gap-2">
           <div className="text-lg font-bold text-element-800">
             Data source(s)
           </div>
-          <DataSourcesSection
-            dataSourceConfigurations={assistant.action.dataSources}
-          />
+          <DataSourcesSection dataSourceConfigurations={action.dataSources} />
         </div>
-      ) : isDatabaseQueryConfiguration(assistant.action) ? (
+      ) : isTablesQueryConfiguration(action) ? (
         <div className="flex flex-col gap-2">
-          <div className="text-lg font-bold text-element-800">Database</div>
-          <DatabaseQuerySection
-            databaseQueryConfig={assistant.action}
-            owner={owner}
-          />
+          <div className="text-lg font-bold text-element-800">Tables</div>
+          <TablesQuerySection tablesQueryConfig={action} />
         </div>
       ) : null
     ) : null;
@@ -159,7 +163,9 @@ export function AssistantDetails({
           isLoading={agentUsage.isAgentUsageLoading}
           isError={agentUsage.isAgentUsageError}
         />
-        <ActionSection />
+        <ActionSection
+          action={detailedConfig.agentConfiguration?.action || null}
+        />
       </div>
     </Modal>
   );
@@ -241,41 +247,6 @@ function DustAppSection({
   );
 }
 
-function DatabaseQuerySection({
-  owner,
-  databaseQueryConfig,
-}: {
-  owner: WorkspaceType;
-  databaseQueryConfig: DatabaseQueryConfigurationType;
-}) {
-  const { database } = useDatabase({
-    workspaceId: owner.sId,
-    dataSourceName: databaseQueryConfig.dataSourceId,
-    databaseId: databaseQueryConfig.databaseId,
-  });
-
-  if (database) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div>The following database is queried before answering:</div>
-        <div className="flex items-center gap-2 capitalize">
-          <div>
-            <ServerIcon />
-          </div>
-          <div>{database.name}</div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      <div>
-        No database selected, please check the configuration of this Assistant!
-      </div>
-    </div>
-  );
-}
-
 function ButtonsSection({
   owner,
   agentConfiguration,
@@ -285,7 +256,7 @@ function ButtonsSection({
   flow,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   detailsModalClose: () => void;
   onUpdate: () => void;
   onClose: () => void;
@@ -417,5 +388,84 @@ function ButtonsSection({
         </>
       )}
     </Button.List>
+  );
+}
+
+function TablesQuerySection({
+  tablesQueryConfig,
+}: {
+  tablesQueryConfig: TablesQueryConfigurationType;
+}) {
+  const [tables, setTables] = useState<CoreAPITable[] | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isError, setIsError] = useState<boolean>(false);
+
+  const getTables = useCallback(async () => {
+    const tableEndpoints = tablesQueryConfig.tables.map(
+      (t) =>
+        `/api/w/${t.workspaceId}/data_sources/${t.dataSourceId}/tables/${t.tableId}`
+    );
+
+    const results = await Promise.all(
+      tableEndpoints.map((endpoint) =>
+        fetch(endpoint, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    const tablesParsed = [];
+    for (const res of results) {
+      if (!res.ok) {
+        throw new Error((await res.json()).error.message);
+      }
+      tablesParsed.push((await res.json()).table);
+    }
+
+    setTables(tablesParsed);
+  }, [tablesQueryConfig.tables]);
+
+  useEffect(() => {
+    if (!tablesQueryConfig.tables || isLoading || isError || tables?.length) {
+      return;
+    }
+    setIsLoading(true);
+    getTables()
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [getTables, isLoading, tablesQueryConfig.tables, tables?.length, isError]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div>Loading...</div>;
+      </div>
+    );
+  }
+
+  if (!tables) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div>Error loading tables.</div>;
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div>The following tables are queried before answering:</div>
+      {tables.map((t) => (
+        <div
+          className="flex flex-row items-center gap-2"
+          key={`${t.data_source_id}/${t.table_id}`}
+        >
+          <div>
+            <ServerIcon />
+          </div>
+          <div key={`${t.data_source_id}/${t.table_id}`}>{t.name}</div>
+        </div>
+      ))}
+    </div>
   );
 }

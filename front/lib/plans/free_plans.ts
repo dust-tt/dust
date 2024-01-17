@@ -1,4 +1,4 @@
-import { Attributes } from "sequelize";
+import type { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
 import {
@@ -32,11 +32,13 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   maxMessages: 50,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
+  isManagedConfluenceAllowed: false,
   isManagedSlackAllowed: false,
   isManagedNotionAllowed: false,
   isManagedGoogleDriveAllowed: false,
   isManagedGithubAllowed: false,
   isManagedIntercomAllowed: false,
+  isManagedWebCrawlerAllowed: false,
   maxDataSourcesCount: 5,
   maxDataSourcesDocumentsCount: 10,
   maxDataSourcesDocumentsSizeMb: 2,
@@ -55,11 +57,14 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxMessages: -1,
     maxUsersInWorkspace: -1,
     isSlackbotAllowed: true,
+    // TODO(2024-01-10 flav) Set to `true` once released.
+    isManagedConfluenceAllowed: false,
     isManagedSlackAllowed: true,
     isManagedNotionAllowed: true,
     isManagedGoogleDriveAllowed: true,
     isManagedGithubAllowed: true,
     isManagedIntercomAllowed: true,
+    isManagedWebCrawlerAllowed: true,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,

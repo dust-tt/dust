@@ -1,3 +1,5 @@
+import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
+
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorker } from "./connectors/google_drive/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
@@ -16,4 +18,7 @@ runGithubWorker().catch((err) =>
 );
 runGoogleWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running google worker")
+);
+runWebCrawlerWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running webcrawler worker")
 );

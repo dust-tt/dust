@@ -1,5 +1,5 @@
-import { ConnectorProvider } from "@dust-tt/types";
-import { TimeframeUnit } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
+import type { TimeframeUnit } from "@dust-tt/types";
 
 export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
 export type FilteringMode = (typeof FILTERING_MODES)[number];
@@ -22,11 +22,13 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
     plural: string;
   }
 > = {
+  confluence: { singular: "space", plural: "spaces" },
   notion: { singular: "page", plural: "pages" },
   google_drive: { singular: "folder", plural: "folders" },
   slack: { singular: "channel", plural: "channels" },
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "article", plural: "articles" },
+  webcrawler: { singular: "page", plural: "pages" },
 };
 
 export const DROID_AVATARS_BASE_PATH = "/static/droidavatar/";

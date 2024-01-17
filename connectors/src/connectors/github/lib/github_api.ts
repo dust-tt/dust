@@ -8,13 +8,15 @@ import * as reporter from "io-ts-reporters";
 import { Octokit } from "octokit";
 import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
-import { Readable } from "stream";
+import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
-import {
+import type {
   DiscussionCommentNode,
   DiscussionNode,
+} from "@connectors/connectors/github/lib/github_graphql";
+import {
   ErrorPayloadSchema,
   GetDiscussionCommentRepliesPayloadSchema,
   GetDiscussionCommentsPayloadSchema,
@@ -519,7 +521,7 @@ export async function getDiscussion(
   return payload.repository.discussion;
 }
 
-async function getOctokit(installationId: string): Promise<Octokit> {
+export async function getOctokit(installationId: string): Promise<Octokit> {
   if (!GITHUB_APP_ID) {
     throw new Error("GITHUB_APP_ID not set");
   }
@@ -562,7 +564,10 @@ const EXTENSION_WHITELIST = [
   ".cc",
   ".cpp",
   ".hpp",
+  ".sh",
 ];
+
+const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
 
 const FILENAME_WHITELIST = [
   "README",
@@ -609,16 +614,21 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
 // This function returns file and directories object with parent, internalIds, and sourceUrl
 // information. The root of the directory is considered the null parent (and will have to be
 // stitched by the activity).
-export async function processRepository(
-  installationId: string,
-  login: string,
-  repoName: string,
-  repoId: string
-) {
+export async function processRepository({
+  installationId,
+  repoLogin,
+  repoName,
+  repoId,
+}: {
+  installationId: string;
+  repoLogin: string;
+  repoName: string;
+  repoId: number;
+}) {
   const octokit = await getOctokit(installationId);
 
   const { data } = await octokit.rest.repos.get({
-    owner: login,
+    owner: repoLogin,
     repo: repoName,
   });
   const defaultBranch = data.default_branch;
@@ -629,10 +639,21 @@ export async function processRepository(
     },
   });
 
+  // `data.size` is the whole repo size in KB, we use it to filter repos > 2GB download size. There
+  // is further filtering by file type + for "extracted size" per file to 1MB.
+  if (data.size > 2 * 1024 * 1024) {
+    // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
+    // error to return a syncFailed to the user, or increase this limit if we want some largers
+    // repositories).
+    throw new Error(
+      `Repository is too large to sync (size: ${data.size}KB, max: 2GB)`
+    );
+  }
+
   const { data: tarballStream } = (await octokit.request(
     "GET /repos/{owner}/{repo}/tarball/{ref}",
     {
-      owner: login,
+      owner: repoLogin,
       repo: repoName,
       ref: defaultBranch,
       request: {
@@ -681,13 +702,13 @@ export async function processRepository(
 
     // Iterate over the files in the temp directory.
     for await (const file of getFiles(tempDir)) {
-      // get file extension
       const ext = extname(file).toLowerCase();
-      // get file size
       const { size } = await fs.stat(file);
 
       const isWithelisted =
-        EXTENSION_WHITELIST.includes(ext) || FILENAME_WHITELIST.includes(file);
+        (EXTENSION_WHITELIST.includes(ext) ||
+          FILENAME_WHITELIST.includes(file)) &&
+        !SUFFIX_BLACKLIST.some((suffix) => file.endsWith(suffix));
 
       const isUnderLimit = size < 1024 * 1024;
 
@@ -696,70 +717,70 @@ export async function processRepository(
           .substring(tempDir.length + 1)
           .split("/")
           .slice(1, -1);
+        const fileName = basename(file);
 
-        const pathInternalIds = [];
-
+        const parents = [];
         for (let i = 0; i < path.length; i++) {
           const p = `github-code-${repoId}-dir-${path
             .slice(0, i + 1)
             .join("/")}`;
-          pathInternalIds.push(
-            `github-code-${repoId}-dir-${blake3(p)
-              .toString("hex")
-              .substring(0, 16)}`
-          );
+          const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
+            .toString("hex")
+            .substring(0, 16)}`;
+          parents.push({
+            internalId: pathInternalId,
+            dirName: path[i] as string,
+            dirPath: path.slice(0, i),
+          });
         }
 
         const documentId = `github-code-${repoId}-file-${blake3(
-          `github-code-${repoId}-file-${path.join("/")}/${file}`
+          `github-code-${repoId}-file-${path.join("/")}/${fileName}`
         )
           .toString("hex")
           .substring(0, 16)}`;
 
-        const fileName = basename(file);
         const parentInternalId =
-          pathInternalIds.length === 0
+          parents.length === 0
             ? null
-            : (pathInternalIds[pathInternalIds.length - 1] as string);
+            : (parents[parents.length - 1]?.internalId as string);
 
         // Files
         files.push({
           fileName,
           filePath: path,
-          sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
+          sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
             path.join("/"),
             fileName
           )}`,
           sizeBytes: size,
           documentId,
           parentInternalId,
-          parents: pathInternalIds,
+          parents: parents.map((p) => p.internalId),
           localFilePath: file,
         });
 
         // Directories
-        if (parentInternalId && !seenDirs[parentInternalId]) {
-          seenDirs[parentInternalId] = true;
+        for (let i = 0; i < parents.length; i++) {
+          const p = parents[i];
+          if (p && !seenDirs[p.internalId]) {
+            seenDirs[p.internalId] = true;
 
-          const dirName = path[path.length - 1] || "";
-          const dirPath = path.slice(0, -1);
-          const internalId = parentInternalId;
-          const dirParentInternalId =
-            pathInternalIds.length === 2
-              ? null
-              : (pathInternalIds[pathInternalIds.length - 2] as string);
+            const dirParent = parents[i - 1];
+            const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
-          directories.push({
-            dirName,
-            dirPath,
-            sourceUrl: `https://github.com/${login}/${repoName}/blob/${defaultBranch}/${join(
-              dirPath.join("/"),
-              dirName
-            )}`,
-            internalId,
-            parentInternalId: dirParentInternalId,
-            parents: pathInternalIds.slice(0, -1),
-          });
+            directories.push({
+              dirName: p.dirName,
+              dirPath: p.dirPath,
+              sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
+                p.dirPath.join("/"),
+                p.dirName
+              )}`,
+              internalId: p.internalId,
+              parentInternalId: dirParentInternalId,
+              parents: parents.slice(0, i).map((p) => p.internalId),
+            });
+          }
         }
       }
     }

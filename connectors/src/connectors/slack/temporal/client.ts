@@ -1,10 +1,10 @@
-import { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 
 import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
 import { getChannelsToSync } from "./activities";
@@ -51,6 +51,9 @@ export async function launchSlackSyncWorkflow(
       args: [parseInt(connectorId), fromTs],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [parseInt(connectorId)],
+      },
       signal: syncChannelSignal,
       signalArgs: [{ channelIds: channelsToSync ? channelsToSync : [] }],
       memo: {
@@ -101,6 +104,9 @@ export async function launchSlackSyncOneThreadWorkflow(
         args: [connectorId, channelId, threadTs],
         taskQueue: QUEUE_NAME,
         workflowId: workflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
         signal: newWebhookSignal,
         signalArgs: undefined,
         memo: {
@@ -140,6 +146,9 @@ export async function launchSlackSyncOneMessageWorkflow(
         args: [connectorId, channelId, threadTs],
         taskQueue: QUEUE_NAME,
         workflowId: workflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
         signal: newWebhookSignal,
         signalArgs: undefined,
         memo: {
@@ -167,6 +176,9 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       args: [connectorId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
       memo: {
         connectorId: connectorId,
       },

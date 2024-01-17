@@ -6,9 +6,9 @@ import {
   FullscreenIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import {
-  AgentConfigurationType,
+import type {
   AgentMention,
+  LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
@@ -16,15 +16,14 @@ import React, { useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
-import useCustomEditor, {
-  CustomEditorProps,
-} from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
 import { classNames } from "@app/lib/utils";
 
 export interface InputBarContainerProps {
-  allAssistants: AgentConfigurationType[];
-  agentConfigurations: AgentConfigurationType[];
+  allAssistants: LightAgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
   disableAttachment: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onInputFileChange: (e: React.ChangeEvent) => Promise<void>;

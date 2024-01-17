@@ -3,8 +3,7 @@ import {
   Button,
   ChevronRightIcon,
   Chip,
-  ClipboardIcon,
-  Cog6ToothIcon,
+  Dialog,
   DropdownMenu,
   Icon,
   Input,
@@ -14,11 +13,16 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
-import { MembershipInvitationType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  RoleType,
+  UserType,
+  WorkspaceDomain,
+  WorkspaceType,
+} from "@dust-tt/types";
+import type { MembershipInvitationType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -26,12 +30,13 @@ import { useSWRConfig } from "swr";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 
-const { GA_TRACKING_ID = "", URL = "" } = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 const CLOSING_ANIMATION_DURATION = 200;
 
@@ -41,7 +46,7 @@ export const getServerSideProps: GetServerSideProps<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
-  url: string;
+  workspaceVerifiedDomain: WorkspaceDomain | null;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
@@ -57,6 +62,7 @@ export const getServerSideProps: GetServerSideProps<{
       notFound: true,
     };
   }
+  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner.id);
 
   return {
     props: {
@@ -65,7 +71,7 @@ export const getServerSideProps: GetServerSideProps<{
       subscription,
       plan,
       gaTrackingId: GA_TRACKING_ID,
-      url: URL,
+      workspaceVerifiedDomain,
     },
   };
 };
@@ -76,13 +82,16 @@ export default function WorkspaceAdmin({
   subscription,
   plan,
   gaTrackingId,
-  url,
+  workspaceVerifiedDomain,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const inviteLink =
-    owner.allowedDomain !== null ? `${url}/w/${owner.sId}/join` : null;
   const router = useRouter();
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
-  const [inviteSettingsModalOpen, setInviteSettingsModalOpen] = useState(false);
+  const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
+    useState(false);
+
+  const { domain = "", domainAutoJoinEnabled = false } =
+    workspaceVerifiedDomain ?? {};
+
   return (
     <AppLayout
       subscription={subscription}
@@ -98,78 +107,67 @@ export default function WorkspaceAdmin({
           icon={UsersIcon}
           description="Invite and remove members, manage their rights."
         />
-        <InviteSettingsModal
-          showModal={inviteSettingsModalOpen}
+        <DomainAutoJoinModal
+          domainAutoJoinEnabled={domainAutoJoinEnabled}
+          isOpen={isActivateAutoJoinOpened}
           onClose={() => {
-            setInviteSettingsModalOpen(false);
+            setIsActivateAutoJoinOpened(false);
           }}
+          domain={domain}
           owner={owner}
         />
-        <Page.Vertical gap="xs">
-          <Page.H variant="h5">Invitation link</Page.H>
-          <Page.P variant="secondary">
-            Allow any person with the right email domain name (
-            <em>@company.com</em>) to signup and join your workspace.
-          </Page.P>
-          <>
-            {inviteLink && (
-              <Page.P variant="secondary">
-                Invitation link is activated for domain{" "}
-                <span className="font-bold">{`@${owner.allowedDomain}`}</span>.
-              </Page.P>
-            )}
-            <div className="mt-3 flex w-full flex-col justify-between gap-2 sm:flex-row">
-              <div className="flex-grow">
-                <Input
-                  className=""
-                  disabled
-                  placeholder={""}
-                  value={inviteLink}
-                  name={""}
+        {workspaceVerifiedDomain && (
+          <Page.Vertical gap="sm">
+            <Page.H variant="h5">Auto-join Workspace</Page.H>
+            <Page.P variant="secondary">
+              Allow all your team members to access your Dust company Workspace
+              when they authenticate with a{" "}
+              <span className="font-bold">"@{domain}"</span> Google accounts.
+            </Page.P>
+            <div className="flex flex-col items-start gap-3">
+              {domainAutoJoinEnabled ? (
+                <Button
+                  label="De-activate Auto-join"
+                  size="sm"
+                  variant="secondaryWarning"
+                  disabled={!domainAutoJoinEnabled}
+                  onClick={() => {
+                    if (!isUpgraded(plan)) {
+                      setShowNoInviteLinkPopup(true);
+                    } else {
+                      setIsActivateAutoJoinOpened(true);
+                    }
+                  }}
                 />
-              </div>
-              <div className="relative flex flex-row gap-2">
-                <div className="flex-none">
-                  <Button
-                    variant="secondary"
-                    label="Copy"
-                    size="sm"
-                    icon={ClipboardIcon}
-                    disabled={!inviteLink}
-                    onClick={() => {
-                      if (!inviteLink) return;
-                      void navigator.clipboard.writeText(inviteLink);
-                    }}
-                  />
-                </div>
-                <div className="relative flex-none">
-                  <Button
-                    variant="secondary"
-                    label="Settings"
-                    size="sm"
-                    icon={Cog6ToothIcon}
-                    onClick={() => {
-                      if (plan.code === FREE_TEST_PLAN_CODE)
-                        setShowNoInviteLinkPopup(true);
-                      else setInviteSettingsModalOpen(true);
-                    }}
-                  />
-                  <Popup
-                    show={showNoInviteLinkPopup}
-                    chipLabel="Free plan"
-                    description="You cannot create an invitation link with the free plan. Upgrade your plan to invite other members."
-                    buttonLabel="Check Dust plans"
-                    buttonClick={() => {
-                      void router.push(`/w/${owner.sId}/subscription`);
-                    }}
-                    className="absolute bottom-8 right-0"
-                    onClose={() => setShowNoInviteLinkPopup(false)}
-                  />
-                </div>
-              </div>
+              ) : (
+                <Button
+                  label="Activate Auto-join"
+                  size="sm"
+                  variant="primary"
+                  disabled={domainAutoJoinEnabled}
+                  onClick={() => {
+                    if (!isUpgraded(plan)) {
+                      setShowNoInviteLinkPopup(true);
+                    } else {
+                      setIsActivateAutoJoinOpened(true);
+                    }
+                  }}
+                />
+              )}
+              <Popup
+                show={showNoInviteLinkPopup}
+                chipLabel="Free plan"
+                description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+                buttonLabel="Check Dust plans"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                className="absolute bottom-8 right-0"
+                onClose={() => setShowNoInviteLinkPopup(false)}
+              />
             </div>
-          </>
-        </Page.Vertical>
+          </Page.Vertical>
+        )}
 
         <MemberList />
       </Page.Vertical>
@@ -182,7 +180,11 @@ export default function WorkspaceAdmin({
       builder: "amber",
       user: "emerald",
     };
-    const [showNoInviteEmailPopup, setShowNoInviteEmailPopup] = useState(false);
+    const [showNoInviteFreePlanPopup, setShowNoInviteFreePlanPopup] =
+      useState(false);
+    const [showNoInviteFailedPaymentPopup, setShowNoInviteFailedPaymentPopup] =
+      useState(false);
+
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
     const { invitations, isInvitationsLoading } =
@@ -270,13 +272,14 @@ export default function WorkspaceAdmin({
                 size="sm"
                 icon={PlusIcon}
                 onClick={() => {
-                  if (plan.code === FREE_TEST_PLAN_CODE)
-                    setShowNoInviteEmailPopup(true);
+                  if (!isUpgraded(plan)) setShowNoInviteFreePlanPopup(true);
+                  else if (subscription.paymentFailingSince)
+                    setShowNoInviteFailedPaymentPopup(true);
                   else setInviteEmailModalOpen(true);
                 }}
               />
               <Popup
-                show={showNoInviteEmailPopup}
+                show={showNoInviteFreePlanPopup}
                 chipLabel="Free plan"
                 description="You cannot invite other members with the free plan. Upgrade your plan for unlimited members."
                 buttonLabel="Check Dust plans"
@@ -284,7 +287,18 @@ export default function WorkspaceAdmin({
                   void router.push(`/w/${owner.sId}/subscription`);
                 }}
                 className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteEmailPopup(false)}
+                onClose={() => setShowNoInviteFreePlanPopup(false)}
+              />
+              <Popup
+                show={showNoInviteFailedPaymentPopup}
+                chipLabel="Failed Payment"
+                description="You cannot invite other members while your workspace has a failed payment."
+                buttonLabel="Check Subscription"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                className="absolute bottom-8 right-0"
+                onClose={() => setShowNoInviteFailedPaymentPopup(false)}
               />
             </div>
           </div>
@@ -554,96 +568,76 @@ function ReinviteUserModal({
   );
 }
 
-function InviteSettingsModal({
-  showModal,
+function DomainAutoJoinModal({
+  domain,
+  domainAutoJoinEnabled,
+  isOpen,
   onClose,
   owner,
 }: {
-  showModal: boolean;
+  domain: string;
+  domainAutoJoinEnabled: boolean;
+  isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
 }) {
-  const [domainUpdating, setDomainUpdating] = useState(false);
-  const [domainInput, setDomainInput] = useState(owner.allowedDomain || "");
-  const [allowedDomainError, setAllowedDomainError] = useState("");
   const sendNotification = useContext(SendNotificationsContext);
+
+  const title = domainAutoJoinEnabled
+    ? "De-activate Auto-join"
+    : "Activate Auto-join";
+  const validateLabel = domainAutoJoinEnabled ? "De-activate" : "Activate";
+  const validateVariant = domainAutoJoinEnabled ? "primaryWarning" : "primary";
+  const description = domainAutoJoinEnabled ? (
+    "New members will need to be invited in order to gain access to your Dust Workspace."
+  ) : (
+    <span>
+      Anyone with Google <span className="font-bold">{"@" + domain}</span>{" "}
+      account will have access to your Dust Workspace.
+    </span>
+  );
+
   async function handleUpdateWorkspace(): Promise<void> {
-    setDomainUpdating(true);
     const res = await fetch(`/api/w/${owner.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        allowedDomain: domainInput,
+        domain,
+        domainAutoJoinEnabled: !domainAutoJoinEnabled,
       }),
     });
+
+    console.log(">> res:", await res.json());
+
     if (!res.ok) {
       sendNotification({
         type: "error",
         title: "Update failed",
-        description: `Failed to update workspace with new domain ${domainInput}.`,
+        description: `Failed to enable auto-add for whitelisted domain.`,
       });
-      setDomainUpdating(false);
     } else {
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner
       // object so that the formValidation logic keeps working.
       window.location.reload();
     }
   }
-  function validDomain(): boolean {
-    let valid = true;
-    if (domainInput === null) {
-      setAllowedDomainError("");
-    } else {
-      // eslint-disable-next-line no-useless-escape
-      if (!domainInput.match(/^[a-z0-9\.\-]*$/)) {
-        setAllowedDomainError("Allowed domain must be a valid domain name.");
-        valid = false;
-      } else {
-        setAllowedDomainError("");
-      }
-    }
-
-    return valid;
-  }
 
   return (
-    <Modal
-      isOpen={showModal}
-      onClose={onClose}
-      hasChanged={
-        domainInput !== owner.allowedDomain &&
-        !allowedDomainError &&
-        !domainUpdating
-      }
-      title="Invitation link settings"
-      variant="side-sm"
-      onSave={() => validDomain() && handleUpdateWorkspace()}
+    <Dialog
+      isOpen={isOpen}
+      title={title}
+      onValidate={async () => {
+        await handleUpdateWorkspace();
+        onClose();
+      }}
+      onCancel={() => onClose()}
+      validateLabel={validateLabel}
+      validateVariant={validateVariant}
     >
-      <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          Any person with a Google Workspace email on corresponding domain name
-          will be allowed to join the workspace.
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="font-bold">Whitelisted email domain</div>
-          <Input
-            className="text-sm"
-            placeholder={"Company domain"}
-            value={domainInput}
-            name={""}
-            error={allowedDomainError}
-            showErrorLabel={true}
-            onChange={(e) => {
-              setDomainInput(e);
-              setAllowedDomainError("");
-            }}
-            disabled={domainUpdating}
-          />
-        </div>
-      </div>
-    </Modal>
+      <div>{description}</div>
+    </Dialog>
   );
 }
 

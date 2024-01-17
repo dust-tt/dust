@@ -11,7 +11,8 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import React, { Component, createRef, ReactNode, RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
+import React, { Component, createRef } from "react";
 import Slider from "react-slick";
 
 import { classNames } from "@app/lib/utils";

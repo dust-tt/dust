@@ -1,14 +1,14 @@
-import {
+import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
+  DustAppParameters,
   GenerationTokensEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
-import { AgentConfigurationType } from "@dust-tt/types";
-import {
+import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type {
   AgentMessageType,
   ContentFragmentContentType,
   ContentFragmentContextType,
@@ -16,18 +16,13 @@ import {
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  isAgentMention,
-  isAgentMessageType,
-  isUserMention,
-  isUserMessageType,
   MentionType,
   UserMessageContext,
   UserMessageType,
 } from "@dust-tt/types";
-import { PlanType } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
-import {
+import type { PlanType } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -36,8 +31,18 @@ import {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
+import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
+import {
+  isAgentMention,
+  isAgentMessageType,
+  isUserMention,
+  isUserMessageType,
+} from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import crypto from "crypto";
-import { Op, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderRetrievalActionByModelId } from "@app/lib/api/assistant/actions/retrieval";
@@ -45,10 +50,9 @@ import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
-  AgentDatabaseQueryAction,
   AgentDustAppRunAction,
   AgentMessage,
   Conversation,
@@ -58,6 +62,7 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
@@ -209,7 +214,7 @@ async function batchRenderUserMessages(messages: Message[]) {
       if (userIds.length === 0) {
         return [];
       }
-      return await User.findAll({
+      return User.findAll({
         where: {
           id: userIds,
         },
@@ -286,7 +291,7 @@ async function batchRenderAgentMessages(
     agentConfigurations,
     agentRetrievalActions,
     agentDustAppRunActions,
-    agentDatabaseQueryActions,
+    agentTablesQueryActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -305,11 +310,11 @@ async function batchRenderAgentMessages(
             return getAgentConfiguration(auth, agentConfigId);
           })
         )
-      ).filter((a) => a !== null) as AgentConfigurationType[];
+      ).filter((a) => a !== null) as LightAgentConfigurationType[];
       return agents;
     })(),
     (async () => {
-      return await Promise.all(
+      return Promise.all(
         agentMessages
           .filter((m) => m.agentMessage?.agentRetrievalActionId)
           .map((m) => {
@@ -343,24 +348,21 @@ async function batchRenderAgentMessages(
       });
     })(),
     (async () => {
-      const actions = await AgentDatabaseQueryAction.findAll({
+      const actions = await AgentTablesQueryAction.findAll({
         where: {
           id: {
             [Op.in]: agentMessages
-              .filter((m) => m.agentMessage?.agentDatabaseQueryActionId)
-              .map((m) => m.agentMessage?.agentDatabaseQueryActionId as number),
+              .filter((m) => m.agentMessage?.agentTablesQueryActionId)
+              .map((m) => m.agentMessage?.agentTablesQueryActionId as number),
           },
         },
       });
       return actions.map((action) => {
         return {
           id: action.id,
-          type: "database_query_action",
-          dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-          dataSourceId: action.dataSourceId,
-          databaseId: action.databaseId,
-          params: action.params,
-          output: action.output,
+          type: "tables_query_action",
+          params: action.params as DustAppParameters,
+          output: action.output as Record<string, string | number | boolean>,
         };
       });
     })(),
@@ -383,12 +385,11 @@ async function batchRenderAgentMessages(
       action = agentDustAppRunActions.find(
         (a) => a.id === agentMessage.agentDustAppRunActionId
       );
-    } else if (agentMessage.agentDatabaseQueryActionId) {
-      action = agentDatabaseQueryActions.find(
-        (a) => a.id === agentMessage.agentDatabaseQueryActionId
+    } else if (agentMessage.agentTablesQueryActionId) {
+      action = agentTablesQueryActions.find(
+        (a) => a.id === agentMessage.agentTablesQueryActionId
       );
     }
-
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === message.agentMessage?.agentConfigurationId
     );
@@ -881,7 +882,7 @@ export async function* postUserMessage(
         })) ?? -1) + 1;
 
       async function createMessageAndUserMessage() {
-        return await Message.create(
+        return Message.create(
           {
             sId: generateModelSId(),
             rank: nextMessageRank++,
@@ -917,14 +918,14 @@ export async function* postUserMessage(
             transaction: t,
           });
           if (participant) {
-            return await participant.update(
+            return participant.update(
               {
                 action: "posted",
               },
               { transaction: t }
             );
           } else {
-            return await ConversationParticipant.create(
+            return ConversationParticipant.create(
               {
                 conversationId: conversation.id,
                 userId: user.id,
@@ -1335,7 +1336,7 @@ export async function* editUserMessage(
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(messageRow: Message) {
-        return await Message.create(
+        return Message.create(
           {
             sId: generateModelSId(),
             rank: messageRow.rank,
@@ -1373,7 +1374,7 @@ export async function* editUserMessage(
             transaction: t,
           });
           if (participant) {
-            return await participant.update(
+            return participant.update(
               {
                 action: "posted",
               },
@@ -1937,9 +1938,9 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentDustAppRunActionId: event.action.id,
           });
-        } else if (event.action.type === "database_query_action") {
+        } else if (event.action.type === "tables_query_action") {
           await agentMessageRow.update({
-            agentDatabaseQueryActionId: event.action.id,
+            agentTablesQueryActionId: event.action.id,
           });
         } else {
           ((action: never) => {
@@ -1983,8 +1984,8 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
-      case "database_query_params":
-      case "database_query_output":
+      case "tables_query_params":
+      case "tables_query_output":
         yield event;
         break;
       case "generation_tokens":

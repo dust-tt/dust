@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -6,7 +6,7 @@ import { Op } from "sequelize";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getChannels } from "@connectors/connectors/slack/temporal/activities";
-import { APIErrorWithStatusCode } from "@connectors/lib/error";
+import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { sequelize_conn } from "@connectors/lib/models";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";

@@ -1,6 +1,6 @@
-import { Attributes } from "sequelize";
+import type { Attributes } from "sequelize";
 
-import { Plan } from "@app/lib/models";
+import type { Plan } from "@app/lib/models";
 import { ENT_PLAN_FAKE_CODE } from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
@@ -26,11 +26,14 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxMessages: -1,
   maxUsersInWorkspace: -1,
   isSlackbotAllowed: true,
+  // TODO(2024-01-10 flav) Set to `true` once released.
+  isManagedConfluenceAllowed: false,
   isManagedSlackAllowed: true,
   isManagedNotionAllowed: true,
   isManagedGoogleDriveAllowed: true,
   isManagedGithubAllowed: true,
   isManagedIntercomAllowed: true,
+  isManagedWebCrawlerAllowed: true,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,

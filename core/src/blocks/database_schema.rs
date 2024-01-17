@@ -1,13 +1,14 @@
+use super::helpers::get_data_source_project;
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::DatabaseTable;
+use crate::databases::database::Table;
 use crate::Rule;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 use async_trait::async_trait;
+use futures::future::try_join_all;
+use itertools::Itertools;
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
-
-use super::helpers::get_data_source_project;
 
 #[derive(Clone)]
 pub struct DatabaseSchema {}
@@ -39,40 +40,43 @@ impl Block for DatabaseSchema {
         let config = env.config.config_for_block(name);
 
         let err_msg = format!(
-            "Invalid or missing `database` in configuration for \
-        `database_schema` block `{}` expecting `{{ \"database\": \
-        {{ \"workspace_id\": ..., \"data_source_id\": ..., \"database_id\": ... }} }}`",
+            "Invalid or missing `tables` in configuration for \
+        `database_schema` block `{}` expecting `{{ \"tables\": \
+        [ {{ \"workspace_id\": ..., \"data_source_id\": ..., \"table_id\": ... }}, ... ] }}`",
             name
         );
 
-        let (workspace_id, data_source_id, database_id) = match config {
-            Some(v) => match v.get("database") {
-                Some(Value::Object(o)) => {
-                    let workspace_id = match o.get("workspace_id") {
-                        Some(Value::String(s)) => s,
-                        _ => Err(anyhow!(err_msg.clone()))?,
-                    };
-                    let data_source_id = match o.get("data_source_id") {
-                        Some(Value::String(s)) => s,
-                        _ => Err(anyhow!(err_msg.clone()))?,
-                    };
-                    let database_id = match o.get("database_id") {
-                        Some(Value::String(s)) => s,
-                        _ => Err(anyhow!(err_msg.clone()))?,
-                    };
+        let table_identifiers = match config {
+            Some(v) => match v.get("tables") {
+                Some(Value::Array(a)) => a
+                    .iter()
+                    .map(|v| {
+                        let workspace_id = match v.get("workspace_id") {
+                            Some(Value::String(s)) => s,
+                            _ => Err(anyhow!(err_msg.clone()))?,
+                        };
+                        let data_source_id = match v.get("data_source_id") {
+                            Some(Value::String(s)) => s,
+                            _ => Err(anyhow!(err_msg.clone()))?,
+                        };
+                        let table_id = match v.get("table_id") {
+                            Some(Value::String(s)) => s,
+                            _ => Err(anyhow!(err_msg.clone()))?,
+                        };
 
-                    Ok((workspace_id, data_source_id, database_id))
-                }
-                _ => Err(anyhow!(err_msg)),
+                        Ok((workspace_id, data_source_id, table_id))
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+                _ => Err(anyhow!(err_msg.clone()))?,
             },
-            None => Err(anyhow!(err_msg)),
-        }?;
+            _ => Err(anyhow!(err_msg.clone()))?,
+        };
 
-        let schema = get_database_schema(workspace_id, data_source_id, database_id, env).await?;
+        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         Ok(BlockResult {
             value: serde_json::to_value(
-                schema
+                tables
                     .into_iter()
                     .map(|t| {
                         json!({
@@ -95,33 +99,44 @@ impl Block for DatabaseSchema {
     }
 }
 
-async fn get_database_schema(
-    workspace_id: &String,
-    data_source_id: &String,
-    database_id: &String,
+pub async fn load_tables_from_identifiers(
+    table_identifiers: &Vec<(&String, &String, &String)>,
     env: &Env,
-) -> Result<Vec<DatabaseTable>> {
-    let project = get_data_source_project(workspace_id, data_source_id, env).await?;
-    let database = match env
-        .store
-        .load_database(&project, data_source_id, database_id)
-        .await?
-    {
-        Some(d) => d,
-        None => Err(anyhow!(
-            "Database `{}` not found in data source `{}`",
-            database_id,
-            data_source_id
-        ))?,
-    };
+) -> Result<Vec<Table>> {
+    // Get a vec of unique (workspace_id, data_source_id) pairs.
+    let data_source_identifiers = table_identifiers
+        .iter()
+        .map(|(workspace_id, data_source_id, _)| (*workspace_id, *data_source_id))
+        .unique()
+        .collect::<Vec<_>>();
 
-    match database.get_tables(env.store.clone()).await {
-        Ok(s) => Ok(s),
-        Err(e) => Err(anyhow!(
-            "Error getting schema for database `{}` in data source `{}`: {}",
-            database_id,
-            data_source_id,
-            e
-        )),
-    }
+    // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
+    let project_ids = try_join_all(
+        data_source_identifiers
+            .iter()
+            .map(|(w, d)| get_data_source_project(w, d, env)),
+    )
+    .await?;
+
+    // Create a hashmap of (workspace_id, data_source_id) -> project_id.
+    let project_by_data_source = data_source_identifiers
+        .iter()
+        .zip(project_ids.iter())
+        .map(|((w, d), p)| ((*w, *d), p.clone()))
+        .collect::<std::collections::HashMap<_, _>>();
+
+    let store = env.store.clone();
+
+    // Concurrently load all tables.
+    (try_join_all(table_identifiers.iter().map(|(w, d, t)| {
+        let p = project_by_data_source
+            .get(&(*w, *d))
+            .expect("Unreachable: missing project.");
+        store.load_table(&p, &d, &t)
+    }))
+    .await?)
+        // Unwrap the results.
+        .into_iter()
+        .map(|t| t.ok_or_else(|| anyhow!("Table not found.")))
+        .collect()
 }

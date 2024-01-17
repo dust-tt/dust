@@ -52,4 +52,9 @@ export class HTTPError extends Error {
 }
 
 // This error is thrown when we are dealing with a revoked OAuth token.
-export class ExternalOauthTokenError extends Error {}
+export class ExternalOauthTokenError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.name = "ExternalOauthTokenError";
+  }
+}

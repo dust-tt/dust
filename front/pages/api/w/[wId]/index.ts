@@ -1,12 +1,12 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostWorkspaceResponseBody = {
@@ -17,7 +17,8 @@ const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,
 });
 const WorkspaceAllowedDomainUpdateBodySchema = t.type({
-  allowedDomain: t.union([t.string, t.null]),
+  domain: t.string,
+  domainAutoJoinEnabled: t.boolean,
 });
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceNameUpdateBodySchema,
@@ -35,7 +36,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const user = auth.user();
+  if (!owner || !user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -69,6 +71,7 @@ async function handler(
           },
         });
       }
+      const { right: body } = bodyValidation;
 
       const w = await Workspace.findOne({
         where: { id: owner.id },
@@ -83,16 +86,33 @@ async function handler(
         });
       }
 
-      if (req.body.name) {
+      if ("name" in body) {
         await w.update({
-          name: req.body.name,
+          name: body.name,
         });
-        owner.name = req.body.name as string;
+        owner.name = body.name;
       } else {
-        await w.update({
-          allowedDomain: req.body.allowedDomain,
-        });
-        owner.allowedDomain = req.body.allowedDomain as string | null;
+        const { domain, domainAutoJoinEnabled } = body;
+        const [affectedCount] = await WorkspaceHasDomain.update(
+          {
+            domainAutoJoinEnabled,
+          },
+          {
+            where: {
+              workspaceId: w.id,
+              domain,
+            },
+          }
+        );
+        if (affectedCount === 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The workspace does not have any verified domain.",
+            },
+          });
+        }
       }
 
       res.status(200).json({ workspace: owner });

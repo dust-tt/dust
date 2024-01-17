@@ -15,7 +15,7 @@ use futures::TryStreamExt;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -1116,7 +1116,7 @@ impl OpenAILLM {
         Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
     }
 
-    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
@@ -1534,7 +1534,7 @@ impl OpenAIEmbedder {
         Ok(format!("https://api.openai.com/v1/embeddings",).parse::<Uri>()?)
     }
 
-    fn tokenizer(&self) -> Arc<Mutex<CoreBPE>> {
+    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.id.as_str() {
             "text-embedding-ada-002" => cl100k_base_singleton(),
             _ => r50k_base_singleton(),

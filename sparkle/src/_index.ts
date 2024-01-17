@@ -25,6 +25,9 @@ export { ContextItem };
 import { AssistantPreview } from "./components/AssistantPreview";
 export { AssistantPreview };
 
+import { Banner } from "./components/Banner";
+export { Banner };
+
 import { Chip } from "./components/Chip";
 export { Chip };
 

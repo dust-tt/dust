@@ -1,4 +1,5 @@
-import pino, { LoggerOptions } from "pino";
+import type { LoggerOptions } from "pino";
+import pino from "pino";
 
 const NODE_ENV = process.env.NODE_ENV;
 const LOG_LEVEL = process.env.LOG_LEVEL || "info";
@@ -12,6 +13,11 @@ const defaultPinoOptions: LoggerOptions = {
     },
   },
   level: LOG_LEVEL,
+  redact: [
+    // Redact Axios config.
+    "*.config.headers.Authorization",
+    "*.response.config.headers.Authorization",
+  ],
 };
 
 const devOptions = {

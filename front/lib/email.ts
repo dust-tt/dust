@@ -4,10 +4,9 @@
  */
 import sgMail from "@sendgrid/mail";
 
-import { XP1User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
-const { SENDGRID_API_KEY = "", XP1_CHROME_WEB_STORE_URL } = process.env;
+const { SENDGRID_API_KEY = "" } = process.env;
 
 sgMail.setApiKey(SENDGRID_API_KEY);
 
@@ -23,31 +22,6 @@ export async function sendEmail(email: string, message: any) {
     );
   }
 }
-
-export const sendActivationKey = async (user: XP1User) => {
-  const msg = {
-    to: user.email,
-    from: "team@dust.tt",
-    subject: "[DUST] XP1 Activation Key",
-    text: `Welcome to XP1!
-
-You activation key is: ${user.secret}
-
-You will need it to activate XP1 once installed[0]. Don't hesitate to
-respond to this email directly with any question, feature request, or
-just to let us know how you save time with XP1.
-
-Looking forward to hearing from you.
-
-The Dust Team
-
-[0] ${XP1_CHROME_WEB_STORE_URL}`,
-  };
-
-  await sgMail.send(msg);
-
-  console.log("ACTIVATION KEY SENT", user.email);
-};
 
 export async function sendGithubDeletionEmail(email: string): Promise<void> {
   const cancelMessage = {
@@ -109,7 +83,7 @@ export async function sendReactivateSubscriptionEmail(
       email: "team@dust.tt",
     },
     subject: `[Dust] Your subscription has been reactivated`,
-    html: `<p>You have requested to reactivate your subscription.</p> 
+    html: `<p>You have requested to reactivate your subscription.</p>
     <p>Therefore, your subscription will not be canceled at the end of the billing period, no downgrade actions will take place, and you can continue using Dust as usual.</p>
     <p>We really appreciate you renewing your trust in us.</p>
     <p>If you have any questions, we'll gladly answer at team@dust.tt.</p>
@@ -129,7 +103,7 @@ export async function sendOpsDowngradeTooMuchDataEmail(
       email: "ops@dust.tt",
     },
     subject: `[OPS - Eng runner] A subscription has been canceled`,
-    html: `<p>Hi Dust ops,</p> 
+    html: `<p>Hi Dust ops,</p>
     <p>The subscription of workspace '${workspaceSId}' was just canceled. They have datasource(s) with more than 50MB data: ${datasourcesTooBig.join(
       ", "
     )}</p>
@@ -157,6 +131,28 @@ export async function sendAdminDowngradeTooMuchDataEmail(
     <p>If they contain any valuable data, please back them up before then.</p>
     <p>Reply to this email if you have any questions.</p>
     <p>Best,
+    <p>The Dust team</p>`,
+  };
+  return sendEmail(email, message);
+}
+
+export async function sendAdminSubscriptionPaymentFailedEmail(
+  email: string,
+  customerPortailUrl: string | null
+): Promise<void> {
+  const message = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Your payment has failed`,
+    html: `<p>Hello from Dust,</p>
+    <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
+    <p>
+      Please note: your workspace will be downgraded after 3 failed payment retries. This will trigger the removal of any feature attached to the paid plan you were on, and the permanent deletion of connections and the data associated with them. Any assistant that are linked to connections will also be removed.
+    </p>
+    <p>Please reply to this email if you have any questions.</p>
+    <br />
     <p>The Dust team</p>`,
   };
   return sendEmail(email, message);

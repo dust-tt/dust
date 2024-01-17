@@ -1,37 +1,39 @@
-import {
+import type {
+  AgentConfigurationType,
   AgentsGetViewType,
-  CoreAPIDatabase,
+  AppType,
+  ConnectorPermission,
+  ConversationMessageReactions,
+  ConversationType,
   DataSourceType,
+  RunRunType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
-import { ConversationMessageReactions, ConversationType } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { RunRunType } from "@dust-tt/types";
-import { ConnectorPermission } from "@dust-tt/types";
-import useSWR, { Fetcher } from "swr";
+import type { Fetcher } from "swr";
+import useSWR from "swr";
 
-import { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
-import { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
-import { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
-import { ListDatabasesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases";
-import { ListDatabaseTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/databases/[dId]/tables";
-import { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
-import { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
-import { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
-import { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
-import { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
-import { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
-import { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
-import { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
-import { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
-import { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
-import { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
-import { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
-import { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
-import { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
+import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
+import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
+import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
+import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
+import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
+import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
+import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
+import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import type { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
+import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
+import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
+import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
+import type { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
@@ -459,7 +461,9 @@ export function useAgentConfigurations({
     if (typeof agentsGetView === "string") {
       params.append("view", agentsGetView);
     } else {
-      params.append("conversationId", agentsGetView.conversationId);
+      if ("conversationId" in agentsGetView) {
+        params.append("conversationId", agentsGetView.conversationId);
+      }
     }
     if (includes.includes("usage")) {
       params.append("withUsage", "true");
@@ -481,6 +485,30 @@ export function useAgentConfigurations({
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
+  };
+}
+
+export function useAgentConfiguration({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const agentConfigurationFetcher: Fetcher<{
+    agentConfiguration: AgentConfigurationType;
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}`,
+    agentConfigurationFetcher
+  );
+
+  return {
+    agentConfiguration: data ? data.agentConfiguration : null,
+    isAgentConfigurationLoading: !error && !data,
+    isAgentConfigurationError: error,
+    mutateAgentConfiguration: mutate,
   };
 }
 
@@ -531,71 +559,18 @@ export function useSlackChannelsLinkedWithAgent({
   };
 }
 
-export function useDatabases({
+export function useTables({
   workspaceId,
   dataSourceName,
-  offset,
-  limit,
 }: {
   workspaceId: string;
   dataSourceName: string;
-  offset: number;
-  limit: number;
 }) {
-  const databasesFetcher: Fetcher<ListDatabasesResponseBody> = fetcher;
+  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases?offset=${offset}&limit=${limit}`,
-    databasesFetcher
-  );
-
-  return {
-    databases: data ? data.databases : [],
-    total: data ? data.total : null,
-    isDatabasesLoading: !error && !data,
-    isDatabasesError: error,
-    mutateDatabases: mutate,
-  };
-}
-
-export function useDatabase({
-  workspaceId,
-  dataSourceName,
-  databaseId,
-}: {
-  workspaceId: string;
-  dataSourceName: string;
-  databaseId?: string;
-}) {
-  const databaseFetcher: Fetcher<{ database: CoreAPIDatabase }> = fetcher;
-
-  const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}`,
-    databaseFetcher
-  );
-
-  return {
-    database: data ? data.database : null,
-    isDatabaseLoading: !error && !data,
-    isDatabaseError: error,
-    mutateDatabase: mutate,
-  };
-}
-
-export function useDatabaseTables({
-  workspaceId,
-  dataSourceName,
-  databaseId,
-}: {
-  workspaceId: string;
-  dataSourceName: string;
-  databaseId?: string;
-}) {
-  const tablesFetcher: Fetcher<ListDatabaseTablesResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWR(
-    databaseId
-      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables`
       : null,
     tablesFetcher
   );
@@ -605,6 +580,32 @@ export function useDatabaseTables({
     isTablesLoading: !error && !data,
     isTablesError: error,
     mutateTables: mutate,
+  };
+}
+
+export function useTable({
+  workspaceId,
+  dataSourceName,
+  tableId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  tableId: string;
+}) {
+  const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
+      : null,
+    tableFetcher
+  );
+
+  return {
+    table: data ? data.table : null,
+    isTableLoading: !error && !data,
+    isTableError: error,
+    mutateTable: mutate,
   };
 }
 

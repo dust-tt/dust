@@ -1,16 +1,19 @@
-import {
+import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
-  GetAgentConfigurationsQuerySchema,
-  PostOrPatchAgentConfigurationRequestBodySchema,
+  LightAgentConfigurationType,
   Result,
 } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import {
+  GetAgentConfigurationsQuerySchema,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
+import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -26,10 +29,10 @@ import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
 };
 export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
 };
 
 async function handler(
@@ -99,12 +102,18 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getAgentConfigurations(auth, viewParam);
+      let agentConfigurations = await getAgentConfigurations({
+        auth,
+        agentsGetView: viewParam,
+        variant: "light",
+      });
       if (withUsage === "true") {
         agentConfigurations = await safeRedisClient(async (redis) => {
           return Promise.all(
             agentConfigurations.map(
-              async (agentConfiguration): Promise<AgentConfigurationType> => {
+              async (
+                agentConfiguration
+              ): Promise<LightAgentConfigurationType> => {
                 return {
                   ...agentConfiguration,
                   usage: await getAgentUsage({
@@ -124,7 +133,9 @@ async function handler(
 
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
-            async (agentConfiguration): Promise<AgentConfigurationType> => {
+            async (
+              agentConfiguration
+            ): Promise<LightAgentConfigurationType> => {
               return {
                 ...agentConfiguration,
                 lastAuthors: await getAgentRecentAuthors(
@@ -257,12 +268,10 @@ export async function createOrUpgradeAgentConfiguration(
       appId: action.appId,
     });
   }
-  if (action && action.type === "database_query_configuration") {
+  if (action && action.type === "tables_query_configuration") {
     actionConfig = await createAgentActionConfiguration(auth, {
-      type: "database_query_configuration",
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
+      type: "tables_query_configuration",
+      tables: action.tables,
     });
   }
 

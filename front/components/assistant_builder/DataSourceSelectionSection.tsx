@@ -7,10 +7,11 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 
-import { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
 import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/shared";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 
 export default function DataSourceSelectionSection({
   dataSourceConfigurations,
@@ -62,12 +63,7 @@ export default function DataSourceSelectionSection({
               return (
                 <ContextItem
                   key={key}
-                  title={
-                    dataSource.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
-                          .name
-                      : dataSource.name
-                  }
+                  title={getDisplayNameForDataSource(dataSource)}
                   visual={
                     <ContextItem.Visual
                       visual={

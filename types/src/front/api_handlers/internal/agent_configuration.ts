@@ -91,10 +91,14 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         appId: t.string,
       }),
       t.type({
-        type: t.literal("database_query_configuration"),
-        dataSourceWorkspaceId: t.string,
-        dataSourceId: t.string,
-        databaseId: t.string,
+        type: t.literal("tables_query_configuration"),
+        tables: t.array(
+          t.type({
+            workspaceId: t.string,
+            dataSourceId: t.string,
+            tableId: t.string,
+          })
+        ),
       }),
     ]),
     generation: t.union([

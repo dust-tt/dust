@@ -1,5 +1,6 @@
 import { Citation } from "@dust-tt/sparkle";
-import { assertNever, ContentFragmentType } from "@dust-tt/types";
+import type { ContentFragmentType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 export function ContentFragment({ message }: { message: ContentFragmentType }) {
   let logoType: "document" | "slack" = "document";

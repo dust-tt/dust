@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Cog6ToothIcon,
   ContextItem,
   DocumentTextIcon,
@@ -10,31 +9,28 @@ import {
   PencilSquareIcon,
   PlusIcon,
   Popup,
-  ServerIcon,
   SlackLogo,
   SliderToggle,
-  Tab,
 } from "@dust-tt/sparkle";
-import {
+import type {
   ConnectorProvider,
   DataSourceType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
-import {
-  connectorIsUsingNango,
-  ConnectorsAPI,
-  ConnectorType,
-} from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
@@ -46,22 +42,19 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
-import {
-  useConnectorBotEnabled,
-  useDatabases,
-  useDocuments,
-} from "@app/lib/swr";
+import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const {
   GA_TRACKING_ID = "",
-  NANGO_SLACK_CONNECTOR_ID = "",
-  NANGO_NOTION_CONNECTOR_ID = "",
+  GITHUB_APP_URL = "",
+  NANGO_CONFLUENCE_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_INTERCOM_CONNECTOR_ID = "",
+  NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
-  GITHUB_APP_URL = "",
+  NANGO_SLACK_CONNECTOR_ID = "",
 } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
@@ -76,6 +69,7 @@ export const getServerSideProps: GetServerSideProps<{
   standardView: boolean;
   nangoConfig: {
     publicKey: string;
+    confluenceConnectorId: string;
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
@@ -138,6 +132,7 @@ export const getServerSideProps: GetServerSideProps<{
       standardView,
       nangoConfig: {
         publicKey: NANGO_PUBLIC_KEY,
+        confluenceConnectorId: NANGO_CONFLUENCE_CONNECTOR_ID,
         slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
@@ -185,7 +180,7 @@ function StandardDataSourceView({
     <div className="pt-6">
       <Page.Vertical gap="xl" align="stretch">
         <Page.SectionHeader
-          title={`Folder ${dataSource.name}`}
+          title={dataSource.name}
           description={
             isActivatedSDB
               ? "Use this page to view and upload documents and databases to your Folder."
@@ -207,42 +202,10 @@ function StandardDataSourceView({
           }
         />
 
-        {isActivatedSDB && (
-          <Tab
-            tabs={[
-              {
-                label: "Documents",
-                current: currentTab === "Documents",
-              },
-              {
-                label: "Databases",
-                current: currentTab === "Databases",
-              },
-            ]}
-            onTabClick={(tab) => {
-              if (tab === currentTab) return;
-              if (tab === "Documents") {
-                setCurrentTab("Documents");
-              } else if (tab === "Databases") {
-                setCurrentTab("Databases");
-              }
-            }}
-          />
-        )}
-
         {currentTab === "Documents" && (
           <DatasourceDocumentsTabView
             owner={owner}
             plan={plan}
-            readOnly={readOnly}
-            dataSource={dataSource}
-            router={router}
-          />
-        )}
-
-        {currentTab === "Databases" && (
-          <DatasourceDatabasesTabView
-            owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
             router={router}
@@ -436,146 +399,6 @@ function DatasourceDocumentsTabView({
   );
 }
 
-function DatasourceDatabasesTabView({
-  owner,
-  readOnly,
-  dataSource,
-  router,
-}: {
-  owner: WorkspaceType;
-  readOnly: boolean;
-  dataSource: DataSourceType;
-  router: ReturnType<typeof useRouter>;
-}) {
-  const [limit] = useState(10);
-  const [offset, setOffset] = useState(0);
-
-  const { databases, total } = useDatabases({
-    workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
-    offset,
-    limit,
-  });
-
-  let last = offset + limit;
-  if (total !== null && offset + limit > total) {
-    last = total;
-  }
-
-  return (
-    <>
-      <Page.Vertical align="stretch">
-        <div className="mt-16 flex flex-row">
-          <div className="flex flex-1">
-            <div className="flex flex-col">
-              <div className="flex flex-row">
-                <div className="flex flex-initial gap-x-2">
-                  <Button
-                    variant="tertiary"
-                    disabled={offset < limit}
-                    onClick={() => {
-                      if (offset >= limit) {
-                        setOffset(offset - limit);
-                      } else {
-                        setOffset(0);
-                      }
-                    }}
-                    label="Previous"
-                  />
-                  <Button
-                    variant="tertiary"
-                    label="Next"
-                    disabled={total !== null && offset + limit >= total}
-                    onClick={() => {
-                      if (total !== null && offset + limit < total) {
-                        setOffset(offset + limit);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                {total !== null && total > 0 && (
-                  <span>
-                    Showing databases {offset + 1} - {last} of {total} databases
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {readOnly ? null : (
-            <div className="">
-              <div className="relative mt-0 flex-none">
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Add database"
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/databases/upsert`
-                    );
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="py-8">
-          <ContextItem.List>
-            {databases.map((db) => (
-              <ContextItem
-                key={db.database_id}
-                title={db.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={({ className }) =>
-                      ServerIcon({
-                        className: className + " text-element-600",
-                      })
-                    }
-                  />
-                }
-                action={
-                  <Button.List>
-                    <Button
-                      variant="secondary"
-                      icon={PencilSquareIcon}
-                      onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/${
-                            dataSource.name
-                          }/databases/upsert?databaseId=${encodeURIComponent(
-                            db.database_id
-                          )}`
-                        );
-                      }}
-                      label="Edit"
-                      labelVisible={false}
-                    />
-                  </Button.List>
-                }
-              ></ContextItem>
-            ))}
-          </ContextItem.List>
-          {databases.length == 0 ? (
-            <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>No databases found for this Folder.</p>
-              <p className="mt-2">
-                Databases let you create assistants that can query structured
-                data from an uploaded CSV file. You can add databases manually
-                by clicking on the &quot;Add&nbsp;database&quot; button.
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </Page.Vertical>
-    </>
-  );
-}
-
 function SlackBotEnableView({
   owner,
   readOnly,
@@ -670,6 +493,7 @@ function SlackBotEnableView({
 }
 
 const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
+  confluence: `You cannot select another Confluence Domain.\nPlease contact us at team@dust.tt if you initially selected the wrong Domain.`,
   slack: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
   notion:
     "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
@@ -679,6 +503,7 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
   intercom:
     "You cannot select another Intercom Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+  webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
 function ManagedDataSourceView({
@@ -698,6 +523,7 @@ function ManagedDataSourceView({
   connector: ConnectorType;
   nangoConfig: {
     publicKey: string;
+    confluenceConnectorId: string;
     slackConnectorId: string;
     notionConnectorId: string;
     googleDriveConnectorId: string;
@@ -711,9 +537,6 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
-    null
-  );
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -737,11 +560,6 @@ function ManagedDataSourceView({
     }
   }, [dataSource.name, owner.sId, router]);
 
-  useEffect(() => {
-    if (connector.lastSyncSuccessfulTime)
-      setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
-  }, [connector.lastSyncSuccessfulTime]);
-
   const handleUpdatePermissions = async () => {
     if (!connector) {
       console.error("No connector");
@@ -751,10 +569,11 @@ function ManagedDataSourceView({
 
     if (connectorIsUsingNango(provider)) {
       const nangoConnectorId = {
-        slack: nangoConfig.slackConnectorId,
-        notion: nangoConfig.notionConnectorId,
+        confluence: nangoConfig.confluenceConnectorId,
         google_drive: nangoConfig.googleDriveConnectorId,
         intercom: nangoConfig.intercomConnectorId,
+        notion: nangoConfig.notionConnectorId,
+        slack: nangoConfig.slackConnectorId,
       }[provider];
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
@@ -845,34 +664,26 @@ function ManagedDataSourceView({
       />
       <div className="flex flex-col pt-4">
         <Page.Header
-          title={`Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`}
+          title={(() => {
+            switch (connectorProvider) {
+              case "confluence":
+              case "slack":
+              case "google_drive":
+              case "github":
+              case "notion":
+              case "intercom":
+                return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
+              case "webcrawler":
+                return `Manage Website`;
+
+              default:
+                assertNever(connectorProvider);
+            }
+          })()}
           icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
         />
         <div className="pt-2">
-          {(() => {
-            if (connector.errorType) {
-              return (
-                <Chip color="warning">
-                  Oops! It seems that our access to your account has been
-                  revoked. Please re-authorize this Data Source to keep your
-                  data up to date on Dust.
-                </Chip>
-              );
-            } else if (!connector.lastSyncSuccessfulTime) {
-              return (
-                <Chip color="amber" isBusy>
-                  Synchronizing
-                  {connector?.firstSyncProgress
-                    ? ` (${connector?.firstSyncProgress})`
-                    : null}
-                </Chip>
-              );
-            } else {
-              return (
-                <Chip color="slate">Last Sync ~ {synchronizedTimeAgo} ago</Chip>
-              );
-            }
-          })()}
+          <ConnectorSyncingChip connector={connector} />
         </div>
 
         {isAdmin && (
@@ -881,8 +692,10 @@ function ManagedDataSourceView({
               <Button.List>
                 {(() => {
                   switch (connectorProvider) {
-                    case "slack":
+                    case "confluence":
                     case "google_drive":
+                    case "slack":
+                    case "intercom":
                       return (
                         <>
                           <Button
@@ -907,7 +720,6 @@ function ManagedDataSourceView({
                       );
                     case "notion":
                     case "github":
-                    case "intercom":
                       return (
                         <Button
                           label="Add / Remove data, manage permissions"
@@ -918,6 +730,8 @@ function ManagedDataSourceView({
                           }}
                         />
                       );
+                    case "webcrawler":
+                      return null;
                     default:
                       ((p: never) => {
                         throw new Error(`Unknown connector provider ${p}`);
@@ -926,10 +740,28 @@ function ManagedDataSourceView({
                 })()}
               </Button.List>
               <div className="pt-2 text-sm font-normal text-element-700">
-                Selected resources will be accessible to all members of the
-                workspace.
-                <br />
-                Changes may impact existing assistants.
+                {(() => {
+                  switch (connectorProvider) {
+                    case "confluence":
+                    case "google_drive":
+                    case "slack":
+                    case "github":
+                    case "notion":
+                    case "intercom":
+                      return (
+                        <>
+                          Selected resources will be accessible to all members
+                          of the workspace.
+                          <br />
+                          Changes may impact existing assistants.
+                        </>
+                      );
+                    case "webcrawler":
+                      return null;
+                    default:
+                      assertNever(connectorProvider);
+                  }
+                })()}
               </div>
             </div>
 
@@ -996,7 +828,15 @@ export default function DataSourceView({
           title={`Manage ${dataSource.connectorId ? "Connection" : "Folder"}`}
           onClose={() => {
             if (dataSource.connectorId) {
-              void router.push(`/w/${owner.sId}/builder/data-sources/managed`);
+              if (dataSource.connectorProvider === "webcrawler") {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/public-urls`
+                );
+              } else {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/managed`
+                );
+              }
             } else {
               void router.push(`/w/${owner.sId}/builder/data-sources/static`);
             }

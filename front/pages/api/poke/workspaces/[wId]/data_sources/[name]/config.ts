@@ -1,6 +1,6 @@
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";

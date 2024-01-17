@@ -1,5 +1,6 @@
 import {
   Checkbox,
+  ConfluenceLogo,
   DriveLogo,
   DropdownMenu,
   GithubLogo,
@@ -8,12 +9,12 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import {
-  assertNever,
+import type {
   FreeBillingType,
   PaidBillingType,
   PlanType,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
@@ -22,12 +23,14 @@ export type EditingPlanType = {
   name: string;
   stripeProductId: string;
   code: string;
+  isConfluenceAllowed: boolean;
   isSlackBotAllowed: boolean;
   isSlackAllowed: boolean;
   isNotionAllowed: boolean;
   isGoogleDriveAllowed: boolean;
   isGithubAllowed: boolean;
   isIntercomAllowed: boolean;
+  isWebCrawlerAllowed: boolean;
   maxMessages: string | number;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
@@ -42,12 +45,14 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     name: plan.name,
     stripeProductId: plan.stripeProductId || "",
     code: plan.code,
+    isConfluenceAllowed: plan.limits.connections.isConfluenceAllowed,
     isSlackBotAllowed: plan.limits.assistant.isSlackBotAllowed,
     isSlackAllowed: plan.limits.connections.isSlackAllowed,
     isNotionAllowed: plan.limits.connections.isNotionAllowed,
     isGoogleDriveAllowed: plan.limits.connections.isGoogleDriveAllowed,
     isGithubAllowed: plan.limits.connections.isGithubAllowed,
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
+    isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
@@ -68,11 +73,13 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         maxMessages: parseInt(editingPlan.maxMessages.toString(), 10),
       },
       connections: {
+        isConfluenceAllowed: editingPlan.isConfluenceAllowed,
         isSlackAllowed: editingPlan.isSlackAllowed,
         isNotionAllowed: editingPlan.isNotionAllowed,
         isGoogleDriveAllowed: editingPlan.isGoogleDriveAllowed,
         isGithubAllowed: editingPlan.isGithubAllowed,
         isIntercomAllowed: editingPlan.isIntercomAllowed,
+        isWebCrawlerAllowed: editingPlan.isWebCrawlerAllowed,
       },
       dataSources: {
         count: parseInt(editingPlan.dataSourcesCount.toString(), 10),
@@ -96,12 +103,14 @@ const getEmptyPlan = (): EditingPlanType => ({
   name: "",
   stripeProductId: "",
   code: "",
+  isConfluenceAllowed: false,
   isSlackBotAllowed: false,
   isSlackAllowed: false,
   isNotionAllowed: false,
   isGoogleDriveAllowed: false,
   isGithubAllowed: false,
   isIntercomAllowed: false,
+  isWebCrawlerAllowed: false,
   maxMessages: "",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",
@@ -184,6 +193,13 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Bot",
+  },
+  // TODO(2024-01-10 flav) Add isConfluenceAllowed.
+  isConfluenceAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Confluence",
+    IconComponent: () => <ConfluenceLogo className="h-4 w-4" />,
   },
   isSlackAllowed: {
     type: "boolean",

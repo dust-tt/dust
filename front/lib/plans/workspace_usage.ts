@@ -1,4 +1,4 @@
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
@@ -15,7 +15,7 @@ export async function countActiveSeatsInWorkspace(
   if (!workspace) {
     throw new Error(`Workspace not found for sId: ${workspaceId}`);
   }
-  return await Membership.count({
+  return Membership.count({
     where: {
       workspaceId: workspace.id,
       role: {

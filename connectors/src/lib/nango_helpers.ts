@@ -1,6 +1,6 @@
 import { cacheWithRedis } from "@dust-tt/types";
 
-import { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 import { nango_client } from "./nango_client";
 
@@ -38,12 +38,12 @@ export async function getAccessTokenFromNango({
   useCache?: boolean;
 }) {
   if (useCache) {
-    return await _cachedGetAccessTokenFromNango({
+    return _cachedGetAccessTokenFromNango({
       connectionId,
       integrationId,
     });
   } else {
-    return await _getAccessTokenFromNango({ connectionId, integrationId });
+    return _getAccessTokenFromNango({ connectionId, integrationId });
   }
 }
 
@@ -72,6 +72,21 @@ const _getCachedConnectionFromNango = cacheWithRedis(
   NANGO_ACCESS_TOKEN_TTL_SECONDS * 1000
 );
 
+type NangoConnectionResponse = {
+  connection_id: string;
+  credentials: {
+    type: string;
+    access_token: string;
+    refresh_token: string;
+    expires_at: string;
+    expires_in: number;
+    raw: {
+      scope: string;
+      token_type: string;
+    };
+  };
+};
+
 export async function getConnectionFromNango({
   connectionId,
   integrationId,
@@ -82,15 +97,15 @@ export async function getConnectionFromNango({
   integrationId: string;
   refreshToken?: boolean;
   useCache?: boolean;
-}) {
+}): Promise<NangoConnectionResponse> {
   if (useCache) {
-    return await _getCachedConnectionFromNango({
+    return _getCachedConnectionFromNango({
       connectionId,
       integrationId,
       refreshToken,
     });
   } else {
-    return await _getConnectionFromNango({
+    return _getConnectionFromNango({
       connectionId,
       integrationId,
       refreshToken,
