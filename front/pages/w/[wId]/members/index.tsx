@@ -117,24 +117,22 @@ export default function WorkspaceAdmin({
         />
         {workspaceVerifiedDomain && (
           <Page.Vertical gap="sm">
-            <Page.H variant="h5">Google Workspace Single Sign-On</Page.H>
+            <Page.H variant="h5">
+              Auto-join Workspace with Google Single Sign-On
+            </Page.H>
             <Page.P variant="secondary">
-              Enable{" "}
-              <span className="font-bold">Google Workspace Single Sign-On</span>{" "}
-              to allow all your team members{" "}
-              <span className="font-bold">
-                to access your Dust company workspace{" "}
-              </span>
-              when they authenticate with their company Google accounts.
+              Allow all your team members to access your Dust company Workspace
+              when they authenticate with a{" "}
+              <span className="font-bold">"@{domain}"</span> Google accounts.
             </Page.P>
             <div className="flex flex-col gap-3">
               <Button
-                label="Activate Single Sign-On"
+                label="Activate Auto-join"
                 size="sm"
                 variant="primary"
                 disabled={domainAutoJoinEnabled}
                 onClick={() => {
-                  if (isUpgraded(plan)) {
+                  if (!isUpgraded(plan)) {
                     setShowNoInviteLinkPopup(true);
                   } else {
                     setIsActivateSSOOpened(true);
@@ -142,12 +140,12 @@ export default function WorkspaceAdmin({
                 }}
               />
               <Button
-                label="De-activate Single Sign-On"
+                label="De-activate Auto-join"
                 size="sm"
                 variant="secondaryWarning"
                 disabled={!domainAutoJoinEnabled}
                 onClick={() => {
-                  if (isUpgraded(plan)) {
+                  if (!isUpgraded(plan)) {
                     setShowNoInviteLinkPopup(true);
                   } else {
                     setIsActivateSSOOpened(true);
@@ -584,8 +582,8 @@ function DomainAutoJoinModal({
   const sendNotification = useContext(SendNotificationsContext);
 
   const title = domainAutoJoinEnabled
-    ? "De-activate Single Sign-On"
-    : "Activate Single Sign-On";
+    ? "De-activate Auto-join"
+    : "Activate Auto-join";
   const validateLabel = domainAutoJoinEnabled ? "De-activate" : "Activate";
   const validateVariant = domainAutoJoinEnabled ? "primaryWarning" : "primary";
   const description = domainAutoJoinEnabled ? (
