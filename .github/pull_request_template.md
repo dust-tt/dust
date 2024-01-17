@@ -10,7 +10,7 @@
 
 <!-- Your content here -->
 
-## Deploy Plan
+<!-- ## Deploy Plan -->
 <!-- Outline the deployment steps. Specify the order of operations and any considerations that should be made before, during, and after deployment/ -->
 
 <!-- Your content here -->
