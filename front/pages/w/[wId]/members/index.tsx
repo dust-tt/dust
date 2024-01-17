@@ -118,41 +118,42 @@ export default function WorkspaceAdmin({
         />
         {workspaceVerifiedDomain && (
           <Page.Vertical gap="sm">
-            <Page.H variant="h5">
-              Auto-join Workspace with Google Single Sign-On
-            </Page.H>
+            <Page.H variant="h5">Auto-join Workspace</Page.H>
             <Page.P variant="secondary">
               Allow all your team members to access your Dust company Workspace
               when they authenticate with a{" "}
               <span className="font-bold">"@{domain}"</span> Google accounts.
             </Page.P>
             <div className="flex flex-col items-start gap-3">
-              <Button
-                label="Activate Auto-join"
-                size="sm"
-                variant="primary"
-                disabled={domainAutoJoinEnabled}
-                onClick={() => {
-                  if (!isUpgraded(plan)) {
-                    setShowNoInviteLinkPopup(true);
-                  } else {
-                    setIsActivateAutoJoinOpened(true);
-                  }
-                }}
-              />
-              <Button
-                label="De-activate Auto-join"
-                size="sm"
-                variant="secondaryWarning"
-                disabled={!domainAutoJoinEnabled}
-                onClick={() => {
-                  if (!isUpgraded(plan)) {
-                    setShowNoInviteLinkPopup(true);
-                  } else {
-                    setIsActivateAutoJoinOpened(true);
-                  }
-                }}
-              />
+              {domainAutoJoinEnabled ? (
+                <Button
+                  label="De-activate Auto-join"
+                  size="sm"
+                  variant="secondaryWarning"
+                  disabled={!domainAutoJoinEnabled}
+                  onClick={() => {
+                    if (!isUpgraded(plan)) {
+                      setShowNoInviteLinkPopup(true);
+                    } else {
+                      setIsActivateAutoJoinOpened(true);
+                    }
+                  }}
+                />
+              ) : (
+                <Button
+                  label="Activate Auto-join"
+                  size="sm"
+                  variant="primary"
+                  disabled={domainAutoJoinEnabled}
+                  onClick={() => {
+                    if (!isUpgraded(plan)) {
+                      setShowNoInviteLinkPopup(true);
+                    } else {
+                      setIsActivateAutoJoinOpened(true);
+                    }
+                  }}
+                />
+              )}
               <Popup
                 show={showNoInviteLinkPopup}
                 chipLabel="Free plan"
