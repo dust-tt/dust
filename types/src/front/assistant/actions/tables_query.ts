@@ -1,3 +1,5 @@
+import { DustAppParameters } from "front/assistant/actions/dust_app_run";
+
 import { ModelId } from "../../../shared/model_id";
 
 export type TablesQueryConfigurationType = {
@@ -15,6 +17,6 @@ export type TablesQueryActionType = {
   id: ModelId;
   type: "tables_query_action";
 
-  params: Record<string, string | number | boolean>;
+  params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
 };

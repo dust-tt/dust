@@ -1,6 +1,7 @@
 import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
+  DustAppParameters,
   GenerationTokensEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -360,7 +361,7 @@ async function batchRenderAgentMessages(
         return {
           id: action.id,
           type: "tables_query_action",
-          params: action.params as Record<string, string | number | boolean>,
+          params: action.params as DustAppParameters,
           output: action.output as Record<string, string | number | boolean>,
         };
       });

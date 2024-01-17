@@ -2,6 +2,7 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+  DustAppParameters,
   ModelMessageType,
   Result,
   TablesQueryActionType,
@@ -177,7 +178,7 @@ export async function* runTablesQuery({
     action: {
       id: action.id,
       type: "tables_query_action",
-      params: action.params as Record<string, string | number | boolean>,
+      params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
     },
   };
@@ -287,7 +288,7 @@ export async function* runTablesQuery({
           action: {
             id: action.id,
             type: "tables_query_action",
-            params: action.params as Record<string, string | number | boolean>,
+            params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
           },
         };
@@ -315,7 +316,7 @@ export async function* runTablesQuery({
     action: {
       id: action.id,
       type: "tables_query_action",
-      params: action.params as Record<string, string | number | boolean>,
+      params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
     },
   };
