@@ -185,8 +185,8 @@ export default function TextSynthSetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                              ? "Enabling..."
-                              : "Enable"
+                            ? "Enabling..."
+                            : "Enable"
                         }
                       />
                     ) : (

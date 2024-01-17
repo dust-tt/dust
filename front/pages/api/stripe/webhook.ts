@@ -513,8 +513,9 @@ async function handler(
               endDate: new Date(),
             });
             const workspaceId = activeSubscription.workspace.sId;
-            const auth =
-              await Authenticator.internalAdminForWorkspace(workspaceId);
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspaceId
+            );
             await revokeUsersForDowngrade(auth);
             await archiveConnectedAgents(auth);
             await deleteConnectedDatasources(auth);

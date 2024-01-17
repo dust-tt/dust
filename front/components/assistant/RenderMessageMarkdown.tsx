@@ -268,8 +268,8 @@ function MentionBlock({
     !agentConfiguration || agentConfiguration?.status === "archived"
       ? "(This assistant was deleted)"
       : agentConfiguration?.status === "active"
-        ? ""
-        : "(This assistant is deactivated for this workspace)";
+      ? ""
+      : "(This assistant is deactivated for this workspace)";
   const tooltipLabel = agentConfiguration?.description || "" + " " + statusText;
   return (
     <span className="inline-block cursor-default font-medium text-brand">

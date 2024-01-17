@@ -215,13 +215,10 @@ function DataSourceResourceSelector({
       }
       const json: GetConnectorResourceParentsResponseBody = await res.json();
       setParentsById(
-        json.resources.reduce(
-          (acc, r) => {
-            acc[r.internalId] = new Set(r.parents);
-            return acc;
-          },
-          {} as Record<string, Set<string>>
-        )
+        json.resources.reduce((acc, r) => {
+          acc[r.internalId] = new Set(r.parents);
+          return acc;
+        }, {} as Record<string, Set<string>>)
       );
     } catch (e) {
       setParentsAreError(true);

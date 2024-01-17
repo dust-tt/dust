@@ -183,8 +183,8 @@ export default function AI21Setup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                              ? "Enabling..."
-                              : "Enable"
+                            ? "Enabling..."
+                            : "Enable"
                         }
                       />
                     ) : (

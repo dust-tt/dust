@@ -201,8 +201,8 @@ export default function GoogleVertexAISetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                              ? "Enabling..."
-                              : "Enable"
+                            ? "Enabling..."
+                            : "Enable"
                         }
                       />
                     ) : (
