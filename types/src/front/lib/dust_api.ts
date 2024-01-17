@@ -1,4 +1,5 @@
 import { createParser } from "eventsource-parser";
+import { CoreAPITokenType } from "front/lib/core_api";
 import * as t from "io-ts";
 
 import {
@@ -24,7 +25,6 @@ import {
 } from "./api/assistant/agent";
 import { UserMessageErrorEvent } from "./api/assistant/conversation";
 import { GenerationTokensEvent } from "./api/assistant/generation";
-import { CoreAPITokenType } from "front/lib/core_api";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
 

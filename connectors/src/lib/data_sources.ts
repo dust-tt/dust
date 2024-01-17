@@ -1,7 +1,6 @@
 import type {
   cacheWithRedis,
   CoreAPIDataSourceDocumentSection,
-  CoreAPITokenType,
   DustAPI,
   EMBEDDING_CONFIG,
   PostDataSourceDocumentRequestBody,
