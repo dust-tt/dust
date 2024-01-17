@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { CheerioCrawler, Configuration } from "crawlee";
-import PQueue from "p-queue";
 import turndown from "turndown";
 
 import {
@@ -30,8 +29,7 @@ import logger from "@connectors/logger/logger";
 
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
-const CONCURRENCY = 10;
-const UPSERT_CONCURRENCY = 4;
+const CONCURRENCY = 4;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
@@ -52,7 +50,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   let crawlingError = 0;
   let upsertingError = 0;
   const createdFolders = new Set<string>();
-  const processQueue = new PQueue({ concurrency: UPSERT_CONCURRENCY });
 
   const crawler = new CheerioCrawler(
     {
@@ -193,8 +190,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   await crawler.run([webCrawlerConfig.url]);
 
   await crawler.teardown();
-
-  await processQueue.onIdle();
 
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
