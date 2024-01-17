@@ -259,20 +259,18 @@ export async function renderPrefixSection(
 
   const tokens = await tokenize(targetPrefix, dataSourceConfig);
 
-  if (tokens.length > MAX_PREFIX_TOKENS) {
-    targetPrefix = tokens
-      .slice(0, MAX_PREFIX_TOKENS)
+  targetPrefix = tokens
+    .slice(0, MAX_PREFIX_TOKENS)
+    .map((t) => t[1])
+    .join("");
+  targetContent =
+    tokens
+      .slice(MAX_PREFIX_TOKENS)
       .map((t) => t[1])
-      .join("");
-    targetContent =
-      tokens
-        .slice(MAX_PREFIX_TOKENS)
-        .map((t) => t[1])
-        .join("") + targetContent;
-  }
+      .join("") + targetContent;
 
   return {
-    prefix: targetContent ? targetPrefix + "..." : targetPrefix,
+    prefix: targetContent ? targetPrefix + "...\n" : targetPrefix,
     content: targetContent ? "..." + targetContent : null,
     sections: [],
   };
