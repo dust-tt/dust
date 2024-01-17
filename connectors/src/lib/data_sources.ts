@@ -402,7 +402,7 @@ export async function renderDocumentTitleAndContent({
     }
   }
   if (metaPrefix) {
-    c.prefix += metaPrefix;
+    c.prefix = c.prefix ? c.prefix + metaPrefix : metaPrefix;
   }
   if (content) {
     c.sections.push(content);
