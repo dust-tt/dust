@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgFullscreen = (props: SVGProps<SVGSVGElement>) => (
+const SvgPuzzle = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -11,8 +11,8 @@ const SvgFullscreen = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M4 14v6h6v-2H7.414l4.293-4.293-1.414-1.414L6 16.586V14H4ZM18 10h2V4h-6v2h2.586l-4.293 4.293 1.414 1.414L18 7.414V10Z"
+      d="M8 4a3 3 0 1 1 5.83 1H18a1 1 0 0 1 1 1v4.17a3 3 0 1 1 0 5.659V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4.17C8.06 4.687 8 4.35 8 4Z"
     />
   </svg>
 );
-export default SvgFullscreen;
+export default SvgPuzzle;
