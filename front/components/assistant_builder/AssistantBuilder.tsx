@@ -1256,7 +1256,8 @@ export default function AssistantBuilder({
             >
               <div className="text-sm text-element-700">
                 The assistant will generate a SQL query from your request,
-                execute it on the tables selected and use the results to generate an answer.
+                execute it on the tables selected and use the results to
+                generate an answer.
               </div>
               <TablesSelectionSection
                 show={builderState.actionMode === "TABLES_QUERY"}
