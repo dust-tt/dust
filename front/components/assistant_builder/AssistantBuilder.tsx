@@ -47,6 +47,7 @@ import { DeleteAssistantDialog } from "@app/components/assistant/AssistantAction
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
+import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import {
@@ -56,6 +57,7 @@ import {
   SPIRIT_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
+import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -102,7 +104,7 @@ const BASIC_ACTION_MODES = ["GENERIC", "RETRIEVAL_SEARCH"] as const;
 const ADVANCED_ACTION_MODES = [
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
-  "DATABASE_QUERY",
+  "TABLES_QUERY",
 ] as const;
 
 type ActionMode =
@@ -114,7 +116,7 @@ const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   RETRIEVAL_SEARCH: "Search in data sources",
   RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
   DUST_APP_RUN: "Run a Dust app",
-  DATABASE_QUERY: "Query a database",
+  TABLES_QUERY: "Query a set of tables",
 };
 
 // Retrieval Action
@@ -147,13 +149,12 @@ export type AssistantBuilderDustAppConfiguration = {
   app: AppType;
 };
 
-// Database Query Action
+// Tables Query Action
 
-export type AssistantBuilderDatabaseQueryConfiguration = {
+export type AssistantBuilderTableConfiguration = {
   dataSourceId: string;
-  dataSourceWorkspaceId: string;
-  databaseId: string;
-  databaseName: string;
+  workspaceId: string;
+  tableId: string;
 };
 
 // Builder State
@@ -169,7 +170,7 @@ type AssistantBuilderState = {
     unit: TimeframeUnit;
   };
   dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
-  databaseQueryConfiguration: AssistantBuilderDatabaseQueryConfiguration | null;
+  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
   handle: string | null;
   description: string | null;
   scope: Exclude<AgentConfigurationScope, "global">;
@@ -192,7 +193,7 @@ export type AssistantBuilderInitialState = {
     | null;
   timeFrame: AssistantBuilderState["timeFrame"] | null;
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
-  databaseQueryConfiguration: AssistantBuilderState["databaseQueryConfiguration"];
+  tablesQueryConfiguration: AssistantBuilderState["tablesQueryConfiguration"];
   handle: string;
   description: string;
   scope: Exclude<AgentConfigurationScope, "global">;
@@ -231,7 +232,7 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
     unit: "month",
   },
   dustAppConfiguration: null,
-  databaseQueryConfiguration: null,
+  tablesQueryConfiguration: {},
   handle: null,
   scope: "private",
   description: null,
@@ -292,8 +293,8 @@ export default function AssistantBuilder({
             ...DEFAULT_ASSISTANT_STATE.timeFrame,
           },
           dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-          databaseQueryConfiguration:
-            initialBuilderState.databaseQueryConfiguration,
+          tablesQueryConfiguration:
+            initialBuilderState.tablesQueryConfiguration,
           handle: initialBuilderState.handle,
           description: initialBuilderState.description,
           scope: initialBuilderState.scope,
@@ -320,6 +321,8 @@ export default function AssistantBuilder({
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
 
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
+
+  const [showTableModal, setShowTableModal] = useState(false);
 
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
@@ -481,8 +484,8 @@ export default function AssistantBuilder({
       }
     }
 
-    if (builderState.actionMode === "DATABASE_QUERY") {
-      if (!builderState.databaseQueryConfiguration) {
+    if (builderState.actionMode === "TABLES_QUERY") {
+      if (!builderState.tablesQueryConfiguration) {
         valid = false;
       }
     }
@@ -496,7 +499,7 @@ export default function AssistantBuilder({
     configuredDataSourceCount,
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
-    builderState.databaseQueryConfiguration,
+    builderState.tablesQueryConfiguration,
     assistantHandleIsAvailable,
     assistantHandleIsValid,
   ]);
@@ -585,14 +588,11 @@ export default function AssistantBuilder({
         }
         break;
 
-      case "DATABASE_QUERY":
-        if (builderState.databaseQueryConfiguration) {
-          const config = builderState.databaseQueryConfiguration;
+      case "TABLES_QUERY":
+        if (builderState.tablesQueryConfiguration) {
           actionParam = {
-            type: "database_query_configuration",
-            dataSourceWorkspaceId: config.dataSourceWorkspaceId,
-            dataSourceId: config.dataSourceId,
-            databaseId: config.databaseId,
+            type: "tables_query_configuration",
+            tables: Object.values(builderState.tablesQueryConfiguration),
           };
         }
         break;
@@ -725,6 +725,23 @@ export default function AssistantBuilder({
             },
           }));
         }}
+      />
+      <AssistantBuilderTablesModal
+        isOpen={showTableModal}
+        setOpen={(isOpen) => setShowTableModal(isOpen)}
+        owner={owner}
+        dataSources={configurableDataSources}
+        onSave={(t) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            tablesQueryConfiguration: {
+              ...state.tablesQueryConfiguration,
+              [`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`]: t,
+            },
+          }));
+        }}
+        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
       />
       <AvatarPicker
         owner={owner}
@@ -1038,7 +1055,7 @@ export default function AssistantBuilder({
                     >
                       {ADVANCED_ACTION_MODES.filter((key) => {
                         return (
-                          key !== "DATABASE_QUERY" ||
+                          key !== "TABLES_QUERY" ||
                           isActivatedStructuredDB(owner)
                         );
                       }).map((key) => (
@@ -1232,6 +1249,35 @@ export default function AssistantBuilder({
                 }}
                 onDelete={deleteDustApp}
                 canSelectDustApp={dustApps.length !== 0}
+              />
+            </ActionModeSection>
+            <ActionModeSection
+              show={builderState.actionMode === "TABLES_QUERY"}
+            >
+              <div className="text-sm text-element-700">
+                The assistant will generate a SQL query from your request,
+                execute it on the tables selected and use the results to
+                generate an answer.
+              </div>
+              <TablesSelectionSection
+                show={builderState.actionMode === "TABLES_QUERY"}
+                tablesQueryConfiguration={builderState.tablesQueryConfiguration}
+                openTableModal={() => {
+                  setShowTableModal(true);
+                }}
+                onDelete={(key) => {
+                  setEdited(true);
+                  setBuilderState((state) => {
+                    const tablesQueryConfiguration =
+                      state.tablesQueryConfiguration;
+                    delete tablesQueryConfiguration[key];
+                    return {
+                      ...state,
+                      tablesQueryConfiguration,
+                    };
+                  });
+                }}
+                canSelectTable={dataSources.length !== 0}
               />
             </ActionModeSection>
           </div>

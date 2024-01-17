@@ -268,12 +268,10 @@ export async function createOrUpgradeAgentConfiguration(
       appId: action.appId,
     });
   }
-  if (action && action.type === "database_query_configuration") {
+  if (action && action.type === "tables_query_configuration") {
     actionConfig = await createAgentActionConfiguration(auth, {
-      type: "database_query_configuration",
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
+      type: "tables_query_configuration",
+      tables: action.tables,
     });
   }
 

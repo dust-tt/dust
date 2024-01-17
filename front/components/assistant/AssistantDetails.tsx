@@ -6,23 +6,29 @@ import {
   CommandLineIcon,
   Modal,
   PlusIcon,
+  ServerIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationType,
   AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
+  CoreAPITable,
+  DataSourceConfiguration,
+  DustAppRunConfigurationType,
   LightAgentConfigurationType,
+  TablesQueryConfigurationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { DustAppRunConfigurationType } from "@dust-tt/types";
-import type { DataSourceConfiguration } from "@dust-tt/types";
-import type { AgentConfigurationType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
+import {
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+} from "@dust-tt/types";
 import Link from "next/link";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
@@ -124,6 +130,11 @@ export function AssistantDetails({
             Data source(s)
           </div>
           <DataSourcesSection dataSourceConfigurations={action.dataSources} />
+        </div>
+      ) : isTablesQueryConfiguration(action) ? (
+        <div className="flex flex-col gap-2">
+          <div className="text-lg font-bold text-element-800">Tables</div>
+          <TablesQuerySection tablesQueryConfig={action} />
         </div>
       ) : null
     ) : null;
@@ -377,5 +388,84 @@ function ButtonsSection({
         </>
       )}
     </Button.List>
+  );
+}
+
+function TablesQuerySection({
+  tablesQueryConfig,
+}: {
+  tablesQueryConfig: TablesQueryConfigurationType;
+}) {
+  const [tables, setTables] = useState<CoreAPITable[] | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isError, setIsError] = useState<boolean>(false);
+
+  const getTables = useCallback(async () => {
+    const tableEndpoints = tablesQueryConfig.tables.map(
+      (t) =>
+        `/api/w/${t.workspaceId}/data_sources/${t.dataSourceId}/tables/${t.tableId}`
+    );
+
+    const results = await Promise.all(
+      tableEndpoints.map((endpoint) =>
+        fetch(endpoint, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    const tablesParsed = [];
+    for (const res of results) {
+      if (!res.ok) {
+        throw new Error((await res.json()).error.message);
+      }
+      tablesParsed.push((await res.json()).table);
+    }
+
+    setTables(tablesParsed);
+  }, [tablesQueryConfig.tables]);
+
+  useEffect(() => {
+    if (!tablesQueryConfig.tables || isLoading || isError || tables?.length) {
+      return;
+    }
+    setIsLoading(true);
+    getTables()
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false));
+  }, [getTables, isLoading, tablesQueryConfig.tables, tables?.length, isError]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div>Loading...</div>;
+      </div>
+    );
+  }
+
+  if (!tables) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div>Error loading tables.</div>;
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div>The following tables are queried before answering:</div>
+      {tables.map((t) => (
+        <div
+          className="flex flex-row items-center gap-2"
+          key={`${t.data_source_id}/${t.table_id}`}
+        >
+          <div>
+            <ServerIcon />
+          </div>
+          <div key={`${t.data_source_id}/${t.table_id}`}>{t.name}</div>
+        </div>
+      ))}
+    </div>
   );
 }

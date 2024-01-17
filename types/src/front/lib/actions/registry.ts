@@ -133,12 +133,12 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "assistant-v2-query-database": {
+  "assistant-v2-query-tables": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "e0c5993d65",
+      appId: "b4f205e453",
       appHash:
-        "b83bf8e8fab6901d805e921db31ecf8f23af608972fa8c6372c6d599e063d90c",
+        "6e94a4b27c7243e1f8cd49617b8b76679a8462001ba2752b575a0f8bc1390d17",
     },
     config: {
       MODEL: {

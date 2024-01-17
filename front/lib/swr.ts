@@ -1,16 +1,14 @@
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
-  DataSourceType,
-} from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type {
+  AppType,
+  ConnectorPermission,
   ConversationMessageReactions,
   ConversationType,
+  DataSourceType,
+  RunRunType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { RunRunType } from "@dust-tt/types";
-import type { ConnectorPermission } from "@dust-tt/types";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
@@ -18,6 +16,7 @@ import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
+import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
@@ -581,6 +580,32 @@ export function useTables({
     isTablesLoading: !error && !data,
     isTablesError: error,
     mutateTables: mutate,
+  };
+}
+
+export function useTable({
+  workspaceId,
+  dataSourceName,
+  tableId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  tableId: string;
+}) {
+  const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
+      : null,
+    tableFetcher
+  );
+
+  return {
+    table: data ? data.table : null,
+    isTableLoading: !error && !data,
+    isTableError: error,
+    mutateTable: mutate,
   };
 }
 

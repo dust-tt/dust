@@ -1,6 +1,6 @@
-import { DatabaseQueryActionType } from "../../front/assistant/actions/database_query";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
+import { TablesQueryActionType } from "../../front/assistant/actions/tables_query";
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
@@ -86,7 +86,8 @@ export function isUserMessageType(
 export type AgentActionType =
   | RetrievalActionType
   | DustAppRunActionType
-  | DatabaseQueryActionType;
+  | TablesQueryActionType;
+
 export type AgentMessageStatus =
   | "created"
   | "succeeded"

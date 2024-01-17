@@ -1,45 +1,42 @@
 import type {
   AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
   ModelConversationType,
   ModelMessageType,
-} from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  ConversationType,
+  Result,
   UserMessageType,
 } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
 import {
+  assertNever,
+  cloneBaseConfig,
+  CoreAPI,
+  DustProdActionRegistry,
+  Err,
   GPT_4_32K_MODEL_ID,
   GPT_4_MODEL_CONFIG,
-  isDatabaseQueryActionType,
-  isDustAppRunActionType,
-} from "@dust-tt/types";
-import {
-  isRetrievalActionType,
-  isRetrievalConfiguration,
-} from "@dust-tt/types";
-import {
   isAgentMessageType,
   isContentFragmentType,
+  isDustAppRunActionType,
+  isRetrievalActionType,
+  isRetrievalConfiguration,
+  isTablesQueryActionType,
   isUserMessageType,
+  Ok,
 } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDatabaseQueryActionForModel } from "@app/lib/api/assistant/actions/database_query";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -87,14 +84,10 @@ export async function renderConversationForModel({
           }
         } else if (isDustAppRunActionType(m.action)) {
           messages.unshift(renderDustAppRunActionForModel(m.action));
-        } else if (isDatabaseQueryActionType(m.action)) {
-          messages.unshift(renderDatabaseQueryActionForModel(m.action));
+        } else if (isTablesQueryActionType(m.action)) {
+          messages.unshift(renderTablesQueryActionForModel(m.action));
         } else {
-          return new Err(
-            new Error(
-              "Unsupported action type during conversation model rendering"
-            )
-          );
+          assertNever(m.action);
         }
       }
       if (m.content) {

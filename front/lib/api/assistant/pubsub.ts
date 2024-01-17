@@ -161,8 +161,8 @@ async function handleUserMessageEvents(
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":
-              case "database_query_params":
-              case "database_query_output":
+              case "tables_query_params":
+              case "tables_query_output":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
@@ -286,8 +286,8 @@ export async function retryAgentMessageWithPubSub(
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":
-              case "database_query_params":
-              case "database_query_output":
+              case "tables_query_params":
+              case "tables_query_output":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":

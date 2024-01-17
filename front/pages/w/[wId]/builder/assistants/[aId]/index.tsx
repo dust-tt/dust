@@ -1,15 +1,18 @@
 import type {
   AgentConfigurationType,
+  AppType,
   DataSourceType,
+  PlanType,
+  SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import { isDatabaseQueryConfiguration } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+} from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import type {
@@ -110,13 +113,30 @@ export async function buildInitialState({
     }
   }
 
-  const databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"] =
-    null;
+  let tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"] =
+    {};
+
+  if (
+    isTablesQueryConfiguration(config.action) &&
+    config.action.tables.length
+  ) {
+    tablesQueryConfiguration = config.action.tables.reduce(
+      (acc, curr) => ({
+        ...acc,
+        [`${curr.workspaceId}/${curr.dataSourceId}/${curr.tableId}`]: {
+          workspaceId: curr.workspaceId,
+          dataSourceId: curr.dataSourceId,
+          tableId: curr.tableId,
+        },
+      }),
+      {} as AssistantBuilderInitialState["tablesQueryConfiguration"]
+    );
+  }
 
   return {
     dataSourceConfigurations,
     dustAppConfiguration,
-    databaseQueryConfiguration,
+    tablesQueryConfiguration,
   };
 }
 
@@ -130,7 +150,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataSourceConfigurations: Record<string, DataSourceConfig>;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  databaseQueryConfiguration: AssistantBuilderInitialState["databaseQueryConfiguration"];
+  tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
 }> = async (context) => {
@@ -190,7 +210,7 @@ export const getServerSideProps: GetServerSideProps<{
   const {
     dataSourceConfigurations,
     dustAppConfiguration,
-    databaseQueryConfiguration,
+    tablesQueryConfiguration,
   } = await buildInitialState({
     config,
     dataSourceByName,
@@ -208,7 +228,7 @@ export const getServerSideProps: GetServerSideProps<{
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
-      databaseQueryConfiguration: databaseQueryConfiguration,
+      tablesQueryConfiguration,
       agentConfiguration: config,
       flow,
     },
@@ -225,7 +245,7 @@ export default function EditAssistant({
   dataSourceConfigurations,
   dustApps,
   dustAppConfiguration,
-  databaseQueryConfiguration,
+  tablesQueryConfiguration,
   agentConfiguration,
   flow,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -259,8 +279,8 @@ export default function EditAssistant({
     actionMode = "DUST_APP_RUN";
   }
 
-  if (isDatabaseQueryConfiguration(agentConfiguration.action)) {
-    actionMode = "DATABASE_QUERY";
+  if (isTablesQueryConfiguration(agentConfiguration.action)) {
+    actionMode = "TABLES_QUERY";
   }
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global assistant");
@@ -281,7 +301,7 @@ export default function EditAssistant({
         timeFrame,
         dataSourceConfigurations,
         dustAppConfiguration,
-        databaseQueryConfiguration,
+        tablesQueryConfiguration,
         scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,

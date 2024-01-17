@@ -1,6 +1,7 @@
 import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
+  DustAppParameters,
   GenerationTokensEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -52,7 +53,6 @@ import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
-  AgentDatabaseQueryAction,
   AgentDustAppRunAction,
   AgentMessage,
   Conversation,
@@ -62,6 +62,7 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
@@ -290,7 +291,7 @@ async function batchRenderAgentMessages(
     agentConfigurations,
     agentRetrievalActions,
     agentDustAppRunActions,
-    agentDatabaseQueryActions,
+    agentTablesQueryActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -347,24 +348,21 @@ async function batchRenderAgentMessages(
       });
     })(),
     (async () => {
-      const actions = await AgentDatabaseQueryAction.findAll({
+      const actions = await AgentTablesQueryAction.findAll({
         where: {
           id: {
             [Op.in]: agentMessages
-              .filter((m) => m.agentMessage?.agentDatabaseQueryActionId)
-              .map((m) => m.agentMessage?.agentDatabaseQueryActionId as number),
+              .filter((m) => m.agentMessage?.agentTablesQueryActionId)
+              .map((m) => m.agentMessage?.agentTablesQueryActionId as number),
           },
         },
       });
       return actions.map((action) => {
         return {
           id: action.id,
-          type: "database_query_action",
-          dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-          dataSourceId: action.dataSourceId,
-          databaseId: action.databaseId,
-          params: action.params,
-          output: action.output,
+          type: "tables_query_action",
+          params: action.params as DustAppParameters,
+          output: action.output as Record<string, string | number | boolean>,
         };
       });
     })(),
@@ -387,12 +385,11 @@ async function batchRenderAgentMessages(
       action = agentDustAppRunActions.find(
         (a) => a.id === agentMessage.agentDustAppRunActionId
       );
-    } else if (agentMessage.agentDatabaseQueryActionId) {
-      action = agentDatabaseQueryActions.find(
-        (a) => a.id === agentMessage.agentDatabaseQueryActionId
+    } else if (agentMessage.agentTablesQueryActionId) {
+      action = agentTablesQueryActions.find(
+        (a) => a.id === agentMessage.agentTablesQueryActionId
       );
     }
-
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === message.agentMessage?.agentConfigurationId
     );
@@ -1941,9 +1938,9 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentDustAppRunActionId: event.action.id,
           });
-        } else if (event.action.type === "database_query_action") {
+        } else if (event.action.type === "tables_query_action") {
           await agentMessageRow.update({
-            agentDatabaseQueryActionId: event.action.id,
+            agentTablesQueryActionId: event.action.id,
           });
         } else {
           ((action: never) => {
@@ -1987,8 +1984,8 @@ async function* streamRunAgentEvents(
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
-      case "database_query_params":
-      case "database_query_output":
+      case "tables_query_params":
+      case "tables_query_output":
         yield event;
         break;
       case "generation_tokens":

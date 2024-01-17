@@ -2,40 +2,41 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
-  DatabaseQueryActionType,
-  DatabaseQueryErrorEvent,
-  DatabaseQueryOutputEvent,
-  DatabaseQueryParamsEvent,
-  DatabaseQuerySuccessEvent,
+  DustAppParameters,
   ModelMessageType,
   Result,
+  TablesQueryActionType,
+  TablesQueryErrorEvent,
+  TablesQueryOutputEvent,
+  TablesQueryParamsEvent,
+  TablesQuerySuccessEvent,
   UserMessageType,
 } from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  isDatabaseQueryConfiguration,
+  isTablesQueryConfiguration,
   Ok,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDatabaseQueryAction } from "@app/lib/models";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
 /**
- * Model rendering of DatabaseQueryAction.
+ * Model rendering of TablesQueryAction.
  */
 
-export function renderDatabaseQueryActionForModel(
-  action: DatabaseQueryActionType
+export function renderTablesQueryActionForModel(
+  action: TablesQueryActionType
 ): ModelMessageType {
   let content = "";
   if (!action.output) {
     throw new Error(
-      "Output not set on DatabaseQuery action; execution is likely not finished."
+      "Output not set on TablesQuery action; execution is likely not finished."
     );
   }
   content += `OUTPUT:\n`;
@@ -43,18 +44,18 @@ export function renderDatabaseQueryActionForModel(
 
   return {
     role: "action" as const,
-    name: "DatabaseQuery",
+    name: "TablesQuery",
     content,
   };
 }
 
 /**
- * Generate the specification for the DatabaseQuery app.
+ * Generate the specification for the TablesQuery app.
  * This is the instruction given to the LLM to understand the task.
  */
-function getDatabaseQueryAppSpecification() {
+function getTablesQueryAppSpecification() {
   return {
-    name: "query_database",
+    name: "query_Tables",
     description:
       "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
     inputs: [
@@ -69,9 +70,9 @@ function getDatabaseQueryAppSpecification() {
 }
 
 /**
- * Generate the parameters for the DatabaseQuery app.
+ * Generate the parameters for the TablesQuery app.
  */
-export async function generateDatabaseQueryAppParams(
+export async function generateTablesQueryAppParams(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,
@@ -85,13 +86,13 @@ export async function generateDatabaseQueryAppParams(
   >
 > {
   const c = configuration.action;
-  if (!isDatabaseQueryConfiguration(c)) {
+  if (!isTablesQueryConfiguration(c)) {
     throw new Error(
-      "Unexpected action configuration received in `runQueryDatabase`"
+      "Unexpected action configuration received in `runQueryTables`"
     );
   }
 
-  const spec = getDatabaseQueryAppSpecification();
+  const spec = getTablesQueryAppSpecification();
   const rawInputsRes = await generateActionInputs(
     auth,
     configuration,
@@ -107,9 +108,9 @@ export async function generateDatabaseQueryAppParams(
 }
 
 /**
- * Run the DatabaseQuery app.
+ * Run the TablesQuery app.
  */
-export async function* runDatabaseQuery({
+export async function* runTablesQuery({
   auth,
   configuration,
   conversation,
@@ -122,37 +123,25 @@ export async function* runDatabaseQuery({
   userMessage: UserMessageType;
   agentMessage: AgentMessageType;
 }): AsyncGenerator<
-  | DatabaseQueryErrorEvent
-  | DatabaseQuerySuccessEvent
-  | DatabaseQueryParamsEvent
-  | DatabaseQueryOutputEvent
+  | TablesQueryErrorEvent
+  | TablesQuerySuccessEvent
+  | TablesQueryParamsEvent
+  | TablesQueryOutputEvent
 > {
   // Checking authorizations
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runQueryDatabase`");
+    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
   const c = configuration.action;
-  if (!isDatabaseQueryConfiguration(c)) {
+  if (!isTablesQueryConfiguration(c)) {
     throw new Error(
-      "Unexpected action configuration received in `runQueryDatabase`"
+      "Unexpected action configuration received in `runQueryTables`"
     );
-  }
-  if (owner.sId !== c.dataSourceWorkspaceId) {
-    yield {
-      type: "database_query_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "database_query_parameters_generation_error",
-        message: "Cannot access the database linked to this action.",
-      },
-    };
   }
 
   // Generating inputs
-  const inputRes = await generateDatabaseQueryAppParams(
+  const inputRes = await generateTablesQueryAppParams(
     auth,
     configuration,
     conversation,
@@ -160,13 +149,13 @@ export async function* runDatabaseQuery({
   );
   if (inputRes.isErr()) {
     yield {
-      type: "database_query_error",
+      type: "tables_query_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "database_query_parameters_generation_error",
-        message: `Error generating parameters for database_query: ${inputRes.error.message}`,
+        code: "tables_query_parameters_generation_error",
+        message: `Error generating parameters for tables_query: ${inputRes.error.message}`,
       },
     };
     return;
@@ -175,66 +164,60 @@ export async function* runDatabaseQuery({
   let output: Record<string, string | boolean | number> = {};
 
   // Creating action
-  const action = await AgentDatabaseQueryAction.create({
-    dataSourceWorkspaceId: c.dataSourceWorkspaceId,
-    dataSourceId: c.dataSourceId,
-    databaseId: c.databaseId,
-    databaseQueryConfigurationId: configuration.sId,
+  const action = await AgentTablesQueryAction.create({
+    tablesQueryConfigurationId: configuration.sId,
     params: input,
     output,
   });
 
   yield {
-    type: "database_query_params",
+    type: "tables_query_params",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     action: {
       id: action.id,
-      type: "database_query_action",
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
-      params: action.params,
-      output: action.output,
+      type: "tables_query_action",
+      params: action.params as DustAppParameters,
+      output: action.output as Record<string, string | number | boolean>,
     },
   };
 
   // Generating configuration
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-query-database"].config
+    DustProdActionRegistry["assistant-v2-query-tables"].config
   );
-  const database = {
-    workspace_id: c.dataSourceWorkspaceId,
-    data_source_id: c.dataSourceId,
-    database_id: c.databaseId,
-  };
+  const tables = c.tables.map((t) => ({
+    workspace_id: t.workspaceId,
+    table_id: t.tableId,
+    data_source_id: t.dataSourceId,
+  }));
   config.DATABASE_SCHEMA = {
     type: "database_schema",
-    database,
+    tables,
   };
   config.DATABASE = {
     type: "database",
-    database,
+    tables,
   };
 
   // Running the app
   const res = await runActionStreamed(
     auth,
-    "assistant-v2-query-database",
+    "assistant-v2-query-tables",
     config,
     [{ question: input.question }]
   );
 
   if (res.isErr()) {
     yield {
-      type: "database_query_error",
+      type: "tables_query_error",
       created: Date.now(),
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "database_query_error",
-        message: `Error running DatabaseQuery app: ${res.error.message}`,
+        code: "tables_query_error",
+        message: `Error running TablesQuery app: ${res.error.message}`,
       },
     };
     return;
@@ -249,16 +232,16 @@ export async function* runDatabaseQuery({
           conversationId: conversation.id,
           error: event.content.message,
         },
-        "Error running query_database app"
+        "Error running query_tables app"
       );
       yield {
-        type: "database_query_error",
+        type: "tables_query_error",
         created: Date.now(),
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "database_query_error",
-          message: `Error running DatabaseQuery app: ${event.content.message}`,
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: ${event.content.message}`,
         },
       };
       return;
@@ -273,16 +256,16 @@ export async function* runDatabaseQuery({
             conversationId: conversation.id,
             error: e.error,
           },
-          "Error running query_database app"
+          "Error running query_tables app"
         );
         yield {
-          type: "database_query_error",
+          type: "tables_query_error",
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "database_query_error",
-            message: `Error executing DatabaseQuery app: ${e.error}`,
+            code: "tables_query_error",
+            message: `Error running TablesQuery app: ${e.error}`,
           },
         };
         return;
@@ -296,19 +279,17 @@ export async function* runDatabaseQuery({
         } else {
           tmpOutput = { no_query: true };
         }
+
         yield {
-          type: "database_query_output",
+          type: "tables_query_output",
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
           action: {
             id: action.id,
-            type: "database_query_action",
-            dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-            dataSourceId: action.dataSourceId,
-            databaseId: action.databaseId,
-            params: action.params,
-            output: tmpOutput,
+            type: "tables_query_action",
+            params: action.params as DustAppParameters,
+            output: tmpOutput as Record<string, string | number | boolean>,
           },
         };
       }
@@ -328,18 +309,15 @@ export async function* runDatabaseQuery({
   });
 
   yield {
-    type: "database_query_success",
+    type: "tables_query_success",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     action: {
       id: action.id,
-      type: "database_query_action",
-      dataSourceWorkspaceId: action.dataSourceWorkspaceId,
-      dataSourceId: action.dataSourceId,
-      databaseId: action.databaseId,
-      params: action.params,
-      output: action.output,
+      type: "tables_query_action",
+      params: action.params as DustAppParameters,
+      output: action.output as Record<string, string | number | boolean>,
     },
   };
   return;

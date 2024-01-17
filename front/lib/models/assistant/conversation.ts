@@ -15,9 +15,9 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { AgentDatabaseQueryAction } from "@app/lib/models/assistant/actions/database_query";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 
@@ -248,8 +248,8 @@ export class AgentMessage extends Model<
     AgentDustAppRunAction["id"]
   > | null;
 
-  declare agentDatabaseQueryActionId: ForeignKey<
-    AgentDatabaseQueryAction["id"]
+  declare agentTablesQueryActionId: ForeignKey<
+    AgentTablesQueryAction["id"]
   > | null;
 
   // Not a relation as global agents are not in the DB
@@ -316,14 +316,14 @@ AgentMessage.init(
         const actionsTypes: (keyof AgentMessage)[] = [
           "agentRetrievalActionId",
           "agentDustAppRunActionId",
-          "agentDatabaseQueryActionId",
+          "agentTablesQueryActionId",
         ];
         const nonNullActionTypes = actionsTypes.filter(
           (field) => agentMessage[field] != null
         );
         if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "Only one of agentRetrievalActionId, agentDustAppRunActionId, or agentDatabaseQueryActionId can be set"
+            "Only one of agentRetrievalActionId, agentDustAppRunActionId or agentTablesQueryActionId can be set"
           );
         }
       },
@@ -346,12 +346,12 @@ AgentDustAppRunAction.hasOne(AgentMessage, {
 AgentMessage.belongsTo(AgentDustAppRunAction, {
   foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
 });
-AgentDatabaseQueryAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentDatabaseQueryActionId", allowNull: true }, // null = no Database Query action set for this Agent
+AgentTablesQueryAction.hasOne(AgentMessage, {
+  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no Tables Query action set for this Agent
   onDelete: "CASCADE",
 });
-AgentMessage.belongsTo(AgentDatabaseQueryAction, {
-  foreignKey: { name: "agentDatabaseQueryActionId", allowNull: true }, // null = no Database Query action set for this Agent
+AgentMessage.belongsTo(AgentTablesQueryAction, {
+  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no Tables Query action set for this Agent
 });
 
 export class ContentFragment extends Model<

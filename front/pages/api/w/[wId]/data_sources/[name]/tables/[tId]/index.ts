@@ -3,7 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -16,17 +16,23 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GetTableResponseBody>
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { auth } = await Authenticator.fromKey(
-    keyRes.value,
+  const session = await getSession(req, res);
+  const auth = await Authenticator.fromSession(
+    session,
     req.query.wId as string
   );
 
   const owner = auth.workspace();
+  if (!owner || !auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   const plan = auth.plan();
   if (!owner || !plan) {
     return apiError(req, res, {
@@ -43,7 +49,17 @@ async function handler(
     return;
   }
 
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  if (!req.query.name || typeof req.query.name !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await getDataSource(auth, req.query.name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

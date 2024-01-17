@@ -40,6 +40,7 @@ export async function getAgentUserListStatus({
   agentId: string;
 }): Promise<Result<AgentUserListStatus, Error>> {
   const agentConfiguration = await getAgentConfiguration(auth, agentId);
+
   if (!agentConfiguration)
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
 
