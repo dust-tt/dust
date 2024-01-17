@@ -125,7 +125,7 @@ export default function WorkspaceAdmin({
               when they authenticate with a{" "}
               <span className="font-bold">"@{domain}"</span> Google accounts.
             </Page.P>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col items-start gap-3">
               <Button
                 label="Activate Auto-join"
                 size="sm"
