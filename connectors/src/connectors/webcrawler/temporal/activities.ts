@@ -28,7 +28,7 @@ import logger from "@connectors/logger/logger";
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
 const CONCURRENCY = 10;
-const UPSERT_CONCURRENCY = 10;
+const UPSERT_CONCURRENCY = 4;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
