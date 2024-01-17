@@ -1,17 +1,14 @@
-import {
+import type {
   APIError,
   ConnectorProvider,
-  ConnectorsAPI,
-  CoreAPI,
   DataSourceType,
-  Err,
-  Ok,
   Result,
 } from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getMembers } from "@app/lib/api/workspace";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";

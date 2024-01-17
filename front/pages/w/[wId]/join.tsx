@@ -1,6 +1,6 @@
 import { GoogleLogo, Logo } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";

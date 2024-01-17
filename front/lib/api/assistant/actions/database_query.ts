@@ -1,25 +1,27 @@
-import {
+import type {
   AgentConfigurationType,
   AgentMessageType,
-  cloneBaseConfig,
   ConversationType,
   DatabaseQueryActionType,
   DatabaseQueryErrorEvent,
   DatabaseQueryOutputEvent,
   DatabaseQueryParamsEvent,
   DatabaseQuerySuccessEvent,
+  ModelMessageType,
+  Result,
+  UserMessageType,
+} from "@dust-tt/types";
+import {
+  cloneBaseConfig,
   DustProdActionRegistry,
   Err,
   isDatabaseQueryConfiguration,
-  ModelMessageType,
   Ok,
-  Result,
-  UserMessageType,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentDatabaseQueryAction } from "@app/lib/models";
 import logger from "@app/logger/logger";
 

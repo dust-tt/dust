@@ -6,7 +6,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { DatabaseQueryActionType } from "@dust-tt/types";
+import type { DatabaseQueryActionType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";

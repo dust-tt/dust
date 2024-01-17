@@ -1,6 +1,6 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { AppType, SpecificationBlockType } from "@dust-tt/types";
-import { TraceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { AppType, SpecificationBlockType } from "@dust-tt/types";
+import type { TraceType } from "@dust-tt/types";
 import {
   CheckCircleIcon,
   ChevronDownIcon,

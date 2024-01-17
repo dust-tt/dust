@@ -1,18 +1,17 @@
-import {
+import type {
   ConversationType,
   ConversationVisibility,
-  Err,
   InternalPostConversationsRequestBodySchema,
   MentionType,
-  Ok,
   Result,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import * as t from "io-ts";
+import { Err, Ok } from "@dust-tt/types";
+import type * as t from "io-ts";
 
-import { NotificationType } from "@app/components/sparkle/Notification";
-import { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { NotificationType } from "@app/components/sparkle/Notification";
+import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 export type ConversationErrorType = {
   type:

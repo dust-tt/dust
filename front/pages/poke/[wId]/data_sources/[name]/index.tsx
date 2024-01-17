@@ -5,12 +5,13 @@ import {
   EyeIcon,
   Page,
 } from "@dust-tt/sparkle";
-import { CoreAPIDataSource, DataSourceType } from "@dust-tt/types";
-import { WorkspaceType } from "@dust-tt/types";
-import { ConnectorsAPI, ConnectorType } from "@dust-tt/types";
+import type { CoreAPIDataSource, DataSourceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 

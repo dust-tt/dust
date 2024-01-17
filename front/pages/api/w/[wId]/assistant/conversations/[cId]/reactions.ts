@@ -1,6 +1,6 @@
-import { ConversationMessageReactions } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { ConversationMessageReactions } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { getMessageReactions } from "@app/lib/api/assistant/reaction";

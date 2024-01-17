@@ -1,5 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";

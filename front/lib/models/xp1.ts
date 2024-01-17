@@ -1,11 +1,10 @@
-import {
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  Model,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { xp1_sequelize } from "@app/lib/databases";
 

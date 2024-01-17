@@ -7,9 +7,9 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect } from "react";

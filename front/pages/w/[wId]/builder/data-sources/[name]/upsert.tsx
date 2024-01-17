@@ -1,4 +1,4 @@
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
@@ -15,13 +15,13 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import {
+import type {
   DataSourceType,
   PostDataSourceDocumentRequestBody,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";

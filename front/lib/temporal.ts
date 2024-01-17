@@ -1,4 +1,5 @@
-import { Client, Connection, ConnectionOptions } from "@temporalio/client";
+import type { ConnectionOptions } from "@temporalio/client";
+import { Client, Connection } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 

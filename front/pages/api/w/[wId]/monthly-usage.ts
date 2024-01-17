@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";

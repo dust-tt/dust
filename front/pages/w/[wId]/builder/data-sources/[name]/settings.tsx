@@ -1,14 +1,14 @@
 import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
-import {
+import type {
   DataSourceType,
   DataSourceVisibility,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { APIError } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { APIError } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";

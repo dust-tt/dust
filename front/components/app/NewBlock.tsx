@@ -1,6 +1,6 @@
 import { Button } from "@dust-tt/sparkle";
-import { SpecificationType, WorkspaceType } from "@dust-tt/types";
-import { BlockType } from "@dust-tt/types";
+import type { SpecificationType, WorkspaceType } from "@dust-tt/types";
+import type { BlockType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 

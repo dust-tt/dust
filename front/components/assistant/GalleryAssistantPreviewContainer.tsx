@@ -1,5 +1,5 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
-import {
+import type {
   AgentUserListStatus,
   LightAgentConfigurationType,
   PlanType,
@@ -7,13 +7,11 @@ import {
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
-import {
-  NotificationType,
-  SendNotificationsContext,
-} from "@app/components/sparkle/Notification";
+import type { NotificationType } from "@app/components/sparkle/Notification";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isLargeModel } from "@app/lib/assistant";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantPreviewFlow = "personal" | "workspace";
 

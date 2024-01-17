@@ -1,4 +1,4 @@
-import { UserMetadataType, UserType } from "@dust-tt/types";
+import type { UserMetadataType, UserType } from "@dust-tt/types";
 
 import { User, UserMetadata } from "@app/lib/models";
 

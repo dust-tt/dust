@@ -1,21 +1,22 @@
-import {
-  FREE_BILLING_TYPES,
+import type {
   FreeBillingType,
-  PAID_BILLING_TYPES,
   PaidBillingType,
-  SUBSCRIPTION_STATUSES,
   SubscriptionStatusType,
 } from "@dust-tt/types";
 import {
+  FREE_BILLING_TYPES,
+  PAID_BILLING_TYPES,
+  SUBSCRIPTION_STATUSES,
+} from "@dust-tt/types";
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  Model,
   NonAttribute,
   Transaction,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";

@@ -1,17 +1,19 @@
-import {
+import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
-  GetAgentConfigurationsQuerySchema,
   LightAgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBodySchema,
   Result,
 } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import {
+  GetAgentConfigurationsQuerySchema,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
+import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {

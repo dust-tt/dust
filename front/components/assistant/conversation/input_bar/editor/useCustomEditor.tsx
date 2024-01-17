@@ -1,13 +1,12 @@
 import Mention, { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Editor, JSONContent, useEditor } from "@tiptap/react";
+import type { Editor, JSONContent } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
-import {
-  EditorSuggestion,
-  makeGetAssistantSuggestions,
-} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 export interface EditorMention {
   id: string;

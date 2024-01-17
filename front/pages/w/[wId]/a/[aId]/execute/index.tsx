@@ -1,16 +1,20 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AppType, BlockRunConfig, SpecificationType } from "@dust-tt/types";
-import { DatasetType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { TraceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  AppType,
+  BlockRunConfig,
+  SpecificationType,
+} from "@dust-tt/types";
+import type { DatasetType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { TraceType } from "@dust-tt/types";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
   ExclamationCircleIcon,
   PlayCircleIcon,
 } from "@heroicons/react/20/solid";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";

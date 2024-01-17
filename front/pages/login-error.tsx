@@ -1,5 +1,5 @@
 import { Button, Logo } from "@dust-tt/sparkle";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;

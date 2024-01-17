@@ -6,7 +6,7 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,

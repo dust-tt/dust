@@ -1,7 +1,8 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
-import { FindOptions, Op, WhereOptions } from "sequelize";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
+import type { FindOptions, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Subscription, Workspace } from "@app/lib/models";

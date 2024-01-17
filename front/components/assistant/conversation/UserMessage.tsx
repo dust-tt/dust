@@ -1,5 +1,5 @@
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import {
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
   ConversationType,
   MessageReactionType,
   UserMessageType,

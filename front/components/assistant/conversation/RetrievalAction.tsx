@@ -7,7 +7,10 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { RetrievalActionType, RetrievalDocumentType } from "@dust-tt/types";
+import type {
+  RetrievalActionType,
+  RetrievalDocumentType,
+} from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { useState } from "react";
 

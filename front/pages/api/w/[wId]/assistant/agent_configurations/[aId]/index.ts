@@ -1,11 +1,9 @@
-import {
-  AgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-} from "@dust-tt/types";
-import { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { AgentConfigurationType } from "@dust-tt/types";
+import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   archiveAgentConfiguration,

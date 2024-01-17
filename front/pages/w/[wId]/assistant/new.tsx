@@ -9,7 +9,7 @@ import {
   Page,
   Popup,
 } from "@dust-tt/sparkle";
-import {
+import type {
   AgentMention,
   ContentFragmentContentType,
   ConversationType,
@@ -19,7 +19,7 @@ import {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";

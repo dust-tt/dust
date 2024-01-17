@@ -1,5 +1,5 @@
-import { KeyType } from "@dust-tt/types";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { KeyType } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Key } from "@app/lib/models";

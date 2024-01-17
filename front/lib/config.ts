@@ -1,4 +1,4 @@
-import { BlockRunConfig, SpecificationType } from "@dust-tt/types";
+import type { BlockRunConfig, SpecificationType } from "@dust-tt/types";
 
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
   const c = {} as { [key: string]: any };

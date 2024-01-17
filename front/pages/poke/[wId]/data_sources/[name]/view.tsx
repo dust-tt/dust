@@ -1,7 +1,7 @@
 import { Input, Page } from "@dust-tt/sparkle";
-import { CoreAPIDocument } from "@dust-tt/types";
+import type { CoreAPIDocument } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";

@@ -1,12 +1,11 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
-import {
+import type {
   ConversationType,
-  isAgentMention,
-  isUserMessageType,
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";

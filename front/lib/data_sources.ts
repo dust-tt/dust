@@ -1,4 +1,4 @@
-import { CoreAPIDocument } from "@dust-tt/types";
+import type { CoreAPIDocument } from "@dust-tt/types";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";

@@ -6,8 +6,8 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -21,11 +21,8 @@ import React from "react";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
 
-import {
-  SidebarNavigation,
-  topNavigation,
-  TopNavigationId,
-} from "./navigation";
+import type { SidebarNavigation, TopNavigationId } from "./navigation";
+import { topNavigation } from "./navigation";
 
 function NavigationBar({
   user,

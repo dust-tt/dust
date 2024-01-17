@@ -1,5 +1,5 @@
-import { WorkspaceType } from "@dust-tt/types";
-import { CoreAPITable } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { CoreAPITable } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 

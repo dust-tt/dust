@@ -1,10 +1,10 @@
-import { WorkspaceType } from "@dust-tt/types";
-import {
+import type { WorkspaceType } from "@dust-tt/types";
+import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
 } from "@dust-tt/types";
-import { BlockType, RunType } from "@dust-tt/types";
+import type { BlockType, RunType } from "@dust-tt/types";
 
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 

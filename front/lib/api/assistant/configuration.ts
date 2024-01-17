@@ -1,33 +1,31 @@
-import {
+import type {
   AgentMention,
   AgentUserListStatus,
-  assertNever,
-  Err,
   LightAgentConfigurationType,
-  Ok,
   Result,
   SupportedModel,
 } from "@dust-tt/types";
-import { DustAppRunConfigurationType } from "@dust-tt/types";
-import {
+import type { DustAppRunConfigurationType } from "@dust-tt/types";
+import type {
   AgentsGetViewType,
   DataSourceConfiguration,
-  isTemplatedQuery,
-  isTimeFrame,
   RetrievalConfigurationType,
   RetrievalQuery,
   RetrievalTimeframe,
 } from "@dust-tt/types";
-import {
+import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   AgentStatus,
 } from "@dust-tt/types";
+import type { DatabaseQueryConfigurationType } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
+import { isTemplatedQuery, isTimeFrame } from "@dust-tt/types";
 import { isSupportedModel } from "@dust-tt/types";
-import { DatabaseQueryConfigurationType } from "@dust-tt/types";
-import { Op, Transaction, UniqueConstraintError } from "sequelize";
+import type { Transaction } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 
 import {
   getGlobalAgents,
@@ -35,7 +33,7 @@ import {
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,

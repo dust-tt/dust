@@ -15,13 +15,18 @@ import {
   SlackLogo,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import {
+import type {
   AgentConfigurationScope,
   ConnectorProvider,
   DataSourceType,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
-import { UserType, WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { SupportedModel } from "@dust-tt/types";
+import type { TimeframeUnit } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
+import { GEMINI_PRO_DEFAULT_MODEL_CONFIG } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -29,15 +34,11 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  SupportedModel,
 } from "@dust-tt/types";
-import { TimeframeUnit } from "@dust-tt/types";
-import { AppType } from "@dust-tt/types";
-import { PlanType, SubscriptionType } from "@dust-tt/types";
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import * as t from "io-ts";
+import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";

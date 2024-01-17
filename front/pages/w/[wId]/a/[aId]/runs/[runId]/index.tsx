@@ -1,9 +1,9 @@
 import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
-import { UserType, WorkspaceType } from "@dust-tt/types";
-import { AppType, SpecificationType } from "@dust-tt/types";
-import { SubscriptionType } from "@dust-tt/types";
-import { RunType } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { AppType, SpecificationType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { RunType } from "@dust-tt/types";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 

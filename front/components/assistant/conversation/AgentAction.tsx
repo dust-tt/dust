@@ -1,9 +1,9 @@
+import type { AgentActionType } from "@dust-tt/types";
 import {
   isDatabaseQueryActionType,
   isDustAppRunActionType,
 } from "@dust-tt/types";
 import { isRetrievalActionType } from "@dust-tt/types";
-import { AgentActionType } from "@dust-tt/types";
 
 import DatabaseQueryAction from "@app/components/assistant/conversation/DatabaseQueryAction";
 import DustAppRunAction from "@app/components/assistant/conversation/DustAppRunAction";

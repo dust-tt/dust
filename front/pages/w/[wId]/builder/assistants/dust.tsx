@@ -7,7 +7,7 @@ import {
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import {
+import type {
   APIError,
   DataSourceType,
   LightAgentConfigurationType,
@@ -15,7 +15,7 @@ import {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
 

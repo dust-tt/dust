@@ -1,21 +1,20 @@
-import {
+import type {
   AgentUserListStatus,
   DustAppRunConfigurationType,
 } from "@dust-tt/types";
-import {
+import type {
   AgentConfigurationScope,
   AgentStatus,
   GlobalAgentStatus,
 } from "@dust-tt/types";
-import {
+import type {
   CreationOptional,
-  DataTypes,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  Model,
   NonAttribute,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
 import { AgentDatabaseQueryConfiguration } from "@app/lib/models/assistant/actions/database_query";

@@ -1,4 +1,4 @@
-import {
+import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   GenerationTokensEvent,
@@ -6,9 +6,8 @@ import {
   UserMessageNewEvent,
   WorkspaceType,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
-import { LightAgentConfigurationType } from "@dust-tt/types";
-import {
+import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type {
   AgentMessageType,
   ContentFragmentContentType,
   ContentFragmentContextType,
@@ -16,18 +15,13 @@ import {
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  isAgentMention,
-  isAgentMessageType,
-  isUserMention,
-  isUserMessageType,
   MentionType,
   UserMessageContext,
   UserMessageType,
 } from "@dust-tt/types";
-import { PlanType } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok, Result } from "@dust-tt/types";
-import {
+import type { PlanType } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -36,8 +30,18 @@ import {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
+import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
+import {
+  isAgentMention,
+  isAgentMessageType,
+  isUserMention,
+  isUserMessageType,
+} from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import crypto from "crypto";
-import { Op, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderRetrievalActionByModelId } from "@app/lib/api/assistant/actions/retrieval";
@@ -45,7 +49,7 @@ import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
   AgentDatabaseQueryAction,

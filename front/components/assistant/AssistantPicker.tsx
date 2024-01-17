@@ -7,7 +7,10 @@ import {
   Searchbar,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import { LightAgentConfigurationType, WorkspaceType } from "@dust-tt/types";
+import type {
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
