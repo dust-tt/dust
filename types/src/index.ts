@@ -40,6 +40,7 @@ export * from "./front/project";
 export * from "./front/provider";
 export * from "./front/run";
 export * from "./front/user";
+export * from "./front/workspace";
 export * from "./shared/cache";
 export * from "./shared/model_id";
 export * from "./shared/nango_errors";
