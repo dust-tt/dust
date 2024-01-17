@@ -352,12 +352,6 @@ export async function getAgentConfigurations<V extends "light" | "full">({
         const dataSourcesConfig =
           agentDatasourceConfigurations[retrievalConfig.id] ?? [];
 
-        if (!dataSourcesConfig) {
-          throw new Error(
-            `Couldn't find data sources configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
-          );
-        }
-
         let topK: number | "auto" = "auto";
         if (retrievalConfig.topKMode === "custom") {
           if (!retrievalConfig.topK) {
