@@ -283,6 +283,18 @@ export async function getAgentConfigurations<V extends "light" | "full">({
               [Op.in]: Object.values(retrievalConfigs).map((r) => r.id),
             },
           },
+          include: [
+            {
+              model: DataSource,
+              as: "dataSource",
+              include: [
+                {
+                  model: Workspace,
+                  as: "workspace",
+                },
+              ],
+            },
+          ],
         })
       : []
   ).reduce((acc, dsConfig) => {
@@ -291,40 +303,6 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     acc[dsConfig.retrievalConfigurationId].push(dsConfig);
     return acc;
   }, {} as Record<number, AgentDataSourceConfiguration[]>);
-
-  const dataSourceIds = Object.values(agentDatasourceConfigurations)
-    .flat()
-    .map((dsConfig) => dsConfig.dataSourceId);
-  const dataSources = (
-    dataSourceIds.length
-      ? await DataSource.findAll({
-          where: {
-            id: {
-              [Op.in]: dataSourceIds,
-            },
-          },
-        })
-      : []
-  ).reduce((acc, ds) => {
-    acc[ds.id] = ds;
-    return acc;
-  }, {} as Record<number, DataSource>);
-
-  const workspaceIds = Object.values(dataSources).map((ds) => ds.workspaceId);
-  const dataSourceWorkspaces = (
-    workspaceIds.length
-      ? await Workspace.findAll({
-          where: {
-            id: {
-              [Op.in]: workspaceIds,
-            },
-          },
-        })
-      : []
-  ).reduce((acc, ws) => {
-    acc[ws.id] = ws;
-    return acc;
-  }, {} as Record<number, Workspace>);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
@@ -367,11 +345,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
           relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
           topK,
           dataSources: dataSourcesConfig.map((dsConfig) => {
-            const dataSource = dataSources[dsConfig.dataSourceId];
-            const workspace = dataSourceWorkspaces[dataSource.workspaceId];
             return {
-              dataSourceId: dataSource.name,
-              workspaceId: workspace.sId,
+              dataSourceId: dsConfig.dataSource.name,
+              workspaceId: dsConfig.dataSource.workspace.sId,
               filter: {
                 tags:
                   dsConfig.tagsIn && dsConfig.tagsNotIn
