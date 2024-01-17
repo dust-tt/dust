@@ -3,6 +3,7 @@ import {
   Button,
   CheckCircleIcon,
   ClipboardCheckIcon,
+  Icon,
   IconButton,
   LinkStrokeIcon,
   Page,
@@ -290,13 +291,13 @@ const EventProperties = ({ event }: { event: ExtractedEventType }) => {
 const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
   let providerLogo = null;
   if (event.dataSourceName.includes("notion")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.notion.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.notion.logoComponent;
   } else if (event.dataSourceName.includes("google_drive")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.google_drive.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.google_drive.logoComponent;
   } else if (event.dataSourceName.includes("github")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.github.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.github.logoComponent;
   } else if (event.dataSourceName.includes("slack")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.slack.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.slack.logoComponent;
   }
 
   return (
@@ -308,11 +309,7 @@ const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
             target="_blank"
             className="block h-5 w-5"
           >
-            <img
-              className="block h-5 w-5"
-              src={providerLogo}
-              alt="Link to source document"
-            />
+            <Icon visual={providerLogo} size="sm" />
           </a>
         </div>
       ) : (

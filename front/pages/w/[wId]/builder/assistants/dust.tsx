@@ -25,6 +25,7 @@ import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -229,12 +230,7 @@ export default function EditDustAssistant({
                     {sortedDatasources.map((ds) => (
                       <ContextItem
                         key={ds.id}
-                        title={
-                          ds.connectorProvider
-                            ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                                .name
-                            : ds.name
-                        }
+                        title={getDisplayNameForDataSource(ds)}
                         visual={
                           <ContextItem.Visual
                             visual={

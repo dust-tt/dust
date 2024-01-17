@@ -1,4 +1,7 @@
-import type { CoreAPIDocument } from "@dust-tt/types";
+import type { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
@@ -7,4 +10,25 @@ export function getDisplayNameForDocument(document: CoreAPIDocument): string {
     return document.document_id;
   }
   return titleTag.substring(titleTagPrefix.length);
+}
+
+export function getDisplayNameForDataSource(ds: DataSourceType) {
+  if (ds.connectorProvider) {
+    switch (ds.connectorProvider) {
+      case "confluence":
+      case "slack":
+      case "google_drive":
+      case "github":
+      case "intercom":
+      case "notion":
+        return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
+        break;
+      case "webcrawler":
+        return ds.name;
+      default:
+        assertNever(ds.connectorProvider);
+    }
+  } else {
+    return ds.name;
+  }
 }

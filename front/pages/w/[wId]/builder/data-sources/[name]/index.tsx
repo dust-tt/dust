@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Cog6ToothIcon,
   ContextItem,
   DocumentTextIcon,
@@ -31,6 +30,7 @@ import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
@@ -537,9 +537,6 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
-    null
-  );
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -562,11 +559,6 @@ function ManagedDataSourceView({
         .catch(console.error);
     }
   }, [dataSource.name, owner.sId, router]);
-
-  useEffect(() => {
-    if (connector.lastSyncSuccessfulTime)
-      setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
-  }, [connector.lastSyncSuccessfulTime]);
 
   const handleUpdatePermissions = async () => {
     if (!connector) {
@@ -682,7 +674,7 @@ function ManagedDataSourceView({
               case "intercom":
                 return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
               case "webcrawler":
-                return `Manage public URL`;
+                return `Manage Website`;
 
               default:
                 assertNever(connectorProvider);
@@ -691,30 +683,7 @@ function ManagedDataSourceView({
           icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
         />
         <div className="pt-2">
-          {(() => {
-            if (connector.errorType) {
-              return (
-                <Chip color="warning">
-                  Oops! It seems that our access to your account has been
-                  revoked. Please re-authorize this Data Source to keep your
-                  data up to date on Dust.
-                </Chip>
-              );
-            } else if (!connector.lastSyncSuccessfulTime) {
-              return (
-                <Chip color="amber" isBusy>
-                  Synchronizing
-                  {connector?.firstSyncProgress
-                    ? ` (${connector?.firstSyncProgress})`
-                    : null}
-                </Chip>
-              );
-            } else {
-              return (
-                <Chip color="slate">Last Sync ~ {synchronizedTimeAgo} ago</Chip>
-              );
-            }
-          })()}
+          <ConnectorSyncingChip connector={connector} />
         </div>
 
         {isAdmin && (
@@ -859,7 +828,15 @@ export default function DataSourceView({
           title={`Manage ${dataSource.connectorId ? "Connection" : "Folder"}`}
           onClose={() => {
             if (dataSource.connectorId) {
-              void router.push(`/w/${owner.sId}/builder/data-sources/managed`);
+              if (dataSource.connectorProvider === "webcrawler") {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/public-urls`
+                );
+              } else {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/managed`
+                );
+              }
             } else {
               void router.push(`/w/${owner.sId}/builder/data-sources/static`);
             }

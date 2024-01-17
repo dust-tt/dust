@@ -19,3 +19,11 @@ export function isActivatedStructuredDB(owner: WorkspaceType) {
   // We will manually add workspace ids here.
   return isDevelopmentOrDustWorkspace(owner) || owner.sId === "bd133dacaa"; // Daph's workspace;
 }
+
+export function isActivatedPublicURLs(owner: WorkspaceType) {
+  // We will manually add workspace ids here.
+  return (
+    isDevelopmentOrDustWorkspace(owner) ||
+    [PRODUCTION_DUST_WORKSPACE_ID].includes(owner.sId)
+  );
+}

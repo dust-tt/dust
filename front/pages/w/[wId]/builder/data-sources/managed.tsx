@@ -25,6 +25,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -704,28 +705,9 @@ export default function DataSourcesView({
                               minutes.
                             </Chip>
                           );
-                        } else if (ds.connector.errorType) {
-                          return (
-                            <Chip color="warning">
-                              Oops! It seems that our access to your account has
-                              been revoked. Please re-authorize this Data Source
-                              to keep your data up to date on Dust.
-                            </Chip>
-                          );
-                        } else if (!ds.connector.lastSyncSuccessfulTime) {
-                          return (
-                            <Chip color="amber" isBusy>
-                              Synchronizing
-                              {ds.connector?.firstSyncProgress
-                                ? ` (${ds.connector?.firstSyncProgress})`
-                                : null}
-                            </Chip>
-                          );
                         } else {
                           return (
-                            <Chip color="slate">
-                              Last Sync ~ {ds.synchronizedAgo} ago
-                            </Chip>
+                            <ConnectorSyncingChip connector={ds.connector} />
                           );
                         }
                       })()}
