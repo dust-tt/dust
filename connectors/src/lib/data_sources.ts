@@ -258,61 +258,50 @@ export async function renderPrefixSection(
       sections: [],
     };
   }
+  let targetPrefix = prefix.substring(0, MAX_PREFIX_CHARS);
+  let targetContent =
+    prefix.length > MAX_PREFIX_CHARS ? prefix.substring(MAX_PREFIX_CHARS) : "";
 
-  const tokens = (
-    await tokenize(prefix.substring(0, MAX_PREFIX_CHARS), dataSourceConfig)
-  ).map((token) => token[1]);
+  const tokens = await tokenize(targetPrefix, dataSourceConfig);
 
-  if (tokens.length <= MAX_PREFIX_TOKENS) {
-    if (prefix.length <= MAX_PREFIX_CHARS) {
-      return {
-        prefix,
-        content: null,
-        sections: [],
-      };
-    } else {
-      return {
-        // - 4 to account for the ellipsis
-        prefix: prefix.substring(0, MAX_PREFIX_CHARS - 4) + "...\n",
-        content: "..." + prefix.substring(MAX_PREFIX_CHARS - 4),
-        sections: [],
-      };
-    }
-  } else {
-    const prefixTextLength = tokens
+  if (tokens.length > MAX_PREFIX_TOKENS) {
+    targetPrefix = tokens
       .slice(0, MAX_PREFIX_TOKENS)
-      .reduce((acc, t) => acc + t.length, 0);
-    return {
-      prefix: prefix.substring(0, prefixTextLength - 4) + "...\n",
-      content: "..." + prefix.substring(prefixTextLength - 4),
-      sections: [],
-    };
+      .map((t) => t[1])
+      .join("");
+    targetContent =
+      tokens
+        .slice(MAX_PREFIX_TOKENS)
+        .map((t) => t[1])
+        .join("") + targetContent;
   }
+
+  return {
+    prefix: targetContent ? targetPrefix + "..." : targetPrefix,
+    content: targetContent ? "..." + targetContent : null,
+    sections: [],
+  };
 }
 
-export const tokenize = cacheWithRedis(
-  async (text: string, ds: DataSourceConfig) => {
-    const dustAPI = new DustAPI(
-      {
-        apiKey: ds.workspaceAPIKey,
-        workspaceId: ds.workspaceId,
-      },
-      logger,
-      { useLocalInDev: true }
+async function tokenize(text: string, ds: DataSourceConfig) {
+  const dustAPI = new DustAPI(
+    {
+      apiKey: ds.workspaceAPIKey,
+      workspaceId: ds.workspaceId,
+    },
+    logger,
+    { useLocalInDev: true }
+  );
+  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceName);
+  if (tokensRes.isErr()) {
+    logger.error(
+      { error: tokensRes.error },
+      `Error tokenizing text for ${ds.dataSourceName}`
     );
-    const tokensRes = await dustAPI.tokenize(text, ds.dataSourceName);
-    if (tokensRes.isErr()) {
-      logger.error(
-        { error: tokensRes.error },
-        `Error tokenizing text for ${ds.dataSourceName}`
-      );
-      throw new Error(`Error tokenizing text for ${ds.dataSourceName}`);
-    }
-    return tokensRes.value;
-  },
-  (text, ds) => `tokenize:${text}-${ds.dataSourceName}-${ds.workspaceId}`,
-  60 * 60 * 24
-);
+    throw new Error(`Error tokenizing text for ${ds.dataSourceName}`);
+  }
+  return tokensRes.value;
+}
 
 /// This function is used to render markdown from (alternatively GFM format) to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
