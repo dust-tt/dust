@@ -1,20 +1,19 @@
 import { sendEmail } from "@app/lib/email";
-import { XP1User } from "@app/lib/models";
 
-const { LIVE, SENDGRID_API_KEY } = process.env;
+// const { LIVE, SENDGRID_API_KEY } = process.env;
 
-async function main() {
-  console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
-
-  const users = await XP1User.findAll();
-  const emails = users.map((u) => u.email);
-
-  for (let i = 0; i < emails.length; i++) {
-    const email = emails[i];
-    console.log("SENDING EMAIL", email);
-    if (LIVE) await sendSunsetXP1Email(email);
-  }
-}
+// async function main() {
+//   console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
+//
+//   const users = await XP1User.findAll();
+//   const emails = users.map((u) => u.email);
+//
+//   for (let i = 0; i < emails.length; i++) {
+//     const email = emails[i];
+//     console.log("SENDING EMAIL", email);
+//     if (LIVE) await sendSunsetXP1Email(email);
+//   }
+// }
 
 export async function sendSunsetXP1Email(email: string): Promise<void> {
   const message = {
@@ -43,10 +42,10 @@ Best speed,
 [0] all your data (usage statistics and account information) will be deleted.
 `,
   };
-  return await sendEmail(email, message);
+  await sendEmail(email, message);
 }
 
-void main().then(() => {
-  console.log("DONE");
-  process.exit(0);
-});
+// void main().then(() => {
+//   console.log("DONE");
+//   process.exit(0);
+// });
