@@ -12,7 +12,10 @@ import {
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertToDatasource } from "@connectors/lib/data_sources";
+import {
+  MAX_DOCUMENT_TXT_LEN,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
@@ -46,7 +49,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
-  let errorCount = 0;
+  let crawlingError = 0;
+  let upsertingError = 0;
   const createdFolders = new Set<string>();
   const processQueue = new PQueue({ concurrency: UPSERT_CONCURRENCY });
 
@@ -127,29 +131,62 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           Context.current().heartbeat({
             type: "upserting",
           });
-          await upsertToDatasource({
-            dataSourceConfig,
-            documentId: documentId,
-            documentContent: {
-              prefix: pageTitle,
-              content: extracted,
-              sections: [],
-            },
-            documentUrl: request.url,
-            timestampMs: new Date().getTime(),
-            tags: [`title:${pageTitle.substring(0, 300)}`],
-            parents: getParentsForPage(request.url, false),
-            upsertContext: {
-              sync_type: "batch",
-            },
-          });
+
+          try {
+            if (
+              extracted.length > 0 &&
+              extracted.length <= MAX_DOCUMENT_TXT_LEN
+            ) {
+              await upsertToDatasource({
+                dataSourceConfig,
+                documentId: documentId,
+                documentContent: {
+                  prefix: pageTitle,
+                  content: extracted,
+                  sections: [],
+                },
+                documentUrl: request.url,
+                timestampMs: new Date().getTime(),
+                tags: [`title:${pageTitle.substring(0, 300)}`],
+                parents: getParentsForPage(request.url, false),
+                upsertContext: {
+                  sync_type: "batch",
+                },
+              });
+            } else {
+              logger.info(
+                {
+                  documentId,
+                  connectorId,
+                  configId: webCrawlerConfig.id,
+                  documentLen: extracted.length,
+                  title: pageTitle,
+                },
+                `Document is empty or too big to be upserted. Skipping`
+              );
+              return;
+            }
+          } catch (e) {
+            upsertingError++;
+            logger.error(
+              {
+                error: e,
+                connectorId: connector.id,
+                configId: webCrawlerConfig.id,
+              },
+              "Webcrawler error while upserting document"
+            );
+            // Since we failed upserting, we want to fail the current Temporal activity
+            // and let the workflow retry it.
+            await crawler.teardown();
+          }
 
           pageCount++;
           await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
         });
       },
       failedRequestHandler: async () => {
-        errorCount++;
+        crawlingError++;
       },
     },
     new Configuration({
@@ -160,14 +197,20 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   await crawler.run([webCrawlerConfig.url]);
   await crawler.teardown();
+
   await processQueue.onIdle();
 
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
   }
+  if (upsertingError > 0) {
+    throw new Error(
+      `Webcrawler failed whlie upserting documents to Dust. Error count: ${upsertingError}`
+    );
+  }
 
   return {
     pageCount,
-    errorCount,
+    crawlingError,
   };
 }
