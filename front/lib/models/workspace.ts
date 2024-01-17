@@ -98,7 +98,7 @@ WorkspaceHasDomain.init(
     },
     createdAt: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
       defaultValue: DataTypes.NOW,
     },
     updatedAt: {
