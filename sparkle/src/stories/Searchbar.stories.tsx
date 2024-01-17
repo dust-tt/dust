@@ -30,6 +30,34 @@ export const SearchbarExample = () => {
             name="input"
             value={inputValue}
             onChange={handleChange}
+            size="md"
+          />
+          <div>
+            <Button variant="tertiary" size="md" label="Hello" />
+          </div>
+        </div>
+        <Searchbar
+          placeholder="Placeholder"
+          name="input"
+          value={inputValue3}
+          onChange={handleChange3}
+          size="md"
+        />
+        <Searchbar
+          placeholder="Placeholder"
+          name="input"
+          value={"disabled"}
+          size="md"
+          disabled
+        />
+      </div>
+      <div className="s-grid s-grid-cols-3 s-gap-4">
+        <div className="s-flex s-gap-2">
+          <Searchbar
+            placeholder="Placeholder"
+            name="input"
+            value={inputValue}
+            onChange={handleChange}
           />
           <div>
             <Button variant="tertiary" size="sm" label="Hello" />
