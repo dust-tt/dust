@@ -64,12 +64,12 @@ const sizeClasses = {
 };
 
 const roundedClasses = {
-  xs: "s-rounded-full",
-  sm: "s-rounded-lg",
-  md: "s-rounded-xl",
-  lg: "s-rounded-2xl",
-  xl: "s-rounded-3xl",
-  auto: "s-rounded-[25%]",
+  xs: "s-rounded-lg",
+  sm: "s-rounded-xl",
+  md: "s-rounded-2xl",
+  lg: "s-rounded-3xl",
+  xl: "s-rounded-[44px]",
+  auto: "s-rounded-[33%]",
 };
 
 const textSize = {
