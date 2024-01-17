@@ -37,6 +37,7 @@ function checkDeployPlanSection() {
   const deployPlanSectionRegex = /## Deploy Plan\n([\s\S]*?)(?=\n##|\n\n|$)/;
 
   const match = PRDescription.match(deployPlanSectionRegex);
+  console.log(">> match:", match);
   if (!match || match[1].trim().length < 20) {
     fail(
       "Please include a detailed Deploy Plan section in your PR description."
