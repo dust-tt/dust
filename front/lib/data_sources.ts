@@ -1,4 +1,4 @@
-import type { CoreAPIDocument , DataSourceType} from "@dust-tt/types";
+import type { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";

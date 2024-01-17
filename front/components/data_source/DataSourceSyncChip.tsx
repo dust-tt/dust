@@ -1,5 +1,5 @@
 import { Chip } from "@dust-tt/sparkle";
-import { ConnectorType } from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { timeAgoFrom } from "@app/lib/utils";
