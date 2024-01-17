@@ -40,7 +40,7 @@ export function SliderToggle({
   disabled = false,
   className = "",
   selected = false,
-  size = "sm",
+  size = "xs",
 }: SliderToggleProps) {
   const combinedStateClasses = classNames(
     size ? sizeClasses[size] : "",

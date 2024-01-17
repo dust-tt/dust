@@ -8,7 +8,6 @@ import {
   Avatar,
   Button,
   Chip,
-  CloudArrowDownIcon,
   Cog6ToothIcon,
   ContextItem,
   Icon,
@@ -91,7 +90,7 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@Gpt4"
-        action={<SliderToggle size="md" />}
+        action={<SliderToggle size="sm" />}
         visual={
           <Avatar
             visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
