@@ -1,6 +1,8 @@
 import type {
+  ModelId,
   RoleType,
   UserType,
+  WorkspaceDomain,
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -12,6 +14,7 @@ import {
   MembershipInvitation,
   User,
   Workspace,
+  WorkspaceHasDomain,
 } from "@app/lib/models";
 
 export async function getWorkspaceInfos(
@@ -35,6 +38,28 @@ export async function getWorkspaceInfos(
     role: "none",
     segmentation: workspace.segmentation,
   };
+}
+
+export async function getWorkspaceVerifiedDomain(
+  workspaceId: ModelId
+): Promise<WorkspaceDomain | null> {
+  const workspaceDomain = await WorkspaceHasDomain.findOne({
+    attributes: ["domain", "domainAutoJoinEnabled"],
+    where: {
+      workspaceId: workspaceId,
+    },
+    // For now, one workspace can only have one domain.
+    limit: 1,
+  });
+
+  if (workspaceDomain) {
+    return {
+      domain: workspaceDomain.domain,
+      domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
+    };
+  }
+
+  return null;
 }
 
 export async function setInternalWorkspaceSegmentation(

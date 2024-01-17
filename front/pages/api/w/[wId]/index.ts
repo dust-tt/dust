@@ -6,8 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models";
-import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostWorkspaceResponseBody = {
@@ -18,7 +17,8 @@ const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,
 });
 const WorkspaceAllowedDomainUpdateBodySchema = t.type({
-  autoAddDomainUsers: t.boolean,
+  domain: t.string,
+  domainAutoJoinEnabled: t.boolean,
 });
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceNameUpdateBodySchema,
@@ -92,19 +92,26 @@ async function handler(
         });
         owner.name = body.name;
       } else {
-        if (body.autoAddDomainUsers && user) {
-          const [, userEmailDomain] = user.email.split("@");
-          if (!isDisposableEmailDomain(userEmailDomain)) {
-            await w.update({
-              allowedDomain: userEmailDomain,
-            });
-            owner.allowedDomain = userEmailDomain;
+        const { domain, domainAutoJoinEnabled } = body;
+        const [affectedCount] = await WorkspaceHasDomain.update(
+          {
+            domainAutoJoinEnabled,
+          },
+          {
+            where: {
+              workspaceId: w.id,
+              domain,
+            },
           }
-        } else {
-          await w.update({
-            allowedDomain: null,
+        );
+        if (affectedCount === 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The workspace does not have any verified domain.",
+            },
           });
-          owner.allowedDomain = null;
         }
       }
 
