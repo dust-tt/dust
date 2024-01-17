@@ -564,7 +564,10 @@ const EXTENSION_WHITELIST = [
   ".cc",
   ".cpp",
   ".hpp",
+  ".sh",
 ];
+
+const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
 
 const FILENAME_WHITELIST = [
   "README",
@@ -703,7 +706,9 @@ export async function processRepository({
       const { size } = await fs.stat(file);
 
       const isWithelisted =
-        EXTENSION_WHITELIST.includes(ext) || FILENAME_WHITELIST.includes(file);
+        (EXTENSION_WHITELIST.includes(ext) ||
+          FILENAME_WHITELIST.includes(file)) &&
+        !SUFFIX_BLACKLIST.some((suffix) => file.endsWith(suffix));
 
       const isUnderLimit = size < 1024 * 1024;
 
@@ -714,17 +719,19 @@ export async function processRepository({
           .slice(1, -1);
         const fileName = basename(file);
 
-        const pathInternalIds = [];
-
+        const parents = [];
         for (let i = 0; i < path.length; i++) {
           const p = `github-code-${repoId}-dir-${path
             .slice(0, i + 1)
             .join("/")}`;
-          pathInternalIds.push(
-            `github-code-${repoId}-dir-${blake3(p)
-              .toString("hex")
-              .substring(0, 16)}`
-          );
+          const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
+            .toString("hex")
+            .substring(0, 16)}`;
+          parents.push({
+            internalId: pathInternalId,
+            dirName: path[i] as string,
+            dirPath: path.slice(0, i),
+          });
         }
 
         const documentId = `github-code-${repoId}-file-${blake3(
@@ -734,9 +741,9 @@ export async function processRepository({
           .substring(0, 16)}`;
 
         const parentInternalId =
-          pathInternalIds.length === 0
+          parents.length === 0
             ? null
-            : (pathInternalIds[pathInternalIds.length - 1] as string);
+            : (parents[parents.length - 1]?.internalId as string);
 
         // Files
         files.push({
@@ -749,33 +756,31 @@ export async function processRepository({
           sizeBytes: size,
           documentId,
           parentInternalId,
-          parents: pathInternalIds,
+          parents: parents.map((p) => p.internalId),
           localFilePath: file,
         });
 
         // Directories
-        if (parentInternalId && !seenDirs[parentInternalId]) {
-          seenDirs[parentInternalId] = true;
+        for (let i = 0; i < parents.length; i++) {
+          const p = parents[i];
+          if (p && !seenDirs[p.internalId]) {
+            seenDirs[p.internalId] = true;
 
-          const dirName = path[path.length - 1] || "";
-          const dirPath = path.slice(0, -1);
-          const internalId = parentInternalId;
-          const dirParentInternalId =
-            pathInternalIds.length === 2
-              ? null
-              : (pathInternalIds[pathInternalIds.length - 2] as string);
+            const dirParent = parents[i - 1];
+            const dirParentInternalId = dirParent ? dirParent.internalId : null;
 
-          directories.push({
-            dirName,
-            dirPath,
-            sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-              dirPath.join("/"),
-              dirName
-            )}`,
-            internalId,
-            parentInternalId: dirParentInternalId,
-            parents: pathInternalIds.slice(0, -1),
-          });
+            directories.push({
+              dirName: p.dirName,
+              dirPath: p.dirPath,
+              sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
+                p.dirPath.join("/"),
+                p.dirName
+              )}`,
+              internalId: p.internalId,
+              parentInternalId: dirParentInternalId,
+              parents: parents.slice(0, i).map((p) => p.internalId),
+            });
+          }
         }
       }
     }
