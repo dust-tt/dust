@@ -1,11 +1,13 @@
 import type {
-  cacheWithRedis,
   CoreAPIDataSourceDocumentSection,
-  DustAPI,
-  EMBEDDING_CONFIG,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { sectionFullText } from "@dust-tt/types";
+import {
+  cacheWithRedis,
+  DustAPI,
+  EMBEDDING_CONFIG,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";

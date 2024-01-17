@@ -60,7 +60,7 @@ import {
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;
 

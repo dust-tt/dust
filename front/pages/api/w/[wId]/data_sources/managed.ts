@@ -3,7 +3,6 @@ import type { ConnectorType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   assertNever,
-  DataSourceType,
   EMBEDDING_CONFIG,
   isConnectorProvider,
 } from "@dust-tt/types";

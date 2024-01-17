@@ -1,6 +1,6 @@
-import type { DataSourceType, EMBEDDING_CONFIG } from "@dust-tt/types";
+import type { DataSourceType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
-import { dustManagedCredentials } from "@dust-tt/types";
+import { dustManagedCredentials, EMBEDDING_CONFIG } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
