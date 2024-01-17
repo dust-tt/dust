@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { timeAgoFrom } from "@app/lib/utils";
 
-export function ConnectorSyncingChip({
+export default function ConnectorSyncingChip({
   connector,
 }: {
   connector: ConnectorType;
