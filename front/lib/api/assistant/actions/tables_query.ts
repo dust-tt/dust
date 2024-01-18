@@ -200,6 +200,10 @@ export async function* runTablesQuery({
     type: "database",
     tables,
   };
+  config.DATABASE_TABLE_HEAD = {
+    type: "database",
+    tables,
+  };
 
   // Running the app
   const res = await runActionStreamed(

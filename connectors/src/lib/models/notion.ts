@@ -1,11 +1,10 @@
-import {
-  type CreationOptional,
-  DataTypes,
-  type ForeignKey,
-  type InferAttributes,
-  type InferCreationAttributes,
-  Model,
+import type {
+  CreationOptional,
+  ForeignKey,
+  InferAttributes,
+  InferCreationAttributes,
 } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
 import type {
   NotionBlockType,

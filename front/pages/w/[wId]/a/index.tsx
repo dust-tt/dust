@@ -23,7 +23,7 @@ import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import TextSynthSetup from "@app/components/providers/TextSynthSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -493,8 +493,8 @@ export default function Developers({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "developers" })}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header

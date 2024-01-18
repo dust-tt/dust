@@ -12,8 +12,8 @@ import { useEffect, useState } from "react";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
-  subNavigationAdmin,
   subNavigationApp,
+  subNavigationBuild,
 } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
@@ -140,8 +140,8 @@ export default function CloneView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({
         owner,
         current: "developers",
       })}

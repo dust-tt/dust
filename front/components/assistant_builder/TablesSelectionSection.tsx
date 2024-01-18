@@ -7,8 +7,9 @@ import {
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
-import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { tableKey } from "@app/lib/client/tables_query";
 
 export default function TablesSelectionSection({
   show,
@@ -69,12 +70,12 @@ export default function TablesSelectionSection({
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">
             {Object.values(tablesQueryConfiguration).map((t) => {
-              const tableKey = `${t.workspaceId}/${t.dataSourceId}/${t.tableId}`;
+              const key = tableKey(t);
               return (
                 <ContextItem
-                  title={t.tableId} // TODO: fetch table name
+                  title={`${t.tableName} (${t.dataSourceId})`}
                   visual={<ContextItem.Visual visual={ServerIcon} />}
-                  key={tableKey}
+                  key={key}
                   action={
                     <Button.List>
                       <Button
@@ -83,7 +84,7 @@ export default function TablesSelectionSection({
                         label="Remove"
                         labelVisible={false}
                         onClick={() => {
-                          onDelete?.(tableKey);
+                          onDelete?.(key);
                         }}
                       />
                     </Button.List>

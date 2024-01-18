@@ -16,7 +16,8 @@ import {
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
-import { Err, Ok, type Result } from "@connectors/lib/result.js";
+import type { Result } from "@connectors/lib/result.js";
+import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";

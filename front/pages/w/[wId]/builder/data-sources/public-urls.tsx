@@ -16,7 +16,7 @@ import { useState } from "react";
 
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -109,8 +109,8 @@ export default function DataSourcesView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAssistants({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_url",
       })}

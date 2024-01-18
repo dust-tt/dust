@@ -6,8 +6,7 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
+import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -15,14 +14,15 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
-import { Fragment, useState } from "react";
-import React from "react";
+import React, { Fragment, useState } from "react";
 
+import type {
+  SidebarNavigation,
+  TopNavigationId,
+} from "@app/components/sparkle/navigation";
+import { topNavigation } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { classNames } from "@app/lib/utils";
-
-import type { SidebarNavigation, TopNavigationId } from "./navigation";
-import { topNavigation } from "./navigation";
 
 function NavigationBar({
   user,
@@ -116,7 +116,7 @@ function NavigationBar({
           </div>
         )}
         {subNavigation && (
-          <>
+          <div className="pt-3">
             {subNavigation.map((nav) => {
               return (
                 <div key={nav.id} className="grow py-1 pl-4 pr-3">
@@ -125,6 +125,7 @@ function NavigationBar({
                       <Item.SectionHeader
                         label={nav.label}
                         variant={nav.variant}
+                        className="!pt-4"
                       />
                     )}
                     {nav.menus.map((menu) => {
@@ -165,7 +166,7 @@ function NavigationBar({
                 </div>
               );
             })}
-          </>
+          </div>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>

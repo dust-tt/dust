@@ -48,7 +48,8 @@ export function getAllFoldersForUrl(url: string) {
 // eg: https://example.com/foo/bar -> https://example.com/foo
 // eg: https://example.com/foo -> https://example.com/
 export function getFolderForUrl(url: string) {
-  const parsed = new URL(url);
+  const normalized = normalizeFolderUrl(url);
+  const parsed = new URL(normalized);
   const urlParts = parsed.pathname.split("/").filter((part) => part.length > 0);
   if (parsed.pathname === "/") {
     return null;
@@ -66,12 +67,37 @@ export function isTopFolder(url: string) {
 // Normalizes a url path by removing trailing slashes and empty path parts (eg: //)
 export function normalizeFolderUrl(url: string) {
   const parsed = new URL(url);
-  return (
+  let result =
     parsed.origin +
     "/" +
     parsed.pathname
       .split("/")
       .filter((x) => x)
-      .join("/")
-  );
+      .join("/");
+
+  if (parsed.search.length > 0) {
+    // Replace the leading ? with a /
+    result += "/" + parsed.search.slice(1);
+  }
+
+  return result;
+}
+
+export function getDisplayNameForPage(url: string): string {
+  const parsed = new URL(url);
+  let result = "";
+  const fragments = parsed.pathname.split("/").filter((x) => x);
+  const lastFragment = fragments.pop();
+  if (lastFragment) {
+    result += lastFragment;
+  }
+  if (parsed.search.length > 0) {
+    result += parsed.search;
+  }
+
+  if (!result) {
+    result = parsed.origin;
+  }
+
+  return result;
 }

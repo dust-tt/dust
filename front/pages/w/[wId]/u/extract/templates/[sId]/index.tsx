@@ -22,7 +22,7 @@ import { Fragment, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -139,8 +139,8 @@ export default function AppExtractEventsReadData({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "extract" })}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({ owner, current: "extract" })}
     >
       <Page.Header
         title="Extract"

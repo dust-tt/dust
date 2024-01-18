@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -146,7 +146,7 @@ export default function DataSourceView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationAssistants({
+      subNavigation={subNavigationBuild({
         owner,
         current: dataSource.connectorId
           ? "data_sources_managed"

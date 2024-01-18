@@ -187,10 +187,34 @@ impl Table {
         }
     }
 
-    pub async fn delete(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
+    pub async fn delete(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<()> {
+        // Invalidate the databases that use the table.
+        try_join_all(
+            (store
+                .find_databases_using_table(
+                    &self.project,
+                    &self.data_source_id,
+                    &self.table_id,
+                    HEARTBEAT_INTERVAL_MS,
+                )
+                .await?)
+                .into_iter()
+                .map(|db| invalidate_database(db, store.clone())),
+        )
+        .await?;
+
+        // Delete the table rows.
+        databases_store.delete_table_rows(&self.unique_id()).await?;
+
         store
             .delete_table(&self.project, &self.data_source_id, &self.table_id)
-            .await
+            .await?;
+
+        Ok(())
     }
 
     pub async fn upsert_rows(

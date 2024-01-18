@@ -19,12 +19,11 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
-import {
-  type AgentUserListStatus,
-  isOnlyUser,
-  type LightAgentConfigurationType,
-  type UserType,
-  type WorkspaceType,
+import type {
+  AgentUserListStatus,
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -38,10 +37,6 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  subNavigationAssistants,
-  subNavigationConversations,
-} from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -189,22 +184,9 @@ export default function PersonalAssistants({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent={isOnlyUser(owner) ? "conversations" : "assistants"}
-      subNavigation={
-        isOnlyUser(owner)
-          ? subNavigationConversations({
-              owner,
-              current: "personal_assistants",
-            })
-          : subNavigationAssistants({
-              owner,
-              current: "personal_assistants",
-            })
-      }
+      topNavigationCurrent="conversations"
       navChildren={
-        isOnlyUser(owner) && (
-          <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
-        )
+        <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
       }
     >
       {showDetails && (

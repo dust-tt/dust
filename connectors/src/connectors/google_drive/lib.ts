@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 import { HTTPError } from "@connectors/lib/error";
 import type { Connector } from "@connectors/lib/models";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import { Err, Ok, type Result } from "@connectors/lib/result.js";
+import type { Result } from "@connectors/lib/result.js";
+import { Err, Ok } from "@connectors/lib/result.js";
 
 import { getAuthObject } from "./temporal/activities";
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
