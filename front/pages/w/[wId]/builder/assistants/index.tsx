@@ -15,13 +15,13 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type { SubscriptionType } from "@dust-tt/types";
 import {
   isBuilder,
   type LightAgentConfigurationType,
   type UserType,
   type WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";

@@ -6,8 +6,8 @@ import {
   Icon,
 } from "@dust-tt/sparkle";
 import {
-  isBuilder,
   type AgentConfigurationScope,
+  isBuilder,
   type WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
