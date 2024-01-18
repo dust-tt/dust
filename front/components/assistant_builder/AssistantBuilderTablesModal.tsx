@@ -12,7 +12,7 @@ import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useState } from "react";
 
-import type { AssistantBuilderTableConfiguration } from "@app/lib/api/assistant_builder/types";
+import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useTables } from "@app/lib/swr";
 

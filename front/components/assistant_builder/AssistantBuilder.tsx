@@ -59,6 +59,14 @@ import {
 } from "@app/components/assistant_builder/shared";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
+import {
+  type ActionMode,
+  ADVANCED_ACTION_MODES,
+  type AssistantBuilderDataSourceConfiguration,
+  type AssistantBuilderInitialState,
+  type AssistantBuilderState,
+  BASIC_ACTION_MODES,
+} from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -67,14 +75,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  type ActionMode,
-  ADVANCED_ACTION_MODES,
-  type AssistantBuilderDataSourceConfiguration,
-  type AssistantBuilderInitialState,
-  type AssistantBuilderState,
-  BASIC_ACTION_MODES,
-} from "@app/lib/api/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
