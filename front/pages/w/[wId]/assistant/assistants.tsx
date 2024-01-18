@@ -25,7 +25,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isOnlyUser } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useContext, useState } from "react";
