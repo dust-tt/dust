@@ -362,6 +362,7 @@ export default function AssistantBuilder({
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
       dataSourceName: slackDataSource?.name ?? undefined,
+      disabled: !isBuilder(owner),
     });
   const [slackChannelsInitialized, setSlackChannelsInitialized] =
     useState(false);
@@ -1460,7 +1461,7 @@ function SlackIntegration({
           <Button
             labelVisible={true}
             label={"Select channels"}
-            variant={"primary"}
+            variant={"secondary"}
             icon={PlusIcon}
             onClick={openModal}
           />
