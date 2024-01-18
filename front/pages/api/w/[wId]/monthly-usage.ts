@@ -105,6 +105,7 @@ async function getMonthlyUsage(
       TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
       c."id" AS "conversationInternalId",
       m."sId" AS "messageId",
+      p."sId" AS "parentMessageId",
       CASE
         WHEN um."id" IS NOT NULL THEN 'user'
         WHEN am."id" IS NOT NULL THEN 'assistant'
@@ -142,6 +143,8 @@ async function getMonthlyUsage(
       "content_fragments" cf ON m."contentFragmentId" = cf."id"
   LEFT JOIN
       "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
+  LEFT JOIN
+      "messages" p ON m."parentId" = p."id"
   WHERE
       w."sId" = :wId AND
       DATE_TRUNC('month', m."createdAt") = DATE_TRUNC('month', :referenceDate::timestamp)
