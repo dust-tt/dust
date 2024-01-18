@@ -10,6 +10,10 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import {
+  resetAgentUserListStatuses,
+  setAgentUserListStatus,
+} from "@app/lib/api/assistant/user_relation";
 
 async function handler(
   req: NextApiRequest,
@@ -86,17 +90,63 @@ async function handler(
           },
         });
       }
+
       if (
         assistant.scope !== "private" &&
         bodyValidation.right.scope === "private"
       ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Non-private assistants cannot be set back to private.",
-          },
+        // switching an assistant back to private: removing it from all user's
+        // lists except the caller (who must be a user)
+        if (!auth.user()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "app_auth_error",
+              message:
+                "An assistant can only be set to private by an existing user of the workspace.",
+            },
+          });
+        }
+
+        if (assistant.scope === "workspace" && !auth.isBuilder()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "app_auth_error",
+              message: "Only builders can modify workspace assistants.",
+            },
+          });
+        }
+
+        const resetRes = await resetAgentUserListStatuses({
+          auth,
+          agentId: assistant.sId,
         });
+        if (resetRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: resetRes.error.message,
+            },
+          });
+        }
+
+        const setRes = await setAgentUserListStatus({
+          auth,
+          agentId: assistant.sId,
+          listStatus: "in-list",
+        });
+
+        if (setRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: setRes.error.message,
+            },
+          });
+        }
       }
 
       const result = await setAgentScope(

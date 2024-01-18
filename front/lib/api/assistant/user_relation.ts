@@ -68,7 +68,7 @@ export async function getAgentUserListStatus({
   );
 }
 
-export async function setAgentUserListstatus({
+export async function setAgentUserListStatus({
   auth,
   agentId,
   listStatus,
@@ -110,5 +110,46 @@ export async function setAgentUserListstatus({
   return new Ok({
     agentId,
     listStatus,
+  });
+}
+
+export async function resetAgentUserListStatuses({
+  auth,
+  agentId,
+}: {
+  auth: Authenticator;
+  agentId: string;
+}): Promise<
+  Result<
+    {
+      agentId: string;
+      statusesDeleted: number;
+    },
+    Error
+  >
+> {
+  const agentConfiguration = await getAgentConfiguration(auth, agentId);
+  if (!agentConfiguration)
+    return new Err(new Error(`Could not find agent configuration ${agentId}`));
+
+  const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
+  if (!userId || !workspaceId || !auth.isUser())
+    return new Err(new Error("User or workspace not found"));
+
+  if (agentConfiguration.status !== "active") {
+    return new Err(new Error("Agent is not active"));
+  }
+
+  const statusesDeleted = await AgentUserRelation.destroy({
+    where: {
+      userId,
+      workspaceId,
+      agentConfiguration: agentConfiguration.sId,
+    },
+  });
+
+  return new Ok({
+    agentId,
+    statusesDeleted,
   });
 }
