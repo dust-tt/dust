@@ -22,11 +22,13 @@ export const SliderExample = () => (
     <div className="s-flex s-items-center s-gap-2">
       <Button variant="tertiary" size="sm" label="Settings" />
       <SliderToggle size="sm" />
+      <SliderToggle size="sm" selected />
     </div>
 
     <div className="s-flex s-items-center s-gap-2">
       <Button variant="tertiary" size="xs" label="Settings" />
       <SliderToggle size="xs" />
+      <SliderToggle size="xs" selected />
     </div>
   </div>
 );
