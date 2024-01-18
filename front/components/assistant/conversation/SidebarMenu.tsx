@@ -1,4 +1,9 @@
-import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChatBubbleBottomCenterPlusIcon,
+  Item,
+  ListIcon,
+} from "@dust-tt/sparkle";
 import type { ConversationWithoutContentType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isOnlyUser } from "@dust-tt/types";
@@ -75,13 +80,18 @@ export function AssistantSidebarMenu({
       )}
     >
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
-        <div className="flex w-full flex-col pl-4 pr-2">
-          <div
-            className={classNames(
-              "pb-1 pr-1 pt-3 text-right",
-              owner.role === "user" ? "pt-6" : ""
-            )}
-          >
+        <div className="flex w-full flex-col px-2">
+          <div className={classNames("flex pt-2")}>
+            <Link href={`/w/${owner.sId}/assistant/assistants`}>
+              <Button
+                labelVisible={true}
+                label="My Assistants"
+                icon={ListIcon}
+                variant="tertiary"
+                className="flex-none shrink"
+              />
+            </Link>
+            <div className="flex-grow" />
             <Link
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {
@@ -114,7 +124,7 @@ export function AssistantSidebarMenu({
               return (
                 conversations.length > 0 && (
                   <React.Fragment key={dateLabel}>
-                    <div className="py-1">
+                    <div className="px-2 py-1">
                       <Item.SectionHeader label={dateLabel} />
                     </div>
                     <Item.List>
@@ -132,6 +142,7 @@ export function AssistantSidebarMenu({
                                       c.created
                                     ).toLocaleDateString()}`)
                               }
+                              className="px-2"
                               href={`/w/${owner.sId}/assistant/${c.sId}`}
                             />
                           );

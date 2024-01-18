@@ -8,137 +8,27 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  ConnectorsAPI,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
+import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
+import type {
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+} from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
-
-type DataSourceConfig = NonNullable<
-  AssistantBuilderInitialState["dataSourceConfigurations"]
->[string];
-
-export async function buildInitialState({
-  dataSourceByName,
-  config,
-  dustApps,
-}: {
-  dataSourceByName: Record<string, DataSourceType>;
-  config: AgentConfigurationType;
-  dustApps: AppType[];
-}) {
-  const selectedResources: {
-    dataSourceName: string;
-    resources: string[] | null;
-    isSelectAll: boolean;
-  }[] = [];
-
-  if (isRetrievalConfiguration(config.action)) {
-    for (const ds of config.action.dataSources) {
-      selectedResources.push({
-        dataSourceName: ds.dataSourceId,
-        resources: ds.filter.parents?.in ?? null,
-        isSelectAll: !ds.filter.parents,
-      });
-    }
-  }
-
-  const dataSourceConfigurationsArray: DataSourceConfig[] = await Promise.all(
-    selectedResources.map(async (ds): Promise<DataSourceConfig> => {
-      const dataSource = dataSourceByName[ds.dataSourceName];
-      if (!dataSource.connectorId || !ds.resources) {
-        return {
-          dataSource: dataSource,
-          selectedResources: {},
-          isSelectAll: ds.isSelectAll,
-        };
-      }
-      const connectorsAPI = new ConnectorsAPI(logger);
-      const response = await connectorsAPI.getResourcesTitles({
-        connectorId: dataSource.connectorId,
-        resourceInternalIds: ds.resources,
-      });
-
-      if (response.isErr()) {
-        throw response.error;
-      }
-
-      // key: interalId, value: title
-      const selectedResources: Record<string, string> = {};
-      for (const resource of response.value.resources) {
-        selectedResources[resource.internalId] = resource.title;
-      }
-
-      return {
-        dataSource: dataSource,
-        selectedResources,
-        isSelectAll: ds.isSelectAll,
-      };
-    })
-  );
-
-  // key: dataSourceName, value: DataSourceConfig
-  const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
-    (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
-    {} as Record<string, DataSourceConfig>
-  );
-
-  let dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"] =
-    null;
-
-  if (isDustAppRunConfiguration(config.action)) {
-    for (const app of dustApps) {
-      if (app.sId === config.action.appId) {
-        dustAppConfiguration = {
-          app,
-        };
-        break;
-      }
-    }
-  }
-
-  let tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"] =
-    {};
-
-  if (
-    isTablesQueryConfiguration(config.action) &&
-    config.action.tables.length
-  ) {
-    tablesQueryConfiguration = config.action.tables.reduce(
-      (acc, curr) => ({
-        ...acc,
-        [`${curr.workspaceId}/${curr.dataSourceId}/${curr.tableId}`]: {
-          workspaceId: curr.workspaceId,
-          dataSourceId: curr.dataSourceId,
-          tableId: curr.tableId,
-        },
-      }),
-      {} as AssistantBuilderInitialState["tablesQueryConfiguration"]
-    );
-  }
-
-  return {
-    dataSourceConfigurations,
-    dustAppConfiguration,
-    tablesQueryConfiguration,
-  };
-}
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
@@ -147,7 +37,10 @@ export const getServerSideProps: GetServerSideProps<{
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
-  dataSourceConfigurations: Record<string, DataSourceConfig>;
+  dataSourceConfigurations: Record<
+    string,
+    AssistantBuilderDataSourceConfiguration
+  >;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];

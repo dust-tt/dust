@@ -4,7 +4,7 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { getEventSchema } from "@app/lib/api/extract";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -68,8 +68,8 @@ export default function AppExtractEventsUpdate({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "extract" })}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({ owner, current: "extract" })}
     >
       <ExtractEventSchemaForm
         owner={owner}

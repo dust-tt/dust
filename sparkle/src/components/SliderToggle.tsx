@@ -11,7 +11,7 @@ type SliderToggleProps = {
 };
 
 const baseClasses =
-  "s-rounded-full s-cursor-pointer s-transition-colors s-duration-300 s-ease-out s-cursor-pointer s-flex s-items-center";
+  "s-rounded-full s-cursor-pointer s-transition-colors s-duration-300 s-ease-out s-cursor-pointer s-flex s-items-center s-flex";
 
 const sizeClasses = {
   xs: "s-h-7 s-w-10",
@@ -21,6 +21,10 @@ const sizeClasses = {
 const cusrsorSizeClasses = {
   xs: "s-h-6 s-w-6",
   sm: "s-h-8 s-w-8",
+};
+const cusrsorTranslateSizeClasses = {
+  xs: "s-translate-x-[14px]",
+  sm: "s-translate-x-[22px]",
 };
 
 const stateClasses = {
@@ -64,7 +68,7 @@ export function SliderToggle({
         className={classNames(
           "s-transform s-rounded-full s-bg-white s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
           size ? cusrsorSizeClasses[size] : "",
-          selected ? "s-translate-x-full" : ""
+          selected ? cusrsorTranslateSizeClasses[size] : "s-translate-x-[2px]"
         )}
       />
     </div>

@@ -9,8 +9,8 @@ import { useRouter } from "next/router";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
-  subNavigationAdmin,
   subNavigationApp,
+  subNavigationBuild,
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -102,8 +102,8 @@ export default function Specification({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({
         owner,
         current: "developers",
       })}

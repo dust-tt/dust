@@ -16,11 +16,23 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
 const CreateTableFromCsvSchema = t.type({
   name: t.string,
   description: t.string,
   csv: t.string,
 });
+
+export type CreateTableFromCsvRequestBody = t.TypeOf<
+  typeof CreateTableFromCsvSchema
+>;
 
 type RowValue =
   | number

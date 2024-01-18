@@ -15,7 +15,6 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
@@ -135,10 +134,6 @@ export default function AssistantConversation({
         }
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="conversations"
-        subNavigation={subNavigationConversations({
-          owner,
-          current: "conversation",
-        })}
         titleChildren={
           conversation && (
             <ConversationTitle
