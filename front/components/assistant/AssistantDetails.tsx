@@ -23,6 +23,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
+  isBuilder,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
@@ -265,8 +266,7 @@ function ButtonsSection({
   const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
 
   const canDelete =
-    (agentConfiguration.scope === "workspace" &&
-      ["builder", "admin"].includes(owner.role)) ||
+    (agentConfiguration.scope === "workspace" && isBuilder(owner)) ||
     ["published", "private"].includes(agentConfiguration.scope);
 
   const canAddRemoveList =
@@ -381,7 +381,7 @@ function ButtonsSection({
             icon={TrashIcon}
             variant="secondaryWarning"
             size="xs"
-            disabled={!["builder", "admin"].includes(owner.role)}
+            disabled={!isBuilder(owner)}
             onClick={() => setShowDeletionModal(true)}
             hasMagnifying={false}
           />
