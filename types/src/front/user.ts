@@ -1,4 +1,5 @@
 import { ModelId } from "../shared/model_id";
+import { assertNever } from "../shared/utils/assert_never";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 export type RoleType = "admin" | "builder" | "user" | "none";
@@ -39,4 +40,68 @@ export function formatUserFullName(user?: {
   return user
     ? [user.firstName, user.lastName].filter(Boolean).join(" ")
     : null;
+}
+
+export function isAdmin(owner: WorkspaceType | null) {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "admin":
+      return true;
+    case "builder":
+    case "user":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
+export function isBuilder(owner: WorkspaceType | null) {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "admin":
+    case "builder":
+      return true;
+    case "user":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
+export function isUser(owner: WorkspaceType | null) {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "admin":
+    case "builder":
+    case "user":
+      return true;
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
+export function isOnlyUser(owner: WorkspaceType | null) {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "user":
+      return true;
+    case "builder":
+    case "admin":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
 }

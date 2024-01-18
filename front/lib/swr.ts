@@ -34,6 +34,7 @@ import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import type { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
+import disable from "@app/pages/api/w/[wId]/keys/[secret]/disable";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
@@ -537,15 +538,17 @@ export function useAgentUsage({
 export function useSlackChannelsLinkedWithAgent({
   workspaceId,
   dataSourceName,
+  disabled,
 }: {
   workspaceId: string;
   dataSourceName?: string;
+  disabled?: boolean;
 }) {
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWR(
-    dataSourceName
+    dataSourceName && !disabled
       ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`
       : null,
     slackChannelsLinkedWithAgentFetcher
