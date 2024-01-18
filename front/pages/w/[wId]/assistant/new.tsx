@@ -34,7 +34,6 @@ import {
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -179,10 +178,6 @@ export default function AssistantNew({
           pageTitle={"Dust - New Conversation"}
           gaTrackingId={gaTrackingId}
           topNavigationCurrent="conversations"
-          subNavigation={subNavigationConversations({
-            owner,
-            current: "conversation",
-          })}
           navChildren={
             <AssistantSidebarMenu
               owner={owner}

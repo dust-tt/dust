@@ -96,7 +96,7 @@ export const topNavigation = ({
 
   nav.push({
     id: "conversations",
-    label: "Conversations",
+    label: "Chat",
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
     sizing: "expand",
@@ -106,9 +106,9 @@ export const topNavigation = ({
   if (isBuilder(owner)) {
     nav.push({
       id: "assistants",
-      label: "Assistants",
+      label: "Build",
       icon: RobotIcon,
-      href: `/w/${owner.sId}/assistant/assistants`,
+      href: `/w/${owner.sId}/builder/assistants`,
       current: current === "assistants",
       sizing: "hug",
       hasSeparator: true,
@@ -121,44 +121,6 @@ export const topNavigation = ({
       href: isAdmin(owner) ? `/w/${owner.sId}/members` : `/w/${owner.sId}/a`,
       current: current === "admin",
       sizing: "hug",
-    });
-  }
-
-  return nav;
-};
-
-export const subNavigationConversations = ({
-  owner,
-  current,
-  subMenuLabel,
-  subMenu,
-}: {
-  owner: WorkspaceType;
-  current: SubNavigationConversationsId;
-  subMenuLabel?: string;
-  subMenu?: SparkleAppLayoutNavigation[];
-}) => {
-  const nav: SidebarNavigation[] = [];
-
-  // To be added for personal assistants view.
-
-  if (isOnlyUser(owner)) {
-    nav.push({
-      id: "assistants",
-      label: null,
-      variant: "secondary",
-      menus: [
-        {
-          id: "personal_assistants",
-          label: "Assistants",
-          icon: RobotIcon,
-          href: `/w/${owner.sId}/assistant/assistants`,
-          current: current === "personal_assistants",
-          subMenuLabel:
-            current === "personal_assistants" ? subMenuLabel : undefined,
-          subMenu: current === "personal_assistants" ? subMenu : undefined,
-        },
-      ],
     });
   }
 
@@ -180,22 +142,9 @@ export const subNavigationAssistants = ({
 
   const assistantMenus: SparkleAppLayoutNavigation[] = [];
 
-  if (isBuilder(owner)) {
-    assistantMenus.push({
-      id: "personal_assistants",
-      label: "My Assistants",
-      icon: RobotIcon,
-      href: `/w/${owner.sId}/assistant/assistants`,
-      current: current === "personal_assistants",
-      subMenuLabel:
-        current === "personal_assistants" ? subMenuLabel : undefined,
-      subMenu: current === "personal_assistants" ? subMenu : undefined,
-    });
-  }
-
   assistantMenus.push({
     id: "workspace_assistants",
-    label: "Workspace Assistants",
+    label: "Manage Assistants",
     icon: RobotSharedIcon,
     href: `/w/${owner.sId}/builder/assistants`,
     current: current === "workspace_assistants",

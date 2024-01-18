@@ -17,7 +17,6 @@ import { GalleryAssistantPreviewContainer } from "@app/components/assistant/Gall
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationConversations } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
@@ -183,10 +182,6 @@ export default function AssistantsGallery({
       hideSidebar
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="conversations"
-      subNavigation={subNavigationConversations({
-        owner,
-        current: "personal_assistants",
-      })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={`${
