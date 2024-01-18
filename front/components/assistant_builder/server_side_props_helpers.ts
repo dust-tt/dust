@@ -12,7 +12,10 @@ import {
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
 
-import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+} from "@app/components/assistant_builder/types";
 import { getDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -51,13 +54,7 @@ export async function buildInitialState({
     AssistantBuilderInitialState["dataSourceConfigurations"]
   >[string][] = await Promise.all(
     selectedResources.map(
-      async (
-        ds
-      ): Promise<
-        NonNullable<
-          AssistantBuilderInitialState["dataSourceConfigurations"]
-        >[string]
-      > => {
+      async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
         const dataSource = dataSourceByName[ds.dataSourceName];
         if (!dataSource.connectorId || !ds.resources) {
           return {
@@ -94,12 +91,7 @@ export async function buildInitialState({
   // key: dataSourceName, value: DataSourceConfig
   const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
     (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
-    {} as Record<
-      string,
-      NonNullable<
-        AssistantBuilderInitialState["dataSourceConfigurations"]
-      >[string]
-    >
+    {} as Record<string, AssistantBuilderDataSourceConfiguration>
   );
 
   let dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"] =
@@ -125,10 +117,7 @@ export async function buildInitialState({
   ) {
     const coreAPITables: CoreAPITable[] = await Promise.all(
       config.action.tables.map(async (t) => {
-        const dataSource = await getDataSource(auth, t.dataSourceId);
-        if (!dataSource) {
-          throw new Error("Invalid data source");
-        }
+        const dataSource = dataSourceByName[t.dataSourceId];
         const coreAPITable = await coreAPI.getTable({
           projectId: dataSource.dustAPIProjectId,
           dataSourceName: dataSource.name,
