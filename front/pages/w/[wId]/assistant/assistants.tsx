@@ -41,6 +41,9 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useRouter } from "next/router";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -91,6 +94,7 @@ export default function PersonalAssistants({
   view,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const router = useRouter();
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -168,6 +172,13 @@ export default function PersonalAssistants({
     <AppLayout
       subscription={subscription}
       owner={owner}
+      hideSidebar
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title="My Assistants"
+          onClose={() => router.back()}
+        />
+      }
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="conversations"
       navChildren={
@@ -209,11 +220,6 @@ export default function PersonalAssistants({
       )}
 
       <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Manage Assistants"
-          icon={RobotIcon}
-          description="Manage your list of assistants, create and discover new ones."
-        />
         <Page.Vertical gap="lg" align="stretch">
           <Tab tabs={tabs} />
           <Page.Vertical gap="md" align="stretch">
