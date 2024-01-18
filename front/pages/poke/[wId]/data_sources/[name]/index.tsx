@@ -29,8 +29,15 @@ export const getServerSideProps: GetServerSideProps<{
   coreDataSource: CoreAPIDataSource;
   connector: ConnectorType | null;
 }> = async (context) => {
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  const owner = auth.workspace();
+
+  if (!owner || !auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -38,26 +45,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   const dataSourceName = context.params?.name;
   if (!dataSourceName || typeof dataSourceName !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const user = auth.user();
-  const owner = auth.workspace();
-
-  if (!user || !owner) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };

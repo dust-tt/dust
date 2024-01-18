@@ -64,9 +64,8 @@ async function handler(
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
-  const user = auth.user();
 
-  if (!user || !auth.isDustSuperUser()) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

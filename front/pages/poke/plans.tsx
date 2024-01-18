@@ -22,12 +22,24 @@ import {
 } from "@app/components/poke/plans/form";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { usePokePlans } from "@app/lib/swr";
 
 export const getServerSideProps: GetServerSideProps<object> = async (
-  _context
+  context
 ) => {
-  void _context;
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  if (!auth.isDustSuperUser()) {
+    return {
+      notFound: true,
+    };
+  }
+
   return {
     props: {},
   };

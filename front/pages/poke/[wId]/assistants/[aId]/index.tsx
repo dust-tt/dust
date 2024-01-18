@@ -1,6 +1,5 @@
 import { Avatar, ContextItem, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
 import {
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
@@ -12,11 +11,15 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps<{
-  owner: WorkspaceType;
   agentConfigurations: AgentConfigurationType[];
 }> = async (context) => {
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -24,26 +27,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   const aId = context.params?.aId;
   if (!aId || typeof aId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const user = auth.user();
-  const owner = auth.workspace();
-
-  if (!user || !owner) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -57,17 +40,14 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      owner,
       agentConfigurations,
     },
   };
 };
 
 const DataSourcePage = ({
-  owner,
   agentConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
-  void owner;
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />

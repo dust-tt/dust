@@ -13,39 +13,18 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   members: UserTypeWithWorkspaces[];
 }> = async (context) => {
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
   const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const user = auth.user();
-
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  if (!auth.isDustSuperUser()) {
-    return {
-      notFound: true,
-    };
-  }
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
 
   const owner = auth.workspace();
 
-  if (!owner) {
+  if (!owner || !auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -55,7 +34,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       members,
     },
