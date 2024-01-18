@@ -86,7 +86,6 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         tabStateClasses.hover,
         tabStateClasses.dark.base,
         tabStateClasses.dark.hover,
-        tabSizingClasses[tab.sizing ?? "hug"],
         className
       );
 
@@ -128,7 +127,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
       return tab.hideLabel ? (
         tab.label ? (
           <React.Fragment key={`tab-${i}`}>
-            <div>
+            <div className={tabSizingClasses[tab.sizing ?? "hug"]}>
               <Tooltip label={tab.label}>{content}</Tooltip>
             </div>
             {tab.hasSeparator && (
@@ -137,7 +136,9 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
           </React.Fragment>
         ) : (
           <React.Fragment key={`tab-${i}`}>
-            <div>{content}</div>
+            <div className={tabSizingClasses[tab.sizing ?? "hug"]}>
+              {content}
+            </div>
             {tab.hasSeparator && (
               <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
             )}
@@ -145,7 +146,7 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
         )
       ) : (
         <React.Fragment key={`tab-${i}`}>
-          <div>{content}</div>
+          <div className={tabSizingClasses[tab.sizing ?? "hug"]}>{content}</div>
           {tab.hasSeparator && (
             <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
           )}
