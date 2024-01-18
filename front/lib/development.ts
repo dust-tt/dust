@@ -30,7 +30,6 @@ export function isActivatedPublicURLs(owner: WorkspaceType) {
 
   return (
     isDevelopmentOrDustWorkspace(owner) ||
-    [PRODUCTION_DUST_WORKSPACE_ID].includes(owner.sId) ||
     [
       // Customers workspace.
       // You can find them in the Database with the following query:
