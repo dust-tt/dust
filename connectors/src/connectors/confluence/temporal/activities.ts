@@ -156,10 +156,10 @@ export async function confluenceListPageIdsInSpaceActivity({
 
   localLogger.info("Fetching Confluence pages in space.");
 
-  const { pages, nextPageCursor } = await client.getPagesInSpace(spaceId, {
-    includeBody: false,
-    pageCursor,
-  });
+  const { pages, nextPageCursor } = await client.getPagesInSpace(
+    spaceId,
+    pageCursor
+  );
 
   return {
     pageIds: pages.map((p) => p.id),

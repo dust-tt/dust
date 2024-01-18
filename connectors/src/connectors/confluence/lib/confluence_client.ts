@@ -149,10 +149,7 @@ export class ConfluenceClient {
     );
   }
 
-  async getPagesInSpace(
-    spaceId: string,
-    { pageCursor }: { includeBody?: boolean; pageCursor?: string } = {}
-  ) {
+  async getPagesInSpace(spaceId: string, pageCursor?: string) {
     const params = new URLSearchParams({
       sort: "id",
       status: "current",
@@ -177,7 +174,7 @@ export class ConfluenceClient {
 
   async getPageById(pageId: string) {
     const params = new URLSearchParams({
-      "body-format": "storage",
+      "body-format": "storage", // Returns HTML.
     });
 
     return this.request(
