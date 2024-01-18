@@ -1461,7 +1461,7 @@ function SlackIntegration({
           <Button
             labelVisible={true}
             label={"Select channels"}
-            variant={"primary"}
+            variant={"secondary"}
             icon={PlusIcon}
             onClick={openModal}
           />
