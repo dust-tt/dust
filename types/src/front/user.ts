@@ -42,7 +42,9 @@ export function formatUserFullName(user?: {
     : null;
 }
 
-export function isAdmin(owner: WorkspaceType | null) {
+export function isAdmin(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "admin" } {
   if (!owner) {
     return false;
   }
@@ -58,7 +60,9 @@ export function isAdmin(owner: WorkspaceType | null) {
   }
 }
 
-export function isBuilder(owner: WorkspaceType | null) {
+export function isBuilder(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "builder" | "admin" } {
   if (!owner) {
     return false;
   }
@@ -74,7 +78,9 @@ export function isBuilder(owner: WorkspaceType | null) {
   }
 }
 
-export function isUser(owner: WorkspaceType | null) {
+export function isUser(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "user" | "builder" | "admin" } {
   if (!owner) {
     return false;
   }
