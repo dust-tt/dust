@@ -30,7 +30,7 @@ export const getServerSideProps: GetServerSideProps<{
   connector: ConnectorType | null;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSession(
+  const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string
   );

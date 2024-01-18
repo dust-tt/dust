@@ -29,10 +29,7 @@ export const getServerSideProps: GetServerSideProps<object> = async (
   context
 ) => {
   const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
+  const auth = await Authenticator.fromSuperUserSession(session, null);
 
   if (!auth.isDustSuperUser()) {
     return {
