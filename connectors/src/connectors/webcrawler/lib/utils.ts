@@ -48,7 +48,8 @@ export function getAllFoldersForUrl(url: string) {
 // eg: https://example.com/foo/bar -> https://example.com/foo
 // eg: https://example.com/foo -> https://example.com/
 export function getFolderForUrl(url: string) {
-  const parsed = new URL(url);
+  const normalized = normalizeFolderUrl(url);
+  const parsed = new URL(normalized);
   const urlParts = parsed.pathname.split("/").filter((part) => part.length > 0);
   if (parsed.pathname === "/") {
     return null;
@@ -75,8 +76,8 @@ export function normalizeFolderUrl(url: string) {
       .join("/");
 
   if (parsed.search.length > 0) {
-    // Search string contains the initial '?
-    result += parsed.search;
+    // Replace the leading ? with a /
+    result += "/" + parsed.search.slice(1);
   }
 
   return result;
