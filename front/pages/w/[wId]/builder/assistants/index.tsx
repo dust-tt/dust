@@ -33,7 +33,7 @@ import {
 } from "@app/components/assistant/AssistantActions";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -150,7 +150,7 @@ export default function WorkspaceAssistants({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationAssistants({
+      subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",
       })}

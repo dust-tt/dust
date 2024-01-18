@@ -22,7 +22,7 @@ import React, { useContext, useRef } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
@@ -122,8 +122,8 @@ export default function AppDatabases({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "tables" })}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({ owner, current: "tables" })}
     >
       <TableModal
         onClose={onModalClose}

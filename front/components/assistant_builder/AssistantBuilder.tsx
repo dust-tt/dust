@@ -73,7 +73,7 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -694,7 +694,7 @@ export default function AssistantBuilder({
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"
-        subNavigation={subNavigationAssistants({
+        subNavigation={subNavigationBuild({
           owner,
           current: "workspace_assistants",
         })}
