@@ -4,7 +4,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 type SliderToggleProps = {
   onClick?: MouseEventHandler<HTMLElement>;
-  size?: "sm" | "md";
+  size?: "xs" | "sm";
   className?: string;
   disabled?: boolean;
   selected?: boolean;
@@ -14,13 +14,13 @@ const baseClasses =
   "s-rounded-full s-cursor-pointer s-transition-colors s-duration-300 s-ease-out s-cursor-pointer s-flex s-items-center";
 
 const sizeClasses = {
-  sm: "s-h-6 s-w-10",
-  md: "s-h-8 s-w-14",
+  xs: "s-h-7 s-w-10",
+  sm: "s-h-9 s-w-14",
 };
 
 const cusrsorSizeClasses = {
-  sm: "s-h-5 s-w-5",
-  md: "s-h-7 s-w-7",
+  xs: "s-h-6 s-w-6",
+  sm: "s-h-8 s-w-8",
 };
 
 const stateClasses = {
@@ -40,7 +40,7 @@ export function SliderToggle({
   disabled = false,
   className = "",
   selected = false,
-  size = "sm",
+  size = "xs",
 }: SliderToggleProps) {
   const combinedStateClasses = classNames(
     size ? sizeClasses[size] : "",

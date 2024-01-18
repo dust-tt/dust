@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgLock = (props: SVGProps<SVGSVGElement>) => (
+const SvgDust = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -12,9 +12,9 @@ const SvgLock = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M18 8v2h2v12H4V10h2V8a6 6 0 1 1 12 0Zm-6-4a4 4 0 0 0-4 4v2h8V8a4 4 0 0 0-4-4Z"
+      d="M12 7a5 5 0 0 0-5-5H2v10h4.998A2.5 2.5 0 0 0 7 17H2v5h5a2.5 2.5 0 0 0 0-5h5v5h5v-5h5v-5h-5a5 5 0 0 0 5-5V2H12v5Zm-5 3a3 3 0 0 0 0-6v6Zm7-3a3 3 0 1 0 6 0h-6Zm-2 0a5 5 0 0 0 5 5H7a5 5 0 0 0 5-5Z"
       clipRule="evenodd"
     />
   </svg>
 );
-export default SvgLock;
+export default SvgDust;

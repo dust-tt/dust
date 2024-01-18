@@ -11,17 +11,18 @@ import { classNames } from "@sparkle/lib/utils";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
-const activeLabelStyleClasses =
-  "group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark";
-
 const labelStyleClasses = {
   item: "s-font-normal",
   action: "s-font-semibold",
+  warning: "s-font-semibold",
 };
 
 const labelColorClasses = {
-  item: "s-text-element-600 dark:s-text-element-500-dark",
-  action: "s-text-element-800 dark:s-text-element-800-dark",
+  item: "s-text-element-600 dark:s-text-element-500-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  action:
+    "s-text-element-800 dark:s-text-element-800-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  warning:
+    "s-text-warning-500 dark:s-text-warning-400-dark group-hover:s-text-warning-400 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark",
 };
 
 const spacingClasses = {
@@ -31,7 +32,7 @@ const spacingClasses = {
 
 type ItemProps = {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  style: "action" | "item";
+  style: "action" | "warning" | "item";
   spacing?: "sm" | "md";
   selectable?: boolean;
   selected?: boolean;
@@ -86,7 +87,9 @@ export function Item({
             ? "s-text-element-500 dark:s-text-element-500-dark"
             : selected
             ? "s-text-action-400 dark:s-text-action-600-dark"
-            : "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark"
+            : style === "action" || style === "item"
+            ? "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark"
+            : "s-text-warning-400 group-hover:s-text-warning-300 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark"
         )}
       />
     );
@@ -119,7 +122,7 @@ export function Item({
               ? "s-text-element-600 dark:s-text-element-500-dark"
               : selected
               ? "s-text-action-500 dark:s-text-action-600-dark"
-              : classNames(labelColorClasses[style], activeLabelStyleClasses)
+              : labelColorClasses[style]
           )}
         >
           {label}
@@ -219,7 +222,9 @@ Item.Navigation = function (props: NavigationListItemProps) {
 };
 
 interface DropdownListItemProps {
+  style?: "default" | "warning";
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  selected?: boolean;
   disabled?: boolean;
   label: string;
   description?: string;
@@ -229,8 +234,16 @@ interface DropdownListItemProps {
   href?: string;
 }
 
-Item.Dropdown = function (props: DropdownListItemProps) {
-  return <Item {...props} spacing="md" style="action" hasAction={false} />;
+Item.Dropdown = function ({ style, ...props }: DropdownListItemProps) {
+  return (
+    <Item
+      {...props}
+      // Pass down additional props as needed
+      style={style === "default" ? "action" : "warning"}
+      hasAction={false}
+      // Add any conditions or logic for additional props
+    />
+  );
 };
 
 interface ListItemProps {
@@ -240,16 +253,19 @@ interface ListItemProps {
 
 interface ItemSectionHeaderProps {
   label: string;
+  className?: string;
   variant?: "primary" | "secondary";
 }
 
 Item.SectionHeader = function ({
   label,
   variant = "primary",
+  className = "",
 }: ItemSectionHeaderProps) {
   return (
     <div
       className={classNames(
+        className,
         variant === "primary"
           ? "s-text-element-800 dark:s-text-element-800-dark"
           : "s-text-element-600 dark:s-text-element-600-dark",

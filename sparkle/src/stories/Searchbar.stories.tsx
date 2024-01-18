@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Searchbar } from "../index_with_tw_base";
+import { Button, Searchbar } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Searchbar",
@@ -24,42 +24,80 @@ export const SearchbarExample = () => {
   return (
     <div className="s-flex s-flex-col s-gap-12">
       <div className="s-grid s-grid-cols-3 s-gap-4">
+        <div className="s-flex s-gap-2">
+          <Searchbar
+            placeholder="Placeholder"
+            name="input"
+            value={inputValue}
+            onChange={handleChange}
+            size="md"
+          />
+          <div>
+            <Button variant="tertiary" size="md" label="Hello" />
+          </div>
+        </div>
         <Searchbar
-          placeholder="placeholder"
+          placeholder="Placeholder"
           name="input"
-          value={inputValue}
-          onChange={handleChange}
+          value={inputValue3}
+          onChange={handleChange3}
+          size="md"
         />
         <Searchbar
-          placeholder="placeholder"
+          placeholder="Placeholder"
+          name="input"
+          value={"disabled"}
+          size="md"
+          disabled
+        />
+      </div>
+      <div className="s-grid s-grid-cols-3 s-gap-4">
+        <div className="s-flex s-gap-2">
+          <Searchbar
+            placeholder="Placeholder"
+            name="input"
+            value={inputValue}
+            onChange={handleChange}
+          />
+          <div>
+            <Button variant="tertiary" size="sm" label="Hello" />
+          </div>
+        </div>
+        <Searchbar
+          placeholder="Placeholder"
           name="input"
           value={inputValue3}
           onChange={handleChange3}
         />
         <Searchbar
-          placeholder="placeholder"
+          placeholder="Placeholder"
           name="input"
           value={"disabled"}
           disabled
         />
       </div>
       <div className="s-grid s-grid-cols-3 s-gap-4">
+        <div className="s-flex s-gap-2">
+          <Searchbar
+            placeholder="Placeholder"
+            name="input"
+            value={inputValue}
+            onChange={handleChange}
+            size="xs"
+          />
+          <div>
+            <Button variant="tertiary" size="xs" label="Hello" />
+          </div>
+        </div>
         <Searchbar
-          placeholder="placeholder"
-          name="input"
-          value={inputValue}
-          onChange={handleChange}
-          size="xs"
-        />
-        <Searchbar
-          placeholder="placeholder"
+          placeholder="Placeholder"
           name="input"
           value={inputValue3}
           onChange={handleChange3}
           size="xs"
         />
         <Searchbar
-          placeholder="placeholder"
+          placeholder="Placeholder"
           name="input"
           value={"disabled"}
           size="xs"
