@@ -6,7 +6,7 @@ export default function WorkspacePicker({
   workspace,
   onWorkspaceUpdate,
 }: {
-  user: UserType;
+  user: UserType & { workspaces: WorkspaceType[] };
   workspace: WorkspaceType | null;
   readOnly: boolean;
   onWorkspaceUpdate: (w: WorkspaceType) => void;

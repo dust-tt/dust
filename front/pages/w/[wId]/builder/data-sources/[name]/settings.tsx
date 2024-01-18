@@ -2,7 +2,6 @@ import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   DataSourceVisibility,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -17,13 +16,12 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSource: DataSourceType;
@@ -31,7 +29,6 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -39,13 +36,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !user || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
 
-  if (!auth.isBuilder()) {
+  if (!owner || !subscription || !auth.isBuilder()) {
     return {
       notFound: true,
     };
@@ -60,7 +52,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       dataSource,
@@ -70,7 +61,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function DataSourceSettings({
-  user,
   owner,
   subscription,
   dataSource,
@@ -111,7 +101,6 @@ export default function DataSourceSettings({
   return (
     <StandardDataSourceSettings
       owner={owner}
-      user={user}
       subscription={subscription}
       dataSource={dataSource}
       handleUpdate={(settings: {
@@ -126,14 +115,12 @@ export default function DataSourceSettings({
 
 function StandardDataSourceSettings({
   owner,
-  user,
   subscription,
   dataSource,
   handleUpdate,
   gaTrackingId,
 }: {
   owner: WorkspaceType;
-  user: UserType;
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   handleUpdate: (settings: {
@@ -189,7 +176,6 @@ function StandardDataSourceSettings({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

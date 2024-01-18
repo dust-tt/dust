@@ -1,6 +1,6 @@
 import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
 import type { KeyType } from "@dust-tt/types";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
@@ -25,7 +25,7 @@ import TextSynthSetup from "@app/components/providers/TextSynthSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
@@ -34,22 +34,12 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  readOnly: boolean;
   apps: AppType[];
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-
-  const user = await getUserFromSession(session);
-  if (!user) {
-    return {
-      notFound: true,
-    };
-  }
-
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -57,22 +47,19 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !user || !subscription) {
+
+  if (!owner || !subscription || !auth.isBuilder()) {
     return {
       notFound: true,
     };
   }
 
-  const readOnly = !auth.isBuilder();
-
   const apps = await getApps(auth);
 
   return {
     props: {
-      user,
       owner,
       subscription,
-      readOnly,
       apps,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -478,10 +465,8 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
 }
 
 export default function Developers({
-  user,
   owner,
   subscription,
-  readOnly,
   apps,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -490,7 +475,6 @@ export default function Developers({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
@@ -563,35 +547,24 @@ export default function Developers({
           ))}
           {apps.length == 0 ? (
             <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
-              {readOnly ? (
-                <>
-                  <p>
-                    Welcome to Dust 🔥 This user has not created any app yet 🙃
-                  </p>
-                  <p className="mt-2">Sign-in to create your own apps.</p>
-                </>
-              ) : (
-                <>
-                  <p>Welcome to the Dust developer platform 🔥</p>
-                  <p className="mt-2">
-                    Setup your Providers (below) or create your first app to get
-                    started.
-                  </p>
-                  <p className="mt-6">
-                    You can also visit our developer documentation:
-                  </p>
-                  <p className="mt-2">
-                    <Link href="https://docs.dust.tt" target="_blank">
-                      <Button variant="tertiary" label="View Documentation" />
-                    </Link>
-                  </p>
-                </>
-              )}
+              <p>Welcome to the Dust developer platform 🔥</p>
+              <p className="mt-2">
+                Setup your Providers (below) or create your first app to get
+                started.
+              </p>
+              <p className="mt-6">
+                You can also visit our developer documentation:
+              </p>
+              <p className="mt-2">
+                <Link href="https://docs.dust.tt" target="_blank">
+                  <Button variant="tertiary" label="View Documentation" />
+                </Link>
+              </p>
             </div>
           ) : null}
         </ul>
-        {!readOnly ? <Providers owner={owner} /> : null}
-        {!readOnly ? <APIKeys owner={owner} /> : null}
+        <Providers owner={owner} />
+        <APIKeys owner={owner} />
       </Page.Vertical>
     </AppLayout>
   );

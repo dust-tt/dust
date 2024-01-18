@@ -14,6 +14,7 @@ import useSWR from "swr";
 
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
 import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
@@ -222,6 +223,17 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
     invitations: data ? data.invitations : [],
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
+  };
+}
+
+export function useUser() {
+  const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
+  const { data, error } = useSWR("/api/user", userFetcher);
+
+  return {
+    user: data ? data.user : null,
+    isUserLoading: !error && !data,
+    isUserError: error,
   };
 }
 

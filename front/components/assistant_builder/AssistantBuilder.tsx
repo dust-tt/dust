@@ -20,7 +20,7 @@ import type {
   ConnectorProvider,
   DataSourceType,
 } from "@dust-tt/types";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
@@ -141,7 +141,6 @@ export const BUILDER_FLOWS = [
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderProps = {
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -191,7 +190,6 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 };
 
 export default function AssistantBuilder({
-  user,
   owner,
   subscription,
   plan,
@@ -692,7 +690,6 @@ export default function AssistantBuilder({
       <AppLayout
         subscription={subscription}
         hideSidebar
-        user={user}
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"

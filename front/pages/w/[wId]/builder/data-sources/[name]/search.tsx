@@ -1,4 +1,4 @@
-import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { DocumentType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -10,21 +10,19 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -32,13 +30,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
 
-  if (!auth.isBuilder()) {
+  if (!owner || !subscription || !auth.isBuilder()) {
     return {
       notFound: true,
     };
@@ -53,7 +46,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       dataSource,
@@ -63,7 +55,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function DataSourceView({
-  user,
   owner,
   subscription,
   dataSource,
@@ -142,7 +133,6 @@ export default function DataSourceView({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

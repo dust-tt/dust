@@ -36,7 +36,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -51,15 +51,16 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
 
   const owner = auth.workspace();
+  const user = auth.user();
   const subscription = auth.subscription();
-  if (!owner || !auth.isUser() || !user || !subscription) {
+
+  if (!owner || !auth.isUser() || !subscription || !user) {
     return {
       redirect: {
         destination: "/",
@@ -172,7 +173,6 @@ export default function AssistantNew({
       <GenerationContextProvider>
         <AppLayout
           subscription={subscription}
-          user={user}
           owner={owner}
           isWideMode={conversation ? true : false}
           pageTitle={"Dust - New Conversation"}

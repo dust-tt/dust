@@ -11,7 +11,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
-  members: UserType[];
+  members: (UserType & { workspaces: WorkspaceType[] })[];
 }> = async (context) => {
   const wId = context.params?.wId;
   if (!wId || typeof wId !== "string") {
@@ -82,7 +82,7 @@ const MembershipsPage = ({
       if (!r.ok) {
         throw new Error("Failed to revoke user.");
       }
-      await router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while revoking the user.");

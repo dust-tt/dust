@@ -6,7 +6,7 @@ import {
   Page,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -18,7 +18,7 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { useTable } from "@app/lib/swr";
@@ -28,7 +28,6 @@ import type { CreateTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -37,17 +36,16 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
 
   const owner = auth.workspace();
-
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !subscription) {
+
+  if (!owner || !plan || !subscription || !auth.isUser()) {
     return {
       notFound: true,
     };
@@ -71,7 +69,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       readOnly,
@@ -83,7 +80,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function TableUpsert({
-  user,
   owner,
   subscription,
   readOnly,
@@ -211,7 +207,6 @@ export default function TableUpsert({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

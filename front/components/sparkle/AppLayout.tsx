@@ -6,7 +6,7 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -22,17 +22,16 @@ import type {
 } from "@app/components/sparkle/navigation";
 import { topNavigation } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 function NavigationBar({
-  user,
   owner,
   subscription,
   topNavigationCurrent,
   subNavigation,
   children,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   topNavigationCurrent: TopNavigationId;
@@ -41,6 +40,7 @@ function NavigationBar({
 }) {
   const router = useRouter();
   const nav = topNavigation({ owner, current: topNavigationCurrent });
+  const { user } = useUser();
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
@@ -175,7 +175,6 @@ function NavigationBar({
 }
 
 export default function AppLayout({
-  user,
   owner,
   subscription,
   isWideMode = false,
@@ -188,7 +187,6 @@ export default function AppLayout({
   titleChildren,
   children,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isWideMode?: boolean;
@@ -312,7 +310,6 @@ export default function AppLayout({
                     </Transition.Child>
                     <NavigationBar
                       subscription={subscription}
-                      user={user}
                       owner={owner}
                       subNavigation={subNavigation}
                       topNavigationCurrent={topNavigationCurrent}
@@ -329,7 +326,6 @@ export default function AppLayout({
         {!hideSidebar && (
           <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
             <NavigationBar
-              user={user}
               owner={owner}
               subscription={subscription}
               subNavigation={subNavigation}

@@ -18,7 +18,6 @@ import {
 import type { SubscriptionType } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
@@ -35,21 +34,18 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -57,7 +53,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !user || !auth.isUser() || !subscription) {
+
+  if (!owner || !auth.isUser() || !subscription) {
     return {
       notFound: true,
     };
@@ -65,7 +62,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
@@ -74,7 +70,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function WorkspaceAssistants({
-  user,
   owner,
   subscription,
   gaTrackingId,
@@ -146,7 +141,6 @@ export default function WorkspaceAssistants({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
