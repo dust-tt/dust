@@ -592,12 +592,12 @@ export function useTable({
 }: {
   workspaceId: string;
   dataSourceName: string;
-  tableId: string;
+  tableId: string | null;
 }) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWR(
-    dataSourceName
+    tableId
       ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
       : null,
     tableFetcher

@@ -925,6 +925,25 @@ export class CoreAPI {
     return _resultFromResponse(response);
   }
 
+  async deleteTable({
+    projectId,
+    dataSourceName,
+    tableId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    tableId: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    return _resultFromResponse(response);
+  }
+
   async upsertTableRows({
     projectId,
     dataSourceName,

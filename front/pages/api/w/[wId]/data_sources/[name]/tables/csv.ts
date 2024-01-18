@@ -22,6 +22,10 @@ const CreateTableFromCsvSchema = t.type({
   csv: t.string,
 });
 
+export type CreateTableFromCsvRequestBody = t.TypeOf<
+  typeof CreateTableFromCsvSchema
+>;
+
 type RowValue =
   | number
   | boolean
