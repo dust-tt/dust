@@ -90,7 +90,9 @@ export function isUser(owner: WorkspaceType | null) {
   }
 }
 
-export function isOnlyUser(owner: WorkspaceType | null) {
+export function isOnlyUser(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "user" } {
   if (!owner) {
     return false;
   }
@@ -99,6 +101,42 @@ export function isOnlyUser(owner: WorkspaceType | null) {
       return true;
     case "builder":
     case "admin":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
+export function isOnlyBuilder(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "builder" } {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "builder":
+      return true;
+    case "user":
+    case "admin":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
+export function isOnlyAdmin(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "admin" } {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "admin":
+      return true;
+    case "user":
+    case "builder":
     case "none":
       return false;
     default:
