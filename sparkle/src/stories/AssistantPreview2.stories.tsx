@@ -5,7 +5,6 @@ import {
   AssistantPreview2,
   Button,
   Chip,
-  ListAddIcon,
   PlayIcon,
 } from "../index_with_tw_base";
 
