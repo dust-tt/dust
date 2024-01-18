@@ -537,15 +537,17 @@ export function useAgentUsage({
 export function useSlackChannelsLinkedWithAgent({
   workspaceId,
   dataSourceName,
+  disabled,
 }: {
   workspaceId: string;
   dataSourceName?: string;
+  disabled?: boolean;
 }) {
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWR(
-    dataSourceName
+    dataSourceName && !disabled
       ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`
       : null,
     slackChannelsLinkedWithAgentFetcher

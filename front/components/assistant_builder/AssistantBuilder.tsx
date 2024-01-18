@@ -362,6 +362,7 @@ export default function AssistantBuilder({
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
       dataSourceName: slackDataSource?.name ?? undefined,
+      disabled: !isBuilder(owner),
     });
   const [slackChannelsInitialized, setSlackChannelsInitialized] =
     useState(false);
