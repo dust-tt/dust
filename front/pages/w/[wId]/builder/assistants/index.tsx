@@ -16,11 +16,9 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
+import type {LightAgentConfigurationType, UserType, WorkspaceType} from "@dust-tt/types";
 import {
-  isBuilder,
-  type LightAgentConfigurationType,
-  type UserType,
-  type WorkspaceType,
+  isBuilder
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
