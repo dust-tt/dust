@@ -761,6 +761,10 @@ export async function getGlobalAgents(
     throw new Error("Invalid agentIds.");
   }
 
+  if (agentIds !== undefined && agentIds.length === 0) {
+    return [];
+  }
+
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
