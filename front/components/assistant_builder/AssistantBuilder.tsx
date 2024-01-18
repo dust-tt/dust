@@ -59,6 +59,14 @@ import {
 } from "@app/components/assistant_builder/shared";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
+import {
+  type ActionMode,
+  ADVANCED_ACTION_MODES,
+  type AssistantBuilderDataSourceConfiguration,
+  type AssistantBuilderInitialState,
+  type AssistantBuilderState,
+  BASIC_ACTION_MODES,
+} from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -68,6 +76,7 @@ import {
 import { subNavigationAssistants } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -98,19 +107,6 @@ const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
   buildAvatarUrl(SPIRIT_AVATARS_BASE_PATH, f)
 );
 
-// Actions
-
-const BASIC_ACTION_MODES = ["GENERIC", "RETRIEVAL_SEARCH"] as const;
-const ADVANCED_ACTION_MODES = [
-  "RETRIEVAL_EXHAUSTIVE",
-  "DUST_APP_RUN",
-  "TABLES_QUERY",
-] as const;
-
-type ActionMode =
-  | (typeof BASIC_ACTION_MODES)[number]
-  | (typeof ADVANCED_ACTION_MODES)[number];
-
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   GENERIC: "No action",
   RETRIEVAL_SEARCH: "Search in data sources",
@@ -135,74 +131,6 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "article", plural: "articles" },
   webcrawler: { singular: "page", plural: "pages" },
-};
-
-export type AssistantBuilderDataSourceConfiguration = {
-  dataSource: DataSourceType;
-  selectedResources: Record<string, string>;
-  isSelectAll: boolean;
-};
-
-// DustAppRun Action
-
-export type AssistantBuilderDustAppConfiguration = {
-  app: AppType;
-};
-
-// Tables Query Action
-
-export type AssistantBuilderTableConfiguration = {
-  dataSourceId: string;
-  workspaceId: string;
-  tableId: string;
-};
-
-// Builder State
-
-type AssistantBuilderState = {
-  actionMode: ActionMode;
-  dataSourceConfigurations: Record<
-    string,
-    AssistantBuilderDataSourceConfiguration
-  >;
-  timeFrame: {
-    value: number;
-    unit: TimeframeUnit;
-  };
-  dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
-  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
-  handle: string | null;
-  description: string | null;
-  scope: Exclude<AgentConfigurationScope, "global">;
-  instructions: string | null;
-  avatarUrl: string | null;
-  generationSettings: {
-    modelSettings: SupportedModel;
-    temperature: number;
-  };
-};
-
-// initial state is like the state, but:
-// - doesn't allow null handle/description/instructions
-// - allows null timeFrame
-// - allows null dataSourceConfigurations
-export type AssistantBuilderInitialState = {
-  actionMode: AssistantBuilderState["actionMode"];
-  dataSourceConfigurations:
-    | AssistantBuilderState["dataSourceConfigurations"]
-    | null;
-  timeFrame: AssistantBuilderState["timeFrame"] | null;
-  dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
-  tablesQueryConfiguration: AssistantBuilderState["tablesQueryConfiguration"];
-  handle: string;
-  description: string;
-  scope: Exclude<AgentConfigurationScope, "global">;
-  instructions: string;
-  avatarUrl: string | null;
-  generationSettings: {
-    modelSettings: SupportedModel;
-    temperature: number;
-  } | null;
 };
 
 export const BUILDER_FLOWS = [
@@ -732,14 +660,14 @@ export default function AssistantBuilder({
         isOpen={showTableModal}
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
-        dataSources={configurableDataSources}
+        dataSources={dataSources}
         onSave={(t) => {
           setEdited(true);
           setBuilderState((state) => ({
             ...state,
             tablesQueryConfiguration: {
               ...state.tablesQueryConfiguration,
-              [`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`]: t,
+              [tableKey(t)]: t,
             },
           }));
         }}

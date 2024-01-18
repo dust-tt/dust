@@ -12,7 +12,7 @@ import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useState } from "react";
 
-import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useTables } from "@app/lib/swr";
 
@@ -75,6 +75,7 @@ export default function AssistantBuilderTablesModal({
                 workspaceId: owner.sId,
                 dataSourceId: table.data_source_id,
                 tableId: table.table_id,
+                tableName: table.name,
               };
               setSelectedTable(config);
               onSave(config);
