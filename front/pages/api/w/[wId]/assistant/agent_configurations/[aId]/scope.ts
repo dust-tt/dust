@@ -8,12 +8,12 @@ import {
   getAgentConfiguration,
   setAgentScope,
 } from "@app/lib/api/assistant/configuration";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
 import {
   resetAgentUserListStatuses,
   setAgentUserListStatus,
 } from "@app/lib/api/assistant/user_relation";
+import { Authenticator, getSession } from "@app/lib/auth";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
