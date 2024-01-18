@@ -380,7 +380,7 @@ export default function PersonalAssistants({
                               />
 
                               <SliderToggle
-                                size="sm"
+                                size="xs"
                                 onClick={async () => {
                                   await updateAgentUserListStatus(
                                     agent,

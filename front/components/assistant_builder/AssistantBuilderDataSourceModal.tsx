@@ -267,7 +267,7 @@ function DataSourceResourceSelector({
                 <SliderToggle
                   selected={isSelectAll}
                   onClick={toggleSelectAll}
-                  size="md"
+                  size="sm"
                 />
               </div>
               <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
