@@ -31,7 +31,6 @@ import logger from "@connectors/logger/logger";
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
 const CONCURRENCY = 4;
-const PAGE_TITLE_MAX_LEN = 300;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
@@ -86,8 +85,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           .remove(["style", "script", "iframe"])
           .turndown($.html());
 
-        const pageTitle =
-          $("title").text().substring(0, PAGE_TITLE_MAX_LEN) || "";
+        const pageTitle = $("title").text();
 
         const folders = getAllFoldersForUrl(request.url);
         for (const folder of folders) {
