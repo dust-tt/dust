@@ -105,7 +105,6 @@ export const getServerSideProps: GetServerSideProps<{
     dustAppConfiguration,
     tablesQueryConfiguration,
   } = await buildInitialState({
-    auth,
     config,
     dataSourceByName,
     dustApps: allDustApps,

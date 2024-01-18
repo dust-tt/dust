@@ -16,18 +16,14 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
-import { getDataSource } from "@app/lib/api/data_sources";
-import type { Authenticator } from "@app/lib/auth";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
 
 export async function buildInitialState({
-  auth,
   dataSourceByName,
   config,
   dustApps,
 }: {
-  auth: Authenticator;
   dataSourceByName: Record<string, DataSourceType>;
   config: AgentConfigurationType;
   dustApps: AppType[];
