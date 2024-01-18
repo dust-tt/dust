@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
@@ -30,6 +31,7 @@ import logger from "@connectors/logger/logger";
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
 const CONCURRENCY = 4;
+const PAGE_TITLE_MAX_LEN = 300;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
@@ -84,7 +86,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           .remove(["style", "script", "iframe"])
           .turndown($.html());
 
-        const pageTitle = $("title").text();
+        const pageTitle =
+          $("title").text().substring(0, PAGE_TITLE_MAX_LEN) || "";
 
         const folders = getAllFoldersForUrl(request.url);
         for (const folder of folders) {
@@ -136,14 +139,14 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             await upsertToDatasource({
               dataSourceConfig,
               documentId: documentId,
-              documentContent: {
-                prefix: pageTitle,
+              documentContent: formatDocumentContent({
+                title: pageTitle,
                 content: extracted,
-                sections: [],
-              },
+                url: request.url,
+              }),
               documentUrl: request.url,
               timestampMs: new Date().getTime(),
-              tags: [`title:${pageTitle.substring(0, 300)}`],
+              tags: [`title:${pageTitle}`],
               parents: getParentsForPage(request.url, false),
               upsertContext: {
                 sync_type: "batch",
@@ -203,5 +206,27 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   return {
     pageCount,
     crawlingError,
+  };
+}
+function formatDocumentContent({
+  title,
+  content,
+  url,
+}: {
+  title: string;
+  content: string;
+  url: string;
+}): CoreAPIDataSourceDocumentSection {
+  const URL_MAX_LENGTH = 128;
+  const TITLE_MAX_LENGTH = 300;
+  const parsedUrl = new URL(url);
+  const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
+
+  return {
+    prefix: `URL: ${urlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
+      urlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
+    }\n`,
+    content: `TITLE: ${title.substring(0, TITLE_MAX_LENGTH)}\n${content}`,
+    sections: [],
   };
 }
