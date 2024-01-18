@@ -1,10 +1,10 @@
-import type {ConnectorProvider} from "@dust-tt/types";
-import type {CreationOptional, InferAttributes, InferCreationAttributes} from "sequelize";
-import {
-  DataTypes,
-  Model,
-  Sequelize
+import type { ConnectorProvider } from "@dust-tt/types";
+import type {
+  CreationOptional,
+  InferAttributes,
+  InferCreationAttributes,
 } from "sequelize";
+import { DataTypes, Model, Sequelize } from "sequelize";
 
 import type {
   ConnectorErrorType,

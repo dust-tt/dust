@@ -1,7 +1,7 @@
 import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
 import type { ConversationWithoutContentType } from "@dust-tt/types";
-import type {WorkspaceType} from "@dust-tt/types";
-import { isOnlyUser  } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";

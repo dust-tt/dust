@@ -19,10 +19,13 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
-import type {AgentUserListStatus, LightAgentConfigurationType, UserType, WorkspaceType} from "@dust-tt/types";
-import {
-  isOnlyUser
+import type {
+  AgentUserListStatus,
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
+import { isOnlyUser } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useContext, useState } from "react";
