@@ -2,16 +2,12 @@
 
 # [Dust](https://dust.tt)
 
-Design and Deploy Large Language Model Apps
+Amplify your team's potential with customizable and secure AI assistants.
 
-## :book: Documentation Portal
+## :book: Developer Documentation
 
 - [LLM apps Primer](https://docs.dust.tt/introduction)
 - [Developer Platform overview](https://docs.dust.tt/overview)
 - [Blocks documentation](https://docs.dust.tt/core-blocks)
 - [Getting started guide](https://docs.dust.tt/quickstart)
 - [Runs API Reference](https://docs.dust.tt/runs)
-
-### Questions / Help
-
-Join our [Discord](https://discord.gg/8NJR3zQU5X).
