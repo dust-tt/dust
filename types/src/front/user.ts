@@ -96,16 +96,7 @@ export function isOnlyUser(
   if (!owner) {
     return false;
   }
-  switch (owner.role) {
-    case "user":
-      return true;
-    case "builder":
-    case "admin":
-    case "none":
-      return false;
-    default:
-      assertNever(owner.role);
-  }
+  return owner.role === "user";
 }
 
 export function isOnlyBuilder(
@@ -114,16 +105,7 @@ export function isOnlyBuilder(
   if (!owner) {
     return false;
   }
-  switch (owner.role) {
-    case "builder":
-      return true;
-    case "user":
-    case "admin":
-    case "none":
-      return false;
-    default:
-      assertNever(owner.role);
-  }
+  return owner.role === "builder";
 }
 
 export function isOnlyAdmin(
@@ -132,14 +114,5 @@ export function isOnlyAdmin(
   if (!owner) {
     return false;
   }
-  switch (owner.role) {
-    case "admin":
-      return true;
-    case "user":
-    case "builder":
-    case "none":
-      return false;
-    default:
-      assertNever(owner.role);
-  }
+  return owner.role === "admin";
 }

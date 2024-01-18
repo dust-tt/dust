@@ -34,7 +34,6 @@ import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import type { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
-import disable from "@app/pages/api/w/[wId]/keys/[secret]/disable";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
