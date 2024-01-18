@@ -26,7 +26,7 @@ import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import { GEMINI_PRO_DEFAULT_MODEL_CONFIG } from "@dust-tt/types";
+import { GEMINI_PRO_DEFAULT_MODEL_CONFIG, isBuilder } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -356,6 +356,7 @@ export default function AssistantBuilder({
       channelName: string;
     }[]
   >([]);
+
   // Retrieve all the slack channels that are linked with an agent.
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
@@ -1285,7 +1286,7 @@ export default function AssistantBuilder({
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
               {slackDataSource &&
-                ["builder", "admin"].includes(owner.role) &&
+                isBuilder(owner) &&
                 builderState.scope !== "private" &&
                 initialBuilderState?.scope !== "private" && (
                   <SlackIntegration

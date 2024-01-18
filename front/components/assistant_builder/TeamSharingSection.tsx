@@ -5,7 +5,11 @@ import {
   Dialog,
   Icon,
 } from "@dust-tt/sparkle";
-import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import {
+  type AgentConfigurationScope,
+  isBuilder,
+  type WorkspaceType,
+} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -146,7 +150,7 @@ export function TeamSharingSection({
             <span className="font-bold">modify and delete</span> the assistant.
             It is included by default in every member's list.
           </div>
-          {(owner.role === "admin" || owner.role === "builder") && (
+          {isBuilder(owner) && (
             <Button
               variant="tertiary"
               size="sm"

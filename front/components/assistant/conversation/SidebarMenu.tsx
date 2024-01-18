@@ -1,6 +1,6 @@
 import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { ConversationWithoutContentType } from "@dust-tt/types";
+import { isOnlyUser, type WorkspaceType } from "@dust-tt/types";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -70,7 +70,7 @@ export function AssistantSidebarMenu({
     <div
       className={classNames(
         "flex grow flex-col",
-        owner.role === "user" ? "border-t border-structure-200" : ""
+        isOnlyUser(owner) ? "border-t border-structure-200" : ""
       )}
     >
       <div className="flex h-0 min-h-full w-full overflow-y-auto">

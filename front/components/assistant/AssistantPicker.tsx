@@ -7,9 +7,10 @@ import {
   Searchbar,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
+import {
+  isBuilder,
+  type LightAgentConfigurationType,
+  type WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -85,27 +86,26 @@ export function AssistantPicker({
             />
           ))}
         </div>
-        {(owner.role === "admin" || owner.role === "builder") &&
-          showBuilderButtons && (
-            <div className="flex flex-row justify-between border-t border-structure-100 px-3 pb-1 pt-2">
-              <Link href={`/w/${owner.sId}/builder/assistants/new`}>
-                <Button
-                  label="Create"
-                  size="xs"
-                  variant="secondary"
-                  icon={PlusIcon}
-                />
-              </Link>
-              <Link href={`/w/${owner.sId}/builder/assistants`}>
-                <Button
-                  label="Manage"
-                  size="xs"
-                  variant="tertiary"
-                  icon={WrenchIcon}
-                />
-              </Link>
-            </div>
-          )}
+        {isBuilder(owner) && showBuilderButtons && (
+          <div className="flex flex-row justify-between border-t border-structure-100 px-3 pb-1 pt-2">
+            <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+              <Button
+                label="Create"
+                size="xs"
+                variant="secondary"
+                icon={PlusIcon}
+              />
+            </Link>
+            <Link href={`/w/${owner.sId}/builder/assistants`}>
+              <Button
+                label="Manage"
+                size="xs"
+                variant="tertiary"
+                icon={WrenchIcon}
+              />
+            </Link>
+          </div>
+        )}
       </DropdownMenu.Items>
     </DropdownMenu>
   );

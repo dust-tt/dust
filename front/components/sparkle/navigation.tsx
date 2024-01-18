@@ -14,8 +14,14 @@ import {
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
+import {
+  isAdmin,
+  isBuilder,
+  isOnlyUser,
+  isUser,
+  type WorkspaceType,
+} from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
 import {
@@ -97,7 +103,7 @@ export const topNavigation = ({
     current: current === "conversations",
   });
 
-  if (owner.role === "admin" || owner.role === "builder") {
+  if (isBuilder(owner)) {
     nav.push({
       id: "assistants",
       label: "Assistants",
@@ -112,10 +118,7 @@ export const topNavigation = ({
       label: "Admin",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href:
-        owner.role === "admin"
-          ? `/w/${owner.sId}/members`
-          : `/w/${owner.sId}/a`,
+      href: isAdmin(owner) ? `/w/${owner.sId}/members` : `/w/${owner.sId}/a`,
       current: current === "admin",
       sizing: "hug",
     });
@@ -139,7 +142,7 @@ export const subNavigationConversations = ({
 
   // To be added for personal assistants view.
 
-  if (owner.role === "user") {
+  if (isOnlyUser(owner)) {
     nav.push({
       id: "assistants",
       label: null,
@@ -177,7 +180,7 @@ export const subNavigationAssistants = ({
 
   const assistantMenus: SparkleAppLayoutNavigation[] = [];
 
-  if (owner.role === "builder" || owner.role === "admin") {
+  if (isBuilder(owner)) {
     assistantMenus.push({
       id: "personal_assistants",
       label: "My Assistants",
@@ -263,11 +266,11 @@ export const subNavigationAdmin = ({
 }) => {
   const nav: SidebarNavigation[] = [];
 
-  if (owner.role !== "admin" && owner.role !== "builder") {
+  if (!isBuilder(owner)) {
     return nav;
   }
 
-  if (owner.role === "admin") {
+  if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
       label: null,
@@ -306,7 +309,7 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "developers",
-    label: owner.role === "admin" ? "Developers" : null,
+    label: isAdmin(owner) ? "Developers" : null,
     variant: "secondary",
     menus: [
       {
@@ -376,11 +379,7 @@ export const subNavigationApp = ({
     },
   ];
 
-  if (
-    owner.role === "user" ||
-    owner.role === "builder" ||
-    owner.role === "admin"
-  ) {
+  if (isUser(owner)) {
     nav = nav.concat([
       {
         id: "execute",

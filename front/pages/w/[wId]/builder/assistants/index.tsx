@@ -15,12 +15,13 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
+import {
+  isBuilder,
+  type LightAgentConfigurationType,
+  type UserType,
+  type WorkspaceType,
+} from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -104,8 +105,6 @@ export default function WorkspaceAssistants({
   });
 
   globalAgents.sort(compareAgentsForSort);
-
-  const isBuilder = owner.role === "builder" || owner.role === "admin";
 
   const handleToggleAgentStatus = async (
     agent: LightAgentConfigurationType
@@ -245,7 +244,7 @@ export default function WorkspaceAssistants({
                           icon={PencilSquareIcon}
                           label="Edit"
                           size="xs"
-                          disabled={!isBuilder}
+                          disabled={!isBuilder(owner)}
                         />
                       </Link>
                       <DropdownMenu>
@@ -317,7 +316,7 @@ export default function WorkspaceAssistants({
                       icon={Cog6ToothIcon}
                       label="Manage"
                       size="sm"
-                      disabled={!isBuilder}
+                      disabled={!isBuilder(owner)}
                       onClick={() => {
                         void router.push(
                           `/w/${owner.sId}/builder/assistants/dust`
@@ -334,7 +333,7 @@ export default function WorkspaceAssistants({
                         selected={agent.status === "active"}
                         disabled={
                           agent.status === "disabled_missing_datasource" ||
-                          !isBuilder
+                          !isBuilder(owner)
                         }
                       />
                       <Popup

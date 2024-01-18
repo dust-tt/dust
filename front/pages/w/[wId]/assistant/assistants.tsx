@@ -18,13 +18,14 @@ import {
   UserIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentUserListStatus,
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
+import {
+  type AgentUserListStatus,
+  isOnlyUser,
+  type LightAgentConfigurationType,
+  type UserType,
+  type WorkspaceType,
+} from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useContext, useState } from "react";
@@ -188,11 +189,9 @@ export default function PersonalAssistants({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent={
-        owner.role === "user" ? "conversations" : "assistants"
-      }
+      topNavigationCurrent={isOnlyUser(owner) ? "conversations" : "assistants"}
       subNavigation={
-        owner.role === "user"
+        isOnlyUser(owner)
           ? subNavigationConversations({
               owner,
               current: "personal_assistants",
@@ -203,7 +202,7 @@ export default function PersonalAssistants({
             })
       }
       navChildren={
-        owner.role === "user" && (
+        isOnlyUser(owner) && (
           <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
         )
       }
