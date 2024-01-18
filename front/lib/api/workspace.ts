@@ -1,7 +1,6 @@
 import type {
   ModelId,
   RoleType,
-  UserType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
