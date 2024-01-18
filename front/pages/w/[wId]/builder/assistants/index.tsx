@@ -327,7 +327,7 @@ export default function WorkspaceAssistants({
                   ) : (
                     <div className="relative">
                       <SliderToggle
-                        size="sm"
+                        size="xs"
                         onClick={async () => {
                           await handleToggleAgentStatus(agent);
                         }}

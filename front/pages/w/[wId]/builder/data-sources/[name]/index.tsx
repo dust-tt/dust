@@ -456,7 +456,7 @@ function SlackBotEnableView({
         action={
           <div className="relative">
             <SliderToggle
-              size="sm"
+              size="xs"
               onClick={async () => {
                 if (!plan.limits.assistant.isSlackBotAllowed)
                   setShowNoSlackBotPopup(true);
