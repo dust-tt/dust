@@ -14,24 +14,21 @@ import {
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { buildInitialState } from "@app/lib/api/assistant_builder/server_side_helpers";
+import type {
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+} from "@app/lib/api/assistant_builder/types";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { buildInitialState } from "@app/pages/w/[wId]/builder/assistants/[aId]";
 
 const { GA_TRACKING_ID = "" } = process.env;
-
-type DataSourceConfig = NonNullable<
-  AssistantBuilderInitialState["dataSourceConfigurations"]
->[string];
 
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
@@ -40,7 +37,10 @@ export const getServerSideProps: GetServerSideProps<{
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
-  dataSourceConfigurations: Record<string, DataSourceConfig> | null;
+  dataSourceConfigurations: Record<
+    string,
+    AssistantBuilderDataSourceConfiguration
+  > | null;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
@@ -94,6 +94,7 @@ export const getServerSideProps: GetServerSideProps<{
     tablesQueryConfiguration,
   } = config
     ? await buildInitialState({
+        auth,
         config,
         dataSourceByName,
         dustApps: allDustApps,
