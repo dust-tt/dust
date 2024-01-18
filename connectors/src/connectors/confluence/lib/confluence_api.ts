@@ -18,7 +18,7 @@ export async function getConfluenceCloudInformation(accessToken: string) {
   }
 }
 
-export async function fetchConfluenceConfiguration(connectorId: ModelId) {
+async function fetchConfluenceConfiguration(connectorId: ModelId) {
   const confluenceConfig = await ConfluenceConfiguration.findOne({
     where: {
       connectorId: connectorId,

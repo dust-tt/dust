@@ -1,3 +1,4 @@
+import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
@@ -7,6 +8,9 @@ import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
+runConfluenceWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running confluence worker")
+);
 runSlackWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running slack worker")
 );

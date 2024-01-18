@@ -1,6 +1,7 @@
 import minimist from "minimist";
 
 import { startServer } from "@connectors/api_server";
+import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorker } from "./connectors/google_drive/temporal/worker";
@@ -18,6 +19,9 @@ const port = argv.p;
 
 startServer(port);
 
+runConfluenceWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running confluence worker")
+);
 runSlackWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running slack worker")
 );
