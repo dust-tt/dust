@@ -1,6 +1,7 @@
 import type { ConnectorResource, ModelId } from "@dust-tt/types";
 
 import {
+  getDisplayNameForPage,
   normalizeFolderUrl,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
@@ -152,7 +153,6 @@ export async function retrieveWebcrawlerConnectorPermissions({
       })
       .concat(
         pages.map((page): ConnectorResource => {
-          const parsedUrl = new URL(page.url);
           const isFileAndFolder = excludedFoldersSet.has(
             normalizeFolderUrl(page.url)
           );
@@ -170,11 +170,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
                   ressourceType: "folder",
                 })
               : null,
-            title:
-              parsedUrl.pathname
-                .split("/")
-                .filter((x) => x)
-                .pop() || parsedUrl.origin,
+            title: getDisplayNameForPage(page.url),
             sourceUrl: page.url,
             expandable: isFileAndFolder ? true : false,
             permission: "read",
