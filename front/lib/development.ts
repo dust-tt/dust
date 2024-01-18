@@ -18,7 +18,13 @@ export function isDevelopmentOrDustWorkspace(owner: WorkspaceType) {
 
 export function isActivatedStructuredDB(owner: WorkspaceType) {
   // We will manually add workspace ids here.
-  return isDevelopmentOrDustWorkspace(owner) || owner.sId === "bd133dacaa"; // Daph's workspace;
+  return (
+    isDevelopmentOrDustWorkspace(owner) ||
+    [
+      "47cc56f99e", // Henry's workspace;
+      "bd133dacaa", // Daph's workspace;
+    ].includes(owner.sId)
+  );
 }
 
 export function isActivatedPublicURLs(owner: WorkspaceType) {

@@ -1779,7 +1779,11 @@ async fn data_sources_delete(
                 None,
             ),
             Some(ds) => match ds
-                .delete(state.store.clone(), state.qdrant_clients.clone())
+                .delete(
+                    state.store.clone(),
+                    state.databases_store.clone(),
+                    state.qdrant_clients.clone(),
+                )
                 .await
             {
                 Err(e) => error_response(
@@ -1912,6 +1916,52 @@ async fn tables_list(
                 })),
             }),
         ),
+    }
+}
+
+async fn tables_delete(
+    extract::Path((project_id, data_source_id, table_id)): extract::Path<(i64, String, String)>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
+        Ok(Some(table)) => match table
+            .delete(state.store.clone(), state.databases_store.clone())
+            .await
+        {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to delete table",
+                Some(e),
+            ),
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "success": true,
+                    })),
+                }),
+            ),
+        },
     }
 }
 
@@ -2442,6 +2492,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables",
             get(tables_list),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id",
+            delete(tables_delete),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",

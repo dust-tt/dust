@@ -10,7 +10,6 @@ import {
   PlanetIcon,
   PuzzleIcon,
   RobotSharedIcon,
-  ServerIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
@@ -41,17 +40,17 @@ export type SubNavigationAssistantsId =
   | "personal_assistants"
   | "data_sources_url"
   | "developers"
-  | "extract"
-  | "tables";
+  | "extract";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
+
 export type SubNavigationAppId =
   | "specification"
   | "datasets"
   | "execute"
   | "runs"
   | "settings";
-export type SubNavigationLabId = "extract" | "databases";
+export type SubNavigationLabId = "extract";
 
 export type SparkleAppLayoutNavigation = {
   id:
@@ -220,13 +219,6 @@ export const subNavigationBuild = ({
           icon: ArrowUpOnSquareIcon,
           href: `/w/${owner.sId}/u/extract`,
           current: current === "extract",
-        },
-        {
-          id: "tables",
-          label: "Tables",
-          icon: ServerIcon,
-          href: `/w/${owner.sId}/tables`,
-          current: current === "tables",
         },
       ],
     });

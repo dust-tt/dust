@@ -9,8 +9,10 @@ import {
   PencilSquareIcon,
   PlusIcon,
   Popup,
+  ServerIcon,
   SlackLogo,
   SliderToggle,
+  Tab,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -37,12 +39,13 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { tableKey } from "@app/lib/client/tables_query";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
-import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
+import { useConnectorBotEnabled, useDocuments, useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -159,8 +162,8 @@ function StandardDataSourceView({
   const [currentTab, setCurrentTab] = useState("Documents");
 
   useEffect(() => {
-    if (router.query.tab === "databases") {
-      setCurrentTab("Databases");
+    if (router.query.tab === "tables") {
+      setCurrentTab("Tables");
       const newQuery = { ...router.query };
       delete newQuery.tab;
       void router.replace(
@@ -183,7 +186,7 @@ function StandardDataSourceView({
           title={dataSource.name}
           description={
             isActivatedSDB
-              ? "Use this page to view and upload documents and databases to your Folder."
+              ? "Use this page to view and upload documents and tables to your Folder."
               : "Use this page to view and upload documents to your Folder."
           }
           action={
@@ -202,10 +205,41 @@ function StandardDataSourceView({
           }
         />
 
+        {isActivatedSDB && (
+          <Tab
+            tabs={[
+              {
+                label: "Documents",
+                current: currentTab === "Documents",
+              },
+              {
+                label: "Tables",
+                current: currentTab === "Tables",
+              },
+            ]}
+            onTabClick={(tab) => {
+              if (tab === currentTab) return;
+              if (tab === "Documents") {
+                setCurrentTab("Documents");
+              } else if (tab === "Tables") {
+                setCurrentTab("Tables");
+              }
+            }}
+          />
+        )}
+
         {currentTab === "Documents" && (
           <DatasourceDocumentsTabView
             owner={owner}
             plan={plan}
+            readOnly={readOnly}
+            dataSource={dataSource}
+            router={router}
+          />
+        )}
+        {currentTab === "Tables" && (
+          <DatasourceTablesTabView
+            owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
             router={router}
@@ -396,6 +430,111 @@ function DatasourceDocumentsTabView({
         ) : null}
       </div>
     </Page.Vertical>
+  );
+}
+
+function DatasourceTablesTabView({
+  owner,
+  readOnly,
+  dataSource,
+  router,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  dataSource: DataSourceType;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const { tables } = useTables({
+    workspaceId: owner.sId,
+    dataSourceName: dataSource.name,
+  });
+
+  return (
+    <>
+      <Page.Vertical align="stretch">
+        <div className="mt-16 flex flex-row">
+          <div className="flex flex-1">
+            <div className="flex flex-col">
+              <div className="flex flex-row">
+                <div className="flex flex-initial gap-x-2">
+                  <Button variant="tertiary" disabled={true} label="Previous" />
+                  <Button variant="tertiary" label="Next" disabled={true} />
+                </div>
+              </div>
+            </div>
+          </div>
+          {readOnly ? null : (
+            <div className="">
+              <div className="relative mt-0 flex-none">
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Add table"
+                  onClick={() => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/tables/upsert`
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="py-8">
+          <ContextItem.List>
+            {tables.map((t) => (
+              <ContextItem
+                key={tableKey({
+                  workspaceId: owner.sId,
+                  tableId: t.table_id,
+                  dataSourceId: dataSource.name,
+                })}
+                title={`${t.name} (${t.data_source_id})`}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      ServerIcon({
+                        className: className + " text-element-600",
+                      })
+                    }
+                  />
+                }
+                action={
+                  <Button.List>
+                    <Button
+                      variant="secondary"
+                      icon={PencilSquareIcon}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/${
+                            dataSource.name
+                          }/tables/upsert?tableId=${encodeURIComponent(
+                            t.table_id
+                          )}`
+                        );
+                      }}
+                      label="Edit"
+                      labelVisible={false}
+                    />
+                  </Button.List>
+                }
+              ></ContextItem>
+            ))}
+          </ContextItem.List>
+          {tables.length == 0 ? (
+            <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+              <p>No tables found for this Folder.</p>
+              <p className="mt-2">
+                Tables let you create assistants that can query structured data
+                from uploaded CSV files. You can add tables manually by clicking
+                on the &quot;Add&nbsp;database&quot; button.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </Page.Vertical>
+    </>
   );
 }
 

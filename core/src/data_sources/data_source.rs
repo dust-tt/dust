@@ -1,6 +1,7 @@
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
 use crate::data_sources::splitter::{splitter, SplitterID};
+use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::{provider, ProviderID};
@@ -1803,6 +1804,7 @@ impl DataSource {
     pub async fn delete(
         &self,
         store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
     ) -> Result<()> {
         if qdrant_clients
@@ -1831,7 +1833,12 @@ impl DataSource {
         let (tables, total) = store
             .list_tables(&self.project, &self.data_source_id, None)
             .await?;
-        try_join_all(tables.iter().map(|t| t.delete(store.clone()))).await?;
+        try_join_all(
+            tables
+                .iter()
+                .map(|t| t.delete(store.clone(), databases_store.clone())),
+        )
+        .await?;
 
         utils::done(&format!(
             "Deleted tables: data_source_id={} table_count={}",
