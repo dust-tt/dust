@@ -9,21 +9,20 @@ import {
 import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
-import { signOut } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
+import { signOut } from "next-auth/react";
 import React, { Fragment, useState } from "react";
-
-import WorkspacePicker from "@app/components/WorkspacePicker";
-import { classNames } from "@app/lib/utils";
 
 import type {
   SidebarNavigation,
   TopNavigationId,
 } from "@app/components/sparkle/navigation";
 import { topNavigation } from "@app/components/sparkle/navigation";
+import WorkspacePicker from "@app/components/WorkspacePicker";
+import { classNames } from "@app/lib/utils";
 
 function NavigationBar({
   user,
