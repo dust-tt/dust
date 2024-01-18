@@ -74,7 +74,6 @@ export async function createConfluenceConnector(
       return connector;
     });
 
-    // TODO(2024-01-10 flav) Uncomment in next PR.
     await launchConfluenceFullSyncWorkflow(connector.id, null);
 
     return new Ok(connector.id.toString());
@@ -227,7 +226,6 @@ export async function setConfluenceConnectorPermissions(
     }
   }
 
-  // TODO(2024-01-10 flav) Uncomment in next PR.
   if (shouldFullSync) {
     await launchConfluenceFullSyncWorkflow(connectorId, null);
   }
