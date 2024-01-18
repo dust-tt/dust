@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import { Button, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
@@ -44,13 +44,17 @@ export function AssistantPreview2({
   actions,
   onClick,
 }: AssistantPreviewProps) {
+  // State to manage the visibility of the play button
+  const [isHovered, setIsHovered] = useState(false);
   return (
     <div
       className={classNames(
-        "s-flex s-flex-col s-gap-2 s-border s-border-structure-100/0 s-transition s-duration-300 hover:s-cursor-pointer hover:s-border-structure-100 hover:s-bg-structure-50",
+        "s-flex s-flex-col s-gap-2 s-border s-border-structure-100/0 s-transition s-duration-200 hover:s-cursor-pointer hover:s-border-structure-100 hover:s-bg-structure-50",
         variant === "item" ? "s-rounded-2xl s-p-3" : " s-rounded-3xl s-p-4"
       )}
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="s-flex s-gap-2">
         <Avatar
@@ -80,15 +84,16 @@ export function AssistantPreview2({
               )}
               {variant === "item" && <div className="s-pt-1">{actions}</div>}
             </div>
-            {variant === "gallery" && (
-              <Button
-                variant="primary"
-                size="sm"
-                label="Try"
-                labelVisible={false}
-                icon={PlayIcon}
-              />
-            )}
+            {variant === "gallery" &&
+              isHovered && ( // Conditional rendering based on isHovered
+                <Button
+                  variant="primary"
+                  size="sm"
+                  label="Try"
+                  labelVisible={false}
+                  icon={PlayIcon}
+                />
+              )}
           </div>
           {variant !== "item" && (
             <>

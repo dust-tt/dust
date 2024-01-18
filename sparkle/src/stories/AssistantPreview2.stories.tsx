@@ -154,13 +154,15 @@ export const AssistantPreviewExample = () => (
         title={"salesFr"}
         description={"OpenAI's most powerful and recent model (128k context)."}
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
-        subtitle={"Stanislas Polu"}
+        subtitle={
+          "Stanislas Polu, Pauline Pham, Henry Fontanier, Edouard Wautier"
+        }
         variant={"gallery"}
         onClick={() => console.log("clicked")}
         actions={
-          <>
-            <Button label="Start" variant="tertiary" size="xs" />
-          </>
+          <div className="s-flex s-gap-2">
+            <Chip label="Company Assistant" color="amber" />
+          </div>
         }
       />
     </div>
