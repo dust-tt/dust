@@ -59,10 +59,15 @@ import {
 } from "@app/components/assistant_builder/shared";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
-import type {ActionMode, AssistantBuilderDataSourceConfiguration, AssistantBuilderInitialState, AssistantBuilderState} from "@app/components/assistant_builder/types";
+import type {
+  ActionMode,
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
 import {
   ADVANCED_ACTION_MODES,
-  BASIC_ACTION_MODES
+  BASIC_ACTION_MODES,
 } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
