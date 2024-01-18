@@ -73,12 +73,8 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="Github"
-        subElement={
-          <>
-            <Icon visual={User} size="xs" />
-            Connected by Stan
-          </>
-        }
+        subElement={<>By: Stan</>}
+        action={<SliderToggle size="xs" />}
         visual={<ContextItem.Visual visual={Github} />}
       >
         <>
@@ -90,7 +86,7 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@Gpt4"
-        action={<SliderToggle size="sm" />}
+        action={<SliderToggle size="xs" />}
         visual={
           <Avatar
             visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
@@ -102,6 +98,7 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@SalesFr"
+        subElement={<>By: Edouard Wautier, Amira Hadad</>}
         action={
           <Button
             variant="secondary"
@@ -121,6 +118,7 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@SupportFr"
+        subElement={<>By: Edouard Wautier, Amira Hadad</>}
         action={
           <Button
             variant="secondary"

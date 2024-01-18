@@ -32,7 +32,7 @@ export function ContextItem({
     >
       <div
         className={classNames(
-          "s-flex s-flex-row s-items-center s-gap-3 s-px-4 s-py-2",
+          "s-flex s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
           onClick
             ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 active:s-bg-structure-100"
             : ""
@@ -40,16 +40,16 @@ export function ContextItem({
         onClick={onClick}
       >
         <div className="s-flex">{visual}</div>
-        <div className="s-flex s-grow s-flex-col s-gap-1">
+        <div className="s-mb-0.5 s-flex s-grow s-flex-col s-gap-0">
           <div className="s-flex s-grow s-flex-row s-gap-3">
-            <div className="s-text-normal s-flex s-flex-col s-justify-center s-font-semibold">
+            <div className="s-flex s-flex-col s-justify-center s-text-base s-font-semibold">
               {title}
             </div>
-            <div className="s-flex s-items-center s-gap-1 s-text-element-600">
+            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-element-600">
               {subElement}
             </div>
           </div>
-          <div className="-s-mt-1">{children}</div>
+          <div>{children}</div>
         </div>
         <div>{action}</div>
       </div>
@@ -118,7 +118,7 @@ ContextItem.Description = function ({
   return (
     <>
       {description && (
-        <div className="s-text-sm s-font-normal s-text-element-600">
+        <div className="s-text-sm s-font-normal s-text-element-700">
           {description}
         </div>
       )}
