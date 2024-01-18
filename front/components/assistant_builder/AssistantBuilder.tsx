@@ -658,7 +658,7 @@ export default function AssistantBuilder({
         isOpen={showTableModal}
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
-        dataSources={configurableDataSources}
+        dataSources={dataSources}
         onSave={(t) => {
           setEdited(true);
           setBuilderState((state) => ({
