@@ -66,12 +66,37 @@ export function isTopFolder(url: string) {
 // Normalizes a url path by removing trailing slashes and empty path parts (eg: //)
 export function normalizeFolderUrl(url: string) {
   const parsed = new URL(url);
-  return (
+  let result =
     parsed.origin +
     "/" +
     parsed.pathname
       .split("/")
       .filter((x) => x)
-      .join("/")
-  );
+      .join("/");
+
+  if (parsed.search.length > 0) {
+    // Search string contains the initial '?
+    result += parsed.search;
+  }
+
+  return result;
+}
+
+export function getDisplayNameForPage(url: string): string {
+  const parsed = new URL(url);
+  let result = "";
+  const fragments = parsed.pathname.split("/").filter((x) => x);
+  const lastFragment = fragments.pop();
+  if (lastFragment) {
+    result += lastFragment;
+  }
+  if (parsed.search.length > 0) {
+    result += parsed.search;
+  }
+
+  if (!result) {
+    result = parsed.origin;
+  }
+
+  return result;
 }
