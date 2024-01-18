@@ -493,7 +493,7 @@ export default function Developers({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
       <Page.Vertical gap="xl" align="stretch">

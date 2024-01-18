@@ -109,7 +109,7 @@ export default function DataSourcesView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_url",

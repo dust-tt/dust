@@ -164,7 +164,7 @@ export default function SettingsView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

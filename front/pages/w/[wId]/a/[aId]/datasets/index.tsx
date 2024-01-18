@@ -101,7 +101,7 @@ export default function DatasetsView({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

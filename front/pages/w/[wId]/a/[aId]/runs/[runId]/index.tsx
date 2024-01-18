@@ -148,7 +148,7 @@ export default function AppRun({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

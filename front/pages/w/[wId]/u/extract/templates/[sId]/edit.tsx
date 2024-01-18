@@ -68,7 +68,7 @@ export default function AppExtractEventsUpdate({
       user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
+      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({ owner, current: "extract" })}
     >
       <ExtractEventSchemaForm
