@@ -109,3 +109,79 @@ ConfluenceSpace.init(
   }
 );
 Connector.hasOne(ConfluenceSpace);
+
+// ConfluencePages stores the pages.
+export class ConfluencePage extends Model<
+  InferAttributes<ConfluencePage>,
+  InferCreationAttributes<ConfluencePage>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare externalUrl: string;
+  declare pageId: string;
+  declare parentId: string | null;
+  declare skipReason: string | null;
+  declare spaceId: string;
+  declare title: string;
+  declare version: number;
+
+  declare connectorId: ForeignKey<Connector["id"]> | null;
+}
+ConfluencePage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    version: {
+      type: DataTypes.MEDIUMINT,
+      allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    parentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    pageId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    spaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    externalUrl: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      { fields: ["connectorId", "pageId"], unique: true },
+      { fields: ["connectorId", "spaceId"] },
+    ],
+    modelName: "confluence_pages",
+  }
+);
+Connector.hasMany(ConfluencePage);
