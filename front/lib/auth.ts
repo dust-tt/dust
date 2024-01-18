@@ -1,4 +1,9 @@
-import type { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  RoleType,
+  UserType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
@@ -365,7 +370,7 @@ export async function getSession(
  */
 export async function getUserFromSession(
   session: any
-): Promise<(UserType & { workspaces: WorkspaceType[] }) | null> {
+): Promise<UserTypeWithWorkspaces | null> {
   if (!session) {
     return null;
   }

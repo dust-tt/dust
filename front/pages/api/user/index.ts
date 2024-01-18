@@ -1,7 +1,6 @@
 import type {
   ReturnedAPIErrorType,
-  UserType,
-  WorkspaceType,
+  UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -22,7 +21,7 @@ const PatchUserBodySchema = t.type({
 });
 
 export type GetUserResponseBody = {
-  user: UserType & { workspaces: WorkspaceType[] };
+  user: UserTypeWithWorkspaces;
 };
 
 async function handler(

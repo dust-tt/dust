@@ -1,5 +1,9 @@
 import { Button } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  UserType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React from "react";
@@ -11,7 +15,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 export const getServerSideProps: GetServerSideProps<{
   user: UserType;
   owner: WorkspaceType;
-  members: (UserType & { workspaces: WorkspaceType[] })[];
+  members: UserTypeWithWorkspaces[];
 }> = async (context) => {
   const wId = context.params?.wId;
   if (!wId || typeof wId !== "string") {

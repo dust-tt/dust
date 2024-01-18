@@ -28,6 +28,10 @@ export type UserType = {
   workspaces: WorkspaceType[] | null;
 };
 
+export type UserTypeWithWorkspaces = UserType & {
+  workspaces: WorkspaceType[];
+};
+
 export type UserMetadataType = {
   key: string;
   value: string;

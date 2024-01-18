@@ -16,6 +16,7 @@ import {
 import type {
   RoleType,
   UserType,
+  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -195,9 +196,8 @@ export default function WorkspaceAdmin({
      * only 1 state for both would break the modal animation because rerendering
      * at the same time than switching modal to open*/
     const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
-    const [changeRoleMember, setChangeRoleMember] = useState<
-      (UserType & { workspaces: WorkspaceType[] }) | null
-    >(null);
+    const [changeRoleMember, setChangeRoleMember] =
+      useState<UserTypeWithWorkspaces | null>(null);
     /* Same for invitations modal */
     const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
       useState(false);
@@ -211,7 +211,7 @@ export default function WorkspaceAdmin({
     }
 
     const displayedMembersAndInvitations: (
-      | (UserType & { workspaces: WorkspaceType[] })
+      | UserTypeWithWorkspaces
       | MembershipInvitationType
     )[] = [
       ...members
@@ -304,11 +304,7 @@ export default function WorkspaceAdmin({
           </div>
           <div className="s-w-full">
             {displayedMembersAndInvitations.map(
-              (
-                item:
-                  | (UserType & { workspaces: WorkspaceType[] })
-                  | MembershipInvitationType
-              ) => (
+              (item: UserTypeWithWorkspaces | MembershipInvitationType) => (
                 <div
                   key={
                     isInvitation(item)
@@ -415,15 +411,14 @@ function InviteEmailModal({
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  members: (UserType & { workspaces: WorkspaceType[] })[];
+  members: UserTypeWithWorkspaces[];
 }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
   // when set, the modal to reinvite a user that was revoked will be shown
-  const [existingRevokedUser, setExistingRevokedUser] = useState<
-    (UserType & { workspaces: WorkspaceType[] }) | null
-  >(null);
+  const [existingRevokedUser, setExistingRevokedUser] =
+    useState<UserTypeWithWorkspaces | null>(null);
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
@@ -521,7 +516,7 @@ function ReinviteUserModal({
   user,
 }: {
   onClose: (show: boolean) => void;
-  user: (UserType & { workspaces: WorkspaceType[] }) | null;
+  user: UserTypeWithWorkspaces | null;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
@@ -735,7 +730,7 @@ async function handleMemberRoleChange({
   mutate,
   sendNotification,
 }: {
-  member: UserType & { workspaces: WorkspaceType[] };
+  member: UserTypeWithWorkspaces;
   role: RoleType;
   mutate: any;
   sendNotification: any;
@@ -775,7 +770,7 @@ function ChangeMemberModal({
 }: {
   showModal: boolean;
   onClose: () => void;
-  member: (UserType & { workspaces: WorkspaceType[] }) | null;
+  member: UserTypeWithWorkspaces | null;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);

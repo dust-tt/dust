@@ -1,5 +1,5 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
 import type { AppType, AppVisibility } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -23,7 +23,7 @@ import { classNames } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType & { workspaces: WorkspaceType[] };
+  user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
