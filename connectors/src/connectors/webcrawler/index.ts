@@ -11,7 +11,8 @@ import {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
-import { Err, Ok, type Result } from "@connectors/lib/result.js";
+import type { Result } from "@connectors/lib/result.js";
+import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 

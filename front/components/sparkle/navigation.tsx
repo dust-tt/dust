@@ -14,7 +14,8 @@ import {
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
-import { isAdmin, isBuilder, isUser, type WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { isAdmin, isBuilder, isUser } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
 import {

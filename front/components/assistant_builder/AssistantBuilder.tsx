@@ -59,12 +59,14 @@ import {
 } from "@app/components/assistant_builder/shared";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
+import type {
+  ActionMode,
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
 import {
-  type ActionMode,
   ADVANCED_ACTION_MODES,
-  type AssistantBuilderDataSourceConfiguration,
-  type AssistantBuilderInitialState,
-  type AssistantBuilderState,
   BASIC_ACTION_MODES,
 } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";

@@ -5,11 +5,8 @@ import {
   Dialog,
   Icon,
 } from "@dust-tt/sparkle";
-import {
-  type AgentConfigurationScope,
-  isBuilder,
-  type WorkspaceType,
-} from "@dust-tt/types";
+import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import { isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
