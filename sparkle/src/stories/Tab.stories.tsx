@@ -20,16 +20,16 @@ export const ButtonExamples = () => (
     <Tab
       tabs={[
         {
-          label: "Conversations",
+          label: "Chat",
           current: true,
           icon: ChatBubbleBottomCenterTextIcon,
-          sizing: "hug",
+          sizing: "expand",
         },
         {
-          label: "Assistants",
+          label: "Build",
           current: false,
           icon: RobotIcon,
-          sizing: "hug",
+          sizing: "expand",
           hasSeparator: true,
         },
         {
