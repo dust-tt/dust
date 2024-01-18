@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { useEventSchemas } from "@app/lib/swr";
 
@@ -60,7 +60,7 @@ export default function AppExtractEvents({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "extract" })}
+      subNavigation={subNavigationBuild({ owner, current: "extract" })}
     >
       <Page.Header
         title="Extract"

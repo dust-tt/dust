@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 
@@ -113,7 +113,7 @@ export default function NewApp({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "developers" })}
+      subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
       <div className="flex flex-col">
         <Page.SectionHeader

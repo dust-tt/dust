@@ -13,8 +13,8 @@ import DatasetView from "@app/components/app/DatasetView";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
-  subNavigationAdmin,
   subNavigationApp,
+  subNavigationBuild,
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
@@ -139,7 +139,7 @@ export default function NewDatasetView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({
+      subNavigation={subNavigationBuild({
         owner,
         current: "developers",
       })}

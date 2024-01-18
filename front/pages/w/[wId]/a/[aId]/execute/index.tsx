@@ -27,8 +27,8 @@ import { Execution } from "@app/components/app/blocks/Output";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
-  subNavigationAdmin,
   subNavigationApp,
+  subNavigationBuild,
 } from "@app/components/sparkle/navigation";
 import { Spinner } from "@app/components/Spinner";
 import { getApp } from "@app/lib/api/app";
@@ -580,7 +580,7 @@ export default function ExecuteView({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({
+      subNavigation={subNavigationBuild({
         owner,
         current: "developers",
       })}
