@@ -12,8 +12,13 @@ import logger from "@app/logger/logger";
 export const getServerSideProps: GetServerSideProps<{
   document: CoreAPIDocument;
 }> = async (context) => {
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
+  const session = await getSession(context.req, context.res);
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
+
+  if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -26,27 +31,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const user = auth.user();
-  const owner = auth.workspace();
-
-  if (!user || !owner) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  if (!auth.isDustSuperUser()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, dataSourceName);
   if (!dataSource) {
     return {
       notFound: true,

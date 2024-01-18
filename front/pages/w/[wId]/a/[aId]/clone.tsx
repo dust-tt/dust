@@ -1,5 +1,5 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
 import type { AppType, AppVisibility } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -23,7 +23,7 @@ import { classNames } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
+  user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
@@ -31,6 +31,8 @@ export const getServerSideProps: GetServerSideProps<{
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
 
+  // This is a rare case where we need the full user object as we need to know the user available
+  // workspaces to clone the app into.
   const user = await getUserFromSession(session);
   if (!user) {
     return {
@@ -137,7 +139,6 @@ export default function CloneView({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

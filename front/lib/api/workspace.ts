@@ -1,7 +1,7 @@
 import type {
   ModelId,
   RoleType,
-  UserType,
+  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
   WorkspaceType,
@@ -107,7 +107,7 @@ export async function setInternalWorkspaceSegmentation(
 export async function getMembers(
   auth: Authenticator,
   role?: RoleType
-): Promise<UserType[]> {
+): Promise<UserTypeWithWorkspaces[]> {
   const owner = auth.workspace();
   if (!owner) {
     return [];

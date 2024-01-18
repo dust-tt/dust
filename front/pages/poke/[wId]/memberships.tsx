@@ -1,5 +1,9 @@
 import { Button } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  UserType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React from "react";
@@ -9,39 +13,18 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
-  members: UserType[];
+  members: UserTypeWithWorkspaces[];
 }> = async (context) => {
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
   const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const user = auth.user();
-
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  if (!auth.isDustSuperUser()) {
-    return {
-      notFound: true,
-    };
-  }
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
 
   const owner = auth.workspace();
 
-  if (!owner) {
+  if (!owner || !auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -51,7 +34,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       members,
     },
@@ -82,7 +64,7 @@ const MembershipsPage = ({
       if (!r.ok) {
         throw new Error("Failed to revoke user.");
       }
-      await router.reload();
+      router.reload();
     } catch (e) {
       console.error(e);
       window.alert("An error occurred while revoking the user.");

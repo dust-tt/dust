@@ -13,7 +13,6 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -30,7 +29,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
@@ -71,7 +70,6 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 ];
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -90,14 +88,6 @@ export const getServerSideProps: GetServerSideProps<{
   githubAppUrl: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-
-  const user = await getUserFromSession(session);
-  if (!user) {
-    return {
-      notFound: true,
-    };
-  }
-
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -106,6 +96,7 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+
   if (!owner || !plan || !subscription) {
     return {
       notFound: true,
@@ -231,7 +222,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       readOnly,
@@ -362,7 +352,6 @@ function ConfirmationModal({
 }
 
 export default function DataSourcesView({
-  user,
   owner,
   subscription,
   readOnly,
@@ -489,7 +478,6 @@ export default function DataSourcesView({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

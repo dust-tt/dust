@@ -4,7 +4,6 @@ import type {
   DataSourceType,
   PlanType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -26,12 +25,11 @@ import type {
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -48,7 +46,6 @@ export const getServerSideProps: GetServerSideProps<{
   flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -60,7 +57,6 @@ export const getServerSideProps: GetServerSideProps<{
   if (
     !owner ||
     !plan ||
-    !user ||
     !subscription ||
     !auth.isUser() ||
     !context.params?.aId
@@ -112,7 +108,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       plan,
       subscription,
@@ -129,7 +124,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function EditAssistant({
-  user,
   owner,
   subscription,
   plan,
@@ -181,7 +175,6 @@ export default function EditAssistant({
 
   return (
     <AssistantBuilder
-      user={user}
       owner={owner}
       subscription={subscription}
       plan={plan}

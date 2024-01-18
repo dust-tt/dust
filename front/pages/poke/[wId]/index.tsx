@@ -11,7 +11,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type {
   PlanInvitationType,
   PlanType,
@@ -46,7 +46,6 @@ import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
@@ -57,36 +56,16 @@ export const getServerSideProps: GetServerSideProps<{
   githubCodeSyncEnabled: boolean;
   dataSourcesSynchronizedAgo: Record<string, string>;
 }> = async (context) => {
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
   const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const user = auth.user();
-
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  if (!auth.isDustSuperUser()) {
-    return {
-      notFound: true,
-    };
-  }
+  const auth = await Authenticator.fromSession(
+    session,
+    context.params?.wId as string
+  );
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !subscription) {
+  if (!owner || !subscription || !auth.isDustSuperUser()) {
     return {
       notFound: true,
     };
@@ -209,7 +188,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       planInvitation: planInvitation ?? null,

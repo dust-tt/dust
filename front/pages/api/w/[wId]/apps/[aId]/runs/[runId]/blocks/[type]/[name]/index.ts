@@ -29,6 +29,7 @@ async function handler(
   );
 
   const app = await getApp(auth, req.query.aId as string);
+
   if (!app) {
     return apiError(req, res, {
       status_code: 404,

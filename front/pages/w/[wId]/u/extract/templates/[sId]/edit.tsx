@@ -1,4 +1,4 @@
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { EventSchemaType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -7,11 +7,10 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { getEventSchema } from "@app/lib/api/extract";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   schema: EventSchemaType;
@@ -19,14 +18,15 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
+
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !subscription) {
+
+  if (!owner || !subscription || !auth.isUser()) {
     return {
       notFound: true,
     };
@@ -36,6 +36,7 @@ export const getServerSideProps: GetServerSideProps<{
     auth,
     sId: context.params?.sId as string,
   });
+
   if (!schema) {
     return {
       notFound: true,
@@ -44,7 +45,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       schema,
@@ -55,7 +55,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function AppExtractEventsUpdate({
-  user,
   owner,
   subscription,
   schema,
@@ -65,7 +64,6 @@ export default function AppExtractEventsUpdate({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

@@ -16,7 +16,7 @@ import {
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 
@@ -31,15 +31,16 @@ export const getServerSideProps: GetServerSideProps<{
   conversationId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
 
   const owner = auth.workspace();
+  const user = auth.user();
   const subscription = auth.subscription();
-  if (!owner || !auth.isUser() || !user || !subscription) {
+
+  if (!owner || !user || !auth.isUser() || !subscription) {
     return {
       redirect: {
         destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
@@ -124,7 +125,6 @@ export default function AssistantConversation({
     <GenerationContextProvider>
       <AppLayout
         subscription={subscription}
-        user={user}
         owner={owner}
         isWideMode={true}
         pageTitle={

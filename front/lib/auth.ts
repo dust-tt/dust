@@ -1,4 +1,9 @@
-import type { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  RoleType,
+  UserType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
@@ -320,7 +325,7 @@ export class Authenticator {
    * object won't have the user's workspaces set.
    * @returns
    */
-  user(): UserType | null {
+  user(): (UserType & { workspaces: null }) | null {
     return this._user
       ? {
           id: this._user.id,
@@ -335,7 +340,7 @@ export class Authenticator {
           lastName: this._user.lastName || null,
           // Not available from this method
           image: null,
-          workspaces: [],
+          workspaces: null,
         }
       : null;
   }
@@ -365,7 +370,7 @@ export async function getSession(
  */
 export async function getUserFromSession(
   session: any
-): Promise<UserType | null> {
+): Promise<UserTypeWithWorkspaces | null> {
   if (!session) {
     return null;
   }

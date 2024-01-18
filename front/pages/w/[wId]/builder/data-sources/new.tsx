@@ -1,5 +1,5 @@
 import { Checkbox, Page } from "@dust-tt/sparkle";
-import type { DataSourceType, UserType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
@@ -11,20 +11,18 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -32,13 +30,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
 
-  if (!auth.isBuilder()) {
+  if (!owner || !subscription || !auth.isBuilder()) {
     return {
       notFound: true,
     };
@@ -48,7 +41,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       dataSources,
@@ -58,7 +50,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function DataSourceNew({
-  user,
   owner,
   subscription,
   dataSources,
@@ -156,7 +147,6 @@ export default function DataSourceNew({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

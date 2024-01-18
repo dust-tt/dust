@@ -25,6 +25,10 @@ export type UserType = {
   lastName: string | null;
   fullName: string;
   image: string | null;
+  workspaces: WorkspaceType[] | null;
+};
+
+export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
 };
 

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -25,14 +25,15 @@ export const getServerSideProps: GetServerSideProps<{
   baseUrl: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isUser() || !user) {
+  const user = auth.user();
+
+  if (!owner || !user || !auth.isUser()) {
     return {
       redirect: {
         destination: "/",

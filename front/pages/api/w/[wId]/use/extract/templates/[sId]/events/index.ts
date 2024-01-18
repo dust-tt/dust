@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getExtractedEvents } from "@app/lib/api/extract";
 import { getEventSchema } from "@app/lib/api/extract";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetExtractedEventsResponseBody = {
@@ -16,8 +16,6 @@ async function handler(
   res: NextApiResponse<GetExtractedEventsResponseBody | ReturnedAPIErrorType>
 ) {
   const session = await getSession(req, res);
-  const user = await getUserFromSession(session);
-
   const auth = await Authenticator.fromSession(
     session,
     req.query.wId as string
@@ -33,17 +31,6 @@ async function handler(
       },
     });
   }
-
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_user_not_found",
-        message: "Could not find the user of the current session.",
-      },
-    });
-  }
-
   if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,

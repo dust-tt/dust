@@ -1,5 +1,5 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
   BlockRunConfig,
@@ -33,7 +33,7 @@ import {
 import { Spinner } from "@app/components/Spinner";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import {
   checkDatasetData,
@@ -57,7 +57,6 @@ type Event = {
 };
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
@@ -67,7 +66,6 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -75,6 +73,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
+
   if (!owner || !subscription) {
     return {
       notFound: true,
@@ -112,7 +111,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       app,
@@ -365,7 +363,6 @@ function ExecuteInput({
 }
 
 export default function ExecuteView({
-  user,
   owner,
   subscription,
   app,
@@ -576,7 +573,6 @@ export default function ExecuteView({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

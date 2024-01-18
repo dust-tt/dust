@@ -12,7 +12,6 @@ import type {
   DataSourceType,
   LightAgentConfigurationType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
@@ -23,7 +22,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
@@ -31,13 +30,11 @@ import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -45,7 +42,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !user || !auth.isBuilder() || !subscription) {
+
+  if (!owner || !auth.isBuilder() || !subscription) {
     return {
       notFound: true,
     };
@@ -53,7 +51,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
@@ -62,7 +59,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function EditDustAssistant({
-  user,
   owner,
   subscription,
   gaTrackingId,
@@ -161,7 +157,6 @@ export default function EditDustAssistant({
     <AppLayout
       subscription={subscription}
       hideSidebar
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"

@@ -1,12 +1,12 @@
 import { DropdownMenu } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
 
 export default function WorkspacePicker({
   user,
   workspace,
   onWorkspaceUpdate,
 }: {
-  user: UserType;
+  user: UserTypeWithWorkspaces;
   workspace: WorkspaceType | null;
   readOnly: boolean;
   onWorkspaceUpdate: (w: WorkspaceType) => void;

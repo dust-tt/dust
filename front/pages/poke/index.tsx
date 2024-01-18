@@ -1,4 +1,3 @@
-import type { UserType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
@@ -7,21 +6,11 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { usePokeWorkspaces } from "@app/lib/swr";
 
-export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
-}> = async (context) => {
+export const getServerSideProps: GetServerSideProps<object> = async (
+  context
+) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
-  const user = auth.user();
-
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
 
   if (!auth.isDustSuperUser()) {
     return {
@@ -30,16 +19,14 @@ export const getServerSideProps: GetServerSideProps<{
   }
 
   return {
-    props: {
-      user,
-    },
+    props: {},
   };
 };
 
 const Dashboard = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
+  void _props;
   const {
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,
