@@ -11,6 +11,17 @@ export function makeConfluenceSpaceSyncWorkflowIdFromParentId(
   return `${parentWorkflowId}-space-${spaceId}`;
 }
 
+export function makeConfluenceRemoveSpacesWorkflowId(connectorId: ModelId) {
+  return `confluence-remove-${connectorId}`;
+}
+
+export function makeConfluenceRemoveSpaceWorkflowIdFromParentId(
+  parentWorkflowId: string,
+  spaceId: string
+) {
+  return `${parentWorkflowId}-space-${spaceId}`;
+}
+
 export function makeConfluencePageId(pageId: string) {
   // Omit space reference in the ID to accommodate Confluence pages moving between spaces.
   return `confluence-page-${pageId}`;

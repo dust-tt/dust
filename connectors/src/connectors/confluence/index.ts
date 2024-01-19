@@ -11,7 +11,10 @@ import {
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
-import { launchConfluenceFullSyncWorkflow } from "@connectors/connectors/confluence/temporal/client";
+import {
+  launchConfluenceFullSyncWorkflow,
+  launchConfluenceRemoveSpacesSyncWorkflow,
+} from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
@@ -186,6 +189,23 @@ export async function retrieveConfluenceConnectorPermissions({
   return new Ok(allSpaces);
 }
 
+async function startWorkflowIfNecessary(
+  spaceIds: string[],
+  workflowLauncher: (
+    connectorId: ModelId,
+    spaceIds: string[]
+  ) => Promise<Result<void, Error>>,
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  if (spaceIds.length > 0) {
+    const workflowStarted = await workflowLauncher(connectorId, spaceIds);
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
+  }
+  return new Ok(undefined);
+}
+
 export async function setConfluenceConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
@@ -235,17 +255,23 @@ export async function setConfluenceConnectorPermissions(
     }
   }
 
-  if (addedSpaceIds.length > 0) {
-    const workflowStarted = await launchConfluenceFullSyncWorkflow(
-      connectorId,
-      addedSpaceIds
-    );
-
-    if (workflowStarted.isErr()) {
-      return new Err(workflowStarted.error);
-    }
+  const addedSpacesResult = await startWorkflowIfNecessary(
+    addedSpaceIds,
+    launchConfluenceFullSyncWorkflow,
+    connectorId
+  );
+  if (addedSpacesResult.isErr()) {
+    return new Err(addedSpacesResult.error);
   }
-  // TODO(2024-01-19 flav) Handle space deletion.
+
+  const removedSpacesResult = await startWorkflowIfNecessary(
+    removedSpaceIds,
+    launchConfluenceRemoveSpacesSyncWorkflow,
+    connectorId
+  );
+  if (removedSpacesResult.isErr()) {
+    return new Err(removedSpacesResult.error);
+  }
 
   return new Ok(undefined);
 }

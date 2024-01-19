@@ -9,7 +9,9 @@ import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
 } from "@connectors/connectors/confluence/temporal/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
+  deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertToDatasource,
@@ -293,4 +295,73 @@ export async function confluenceUpsertPageActivity({
   localLogger.info("Upserting Confluence page in DB.");
 
   await upsertConfluencePageInDb(connectionId, dataSourceConfig, page);
+}
+
+async function deletePage(
+  connectorId: ModelId,
+  pageId: string,
+  dataSourceConfig: DataSourceConfig
+) {
+  const loggerArgs = {
+    connectorId,
+    pageId,
+  };
+
+  const localLogger = logger.child(loggerArgs);
+
+  const documentId = makeConfluencePageId(pageId);
+  localLogger.info(
+    { documentId },
+    "Deleting Confluence page from Dust data source."
+  );
+
+  await deleteFromDataSource(dataSourceConfig, documentId, {
+    connectorId,
+    pageId,
+  });
+
+  localLogger.info("Deleting Confluence page from database.");
+  await ConfluencePage.destroy({
+    where: {
+      connectorId,
+      pageId,
+    },
+  });
+}
+
+export async function confluenceRemoveSpaceActivity(
+  connectorId: ModelId,
+  spaceId: string
+) {
+  const localLogger = logger.child({
+    spaceId,
+    connectorId,
+  });
+
+  const connector = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error(`Connector not found (id: ${connectorId})`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const allPages = await ConfluencePage.findAll({
+    attributes: ["pageId"],
+    where: {
+      connectorId,
+      spaceId,
+    },
+  });
+
+  localLogger.info("Delete Confluence space", {
+    numberOfPages: allPages.length,
+  });
+
+  for (const page of allPages) {
+    await deletePage(connectorId, page.pageId, dataSourceConfig);
+  }
 }
