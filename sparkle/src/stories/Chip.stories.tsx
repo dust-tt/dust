@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Chip } from "../index_with_tw_base";
+import { Chip, UserGroupIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Atoms/Chip",
@@ -37,7 +37,26 @@ export const ListChipsExample = () => (
     <div className="s-w-60">
       <Chip.List isWrapping={true}>
         {colors.map((color) => (
-          <Chip key={`xs-${color}`} size="xs" label={color} color={color} />
+          <Chip
+            key={`xs-${color}`}
+            size="xs"
+            label={color}
+            color={color}
+            icon={UserGroupIcon}
+          />
+        ))}
+      </Chip.List>
+    </div>
+    <div className="s-w-60">
+      <Chip.List isWrapping={true}>
+        {colors.map((color) => (
+          <Chip
+            key={`xs-${color}`}
+            size="sm"
+            label={color}
+            color={color}
+            icon={UserGroupIcon}
+          />
         ))}
       </Chip.List>
     </div>

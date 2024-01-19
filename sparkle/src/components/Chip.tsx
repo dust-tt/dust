@@ -1,7 +1,8 @@
-import React, { ReactNode } from "react";
+import React, { ComponentType, ReactNode } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
+import { Icon, IconProps } from "./Icon";
 import Spinner from "./Spinner";
 
 type ChipProps = {
@@ -20,14 +21,16 @@ type ChipProps = {
   children?: ReactNode;
   className?: string;
   isBusy?: boolean;
+  icon?: ComponentType;
 };
 
 const sizeClasses = {
-  xs: "s-py-1.5 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-py-2 s-text-sm s-font-semibold s-px-3 s-gap-3",
+  xs: "s-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
+  sm: "s-h-9 s-text-sm s-font-semibold s-px-3 s-gap-2.5",
 };
 
-const baseClasses = "s-rounded-lg s-inline-flex s-box-border s-border";
+const baseClasses =
+  "s-rounded-lg s-inline-flex s-box-border s-border s-items-center";
 
 export function Chip({
   size = "xs",
@@ -36,6 +39,7 @@ export function Chip({
   children,
   className = "",
   isBusy = false,
+  icon,
 }: ChipProps) {
   const backgroundColor = `s-bg-${color}-100 s-border-${color}-200`;
   const textColor = `s-text-${color}-900`;
@@ -50,6 +54,7 @@ export function Chip({
 
   return (
     <div className={ChipClasses} aria-label={label}>
+      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {isBusy && <Spinner size={size} variant="darkGrey" />}
       {label && (
         <span
