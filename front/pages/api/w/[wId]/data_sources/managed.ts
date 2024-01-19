@@ -56,26 +56,19 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  if (
+    !owner ||
+    !plan ||
+    // No role under "builder" can create a managed data source.
+    // We perform a more detailed check below for each provider,
+    // but this is a first line of defense.
+    !auth.isBuilder()
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  // No role under "builder" can create a managed data source.
-  // We perform a more details check below for each provider,
-  // but this is a first line of defense.
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can add a public website.",
       },
     });
   }
@@ -140,6 +133,8 @@ async function handler(
           }
           break;
         }
+        default:
+          assertNever(provider);
       }
       // retrieve suffix GET parameter
       let suffix: string | null = null;
