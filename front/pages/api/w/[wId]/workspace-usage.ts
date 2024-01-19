@@ -1,9 +1,38 @@
+import { assertNever } from "@dust-tt/types";
+import { endOfMonth, format } from "date-fns";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+const MonthSchema = t.refinement(
+  t.string,
+  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s),
+  "YYYY-MM"
+);
+
+const GetUsageQueryParamsSchema = t.union([
+  t.type({
+    start: t.undefined,
+    end: t.undefined,
+    mode: t.literal("all"),
+  }),
+  t.type({
+    start: MonthSchema,
+    end: t.undefined,
+    mode: t.literal("month"),
+  }),
+  t.type({
+    start: MonthSchema,
+    end: MonthSchema,
+    mode: t.literal("range"),
+  }),
+]);
 
 interface QueryResult {
   createdAt: string;
@@ -54,29 +83,46 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (
-        !req.query.referenceDate ||
-        typeof req.query.referenceDate !== "string" ||
-        isNaN(new Date(req.query.referenceDate).getTime())
-      ) {
+      const queryValidation = GetUsageQueryParamsSchema.decode(req.query);
+      if (isLeft(queryValidation)) {
+        const pathError = reporter.formatValidationErrors(queryValidation.left);
         return apiError(req, res, {
-          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The `referenceDate` query parameter is missing or invalid.",
+            message: `Invalid request query: ${pathError}`,
           },
+          status_code: 400,
         });
       }
-      const referenceDate = new Date(req.query.referenceDate);
-      const csvData = await getMonthlyUsage(referenceDate, owner.sId);
+
+      const query = queryValidation.right;
+
+      const { endDate, startDate } = (() => {
+        switch (query.mode) {
+          case "all":
+            return {
+              startDate: new Date("2020-01-01"),
+              endDate: new Date(),
+            };
+          case "month":
+            const date = new Date(`${query.start}-01`);
+            return {
+              startDate: date,
+              endDate: endOfMonth(date),
+            };
+          case "range":
+            return {
+              startDate: new Date(`${query.start}-01`),
+              endDate: endOfMonth(new Date(`${query.end}-01`)),
+            };
+          default:
+            assertNever(query);
+        }
+      })();
+
+      const csvData = await getUsageData(startDate, endDate, owner.sId);
       res.setHeader("Content-Type", "text/csv");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=dust_monthly_usage_${referenceDate.getFullYear()}_${
-          referenceDate.getMonth() + 1
-        }.csv`
-      );
+      res.setHeader("Content-Disposition", `attachment; filename="usage.csv"`);
       res.status(200).send(csvData);
       return;
 
@@ -93,12 +139,11 @@ async function handler(
 
 export default withLogging(handler);
 
-async function getMonthlyUsage(
-  referenceDate: Date,
+async function getUsageData(
+  startDate: Date,
+  endDate: Date,
   wId: string
 ): Promise<string> {
-  // We return the ModelId as conversationInternalId to avoid leaking the conversation.sId which
-  // would let the admin introspect all converstaions.
   const results = await front_sequelize.query<QueryResult>(
     `
     SELECT
@@ -147,26 +192,26 @@ async function getMonthlyUsage(
       "messages" p ON m."parentId" = p."id"
   WHERE
       w."sId" = :wId AND
-      DATE_TRUNC('month', m."createdAt") = DATE_TRUNC('month', :referenceDate::timestamp)
+      m."createdAt" >= :startDate AND m."createdAt" <= :endDate
   ORDER BY
-      "createdAt" DESC
+      m."createdAt" DESC
   `,
     {
       replacements: {
         wId,
-        referenceDate: `${referenceDate.getFullYear()}-${
-          referenceDate.getMonth() + 1
-        }-${referenceDate.getDate()}`,
+        startDate: format(startDate, "yyyy-MM-dd"), // Use first day of start month
+        endDate: format(endDate, "yyyy-MM-dd"), // Use last day of end month
       },
       type: QueryTypes.SELECT,
     }
   );
   if (!results.length) {
-    return "You have no data for this month.";
+    return "No data available for the selected period.";
   }
+  const csvHeader = Object.keys(results[0]).join(",") + "\n";
   const csvContent = results
     .map((row) => Object.values(row).join(","))
     .join("\n");
-  const csvHeader = Object.keys(results[0]).join(",") + "\n";
+
   return csvHeader + csvContent;
 }
