@@ -2,13 +2,16 @@ import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
+  setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
+import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // The Temporal bundle does not support the use of aliases in import statements.
+import { spaceUpdatesSignal } from "./signals";
 import { makeConfluenceSpaceSyncWorkflowIdFromParentId } from "./utils";
 
 const {
@@ -40,13 +43,25 @@ export async function confluenceFullSyncWorkflow({
   const spaceIdsToSync =
     spaceIdsToBrowse ?? (await getSpaceIdsToSyncActivity(connectorId));
 
+  const uniqueSpaceIds = new Set(spaceIdsToSync);
+
+  setHandler(spaceUpdatesSignal, (spaceUpdates: SpaceUpdatesSignal[]) => {
+    for (const { action, spaceId } of spaceUpdates) {
+      if (action === "added") {
+        uniqueSpaceIds.add(spaceId);
+      } else {
+        uniqueSpaceIds.delete(spaceId);
+      }
+    }
+  });
+
   const {
     workflowId,
     searchAttributes: parentSearchAttributes,
     memo,
   } = workflowInfo();
 
-  for (const spaceId of spaceIdsToSync) {
+  for (const spaceId of uniqueSpaceIds) {
     await executeChild(confluenceSpaceSyncWorkflow, {
       workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
         workflowId,

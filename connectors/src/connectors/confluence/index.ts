@@ -75,8 +75,7 @@ export async function createConfluenceConnector(
     });
 
     const workflowStarted = await launchConfluenceFullSyncWorkflow(
-      connector.id,
-      null
+      connector.id
     );
     if (workflowStarted.isErr()) {
       return new Err(workflowStarted.error);
@@ -205,9 +204,9 @@ export async function setConfluenceConnectorPermissions(
     spaces = await listConfluenceSpaces(connector);
   }
 
-  let shouldFullSync = false;
+  const addedSpaceIds = [];
+  const removedSpaceIds = [];
   for (const [id, permission] of Object.entries(permissions)) {
-    shouldFullSync = true;
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
@@ -215,6 +214,8 @@ export async function setConfluenceConnectorPermissions(
           spaceId: id,
         },
       });
+
+      removedSpaceIds.push(id);
       // TODO(2024-01-09 flav) start a workflow to delete all pages within a Space.
     } else if (permission === "read") {
       const confluenceSpace = spaces.find((s) => s.id === id);
@@ -225,6 +226,8 @@ export async function setConfluenceConnectorPermissions(
         spaceId: id,
         urlSuffix: confluenceSpace?._links.webui,
       });
+
+      addedSpaceIds.push(id);
     } else {
       return new Err(
         new Error(`Invalid permission ${permission} for resource ${id}`)
@@ -232,15 +235,17 @@ export async function setConfluenceConnectorPermissions(
     }
   }
 
-  if (shouldFullSync) {
+  if (addedSpaceIds.length > 0) {
     const workflowStarted = await launchConfluenceFullSyncWorkflow(
       connectorId,
-      null
+      addedSpaceIds
     );
+
     if (workflowStarted.isErr()) {
       return new Err(workflowStarted.error);
     }
   }
+  // TODO(2024-01-19 flav) Handle space deletion.
 
   return new Ok(undefined);
 }
