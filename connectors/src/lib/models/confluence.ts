@@ -147,7 +147,7 @@ ConfluencePage.init(
       defaultValue: DataTypes.NOW,
     },
     version: {
-      type: DataTypes.MEDIUMINT,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     skipReason: {
