@@ -56,7 +56,14 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  if (
+    !owner ||
+    !plan ||
+    // No role under "builder" can create a managed data source.
+    // We perform a more detailed check below for each provider,
+    // but this is a first line of defense.
+    !auth.isBuilder()
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -68,16 +75,6 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace can create a managed data source.",
-          },
-        });
-      }
       const bodyValidation = PostManagedDataSourceRequestBodySchema.decode(
         req.body
       );
@@ -103,6 +100,41 @@ async function handler(
             message: "Invalid provider.",
           },
         });
+      }
+      switch (provider) {
+        case "webcrawler": {
+          if (!auth.isBuilder()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Only the users that are `builders` for the current workspace can add a public website.",
+              },
+            });
+          }
+          break;
+        }
+        case "confluence":
+        case "github":
+        case "google_drive":
+        case "intercom":
+        case "notion":
+        case "slack": {
+          if (!auth.isAdmin()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Only the users that are `admins` for the current workspace can create a managed data source.",
+              },
+            });
+          }
+          break;
+        }
+        default:
+          assertNever(provider);
       }
       // retrieve suffix GET parameter
       let suffix: string | null = null;
