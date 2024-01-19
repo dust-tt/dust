@@ -668,16 +668,6 @@ export async function createAgentConfiguration(
             if (userRelation) {
               listStatusOverride = userRelation.listStatusOverride;
             }
-
-            // At time of writing, private agents can only be created from scratch. An existing agent
-            // that is not already private cannot be updated back to private.
-            if (
-              existing &&
-              scope === "private" &&
-              existing.scope !== "private"
-            ) {
-              throw new Error("Published agents cannot go back to private.");
-            }
           }
 
           await AgentConfiguration.update(

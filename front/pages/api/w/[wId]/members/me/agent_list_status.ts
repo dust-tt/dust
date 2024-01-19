@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { setAgentUserListstatus } from "@app/lib/api/assistant/user_relation";
+import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -96,7 +96,7 @@ async function handler(
         });
       }
 
-      const result = await setAgentUserListstatus({
+      const result = await setAgentUserListStatus({
         auth,
         agentId,
         listStatus,

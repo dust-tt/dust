@@ -68,7 +68,7 @@ export async function getAgentUserListStatus({
   );
 }
 
-export async function setAgentUserListstatus({
+export async function setAgentUserListStatus({
   auth,
   agentId,
   listStatus,
