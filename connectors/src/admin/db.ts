@@ -3,6 +3,7 @@ import type { Sequelize } from "sequelize";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
+  ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import {
@@ -49,6 +50,7 @@ import logger from "@connectors/logger/logger";
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
   await ConfluenceConfiguration.sync({ alter: true });
+  await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
   await SlackConfiguration.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
