@@ -240,11 +240,16 @@ export async function confluenceUpsertPageActivity({
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
 
   if (markdown) {
-    const renderedPage = renderDocumentTitleAndContent({
+    const renderedMarkdown = await renderMarkdownSection(
+      dataSourceConfig,
+      markdown
+    );
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
       title: `Page ${page.title} Space ${spaceName}`,
       createdAt: pageCreatedAt,
       updatedAt: lastPageVersionCreatedAt,
-      content: renderMarkdownSection(markdown ?? ""),
+      content: renderedMarkdown,
     });
 
     const documentId = makeConfluencePageId(pageId);
