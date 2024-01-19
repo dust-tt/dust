@@ -525,7 +525,7 @@ function DatasourceTablesTabView({
               <p className="mt-2">
                 Tables let you create assistants that can query structured data
                 from uploaded CSV files. You can add tables manually by clicking
-                on the &quot;Add&nbsp;database&quot; button.
+                on the &quot;Add&nbsp;table&quot; button.
               </p>
             </div>
           ) : null}
