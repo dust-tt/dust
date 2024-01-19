@@ -63,31 +63,35 @@ export async function confluenceFullSyncWorkflow({
     memo,
   } = workflowInfo();
 
-  // Signals received while the loop is running, which add new IDs to the set, won't
-  // be processed until the loop iterates again. This is due to Temporal's event loop
-  // processing signals only after the current synchronous block of code (here,
-  // executeChild) finishes execution.
-  for (const spaceId of uniqueSpaceIds) {
-    await executeChild(confluenceSpaceSyncWorkflow, {
-      workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
-        workflowId,
-        spaceId
-      ),
-      searchAttributes: parentSearchAttributes,
-      args: [
-        {
-          connectionId,
-          connectorId,
-          dataSourceConfig,
-          isBatchSync: true,
-          spaceId,
-        },
-      ],
-      memo,
-    });
+  // Async operations allow Temporal's event loop to process signals.
+  // If a signal arrives during an async operation, it will update the set before the next iteration.
+  while (uniqueSpaceIds.size > 0) {
+    // Create a copy of the set to iterate over, to avoid issues with concurrent modification.
+    const spaceIdsToProcess = new Set(uniqueSpaceIds);
+    for (const spaceId of spaceIdsToProcess) {
+      // Async operation yielding control to the Temporal runtime.
+      await executeChild(confluenceSpaceSyncWorkflow, {
+        workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
+          workflowId,
+          spaceId
+        ),
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectionId,
+            connectorId,
+            dataSourceConfig,
+            isBatchSync: true,
+            spaceId,
+          },
+        ],
+        memo,
+      });
 
-    // Temporarily suspend execution and return control to the Temporal runtime by invoking a sleep function.
-    // This pause in the workflow enables regular checks for incoming signals.
+      // Remove the processed space from the original set after the async operation.
+      uniqueSpaceIds.delete(spaceId);
+    }
+
     await sleep(10000);
   }
 
