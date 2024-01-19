@@ -1,8 +1,9 @@
-import { Avatar, ContextItem, Page } from "@dust-tt/sparkle";
+import { ContextItem, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationType } from "@dust-tt/types";
 import {
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
+  isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
@@ -51,63 +52,61 @@ const DataSourcePage = ({
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
-      <div className="mx-auto max-w-4xl">
-        <div className="px-8 py-8"></div>
+      <div className="mx-auto max-w-4xl pt-8">
         <Page.Vertical align="stretch">
-          <Page.SectionHeader title={`${agentConfigurations[0].name}`} />
-
-          <div className="mt-4 flex flex-row">
-            <div className="flex flex-1">
-              <div className="flex flex-col">
-                <div className="flex flex-row"></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="py-8">
-            <ContextItem.List>
-              {agentConfigurations.map((a) => (
-                <ContextItem
-                  key={a.version}
-                  title={`@${a.name} (${a.sId}) V${a.version}`}
-                  visual={
-                    <ContextItem.Visual
-                      visual={() =>
-                        Avatar({ visual: a.pictureUrl, size: "xs" })
-                      }
-                    />
-                  }
-                >
-                  <ContextItem.Description>
-                    <div className="gap8 flex flex-col">
-                      <div>Created at: {`${a.versionCreatedAt}`}</div>
-                      <div className="pt-2 text-sm text-element-700">
-                        {a.generation?.prompt}
+          <ContextItem.List>
+            {agentConfigurations.map((a) => (
+              <ContextItem
+                key={a.version}
+                title={`@${a.name} (${a.sId}) v${a.version}`}
+                visual={<></>}
+              >
+                <ContextItem.Description>
+                  <div className="flex flex-col gap-2">
+                    <div className="ml-4 pt-2 text-sm text-element-700">
+                      <div>createdAt: {`${a.versionCreatedAt}`}</div>
+                      <div>
+                        scope: <b>{a.scope}</b>
                       </div>
-                      <div className="pt-2 text-sm text-element-700">
-                        model:{" "}
-                        {`${JSON.stringify(a.generation?.model, null, 2)}`}
-                      </div>
-                      {a.action && isRetrievalConfiguration(a.action) && (
-                        <div className="mb-2 flex-col text-sm text-gray-600">
-                          <div className="font-bold">Data Sources:</div>
-                          {JSON.stringify(a.action.dataSources, null, 2)}
-                        </div>
-                      )}
-                      {a.action && isDustAppRunConfiguration(a.action) && (
-                        <div className="mb-2 flex-col text-sm text-gray-600">
-                          <div className="font-bold">Dust app:</div>
-                          <div>
-                            {a.action.appWorkspaceId}/{a.action.appId}
-                          </div>
-                        </div>
-                      )}
+                      <div>versionAuthorId: {a.versionAuthorId}</div>
                     </div>
-                  </ContextItem.Description>
-                </ContextItem>
-              ))}
-            </ContextItem.List>
-          </div>
+                    <div className="ml-4 text-sm text-element-700">
+                      <div className="font-bold">Instructions:</div>
+                      {a.generation?.prompt}
+                    </div>
+                    <div className="ml-4 text-sm text-element-700">
+                      <div className="font-bold">model:</div>
+                      {`${JSON.stringify(a.generation?.model, null, 2)}`}
+                    </div>
+                    {a.action && isRetrievalConfiguration(a.action) && (
+                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
+                        <div className="font-bold">Data Sources:</div>
+                        {JSON.stringify(a.action.dataSources, null, 2)}
+                      </div>
+                    )}
+                    {a.action && isDustAppRunConfiguration(a.action) && (
+                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
+                        <div className="font-bold">Dust app:</div>
+                        <div>
+                          {a.action.appWorkspaceId}/{a.action.appId}
+                        </div>
+                      </div>
+                    )}
+                    {a.action && isTablesQueryConfiguration(a.action) && (
+                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
+                        <div className="font-bold">Tables:</div>
+                        {a.action.tables.map((t) => (
+                          <div key={t.tableId}>
+                            {t.workspaceId}/{t.dataSourceId}/{t.tableId}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
         </Page.Vertical>
       </div>
     </div>

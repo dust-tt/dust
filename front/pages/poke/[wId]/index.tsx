@@ -20,6 +20,7 @@ import type {
 import {
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
+  isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
@@ -513,7 +514,7 @@ const WorkspacePage = ({
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
-      <div className="flex-grow p-6">
+      <div className="ml-8 flex-grow p-6">
         <div>
           <span className="pr-2 text-2xl font-bold">{owner.name}</span>
         </div>
@@ -526,8 +527,8 @@ const WorkspacePage = ({
           </Link>
         </div>
 
-        <div className="flex justify-center">
-          <div className="mx-2 w-1/3">
+        <div className="flex-col justify-center">
+          <div className="mx-2">
             <h2 className="text-md mb-4 font-bold">Segmentation:</h2>
             <div>
               <DropdownMenu>
@@ -694,132 +695,148 @@ const WorkspacePage = ({
             </div>
             {subscription.plan.code !== FREE_TEST_PLAN_CODE &&
               workspaceHasManagedDataSources && (
-                <span className="mx-2 w-1/3">
-                  <p className="text-warning mb-4 text-sm ">
+                <div className="pl-2 pt-4">
+                  <p className="text-warning mb-4 text-sm">
                     Delete managed data sources before downgrading.
                   </p>
-                </span>
+                </div>
               )}
           </div>
 
-          <div className="mx-2 w-1/3">
-            <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
-            {dataSources.map((ds) => (
-              <div
-                key={ds.id}
-                className="border-material-200 my-4 rounded-lg border p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="mb-2 text-lg font-semibold">
-                    <Link href={`/poke/${owner.sId}/data_sources/${ds.name}`}>
-                      {ds.name}
-                    </Link>
-                  </h3>
-                  <Button
-                    label="Delete"
-                    variant="secondaryWarning"
-                    onClick={() => onDataSourcesDelete(ds.name)}
-                  />
-                </div>
-                <p className="mb-2 text-sm text-gray-600">
-                  {ds.connectorProvider ? "Connection" : "Folder"}
-                </p>
-                {dataSourcesSynchronizedAgo[ds.name] && (
-                  <p className="mb-2 text-sm text-gray-600">
-                    Synchronized {dataSourcesSynchronizedAgo[ds.name]} ago
-                  </p>
-                )}
-                {ds.connectorProvider === "slack" && (
-                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
-                    <div>
-                      Slackbot enabled?{" "}
-                      <span className="font-medium">
-                        {JSON.stringify(slackBotEnabled)}
-                      </span>
-                    </div>
-                    <SliderToggle
-                      selected={slackBotEnabled}
-                      onClick={onSlackbotToggle}
-                    />
-                  </div>
-                )}
-                {ds.connectorProvider === "google_drive" && (
-                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
-                    <div>
-                      PDF syncing enabled?{" "}
-                      <span className="font-medium">
-                        {JSON.stringify(gdrivePDFEnabled)}
-                      </span>
-                    </div>
-                    <SliderToggle
-                      selected={gdrivePDFEnabled}
-                      onClick={onGdrivePDFToggle}
-                    />
-                  </div>
-                )}
-                {ds.connectorProvider === "github" && (
-                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
-                    <div>
-                      Code sync enabled?{" "}
-                      <span className="font-medium">
-                        {JSON.stringify(githubCodeSyncEnabled)}
-                      </span>
-                    </div>
-                    <SliderToggle
-                      selected={githubCodeSyncEnabled}
-                      onClick={onGithubCodeSyncToggle}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <h2 className="text-md mb-4 mt-16 font-bold">Assistants:</h2>
-            {agentConfigurations.map((a) => (
-              <div
-                key={a.id}
-                className="border-material-200 my-4 rounded-lg border p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="mb-2 text-lg font-semibold">{a.name}</h3>
-                  <div className="flex flex-col gap-2">
+          <div className="flex flex-row gap-8 pt-4">
+            <div className="mx-2 w-1/3">
+              <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
+              {dataSources.map((ds) => (
+                <div
+                  key={ds.id}
+                  className="border-material-200 my-4 rounded-lg border p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="mb-2 text-lg font-semibold">
+                      <Link href={`/poke/${owner.sId}/data_sources/${ds.name}`}>
+                        {ds.name}
+                      </Link>
+                    </h3>
                     <Button
-                      label="Archive"
+                      label="Delete"
                       variant="secondaryWarning"
-                      onClick={() => {
-                        void onAssistantArchive(a);
-                      }}
+                      onClick={() => onDataSourcesDelete(ds.name)}
                     />
-                    <Link href={`/poke/${owner.sId}/assistants/${a.sId}`}>
-                      <Button label="History" variant="secondary" />
-                    </Link>
                   </div>
+                  <p className="mb-2 text-sm text-gray-600">
+                    {ds.connectorProvider ? "Connection" : "Folder"}
+                  </p>
+                  {dataSourcesSynchronizedAgo[ds.name] && (
+                    <p className="mb-2 text-sm text-gray-600">
+                      Synchronized {dataSourcesSynchronizedAgo[ds.name]} ago
+                    </p>
+                  )}
+                  {ds.connectorProvider === "slack" && (
+                    <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                      <div>
+                        Slackbot enabled?{" "}
+                        <span className="font-medium">
+                          {JSON.stringify(slackBotEnabled)}
+                        </span>
+                      </div>
+                      <SliderToggle
+                        selected={slackBotEnabled}
+                        onClick={onSlackbotToggle}
+                      />
+                    </div>
+                  )}
+                  {ds.connectorProvider === "google_drive" && (
+                    <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                      <div>
+                        PDF syncing enabled?{" "}
+                        <span className="font-medium">
+                          {JSON.stringify(gdrivePDFEnabled)}
+                        </span>
+                      </div>
+                      <SliderToggle
+                        selected={gdrivePDFEnabled}
+                        onClick={onGdrivePDFToggle}
+                      />
+                    </div>
+                  )}
+                  {ds.connectorProvider === "github" && (
+                    <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                      <div>
+                        Code sync enabled?{" "}
+                        <span className="font-medium">
+                          {JSON.stringify(githubCodeSyncEnabled)}
+                        </span>
+                      </div>
+                      <SliderToggle
+                        selected={githubCodeSyncEnabled}
+                        onClick={onGithubCodeSyncToggle}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
-                  {a.description}
-                </div>
-                {a.action && isRetrievalConfiguration(a.action) && (
-                  <div className="mb-2 flex-col text-sm text-gray-600">
-                    <div className="font-bold">Data Sources:</div>
-                    {a.action.dataSources.map((ds) => (
-                      <div key={ds.dataSourceId}>{ds.dataSourceId}</div>
-                    ))}
-                  </div>
-                )}
-                {a.action && isDustAppRunConfiguration(a.action) && (
-                  <div className="mb-2 flex-col text-sm text-gray-600">
-                    <div className="font-bold">Dust app:</div>
-                    <div>
-                      {a.action.appWorkspaceId}/{a.action.appId}
+              ))}
+            </div>
+            <div className="mx-2 w-1/3">
+              <h2 className="text-md mb-4 font-bold">Assistants:</h2>
+              {agentConfigurations.map((a) => (
+                <div
+                  key={a.id}
+                  className="border-material-200 my-4 rounded-lg border p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="mb-2 text-lg font-semibold">
+                      <Link href={`/poke/${owner.sId}/assistants/${a.sId}`}>
+                        {a.name}
+                      </Link>
+                    </h3>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        label="Archive"
+                        variant="secondaryWarning"
+                        onClick={() => {
+                          void onAssistantArchive(a);
+                        }}
+                      />
                     </div>
                   </div>
-                )}
-                <div className="mb-2 flex flex-col text-sm text-gray-600">
-                  <div className="font-bold">Instructions</div>
-                  <div>{(a.generation?.prompt || "").substring(0, 100)}...</div>
+                  <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                    [{a.scope}] {a.description}
+                  </div>
+                  {a.action && isRetrievalConfiguration(a.action) && (
+                    <div className="mb-2 flex-col text-sm text-gray-600">
+                      <div className="font-bold">Data Sources:</div>
+                      {a.action.dataSources.map((ds) => (
+                        <div key={ds.dataSourceId}>{ds.dataSourceId}</div>
+                      ))}
+                    </div>
+                  )}
+                  {a.action && isDustAppRunConfiguration(a.action) && (
+                    <div className="mb-2 flex-col text-sm text-gray-600">
+                      <div className="font-bold">Dust app:</div>
+                      <div>
+                        {a.action.appWorkspaceId}/{a.action.appId}
+                      </div>
+                    </div>
+                  )}
+                  {a.action && isTablesQueryConfiguration(a.action) && (
+                    <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
+                      <div className="font-bold">Tables:</div>
+                      {a.action.tables.map((t) => (
+                        <div key={t.tableId}>
+                          {t.workspaceId}/{t.dataSourceId}/{t.tableId}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mb-2 flex flex-col text-sm text-gray-600">
+                    <div className="font-bold">Instructions</div>
+                    <div>
+                      {(a.generation?.prompt || "").substring(0, 100)}...
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
