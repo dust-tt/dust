@@ -1,8 +1,6 @@
 import sgMail from "@sendgrid/mail";
 
-import { XP1User } from "../lib/models.js";
-
-const { SENDGRID_API_KEY, LIVE = false } = process.env;
+const { SENDGRID_API_KEY } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);
 
 export const sendFreeplanEmail = async (user) => {
@@ -57,45 +55,45 @@ The Dust team
   console.log("UPGRADE & ACTIVATION KEY SENT", user.email);
 };
 
-async function main() {
-  let users = await await XP1User.findAll();
-
-  console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
-
-  users.forEach((u) => {
-    console.log("USER", u.id, u.email);
-  });
-
-  // split users in chunks of 16
-  let chunks = [];
-  let chunk = [];
-  for (let i = 0; i < users.length; i++) {
-    chunk.push(users[i]);
-    if (chunk.length === 16) {
-      chunks.push(chunk);
-      chunk = [];
-    }
-  }
-  if (chunk.length > 0) {
-    chunks.push(chunk);
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    console.log("SENDING CHUNK", i, chunk.length);
-    await Promise.all(
-      chunk.map((u) => {
-        console.log("PREPARING EMAIL", u.email);
-        if (LIVE && LIVE === "true") {
-          return sendFreeplanEmail(u);
-        } else {
-          return Promise.resolve();
-        }
-      })
-    );
-  }
-
-  process.exit(0);
-}
-
-await main();
+// async function main() {
+//   let users = await await XP1User.findAll();
+//
+//   console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
+//
+//   users.forEach((u) => {
+//     console.log("USER", u.id, u.email);
+//   });
+//
+//   // split users in chunks of 16
+//   let chunks = [];
+//   let chunk = [];
+//   for (let i = 0; i < users.length; i++) {
+//     chunk.push(users[i]);
+//     if (chunk.length === 16) {
+//       chunks.push(chunk);
+//       chunk = [];
+//     }
+//   }
+//   if (chunk.length > 0) {
+//     chunks.push(chunk);
+//   }
+//
+//   for (let i = 0; i < chunks.length; i++) {
+//     const chunk = chunks[i];
+//     console.log("SENDING CHUNK", i, chunk.length);
+//     await Promise.all(
+//       chunk.map((u) => {
+//         console.log("PREPARING EMAIL", u.email);
+//         if (LIVE && LIVE === "true") {
+//           return sendFreeplanEmail(u);
+//         } else {
+//           return Promise.resolve();
+//         }
+//       })
+//     );
+//   }
+//
+//   process.exit(0);
+// }
+//
+// await main();

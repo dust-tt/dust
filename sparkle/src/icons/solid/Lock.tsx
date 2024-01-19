@@ -11,7 +11,9 @@ const SvgLock = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M8 8a4 4 0 1 1 8 0h2A6 6 0 0 0 6 8v2H4v12h16V10H8V8Z"
+      fillRule="evenodd"
+      d="M18 8v2h2v12H4V10h2V8a6 6 0 1 1 12 0Zm-6-4a4 4 0 0 0-4 4v2h8V8a4 4 0 0 0-4-4Z"
+      clipRule="evenodd"
     />
   </svg>
 );

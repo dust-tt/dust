@@ -20,13 +20,13 @@ import type {
   ConnectorProvider,
   DataSourceType,
 } from "@dust-tt/types";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import { GEMINI_PRO_DEFAULT_MODEL_CONFIG } from "@dust-tt/types";
+import { GEMINI_PRO_DEFAULT_MODEL_CONFIG, isBuilder } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -59,15 +59,26 @@ import {
 } from "@app/components/assistant_builder/shared";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
+import type {
+  ActionMode,
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
+import {
+  ADVANCED_ACTION_MODES,
+  BASIC_ACTION_MODES,
+} from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -98,19 +109,6 @@ const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
   buildAvatarUrl(SPIRIT_AVATARS_BASE_PATH, f)
 );
 
-// Actions
-
-const BASIC_ACTION_MODES = ["GENERIC", "RETRIEVAL_SEARCH"] as const;
-const ADVANCED_ACTION_MODES = [
-  "RETRIEVAL_EXHAUSTIVE",
-  "DUST_APP_RUN",
-  "TABLES_QUERY",
-] as const;
-
-type ActionMode =
-  | (typeof BASIC_ACTION_MODES)[number]
-  | (typeof ADVANCED_ACTION_MODES)[number];
-
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
   GENERIC: "No action",
   RETRIEVAL_SEARCH: "Search in data sources",
@@ -137,81 +135,12 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   webcrawler: { singular: "page", plural: "pages" },
 };
 
-export type AssistantBuilderDataSourceConfiguration = {
-  dataSource: DataSourceType;
-  selectedResources: Record<string, string>;
-  isSelectAll: boolean;
-};
-
-// DustAppRun Action
-
-export type AssistantBuilderDustAppConfiguration = {
-  app: AppType;
-};
-
-// Tables Query Action
-
-export type AssistantBuilderTableConfiguration = {
-  dataSourceId: string;
-  workspaceId: string;
-  tableId: string;
-};
-
-// Builder State
-
-type AssistantBuilderState = {
-  actionMode: ActionMode;
-  dataSourceConfigurations: Record<
-    string,
-    AssistantBuilderDataSourceConfiguration
-  >;
-  timeFrame: {
-    value: number;
-    unit: TimeframeUnit;
-  };
-  dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
-  tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
-  handle: string | null;
-  description: string | null;
-  scope: Exclude<AgentConfigurationScope, "global">;
-  instructions: string | null;
-  avatarUrl: string | null;
-  generationSettings: {
-    modelSettings: SupportedModel;
-    temperature: number;
-  };
-};
-
-// initial state is like the state, but:
-// - doesn't allow null handle/description/instructions
-// - allows null timeFrame
-// - allows null dataSourceConfigurations
-export type AssistantBuilderInitialState = {
-  actionMode: AssistantBuilderState["actionMode"];
-  dataSourceConfigurations:
-    | AssistantBuilderState["dataSourceConfigurations"]
-    | null;
-  timeFrame: AssistantBuilderState["timeFrame"] | null;
-  dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
-  tablesQueryConfiguration: AssistantBuilderState["tablesQueryConfiguration"];
-  handle: string;
-  description: string;
-  scope: Exclude<AgentConfigurationScope, "global">;
-  instructions: string;
-  avatarUrl: string | null;
-  generationSettings: {
-    modelSettings: SupportedModel;
-    temperature: number;
-  } | null;
-};
-
 export const BUILDER_FLOWS = [
   "workspace_assistants",
   "personal_assistants",
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 type AssistantBuilderProps = {
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -261,7 +190,6 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 };
 
 export default function AssistantBuilder({
-  user,
   owner,
   subscription,
   plan,
@@ -356,11 +284,13 @@ export default function AssistantBuilder({
       channelName: string;
     }[]
   >([]);
+
   // Retrieve all the slack channels that are linked with an agent.
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
       dataSourceName: slackDataSource?.name ?? undefined,
+      disabled: !isBuilder(owner),
     });
   const [slackChannelsInitialized, setSlackChannelsInitialized] =
     useState(false);
@@ -730,14 +660,14 @@ export default function AssistantBuilder({
         isOpen={showTableModal}
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
-        dataSources={configurableDataSources}
+        dataSources={dataSources}
         onSave={(t) => {
           setEdited(true);
           setBuilderState((state) => ({
             ...state,
             tablesQueryConfiguration: {
               ...state.tablesQueryConfiguration,
-              [`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`]: t,
+              [tableKey(t)]: t,
             },
           }));
         }}
@@ -760,11 +690,10 @@ export default function AssistantBuilder({
       <AppLayout
         subscription={subscription}
         hideSidebar
-        user={user}
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"
-        subNavigation={subNavigationAssistants({
+        subNavigation={subNavigationBuild({
           owner,
           current: "workspace_assistants",
         })}
@@ -1285,7 +1214,7 @@ export default function AssistantBuilder({
           <div className="flex flex-row items-start">
             <div className="flex flex-col gap-4">
               {slackDataSource &&
-                ["builder", "admin"].includes(owner.role) &&
+                isBuilder(owner) &&
                 builderState.scope !== "private" &&
                 initialBuilderState?.scope !== "private" && (
                   <SlackIntegration
@@ -1459,7 +1388,7 @@ function SlackIntegration({
           <Button
             labelVisible={true}
             label={"Select channels"}
-            variant={"primary"}
+            variant={"secondary"}
             icon={PlusIcon}
             onClick={openModal}
           />

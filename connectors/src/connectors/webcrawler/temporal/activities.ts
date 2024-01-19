@@ -1,11 +1,21 @@
 import type { ModelId } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
-import { stableIdForUrl } from "@connectors/connectors/webcrawler/lib/utils";
+import {
+  getAllFoldersForUrl,
+  getFolderForUrl,
+  getParentsForPage,
+  isTopFolder,
+  stableIdForUrl,
+} from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertToDatasource } from "@connectors/lib/data_sources";
+import {
+  MAX_DOCUMENT_TXT_LEN,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
@@ -16,10 +26,11 @@ import {
   reportInitialSyncProgress,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
+import logger from "@connectors/logger/logger";
 
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
-const CONCURRENCY = 10;
+const CONCURRENCY = 4;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
@@ -37,7 +48,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
-  let errorCount = 0;
+  let crawlingError = 0;
+  let upsertingError = 0;
   const createdFolders = new Set<string>();
 
   const crawler = new CheerioCrawler(
@@ -49,24 +61,31 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         Context.current().heartbeat({
           type: "http_request",
         });
-        const extracted = new turndown()
-          .remove(["style", "script", "iframe"])
-          .turndown($.html());
-
-        const pageTitle = $("title").text();
-
         await enqueueLinks({
           userData: {
             depth: request.userData.depth ? request.userData.depth + 1 : 1,
           },
           transformRequestFunction: (req) => {
             if (request.userData.depth > MAX_DEPTH) {
-              console.log("reached max depth");
+              logger.info(
+                {
+                  depth: request.userData.depth,
+                  url: request.url,
+                  connectorId: connector.id,
+                  configId: webCrawlerConfig.id,
+                },
+                "reached max depth"
+              );
               return false;
             }
             return req;
           },
         });
+        const extracted = new turndown()
+          .remove(["style", "script", "iframe"])
+          .turndown($.html());
+
+        const pageTitle = $("title").text();
 
         const folders = getAllFoldersForUrl(request.url);
         for (const folder of folders) {
@@ -74,8 +93,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             continue;
           }
 
-          const logicalParent =
-            folder === webCrawlerConfig.url ? null : getFolderForUrl(folder);
+          const logicalParent = isTopFolder(request.url)
+            ? null
+            : getFolderForUrl(folder);
           await WebCrawlerFolder.upsert({
             url: folder,
             parentUrl: logicalParent,
@@ -86,52 +106,80 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               ressourceType: "folder",
             }),
           });
+
           createdFolders.add(folder);
         }
         const documentId = stableIdForUrl({
           url: request.url,
           ressourceType: "file",
         });
-        const logicalParent =
-          request.url === webCrawlerConfig.url
-            ? null
-            : getFolderForUrl(request.url);
+
         await WebCrawlerPage.upsert({
           url: request.url,
-          parentUrl: logicalParent,
+          parentUrl: isTopFolder(request.url)
+            ? null
+            : getFolderForUrl(request.url),
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
           documentId: documentId,
           title: pageTitle,
         });
 
-        await upsertToDatasource({
-          dataSourceConfig,
-          documentId: documentId,
-          documentContent: {
-            prefix: pageTitle,
-            content: extracted,
-            sections: [],
-          },
-          documentUrl: request.url,
-          timestampMs: new Date().getTime(),
-          tags: [`title:${pageTitle.substring(0, 300)}`],
-          parents: [documentId].concat(
-            folders.map((x) =>
-              stableIdForUrl({ url: x, ressourceType: "folder" })
-            )
-          ),
-          upsertContext: {
-            sync_type: "batch",
-          },
+        Context.current().heartbeat({
+          type: "upserting",
         });
 
-        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
+        try {
+          if (
+            extracted.length > 0 &&
+            extracted.length <= MAX_DOCUMENT_TXT_LEN
+          ) {
+            await upsertToDatasource({
+              dataSourceConfig,
+              documentId: documentId,
+              documentContent: formatDocumentContent({
+                title: pageTitle,
+                content: extracted,
+                url: request.url,
+              }),
+              documentUrl: request.url,
+              timestampMs: new Date().getTime(),
+              tags: [`title:${pageTitle}`],
+              parents: getParentsForPage(request.url, false),
+              upsertContext: {
+                sync_type: "batch",
+              },
+            });
+          } else {
+            logger.info(
+              {
+                documentId,
+                connectorId,
+                configId: webCrawlerConfig.id,
+                documentLen: extracted.length,
+                title: pageTitle,
+              },
+              `Document is empty or too big to be upserted. Skipping`
+            );
+            return;
+          }
+        } catch (e) {
+          upsertingError++;
+          logger.error(
+            {
+              error: e,
+              connectorId: connector.id,
+              configId: webCrawlerConfig.id,
+            },
+            "Webcrawler error while upserting document"
+          );
+        }
 
         pageCount++;
+        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
       },
       failedRequestHandler: async () => {
-        errorCount++;
+        crawlingError++;
       },
     },
     new Configuration({
@@ -141,40 +189,42 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   await crawler.run([webCrawlerConfig.url]);
+
+  await crawler.teardown();
+
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
   }
+  if (upsertingError > 0) {
+    throw new Error(
+      `Webcrawler failed whlie upserting documents to Dust. Error count: ${upsertingError}`
+    );
+  }
 
-  await crawler.teardown();
   return {
     pageCount,
-    errorCount,
+    crawlingError,
   };
 }
+function formatDocumentContent({
+  title,
+  content,
+  url,
+}: {
+  title: string;
+  content: string;
+  url: string;
+}): CoreAPIDataSourceDocumentSection {
+  const URL_MAX_LENGTH = 128;
+  const TITLE_MAX_LENGTH = 300;
+  const parsedUrl = new URL(url);
+  const urlWithoutQuery = `${parsedUrl.origin}/${parsedUrl.pathname}`;
 
-// Returns all parent folders for a given url
-// eg: https://example.com/a/b/c -> [https://example.com/a/b, https://example.com/a, https://example.com/]
-export function getAllFoldersForUrl(url: string) {
-  const parents: string[] = [];
-
-  let parent: string | null = null;
-  while ((parent = getFolderForUrl(url))) {
-    parents.push(parent);
-    url = parent;
-  }
-
-  return parents;
-}
-
-// Returns the parent folder for a given url
-// eg: https://example.com/foo/bar -> https://example.com/foo
-// eg: https://example.com/foo -> https://example.com/
-export function getFolderForUrl(url: string) {
-  const parsed = new URL(url);
-  const urlParts = parsed.pathname.split("/").filter((part) => part.length > 0);
-  if (parsed.pathname === "/") {
-    return null;
-  } else {
-    return `${parsed.origin}/${urlParts.slice(0, -1).join("/")}`;
-  }
+  return {
+    prefix: `URL: ${urlWithoutQuery.slice(0, URL_MAX_LENGTH)}${
+      urlWithoutQuery.length > URL_MAX_LENGTH ? "..." : ""
+    }\n`,
+    content: `TITLE: ${title.substring(0, TITLE_MAX_LENGTH)}\n${content}`,
+    sections: [],
+  };
 }

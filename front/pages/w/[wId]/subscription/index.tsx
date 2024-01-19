@@ -7,7 +7,7 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -18,7 +18,7 @@ import { PricePlans } from "@app/components/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_TEST_PLAN_CODE,
@@ -31,14 +31,12 @@ import { getPlanInvitation } from "@app/lib/plans/subscription";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -56,7 +54,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       planInvitation: planInvitation,
@@ -66,7 +63,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function Subscription({
-  user,
   owner,
   subscription,
   planInvitation,
@@ -183,7 +179,6 @@ export default function Subscription({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"

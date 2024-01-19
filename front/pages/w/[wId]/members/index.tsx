@@ -16,6 +16,7 @@ import {
 import type {
   RoleType,
   UserType,
+  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -31,7 +32,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -41,7 +42,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 const CLOSING_ANIMATION_DURATION = 200;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -49,15 +50,16 @@ export const getServerSideProps: GetServerSideProps<{
   workspaceVerifiedDomain: WorkspaceDomain | null;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
   const plan = auth.plan();
   const owner = auth.workspace();
+  const user = auth.user();
   const subscription = auth.subscription();
-  if (!owner || !auth.isAdmin() || !plan || !subscription) {
+
+  if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -95,7 +97,6 @@ export default function WorkspaceAdmin({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="admin"
@@ -195,9 +196,8 @@ export default function WorkspaceAdmin({
      * only 1 state for both would break the modal animation because rerendering
      * at the same time than switching modal to open*/
     const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
-    const [changeRoleMember, setChangeRoleMember] = useState<UserType | null>(
-      null
-    );
+    const [changeRoleMember, setChangeRoleMember] =
+      useState<UserTypeWithWorkspaces | null>(null);
     /* Same for invitations modal */
     const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
       useState(false);
@@ -211,7 +211,7 @@ export default function WorkspaceAdmin({
     }
 
     const displayedMembersAndInvitations: (
-      | UserType
+      | UserTypeWithWorkspaces
       | MembershipInvitationType
     )[] = [
       ...members
@@ -304,7 +304,7 @@ export default function WorkspaceAdmin({
           </div>
           <div className="s-w-full">
             {displayedMembersAndInvitations.map(
-              (item: UserType | MembershipInvitationType) => (
+              (item: UserTypeWithWorkspaces | MembershipInvitationType) => (
                 <div
                   key={
                     isInvitation(item)
@@ -313,7 +313,7 @@ export default function WorkspaceAdmin({
                   }
                   className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
                   onClick={() => {
-                    if (user?.id === item.id) return; // no action on self
+                    if (user.id === item.id) return; // no action on self
                     if (isInvitation(item)) setInvitationToRevoke(item);
                     else setChangeRoleMember(item);
                     /* Delay to let react re-render the modal before opening it otherwise no animation transition */
@@ -339,7 +339,7 @@ export default function WorkspaceAdmin({
                     {!isInvitation(item) && (
                       <div className="font-medium text-element-900">
                         {item.fullName}
-                        {user?.id === item.id && " (you)"}
+                        {user.id === item.id && " (you)"}
                       </div>
                     )}
 
@@ -369,7 +369,7 @@ export default function WorkspaceAdmin({
                       visual={ChevronRightIcon}
                       className={classNames(
                         "text-element-600",
-                        user?.id === item.id ? "invisible" : ""
+                        user.id === item.id ? "invisible" : ""
                       )}
                     />
                   </div>
@@ -411,14 +411,14 @@ function InviteEmailModal({
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  members: UserType[];
+  members: UserTypeWithWorkspaces[];
 }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
   // when set, the modal to reinvite a user that was revoked will be shown
   const [existingRevokedUser, setExistingRevokedUser] =
-    useState<UserType | null>(null);
+    useState<UserTypeWithWorkspaces | null>(null);
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
@@ -516,7 +516,7 @@ function ReinviteUserModal({
   user,
 }: {
   onClose: (show: boolean) => void;
-  user: UserType | null;
+  user: UserTypeWithWorkspaces | null;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
@@ -730,7 +730,7 @@ async function handleMemberRoleChange({
   mutate,
   sendNotification,
 }: {
-  member: UserType;
+  member: UserTypeWithWorkspaces;
   role: RoleType;
   mutate: any;
   sendNotification: any;
@@ -770,7 +770,7 @@ function ChangeMemberModal({
 }: {
   showModal: boolean;
   onClose: () => void;
-  member: UserType | null;
+  member: UserTypeWithWorkspaces | null;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);

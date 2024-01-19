@@ -1,9 +1,14 @@
-import type { RoleType, UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  RoleType,
+  UserType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, isAdmin, isBuilder, isUser, Ok } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -279,33 +284,15 @@ export class Authenticator {
   }
 
   isUser(): boolean {
-    switch (this._role) {
-      case "admin":
-      case "builder":
-      case "user":
-        return true;
-      default:
-        return false;
-    }
+    return isUser(this.workspace());
   }
 
   isBuilder(): boolean {
-    switch (this._role) {
-      case "admin":
-      case "builder":
-        return true;
-      default:
-        return false;
-    }
+    return isBuilder(this.workspace());
   }
 
   isAdmin(): boolean {
-    switch (this._role) {
-      case "admin":
-        return true;
-      default:
-        return false;
-    }
+    return isAdmin(this.workspace());
   }
 
   workspace(): WorkspaceType | null {
@@ -338,7 +325,7 @@ export class Authenticator {
    * object won't have the user's workspaces set.
    * @returns
    */
-  user(): UserType | null {
+  user(): (UserType & { workspaces: null }) | null {
     return this._user
       ? {
           id: this._user.id,
@@ -353,7 +340,7 @@ export class Authenticator {
           lastName: this._user.lastName || null,
           // Not available from this method
           image: null,
-          workspaces: [],
+          workspaces: null,
         }
       : null;
   }
@@ -383,7 +370,7 @@ export async function getSession(
  */
 export async function getUserFromSession(
   session: any
-): Promise<UserType | null> {
+): Promise<UserTypeWithWorkspaces | null> {
   if (!session) {
     return null;
   }

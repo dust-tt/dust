@@ -3,7 +3,7 @@ name: Run DangerJS
 on:
   pull_request:
     branches: [ main ]
-    types: [ labeled, opened, pushed reopened, synchronize ]
+    types: [ edited, labeled, opened, pushed reopened, synchronize ]
 
 jobs:
   danger-front:

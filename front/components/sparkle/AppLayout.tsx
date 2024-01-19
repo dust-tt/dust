@@ -6,8 +6,7 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
+import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
@@ -15,24 +14,24 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
-import { Fragment, useState } from "react";
-import React from "react";
+import React, { Fragment, useState } from "react";
 
+import type {
+  SidebarNavigation,
+  TopNavigationId,
+} from "@app/components/sparkle/navigation";
+import { topNavigation } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
-import type { SidebarNavigation, TopNavigationId } from "./navigation";
-import { topNavigation } from "./navigation";
-
 function NavigationBar({
-  user,
   owner,
   subscription,
   topNavigationCurrent,
   subNavigation,
   children,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   topNavigationCurrent: TopNavigationId;
@@ -41,6 +40,7 @@ function NavigationBar({
 }) {
   const router = useRouter();
   const nav = topNavigation({ owner, current: topNavigationCurrent });
+  const { user } = useUser();
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
@@ -116,7 +116,7 @@ function NavigationBar({
           </div>
         )}
         {subNavigation && (
-          <>
+          <div className="pt-3">
             {subNavigation.map((nav) => {
               return (
                 <div key={nav.id} className="grow py-1 pl-4 pr-3">
@@ -125,6 +125,7 @@ function NavigationBar({
                       <Item.SectionHeader
                         label={nav.label}
                         variant={nav.variant}
+                        className="!pt-4"
                       />
                     )}
                     {nav.menus.map((menu) => {
@@ -165,7 +166,7 @@ function NavigationBar({
                 </div>
               );
             })}
-          </>
+          </div>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
@@ -174,7 +175,6 @@ function NavigationBar({
 }
 
 export default function AppLayout({
-  user,
   owner,
   subscription,
   isWideMode = false,
@@ -187,7 +187,6 @@ export default function AppLayout({
   titleChildren,
   children,
 }: {
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isWideMode?: boolean;
@@ -311,7 +310,6 @@ export default function AppLayout({
                     </Transition.Child>
                     <NavigationBar
                       subscription={subscription}
-                      user={user}
                       owner={owner}
                       subNavigation={subNavigation}
                       topNavigationCurrent={topNavigationCurrent}
@@ -328,7 +326,6 @@ export default function AppLayout({
         {!hideSidebar && (
           <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
             <NavigationBar
-              user={user}
               owner={owner}
               subscription={subscription}
               subNavigation={subNavigation}

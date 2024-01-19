@@ -138,7 +138,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "b4f205e453",
       appHash:
-        "6e94a4b27c7243e1f8cd49617b8b76679a8462001ba2752b575a0f8bc1390d17",
+        "5f814f091a270cc56e2120a21dbf5fba7b64360868cc2dea1da53af3a2b9cc3b",
     },
     config: {
       MODEL: {

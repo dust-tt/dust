@@ -3,13 +3,14 @@ import {
   Button,
   CheckCircleIcon,
   ClipboardCheckIcon,
+  Icon,
   IconButton,
   LinkStrokeIcon,
   Page,
   PencilSquareIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -21,16 +22,15 @@ import { Fragment, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   schema: EventSchemaType;
@@ -38,14 +38,14 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
   );
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !subscription) {
+
+  if (!owner || !subscription || !auth.isUser()) {
     return {
       notFound: true,
     };
@@ -63,7 +63,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       schema,
@@ -74,7 +73,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function AppExtractEventsReadData({
-  user,
   owner,
   subscription,
   schema,
@@ -135,11 +133,10 @@ export default function AppExtractEventsReadData({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({ owner, current: "extract" })}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({ owner, current: "extract" })}
     >
       <Page.Header
         title="Extract"
@@ -290,13 +287,13 @@ const EventProperties = ({ event }: { event: ExtractedEventType }) => {
 const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
   let providerLogo = null;
   if (event.dataSourceName.includes("notion")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.notion.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.notion.logoComponent;
   } else if (event.dataSourceName.includes("google_drive")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.google_drive.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.google_drive.logoComponent;
   } else if (event.dataSourceName.includes("github")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.github.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.github.logoComponent;
   } else if (event.dataSourceName.includes("slack")) {
-    providerLogo = CONNECTOR_CONFIGURATIONS.slack.logoPath;
+    providerLogo = CONNECTOR_CONFIGURATIONS.slack.logoComponent;
   }
 
   return (
@@ -308,11 +305,7 @@ const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
             target="_blank"
             className="block h-5 w-5"
           >
-            <img
-              className="block h-5 w-5"
-              src={providerLogo}
-              alt="Link to source document"
-            />
+            <Icon visual={providerLogo} size="sm" />
           </a>
         </div>
       ) : (

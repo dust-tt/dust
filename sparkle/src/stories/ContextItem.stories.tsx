@@ -8,7 +8,6 @@ import {
   Avatar,
   Button,
   Chip,
-  CloudArrowDownIcon,
   Cog6ToothIcon,
   ContextItem,
   Icon,
@@ -26,35 +25,30 @@ export default meta;
 
 export const ListItemExample = () => (
   <div>
-    <ContextItem.List hasBorder>
+    <ContextItem.List>
+      <ContextItem.SectionHeader
+        title="Connected platforms"
+        description="Platforms connected"
+      />
       <ContextItem
         title="Notion"
         visual={<ContextItem.Visual visual={Notion} />}
-        action={
-          <Button
-            variant="primary"
-            label="Activate"
-            size="sm"
-            icon={CloudArrowDownIcon}
-          />
-        }
+        onClick={() => console.log("clicked item")}
       >
         <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
       </ContextItem>
       <ContextItem
         title="Drive"
         visual={<ContextItem.Visual visual={Drive} />}
-        action={
-          <Button
-            variant="secondary"
-            label="Manage"
-            size="sm"
-            icon={Cog6ToothIcon}
-          />
-        }
+        onClick={() => console.log("clicked")}
       >
         <ContextItem.Description description="Hello you" />
       </ContextItem>
+
+      <ContextItem.SectionHeader
+        title="Connected platforms"
+        description="Platforms connected"
+      />
       <ContextItem
         title="Slack"
         visual={<ContextItem.Visual visual={Slack} />}
@@ -96,7 +90,7 @@ export const ListItemExample = () => (
       </ContextItem>
       <ContextItem
         title="@Gpt4"
-        action={<SliderToggle size="md" />}
+        action={<SliderToggle size="sm" />}
         visual={
           <Avatar
             visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"

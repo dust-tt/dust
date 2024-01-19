@@ -1,15 +1,21 @@
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Robot } from "@sparkle/icons/solid";
-
 import {
   Avatar,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ClipboardIcon,
   DropdownMenu,
+  ListAddIcon,
+  ListRemoveIcon,
+  LockIcon,
+  PencilSquareIcon,
   PlanetIcon,
+  RobotIcon,
   SliderToggle,
+  TrashIcon,
+  UserGroupIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -29,12 +35,51 @@ export const DropdownExample = () => {
   return (
     <>
       <div className="s-flex s-gap-6">
-        <div className="s-text-sm">Workspace</div>
+        <div className="s-text-sm">Action</div>
         <DropdownMenu>
-          <DropdownMenu.Button label="Dust" />
-          <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+          <DropdownMenu.Button label="Action" />
+          <DropdownMenu.Items width={220}>
+            <DropdownMenu.SectionHeader label="Edition" />
+            <DropdownMenu.Item label="Edit" href="#" icon={PencilSquareIcon} />
+            <DropdownMenu.Item
+              label="Duplicate (New)"
+              href="#"
+              icon={ClipboardIcon}
+            />
+            <DropdownMenu.Item
+              label="Archive"
+              href="#"
+              icon={TrashIcon}
+              variant="warning"
+            />
+            <DropdownMenu.SectionHeader label="Sharing" />
+            <DropdownMenu.Item
+              label="Company Assistant"
+              href="#"
+              icon={PlanetIcon}
+            />
+            <DropdownMenu.Item
+              label="Shared Assistant"
+              href="#"
+              selected
+              icon={UserGroupIcon}
+            />
+            <DropdownMenu.Item
+              label="Personal Assistant"
+              href="#"
+              icon={LockIcon}
+            />
+            <DropdownMenu.SectionHeader label="My Assistants" />
+            <DropdownMenu.Item
+              label="Add to my list"
+              href="#"
+              icon={ListAddIcon}
+            />
+            <DropdownMenu.Item
+              label="Remove from my list"
+              href="#"
+              icon={ListRemoveIcon}
+            />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -189,7 +234,7 @@ export const DropdownExample = () => {
       <div className="s-flex s-gap-6">
         <div className="s-text-sm">With custom menu</div>
         <DropdownMenu>
-          <DropdownMenu.Button icon={Robot} />
+          <DropdownMenu.Button icon={RobotIcon} />
           <DropdownMenu.Items origin="topRight">
             <div className="s-flex s-flex-col s-gap-2 s-p-3">
               testing custom stuff
@@ -203,7 +248,7 @@ export const DropdownExample = () => {
       <div className="s-flex s-gap-6">
         <div className="s-text-sm">With visuals in items</div>
         <DropdownMenu>
-          <DropdownMenu.Button icon={Robot} />
+          <DropdownMenu.Button icon={RobotIcon} />
           <DropdownMenu.Items origin="topRight">
             <DropdownMenu.Item
               label="@gpt4"

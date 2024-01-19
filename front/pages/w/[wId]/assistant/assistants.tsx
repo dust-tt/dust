@@ -18,13 +18,12 @@ import {
   UserIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type { SubscriptionType } from "@dust-tt/types";
 import type {
   AgentUserListStatus,
   LightAgentConfigurationType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useContext, useState } from "react";
@@ -37,12 +36,8 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  subNavigationAssistants,
-  subNavigationConversations,
-} from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
@@ -53,7 +48,6 @@ const PERSONAL_ASSISTANTS_VIEWS = ["personal", "workspace"] as const;
 export type PersonalAssitsantsView = (typeof PERSONAL_ASSISTANTS_VIEWS)[number];
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   view: PersonalAssitsantsView;
@@ -61,7 +55,6 @@ export const getServerSideProps: GetServerSideProps<{
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
 
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -69,7 +62,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !user || !auth.isUser() || !subscription) {
+  if (!owner || !auth.isUser() || !subscription) {
     return {
       notFound: true,
     };
@@ -83,7 +76,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       view,
@@ -93,7 +85,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function PersonalAssistants({
-  user,
   owner,
   subscription,
   view,
@@ -185,27 +176,11 @@ export default function PersonalAssistants({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent={
-        owner.role === "user" ? "conversations" : "assistants"
-      }
-      subNavigation={
-        owner.role === "user"
-          ? subNavigationConversations({
-              owner,
-              current: "personal_assistants",
-            })
-          : subNavigationAssistants({
-              owner,
-              current: "personal_assistants",
-            })
-      }
+      topNavigationCurrent="conversations"
       navChildren={
-        owner.role === "user" && (
-          <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
-        )
+        <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
       }
     >
       {showDetails && (
@@ -381,7 +356,7 @@ export default function PersonalAssistants({
                               />
 
                               <SliderToggle
-                                size="sm"
+                                size="xs"
                                 onClick={async () => {
                                   await updateAgentUserListStatus(
                                     agent,

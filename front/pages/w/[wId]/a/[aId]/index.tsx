@@ -28,11 +28,11 @@ import SpecRunView from "@app/components/app/SpecRunView";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
-  subNavigationAdmin,
   subNavigationApp,
+  subNavigationBuild,
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import {
   addBlock,
@@ -54,7 +54,6 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -62,6 +61,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
+
   if (!owner || !subscription) {
     return {
       notFound: true,
@@ -80,7 +80,7 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
+      user: auth.user(),
       owner,
       subscription,
       readOnly,
@@ -313,11 +313,10 @@ export default function AppView({
     <AppLayout
       subscription={subscription}
       hideSidebar
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
-      subNavigation={subNavigationAdmin({
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({
         owner,
         current: "developers",
       })}

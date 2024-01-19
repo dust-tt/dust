@@ -220,6 +220,7 @@ DropdownMenu.Button = function ({
 };
 
 interface DropdownItemProps {
+  variant?: "default" | "warning";
   label: string;
   description?: string;
   href?: string;
@@ -227,11 +228,13 @@ interface DropdownItemProps {
   visual?: string | React.ReactNode;
   icon?: ComponentType;
   onClick?: () => void;
+  selected?: boolean;
   hasChildren?: boolean;
   children?: React.ReactNode;
 }
 
 DropdownMenu.Item = function ({
+  variant = "default",
   label,
   description,
   href,
@@ -241,12 +244,13 @@ DropdownMenu.Item = function ({
   onClick,
   hasChildren,
   children,
+  selected = false,
 }: DropdownItemProps) {
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
     <Menu.Item disabled={disabled} as="div">
       {hasChildren ? (
-        <DropdownMenu className="s-w-full s-gap-x-2 s-px-4 s-py-2">
+        <DropdownMenu className="s-w-full s-gap-x-2 s-py-2">
           <DropdownMenu.Button
             label={label}
             type="submenu"
@@ -256,15 +260,38 @@ DropdownMenu.Item = function ({
         </DropdownMenu>
       ) : (
         <StandardItem.Dropdown
-          className="s-w-full s-px-4"
+          style={variant}
+          className="s-w-full"
           href={href}
           onClick={onClick}
           label={label}
           visual={visual}
           icon={icon}
           description={description}
+          selected={selected}
         />
       )}
+    </Menu.Item>
+  );
+};
+
+interface DropdownSectionHeaderProps {
+  label: string;
+}
+
+DropdownMenu.SectionHeader = function ({ label }: DropdownSectionHeaderProps) {
+  return (
+    // need to use as="div" -- otherwise we get a "forwardRef" error in the console
+    <Menu.Item as="div">
+      <div
+        className={classNames(
+          "s-w-full",
+          "s-text-element-600 dark:s-text-element-600-dark",
+          "s-pb-3 s-pt-4 s-text-xs s-font-medium s-uppercase"
+        )}
+      >
+        {label}
+      </div>
     </Menu.Item>
   );
 };
@@ -352,7 +379,7 @@ DropdownMenu.Items = function ({
       <Menu.Items
         className={`s-absolute s-z-10 ${getOriginClass(
           origin
-        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-py-1 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
+        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-px-5 s-py-1.5 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
         style={styleInsert(origin, marginLeft)}
       >
         <StandardItem.List>{children}</StandardItem.List>

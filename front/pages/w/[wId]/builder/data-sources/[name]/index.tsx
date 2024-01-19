@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Cog6ToothIcon,
   ContextItem,
   DocumentTextIcon,
@@ -10,13 +9,14 @@ import {
   PencilSquareIcon,
   PlusIcon,
   Popup,
+  ServerIcon,
   SlackLogo,
   SliderToggle,
+  Tab,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -31,18 +31,20 @@ import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
+import { tableKey } from "@app/lib/client/tables_query";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
-import { useConnectorBotEnabled, useDocuments } from "@app/lib/swr";
+import { useConnectorBotEnabled, useDocuments, useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -58,7 +60,6 @@ const {
 } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -79,7 +80,6 @@ export const getServerSideProps: GetServerSideProps<{
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -88,6 +88,7 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+
   if (!owner || !plan || !subscription) {
     return {
       notFound: true,
@@ -121,7 +122,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       plan,
@@ -159,8 +159,8 @@ function StandardDataSourceView({
   const [currentTab, setCurrentTab] = useState("Documents");
 
   useEffect(() => {
-    if (router.query.tab === "databases") {
-      setCurrentTab("Databases");
+    if (router.query.tab === "tables") {
+      setCurrentTab("Tables");
       const newQuery = { ...router.query };
       delete newQuery.tab;
       void router.replace(
@@ -183,7 +183,7 @@ function StandardDataSourceView({
           title={dataSource.name}
           description={
             isActivatedSDB
-              ? "Use this page to view and upload documents and databases to your Folder."
+              ? "Use this page to view and upload documents and tables to your Folder."
               : "Use this page to view and upload documents to your Folder."
           }
           action={
@@ -202,10 +202,41 @@ function StandardDataSourceView({
           }
         />
 
+        {isActivatedSDB && (
+          <Tab
+            tabs={[
+              {
+                label: "Documents",
+                current: currentTab === "Documents",
+              },
+              {
+                label: "Tables",
+                current: currentTab === "Tables",
+              },
+            ]}
+            onTabClick={(tab) => {
+              if (tab === currentTab) return;
+              if (tab === "Documents") {
+                setCurrentTab("Documents");
+              } else if (tab === "Tables") {
+                setCurrentTab("Tables");
+              }
+            }}
+          />
+        )}
+
         {currentTab === "Documents" && (
           <DatasourceDocumentsTabView
             owner={owner}
             plan={plan}
+            readOnly={readOnly}
+            dataSource={dataSource}
+            router={router}
+          />
+        )}
+        {currentTab === "Tables" && (
+          <DatasourceTablesTabView
+            owner={owner}
             readOnly={readOnly}
             dataSource={dataSource}
             router={router}
@@ -399,6 +430,111 @@ function DatasourceDocumentsTabView({
   );
 }
 
+function DatasourceTablesTabView({
+  owner,
+  readOnly,
+  dataSource,
+  router,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  dataSource: DataSourceType;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const { tables } = useTables({
+    workspaceId: owner.sId,
+    dataSourceName: dataSource.name,
+  });
+
+  return (
+    <>
+      <Page.Vertical align="stretch">
+        <div className="mt-16 flex flex-row">
+          <div className="flex flex-1">
+            <div className="flex flex-col">
+              <div className="flex flex-row">
+                <div className="flex flex-initial gap-x-2">
+                  <Button variant="tertiary" disabled={true} label="Previous" />
+                  <Button variant="tertiary" label="Next" disabled={true} />
+                </div>
+              </div>
+            </div>
+          </div>
+          {readOnly ? null : (
+            <div className="">
+              <div className="relative mt-0 flex-none">
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Add table"
+                  onClick={() => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/tables/upsert`
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="py-8">
+          <ContextItem.List>
+            {tables.map((t) => (
+              <ContextItem
+                key={tableKey({
+                  workspaceId: owner.sId,
+                  tableId: t.table_id,
+                  dataSourceId: dataSource.name,
+                })}
+                title={`${t.name} (${t.data_source_id})`}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      ServerIcon({
+                        className: className + " text-element-600",
+                      })
+                    }
+                  />
+                }
+                action={
+                  <Button.List>
+                    <Button
+                      variant="secondary"
+                      icon={PencilSquareIcon}
+                      onClick={() => {
+                        void router.push(
+                          `/w/${owner.sId}/builder/data-sources/${
+                            dataSource.name
+                          }/tables/upsert?tableId=${encodeURIComponent(
+                            t.table_id
+                          )}`
+                        );
+                      }}
+                      label="Edit"
+                      labelVisible={false}
+                    />
+                  </Button.List>
+                }
+              ></ContextItem>
+            ))}
+          </ContextItem.List>
+          {tables.length == 0 ? (
+            <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+              <p>No tables found for this Folder.</p>
+              <p className="mt-2">
+                Tables let you create assistants that can query structured data
+                from uploaded CSV files. You can add tables manually by clicking
+                on the &quot;Add&nbsp;database&quot; button.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </Page.Vertical>
+    </>
+  );
+}
+
 function SlackBotEnableView({
   owner,
   readOnly,
@@ -456,7 +592,7 @@ function SlackBotEnableView({
         action={
           <div className="relative">
             <SliderToggle
-              size="sm"
+              size="xs"
               onClick={async () => {
                 if (!plan.limits.assistant.isSlackBotAllowed)
                   setShowNoSlackBotPopup(true);
@@ -537,9 +673,6 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [synchronizedTimeAgo, setSynchronizedTimeAgo] = useState<string | null>(
-    null
-  );
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -562,11 +695,6 @@ function ManagedDataSourceView({
         .catch(console.error);
     }
   }, [dataSource.name, owner.sId, router]);
-
-  useEffect(() => {
-    if (connector.lastSyncSuccessfulTime)
-      setSynchronizedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
-  }, [connector.lastSyncSuccessfulTime]);
 
   const handleUpdatePermissions = async () => {
     if (!connector) {
@@ -682,7 +810,7 @@ function ManagedDataSourceView({
               case "intercom":
                 return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
               case "webcrawler":
-                return `Manage public URL`;
+                return `Manage Website`;
 
               default:
                 assertNever(connectorProvider);
@@ -691,30 +819,7 @@ function ManagedDataSourceView({
           icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
         />
         <div className="pt-2">
-          {(() => {
-            if (connector.errorType) {
-              return (
-                <Chip color="warning">
-                  Oops! It seems that our access to your account has been
-                  revoked. Please re-authorize this Data Source to keep your
-                  data up to date on Dust.
-                </Chip>
-              );
-            } else if (!connector.lastSyncSuccessfulTime) {
-              return (
-                <Chip color="amber" isBusy>
-                  Synchronizing
-                  {connector?.firstSyncProgress
-                    ? ` (${connector?.firstSyncProgress})`
-                    : null}
-                </Chip>
-              );
-            } else {
-              return (
-                <Chip color="slate">Last Sync ~ {synchronizedTimeAgo} ago</Chip>
-              );
-            }
-          })()}
+          <ConnectorSyncingChip connector={connector} />
         </div>
 
         {isAdmin && (
@@ -826,7 +931,6 @@ function ManagedDataSourceView({
 }
 
 export default function DataSourceView({
-  user,
   owner,
   subscription,
   plan,
@@ -844,11 +948,10 @@ export default function DataSourceView({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationAssistants({
+      subNavigation={subNavigationBuild({
         owner,
         current: dataSource.connectorId
           ? "data_sources_managed"
@@ -859,7 +962,15 @@ export default function DataSourceView({
           title={`Manage ${dataSource.connectorId ? "Connection" : "Folder"}`}
           onClose={() => {
             if (dataSource.connectorId) {
-              void router.push(`/w/${owner.sId}/builder/data-sources/managed`);
+              if (dataSource.connectorProvider === "webcrawler") {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/public-urls`
+                );
+              } else {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/managed`
+                );
+              }
             } else {
               void router.push(`/w/${owner.sId}/builder/data-sources/static`);
             }

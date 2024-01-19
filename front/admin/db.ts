@@ -34,8 +34,6 @@ import {
   UserMetadata,
   Workspace,
   WorkspaceHasDomain,
-  XP1Run,
-  XP1User,
 } from "@app/lib/models";
 import {
   AgentTablesQueryAction,
@@ -97,9 +95,6 @@ async function main() {
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
-
-  await XP1User.sync({ alter: true });
-  await XP1Run.sync({ alter: true });
 
   process.exit(0);
 }

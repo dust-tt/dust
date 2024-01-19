@@ -11,6 +11,7 @@ type ContextItemProps = {
   subElement?: ReactNode;
   title: ReactNode;
   visual: ReactNode;
+  onClick?: () => void;
 };
 
 export function ContextItem({
@@ -20,6 +21,7 @@ export function ContextItem({
   subElement,
   title,
   visual,
+  onClick,
 }: ContextItemProps) {
   return (
     <div
@@ -28,7 +30,15 @@ export function ContextItem({
         "s-flex s-w-full s-flex-col"
       )}
     >
-      <div className="s-flex s-flex-row s-gap-3 s-px-2 s-py-4">
+      <div
+        className={classNames(
+          "s-flex s-flex-row s-items-center s-gap-3 s-px-4 s-py-2",
+          onClick
+            ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 active:s-bg-structure-100"
+            : ""
+        )}
+        onClick={onClick}
+      >
         <div className="s-flex">{visual}</div>
         <div className="s-flex s-grow s-flex-col s-gap-1">
           <div className="s-flex s-grow s-flex-row s-gap-3">
@@ -41,7 +51,7 @@ export function ContextItem({
           </div>
           <div className="-s-mt-1">{children}</div>
         </div>
-        <div className="">{action}</div>
+        <div>{action}</div>
       </div>
     </div>
   );
@@ -58,11 +68,14 @@ ContextItem.List = function ({
   className,
   hasBorder,
 }: ContextItemListProps) {
-  // Ensure all children are of type ContextItem
+  // Ensure all children are of type ContextItem or ContextItem.SectionHeader
   React.Children.forEach(children, (child) => {
-    if (!React.isValidElement(child) || child.type !== ContextItem) {
+    if (
+      !React.isValidElement(child) ||
+      (child.type !== ContextItem && child.type !== ContextItem.SectionHeader)
+    ) {
       throw new Error(
-        "All children of ContextItem.List must be of type ContextItem"
+        "All children of ContextItem.List must be of type ContextItem or ContextItem.SectionHeader"
       );
     }
   });
@@ -120,4 +133,27 @@ interface ContextItemVisualProps {
 
 ContextItem.Visual = function ({ visual }: ContextItemVisualProps) {
   return <Icon size="md" visual={visual} />;
+};
+
+interface ItemSectionHeaderProps {
+  title: string;
+  description?: string;
+}
+
+ContextItem.SectionHeader = function ({
+  title,
+  description,
+}: ItemSectionHeaderProps) {
+  return (
+    <div className="s-flex s-flex-col s-gap-0 s-border-b s-border-structure-200 s-pb-3 s-pt-7">
+      <div className="s-text-xl s-font-medium s-text-element-900 dark:s-text-element-900-dark">
+        {title}
+      </div>
+      {description && (
+        <div className="s-text-sm s-font-normal s-text-element-700 dark:s-text-element-700-dark">
+          {description}
+        </div>
+      )}
+    </div>
+  );
 };

@@ -4,7 +4,6 @@ import type {
   DataSourceType,
   PlanType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -14,33 +13,32 @@ import {
 } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
+import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
+import type {
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderInitialState,
+} from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
-import { buildInitialState } from "@app/pages/w/[wId]/builder/assistants/[aId]";
+import { Authenticator, getSession } from "@app/lib/auth";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-type DataSourceConfig = NonNullable<
-  AssistantBuilderInitialState["dataSourceConfigurations"]
->[string];
-
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
-  dataSourceConfigurations: Record<string, DataSourceConfig> | null;
+  dataSourceConfigurations: Record<
+    string,
+    AssistantBuilderDataSourceConfiguration
+  > | null;
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
@@ -48,7 +46,6 @@ export const getServerSideProps: GetServerSideProps<{
   flow: BuilderFlow;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -57,7 +54,7 @@ export const getServerSideProps: GetServerSideProps<{
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !user || !auth.isUser() || !subscription) {
+  if (!owner || !plan || !auth.isUser() || !subscription) {
     return {
       notFound: true,
     };
@@ -106,7 +103,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       plan,
       subscription,
@@ -123,7 +119,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function CreateAssistant({
-  user,
   owner,
   subscription,
   plan,
@@ -177,7 +172,6 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilder
-      user={user}
       owner={owner}
       subscription={subscription}
       plan={plan}

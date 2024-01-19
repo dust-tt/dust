@@ -15,12 +15,12 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type { SubscriptionType } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
+import { isBuilder } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -32,23 +32,20 @@ import {
 } from "@app/components/assistant/AssistantActions";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAssistants } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps: GetServerSideProps<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
-
-  const user = await getUserFromSession(session);
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
@@ -56,7 +53,8 @@ export const getServerSideProps: GetServerSideProps<{
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !user || !auth.isUser() || !subscription) {
+
+  if (!owner || !auth.isUser() || !subscription) {
     return {
       notFound: true,
     };
@@ -64,7 +62,6 @@ export const getServerSideProps: GetServerSideProps<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
@@ -73,7 +70,6 @@ export const getServerSideProps: GetServerSideProps<{
 };
 
 export default function WorkspaceAssistants({
-  user,
   owner,
   subscription,
   gaTrackingId,
@@ -104,8 +100,6 @@ export default function WorkspaceAssistants({
   });
 
   globalAgents.sort(compareAgentsForSort);
-
-  const isBuilder = owner.role === "builder" || owner.role === "admin";
 
   const handleToggleAgentStatus = async (
     agent: LightAgentConfigurationType
@@ -147,11 +141,10 @@ export default function WorkspaceAssistants({
   return (
     <AppLayout
       subscription={subscription}
-      user={user}
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationAssistants({
+      subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",
       })}
@@ -245,7 +238,7 @@ export default function WorkspaceAssistants({
                           icon={PencilSquareIcon}
                           label="Edit"
                           size="xs"
-                          disabled={!isBuilder}
+                          disabled={!isBuilder(owner)}
                         />
                       </Link>
                       <DropdownMenu>
@@ -317,7 +310,7 @@ export default function WorkspaceAssistants({
                       icon={Cog6ToothIcon}
                       label="Manage"
                       size="sm"
-                      disabled={!isBuilder}
+                      disabled={!isBuilder(owner)}
                       onClick={() => {
                         void router.push(
                           `/w/${owner.sId}/builder/assistants/dust`
@@ -327,14 +320,14 @@ export default function WorkspaceAssistants({
                   ) : (
                     <div className="relative">
                       <SliderToggle
-                        size="sm"
+                        size="xs"
                         onClick={async () => {
                           await handleToggleAgentStatus(agent);
                         }}
                         selected={agent.status === "active"}
                         disabled={
                           agent.status === "disabled_missing_datasource" ||
-                          !isBuilder
+                          !isBuilder(owner)
                         }
                       />
                       <Popup

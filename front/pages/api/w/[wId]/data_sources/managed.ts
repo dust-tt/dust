@@ -1,7 +1,11 @@
 import type { DataSourceType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
-import { assertNever, isConnectorProvider } from "@dust-tt/types";
+import {
+  assertNever,
+  EMBEDDING_CONFIG,
+  isConnectorProvider,
+} from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
@@ -138,10 +142,6 @@ async function handler(
           assertNever(type);
       }
 
-      const dataSourceProviderId = "openai";
-      const dataSourceModelId = "text-embedding-ada-002";
-      const dataSourceMaxChunkSize = 512;
-
       let isDataSourceAllowedInPlan: boolean;
       switch (provider) {
         case "confluence":
@@ -222,10 +222,10 @@ async function handler(
         projectId: dustProject.value.project.project_id.toString(),
         dataSourceId: dataSourceName,
         config: {
-          provider_id: dataSourceProviderId,
-          model_id: dataSourceModelId,
-          splitter_id: "base_v0",
-          max_chunk_size: dataSourceMaxChunkSize,
+          provider_id: EMBEDDING_CONFIG.provider_id,
+          model_id: EMBEDDING_CONFIG.model_id,
+          splitter_id: EMBEDDING_CONFIG.splitter_id,
+          max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
           qdrant_config:
             NODE_ENV === "production"
               ? {

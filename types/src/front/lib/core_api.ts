@@ -22,6 +22,13 @@ import { LoggerInterface } from "../../shared/logger";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
+export const EMBEDDING_CONFIG = {
+  model_id: "text-embedding-ada-002",
+  provider_id: "openai",
+  splitter_id: "base_v0",
+  max_chunk_size: 512,
+};
+
 export type CoreAPIErrorResponse = {
   message: string;
   code: string;
@@ -912,6 +919,25 @@ export class CoreAPI {
       `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables`,
       {
         method: "GET",
+      }
+    );
+
+    return _resultFromResponse(response);
+  }
+
+  async deleteTable({
+    projectId,
+    dataSourceName,
+    tableId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    tableId: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}`,
+      {
+        method: "DELETE",
       }
     );
 

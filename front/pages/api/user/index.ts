@@ -1,4 +1,7 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type {
+  ReturnedAPIErrorType,
+  UserTypeWithWorkspaces,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -17,11 +20,19 @@ const PatchUserBodySchema = t.type({
   lastName: t.string,
 });
 
+export type GetUserResponseBody = {
+  user: UserTypeWithWorkspaces;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostUserMetadataResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<
+    PostUserMetadataResponseBody | GetUserResponseBody | ReturnedAPIErrorType
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
+
+  // This functions retrieves the full user including all workspaces.
   const user = await getUserFromSession(session);
 
   if (!user) {
@@ -35,6 +46,9 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      return res.status(200).json({ user });
+
     case "PATCH":
       const bodyValidation = PatchUserBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {

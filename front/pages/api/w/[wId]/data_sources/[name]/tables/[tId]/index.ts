@@ -81,9 +81,10 @@ async function handler(
     });
   }
 
+  const coreAPI = new CoreAPI(logger);
+
   switch (req.method) {
     case "GET":
-      const coreAPI = new CoreAPI(logger);
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
@@ -111,12 +112,40 @@ async function handler(
 
       return res.status(200).json({ table });
 
+    case "DELETE":
+      const deleteRes = await coreAPI.deleteTable({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        tableId,
+      });
+      if (deleteRes.isErr()) {
+        logger.error(
+          {
+            dataSourcename: dataSource.name,
+            workspaceId: owner.id,
+            error: deleteRes.error,
+          },
+          "Failed to delete table."
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to delete table.",
+          },
+        });
+      }
+
+      res.status(200).end();
+      return;
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or DELETE is expected.",
         },
       });
   }

@@ -94,6 +94,7 @@ export async function githubGetRepoIssuesResultPageActivity(
 }
 
 async function renderIssue(
+  dataSourceConfig: DataSourceConfig,
   installationId: string,
   repoName: string,
   repoId: number,
@@ -112,11 +113,14 @@ async function renderIssue(
 
   const issue = await getIssue(installationId, repoName, login, issueNumber);
 
-  const content = renderDocumentTitleAndContent({
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig,
     title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,
-    content: renderMarkdownSection(issue.body ?? "", { flavor: "gfm" }),
+    content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
+      flavor: "gfm",
+    }),
   });
 
   let resultPage = 1;
@@ -155,7 +159,11 @@ async function renderIssue(
         const c = {
           prefix: `>> ${renderGithubUser(comment.creator)}:\n`,
           content: null,
-          sections: [renderMarkdownSection(comment.body, { flavor: "gfm" })],
+          sections: [
+            await renderMarkdownSection(dataSourceConfig, comment.body, {
+              flavor: "gfm",
+            }),
+          ],
         };
         content.sections.push(c);
       }
@@ -204,6 +212,7 @@ export async function githubUpsertIssueActivity(
     updatedAtTimestamp,
     content: renderedIssue,
   } = await renderIssue(
+    dataSourceConfig,
     installationId,
     repoName,
     repoId,
@@ -267,9 +276,9 @@ export async function githubUpsertIssueActivity(
 }
 
 async function renderDiscussion(
+  dataSourceConfig: DataSourceConfig,
   installationId: string,
   repoName: string,
-  repoId: number,
   login: string,
   discussionNumber: number,
   loggerArgs: Record<string, string | number>
@@ -286,11 +295,18 @@ async function renderDiscussion(
     discussionNumber
   );
 
-  const content = renderDocumentTitleAndContent({
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig,
     title: `Discussion #${discussion.number} [${repoName}]: ${discussion.title}`,
     createdAt: new Date(discussion.createdAt),
     updatedAt: new Date(discussion.updatedAt),
-    content: renderMarkdownSection(discussion.bodyText, { flavor: "gfm" }),
+    content: await renderMarkdownSection(
+      dataSourceConfig,
+      discussion.bodyText,
+      {
+        flavor: "gfm",
+      }
+    ),
   });
 
   let nextCursor: string | null = null;
@@ -321,7 +337,11 @@ async function renderDiscussion(
       const c = {
         prefix,
         content: null,
-        sections: [renderMarkdownSection(comment.bodyText, { flavor: "gfm" })],
+        sections: [
+          await renderMarkdownSection(dataSourceConfig, comment.bodyText, {
+            flavor: "gfm",
+          }),
+        ],
       };
       content.sections.push(c);
 
@@ -346,7 +366,9 @@ async function renderDiscussion(
             prefix: `>> ${childComment.author?.login || "Unknown author"}:\n`,
             content: null,
             sections: [
-              renderMarkdownSection(comment.bodyText, { flavor: "gfm" }),
+              await renderMarkdownSection(dataSourceConfig, comment.bodyText, {
+                flavor: "gfm",
+              }),
             ],
           };
           c.sections.push(cc);
@@ -391,9 +413,9 @@ export async function githubUpsertDiscussionActivity(
   localLogger.info("Upserting GitHub discussion.");
 
   const { discussion, content: renderedDiscussion } = await renderDiscussion(
+    dataSourceConfig,
     installationId,
     repoName,
-    repoId,
     login,
     discussionNumber,
     loggerArgs

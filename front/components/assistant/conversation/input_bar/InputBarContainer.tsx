@@ -92,8 +92,8 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch border-t border-structure-100 py-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex gap-5 rounded-full border border-structure-100 px-4 py-2 sm:gap-3 sm:px-2">
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
+        <div className="flex gap-5 rounded-full border border-structure-200/60 px-4 py-2 sm:gap-3 sm:px-2">
           <input
             accept=".txt,.pdf,.md"
             onChange={async (e) => {

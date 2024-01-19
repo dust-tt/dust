@@ -422,6 +422,7 @@ export async function syncNonThreaded(
   messages.reverse();
 
   const content = await formatMessagesForUpsert({
+    dataSourceConfig,
     channelName,
     messages,
     isThread: false,
@@ -573,6 +574,7 @@ export async function syncThread(
   }
 
   const content = await formatMessagesForUpsert({
+    dataSourceConfig,
     channelName,
     messages: allMessages,
     isThread: true,
@@ -645,12 +647,14 @@ async function processMessageForMentions(
 }
 
 export async function formatMessagesForUpsert({
+  dataSourceConfig,
   channelName,
   messages,
   isThread,
   connectorId,
   slackClient,
 }: {
+  dataSourceConfig: DataSourceConfig;
   channelName: string;
   messages: MessageElement[];
   isThread: boolean;
@@ -697,6 +701,7 @@ export async function formatMessagesForUpsert({
     : `Messages in #${channelName}`;
 
   return renderDocumentTitleAndContent({
+    dataSourceConfig,
     title,
     createdAt: first.messageDate,
     updatedAt: last.messageDate,

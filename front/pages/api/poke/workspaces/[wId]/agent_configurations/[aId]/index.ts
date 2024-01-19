@@ -23,9 +23,8 @@ async function handler(
     session,
     req.query.wId as string
   );
-  const user = auth.user();
 
-  if (!user || !auth.isDustSuperUser()) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
