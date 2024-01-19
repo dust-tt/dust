@@ -44,6 +44,7 @@ export function isActivatedPublicURLs(owner: WorkspaceType) {
       "2ef36b1a3192e9500bfe99e1541c38e1",
       "1d37889d4d9eb29bd24409ad7d183d44",
       "02da873b8c9404f9005d724ea02b84b1",
+      "a29e7fb74f329d26a16785989f6efb80",
     ].includes(hashedWorkspaceId)
   );
 }
