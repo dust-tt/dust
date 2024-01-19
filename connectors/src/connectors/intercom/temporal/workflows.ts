@@ -2,7 +2,6 @@ import type { ModelId } from "@dust-tt/types";
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/intercom/temporal/activities";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // This is how to import your activities.
 const { syncHelpCentersActivity } = proxyActivities<typeof activities>({
@@ -20,23 +19,12 @@ const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
  */
 export async function intercomHelpCentersSyncWorkflow({
   connectorId,
-  dataSourceConfig,
 }: {
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
 }) {
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
-  };
-
   await saveIntercomConnectorStartSync({ connectorId });
   await syncHelpCentersActivity({
     connectorId,
-    dataSourceConfig,
-    loggerArgs,
   });
   await saveIntercomConnectorSuccessSync({ connectorId });
 }

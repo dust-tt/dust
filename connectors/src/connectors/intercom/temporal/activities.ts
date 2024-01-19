@@ -1,8 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
   const connector = await Connector.findOne({
@@ -53,13 +53,23 @@ export async function saveIntercomConnectorStartSync({
  */
 export async function syncHelpCentersActivity({
   connectorId,
-  dataSourceConfig,
-  loggerArgs,
 }: {
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
-  loggerArgs: Record<string, string | number>;
 }) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(
+      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
+    );
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "intercom",
+    dataSourceName: dataSourceConfig.dataSourceName,
+  };
+
   console.log("syncHelpCentersActivity", {
     connectorId,
     dataSourceConfig,

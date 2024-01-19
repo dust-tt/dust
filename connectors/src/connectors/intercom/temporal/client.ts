@@ -4,7 +4,6 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/intercom/temporal/config";
 import { intercomHelpCentersSyncWorkflow } from "@connectors/connectors/intercom/temporal/workflows";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -26,7 +25,6 @@ export async function launchIntercomHelpCentersSyncWorkflow({
     );
   }
 
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflowId = getIntercomHelpCentersSyncWorkflowId(connectorId);
 
   try {
@@ -40,7 +38,7 @@ export async function launchIntercomHelpCentersSyncWorkflow({
       }
     }
     await client.workflow.start(intercomHelpCentersSyncWorkflow, {
-      args: [{ connectorId, dataSourceConfig }],
+      args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
@@ -52,12 +50,12 @@ export async function launchIntercomHelpCentersSyncWorkflow({
       },
     });
     logger.info(
-      { workspaceId: dataSourceConfig.workspaceId, workflowId },
+      { workspaceId: connector.workspaceId, workflowId },
       "[Intercom] Started workflow launchIntercomFullSyncWorkflow."
     );
   } catch (e) {
     logger.error(
-      { workspaceId: dataSourceConfig.workspaceId, error: e },
+      { workspaceId: connector.workspaceId, error: e },
       "[Intercom] Failed to start workflow launchIntercomFullSyncWorkflow."
     );
     throw e;
