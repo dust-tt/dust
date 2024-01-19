@@ -42,6 +42,8 @@ export function isActivatedPublicURLs(owner: WorkspaceType) {
       // select * from workspaces where md5("sId") = 'XXX';
       "9904970eeaa283f18656c6e60b66cb19",
       "2ef36b1a3192e9500bfe99e1541c38e1",
+      "1d37889d4d9eb29bd24409ad7d183d44",
+      "02da873b8c9404f9005d724ea02b84b1",
     ].includes(hashedWorkspaceId)
   );
 }
