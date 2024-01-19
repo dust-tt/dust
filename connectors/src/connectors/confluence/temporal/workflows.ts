@@ -3,6 +3,7 @@ import {
   executeChild,
   proxyActivities,
   setHandler,
+  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -79,6 +80,10 @@ export async function confluenceFullSyncWorkflow({
       ],
       memo,
     });
+
+    // Temporarily suspend execution and return control to the Temporal runtime by invoking a sleep function.
+    // This pause in the workflow enables regular checks for incoming signals.
+    await sleep(10000);
   }
 
   await confluenceSaveSuccessSyncActivity(connectorId);
