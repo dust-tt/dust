@@ -1,4 +1,5 @@
-import yargs, { Options } from "yargs";
+import type { Options } from "yargs";
+import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 // Define a type for the argument specification object.
