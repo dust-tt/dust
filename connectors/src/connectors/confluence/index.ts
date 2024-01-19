@@ -11,6 +11,7 @@ import {
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
+import { launchConfluenceFullSyncWorkflow } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
@@ -73,8 +74,13 @@ export async function createConfluenceConnector(
       return connector;
     });
 
-    // TODO(2024-01-10 flav) Uncomment in next PR.
-    // await launchConfluenceFullSyncWorkflow(connector.id, null);
+    const workflowStarted = await launchConfluenceFullSyncWorkflow(
+      connector.id,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
 
     return new Ok(connector.id.toString());
   } catch (e) {
@@ -199,10 +205,9 @@ export async function setConfluenceConnectorPermissions(
     spaces = await listConfluenceSpaces(connector);
   }
 
-  // TODO(2024-01-10 flav) Uncomment in next PR.
-  // let shouldFullSync = false;
+  let shouldFullSync = false;
   for (const [id, permission] of Object.entries(permissions)) {
-    // shouldFullSync = true;
+    shouldFullSync = true;
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
@@ -227,10 +232,15 @@ export async function setConfluenceConnectorPermissions(
     }
   }
 
-  // TODO(2024-01-10 flav) Uncomment in next PR.
-  // if (shouldFullSync) {
-  //   await launchConfluenceFullSyncWorkflow(connectorId, null);
-  // }
+  if (shouldFullSync) {
+    const workflowStarted = await launchConfluenceFullSyncWorkflow(
+      connectorId,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
+  }
 
   return new Ok(undefined);
 }

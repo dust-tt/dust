@@ -32,15 +32,11 @@ const ConfluenceListSpacesCodec = t.type({
 
 const ConfluencePageCodec = t.intersection([
   t.type({
-    body: t.type({
-      storage: t.type({
-        value: t.string,
-      }),
-    }),
     createdAt: t.string,
     parentId: t.union([t.string, t.null]),
     id: t.string,
     title: t.string,
+    spaceId: t.string,
     version: t.type({
       number: t.number,
       createdAt: t.string,
@@ -51,7 +47,20 @@ const ConfluencePageCodec = t.intersection([
   }),
   CatchAllCodec,
 ]);
-export type ConfluencePageType = t.TypeOf<typeof ConfluencePageCodec>;
+
+const ConfluencePageWithBodyCodec = t.intersection([
+  ConfluencePageCodec,
+  t.type({
+    body: t.type({
+      storage: t.type({
+        value: t.string,
+      }),
+    }),
+  }),
+]);
+export type ConfluencePageWithBodyType = t.TypeOf<
+  typeof ConfluencePageWithBodyCodec
+>;
 
 const ConfluenceListPagesCodec = t.type({
   results: t.array(ConfluencePageCodec),
@@ -133,9 +142,15 @@ export class ConfluenceClient {
     ).results;
   }
 
+  async getSpaceById(spaceId: string) {
+    return this.request(
+      `${this.restApiBaseUrl}/spaces/${spaceId}`,
+      ConfluenceSpaceCodec
+    );
+  }
+
   async getPagesInSpace(spaceId: string, pageCursor?: string) {
     const params = new URLSearchParams({
-      "body-format": "storage", // Returns HTML.
       sort: "id",
       status: "current",
       limit: "25",
@@ -155,5 +170,16 @@ export class ConfluenceClient {
       pages: pages.results,
       nextPageCursor,
     };
+  }
+
+  async getPageById(pageId: string) {
+    const params = new URLSearchParams({
+      "body-format": "storage", // Returns HTML.
+    });
+
+    return this.request(
+      `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
+      ConfluencePageWithBodyCodec
+    );
   }
 }
