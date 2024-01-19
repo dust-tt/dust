@@ -117,14 +117,14 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   const globalAgentIdsToFetch: string[] | undefined = (() => {
     switch (agentsGetView) {
       case "workspace":
-        // No global agents in workspace view.
+      case "published":
+        // No global agents in workspace & published view.
         return [];
       case "global":
       case "list":
       case "all":
       case "admin_internal":
-      case "published":
-        // All global agents in global, list, all, admin_internal, published views.
+        // All global agents in global, list, all, admin_internal views.
         return undefined;
       default:
         if (
