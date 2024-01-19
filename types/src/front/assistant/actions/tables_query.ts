@@ -1,5 +1,4 @@
-import { DustAppParameters } from "front/assistant/actions/dust_app_run";
-
+import { DustAppParameters } from "../../../front/assistant/actions/dust_app_run";
 import { ModelId } from "../../../shared/model_id";
 
 export type TablesQueryConfigurationType = {

@@ -6,7 +6,6 @@
     "moduleResolution": "node",
     "emitDeclarationOnly": false,
     "declaration": true,
-    "baseUrl": "./src",
     "sourceMap": true,
     "declarationMap": true
   }
