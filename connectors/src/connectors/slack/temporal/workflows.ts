@@ -72,7 +72,7 @@ export async function workspaceFullSync(
     }
   });
   await fetchUsers(connectorId);
-  await Promise.all(promises);
+  await childWorkflowQueue.onIdle();
 
   await executeChild(slackGarbageCollectorWorkflow, {
     workflowId: slackGarbageCollectorWorkflowId(connectorId),
