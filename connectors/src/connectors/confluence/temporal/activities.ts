@@ -5,6 +5,10 @@ import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
+  isConfluencePageSkipped,
+  maybeSkipConfluencePage,
+} from "@connectors/connectors/confluence/lib/confluence_page";
+import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
 } from "@connectors/connectors/confluence/temporal/utils";
@@ -222,6 +226,12 @@ export async function confluenceUpsertPageActivity({
     workspaceId: dataSourceConfig.workspaceId,
   };
   const localLogger = logger.child(loggerArgs);
+
+  const isPageSkipped = await isConfluencePageSkipped(connectorId, pageId);
+  if (isPageSkipped) {
+    logger.info("Confluence page skipped.");
+    return;
+  }
 
   const confluenceConfig = await fetchConfluenceConfigurationActivity(
     connectorId
