@@ -112,9 +112,14 @@ export default function WorkspaceAdmin({
       return;
     }
 
+    const queryString =
+      selectedMonth === "All Time"
+        ? "mode=all"
+        : `mode=month&start=${selectedMonth}`;
+
     try {
       const response = await fetch(
-        `/api/w/${owner.sId}/monthly-usage?referenceDate=${selectedMonth}-01`
+        `/api/w/${owner.sId}/workspace-usage?${queryString}`
       );
 
       if (!response.ok) {
@@ -153,11 +158,19 @@ export default function WorkspaceAdmin({
       const monthName = getMonthName(Number(month));
       const currentMonthName = getMonthName(currentMonth);
 
-      let filename = `dust_${owner.name}_monthly_activity_${year}_${monthName}`;
+      let filename = "";
 
-      // If the selected month is the current month, append the day
-      if (monthName === currentMonthName) {
-        filename += `_until_${formattedDay}`;
+      if (selectedMonth === "All Time") {
+        filename = `dust_${owner.name}_activity_until_${new Date()
+          .toISOString()
+          .substring(0, 10)}`;
+      } else {
+        filename = `dust_${owner.name}_activity_${year}_${monthName}`;
+
+        // If the selected month is the current month, append the day
+        if (monthName === currentMonthName) {
+          filename += `_until_${formattedDay}`;
+        }
       }
 
       filename += ".csv";
@@ -192,6 +205,8 @@ export default function WorkspaceAdmin({
         monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
       }
     }
+
+    monthOptions.push("All Time");
 
     if (!selectedMonth) {
       setSelectedMonth(monthOptions[monthOptions.length - 1]);
@@ -239,7 +254,7 @@ export default function WorkspaceAdmin({
           <>
             <Page.SectionHeader
               title="Workspace Activity"
-              description="Download monthly workspace activity details."
+              description="Download workspace activity details."
             />
             <div className="align-center flex flex-row gap-2">
               <DropdownMenu>
