@@ -74,7 +74,13 @@ export async function createConfluenceConnector(
       return connector;
     });
 
-    await launchConfluenceFullSyncWorkflow(connector.id, null);
+    const workflowStarted = await launchConfluenceFullSyncWorkflow(
+      connector.id,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
 
     return new Ok(connector.id.toString());
   } catch (e) {
@@ -227,7 +233,13 @@ export async function setConfluenceConnectorPermissions(
   }
 
   if (shouldFullSync) {
-    await launchConfluenceFullSyncWorkflow(connectorId, null);
+    const workflowStarted = await launchConfluenceFullSyncWorkflow(
+      connectorId,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
   }
 
   return new Ok(undefined);

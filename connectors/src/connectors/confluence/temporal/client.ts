@@ -1,4 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
@@ -31,7 +32,7 @@ async function isConfluenceFullSyncAlreadyRunning(connector: Connector) {
 export async function launchConfluenceFullSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null
-) {
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -55,7 +56,9 @@ export async function launchConfluenceFullSyncWorkflow(
       "launchConfluenceFullSyncWorkflow: Confluence full sync workflow already running."
     );
 
-    return;
+    return new Err(
+      new Error("Confluence full sync workflow is already running")
+    );
   }
 
   await client.workflow.start(confluenceFullSyncWorkflow, {
@@ -75,4 +78,6 @@ export async function launchConfluenceFullSyncWorkflow(
       connectorId,
     },
   });
+
+  return new Ok(undefined);
 }
