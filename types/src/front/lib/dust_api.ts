@@ -1,5 +1,4 @@
 import { createParser } from "eventsource-parser";
-import { CoreAPITokenType } from "front/lib/core_api";
 import * as t from "io-ts";
 
 import {
@@ -15,6 +14,7 @@ import {
   UserMessageType,
 } from "../../front/assistant/conversation";
 import { DataSourceType } from "../../front/data_source";
+import { CoreAPITokenType } from "../../front/lib/core_api";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { RunType } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
