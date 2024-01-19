@@ -66,6 +66,20 @@ async function handler(
     });
   }
 
+  // No role under "builder" can create a managed data source.
+  // We perform a more details check below for each provider,
+  // but this is a first line of defense.
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can add a public website.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       const bodyValidation = PostManagedDataSourceRequestBodySchema.decode(
