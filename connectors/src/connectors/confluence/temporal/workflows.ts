@@ -3,7 +3,6 @@ import {
   executeChild,
   proxyActivities,
   setHandler,
-  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -91,8 +90,6 @@ export async function confluenceFullSyncWorkflow({
       // Remove the processed space from the original set after the async operation.
       uniqueSpaceIds.delete(spaceId);
     }
-
-    await sleep(10000);
   }
 
   await confluenceSaveSuccessSyncActivity(connectorId);
