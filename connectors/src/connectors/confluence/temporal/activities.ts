@@ -4,10 +4,7 @@ import TurndownService from "turndown";
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
-import {
-  isConfluencePageSkipped,
-  maybeSkipConfluencePage,
-} from "@connectors/connectors/confluence/lib/confluence_page";
+import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
