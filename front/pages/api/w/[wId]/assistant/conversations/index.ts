@@ -10,6 +10,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { extractContentFragmentFromURL } from "@app/lib/api/assistant/actions/signle_url_crawler";
 import {
   createConversation,
   getConversation,
@@ -143,6 +144,34 @@ async function handler(
         );
         if (updatedConversation) {
           conversation = updatedConversation;
+        }
+      } else if (message) {
+        // If no content fragment was provided, we try to extract one from the message
+        // content.
+        const cf = await extractContentFragmentFromURL(message.content);
+        if (cf) {
+          const cfRes = await postNewContentFragment(auth, {
+            conversation,
+            title: cf.title,
+            content: cf.content,
+            url: cf.url,
+            contentType: "file_attachment",
+            context: {
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: message.context.profilePictureUrl,
+            },
+          });
+
+          newContentFragment = cfRes;
+          const updatedConversation = await getConversation(
+            auth,
+            conversation.sId
+          );
+          if (updatedConversation) {
+            conversation = updatedConversation;
+          }
         }
       }
 

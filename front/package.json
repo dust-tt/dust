@@ -48,6 +48,7 @@
     "formidable": "^3.5.1",
     "fp-ts": "^2.16.0",
     "fs-extra": "^11.1.1",
+    "got-scraping": "^4.0.2",
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
@@ -90,6 +91,7 @@
     "tailwind-scrollbar-hide": "^1.1.7",
     "tailwindcss": "^3.2.4",
     "three": "^0.155.0",
+    "turndown": "^7.1.2",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
@@ -107,6 +109,7 @@
     "@types/react-syntax-highlighter": "^15.5.7",
     "@types/showdown": "^2.0.1",
     "@types/three": "^0.154.0",
+    "@types/turndown": "^5.0.4",
     "@types/uuid": "^9.0.1",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@typescript-eslint/parser": "^5.57.1",
