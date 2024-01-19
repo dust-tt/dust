@@ -4,16 +4,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getAgentConfiguration,
-  setAgentScope,
-} from "@app/lib/api/assistant/configuration";
-import {
-  resetAgentUserListStatuses,
-  setAgentUserListStatus,
-} from "@app/lib/api/assistant/user_relation";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 async function handler(
   req: NextApiRequest,
@@ -95,8 +90,7 @@ async function handler(
         assistant.scope !== "private" &&
         bodyValidation.right.scope === "private"
       ) {
-        // switching an assistant back to private: removing it from all user's
-        // lists except the caller (who must be a user)
+        // switching an assistant back to private: the caller must be a user
         if (!auth.user()) {
           return apiError(req, res, {
             status_code: 404,
@@ -118,20 +112,8 @@ async function handler(
           });
         }
 
-        const resetRes = await resetAgentUserListStatuses({
-          auth,
-          agentId: assistant.sId,
-        });
-        if (resetRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: resetRes.error.message,
-            },
-          });
-        }
-
+        // ensure the assistant is not in the list of the user otherwise
+        // switching it back to private will make it disappear
         const setRes = await setAgentUserListStatus({
           auth,
           agentId: assistant.sId,
@@ -149,12 +131,17 @@ async function handler(
         }
       }
 
-      const result = await setAgentScope(
+      const result = await createOrUpgradeAgentConfiguration(
         auth,
-        assistant.sId,
-        bodyValidation.right.scope
+        {
+          assistant: {
+            ...assistant,
+            scope: bodyValidation.right.scope,
+            status: assistant.status as "active" | "archived", // type adjustment
+          },
+        },
+        assistant.sId
       );
-
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
