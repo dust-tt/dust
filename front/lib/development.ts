@@ -41,6 +41,7 @@ export function isActivatedPublicURLs(owner: WorkspaceType) {
       // You can find them in the Database with the following query:
       // select * from workspaces where md5("sId") = 'XXX';
       "9904970eeaa283f18656c6e60b66cb19",
+      "2ef36b1a3192e9500bfe99e1541c38e1",
     ].includes(hashedWorkspaceId)
   );
 }
