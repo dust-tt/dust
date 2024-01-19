@@ -1,4 +1,5 @@
 import {
+  ConfluenceLogo,
   DriveLogo,
   GithubLogo,
   GlobeAltIcon,
@@ -31,7 +32,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Grant tailored access to your organization's Confluence shared spaces.",
     limitations: null,
     // TODO(2023-10-01 flav) Debug SSR hydration issue with ConfluenceLogo.
-    logoComponent: IntercomLogo,
+    logoComponent: ConfluenceLogo,
     isNested: false,
     dustWorkspaceOnly: true,
   },
