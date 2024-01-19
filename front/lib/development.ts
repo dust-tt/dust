@@ -1,5 +1,5 @@
 import type { WorkspaceType } from "@dust-tt/types";
-import crypto from "crypto";
+import { md5 } from "@dust-tt/types";
 
 const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
@@ -17,22 +17,21 @@ export function isDevelopmentOrDustWorkspace(owner: WorkspaceType) {
 }
 
 export function isActivatedStructuredDB(owner: WorkspaceType) {
+  const hashedWorkspaceId = md5(owner.sId);
+
   // We will manually add workspace ids here.
   return (
     isDevelopmentOrDustWorkspace(owner) ||
     [
-      "47cc56f99e", // Henry's workspace;
-      "bd133dacaa", // Daph's workspace;
-    ].includes(owner.sId)
+      "2ef36b1a3192e9500bfe99e1541c38e1",
+      "995e775623ee35cc23f7295862b52f61",
+    ].includes(hashedWorkspaceId)
   );
 }
 
 export function isActivatedPublicURLs(owner: WorkspaceType) {
   // We will manually add workspace ids here.
-  const hashedWorkspaceId = crypto
-    .createHash("md5")
-    .update(owner.sId)
-    .digest("hex");
+  const hashedWorkspaceId = md5(owner.sId);
 
   return (
     isDevelopmentOrDustWorkspace(owner) ||

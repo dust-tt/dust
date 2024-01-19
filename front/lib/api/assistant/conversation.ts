@@ -31,7 +31,7 @@ import type {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG } from "@dust-tt/types";
+import { GPT_3_5_TURBO_MODEL_CONFIG, md5 } from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
@@ -40,7 +40,6 @@ import {
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import crypto from "crypto";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -787,10 +786,7 @@ async function getConversationRankVersionLock(
 ) {
   const now = new Date();
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
-  const hash = crypto
-    .createHash("md5")
-    .update(`conversation_message_rank_version_${conversation.id}`)
-    .digest("hex");
+  const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
   await front_sequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
