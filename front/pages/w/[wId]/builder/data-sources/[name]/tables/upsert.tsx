@@ -99,6 +99,7 @@ export default function TableUpsert({
   const [disabled, setDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [upserting, setUpserting] = useState(false);
 
   const { table } = useTable({
     workspaceId: owner.sId,
@@ -153,55 +154,63 @@ export default function TableUpsert({
       return;
     }
 
-    const res = await handleFileUploadToText(file);
-    if (res.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Error uploading file",
-        description: `An unexpected error occured: ${res.error}.`,
-      });
-      return;
-    }
+    setUpserting(true);
 
-    const { content } = res.value;
-    if (res.value.content.length > 50_000_000) {
-      sendNotification({
-        type: "error",
-        title: "File too large",
-        description:
-          "Please upload a file containing less than 50 million characters.",
-      });
-      return;
-    }
-
-    const body: CreateTableFromCsvRequestBody = {
-      name: tableName,
-      description: description,
-      csv: content,
-    };
-
-    const uploadRes = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/csv`,
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: {
-          "Content-Type": "application/json",
-        },
+    try {
+      const res = await handleFileUploadToText(file);
+      if (res.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Error uploading file",
+          description: `An unexpected error occured: ${res.error}.`,
+        });
+        return;
       }
-    );
 
-    if (!uploadRes.ok) {
-      sendNotification({
-        type: "error",
-        title: "Error uploading file",
-        description: `An error occured: ${await uploadRes.text()}.`,
-      });
-      return;
+      const { content } = res.value;
+      if (res.value.content.length > 50_000_000) {
+        sendNotification({
+          type: "error",
+          title: "File too large",
+          description:
+            "Please upload a file containing less than 50 million characters.",
+        });
+        return;
+      }
+
+      const body: CreateTableFromCsvRequestBody = {
+        name: tableName,
+        description: description,
+        csv: content,
+      };
+
+      const uploadRes = await fetch(
+        `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/csv`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!uploadRes.ok) {
+        sendNotification({
+          type: "error",
+          title: "Error uploading file",
+          description: `An error occured: ${await uploadRes.text()}.`,
+        });
+        return;
+      }
+
+      await mutate(
+        `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables`
+      );
+      redirectToDataSourcePage();
+    } finally {
+      setUpserting(false);
     }
-
-    await mutate(`/api/w/${owner.sId}/data_sources/${dataSource.name}/tables`);
-    redirectToDataSourcePage();
   };
 
   return (
@@ -225,7 +234,7 @@ export default function TableUpsert({
                 }
               : undefined
           }
-          isSaving={loading}
+          isSaving={loading || uploading || upserting}
         />
       }
       hideSidebar={true}
