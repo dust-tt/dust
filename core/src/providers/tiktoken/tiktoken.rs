@@ -790,6 +790,7 @@ impl CoreBPE {
     // Miscellaneous
     // ====================
 
+    #[allow(dead_code)]
     fn token_byte_values(&self) -> Vec<Vec<u8>> {
         self.sorted_token_bytes.clone()
     }
