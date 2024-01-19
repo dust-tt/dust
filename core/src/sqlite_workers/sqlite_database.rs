@@ -54,7 +54,7 @@ impl SqliteDatabase {
             let time_query_start = utils::now();
 
             // Execute the query and collect results
-            let mut stmt = conn.prepare(&query).unwrap();
+            let mut stmt = conn.prepare(&query)?;
             let column_names = stmt
                 .column_names()
                 .into_iter()

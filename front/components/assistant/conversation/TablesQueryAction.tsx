@@ -1,4 +1,5 @@
 import {
+  Button,
   ChevronDownIcon,
   ChevronRightIcon,
   Chip,
@@ -6,10 +7,14 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { CloudArrowDownIcon } from "@dust-tt/sparkle";
 import type { TablesQueryActionType } from "@dust-tt/types";
+import { stringify } from "csv-stringify";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
+
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -21,6 +26,7 @@ export default function TablesQueryAction({
 }: {
   tablesQueryAction: TablesQueryActionType;
 }) {
+  const sendNotification = useContext(SendNotificationsContext);
   const [isOutputExpanded, setIsOutputExpanded] = useState(false);
 
   // Extracting question from the params
@@ -42,6 +48,39 @@ export default function TablesQueryAction({
     return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
   };
 
+  const handleDownload = () => {
+    const results =
+      output &&
+      "results" in output &&
+      Array.isArray(output?.results) &&
+      output?.results;
+
+    if (!results) {
+      return;
+    }
+
+    const queryTitle =
+      (output && "query_title" in output && output?.query_title) ??
+      "query_results";
+
+    stringify(results, { header: true }, (err, output) => {
+      if (err) {
+        sendNotification({
+          title: "Error Downloading CSV",
+          type: "error",
+          description: `An error occurred while downloading the CSV: ${err}`,
+        });
+        return;
+      }
+      const blob = new Blob([output], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${queryTitle}.csv`;
+      a.click();
+    });
+  };
+
   return (
     <>
       {question && (
@@ -52,6 +91,20 @@ export default function TablesQueryAction({
           <Tooltip label={question}>
             <Chip color="slate" label={trimText(question)} />
           </Tooltip>
+          {isOutputStepCompleted &&
+            "results" in output &&
+            Array.isArray(output?.results) &&
+            output?.results?.length > 0 && (
+              <div>
+                <Button
+                  label="Download results as CSV"
+                  variant="secondary"
+                  icon={CloudArrowDownIcon}
+                  size="xs"
+                  onClick={handleDownload}
+                />
+              </div>
+            )}
         </div>
       )}
 
