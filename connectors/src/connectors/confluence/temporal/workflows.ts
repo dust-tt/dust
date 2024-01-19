@@ -47,6 +47,7 @@ export async function confluenceFullSyncWorkflow({
   const uniqueSpaceIds = new Set(spaceIdsToSync);
 
   setHandler(spaceUpdatesSignal, (spaceUpdates: SpaceUpdatesSignal[]) => {
+    // If we get a signal, update the workflow state by adding/removing space ids.
     for (const { action, spaceId } of spaceUpdates) {
       if (action === "added") {
         uniqueSpaceIds.add(spaceId);
@@ -62,6 +63,10 @@ export async function confluenceFullSyncWorkflow({
     memo,
   } = workflowInfo();
 
+  // Signals received while the loop is running, which add new IDs to the set, won't
+  // be processed until the loop iterates again. This is due to Temporal's event loop
+  // processing signals only after the current synchronous block of code (here,
+  // executeChild) finishes execution.
   for (const spaceId of uniqueSpaceIds) {
     await executeChild(confluenceSpaceSyncWorkflow, {
       workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
