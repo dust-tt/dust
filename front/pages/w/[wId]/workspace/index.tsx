@@ -57,6 +57,8 @@ export default function WorkspaceAdmin({
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
       return false;
@@ -117,6 +119,7 @@ export default function WorkspaceAdmin({
         ? "mode=all"
         : `mode=month&start=${selectedMonth}`;
 
+    setIsLoading(true);
     try {
       const response = await fetch(
         `/api/w/${owner.sId}/workspace-usage?${queryString}`
@@ -183,6 +186,8 @@ export default function WorkspaceAdmin({
       document.body.removeChild(link);
     } catch (error) {
       alert("Failed to download activity data.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -278,9 +283,10 @@ export default function WorkspaceAdmin({
                 </DropdownMenu.Items>
               </DropdownMenu>
               <Button
-                label="Download activity data"
+                label={isLoading ? "Loading..." : "Download activity data"}
                 icon={CloudArrowDownIcon}
                 variant="secondary"
+                disabled={isLoading}
                 onClick={() => {
                   void handleDownload(selectedMonth);
                 }}
