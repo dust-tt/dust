@@ -46,33 +46,30 @@ export async function workspaceFullSync(
   fromTs: number | null
 ): Promise<void> {
   let i = 1;
-  const promises: Promise<void>[] = [];
   const childWorkflowQueue = new PQueue({
     concurrency: 1,
   });
   setHandler(syncChannelSignal, async (input) => {
     for (const channelId of input.channelIds) {
-      promises.push(
-        childWorkflowQueue.add(async () => {
-          await reportInitialSyncProgressActivity(
-            connectorId,
-            `${i - 1}/${input.channelIds.length} channels`
-          );
-          await executeChild(syncOneChannel, {
-            workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
-            searchAttributes: {
-              connectorId: [connectorId],
-            },
-            args: [connectorId, channelId, false, fromTs],
-            memo: workflowInfo().memo,
-          });
-          i++;
-        })
-      );
+      void childWorkflowQueue.add(async () => {
+        await reportInitialSyncProgressActivity(
+          connectorId,
+          `${i - 1}/${input.channelIds.length} channels`
+        );
+        await executeChild(syncOneChannel, {
+          workflowId: syncOneChanneWorkflowlId(connectorId, channelId),
+          searchAttributes: {
+            connectorId: [connectorId],
+          },
+          args: [connectorId, channelId, false, fromTs],
+          memo: workflowInfo().memo,
+        });
+        i++;
+      });
     }
   });
   await fetchUsers(connectorId);
-  await Promise.all(promises);
+  await childWorkflowQueue.onIdle();
 
   await executeChild(slackGarbageCollectorWorkflow, {
     workflowId: slackGarbageCollectorWorkflowId(connectorId),
