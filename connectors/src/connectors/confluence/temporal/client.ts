@@ -27,6 +27,7 @@ export async function launchConfluenceFullSyncWorkflow(
     spaceId: sId,
   }));
 
+  // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(confluenceFullSyncWorkflow, {
       args: [
