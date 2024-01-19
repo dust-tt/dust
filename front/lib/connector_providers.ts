@@ -31,7 +31,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Grant tailored access to your organization's Confluence shared spaces.",
     limitations: null,
-    // TODO(2023-10-01 flav) Debug SSR hydration issue with ConfluenceLogo.
     logoComponent: ConfluenceLogo,
     isNested: false,
     dustWorkspaceOnly: true,
