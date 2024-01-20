@@ -619,12 +619,15 @@ export async function processRepository({
   repoLogin,
   repoName,
   repoId,
+  loggerArgs,
 }: {
   installationId: string;
   repoLogin: string;
   repoName: string;
   repoId: number;
+  loggerArgs: Record<string, string | number>;
 }) {
+  const localLogger = logger.child(loggerArgs);
   const octokit = await getOctokit(installationId);
 
   const { data } = await octokit.rest.repos.get({
@@ -633,11 +636,10 @@ export async function processRepository({
   });
   const defaultBranch = data.default_branch;
 
-  octokit.request.defaults({
-    request: {
-      parseSuccessResponseBody: false,
-    },
-  });
+  localLogger.info(
+    { defaultBranch, size: data.size },
+    "Retrieved repository info"
+  );
 
   // `data.size` is the whole repo size in KB, we use it to filter repos > 2GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
@@ -649,6 +651,12 @@ export async function processRepository({
       `Repository is too large to sync (size: ${data.size}KB, max: 2GB)`
     );
   }
+
+  octokit.request.defaults({
+    request: {
+      parseSuccessResponseBody: false,
+    },
+  });
 
   const { data: tarballStream } = (await octokit.request(
     "GET /repos/{owner}/{repo}/tarball/{ref}",
@@ -668,8 +676,12 @@ export async function processRepository({
   try {
     const tarPath = resolve(tempDir, "repo.tar.gz");
 
+    localLogger.info({ tempDir, tarPath }, "Starting download of tarball");
+
     // Save the tarball to the temp directory.
     await pipeline(tarballStream, createWriteStream(tarPath));
+
+    localLogger.info("Finished downloading tarball");
 
     // Extract the tarball.
     await extract({
@@ -791,6 +803,10 @@ export async function processRepository({
       directories,
     };
   } catch (e) {
+    localLogger.info(
+      { error: e },
+      "Caught excetion while processing repository, cleaning up"
+    );
     await cleanUpProcessRepository(tempDir);
     throw e;
   }
