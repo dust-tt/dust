@@ -1,103 +1,129 @@
+import { assistantUsageMessage } from "@app/lib/assistant";
+import { useAgentUsage } from "@app/lib/swr";
 import {
   BookOpenIcon,
-  Button,
-  CheckCircleIcon,
-  Dialog,
-  Icon,
+  ChevronDownIcon,
+  Chip,
+  DropdownMenu,
+  IconButton,
+  LockIcon,
+  PlanetIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
-import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
-import { useRouter } from "next/router";
+import {
+  isBuilder,
+  type AgentConfigurationScope,
+  type WorkspaceType,
+} from "@dust-tt/types";
 import { useState } from "react";
 
+/*
+ * Note: Non-builders cannot change to/from company assistant
+ */
 export function TeamSharingSection({
   owner,
   agentConfigurationId,
-  initialScope,
   newScope,
   setNewScope,
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
-  initialScope: AgentConfigurationScope;
   newScope: Exclude<AgentConfigurationScope, "global">;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
 }) {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showWorkspaceRemoveDialog, setShowWorkspaceRemoveDialog] =
     useState(false);
-  const [showCreateDuplicateDialog, setShowCreateDuplicateDialog] =
-    useState(false);
-  const router = useRouter();
+  const agentUsage = agentConfigurationId
+    ? useAgentUsage({
+        workspaceId: owner.sId,
+        agentConfigurationId,
+      })
+    : null;
 
-  if (initialScope !== "private" && newScope === "private") {
-    throw new Error("Cannot change scope back to private");
-  }
-  if (initialScope === "global") {
-    return null;
-  }
+  const scopeInfo: Record<
+    Exclude<AgentConfigurationScope, "global">,
+    {
+      label: string;
+      color: string;
+      icon: typeof BookOpenIcon | typeof PlanetIcon | typeof LockIcon;
+      text: string;
+    }
+  > = {
+    published: {
+      label: "Shared Assistant",
+      color: "pink",
+      icon: UserGroupIcon,
+      text: "Anyone in the workspace can view and edit.",
+    },
+    workspace: {
+      label: "Company Assistant",
+      color: "amber",
+      icon: PlanetIcon,
+      text: "Activated by default for all members of the workspace.",
+    },
+    private: {
+      label: "Personal Assistant",
+      color: "sky",
+      icon: LockIcon,
+      text: "Only I can view and edit.",
+    },
+  };
 
-  if (initialScope === "private" && newScope === "private")
-    return (
-      <div className="flex flex-col gap-3">
-        <div className="text-lg font-bold text-element-900">Sharing</div>
-        <div className="flex items-center gap-3">
-          <PublishDialog
-            show={showPublishDialog}
-            onClose={() => setShowPublishDialog(false)}
-            setPublished={() => setNewScope("published")}
-          />
-          <div>
-            <Button
-              variant="secondary"
-              size="sm"
-              label="Publish to Assistant Gallery"
-              icon={BookOpenIcon}
-              onClick={() => setShowPublishDialog(true)}
-            />
-          </div>
-          <div className="flex-grow text-sm text-element-700">
-            Make the assistant available to your team in the{" "}
-            <span className="font-bold">Assistant Gallery</span>. <br /> Your
-            team will be allowed to{" "}
-            <span className="font-bold">use and modify</span> the assistant.
-          </div>
-        </div>
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-lg font-bold text-element-900">Sharing</div>
+      <div>
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <div className="flex cursor-pointer items-center gap-2">
+              <Chip
+                label={scopeInfo[newScope].label}
+                color={scopeInfo[newScope].color as "pink" | "amber" | "sky"}
+                icon={scopeInfo[newScope].icon}
+              />
+              <IconButton
+                icon={ChevronDownIcon}
+                size="xs"
+                variant="secondary"
+              />
+            </div>
+          </DropdownMenu.Button>
+          <DropdownMenu.Items origin="topRight" width={200}>
+            {Object.entries(scopeInfo)
+              .filter(([scope, _]) => isBuilder(owner) || scope !== "workspace")
+              .map(([scope, data]) => (
+                <DropdownMenu.Item
+                  key={data.label}
+                  label={data.label}
+                  icon={data.icon}
+                  selected={scope === newScope}
+                  onClick={() =>
+                    setNewScope(
+                      scope as Exclude<AgentConfigurationScope, "global">
+                    )
+                  }
+                />
+              ))}
+          </DropdownMenu.Items>
+        </DropdownMenu>
       </div>
-    );
-
-  if (initialScope === "private" && newScope === "published") {
-    return (
-      <div className="flex flex-col gap-3">
-        <div className="text-lg font-bold text-element-900">Team sharing</div>
-        <div className="flex items-center gap-3">
-          <div>
-            <Icon
-              visual={CheckCircleIcon}
-              size="lg"
-              className="text-success-500"
-            />
-          </div>
-          <div className="flex-grow text-sm text-element-700">
-            Make the assistant available to your team in the{" "}
-            <span className="font-bold">Assistant Gallery</span>. <br /> Your
-            team will be allowed to{" "}
-            <span className="font-bold">use and modify</span> the assistant.
-          </div>
-          <div>
-            <Button
-              variant="tertiary"
-              size="sm"
-              label="Cancel publication"
-              onClick={() => setNewScope("private")}
-            />
-          </div>
-        </div>
+      <div className="text-sm text-element-700">
+        <div>{scopeInfo[newScope].text}</div>
+        {agentUsage &&
+        agentUsage.agentUsage?.userCount &&
+        agentUsage.agentUsage.userCount > 1
+          ? assistantUsageMessage({
+              usage: agentUsage.agentUsage,
+              isLoading: agentUsage.isAgentUsageLoading,
+              isError: agentUsage.isAgentUsageError,
+            })
+          : null}
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (initialScope === "published" && newScope === "published") {
+  /*if (initialScope === "published" && newScope === "published") {
     return (
       <div className="flex flex-col gap-3">
         <CreateDuplicateDialog
@@ -276,5 +302,5 @@ function CreateDuplicateDialog({
         pick a new name and Avatar.
       </div>
     </Dialog>
-  );
+  );*/
 }
