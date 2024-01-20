@@ -936,6 +936,14 @@ export async function githubCodeSyncActivity({
   githubCodeRepository.lastSeenAt = codeSyncStartedAt;
   await githubCodeRepository.save();
 
+  localLogger.info(
+    {
+      repoId,
+      codeSyncStartedAt,
+    },
+    "Attempting download of Github repository for sync"
+  );
+
   const { tempDir, files, directories } = await processRepository({
     installationId,
     repoLogin,
@@ -944,7 +952,7 @@ export async function githubCodeSyncActivity({
   });
 
   try {
-    logger.info(
+    localLogger.info(
       {
         repoId,
         filesCount: files.length,

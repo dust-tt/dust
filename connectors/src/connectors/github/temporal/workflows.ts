@@ -288,7 +288,7 @@ export async function githubCodeSyncWorkflow(
       repoLogin,
       repoName,
       repoId,
-      loggerArgs: { ...loggerArgs, debounceCount },
+      loggerArgs: { ...loggerArgs, debounceCount, activity: "githubCodeSync" },
       isBatchSync: true,
     });
     await githubSaveSuccessSyncActivity(dataSourceConfig);
