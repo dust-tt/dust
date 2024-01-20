@@ -641,7 +641,7 @@ export async function processRepository({
     "Retrieved repository info"
   );
 
-  // `data.size` is the whole repo size in KB, we use it to filter repos > 2GB download size. There
+  // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
   if (data.size > 10 * 1024 * 1024) {
     // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
