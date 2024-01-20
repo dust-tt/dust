@@ -949,6 +949,7 @@ export async function githubCodeSyncActivity({
     repoLogin,
     repoName,
     repoId,
+    loggerArgs,
   });
 
   try {
