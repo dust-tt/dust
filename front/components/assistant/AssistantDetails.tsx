@@ -34,10 +34,10 @@ import ReactMarkdown from "react-markdown";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { assistantUsageMessage } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
-import { assistantUsageMessage } from "@app/lib/assistant";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 

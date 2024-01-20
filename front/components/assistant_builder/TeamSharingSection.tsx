@@ -1,7 +1,4 @@
-import { assistantUsageMessage } from "@app/lib/assistant";
-import { useAgentUsage } from "@app/lib/swr";
 import {
-  BookOpenIcon,
   ChevronDownIcon,
   Chip,
   DropdownMenu,
@@ -10,12 +7,11 @@ import {
   PlanetIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import {
-  isBuilder,
-  type AgentConfigurationScope,
-  type WorkspaceType,
-} from "@dust-tt/types";
-import { useState } from "react";
+import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import { isBuilder } from "@dust-tt/types";
+
+import { assistantUsageMessage } from "@app/lib/assistant";
+import { useAgentUsage } from "@app/lib/swr";
 
 /*
  * Note: Non-builders cannot change to/from company assistant
@@ -46,7 +42,7 @@ export function TeamSharingSection({
     {
       label: string;
       color: string;
-      icon: typeof BookOpenIcon | typeof PlanetIcon | typeof LockIcon;
+      icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
       text: string;
     }
   > = {
@@ -91,7 +87,7 @@ export function TeamSharingSection({
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight" width={200}>
             {Object.entries(scopeInfo)
-              .filter(([scope, _]) => isBuilder(owner) || scope !== "workspace")
+              .filter((scope) => isBuilder(owner) || scope[0] !== "workspace")
               .map(([scope, data]) => (
                 <DropdownMenu.Item
                   key={data.label}
