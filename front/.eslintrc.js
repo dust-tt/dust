@@ -20,7 +20,10 @@ module.exports = {
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
     "@typescript-eslint/no-explicit-any": 0,
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { argsIgnorePattern: "^_[0-9]$" },
+    ],
     "no-case-declarations": 0,
     "react-hooks/rules-of-hooks": 0,
     "@next/next/no-img-element": 0,
