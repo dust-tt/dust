@@ -7,8 +7,9 @@ import {
   Page,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
+import type { DataSourceType, Result, WorkspaceType } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -24,7 +25,7 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { isActivatedStructuredDB } from "@app/lib/development";
 import { useTable } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import type { CreateTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
+import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -97,7 +98,7 @@ export default function TableUpsert({
   const [description, setDescription] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
 
-  const [disabled, setDisabled] = useState(false);
+  const [disabled, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [upserting, setUpserting] = useState(false);
@@ -110,16 +111,30 @@ export default function TableUpsert({
   });
 
   useEffect(() => {
-    setDisabled(!tableName || !description || !file);
-  }, [tableName, description, file]);
+    if (!loadTableId && !file) {
+      // File can be null if we are editing a table.
+      return setDisabled(true);
+    }
+    if (!tableName || !description) {
+      return setDisabled(true);
+    }
+
+    const edited =
+      !loadTableId ||
+      table?.name !== tableName ||
+      table?.description !== description ||
+      file;
+
+    return setDisabled(!edited);
+  }, [tableName, description, file, loadTableId, table]);
 
   useEffect(() => {
-    if (loadTableId && table) {
+    if (loadTableId && table && !tableId) {
       setTableId(table.table_id);
       setTableName(table.name);
       setDescription(table.description);
     }
-  }, [dataSource.name, loadTableId, owner.sId, table]);
+  }, [dataSource.name, loadTableId, owner.sId, table, tableId]);
 
   // Not empty, only alphanumeric, and not too long
   const isNameValid = (name: string) =>
@@ -152,25 +167,35 @@ export default function TableUpsert({
   };
 
   const handleUpsert = async () => {
-    if (!file) {
-      return;
-    }
-
     setUpserting(true);
 
     try {
-      const res = await handleFileUploadToText(file);
-      if (res.isErr()) {
-        sendNotification({
-          type: "error",
-          title: "Error uploading file",
-          description: `An unexpected error occured: ${res.error}.`,
-        });
+      const fileContentRes: Result<string | null, null> = await (async () => {
+        if (file) {
+          const res = await handleFileUploadToText(file);
+          if (res.isErr()) {
+            sendNotification({
+              type: "error",
+              title: "Error uploading file",
+              description: `An unexpected error occured: ${res.error}.`,
+            });
+            return new Err(null);
+          }
+
+          const { content } = res.value;
+          return new Ok(content);
+        }
+
+        return new Ok(null);
+      })();
+
+      if (fileContentRes.isErr()) {
         return;
       }
 
-      const { content } = res.value;
-      if (res.value.content.length > 50_000_000) {
+      const fileContent = fileContentRes.value;
+
+      if (fileContent && fileContent.length > 50_000_000) {
         sendNotification({
           type: "error",
           title: "File too large",
@@ -180,17 +205,30 @@ export default function TableUpsert({
         return;
       }
 
-      if (res.value.content.length > 5_000_000) {
+      if (fileContent && fileContent.length > 5_000_000) {
         setIsBigFile(true);
       } else {
         setIsBigFile(false);
       }
 
-      const body: CreateTableFromCsvRequestBody = {
-        name: tableName,
-        description: description,
-        csv: content,
-      };
+      let body: UpsertTableFromCsvRequestBody;
+      if (fileContent) {
+        body = {
+          name: tableName,
+          description: description,
+          csv: fileContent,
+          tableId: loadTableId ?? undefined,
+        };
+      } else if (tableId) {
+        body = {
+          name: tableName,
+          description: description,
+          tableId: tableId,
+          csv: undefined,
+        };
+      } else {
+        throw new Error("Unreachable: fileContent is null");
+      }
 
       const uploadRes = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/csv`,
@@ -212,9 +250,15 @@ export default function TableUpsert({
         return;
       }
 
-      await mutate(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables`
-      );
+      if (loadTableId) {
+        await mutate(
+          `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/${loadTableId}`
+        );
+      } else {
+        await mutate(
+          `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables`
+        );
+      }
       redirectToDataSourcePage();
     } finally {
       setUpserting(false);
@@ -260,7 +304,7 @@ export default function TableUpsert({
                 name="table-name"
                 disabled={readOnly || !!loadTableId}
                 value={tableName}
-                onChange={(v) => setTableName(v)}
+                onChange={setTableName}
                 error={
                   !tableName || isNameValid(tableName)
                     ? null
@@ -281,7 +325,7 @@ export default function TableUpsert({
                 name="table-description"
                 placeholder="This table contains..."
                 rows={10}
-                disabled={readOnly || !!loadTableId}
+                disabled={readOnly}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className={classNames(
@@ -296,17 +340,23 @@ export default function TableUpsert({
           </div>
 
           <div className="pt-4">
-            {!readOnly && !loadTableId && (
+            {!readOnly && (
               <>
                 <Page.SectionHeader
                   title="CSV File"
                   description="Select the CSV file for data extraction. The maximum file size allowed is 50MB."
                   action={{
-                    label: uploading
-                      ? "Uploading..."
-                      : file
-                      ? file.name
-                      : "Upload file",
+                    label: (() => {
+                      if (uploading) {
+                        return "Uploading...";
+                      } else if (file) {
+                        return file.name;
+                      } else if (loadTableId) {
+                        return "Replace file";
+                      } else {
+                        return "Upload file";
+                      }
+                    })(),
                     variant: "primary",
                     icon: DocumentPlusIcon,
                     onClick: () => {

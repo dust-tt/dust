@@ -24,13 +24,19 @@ export const config = {
   },
 };
 
-const CreateTableFromCsvSchema = t.type({
-  name: t.string,
-  description: t.string,
-  csv: t.string,
-});
+const CreateTableFromCsvSchema = t.intersection([
+  t.type({
+    name: t.string,
+    description: t.string,
+  }),
+  // csv is optional when editing an existing table.
+  t.union([
+    t.type({ csv: t.string, tableId: t.undefined }),
+    t.type({ csv: t.union([t.string, t.undefined]), tableId: t.string }),
+  ]),
+]);
 
-export type CreateTableFromCsvRequestBody = t.TypeOf<
+export type UpsertTableFromCsvRequestBody = t.TypeOf<
   typeof CreateTableFromCsvSchema
 >;
 
@@ -94,26 +100,32 @@ async function handler(
       }
 
       const { name, description, csv } = bodyValidation.right;
-      const csvRowsRes = await rowsFromCsv(csv);
-      if (csvRowsRes.isErr()) {
-        return apiError(req, res, {
-          api_error: csvRowsRes.error,
-          status_code: 400,
-        });
+      const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+
+      let csvRows: CoreAPIRow[] | undefined = undefined;
+      if (csvRowsRes) {
+        if (csvRowsRes.isErr()) {
+          return apiError(req, res, {
+            api_error: csvRowsRes.error,
+            status_code: 400,
+          });
+        }
+
+        csvRows = csvRowsRes.value;
       }
 
-      const csvRows = csvRowsRes.value;
-      if (csvRows.length > 500_000) {
+      if ((csvRows?.length ?? 0) > 500_000) {
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `CSV has too many rows: ${csvRows.length} (max 500_000).`,
+            message: `CSV has too many rows: ${csvRows?.length} (max 500_000).`,
           },
           status_code: 400,
         });
       }
 
-      const tableId = generateModelSId();
+      const tableId = bodyValidation.right.tableId ?? generateModelSId();
+
       const tableRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
@@ -143,32 +155,34 @@ async function handler(
         });
       }
 
-      const rowsRes = await coreAPI.upsertTableRows({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        tableId,
-        rows: csvRows,
-      });
-
-      if (rowsRes.isErr()) {
-        logger.error(
-          {
-            dataSourceName: dataSource.name,
-            workspaceId: owner.id,
-            tableId,
-            tableName: name,
-            error: rowsRes.error,
-          },
-          "Failed to upsert rows."
-        );
-
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to upsert rows.",
-          },
+      if (csvRows) {
+        const rowsRes = await coreAPI.upsertTableRows({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceName: dataSource.name,
+          tableId,
+          rows: csvRows,
+          truncate: true,
         });
+        if (rowsRes.isErr()) {
+          logger.error(
+            {
+              dataSourceName: dataSource.name,
+              workspaceId: owner.id,
+              tableId,
+              tableName: name,
+              error: rowsRes.error,
+            },
+            "Failed to upsert rows."
+          );
+
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to upsert rows.",
+            },
+          });
+        }
       }
 
       return res.status(200).json({ table: tableRes.value });
