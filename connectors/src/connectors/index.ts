@@ -35,13 +35,15 @@ import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google
 import {
   cleanupIntercomConnector,
   createIntercomConnector,
-  fullResyncIntercomConnector,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
+  retrieveIntercomObjectsParents,
   retrieveIntercomResourcesTitles,
+  setIntercomConnectorPermissions,
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
+import { launchIntercomHelpCentersSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import type {
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
@@ -190,7 +192,7 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
-    intercom: fullResyncIntercomConnector,
+    intercom: launchIntercomHelpCentersSyncWorkflow,
     webcrawler: (connectorId: string) =>
       launchCrawlWebsiteWorkflow(parseInt(connectorId)),
   };
@@ -225,13 +227,7 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
     );
   },
   google_drive: setGoogleDriveConnectorPermissions,
-  intercom: async () => {
-    return new Err(
-      new Error(
-        `Setting Intercom connector permissions is not implemented yet.`
-      )
-    );
-  },
+  intercom: setIntercomConnectorPermissions,
   webcrawler: async () => {
     return new Err(
       new Error(`Setting Webcrawler connector permissions is not applicable.`)
@@ -261,7 +257,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
   github: async () => new Ok([]), // Github is flat,
-  intercom: async () => new Ok([]), // Intercom is not truly flat as we can put articles & collections inside collections but will handle this later
+  intercom: retrieveIntercomObjectsParents,
   webcrawler: retrieveWebCrawlerObjectsParents,
 };
 
