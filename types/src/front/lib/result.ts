@@ -24,10 +24,6 @@ export class Ok<T> {
   isErr(): this is Err<never> {
     return false;
   }
-
-  unwrap(): T {
-    return this.value;
-  }
 }
 
 export class Err<E> {
@@ -39,10 +35,6 @@ export class Err<E> {
 
   isErr(): this is Err<E> {
     return true;
-  }
-
-  unwrap(): never {
-    throw this.error;
   }
 }
 

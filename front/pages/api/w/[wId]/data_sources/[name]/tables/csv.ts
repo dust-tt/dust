@@ -102,14 +102,18 @@ async function handler(
       const { name, description, csv } = bodyValidation.right;
       const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
 
-      if (csvRowsRes?.isErr()) {
-        return apiError(req, res, {
-          api_error: csvRowsRes.error,
-          status_code: 400,
-        });
+      let csvRows: CoreAPIRow[] | undefined = undefined;
+      if (csvRowsRes) {
+        if (csvRowsRes.isErr()) {
+          return apiError(req, res, {
+            api_error: csvRowsRes.error,
+            status_code: 400,
+          });
+        }
+
+        csvRows = csvRowsRes.value;
       }
 
-      const csvRows = csvRowsRes?.unwrap();
       if ((csvRows?.length ?? 0) > 500_000) {
         return apiError(req, res, {
           api_error: {
