@@ -26,7 +26,7 @@ export async function getTemporalClientForNamespace(
   const connection = await Connection.connect(connectionOptions);
   const client = new Client({
     connection,
-    namespace: process.env.TEMPORAL_NAMESPACE,
+    namespace: process.env[envVarForTemporalNamespace],
   });
   TEMPORAL_CLIENTS[namespace] = client;
 
@@ -53,7 +53,7 @@ async function getConnectionOptions(
   const TEMPORAL_NAMESPACE = process.env[envVarForTemporalNamespace];
   if (!TEMPORAL_CERT_PATH || !TEMPORAL_CERT_KEY_PATH || !TEMPORAL_NAMESPACE) {
     throw new Error(
-      "TEMPORAL_CERT_PATH, TEMPORAL_CERT_KEY_PATH and TEMPORAL_NAMESPACE are required " +
+      `TEMPORAL_CERT_PATH, TEMPORAL_CERT_KEY_PATH and ${envVarForTemporalNamespace} are required ` +
         `when NODE_ENV=${NODE_ENV}, but not found in the environment`
     );
   }
