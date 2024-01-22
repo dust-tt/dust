@@ -128,6 +128,10 @@ export async function confluenceGetSpaceNameActivity({
   connectionId: string;
   spaceId: string;
 }) {
+  const localLogger = logger.child({
+    spaceId,
+  });
+
   const client = await getConfluenceClient({
     cloudId: confluenceCloudId,
     connectionId: connectionId,
@@ -139,6 +143,8 @@ export async function confluenceGetSpaceNameActivity({
     return space.name;
   } catch (err) {
     if (isNotFoundError(err)) {
+      localLogger.info("Deleting stale Confluence space.");
+
       return null;
     }
 
