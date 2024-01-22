@@ -145,12 +145,12 @@ export default function Home({
           <div className="invisibleFirst hidden flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out lg:flex">
             <P size="xs">
               <A variant="tertiary" href="#sectionProduct">
-                The product
+                Product
               </A>
             </P>
             <P size="xs">
               <A variant="tertiary" href="#sectionPricing">
-                Price plans
+                Pricing
               </A>
             </P>
           </div>
