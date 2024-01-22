@@ -683,10 +683,7 @@ export async function processRepository({
 
     const { size } = await fs.stat(tarPath);
 
-    localLogger.info(
-      { tarSize: size, tarPath },
-      "Finished tarball download"
-    );
+    localLogger.info({ tarSize: size, tarPath }, "Finished tarball download");
 
     // Extract the tarball.
     await extract({
