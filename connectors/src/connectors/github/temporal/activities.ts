@@ -1003,6 +1003,7 @@ export async function githubCodeSyncActivity({
             createdAt: codeSyncStartedAt,
             updatedAt: codeSyncStartedAt,
             lastSeenAt: codeSyncStartedAt,
+            codeUpdatedAt: codeSyncStartedAt,
           });
         }
 
@@ -1057,7 +1058,7 @@ export async function githubCodeSyncActivity({
           githubCodeFile.fileName = f.fileName;
           githubCodeFile.sourceUrl = f.sourceUrl;
           githubCodeFile.contentHash = contentHash;
-          githubCodeFile.updatedAt = codeSyncStartedAt;
+          githubCodeFile.codeUpdatedAt = codeSyncStartedAt;
         } else {
           localLogger.info(
             {
@@ -1101,6 +1102,7 @@ export async function githubCodeSyncActivity({
             createdAt: codeSyncStartedAt,
             updatedAt: codeSyncStartedAt,
             lastSeenAt: codeSyncStartedAt,
+            codeUpdatedAt: codeSyncStartedAt,
           });
         }
 
@@ -1118,7 +1120,7 @@ export async function githubCodeSyncActivity({
 
         // If some files were updated as part of the sync, refresh the directory updatedAt.
         if (updatedDirectories[d.internalId]) {
-          githubCodeDirectory.updatedAt = codeSyncStartedAt;
+          githubCodeDirectory.codeUpdatedAt = codeSyncStartedAt;
         }
 
         // Update everything else.
@@ -1143,7 +1145,7 @@ export async function githubCodeSyncActivity({
 
     // Finally we update the repository updatedAt value.
     if (repoUpdatedAt) {
-      githubCodeRepository.updatedAt = repoUpdatedAt;
+      githubCodeRepository.codeUpdatedAt = repoUpdatedAt;
       await githubCodeRepository.save();
     }
   } finally {

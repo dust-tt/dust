@@ -166,6 +166,7 @@ export class GithubCodeRepository extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
+  declare codeUpdatedAt: CreationOptional<Date>;
 
   declare repoId: string;
   declare repoLogin: string;
@@ -193,6 +194,11 @@ GithubCodeRepository.init(
       defaultValue: DataTypes.NOW,
     },
     lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    codeUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
@@ -230,6 +236,7 @@ export class GithubCodeFile extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
+  declare codeUpdatedAt: CreationOptional<Date>;
 
   declare repoId: string;
   declare documentId: string;
@@ -259,6 +266,11 @@ GithubCodeFile.init(
       defaultValue: DataTypes.NOW,
     },
     lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    codeUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
@@ -307,6 +319,7 @@ export class GithubCodeDirectory extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
+  declare codeUpdatedAt: CreationOptional<Date>;
 
   declare repoId: string;
   declare internalId: string;
@@ -335,6 +348,11 @@ GithubCodeDirectory.init(
       defaultValue: DataTypes.NOW,
     },
     lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    codeUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,

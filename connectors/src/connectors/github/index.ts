@@ -357,7 +357,7 @@ export async function retrieveGithubConnectorPermissions({
           expandable: true,
           permission: "read" as ConnectorPermission,
           dustDocumentId: null,
-          lastUpdatedAt: directory.updatedAt.getTime(),
+          lastUpdatedAt: directory.codeUpdatedAt.getTime(),
         });
       });
 
@@ -372,7 +372,7 @@ export async function retrieveGithubConnectorPermissions({
           expandable: false,
           permission: "read" as ConnectorPermission,
           dustDocumentId: file.documentId,
-          lastUpdatedAt: file.updatedAt.getTime(),
+          lastUpdatedAt: file.codeUpdatedAt.getTime(),
         });
       });
 
@@ -463,7 +463,7 @@ export async function retrieveGithubConnectorPermissions({
           expandable: true,
           permission: "read" as ConnectorPermission,
           dustDocumentId: null,
-          lastUpdatedAt: codeRepo.updatedAt.getTime(),
+          lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
         });
       }
 
