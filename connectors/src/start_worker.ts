@@ -3,6 +3,7 @@ import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorker } from "./connectors/google_drive/temporal/worker";
+import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
@@ -22,6 +23,9 @@ runGithubWorker().catch((err) =>
 );
 runGoogleWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running google worker")
+);
+runIntercomWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running intercom worker")
 );
 runWebCrawlerWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running webcrawler worker")

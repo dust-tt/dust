@@ -1,7 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { getIntercomClient } from "@connectors/connectors/intercom/lib/intercom_api";
+import { syncHelpCenter } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
+import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
@@ -70,9 +73,23 @@ export async function syncHelpCentersActivity({
     dataSourceName: dataSourceConfig.dataSourceName,
   };
 
-  console.log("syncHelpCentersActivity", {
-    connectorId,
-    dataSourceConfig,
-    loggerArgs,
+  const intercomClient = await getIntercomClient(connector.connectionId);
+  const helpCentersOnDb = await IntercomHelpCenter.findAll({
+    where: {
+      connectorId,
+    },
+  });
+
+  await sequelize_conn.transaction(async (transaction) => {
+    helpCentersOnDb.map(async (helpCenter) => {
+      await syncHelpCenter({
+        connector,
+        intercomClient,
+        dataSourceConfig,
+        helpCenter,
+        loggerArgs,
+        transaction,
+      });
+    });
   });
 }
