@@ -28,6 +28,7 @@ import { literal, Op } from "sequelize";
 
 import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
@@ -284,6 +285,7 @@ export async function syncFiles(
     .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
     .map((f) => f.id);
 
+  // TODO(2024-01-22 flav) Refactor once we have a `mapParallelCompact` function.
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   const results = await Promise.all(
     filesToSync.map((file) => {
@@ -916,36 +918,35 @@ export async function garbageCollector(
     limit: 100,
   });
 
-  const queue = new PQueue({ concurrency: FILES_GC_CONCURRENCY });
   const selectedFolders = await getFoldersToSync(connectorId);
-  await Promise.all(
-    files.map(async (file) => {
-      return queue.add(async () => {
-        const driveFile = await getGoogleDriveObject(
-          authCredentials,
-          file.driveFileId
-        );
-        if (!driveFile) {
-          // Could not find the file on Gdrive, deleting our local reference to it.
-          await deleteFile(file);
-          return null;
-        }
-        const isInFolder = await objectIsInFolders(
-          connectorId,
-          authCredentials,
-          driveFile,
-          selectedFolders,
-          lastSeenTs
-        );
-        if (isInFolder === false || driveFile.trashed) {
-          await deleteOneFile(connectorId, driveFile);
-        } else {
-          await file.update({
-            lastSeenTs: new Date(),
-          });
-        }
-      });
-    })
+  await concurrentExecutor(
+    files,
+    async (file) => {
+      const driveFile = await getGoogleDriveObject(
+        authCredentials,
+        file.driveFileId
+      );
+      if (!driveFile) {
+        // Could not find the file on Gdrive, deleting our local reference to it.
+        await deleteFile(file);
+        return undefined;
+      }
+      const isInFolder = await objectIsInFolders(
+        connectorId,
+        authCredentials,
+        driveFile,
+        selectedFolders,
+        lastSeenTs
+      );
+      if (isInFolder === false || driveFile.trashed) {
+        await deleteOneFile(connectorId, driveFile);
+      } else {
+        await file.update({
+          lastSeenTs: new Date(),
+        });
+      }
+    },
+    { concurrency: FILES_GC_CONCURRENCY }
   );
 
   return files.length;

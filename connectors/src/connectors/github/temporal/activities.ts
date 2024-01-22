@@ -1,7 +1,6 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
-import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import type {
@@ -20,6 +19,7 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -595,22 +595,18 @@ export async function githubRepoGarbageCollectActivity(
     },
   });
 
-  const queue = new PQueue({ concurrency: 5 });
-  const promises = [];
-
-  for (const issue of issuesInRepo) {
-    promises.push(
-      queue.add(() =>
-        deleteIssue(
-          dataSourceConfig,
-          installationId,
-          repoId,
-          issue.issueNumber,
-          loggerArgs
-        )
-      )
-    );
-  }
+  await concurrentExecutor(
+    issuesInRepo,
+    async (issue) =>
+      deleteIssue(
+        dataSourceConfig,
+        installationId,
+        repoId,
+        issue.issueNumber,
+        loggerArgs
+      ),
+    { concurrency: 5 }
+  );
 
   const discussionsInRepo = await GithubDiscussion.findAll({
     where: {
@@ -619,21 +615,18 @@ export async function githubRepoGarbageCollectActivity(
     },
   });
 
-  for (const discussion of discussionsInRepo) {
-    promises.push(
-      queue.add(() =>
-        deleteDiscussion(
-          dataSourceConfig,
-          installationId,
-          repoId,
-          discussion.discussionNumber,
-          loggerArgs
-        )
-      )
-    );
-  }
-
-  await Promise.all(promises);
+  await concurrentExecutor(
+    discussionsInRepo,
+    async (discussion) =>
+      deleteDiscussion(
+        dataSourceConfig,
+        installationId,
+        repoId,
+        discussion.discussionNumber,
+        loggerArgs
+      ),
+    { concurrency: 5 }
+  );
 }
 
 async function deleteIssue(
@@ -804,16 +797,20 @@ async function garbageCollectCodeSync(
       "GarbageCollectCodeSync: deleting files"
     );
 
-    const fq = new PQueue({ concurrency: 8 });
-    filesToDelete.forEach((f) =>
-      fq.add(async () => {
-        await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
+    await concurrentExecutor(
+      filesToDelete,
+      async (file) => {
+        await deleteFromDataSource(
+          dataSourceConfig,
+          file.documentId,
+          loggerArgs
+        );
         // Only destroy once we succesfully removed from the data source. This is idempotent and will
         // work as expected when retried.
-        await f.destroy();
-      })
+        await file.destroy();
+      },
+      { concurrency: 8 }
     );
-    await fq.onIdle();
   }
 
   const directoriesToDelete = await GithubCodeDirectory.findAll({
@@ -974,9 +971,9 @@ export async function githubCodeSyncActivity({
     const updatedDirectories: { [key: string]: boolean } = {};
     let repoUpdatedAt: Date | null = null;
 
-    const fq = new PQueue({ concurrency: 4 });
-    files.forEach((f) =>
-      fq.add(async () => {
+    await concurrentExecutor(
+      files,
+      async (f) => {
         // Read file (files are 1MB at most).
         const content = await fs.readFile(f.localFilePath);
         const contentHash = blake3(content).toString("hex");
@@ -1073,13 +1070,13 @@ export async function githubCodeSyncActivity({
         // Finally we update the lastSeenAt for all files we've seen, and save.
         githubCodeFile.lastSeenAt = codeSyncStartedAt;
         await githubCodeFile.save();
-      })
+      },
+      { concurrency: 4 }
     );
-    await fq.onIdle();
 
-    const dq = new PQueue({ concurrency: 8 });
-    directories.forEach((d) =>
-      dq.add(async () => {
+    await concurrentExecutor(
+      directories,
+      async (d) => {
         const parentInternalId = d.parentInternalId || rootInternalId;
 
         // Find directory or create it.
@@ -1129,9 +1126,9 @@ export async function githubCodeSyncActivity({
         githubCodeDirectory.lastSeenAt = codeSyncStartedAt;
 
         await githubCodeDirectory.save();
-      })
+      },
+      { concurrency: 8 }
     );
-    await dq.onIdle();
 
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
