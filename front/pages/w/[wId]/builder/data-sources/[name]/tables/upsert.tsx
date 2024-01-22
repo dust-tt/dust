@@ -321,7 +321,7 @@ export default function TableUpsert({
                     <div className="flex flex-col gap-y-2">
                       <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-element-800 text-warning-500">
                         <ExclamationCircleIcon />
-                        Warning: Large file
+                        Warning: Large file (5MB+)
                       </div>
                       <div className="text-sm font-normal text-element-700">
                         This file is large and may take a while to upload.
