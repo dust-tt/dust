@@ -1,7 +1,6 @@
 import {
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
-  Input,
   Item,
   Modal,
   Page,
