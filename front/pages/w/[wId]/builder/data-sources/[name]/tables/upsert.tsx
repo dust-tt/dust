@@ -103,7 +103,6 @@ export default function TableUpsert({
   const [uploading, setUploading] = useState(false);
   const [upserting, setUpserting] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
-  const [edited, setEdited] = useState(false);
 
   const { table } = useTable({
     workspaceId: owner.sId,
@@ -120,8 +119,14 @@ export default function TableUpsert({
       return setDisabled(true);
     }
 
+    const edited =
+      !loadTableId ||
+      table?.name !== tableName ||
+      table?.description !== description ||
+      file;
+
     return setDisabled(!edited);
-  }, [tableName, description, file, loadTableId, edited]);
+  }, [tableName, description, file, loadTableId, table]);
 
   useEffect(() => {
     if (loadTableId && table && !tableId) {
@@ -299,10 +304,7 @@ export default function TableUpsert({
                 name="table-name"
                 disabled={readOnly || !!loadTableId}
                 value={tableName}
-                onChange={(v) => {
-                  setEdited(true);
-                  setTableName(v);
-                }}
+                onChange={setTableName}
                 error={
                   !tableName || isNameValid(tableName)
                     ? null
@@ -325,10 +327,7 @@ export default function TableUpsert({
                 rows={10}
                 disabled={readOnly}
                 value={description}
-                onChange={(e) => {
-                  setEdited(true);
-                  setDescription(e.target.value);
-                }}
+                onChange={(e) => setDescription(e.target.value)}
                 className={classNames(
                   "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
                   "border-structure-200 bg-structure-50",
@@ -418,7 +417,6 @@ export default function TableUpsert({
 
                     setFile(csvFile);
                     setUploading(false);
-                    setEdited(true);
                   }}
                 />
               </>
