@@ -190,23 +190,24 @@ export const subNavigationBuild = ({
     variant: "secondary",
     menus: dataSourceItems,
   });
-
-  nav.push({
-    id: "developers",
-    label: isAdmin(owner) ? "Developers" : null,
-    variant: "secondary",
-    menus: [
-      {
-        id: "developers",
-        label: "Developer Tools",
-        icon: CommandLineIcon,
-        href: `/w/${owner.sId}/a`,
-        current: current === "developers",
-        subMenuLabel: current === "developers" ? subMenuLabel : undefined,
-        subMenu: current === "developers" ? subMenu : undefined,
-      },
-    ],
-  });
+  if (isAdmin(owner)) {
+    nav.push({
+      id: "developers",
+      label: "Developers",
+      variant: "secondary",
+      menus: [
+        {
+          id: "developers",
+          label: "Developer Tools",
+          icon: CommandLineIcon,
+          href: `/w/${owner.sId}/a`,
+          current: current === "developers",
+          subMenuLabel: current === "developers" ? subMenuLabel : undefined,
+          subMenu: current === "developers" ? subMenu : undefined,
+        },
+      ],
+    });
+  }
 
   if (isDevelopmentOrDustWorkspace(owner)) {
     nav.push({
