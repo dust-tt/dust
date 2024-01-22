@@ -807,7 +807,7 @@ export async function processRepository({
   } catch (e) {
     localLogger.info(
       { error: e },
-      "Caught excetion while processing repository, cleaning up"
+      "Caught exception while processing repository, cleaning up"
     );
     await cleanUpProcessRepository(tempDir);
     throw e;
