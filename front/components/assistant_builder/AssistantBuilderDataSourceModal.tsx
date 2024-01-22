@@ -1,6 +1,7 @@
 import {
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
+  Input,
   Item,
   Modal,
   Page,
@@ -138,6 +139,8 @@ function PickDataSource({
   show: boolean;
   onPick: (dataSource: DataSourceType) => void;
 }) {
+  const [query, setQuery] = useState("");
+
   // Order in the following format : connectorProvider > empty > webcrawler
   const orderedDataSources = dataSources.sort((a, b) => {
     const aConnector = a.connectorProvider;
@@ -174,6 +177,10 @@ function PickDataSource({
     return indexA - indexB;
   });
 
+  const filteredSources = orderedDataSources.filter((source) =>
+    source.name.includes(query)
+  );
+
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
@@ -181,20 +188,30 @@ function PickDataSource({
           title="Select Data Sources in:"
           icon={CloudArrowLeftRightIcon}
         />
-        {orderedDataSources.map((ds) => (
-          <Item.Navigation
-            label={getDisplayNameForDataSource(ds)}
-            icon={
-              ds.connectorProvider
-                ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                : CloudArrowDownIcon
-            }
-            key={ds.name}
-            onClick={() => {
-              onPick(ds);
-            }}
-          />
-        ))}
+        <Input
+          name="search"
+          placeholder="Search..."
+          value={query}
+          onChange={setQuery}
+        />
+        {filteredSources.length ? (
+          filteredSources.map((ds) => (
+            <Item.Navigation
+              label={getDisplayNameForDataSource(ds)}
+              icon={
+                ds.connectorProvider
+                  ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+                  : CloudArrowDownIcon
+              }
+              key={ds.name}
+              onClick={() => {
+                onPick(ds);
+              }}
+            />
+          ))
+        ) : (
+          <p>Their is no data sources matching your search...</p>
+        )}
       </Page>
     </Transition>
   );
