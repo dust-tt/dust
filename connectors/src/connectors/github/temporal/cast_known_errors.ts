@@ -23,6 +23,8 @@ export class GithubCastKnownErrorsInterceptor
           type: "github_rate_limited",
         };
       }
+
+      throw err;
     }
   }
 }
