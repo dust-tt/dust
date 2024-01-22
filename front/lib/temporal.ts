@@ -1,5 +1,6 @@
 import type { ConnectionOptions } from "@temporalio/client";
 import { Client, Connection } from "@temporalio/client";
+import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
 type TemporalNamespaces = "connectors" | "front";
@@ -33,7 +34,7 @@ export async function getTemporalClientForNamespace(
 }
 
 async function getConnectionOptions(
-  envVarForTemporalNamespace: string
+  envVarForTemporalNamespace: string = temporalWorkspaceToEnvVar["front"]
 ): Promise<
   | {
       address: string;
@@ -69,6 +70,15 @@ async function getConnectionOptions(
       },
     },
   };
+}
+
+export async function getTemporalWorkerConnection(): Promise<{
+  connection: NativeConnection;
+  namespace: string | undefined;
+}> {
+  const connectionOptions = await getConnectionOptions();
+  const connection = await NativeConnection.connect(connectionOptions);
+  return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
 }
 
 export async function getTemporalClient() {
