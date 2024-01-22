@@ -138,6 +138,42 @@ function PickDataSource({
   show: boolean;
   onPick: (dataSource: DataSourceType) => void;
 }) {
+  // Order in the following format : connectorProvider > empty > webcrawler
+  const orderedDataSources = dataSources.sort((a, b) => {
+    const aConnector = a.connectorProvider;
+    const bConnector = b.connectorProvider;
+
+    const order = Object.keys(CONNECTOR_CONFIGURATIONS)
+      .filter(
+        (key) =>
+          CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
+            .connectorProvider !==
+          CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider
+      )
+      .map(
+        (key) =>
+          CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
+            .connectorProvider
+      );
+
+    if (aConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
+      return 1;
+    }
+
+    if (bConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
+      return -1;
+    }
+
+    const indexA = aConnector ? order.indexOf(aConnector) : order.length;
+    const indexB = bConnector ? order.indexOf(bConnector) : order.length;
+
+    if (indexA === -1 && indexB === -1) {
+      return 0;
+    }
+
+    return indexA - indexB;
+  });
+
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
@@ -145,25 +181,20 @@ function PickDataSource({
           title="Select Data Sources in:"
           icon={CloudArrowLeftRightIcon}
         />
-        {dataSources
-          .sort(
-            (a, b) =>
-              (b.connectorProvider ? 1 : 0) - (a.connectorProvider ? 1 : 0)
-          )
-          .map((ds) => (
-            <Item.Navigation
-              label={getDisplayNameForDataSource(ds)}
-              icon={
-                ds.connectorProvider
-                  ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                  : CloudArrowDownIcon
-              }
-              key={ds.name}
-              onClick={() => {
-                onPick(ds);
-              }}
-            />
-          ))}
+        {orderedDataSources.map((ds) => (
+          <Item.Navigation
+            label={getDisplayNameForDataSource(ds)}
+            icon={
+              ds.connectorProvider
+                ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+                : CloudArrowDownIcon
+            }
+            key={ds.name}
+            onClick={() => {
+              onPick(ds);
+            }}
+          />
+        ))}
       </Page>
     </Transition>
   );
