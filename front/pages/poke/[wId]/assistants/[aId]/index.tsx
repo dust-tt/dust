@@ -76,7 +76,7 @@ const DataSourcePage = ({
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">model:</div>
-                      {`${JSON.stringify(a.generation?.model, null, 2)}`}
+                      {JSON.stringify(a.generation?.model, null, 2)}
                     </div>
                     {a.action && isRetrievalConfiguration(a.action) && (
                       <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
@@ -96,7 +96,9 @@ const DataSourcePage = ({
                       <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
                         <div className="font-bold">Tables:</div>
                         {a.action.tables.map((t) => (
-                          <div key={t.tableId}>
+                          <div
+                            key={`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`}
+                          >
                             {t.workspaceId}/{t.dataSourceId}/{t.tableId}
                           </div>
                         ))}
