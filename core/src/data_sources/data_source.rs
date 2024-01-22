@@ -786,11 +786,33 @@ impl DataSource {
         )?;
 
         utils::done(&format!(
-            "Created document blob: data_source_id={} document_id={} duration={}ms",
+            "Created document blob: data_source_id={} document_id={} duration={}ms blob_url={}",
             self.data_source_id,
             document_id,
-            utils::now() - now
+            utils::now() - now,
+            format!("gs://{}/{}", bucket, content_path)
         ));
+
+        match document_id {
+            "notion-95804d6b-0274-43f6-8957-5b024234e3bf" => {
+                let debug_path = format!("{}/{}/debug.json", bucket_path, document_hash);
+                Object::create(
+                    &bucket,
+                    serde_json::to_string(&text).unwrap().into_bytes(),
+                    &debug_path,
+                    "application/json",
+                )
+                .await?;
+                utils::done(&format!(
+                    "Uploaded buggy document: data_source_id={} document_id={} debug_blob_url={}",
+                    self.data_source_id,
+                    document_id,
+                    format!("gs://{}/{}", bucket, debug_path)
+                ));
+                panic!("BUGGY document `{}`", document_id);
+            }
+            _ => (),
+        };
 
         let now = utils::now();
 
