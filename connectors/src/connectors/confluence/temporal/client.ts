@@ -5,18 +5,18 @@ import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
-  makeConfluenceFullSyncWorkflowId,
   makeConfluenceRemoveSpacesWorkflowId,
+  makeConfluenceSyncWorkflowId,
 } from "@connectors/connectors/confluence/temporal/utils";
 import {
-  confluenceFullSyncWorkflow,
   confluenceRemoveSpacesWorkflow,
+  confluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 
-export async function launchConfluenceFullSyncWorkflow(
+export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = [],
   upsert = false
@@ -36,7 +36,7 @@ export async function launchConfluenceFullSyncWorkflow(
 
   // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
-    await client.workflow.signalWithStart(confluenceFullSyncWorkflow, {
+    await client.workflow.signalWithStart(confluenceSyncWorkflow, {
       args: [
         {
           connectorId: connector.id,
@@ -46,7 +46,7 @@ export async function launchConfluenceFullSyncWorkflow(
         },
       ],
       taskQueue: QUEUE_NAME,
-      workflowId: makeConfluenceFullSyncWorkflowId(connector.id),
+      workflowId: makeConfluenceSyncWorkflowId(connector.id),
       searchAttributes: {
         connectorId: [connectorId],
       },

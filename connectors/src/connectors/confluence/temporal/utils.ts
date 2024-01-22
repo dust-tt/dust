@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
-export function makeConfluenceFullSyncWorkflowId(connectorId: ModelId) {
-  return `confluence-fullsync-${connectorId}`;
+export function makeConfluenceSyncWorkflowId(connectorId: ModelId) {
+  return `confluence-sync-${connectorId}`;
 }
 
 export function makeConfluenceSpaceSyncWorkflowIdFromParentId(

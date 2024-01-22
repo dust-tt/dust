@@ -33,7 +33,7 @@ const {
   startToCloseTimeout: "20 minutes",
 });
 
-export async function confluenceFullSyncWorkflow({
+export async function confluenceSyncWorkflow({
   connectionId,
   connectorId,
   dataSourceConfig,
