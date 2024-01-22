@@ -609,6 +609,32 @@ export default function AssistantBuilder({
     return newAgentConfiguration;
   };
 
+  const onAssistantCancel = async () => {
+    if (flow === "workspace_assistants")
+      await router.push(`/w/${owner.sId}/builder/assistants`);
+    else await router.push(`/w/${owner.sId}/assistant/assistants`);
+  };
+
+  const onAssistantSave = async () => {
+    setIsSavingOrDeleting(true);
+    submitForm()
+      .then(async () => {
+        if (flow === "workspace_assistants")
+          await router.push(`/w/${owner.sId}/builder/assistants`);
+        else await router.push(`/w/${owner.sId}/assistant/assistants`);
+        setIsSavingOrDeleting(false);
+      })
+      .catch((e) => {
+        console.error(e);
+        sendNotification({
+          title: "Error saving Assistant",
+          description: `Please try again. If the error persists, reach out to team@dust.tt (error ${e.message})`,
+          type: "error",
+        });
+        setIsSavingOrDeleting(false);
+      });
+  };
+
   return (
     <>
       <AssistantBuilderDataSourceModal
@@ -710,39 +736,8 @@ export default function AssistantBuilder({
           ) : (
             <AppLayoutSimpleSaveCancelTitle
               title="Edit an Assistant"
-              onCancel={async () => {
-                if (flow === "workspace_assistants")
-                  await router.push(`/w/${owner.sId}/builder/assistants`);
-                else await router.push(`/w/${owner.sId}/assistant/assistants`);
-              }}
-              onSave={
-                submitEnabled
-                  ? () => {
-                      setIsSavingOrDeleting(true);
-                      submitForm()
-                        .then(async () => {
-                          if (flow === "workspace_assistants")
-                            await router.push(
-                              `/w/${owner.sId}/builder/assistants`
-                            );
-                          else
-                            await router.push(
-                              `/w/${owner.sId}/assistant/assistants`
-                            );
-                          setIsSavingOrDeleting(false);
-                        })
-                        .catch((e) => {
-                          console.error(e);
-                          sendNotification({
-                            title: "Error saving Assistant",
-                            description: `Please try again. If the error persists, reach out to team@dust.tt (error ${e.message})`,
-                            type: "error",
-                          });
-                          setIsSavingOrDeleting(false);
-                        });
-                    }
-                  : undefined
-              }
+              onCancel={onAssistantCancel}
+              onSave={submitEnabled ? onAssistantSave : undefined}
               isSaving={isSavingOrDeleting}
             />
           )
@@ -1230,7 +1225,7 @@ export default function AssistantBuilder({
             </div>
           </div>
 
-          {agentConfigurationId && (
+          {agentConfigurationId ? (
             <div className="flex w-full justify-center pt-8">
               <DeleteAssistantDialog
                 owner={owner}
@@ -1251,6 +1246,24 @@ export default function AssistantBuilder({
                   setShowDeletionModal(true);
                 }}
               />
+            </div>
+          ) : (
+            <div className="flex w-full justify-end pt-4">
+              <Button.List>
+                <Button
+                  size="md"
+                  variant="secondaryWarning"
+                  label="Cancel"
+                  onClick={onAssistantCancel}
+                />
+                <Button
+                  size="md"
+                  variant="primary"
+                  label="Save"
+                  disabled={!submitEnabled}
+                  onClick={onAssistantSave}
+                />
+              </Button.List>
             </div>
           )}
         </div>
