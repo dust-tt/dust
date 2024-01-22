@@ -46,7 +46,8 @@ export async function createNotionConnector(
     useCache: false,
   });
 
-  if (!validateAccessToken(notionAccessToken)) {
+  const isValidToken = await validateAccessToken(notionAccessToken);
+  if (!isValidToken) {
     return new Err(new Error("Notion access token is invalid"));
   }
 
