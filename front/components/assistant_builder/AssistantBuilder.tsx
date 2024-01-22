@@ -1225,8 +1225,8 @@ export default function AssistantBuilder({
             </div>
           </div>
 
-          {agentConfigurationId ? (
-            <div className="flex w-full justify-center pt-8">
+          {agentConfigurationId && (
+            <div className="flex w-full justify-start pt-8">
               <DeleteAssistantDialog
                 owner={owner}
                 agentConfigurationId={agentConfigurationId}
@@ -1247,25 +1247,24 @@ export default function AssistantBuilder({
                 }}
               />
             </div>
-          ) : (
-            <div className="flex w-full justify-end pt-4">
-              <Button.List>
-                <Button
-                  size="md"
-                  variant="secondaryWarning"
-                  label="Cancel"
-                  onClick={onAssistantCancel}
-                />
-                <Button
-                  size="md"
-                  variant="primary"
-                  label="Save"
-                  disabled={!submitEnabled}
-                  onClick={onAssistantSave}
-                />
-              </Button.List>
-            </div>
           )}
+          <div className="flex w-full justify-end pt-4">
+            <Button.List>
+              <Button
+                size="md"
+                variant="tertiary"
+                label="Cancel"
+                onClick={onAssistantCancel}
+              />
+              <Button
+                size="md"
+                variant="primary"
+                label="Save"
+                disabled={!edited || !submitEnabled}
+                onClick={onAssistantSave}
+              />
+            </Button.List>
+          </div>
         </div>
       </AppLayout>
     </>
