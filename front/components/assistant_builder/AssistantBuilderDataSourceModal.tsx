@@ -1,6 +1,7 @@
 import {
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
+  Input,
   Item,
   Modal,
   Page,
@@ -16,6 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
 import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
@@ -145,25 +147,20 @@ function PickDataSource({
           title="Select Data Sources in:"
           icon={CloudArrowLeftRightIcon}
         />
-        {dataSources
-          .sort(
-            (a, b) =>
-              (b.connectorProvider ? 1 : 0) - (a.connectorProvider ? 1 : 0)
-          )
-          .map((ds) => (
-            <Item.Navigation
-              label={getDisplayNameForDataSource(ds)}
-              icon={
-                ds.connectorProvider
-                  ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                  : CloudArrowDownIcon
-              }
-              key={ds.name}
-              onClick={() => {
-                onPick(ds);
-              }}
-            />
-          ))}
+        {orderDatasourceByImportance(dataSources).map((ds) => (
+          <Item.Navigation
+            label={getDisplayNameForDataSource(ds)}
+            icon={
+              ds.connectorProvider
+                ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+                : CloudArrowDownIcon
+            }
+            key={ds.name}
+            onClick={() => {
+              onPick(ds);
+            }}
+          />
+        ))}
       </Page>
     </Transition>
   );
