@@ -2021,9 +2021,11 @@ export async function getDiscoveredResourcesFromCache(
 
 /** Render page sections according to Notion structure:
  * - the natural nesting of blocks is used as structure,
- * - H1 & H2 blocks add a level of nesting in addition to the "natural" nesting,
+ * - H1, H2 & H3 blocks add a level of nesting in addition to the "natural"
+ *   nesting,
  * - only the 2 first levels of nesting are used to create prefixes, similarly
- *   to github, to avoid too many prefixes
+ *   to github, to avoid too many prefixes (H3 is still useful since some people
+ *   don't use H1 but only H2/H3, or start their doc with H3, etc.)
  */
 async function renderPageSection({
   dsConfig,
@@ -2038,7 +2040,7 @@ async function renderPageSection({
     sections: [],
   };
 
-  // Change block parents so that H1/H2 blocks are treated as nesting
+  // Change block parents so that H1/H2/H3 blocks are treated as nesting
   // for that we need to traverse with a topological sort, leafs treated first
   const orderedParentIds: string[] = [];
   const addNode = (nodeId: string) => {
@@ -2062,9 +2064,14 @@ async function renderPageSection({
       parentId
     ] as NotionConnectorBlockCacheEntry[];
     blocks.sort((a, b) => a.indexInParent - b.indexInParent);
-    const currentHeadings: { h1: string | null; h2: string | null } = {
+    const currentHeadings: {
+      h1: string | null;
+      h2: string | null;
+      h3: string | null;
+    } = {
       h1: null,
       h2: null,
+      h3: null,
     };
     for (const block of blocks) {
       if (block.blockType === "heading_1") {
@@ -2074,6 +2081,7 @@ async function renderPageSection({
         ];
         currentHeadings.h1 = block.notionBlockId;
         currentHeadings.h2 = null;
+        currentHeadings.h3 = null;
       } else if (block.blockType === "heading_2") {
         const h2ParentId = currentHeadings.h1 ?? parentId;
         adaptedBlocksByParentId[h2ParentId] = [
@@ -2081,9 +2089,20 @@ async function renderPageSection({
           block,
         ];
         currentHeadings.h2 = block.notionBlockId;
+        currentHeadings.h3 = null;
+      } else if (block.blockType === "heading_3") {
+        const h3ParentId = currentHeadings.h2 ?? currentHeadings.h1 ?? parentId;
+        adaptedBlocksByParentId[h3ParentId] = [
+          ...(adaptedBlocksByParentId[h3ParentId] ?? []),
+          block,
+        ];
+        currentHeadings.h3 = block.notionBlockId;
       } else {
         const currentParentId =
-          currentHeadings.h2 ?? currentHeadings.h1 ?? parentId;
+          currentHeadings.h3 ??
+          currentHeadings.h2 ??
+          currentHeadings.h1 ??
+          parentId;
         adaptedBlocksByParentId[currentParentId] = [
           ...(adaptedBlocksByParentId[currentParentId] ?? []),
           block,
@@ -2103,7 +2122,11 @@ async function renderPageSection({
       .trim()
       .replace(/data:image\/[^;]+;base64,[^\n]+/g, "")
       .concat("\n");
-    if (b.blockType === "heading_1" || b.blockType === "heading_2") {
+    if (
+      b.blockType === "heading_1" ||
+      b.blockType === "heading_2" ||
+      b.blockType === "heading_3"
+    ) {
       renderedBlock = "\n" + renderedBlock;
     }
 
@@ -2120,7 +2143,11 @@ async function renderPageSection({
     // Recurse on children
     const children = adaptedBlocksByParentId[b.notionBlockId] ?? [];
     children.sort((a, b) => a.indexInParent - b.indexInParent);
-    if (b.blockType !== "heading_1" && b.blockType !== "heading_2") {
+    if (
+      b.blockType !== "heading_1" &&
+      b.blockType !== "heading_2" &&
+      b.blockType !== "heading_3"
+    ) {
       indent = `- ${indent}`;
     }
     for (const child of children) {
