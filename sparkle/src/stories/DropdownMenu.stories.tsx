@@ -154,6 +154,54 @@ export const DropdownExample = () => {
               label="@slack"
               visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
             />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>

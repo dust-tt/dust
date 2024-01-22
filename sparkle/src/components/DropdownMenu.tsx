@@ -389,7 +389,7 @@ DropdownMenu.Items = function ({
         style={styleInsert(origin, marginLeft)}
       >
         {topBar}
-        <div className="s-px-5 s-py-1.5 ">
+        <div className="s-max-h-[344px] s-overflow-auto s-px-5 s-py-1.5">
           <StandardItem.List>{children}</StandardItem.List>
         </div>
         {bottomBar}
