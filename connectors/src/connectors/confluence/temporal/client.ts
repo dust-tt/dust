@@ -1,6 +1,5 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { ScheduleOptionsAction } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
