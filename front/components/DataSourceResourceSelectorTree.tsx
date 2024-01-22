@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   DocumentTextIcon,
+  Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
@@ -109,6 +110,8 @@ function DataSourceResourceSelectorChildren({
   fullySelected: boolean;
   filterPermission: ConnectorPermission;
 }) {
+  const [query, setQuery] = useState<string>("");
+
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
       owner: owner,
@@ -144,100 +147,119 @@ function DataSourceResourceSelectorChildren({
     );
   }
 
+  const filteredResources = resources.filter((r) =>
+    r.title.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+  );
+
   return (
     <>
       {isResourcesLoading ? (
         <Spinner />
       ) : (
-        <div className="flex-1 space-y-1">
-          {resources.map((r) => {
-            const IconComponent = getIconForType(r.type);
-            const checkStatus = getCheckStatus(r.internalId);
-            return (
-              <div key={r.internalId}>
-                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
-                  {expandable && (
-                    <div className="mr-4">
-                      {expanded[r.internalId] ? (
-                        <ChevronDownIcon
-                          className="h-5 w-5 cursor-pointer text-action-600"
-                          onClick={() => {
-                            setExpanded((prev) => ({
-                              ...prev,
-                              [r.internalId]: false,
-                            }));
-                          }}
-                        />
-                      ) : (
-                        <ChevronRightIcon
-                          className={classNames(
-                            "h-5 w-5",
-                            r.expandable
-                              ? "cursor-pointer text-action-600"
-                              : "cursor-not-allowed text-slate-300"
+        <div className="flex-1 space-y-4">
+          {resources.length && !parents.length && (
+            <Searchbar
+              name="search"
+              onChange={setQuery}
+              value={query}
+              placeholder="Search..."
+            />
+          )}
+
+          <div className="flex-1 space-y-1">
+            {filteredResources.length ? (
+              filteredResources.map((r) => {
+                const IconComponent = getIconForType(r.type);
+                const checkStatus = getCheckStatus(r.internalId);
+                return (
+                  <div key={r.internalId}>
+                    <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
+                      {expandable && (
+                        <div className="mr-4">
+                          {expanded[r.internalId] ? (
+                            <ChevronDownIcon
+                              className="h-5 w-5 cursor-pointer text-action-600"
+                              onClick={() => {
+                                setExpanded((prev) => ({
+                                  ...prev,
+                                  [r.internalId]: false,
+                                }));
+                              }}
+                            />
+                          ) : (
+                            <ChevronRightIcon
+                              className={classNames(
+                                "h-5 w-5",
+                                r.expandable
+                                  ? "cursor-pointer text-action-600"
+                                  : "cursor-not-allowed text-slate-300"
+                              )}
+                              onClick={() => {
+                                if (r.expandable) {
+                                  setExpanded((prev) => ({
+                                    ...prev,
+                                    [r.internalId]: true,
+                                  }));
+                                }
+                              }}
+                            />
                           )}
-                          onClick={() => {
-                            if (r.expandable) {
-                              setExpanded((prev) => ({
-                                ...prev,
-                                [r.internalId]: true,
-                              }));
-                            }
-                          }}
+                        </div>
+                      )}
+                      <div>
+                        <IconComponent className="h-5 w-5 text-slate-300" />
+                      </div>
+                      <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">
+                        {r.title}
+                      </span>
+                      <div className="ml-32 flex-grow">
+                        <Checkbox
+                          variant="checkable"
+                          className={classNames(
+                            "ml-auto",
+                            checkStatus === "partial" ? "bg-element-600" : ""
+                          )}
+                          checked={checkStatus === "checked"}
+                          partialChecked={checkStatus === "partial"}
+                          onChange={(checked) =>
+                            onSelectChange(
+                              {
+                                resourceId: r.internalId,
+                                resourceName: r.title,
+                                parents: parents,
+                              },
+                              checked
+                            )
+                          }
+                          disabled={isChecked || fullySelected}
                         />
-                      )}
+                      </div>
                     </div>
-                  )}
-                  <div>
-                    <IconComponent className="h-5 w-5 text-slate-300" />
+                    {expanded[r.internalId] && (
+                      <div className="flex flex-row">
+                        <div className="ml-4" />
+                        <DataSourceResourceSelectorChildren
+                          owner={owner}
+                          dataSource={dataSource}
+                          parentId={r.internalId}
+                          expandable={expandable}
+                          isChecked={checkStatus === "checked"}
+                          selectedParentIds={selectedParentIds}
+                          onSelectChange={onSelectChange}
+                          parentsById={parentsById}
+                          parents={[...parents, r.internalId]}
+                          fullySelected={fullySelected}
+                          filterPermission={filterPermission}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">
-                    {r.title}
-                  </span>
-                  <div className="ml-32 flex-grow">
-                    <Checkbox
-                      variant="checkable"
-                      className={classNames(
-                        "ml-auto",
-                        checkStatus === "partial" ? "bg-element-600" : ""
-                      )}
-                      checked={checkStatus === "checked"}
-                      partialChecked={checkStatus === "partial"}
-                      onChange={(checked) =>
-                        onSelectChange(
-                          {
-                            resourceId: r.internalId,
-                            resourceName: r.title,
-                            parents: parents,
-                          },
-                          checked
-                        )
-                      }
-                      disabled={isChecked || fullySelected}
-                    />
-                  </div>
-                </div>
-                {expanded[r.internalId] && (
-                  <div className="flex flex-row">
-                    <div className="ml-4" />
-                    <DataSourceResourceSelectorChildren
-                      owner={owner}
-                      dataSource={dataSource}
-                      parentId={r.internalId}
-                      expandable={expandable}
-                      isChecked={checkStatus === "checked"}
-                      selectedParentIds={selectedParentIds}
-                      onSelectChange={onSelectChange}
-                      parentsById={parentsById}
-                      parents={[...parents, r.internalId]}
-                      fullySelected={fullySelected}
-                      filterPermission={filterPermission}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })
+            ) : (
+              <p>No results are matching your search...</p>
+            )}
+          </div>
         </div>
       )}
     </>

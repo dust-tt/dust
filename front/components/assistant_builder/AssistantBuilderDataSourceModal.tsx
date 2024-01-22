@@ -1,7 +1,7 @@
 import {
+  ChevronLeftIcon,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
-  Input,
   Item,
   Modal,
   Page,
@@ -36,6 +36,7 @@ export default function AssistantBuilderDataSourceModal({
   onSave: (params: AssistantBuilderDataSourceConfiguration) => void;
   dataSourceToManage: AssistantBuilderDataSourceConfiguration | null;
 }) {
+  const [displayFolderPicker, setDisplayFolderPicker] = useState(false);
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
   const [selectedResources, setSelectedResources] = useState<
@@ -51,12 +52,17 @@ export default function AssistantBuilderDataSourceModal({
     }
   }, [dataSourceToManage]);
 
+  const onReset = () => {
+    setSelectedDataSource(null);
+    setSelectedResources({});
+    setIsSelectAll(false);
+    setDisplayFolderPicker(false);
+  };
+
   const onClose = () => {
     setOpen(false);
     setTimeout(() => {
-      setSelectedDataSource(null);
-      setSelectedResources({});
-      setIsSelectAll(false);
+      onReset();
     }, 200);
   };
 
@@ -67,6 +73,7 @@ export default function AssistantBuilderDataSourceModal({
     ) {
       throw new Error("Cannot save an incomplete configuration");
     }
+
     onSave({
       dataSource: selectedDataSource,
       selectedResources,
@@ -79,32 +86,41 @@ export default function AssistantBuilderDataSourceModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      onSave={() => onSaveLocal({ isSelectAll })}
+      onSave={() => {
+        onSaveLocal({ isSelectAll });
+      }}
       hasChanged={
         !!selectedDataSource &&
         (Object.keys(selectedResources).length > 0 || isSelectAll)
       }
       variant="full-screen"
       title="Add data sources"
+      {...((selectedDataSource || displayFolderPicker) && {
+        action: {
+          size: "sm",
+          label: "Back",
+          variant: "tertiary",
+          labelVisible: false,
+          tooltipPosition: "below",
+          icon: ChevronLeftIcon,
+          onClick: onReset,
+        },
+      })}
     >
       <div className="w-full pt-12">
-        {!selectedDataSource || !selectedDataSource.connectorProvider ? (
+        {!selectedDataSource && !displayFolderPicker && (
           <PickDataSource
             dataSources={dataSources}
             show={!dataSourceToManage}
             onPick={(ds) => {
               setSelectedDataSource(ds);
-              if (!ds.connectorProvider) {
-                onSave({
-                  dataSource: ds,
-                  selectedResources: {},
-                  isSelectAll: true,
-                });
-                onClose();
-              }
+            }}
+            onFoldersPicked={() => {
+              setDisplayFolderPicker(true);
             }}
           />
-        ) : (
+        )}
+        {selectedDataSource && selectedDataSource.connectorProvider && (
           <DataSourceResourceSelector
             dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
             owner={owner}
@@ -126,12 +142,27 @@ export default function AssistantBuilderDataSourceModal({
             }}
           />
         )}
+        {displayFolderPicker && (
+          <FolderPickDataSource
+            dataSources={dataSources}
+            show={!dataSourceToManage}
+            onPick={(ds) => {
+              setSelectedDataSource(ds);
+              onSave({
+                dataSource: ds,
+                selectedResources: {},
+                isSelectAll: true,
+              });
+              onClose();
+            }}
+          />
+        )}
       </div>
     </Modal>
   );
 }
 
-function PickDataSource({
+function FolderPickDataSource({
   dataSources,
   show,
   onPick,
@@ -144,22 +175,78 @@ function PickDataSource({
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header
+          title="Select Folders in:"
+          icon={CloudArrowLeftRightIcon}
+        />
+        {dataSources
+          .filter((folder) => !folder.connectorProvider)
+          .map((ds) => (
+            <Item.Navigation
+              label={getDisplayNameForDataSource(ds)}
+              icon={CloudArrowDownIcon}
+              key={ds.name}
+              onClick={() => {
+                onPick(ds);
+              }}
+            />
+          ))}
+      </Page>
+    </Transition>
+  );
+}
+
+function PickDataSource({
+  dataSources,
+  show,
+  onPick,
+  onFoldersPicked,
+}: {
+  dataSources: DataSourceType[];
+  show: boolean;
+  onPick: (dataSource: DataSourceType) => void;
+  onFoldersPicked: () => void;
+}) {
+  const dataSourcesWithoutFolders = dataSources.filter(
+    (ds) => ds.connectorProvider
+  );
+
+  const orderedDataSources = orderDatasourceByImportance(
+    dataSourcesWithoutFolders
+  );
+
+  const webcrawlerIndex = orderedDataSources.findIndex(
+    (ds) => ds.connectorProvider === "webcrawler"
+  );
+
+  const sources = orderedDataSources.map((ds) => ({
+    label: getDisplayNameForDataSource(ds),
+    icon: ds.connectorProvider
+      ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+      : CloudArrowDownIcon,
+    onClick: () => {
+      onPick(ds);
+    },
+    name: ds.name,
+  }));
+
+  if (dataSourcesWithoutFolders.length !== dataSources.length) {
+    sources.splice(webcrawlerIndex, 0, {
+      label: "Folders",
+      icon: CloudArrowDownIcon,
+      onClick: onFoldersPicked,
+      name: "folders",
+    });
+  }
+
+  return (
+    <Transition show={show} className="mx-auto max-w-6xl">
+      <Page>
+        <Page.Header
           title="Select Data Sources in:"
           icon={CloudArrowLeftRightIcon}
         />
-        {orderDatasourceByImportance(dataSources).map((ds) => (
-          <Item.Navigation
-            label={getDisplayNameForDataSource(ds)}
-            icon={
-              ds.connectorProvider
-                ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                : CloudArrowDownIcon
-            }
-            key={ds.name}
-            onClick={() => {
-              onPick(ds);
-            }}
-          />
+        {sources.map((source) => (
+          <Item.Navigation key={source.name} {...source} />
         ))}
       </Page>
     </Transition>
