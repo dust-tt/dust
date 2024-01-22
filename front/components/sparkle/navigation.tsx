@@ -105,12 +105,14 @@ export const topNavigation = ({
       current: current === "assistants",
       sizing: "expand",
     });
+  }
+  if (isAdmin(owner)) {
     nav.push({
       id: "settings",
       label: "Admin",
       hideLabel: true,
       icon: Cog6ToothIcon,
-      href: isAdmin(owner) ? `/w/${owner.sId}/members` : `/w/${owner.sId}/a`,
+      href: `/w/${owner.sId}/members`,
       current: current === "admin",
       sizing: "hug",
     });
