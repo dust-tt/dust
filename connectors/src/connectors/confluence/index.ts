@@ -108,13 +108,15 @@ function createConnectorResourceFromSpace(
   baseUrl: string,
   permission: ConnectorPermission
 ): ConnectorResource {
+  const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
+
   return {
     provider: "confluence",
     internalId: space.id.toString(),
     parentInternalId: null,
     type: "folder",
     title: space.name || "Unnamed Space",
-    sourceUrl: `${baseUrl}/wiki${space.urlSuffix}`,
+    sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
     expandable: false,
     permission: permission,
     dustDocumentId: null,
