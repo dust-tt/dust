@@ -178,9 +178,9 @@ export default function WorkspaceAssistants({
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Manage Workspace Assistants"
+          title="Manage Company Assistants"
           icon={RobotIcon}
-          description="Workspace assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit workspace assistants."
+          description="Company assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit Company assistants."
         />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
@@ -246,7 +246,7 @@ export default function WorkspaceAssistants({
                           <Button
                             variant="tertiary"
                             icon={XMarkIcon}
-                            label="Remove from workspace"
+                            label="Remove from Company assistants"
                             labelVisible={false}
                             size="xs"
                           />
@@ -261,7 +261,7 @@ export default function WorkspaceAssistants({
                             }}
                           />
                           <DropdownMenu.Item
-                            label="Remove from workspace list"
+                            label="Remove from Company assistants"
                             visual={null}
                             icon={XMarkIcon}
                             onClick={() => {
@@ -291,7 +291,7 @@ export default function WorkspaceAssistants({
 
         <div className="flex flex-col gap-y-2">
           <Page.SectionHeader
-            title="Dust Assistants"
+            title="Default Assistants"
             description='Assistants built by Dust for multiple use&nbsp;cases. For instance, use "@help" for any&nbsp;question Dust related, use&nbsp;the&nbsp;handle "@gpt4" to&nbsp;interact with GPT-4 directly…'
           />
           <ContextItem.List>

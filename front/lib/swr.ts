@@ -529,14 +529,13 @@ export function useAgentUsage({
   agentConfigurationId,
 }: {
   workspaceId: string;
-  agentConfigurationId: string;
+  agentConfigurationId: string | null;
 }) {
   const agentUsageFetcher: Fetcher<GetAgentUsageResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`,
-    agentUsageFetcher
-  );
+  const fetchUrl = agentConfigurationId
+    ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`
+    : null;
+  const { data, error, mutate } = useSWR(fetchUrl, agentUsageFetcher);
 
   return {
     agentUsage: data ? data.agentUsage : null,

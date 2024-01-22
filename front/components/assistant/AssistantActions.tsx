@@ -167,7 +167,7 @@ export function RemoveAssistantFromWorkspaceDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Remove from Workspace list`}
+      title={`Remove from Company assistants`}
       onCancel={onClose}
       validateLabel="Remove"
       validateVariant="primaryWarning"
@@ -200,13 +200,13 @@ export function RemoveAssistantFromWorkspaceDialog({
         if (!res.ok) {
           const data = await res.json();
           sendNotification({
-            title: `Error removing from Workspace list`,
+            title: `Error removing from Company assistants`,
             description: data.error.message,
             type: "error",
           });
         } else {
           sendNotification({
-            title: `Assistant removed from Workspace list`,
+            title: `Assistant removed from Company assistants`,
             type: "success",
           });
           onRemove();
@@ -217,9 +217,9 @@ export function RemoveAssistantFromWorkspaceDialog({
     >
       <div className="flex flex-col gap-2">
         <div>
-          Removing the assistant from the workspace list will move it back to
-          the gallery. The assistant won't be automatically active for members
-          anymore.
+          Removing the assistant from the Company assistants will move it back
+          to the gallery. The assistant won't be automatically active for
+          members anymore.
         </div>
         <div>Any workspace member will be able to modify the assistant.</div>
       </div>
