@@ -19,20 +19,18 @@ import { useAgentUsage } from "@app/lib/swr";
 export function TeamSharingSection({
   owner,
   agentConfigurationId,
-  newScope,
+  scope,
   setNewScope,
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
-  newScope: Exclude<AgentConfigurationScope, "global">;
+  scope: Exclude<AgentConfigurationScope, "global">;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
 }) {
-  const agentUsage = agentConfigurationId
-    ? useAgentUsage({
-        workspaceId: owner.sId,
-        agentConfigurationId,
-      })
-    : null;
+  const agentUsage = useAgentUsage({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+  });
 
   const scopeInfo: Record<
     Exclude<AgentConfigurationScope, "global">,
@@ -71,9 +69,9 @@ export function TeamSharingSection({
           <DropdownMenu.Button>
             <div className="flex cursor-pointer items-center gap-2">
               <Chip
-                label={scopeInfo[newScope].label}
-                color={scopeInfo[newScope].color as "pink" | "amber" | "sky"}
-                icon={scopeInfo[newScope].icon}
+                label={scopeInfo[scope].label}
+                color={scopeInfo[scope].color as "pink" | "amber" | "sky"}
+                icon={scopeInfo[scope].icon}
               />
               <IconButton
                 icon={ChevronDownIcon}
@@ -84,16 +82,18 @@ export function TeamSharingSection({
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight" width={200}>
             {Object.entries(scopeInfo)
-              .filter((scope) => isBuilder(owner) || scope[0] !== "workspace")
-              .map(([scope, data]) => (
+              .filter(
+                ([entryScope]) => isBuilder(owner) || entryScope !== "workspace"
+              )
+              .map(([entryScope, entryData]) => (
                 <DropdownMenu.Item
-                  key={data.label}
-                  label={data.label}
-                  icon={data.icon}
-                  selected={scope === newScope}
+                  key={entryData.label}
+                  label={entryData.label}
+                  icon={entryData.icon}
+                  selected={entryScope === scope}
                   onClick={() =>
                     setNewScope(
-                      scope as Exclude<AgentConfigurationScope, "global">
+                      entryScope as Exclude<AgentConfigurationScope, "global">
                     )
                   }
                 />
@@ -102,7 +102,7 @@ export function TeamSharingSection({
         </DropdownMenu>
       </div>
       <div className="text-sm text-element-700">
-        <div>{scopeInfo[newScope].text}</div>
+        <div>{scopeInfo[scope].text}</div>
         {agentUsage &&
         agentUsage.agentUsage?.userCount &&
         agentUsage.agentUsage.userCount > 1

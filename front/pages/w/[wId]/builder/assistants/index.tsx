@@ -180,7 +180,7 @@ export default function WorkspaceAssistants({
         <Page.Header
           title="Manage Company Assistants"
           icon={RobotIcon}
-          description="Company assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit company assistants."
+          description="Company assistants will be activated by default for every member of the workspace. Only Admins and Builders can activate, create, or edit Company assistants."
         />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">

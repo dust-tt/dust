@@ -206,7 +206,7 @@ export function RemoveAssistantFromWorkspaceDialog({
           });
         } else {
           sendNotification({
-            title: `Assistant removed from company assistants`,
+            title: `Assistant removed from Company assistants`,
             type: "success",
           });
           onRemove();

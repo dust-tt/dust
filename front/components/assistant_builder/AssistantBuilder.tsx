@@ -824,7 +824,7 @@ export default function AssistantBuilder({
           <TeamSharingSection
             owner={owner}
             agentConfigurationId={agentConfigurationId}
-            newScope={builderState.scope}
+            scope={builderState.scope}
             setNewScope={(
               scope: Exclude<AgentConfigurationScope, "global">
             ) => {
