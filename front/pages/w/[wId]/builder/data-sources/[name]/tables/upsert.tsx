@@ -123,7 +123,7 @@ export default function TableUpsert({
 
   // Not empty, only alphanumeric, and not too long
   const isNameValid = (name: string) =>
-    name !== "" && /^[a-zA-Z0-9_]{1,32}$/.test(name);
+    name !== "" && /^[a-zA-Z0-9_-]{1,32}$/.test(name);
 
   const redirectToDataSourcePage = () => {
     void router.push(
