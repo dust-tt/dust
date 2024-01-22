@@ -32,6 +32,12 @@ module.exports = {
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
     "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": [
+      "error",
+      {
+        checksVoidReturn: false,
+      },
+    ],
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
   },

@@ -25,6 +25,12 @@ module.exports = {
     "react-hooks/rules-of-hooks": 0,
     "@next/next/no-img-element": 0,
     "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": [
+      "error",
+      {
+        checksVoidReturn: false,
+      },
+    ],
     "jsx-a11y/alt-text": 0,
     "simple-import-sort/imports": [
       "error",
