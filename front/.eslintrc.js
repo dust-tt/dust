@@ -12,7 +12,7 @@ module.exports = {
       "error",
       {
         "selector": "variableLike",
-        "format": ["camelCase"]x
+        "format": ["camelCase"]
       }
     ],
     */
