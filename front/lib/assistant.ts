@@ -1,4 +1,5 @@
 import type {
+  AgentUsageType,
   DataSourceType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
@@ -99,6 +100,28 @@ export function compareAgentsForSort(
   if (bIndex !== -1) return 1; // Only b is in customOrder, it comes first
 
   return 0; // Default: keep the original order
+}
+
+export function assistantUsageMessage({
+  usage,
+  isLoading,
+  isError,
+}: {
+  usage: AgentUsageType | null;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  if (isError) {
+    return "Error loading usage data.";
+  } else if (isLoading) {
+    return "Loading usage data...";
+  } else if (usage) {
+    return `This assistant has been used by ${usage.userCount} ${
+      usage.userCount > 1 ? "people" : "person"
+    } in ${usage.messageCount} message${
+      usage.messageCount > 1 ? "s" : ""
+    } over the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`;
+  }
 }
 
 // Order in the following format : connectorProvider > empty > webcrawler
