@@ -2,6 +2,7 @@ import {
   Button,
   DocumentPlusIcon,
   DropdownMenu,
+  ExclamationCircleIcon,
   Input,
   Page,
   TrashIcon,
@@ -100,6 +101,7 @@ export default function TableUpsert({
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [upserting, setUpserting] = useState(false);
+  const [isBigFile, setIsBigFile] = useState(false);
 
   const { table } = useTable({
     workspaceId: owner.sId,
@@ -176,6 +178,12 @@ export default function TableUpsert({
             "Please upload a file containing less than 50 million characters.",
         });
         return;
+      }
+
+      if (res.value.content.length > 5_000_000) {
+        setIsBigFile(true);
+      } else {
+        setIsBigFile(false);
       }
 
       const body: CreateTableFromCsvRequestBody = {
@@ -308,6 +316,19 @@ export default function TableUpsert({
                     },
                   }}
                 />
+                {isBigFile && (
+                  <div className="pt-4">
+                    <div className="flex flex-col gap-y-2">
+                      <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-element-800 text-warning-500">
+                        <ExclamationCircleIcon />
+                        Warning: Large file (5MB+)
+                      </div>
+                      <div className="text-sm font-normal text-element-700">
+                        This file is large and may take a while to upload.
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <input
                   type="file"
                   ref={fileInputRef}
