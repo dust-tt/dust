@@ -335,6 +335,18 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
 
+      if (args.remove) {
+        if (existingPage) {
+          console.log(`Removing skipped page reason for ${pageId}`);
+          await existingPage.update({
+            skipReason: null,
+          });
+        } else {
+          console.log(`Page ${pageId} is not skipped, nothing to remove`);
+        }
+        return;
+      }
+
       const skipReason = args.reason || "blacklisted";
 
       if (existingPage) {
@@ -386,6 +398,20 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           connectorId,
         },
       });
+
+      if (args.remove) {
+        if (existingDatabase) {
+          console.log(`Removing skipped database reason for ${databaseId}`);
+          await existingDatabase.update({
+            skipReason: null,
+          });
+        } else {
+          console.log(
+            `Database ${databaseId} is not skipped, nothing to remove`
+          );
+        }
+        return;
+      }
 
       if (existingDatabase) {
         if (args.reason) {

@@ -34,6 +34,7 @@ import ReactMarkdown from "react-markdown";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { assistantUsageMessage } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
@@ -95,22 +96,7 @@ export function AssistantDetails({
   }) => (
     <div className="flex flex-col gap-2">
       <div className="text-lg font-bold text-element-800">Usage</div>
-      {(() => {
-        if (isError) {
-          return "Error loading usage data.";
-        } else if (isLoading) {
-          return "Loading usage data...";
-        } else if (usage) {
-          return (
-            <>
-              @{assistant.name} has been used by {usage.userCount} people in{" "}
-              {usage.messageCount}{" "}
-              {usage.messageCount > 1 ? <>messages</> : <>message</>} over the
-              last {usage.timePeriodSec / (60 * 60 * 24)} days.
-            </>
-          );
-        }
-      })()}
+      {assistantUsageMessage({ usage, isLoading, isError })}
     </div>
   );
 

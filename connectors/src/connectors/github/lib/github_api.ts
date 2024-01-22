@@ -681,7 +681,9 @@ export async function processRepository({
     // Save the tarball to the temp directory.
     await pipeline(tarballStream, createWriteStream(tarPath));
 
-    localLogger.info("Finished downloading tarball");
+    const { size } = await fs.stat(tarPath);
+
+    localLogger.info({ tarSize: size, tarPath }, "Finished tarball download");
 
     // Extract the tarball.
     await extract({

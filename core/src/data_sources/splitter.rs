@@ -250,7 +250,7 @@ impl TokenizedSection {
                     max_chunk_size,
                     prefixes.clone(),
                     s,
-                    Some(format!("{}{}", path, i)),
+                    Some(format!("{}/{}", path, i)),
                 )
             }))
             .await
@@ -269,7 +269,10 @@ impl TokenizedSection {
             // if we were to reconstruct that node as a full chunk
             tokens_count: prefixes_tokens_count
                 + match content.as_ref() {
-                    Some(c) => c.tokens.len(),
+                    Some(c) => {
+                        assert!(sections.is_empty());
+                        c.tokens.len()
+                    }
                     None => {
                         sections.iter().map(|s| s.tokens_count).sum::<usize>()
                             - sections.len() * prefixes_tokens_count
@@ -1020,7 +1023,6 @@ mod tests {
         let model_id = "text-embedding-ada-002";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
-        // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
         splitter(SplitterID::BaseV0)
             .split(credentials, provider_id, model_id, 256, section)
             .await

@@ -255,7 +255,7 @@ export async function fetchIntercomArticles(
 /**
  * Return the detail of an Article.
  */
-export async function getIntercomArticle(
+export async function fetchIntercomArticle(
   intercomClient: Client,
   articleId: string
 ): Promise<IntercomArticleType | null> {
