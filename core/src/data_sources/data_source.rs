@@ -785,6 +785,14 @@ impl DataSource {
             ),
         )?;
 
+        utils::done(&format!(
+            "Created document blob: data_source_id={} document_id={} duration={}ms blob_url={}",
+            self.data_source_id,
+            document_id,
+            utils::now() - now,
+            format!("gs://{}/{}", bucket, content_path)
+        ));
+
         match document_id {
             "notion-95804d6b-0274-43f6-8957-5b024234e3bf" => {
                 let debug_path = format!("{}/{}/debug.json", bucket_path, document_hash);
@@ -805,14 +813,6 @@ impl DataSource {
             }
             _ => (),
         };
-
-        utils::done(&format!(
-            "Created document blob: data_source_id={} document_id={} duration={}ms blob_url={}",
-            self.data_source_id,
-            document_id,
-            utils::now() - now,
-            format!("gs://{}/{}", bucket, content_path)
-        ));
 
         let now = utils::now();
 
