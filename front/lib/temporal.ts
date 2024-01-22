@@ -1,27 +1,40 @@
 import type { ConnectionOptions } from "@temporalio/client";
 import { Client, Connection } from "@temporalio/client";
-import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
-// This is a singleton connection to the Temporal server.
-let TEMPORAL_CLIENT: Client | undefined;
+type TemporalNamespaces = "connectors" | "front";
+const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
+  connectors: "TEMPORAL_CONNECTORS_NAMESPACE",
+  front: "TEMPORAL_NAMESPACE",
+};
 
-export async function getTemporalClient() {
-  if (TEMPORAL_CLIENT) {
-    return TEMPORAL_CLIENT;
+// This is a singleton connection to the Temporal server.
+const TEMPORAL_CLIENTS: Partial<Record<TemporalNamespaces, Client>> = {};
+
+export async function getTemporalClientForNamespace(
+  namespace: TemporalNamespaces
+) {
+  const cachedClient = TEMPORAL_CLIENTS[namespace];
+  if (cachedClient) {
+    return cachedClient;
   }
-  const connectionOptions = await getConnectionOptions();
+  const envVarForTemporalNamespace = temporalWorkspaceToEnvVar[namespace];
+  const connectionOptions = await getConnectionOptions(
+    envVarForTemporalNamespace
+  );
   const connection = await Connection.connect(connectionOptions);
   const client = new Client({
     connection,
     namespace: process.env.TEMPORAL_NAMESPACE,
   });
-  TEMPORAL_CLIENT = client;
+  TEMPORAL_CLIENTS[namespace] = client;
 
   return client;
 }
 
-async function getConnectionOptions(): Promise<
+async function getConnectionOptions(
+  envVarForTemporalNamespace: string
+): Promise<
   | {
       address: string;
       tls: ConnectionOptions["tls"];
@@ -35,8 +48,8 @@ async function getConnectionOptions(): Promise<
     return {};
   }
 
-  const { TEMPORAL_CERT_PATH, TEMPORAL_CERT_KEY_PATH, TEMPORAL_NAMESPACE } =
-    process.env;
+  const { TEMPORAL_CERT_PATH, TEMPORAL_CERT_KEY_PATH } = process.env;
+  const TEMPORAL_NAMESPACE = process.env[envVarForTemporalNamespace];
   if (!TEMPORAL_CERT_PATH || !TEMPORAL_CERT_KEY_PATH || !TEMPORAL_NAMESPACE) {
     throw new Error(
       "TEMPORAL_CERT_PATH, TEMPORAL_CERT_KEY_PATH and TEMPORAL_NAMESPACE are required " +
@@ -58,11 +71,10 @@ async function getConnectionOptions(): Promise<
   };
 }
 
-export async function getTemporalWorkerConnection(): Promise<{
-  connection: NativeConnection;
-  namespace: string | undefined;
-}> {
-  const connectionOptions = await getConnectionOptions();
-  const connection = await NativeConnection.connect(connectionOptions);
-  return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
+export async function getTemporalClient() {
+  return getTemporalClientForNamespace("front");
+}
+
+export async function getTemporalConnectorsNamespaceConnection() {
+  return getTemporalClientForNamespace("connectors");
 }
