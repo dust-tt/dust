@@ -27,6 +27,7 @@ export function isActivatedStructuredDB(owner: WorkspaceType) {
       "995e775623ee35cc23f7295862b52f61",
       "a29e7fb74f329d26a16785989f6efb80",
       "02da873b8c9404f9005d724ea02b84b1",
+      "f441aae51356fbd85718c5b259884af5",
     ].includes(hashedWorkspaceId)
   );
 }
