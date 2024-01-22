@@ -5,6 +5,7 @@ import {
   Item,
   Modal,
   Page,
+  Searchbar,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { ConnectorProvider, DataSourceType } from "@dust-tt/types";
@@ -144,7 +145,9 @@ export default function AssistantBuilderDataSourceModal({
         )}
         {displayFolderPicker && (
           <FolderPickDataSource
-            dataSources={dataSources}
+            dataSources={dataSources.filter(
+              (dataSource) => !dataSource.connectorProvider
+            )}
             show={!dataSourceToManage}
             onPick={(ds) => {
               setSelectedDataSource(ds);
@@ -171,6 +174,12 @@ function FolderPickDataSource({
   show: boolean;
   onPick: (dataSource: DataSourceType) => void;
 }) {
+  const [query, setQuery] = useState<string>("");
+
+  const sources = dataSources.filter((r) =>
+    r.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+  );
+
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
@@ -178,9 +187,14 @@ function FolderPickDataSource({
           title="Select Folders in:"
           icon={CloudArrowLeftRightIcon}
         />
-        {dataSources
-          .filter((folder) => !folder.connectorProvider)
-          .map((ds) => (
+        <Searchbar
+          name="search"
+          onChange={setQuery}
+          value={query}
+          placeholder="Search..."
+        />
+        {sources.length ? (
+          sources.map((ds) => (
             <Item.Navigation
               label={getDisplayNameForDataSource(ds)}
               icon={CloudArrowDownIcon}
@@ -189,7 +203,10 @@ function FolderPickDataSource({
                 onPick(ds);
               }}
             />
-          ))}
+          ))
+        ) : (
+          <p>No results are matching your search...</p>
+        )}
       </Page>
     </Transition>
   );
