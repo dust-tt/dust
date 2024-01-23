@@ -818,9 +818,11 @@ export default function AssistantBuilder({
             </div>
           </div>
           <TeamSharingSection
+            assistantName={builderState.handle || "UnnamedAssistant"}
             owner={owner}
             agentConfigurationId={agentConfigurationId}
-            scope={builderState.scope}
+            initialScope={initialBuilderState?.scope ?? defaultScope}
+            newScope={builderState.scope}
             setNewScope={(
               scope: Exclude<AgentConfigurationScope, "global">
             ) => {

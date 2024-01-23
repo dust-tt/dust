@@ -1,6 +1,7 @@
 import {
   ChevronDownIcon,
   Chip,
+  Dialog,
   DropdownMenu,
   IconButton,
   LockIcon,
@@ -12,21 +13,30 @@ import { isBuilder } from "@dust-tt/types";
 
 import { assistantUsageMessage } from "@app/lib/assistant";
 import { useAgentUsage } from "@app/lib/swr";
+import { useState } from "react";
 
 /*
  * Note: Non-builders cannot change to/from company assistant
  */
 export function TeamSharingSection({
+  assistantName,
   owner,
   agentConfigurationId,
-  scope,
+  initialScope,
+  newScope,
   setNewScope,
 }: {
+  assistantName: string;
   owner: WorkspaceType;
   agentConfigurationId: string | null;
-  scope: Exclude<AgentConfigurationScope, "global">;
+  initialScope: Exclude<AgentConfigurationScope, "global">;
+  newScope: Exclude<AgentConfigurationScope, "global">;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
 }) {
+  const [requestNewScope, setModalNewScope] = useState<Exclude<
+    AgentConfigurationScope,
+    "global"
+  > | null>(null);
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId,
@@ -39,6 +49,12 @@ export function TeamSharingSection({
       color: string;
       icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
       text: string;
+      confirmationModalData: {
+        title: string;
+        text: string;
+        confirmText: string;
+        variant: "primary" | "primaryWarning";
+      };
     }
   > = {
     published: {
@@ -46,18 +62,43 @@ export function TeamSharingSection({
       color: "pink",
       icon: UserGroupIcon,
       text: "Anyone in the workspace can view and edit.",
+      confirmationModalData: {
+        title: "Sharing an assistant",
+        text: "Once shared, the assistant will be visible and editable by members of your workspace.",
+        confirmText: "Share the assistant",
+        variant: "primary",
+      },
     },
     workspace: {
       label: "Company Assistant",
       color: "amber",
       icon: PlanetIcon,
       text: "Activated by default for all members of the workspace.",
+      confirmationModalData: {
+        title: "Moving to Company Assistants",
+        text: "Moving the assistant to Company Assistants will make the assistant editable only by Admins and Builders and add it the “My Assistants” list of all the workspace.",
+        confirmText: "Move to Company",
+        variant: "primary",
+      },
     },
     private: {
       label: "Personal Assistant",
       color: "sky",
       icon: LockIcon,
       text: "Only I can view and edit.",
+      confirmationModalData: {
+        title: "Moving to Personal Assistants",
+        text:
+          assistantUsageMessage({
+            assistantName,
+            usage: agentUsage.agentUsage,
+            isLoading: agentUsage.isAgentUsageLoading,
+            isError: agentUsage.isAgentUsageError,
+          }) +
+          "\n\nMoving the assistant to your Personal Assistants will make the assistant unaccessible to other members of the workspace.",
+        confirmText: "Move to Personal",
+        variant: "primaryWarning",
+      },
     },
   };
 
@@ -65,13 +106,25 @@ export function TeamSharingSection({
     <div className="flex flex-col gap-3">
       <div className="text-lg font-bold text-element-900">Sharing</div>
       <div>
+        <ScopeChangeModal
+          show={requestNewScope !== null}
+          confirmationModalData={
+            requestNewScope
+              ? scopeInfo[requestNewScope].confirmationModalData
+              : { title: "", text: "", confirmText: "", variant: "primary" }
+          }
+          onClose={() => setModalNewScope(null)}
+          setSharingScope={() =>
+            requestNewScope && setNewScope(requestNewScope)
+          }
+        />
         <DropdownMenu>
           <DropdownMenu.Button>
             <div className="flex cursor-pointer items-center gap-2">
               <Chip
-                label={scopeInfo[scope].label}
-                color={scopeInfo[scope].color as "pink" | "amber" | "sky"}
-                icon={scopeInfo[scope].icon}
+                label={scopeInfo[newScope].label}
+                color={scopeInfo[newScope].color as "pink" | "amber" | "sky"}
+                icon={scopeInfo[newScope].icon}
               />
               <IconButton
                 icon={ChevronDownIcon}
@@ -90,23 +143,43 @@ export function TeamSharingSection({
                   key={entryData.label}
                   label={entryData.label}
                   icon={entryData.icon}
-                  selected={entryScope === scope}
-                  onClick={() =>
-                    setNewScope(
+                  selected={entryScope === newScope}
+                  onClick={() => {
+                    // no need for modal in the following cases
+                    if (
+                      // selection unchanged
+                      entryScope === newScope ||
+                      // selection back to initial state
+                      entryScope === initialScope ||
+                      // change to personal or company, but the only user of the
+                      // assistant is the user changing the scope
+                      ((entryScope === "private" || entryScope === "company") &&
+                        agentUsage &&
+                        agentUsage.agentUsage?.userCount &&
+                        agentUsage.agentUsage.userCount === 1)
+                    ) {
+                      setNewScope(
+                        entryScope as Exclude<AgentConfigurationScope, "global">
+                      );
+                      return;
+                    }
+                    // in all other cases, show modal
+                    setModalNewScope(
                       entryScope as Exclude<AgentConfigurationScope, "global">
-                    )
-                  }
+                    );
+                  }}
                 />
               ))}
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
       <div className="text-sm text-element-700">
-        <div>{scopeInfo[scope].text}</div>
+        <div>{scopeInfo[newScope].text}</div>
         {agentUsage &&
         agentUsage.agentUsage?.userCount &&
         agentUsage.agentUsage.userCount > 1
           ? assistantUsageMessage({
+              assistantName,
               usage: agentUsage.agentUsage,
               isLoading: agentUsage.isAgentUsageLoading,
               isError: agentUsage.isAgentUsageError,
@@ -114,5 +187,41 @@ export function TeamSharingSection({
           : null}
       </div>
     </div>
+  );
+}
+
+function ScopeChangeModal({
+  show,
+  confirmationModalData,
+  onClose,
+  setSharingScope,
+}: {
+  show: boolean;
+  confirmationModalData: {
+    title: string;
+    text: string;
+    confirmText: string;
+    variant: "primary" | "primaryWarning";
+  };
+  onClose: () => void;
+  setSharingScope: () => void;
+}) {
+  return (
+    <Dialog
+      isOpen={show}
+      title={confirmationModalData.title}
+      onCancel={onClose}
+      validateLabel={confirmationModalData.confirmText}
+      validateVariant={confirmationModalData.variant}
+      onValidate={async () => {
+        setSharingScope();
+        onClose();
+      }}
+    >
+      <div>
+        <div className="pb-2">{confirmationModalData.text}</div>
+        <div className="font-bold">Are you sure you want to proceed ?</div>
+      </div>
+    </Dialog>
   );
 }
