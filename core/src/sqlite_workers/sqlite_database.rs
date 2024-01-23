@@ -15,7 +15,7 @@ use tokio::{task, time::timeout};
 #[derive(Clone)]
 pub struct SqliteDatabase {
     conn: Option<Arc<Mutex<Connection>>>,
-    interrupt_handle: Option<Arc<Mutex<InterruptHandle>>>,
+    interrupt_handle: Option<Arc<tokio::sync::Mutex<InterruptHandle>>>,
 }
 
 impl SqliteDatabase {
@@ -37,7 +37,7 @@ impl SqliteDatabase {
                 let conn = create_in_memory_sqlite_db(databases_store, tables).await?;
                 let interrupt_handle = conn.get_interrupt_handle();
                 self.conn = Some(Arc::new(Mutex::new(conn)));
-                self.interrupt_handle = Some(Arc::new(Mutex::new(interrupt_handle)));
+                self.interrupt_handle = Some(Arc::new(tokio::sync::Mutex::new(interrupt_handle)));
 
                 Ok(())
             }
@@ -131,7 +131,7 @@ impl SqliteDatabase {
                     Some(interrupt_handle) => interrupt_handle.clone(),
                     None => Err(anyhow!("Database not initialized"))?,
                 };
-                let interrupt_handle = interrupt_handle.lock();
+                let interrupt_handle = interrupt_handle.lock().await;
                 interrupt_handle.interrupt();
                 Err(anyhow!("Query execution timed out after {}ms", timeout_ms))?
             }
