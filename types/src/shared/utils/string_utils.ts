@@ -1,6 +1,14 @@
 /**
- * Substring that ensures we don't cut a string in the middle of a unicode character.
- * Read more: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String#utf-16_characters_unicode_code_points_and_grapheme_clusters
+ * Substring that ensures we don't cut a string in the middle of a unicode
+ * character.
+ *
+ * The split characters are removed from the result. As such the
+ * result may be shorter than the requested length. As a consequence,
+ * safeSubstring(0,K) + safeSubstring(K) may not be equal to the original
+ * string.
+ *
+ * Read more:
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String#utf-16_characters_unicode_code_points_and_grapheme_clusters
  */
 export function safeSubstring(
   str: string,
