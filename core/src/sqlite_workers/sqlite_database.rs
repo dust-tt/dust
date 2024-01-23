@@ -9,17 +9,21 @@ use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use rusqlite::{params_from_iter, Connection};
-use tokio::task;
+use rusqlite::{params_from_iter, Connection, InterruptHandle};
+use tokio::{task, time::timeout};
 
 #[derive(Clone)]
 pub struct SqliteDatabase {
     conn: Option<Arc<Mutex<Connection>>>,
+    interrupt_handle: Option<Arc<Mutex<InterruptHandle>>>,
 }
 
 impl SqliteDatabase {
     pub fn new() -> Self {
-        Self { conn: None }
+        Self {
+            conn: None,
+            interrupt_handle: None,
+        }
     }
 
     pub async fn init(
@@ -30,20 +34,21 @@ impl SqliteDatabase {
         match &self.conn {
             Some(_) => Ok(()),
             None => {
-                self.conn = Some(Arc::new(Mutex::new(
-                    create_in_memory_sqlite_db(databases_store, tables).await?,
-                )));
+                let conn = create_in_memory_sqlite_db(databases_store, tables).await?;
+                let interrupt_handle = conn.get_interrupt_handle();
+                self.conn = Some(Arc::new(Mutex::new(conn)));
+                self.interrupt_handle = Some(Arc::new(Mutex::new(interrupt_handle)));
 
                 Ok(())
             }
         }
     }
 
-    pub async fn query(&self, query: &str) -> Result<Vec<QueryResult>> {
+    pub async fn query(&self, query: &str, timeout_ms: u64) -> Result<Vec<QueryResult>> {
         let query = query.to_string();
         let conn = self.conn.clone();
 
-        task::spawn_blocking(move || {
+        let query_future = task::spawn_blocking(move || {
             let conn = match conn {
                 Some(conn) => conn.clone(),
                 None => Err(anyhow!("Database not initialized"))?,
@@ -117,8 +122,20 @@ impl SqliteDatabase {
             ));
 
             Ok(result_rows)
-        })
-        .await?
+        });
+
+        match timeout(std::time::Duration::from_millis(timeout_ms), query_future).await {
+            Ok(r) => r?,
+            Err(_) => {
+                let interrupt_handle = match &self.interrupt_handle {
+                    Some(interrupt_handle) => interrupt_handle.clone(),
+                    None => Err(anyhow!("Database not initialized"))?,
+                };
+                let interrupt_handle = interrupt_handle.lock();
+                interrupt_handle.interrupt();
+                Err(anyhow!("Query execution timed out after {}ms", timeout_ms))?
+            }
+        }
     }
 }
 

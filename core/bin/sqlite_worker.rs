@@ -30,6 +30,9 @@ use tracing::Level;
 // Duration after which a database is considered inactive and can be removed from the registry.
 const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 60); // 5 minutes
 
+// Default number of milliseconds after which a query execution is considered timed out.
+const DEFAULT_QUERY_TIMEOUT_MS: u64 = 10_000;
+
 struct DatabaseEntry {
     database: Arc<Mutex<SqliteDatabase>>,
     last_accessed: Instant,
@@ -160,6 +163,7 @@ async fn index() -> &'static str {
 struct DbQueryPayload {
     query: String,
     tables: Vec<Table>,
+    timeout_ms: Option<u64>,
 }
 
 async fn databases_query(
@@ -178,6 +182,7 @@ async fn databases_query(
         entry.last_accessed = Instant::now();
         entry.database.clone()
     };
+    let timeout = payload.timeout_ms.unwrap_or(DEFAULT_QUERY_TIMEOUT_MS);
 
     let mut guard = database.lock().await;
 
@@ -196,7 +201,7 @@ async fn databases_query(
         }
     }
 
-    match guard.query(&payload.query).await {
+    match guard.query(&payload.query, timeout).await {
         Ok(results) => (
             axum::http::StatusCode::OK,
             Json(APIResponse {
