@@ -296,7 +296,7 @@ async function startWorkflowIfNecessary(
   workflowLauncher: (
     connectorId: ModelId,
     spaceIds: string[]
-  ) => Promise<Result<void, Error>>,
+  ) => Promise<Result<string, Error>>,
   connectorId: ModelId
 ): Promise<Result<void, Error>> {
   if (spaceIds.length > 0) {

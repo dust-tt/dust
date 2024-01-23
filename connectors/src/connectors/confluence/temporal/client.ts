@@ -72,7 +72,7 @@ export async function launchConfluenceSyncWorkflow(
 export async function launchConfluenceRemoveSpacesSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = []
-) {
+): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -84,6 +84,8 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
     spaceId: sId,
   }));
 
+  const workflowId = makeConfluenceRemoveSpacesWorkflowId(connector.id);
+
   try {
     await client.workflow.signalWithStart(confluenceRemoveSpacesWorkflow, {
       args: [
@@ -93,7 +95,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
         },
       ],
       taskQueue: QUEUE_NAME,
-      workflowId: makeConfluenceRemoveSpacesWorkflowId(connector.id),
+      workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
@@ -107,7 +109,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
     return new Err(err as Error);
   }
 
-  return new Ok(undefined);
+  return new Ok(workflowId);
 }
 
 export async function stopConfluenceSyncWorkflow(
