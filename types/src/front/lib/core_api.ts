@@ -116,7 +116,7 @@ export class CoreAPI {
     const response = await fetch(`${CORE_API}/projects`, {
       method: "POST",
     });
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async deleteProject({
@@ -128,7 +128,7 @@ export class CoreAPI {
       method: "DELETE",
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getDatasets({
@@ -143,7 +143,7 @@ export class CoreAPI {
       },
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getDataset({
@@ -165,7 +165,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async createDataset({
@@ -189,7 +189,7 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async cloneProject({
@@ -201,7 +201,7 @@ export class CoreAPI {
       method: "POST",
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async createRun({
@@ -232,7 +232,7 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async createRunStream({
@@ -272,7 +272,7 @@ export class CoreAPI {
     );
 
     if (!response.ok || !response.body) {
-      return _resultFromResponse(response);
+      return _resultFromResponse(response, this._logger);
     }
 
     let hasRunId = false;
@@ -351,7 +351,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getRunsBatch({
@@ -374,7 +374,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getRun({
@@ -391,7 +391,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getRunStatus({
@@ -408,7 +408,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getSpecification({
@@ -427,7 +427,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getRunBlock({
@@ -448,7 +448,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async createDataSource({
@@ -477,7 +477,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getDataSource({
@@ -496,7 +496,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async deleteDataSource({
@@ -513,7 +513,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async searchDataSource(
@@ -559,7 +559,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getDataSourceDocuments({
@@ -586,7 +586,7 @@ export class CoreAPI {
         method: "GET",
       }
     );
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getDataSourceDocument({
@@ -615,7 +615,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getDataSourceDocumentVersions({
@@ -658,7 +658,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async upsertDataSourceDocument({
@@ -713,7 +713,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async updateDataSourceDocumentTags({
@@ -749,7 +749,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async updateDataSourceDocumentParents({
@@ -782,7 +782,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async deleteDataSourceDocument({
@@ -803,7 +803,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async tokenize({
@@ -829,7 +829,7 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async dataSourceTokenize({
@@ -851,7 +851,7 @@ export class CoreAPI {
         body: JSON.stringify({ text }),
       }
     );
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async upsertTable({
@@ -882,7 +882,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getTable({
@@ -901,7 +901,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getTables({
@@ -922,7 +922,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async deleteTable({
@@ -941,7 +941,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async upsertTableRows({
@@ -971,7 +971,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getTableRow({
@@ -992,7 +992,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async getTableRows({
@@ -1022,7 +1022,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 
   async queryDatabase({
@@ -1052,16 +1052,27 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return _resultFromResponse(response, this._logger);
   }
 }
 
 async function _resultFromResponse<T>(
-  response: Response
+  response: Response,
+  logger: LoggerInterface
 ): Promise<CoreAPIResponse<T>> {
-  const jsonResponse = await response.json();
-  if (jsonResponse.error) {
-    return new Err(jsonResponse.error);
+  try {
+    const jsonResponse = await response.json();
+
+    if (jsonResponse.error) {
+      return new Err(jsonResponse.error);
+    }
+    return new Ok(jsonResponse.response);
+  } catch (err) {
+    const rawResponse = await response.text();
+
+    const message = `Dust Core API responded with status: ${response.status}.`;
+    logger.error({ status: response.status, response: rawResponse }, message);
+
+    return new Err({ code: response.status.toString(), message });
   }
-  return new Ok(jsonResponse.response);
 }
