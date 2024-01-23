@@ -1,6 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
-import PQueue from "p-queue";
 
 import {
   getDatabaseChildrenOf,
@@ -8,6 +7,7 @@ import {
   getNotionPageFromConnectorsDb,
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import { Connector } from "@connectors/lib/models";
 import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -107,33 +107,30 @@ export async function updateAllParentsFields(
   // Update everybody's parents field. Use of a memoization key to control
   // sharing memoization across updateAllParentsFields calls, which
   // can be desired or not depending on the use case
-  const q = new PQueue({ concurrency: 16 });
-  const promises: Promise<void>[] = [];
-  for (const pageId of pageIdsToUpdate) {
-    promises.push(
-      q.add(async () => {
-        const parents = await getParents(connectorId, pageId, memoizationKey);
-        logger.info(
-          {
-            connectorId,
-            pageId,
-          },
-          "Updating parents field for page"
-        );
-        await updateDocumentParentsField({
-          dataSourceConfig: {
-            dataSourceName: connector.dataSourceName,
-            workspaceId: connector.workspaceId,
-            workspaceAPIKey: connector.workspaceAPIKey,
-          },
-          documentId: `notion-${pageId}`,
-          parents,
-        });
-      })
-    );
-  }
+  await concurrentExecutor(
+    [...pageIdsToUpdate],
+    async (pageId) => {
+      const parents = await getParents(connectorId, pageId, memoizationKey);
+      logger.info(
+        {
+          connectorId,
+          pageId,
+        },
+        "Updating parents field for page"
+      );
+      await updateDocumentParentsField({
+        dataSourceConfig: {
+          dataSourceName: connector.dataSourceName,
+          workspaceId: connector.workspaceId,
+          workspaceAPIKey: connector.workspaceAPIKey,
+        },
+        documentId: `notion-${pageId}`,
+        parents,
+      });
+    },
+    { concurrency: 16 }
+  );
 
-  await Promise.all(promises);
   return pageIdsToUpdate.size;
 }
 
