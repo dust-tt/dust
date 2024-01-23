@@ -258,6 +258,18 @@ async function rowsFromCsv(
       continue;
     }
 
+    header = header.map((h) => h.trim().toLowerCase());
+    const headerSet = new Set<string>();
+    for (const h of header) {
+      if (headerSet.has(h)) {
+        return new Err({
+          type: "invalid_request_error",
+          message: `Duplicate header: ${h}.`,
+        });
+      }
+      headerSet.add(h);
+    }
+
     for (const [i, h] of header.entries()) {
       const col = record[i];
       if (col === undefined) {
