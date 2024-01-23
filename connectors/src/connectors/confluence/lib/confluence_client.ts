@@ -78,6 +78,19 @@ const ConfluenceUserProfileCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+const ConfluenceReportAccounts = t.union([
+  t.type({
+    accounts: t.array(
+      t.type({
+        accountId: t.string,
+        status: t.union([t.literal("closed"), t.literal("updated")]),
+      })
+    ),
+  }),
+  // If no action is required by the app, it will return undefined.
+  t.undefined,
+]);
+
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
     return null;
@@ -117,7 +130,37 @@ export class ConfluenceClient {
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
-      console.error(PathReporter.report(result));
+      throw new Error("Response validation failed");
+    }
+
+    return result.right;
+  }
+
+  private async postRequest<T>(
+    endpoint: string,
+    data: unknown,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const response = await fetch(`${this.apiUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new HTTPError(
+        `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
+        response.status
+      );
+    }
+
+    const responseBody = await response.json();
+    const result = codec.decode(responseBody);
+
+    if (isLeft(result)) {
       throw new Error("Response validation failed");
     }
 
@@ -195,5 +238,19 @@ export class ConfluenceClient {
 
   async getUserAccount() {
     return this.request("/me", ConfluenceUserProfileCodec);
+  }
+
+  async reportAccount({
+    accountId,
+    updatedAt,
+  }: {
+    accountId: string;
+    updatedAt: Date;
+  }) {
+    return this.postRequest(
+      "/report-accounts",
+      { accountId, updatedAt },
+      ConfluenceReportAccounts
+    );
   }
 }
