@@ -3,6 +3,7 @@ import type { ConnectorProvider } from "@dust-tt/types";
 import {
   cleanupConfluenceConnector,
   createConfluenceConnector,
+  resumeConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceObjectsTitles,
   setConfluenceConnectorPermissions,
@@ -163,9 +164,7 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResumer
 > = {
-  confluence: () => {
-    throw new Error("Not yet implemented!");
-  },
+  confluence: resumeConfluenceConnector,
   slack: async (connectorId: string) => {
     logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
     return new Ok(connectorId);

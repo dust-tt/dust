@@ -121,6 +121,39 @@ export async function stopConfluenceConnector(
   return new Ok(connectorId.toString());
 }
 
+export async function resumeConfluenceConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  try {
+    const connector = await Connector.findOne({
+      where: {
+        id: connectorId,
+      },
+    });
+
+    if (!connector) {
+      return new Err(
+        new Error(`Confluence connector not found (connectorId: ${connectorId}`)
+      );
+    }
+
+    const connectorState = await ConfluenceConfiguration.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    if (!connectorState) {
+      return new Err(new Error("Confluence configuration not found"));
+    }
+
+    await launchConfluenceSyncWorkflow(connector.id, []);
+
+    return new Ok(connector.id.toString());
+  } catch (err) {
+    return new Err(err as Error);
+  }
+}
+
 export async function cleanupConfluenceConnector(
   connectorId: string
 ): Promise<Result<void, Error>> {
