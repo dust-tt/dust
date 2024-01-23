@@ -78,18 +78,14 @@ const ConfluenceUserProfileCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const ConfluenceReportAccounts = t.union([
-  t.type({
-    accounts: t.array(
-      t.type({
-        accountId: t.string,
-        status: t.union([t.literal("closed"), t.literal("updated")]),
-      })
-    ),
-  }),
-  // If no action is required by the app, it will return undefined.
-  t.undefined,
-]);
+const ConfluenceReportAccounts = t.type({
+  accounts: t.array(
+    t.type({
+      accountId: t.string,
+      status: t.union([t.literal("closed"), t.literal("updated")]),
+    })
+  ),
+});
 
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
@@ -140,7 +136,7 @@ export class ConfluenceClient {
     endpoint: string,
     data: unknown,
     codec: t.Type<T>
-  ): Promise<T> {
+  ): Promise<T | undefined> {
     const response = await fetch(`${this.apiUrl}${endpoint}`, {
       method: "POST",
       headers: {
@@ -155,6 +151,10 @@ export class ConfluenceClient {
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         response.status
       );
+    }
+
+    if (response.status === 204) {
+      return undefined; // Return undefined for 204 No Content.
     }
 
     const responseBody = await response.json();
@@ -247,10 +247,13 @@ export class ConfluenceClient {
     accountId: string;
     updatedAt: Date;
   }) {
-    return this.postRequest(
-      "/report-accounts",
-      { accountId, updatedAt },
+    const results = await this.postRequest(
+      "/app/report-accounts",
+      { accounts: [{ accountId, updatedAt: updatedAt.toISOString() }] },
       ConfluenceReportAccounts
     );
+
+    const [firstAccount] = results?.accounts ?? [];
+    return firstAccount;
   }
 }

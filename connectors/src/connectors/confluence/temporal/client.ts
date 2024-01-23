@@ -1,20 +1,25 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { ScheduleOptionsAction } from "@temporalio/client";
+import { ScheduleOverlapPolicy } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
+  makeConfluencePersonalDataWorkflowId,
   makeConfluenceRemoveSpacesWorkflowId,
   makeConfluenceSyncWorkflowId,
 } from "@connectors/connectors/confluence/temporal/utils";
 import {
+  confluencePersonalDataReportingWorkflow,
   confluenceRemoveSpacesWorkflow,
   confluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
+import { isScheduleAlreadyRunning } from "@connectors/types/errors";
 
 export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
@@ -103,4 +108,37 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
   }
 
   return new Ok(undefined);
+}
+
+export async function launchConfluencePersonalDataReportingSchedule() {
+  const client = await getTemporalClient();
+
+  const action: ScheduleOptionsAction = {
+    type: "startWorkflow",
+    workflowType: confluencePersonalDataReportingWorkflow,
+    args: [],
+    taskQueue: QUEUE_NAME,
+  };
+
+  try {
+    await client.schedule.create({
+      action,
+      scheduleId: makeConfluencePersonalDataWorkflowId(),
+      policies: {
+        // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
+        // Backfill scheduled action up to 1 previous day.
+        catchupWindow: "1 day",
+        // Only one workflow at a time.
+        overlap: ScheduleOverlapPolicy.SKIP,
+      },
+      spec: {
+        // According to Atlassian's documentation, the cycle period is 7 days.
+        intervals: [{ every: "7d" }],
+      },
+    });
+  } catch (err) {
+    if (!isScheduleAlreadyRunning(err)) {
+      throw err;
+    }
+  }
 }
