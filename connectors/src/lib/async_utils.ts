@@ -4,12 +4,18 @@ export async function concurrentExecutor<T>(
   items: T[],
   iterator: (item: T) => Promise<void>,
   { concurrency = 8 }: { concurrency: number }
-): Promise<void> {
+) {
   const queue = new PQueue({ concurrency });
 
-  // Add all tasks to the queue.
-  items.forEach((item) => queue.add(() => iterator(item)));
+  const promises = [];
 
-  // Wait for the queue to be empty (all tasks have been processed)
-  await queue.onIdle();
+  for (const item of items) {
+    // Queue each task. The queue manages concurrency.
+    // Each task is wrapped in a promise to capture its completion.
+    promises.push(queue.add(async () => iterator(item)));
+  }
+
+  // This will reject as soon as one promise rejects
+  // `Promise.all` will throw at the first rejection, but all tasks will continue to process.
+  return Promise.all(promises);
 }
