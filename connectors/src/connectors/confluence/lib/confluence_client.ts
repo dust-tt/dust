@@ -1,6 +1,5 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-import { PathReporter } from "io-ts/PathReporter";
 
 import { HTTPError } from "@connectors/lib/error";
 
