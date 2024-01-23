@@ -69,6 +69,13 @@ const ConfluenceListPagesCodec = t.type({
   }),
 });
 
+const ConfluenceUserProfileCodec = t.intersection([
+  t.type({
+    account_id: t.string,
+  }),
+  CatchAllCodec,
+]);
+
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
     return null;
@@ -181,5 +188,9 @@ export class ConfluenceClient {
       `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
       ConfluencePageWithBodyCodec
     );
+  }
+
+  async getUserAccount() {
+    return this.request("/me", ConfluenceUserProfileCodec);
   }
 }

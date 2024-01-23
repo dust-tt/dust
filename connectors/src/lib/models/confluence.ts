@@ -18,6 +18,7 @@ export class ConfluenceConfiguration extends Model<
 
   declare cloudId: string;
   declare url: string;
+  declare userAccountId: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -46,11 +47,18 @@ ConfluenceConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    userAccountId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     sequelize: sequelize_conn,
     modelName: "confluence_configurations",
-    indexes: [{ fields: ["connectorId"], unique: true }],
+    indexes: [
+      { fields: ["connectorId"], unique: true },
+      { fields: ["userAccountId"] },
+    ],
   }
 );
 Connector.hasOne(ConfluenceConfiguration);
