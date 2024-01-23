@@ -15,7 +15,9 @@ export function safeSubstring(
   start: number,
   end?: number
 ): string {
-  while (isTrailingLoneSurrogate(str.charCodeAt(start))) start++;
+  while (isTrailingLoneSurrogate(str.charCodeAt(start))) {
+    start++;
+  }
   if (end === undefined) {
     return str.substring(start);
   }
