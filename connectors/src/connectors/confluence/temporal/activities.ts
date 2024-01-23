@@ -471,9 +471,9 @@ export async function fetchConfluenceUserAccountAndConnectorIdsActivity(): Promi
 }
 
 export async function confluenceGetReportPersonalActionActivity(
-  config: ConfluenceUserAccountAndConnectorId
+  params: ConfluenceUserAccountAndConnectorId
 ) {
-  const { connectorId, userAccountId } = config;
+  const { connectorId, userAccountId } = params;
 
   const connector = await Connector.findOne({
     attributes: ["connectionId"],
@@ -506,7 +506,7 @@ export async function confluenceGetReportPersonalActionActivity(
     if (result && result.status === "closed") {
       logger.info(
         { connectorId, userAccountId },
-        "Confluence data reporting API, account closed."
+        "Confluence report accounts API, account closed."
       );
       return true;
     }

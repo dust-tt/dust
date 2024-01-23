@@ -137,6 +137,7 @@ export async function launchConfluencePersonalDataReportingSchedule() {
       },
     });
   } catch (err) {
+    // If the schedule is already running, ignore the error.
     if (!isScheduleAlreadyRunning(err)) {
       throw err;
     }
