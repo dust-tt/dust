@@ -1,7 +1,7 @@
 import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
-import { getTemporalClient } from "@app/lib/temporal";
+import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { getConnectorReplicaDbConnection } from "@app/production_checks/lib/utils";
 import type { CheckFunction } from "@app/production_checks/types/check";
 
@@ -58,7 +58,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 ) => {
   const notionConnectors = await listAllNotionConnectors();
 
-  const client = await getTemporalClient();
+  const client = await getTemporalConnectorsNamespaceConnection();
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
@@ -66,7 +66,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   for (const notionConnector of notionConnectors) {
     heartbeat();
 
-    const isActive = isTemporalWorkflowRunning(client, notionConnector);
+    const isActive = await isTemporalWorkflowRunning(client, notionConnector);
     if (!isActive) {
       missingActiveWorkflows.push({
         connectorId: notionConnector.id,
