@@ -3,7 +3,7 @@ import type { ModelId } from "@dust-tt/types";
 import { getIntercomClient } from "@connectors/connectors/intercom/lib/intercom_api";
 import { syncHelpCenter } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 
@@ -80,16 +80,13 @@ export async function syncHelpCentersActivity({
     },
   });
 
-  await sequelize_conn.transaction(async (transaction) => {
-    helpCentersOnDb.map(async (helpCenter) => {
-      await syncHelpCenter({
-        connector,
-        intercomClient,
-        dataSourceConfig,
-        helpCenter,
-        loggerArgs,
-        transaction,
-      });
+  helpCentersOnDb.map(async (helpCenter) => {
+    await syncHelpCenter({
+      connector,
+      intercomClient,
+      dataSourceConfig,
+      helpCenter,
+      loggerArgs,
     });
   });
 }

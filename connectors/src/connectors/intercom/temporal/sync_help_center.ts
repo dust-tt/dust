@@ -1,6 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Client as IntercomClient } from "intercom-client";
-import type { Transaction } from "sequelize";
 
 import type { IntercomCollectionType } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
@@ -43,14 +42,12 @@ export async function syncHelpCenter({
   dataSourceConfig,
   helpCenter,
   loggerArgs,
-  transaction,
 }: {
   connector: Connector;
   intercomClient: IntercomClient;
   dataSourceConfig: DataSourceConfig;
   helpCenter: IntercomHelpCenter;
   loggerArgs: Record<string, string | number>;
-  transaction: Transaction;
 }) {
   const connectorId = connector.id;
   const helpCenterOnIntercom = await fetchIntercomHelpCenter(
@@ -74,19 +71,15 @@ export async function syncHelpCenter({
           dataSourceConfig,
           collection,
           loggerArgs,
-          transaction,
         });
       })
     );
-    await helpCenter.destroy({ transaction });
+    await helpCenter.destroy();
     return;
   }
 
   // Otherwise we update its name and sync its collections
-  await helpCenter.update(
-    { name: helpCenterOnIntercom.display_name },
-    { transaction }
-  );
+  await helpCenter.update({ name: helpCenterOnIntercom.display_name });
   const level1Collections = await IntercomCollection.findAll({
     where: {
       connectorId,
@@ -102,7 +95,6 @@ export async function syncHelpCenter({
           dataSourceConfig,
           collection,
           loggerArgs,
-          transaction,
         });
       } else {
         const collectionOnIntercom = await fetchIntercomCollection(
@@ -115,7 +107,6 @@ export async function syncHelpCenter({
             dataSourceConfig,
             collection,
             loggerArgs,
-            transaction,
           });
         } else {
           await _syncCollection({
@@ -123,7 +114,6 @@ export async function syncHelpCenter({
             intercomClient,
             dataSourceConfig,
             loggerArgs,
-            transaction,
             collection: collectionOnIntercom,
             parents: [],
           });
@@ -141,13 +131,11 @@ async function _deleteCollection({
   dataSourceConfig,
   collection,
   loggerArgs,
-  transaction,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   collection: IntercomCollection;
   loggerArgs: Record<string, string | number>;
-  transaction: Transaction;
 }) {
   const collectionId = collection.collectionId;
 
@@ -173,7 +161,7 @@ async function _deleteCollection({
           },
           dsArticleId
         ),
-        article.destroy({ transaction }),
+        article.destroy(),
       ]);
     })
   );
@@ -192,7 +180,7 @@ async function _deleteCollection({
       },
       dsCollectionId
     ),
-    collection.destroy({ transaction }),
+    collection.destroy(),
   ]);
   logger.info(
     { ...loggerArgs, collectionId },
@@ -213,7 +201,6 @@ async function _deleteCollection({
         dataSourceConfig,
         collection,
         loggerArgs,
-        transaction,
       });
     })
   );
@@ -227,7 +214,6 @@ async function _syncCollection({
   intercomClient,
   dataSourceConfig,
   loggerArgs,
-  transaction,
   collection,
   parents,
 }: {
@@ -236,7 +222,6 @@ async function _syncCollection({
   dataSourceConfig: DataSourceConfig;
   collection: IntercomCollectionType;
   loggerArgs: Record<string, string | number>;
-  transaction: Transaction;
   parents: string[];
 }) {
   // Sync the Collection
@@ -248,28 +233,22 @@ async function _syncCollection({
   });
 
   if (collectionOnDb) {
-    await collectionOnDb.update(
-      {
-        name: collection.name,
-        description: collection.description,
-      },
-      { transaction }
-    );
+    await collectionOnDb.update({
+      name: collection.name,
+      description: collection.description,
+    });
   } else {
-    collectionOnDb = await IntercomCollection.create(
-      {
-        connectorId: connectorId,
-        collectionId: collection.id,
-        intercomWorkspaceId: collection.workspace_id,
-        helpCenterId: collection.help_center_id,
-        parentId: collection.parent_id,
-        name: collection.name,
-        description: collection.description,
-        url: collection.url,
-        permission: "read",
-      },
-      { transaction }
-    );
+    collectionOnDb = await IntercomCollection.create({
+      connectorId: connectorId,
+      collectionId: collection.id,
+      intercomWorkspaceId: collection.workspace_id,
+      helpCenterId: collection.help_center_id,
+      parentId: collection.parent_id,
+      name: collection.name,
+      description: collection.description,
+      url: collection.url,
+      permission: "read",
+    });
   }
 
   const collectionContent = await renderDocumentTitleAndContent({
@@ -396,7 +375,6 @@ async function _syncCollection({
         intercomClient,
         dataSourceConfig,
         loggerArgs,
-        transaction,
         collection: collectionOnIntercom,
         parents: [...parents, collectionDsDocumentId],
       });
