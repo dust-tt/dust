@@ -1,5 +1,7 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
@@ -15,6 +17,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
+import logger from "@connectors/logger/logger";
 
 export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
@@ -103,4 +106,40 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
   }
 
   return new Ok(undefined);
+}
+
+export async function stopConfluenceSyncWorkflow(
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  const client = await getTemporalClient();
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(
+      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
+    );
+  }
+
+  const workflowId = makeConfluenceSyncWorkflowId(connectorId);
+
+  try {
+    const handle: WorkflowHandle<typeof confluenceSyncWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      "Failed to stop Confluence workflow."
+    );
+    return new Err(e as Error);
+  }
 }

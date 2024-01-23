@@ -6,6 +6,7 @@ import {
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceObjectsTitles,
   setConfluenceConnectorPermissions,
+  stopConfluenceConnector,
   updateConfluenceConnector,
 } from "@connectors/connectors/confluence";
 import {
@@ -128,9 +129,7 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorStopper
 > = {
-  confluence: () => {
-    throw new Error("Not yet implemented!");
-  },
+  confluence: stopConfluenceConnector,
   slack: async (connectorId: string) => {
     logger.info({ connectorId }, `Stopping Slack connector is a no-op.`);
     return new Ok(connectorId);

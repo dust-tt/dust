@@ -15,6 +15,7 @@ import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/
 import {
   launchConfluenceRemoveSpacesSyncWorkflow,
   launchConfluenceSyncWorkflow,
+  stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
@@ -105,6 +106,19 @@ export async function updateConfluenceConnector(
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   console.log({ connectorId, connectionId });
   throw new Error("Not implemented");
+}
+
+export async function stopConfluenceConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  // TODO(2024-01-23 flav) Change the prototype to take a ModelId.
+  const connectorIdAsNumber = parseInt(connectorId, 10);
+  const res = await stopConfluenceSyncWorkflow(connectorIdAsNumber);
+  if (res.isErr()) {
+    return res;
+  }
+
+  return new Ok(connectorId.toString());
 }
 
 export async function cleanupConfluenceConnector(
