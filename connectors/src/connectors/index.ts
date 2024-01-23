@@ -1,6 +1,7 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 
 import {
+  cleanupConfluenceConnector,
   createConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceObjectsTitles,
@@ -150,9 +151,7 @@ export const DELETE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCleaner
 > = {
-  confluence: () => {
-    throw new Error("Not yet implemented!");
-  },
+  confluence: cleanupConfluenceConnector,
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
   github: cleanupGithubConnector,
