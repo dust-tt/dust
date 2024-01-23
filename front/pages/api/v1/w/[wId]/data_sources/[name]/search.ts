@@ -14,7 +14,7 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import { Provider } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -50,7 +50,7 @@ type DatasourceSearchResponseBody = {
   documents: Array<DocumentType>;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody | ReturnedAPIErrorType>
 ): Promise<void> {
@@ -164,3 +164,5 @@ export default async function handler(
       });
   }
 }
+
+export default withLogging(handler);
