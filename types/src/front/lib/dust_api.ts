@@ -719,12 +719,12 @@ export class DustAPI {
     });
 
     try {
-      const jsonResponse = await res.json();
+      const dustRequestResult = await res.json();
 
-      if (jsonResponse.error) {
-        return new Err(jsonResponse.error);
+      if (dustRequestResult.error) {
+        return new Err(dustRequestResult.error as DustAPIErrorResponse);
       }
-      return new Ok(jsonResponse.response);
+      return new Ok(dustRequestResult.tokens as CoreAPITokenType[]);
     } catch (err) {
       const rawResponse = await res.text();
 
