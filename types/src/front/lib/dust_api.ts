@@ -717,6 +717,16 @@ export class DustAPI {
         text,
       }),
     });
+
+    if (!res.ok) {
+      // Try to capture raw text.
+      const text = await res.text();
+      const message = `Dust API /tokenize responded with status: ${res.status}.`;
+      this._logger.error({ status: res.status, response: text }, message);
+
+      return new Err({ type: "bad_request", message });
+    }
+
     const dustRequestResult = await res.json();
     if (dustRequestResult.error) {
       return new Err(dustRequestResult.error as DustAPIErrorResponse);
