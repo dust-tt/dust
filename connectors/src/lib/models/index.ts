@@ -1,15 +1,14 @@
-import type { ConnectorProvider } from "@dust-tt/types";
+import type {
+  ConnectorErrorType,
+  ConnectorProvider,
+  ConnectorSyncStatus,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   InferAttributes,
   InferCreationAttributes,
 } from "sequelize";
 import { DataTypes, Model, Sequelize } from "sequelize";
-
-import type {
-  ConnectorErrorType,
-  ConnectorSyncStatus,
-} from "@connectors/types/connector";
 
 const { CONNECTORS_DATABASE_URI } = process.env;
 if (!CONNECTORS_DATABASE_URI) {

@@ -1,10 +1,10 @@
+import type { ConnectorType } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { Connector } from "@connectors/lib/models";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorType } from "@connectors/types/connector";
 import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type GetConnectorRes = ConnectorType | ConnectorsAPIErrorResponse;
@@ -66,8 +66,10 @@ const _getConnector = async (
   }
 
   return res.status(200).json({
-    id: connector.id,
+    id: connector.id.toString(),
     type: connector.type,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
     lastSyncStatus: connector.lastSyncStatus,
     lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
     lastSyncFinishTime: connector.lastSyncFinishTime?.getTime(),

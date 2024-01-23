@@ -1,5 +1,6 @@
 import type {
   ConnectorProvider,
+  ConnectorType,
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
   Result,
@@ -23,7 +24,6 @@ import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorType } from "@connectors/types/connector";
 import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
@@ -140,8 +140,10 @@ const _createConnectorAPIHandler = async (
     await connector.reload();
 
     return res.status(200).json({
-      id: connector.id,
+      id: connector.id.toString(),
       type: connector.type,
+      workspaceId: connector.workspaceId,
+      dataSourceName: connector.dataSourceName,
       lastSyncStatus: connector.lastSyncStatus,
       lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
       lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),

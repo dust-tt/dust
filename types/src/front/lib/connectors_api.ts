@@ -38,6 +38,8 @@ export function connectorIsUsingNango(
 export type ConnectorType = {
   id: string;
   type: ConnectorProvider;
+  workspaceId: string;
+  dataSourceName: string;
 
   lastSyncStatus?: ConnectorSyncStatus;
   lastSyncStartTime?: number;
