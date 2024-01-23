@@ -12,16 +12,16 @@ import { Icon } from "./Icon";
 
 export interface NotificationProps {
   className?: string;
-  description: string;
-  title: string;
-  type: "success" | "error";
+  description?: string;
+  title?: string;
+  variant: "success" | "error";
   onClick?: () => void;
 }
 
 export function Notification({
   description,
   title,
-  type,
+  variant,
   onClick,
   className = "",
 }: NotificationProps) {
@@ -32,7 +32,7 @@ export function Notification({
         className
       )}
     >
-      {type === "success" ? (
+      {variant === "success" ? (
         <Icon
           size="md"
           visual={CheckCircleIcon}
@@ -49,14 +49,16 @@ export function Notification({
         <div
           className={classNames(
             "s-text-md s-font-semibold",
-            type === "success" ? "s-text-success-500" : "s-text-warning-500"
+            variant === "success" ? "s-text-success-500" : "s-text-warning-500"
           )}
         >
-          {title || type}
+          {title || variant}
         </div>
-        <div className="s-text-sm s-font-normal s-text-element-700">
-          {description}
-        </div>
+        {description && (
+          <div className="s-text-sm s-font-normal s-text-element-700">
+            {description}
+          </div>
+        )}
       </div>
       <div className="s-absolute s-right-2 s-top-2">
         <IconButton
