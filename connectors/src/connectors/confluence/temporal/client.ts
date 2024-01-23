@@ -23,7 +23,7 @@ export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = [],
   forceUpsert = false
-): Promise<Result<undefined, Error>> {
+): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -37,6 +37,8 @@ export async function launchConfluenceSyncWorkflow(
     spaceId: sId,
   }));
 
+  const workflowId = makeConfluenceSyncWorkflowId(connector.id);
+
   // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(confluenceSyncWorkflow, {
@@ -49,7 +51,7 @@ export async function launchConfluenceSyncWorkflow(
         },
       ],
       taskQueue: QUEUE_NAME,
-      workflowId: makeConfluenceSyncWorkflowId(connector.id),
+      workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
@@ -64,7 +66,7 @@ export async function launchConfluenceSyncWorkflow(
     return new Err(err as Error);
   }
 
-  return new Ok(undefined);
+  return new Ok(workflowId);
 }
 
 export async function launchConfluenceRemoveSpacesSyncWorkflow(

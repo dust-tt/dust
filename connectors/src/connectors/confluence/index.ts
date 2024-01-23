@@ -146,7 +146,7 @@ export async function resumeConfluenceConnector(
       return new Err(new Error("Confluence configuration not found"));
     }
 
-    await launchConfluenceSyncWorkflow(connector.id, []);
+    await launchConfluenceSyncWorkflow(connector.id);
 
     return new Ok(connector.id.toString());
   } catch (err) {
