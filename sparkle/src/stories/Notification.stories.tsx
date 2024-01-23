@@ -17,12 +17,12 @@ export const DropdownExample = () => {
         <Notification
           title="Success"
           description="This is a success notification"
-          type="success"
+          variant="success"
         />
         <Notification
           title="Failure"
           description="This is a success notification"
-          type="error"
+          variant="error"
         />
       </div>
     </>
