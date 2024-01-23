@@ -12,27 +12,39 @@ import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
 
 import { assistantUsageMessage } from "@app/lib/assistant";
-import { useAgentUsage } from "@app/lib/swr";
+import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 import { useState } from "react";
+
+type ConfirmationModalDataType = {
+  title: string;
+  text: string;
+  confirmText: string;
+  variant: "primary" | "primaryWarning";
+};
 
 /*
  * Note: Non-builders cannot change to/from company assistant
  */
 export function TeamSharingSection({
-  assistantName,
   owner,
   agentConfigurationId,
   initialScope,
   newScope,
   setNewScope,
 }: {
-  assistantName: string;
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   initialScope: Exclude<AgentConfigurationScope, "global">;
   newScope: Exclude<AgentConfigurationScope, "global">;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
 }) {
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+  });
+  const assistantInMyList = agentConfiguration?.userListStatus === "in-list";
+  const assistantName = agentConfiguration?.name;
+
   const [requestNewScope, setModalNewScope] = useState<Exclude<
     AgentConfigurationScope,
     "global"
@@ -42,6 +54,15 @@ export function TeamSharingSection({
     agentConfigurationId,
   });
 
+  const usageParagraph = assistantName
+    ? assistantUsageMessage({
+        assistantName,
+        usage: agentUsage.agentUsage,
+        isLoading: agentUsage.isAgentUsageLoading,
+        isError: agentUsage.isAgentUsageError,
+      })
+    : "";
+
   const scopeInfo: Record<
     Exclude<AgentConfigurationScope, "global">,
     {
@@ -49,12 +70,7 @@ export function TeamSharingSection({
       color: string;
       icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
       text: string;
-      confirmationModalData: {
-        title: string;
-        text: string;
-        confirmText: string;
-        variant: "primary" | "primaryWarning";
-      };
+      confirmationModalData: ConfirmationModalDataType;
     }
   > = {
     published: {
@@ -88,20 +104,21 @@ export function TeamSharingSection({
       text: "Only I can view and edit.",
       confirmationModalData: {
         title: "Moving to Personal Assistants",
-        text:
-          assistantUsageMessage({
-            assistantName,
-            usage: agentUsage.agentUsage,
-            isLoading: agentUsage.isAgentUsageLoading,
-            isError: agentUsage.isAgentUsageError,
-          }) +
-          "\n\nMoving the assistant to your Personal Assistants will make the assistant unaccessible to other members of the workspace.",
+        text: `${usageParagraph}\n\nMoving the assistant to your Personal Assistants will make the assistant unaccessible to other members of the workspace.`,
         confirmText: "Move to Personal",
         variant: "primaryWarning",
       },
     },
   };
-
+  // special case if changing setting from company to shared
+  const companyToSharedModalData: ConfirmationModalDataType = {
+    title: "Moving to Shared Assistants",
+    text: `${usageParagraph}\n\nMoving ${
+      assistantName || "the assistant"
+    } to Shared Assistants will make the assistant editable by all members of the workspace and the assistant will not be activated by default anymore.`,
+    confirmText: "Move to Shared",
+    variant: "primary",
+  };
   return (
     <div className="flex flex-col gap-3">
       <div className="text-lg font-bold text-element-900">Sharing</div>
@@ -110,7 +127,9 @@ export function TeamSharingSection({
           show={requestNewScope !== null}
           confirmationModalData={
             requestNewScope
-              ? scopeInfo[requestNewScope].confirmationModalData
+              ? requestNewScope === "published" && initialScope === "workspace"
+                ? companyToSharedModalData
+                : scopeInfo[requestNewScope].confirmationModalData
               : { title: "", text: "", confirmText: "", variant: "primary" }
           }
           onClose={() => setModalNewScope(null)}
@@ -120,7 +139,7 @@ export function TeamSharingSection({
         />
         <DropdownMenu>
           <DropdownMenu.Button>
-            <div className="flex cursor-pointer items-center gap-2">
+            <div className="group flex cursor-pointer items-center gap-2">
               <Chip
                 label={scopeInfo[newScope].label}
                 color={scopeInfo[newScope].color as "pink" | "amber" | "sky"}
@@ -130,6 +149,7 @@ export function TeamSharingSection({
                 icon={ChevronDownIcon}
                 size="xs"
                 variant="secondary"
+                className="group-hover:text-action-400"
               />
             </div>
           </DropdownMenu.Button>
@@ -154,6 +174,7 @@ export function TeamSharingSection({
                       // change to personal or company, but the only user of the
                       // assistant is the user changing the scope
                       ((entryScope === "private" || entryScope === "company") &&
+                        assistantInMyList &&
                         agentUsage &&
                         agentUsage.agentUsage?.userCount &&
                         agentUsage.agentUsage.userCount === 1)
@@ -178,12 +199,7 @@ export function TeamSharingSection({
         {agentUsage &&
         agentUsage.agentUsage?.userCount &&
         agentUsage.agentUsage.userCount > 1
-          ? assistantUsageMessage({
-              assistantName,
-              usage: agentUsage.agentUsage,
-              isLoading: agentUsage.isAgentUsageLoading,
-              isError: agentUsage.isAgentUsageError,
-            })
+          ? usageParagraph
           : null}
       </div>
     </div>
@@ -197,12 +213,7 @@ function ScopeChangeModal({
   setSharingScope,
 }: {
   show: boolean;
-  confirmationModalData: {
-    title: string;
-    text: string;
-    confirmText: string;
-    variant: "primary" | "primaryWarning";
-  };
+  confirmationModalData: ConfirmationModalDataType;
   onClose: () => void;
   setSharingScope: () => void;
 }) {

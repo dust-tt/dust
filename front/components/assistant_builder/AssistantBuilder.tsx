@@ -818,7 +818,6 @@ export default function AssistantBuilder({
             </div>
           </div>
           <TeamSharingSection
-            assistantName={builderState.handle || "UnnamedAssistant"}
             owner={owner}
             agentConfigurationId={agentConfigurationId}
             initialScope={initialBuilderState?.scope ?? defaultScope}
