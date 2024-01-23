@@ -211,7 +211,7 @@ interface ConfluenceUpsertPageActivityInput {
   pageId: string;
   spaceId: string;
   spaceName: string;
-  upsert: boolean;
+  forceUpsert: boolean;
   visitedAtMs: number;
 }
 
@@ -223,7 +223,7 @@ export async function confluenceUpsertPageActivity({
   pageId,
   spaceId,
   spaceName,
-  upsert,
+  forceUpsert,
   visitedAtMs,
 }: ConfluenceUpsertPageActivityInput) {
   const loggerArgs = {
@@ -276,7 +276,7 @@ export async function confluenceUpsertPageActivity({
   const isSameVersion =
     pageAlreadyInDb && pageAlreadyInDb.version === page.version.number;
   // Only index in DB if the page does not exist or we want to upsert.
-  if (isSameVersion && !upsert) {
+  if (isSameVersion && !forceUpsert) {
     // Simply record that we visited the page.
     return upsertConfluencePageInDb(connectorId, page, visitedAtMs);
   }

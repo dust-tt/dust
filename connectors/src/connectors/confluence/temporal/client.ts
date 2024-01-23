@@ -19,7 +19,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = [],
-  upsert = false
+  forceUpsert = false
 ): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -42,7 +42,7 @@ export async function launchConfluenceSyncWorkflow(
           connectorId: connector.id,
           dataSourceConfig,
           connectionId: connector.connectionId,
-          upsert,
+          forceUpsert,
         },
       ],
       taskQueue: QUEUE_NAME,

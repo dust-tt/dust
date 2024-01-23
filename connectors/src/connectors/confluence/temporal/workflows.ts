@@ -38,13 +38,13 @@ export async function confluenceSyncWorkflow({
   connectorId,
   dataSourceConfig,
   spaceIdsToBrowse,
-  upsert = false,
+  forceUpsert = false,
 }: {
   connectionId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   spaceIdsToBrowse?: string[];
-  upsert: boolean;
+  forceUpsert: boolean;
 }) {
   await confluenceSaveStartSyncActivity(connectorId);
 
@@ -90,7 +90,7 @@ export async function confluenceSyncWorkflow({
             dataSourceConfig,
             isBatchSync: true,
             spaceId,
-            upsert,
+            forceUpsert,
           },
         ],
         memo,
@@ -110,7 +110,7 @@ interface ConfluenceSpaceSyncWorkflowInput {
   dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   spaceId: string;
-  upsert: boolean;
+  forceUpsert: boolean;
 }
 
 export async function confluenceSpaceSyncWorkflow(
