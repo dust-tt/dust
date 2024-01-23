@@ -15,7 +15,6 @@ export async function concurrentExecutor<T>(
     promises.push(queue.add(async () => iterator(item)));
   }
 
-  // This will reject as soon as one promise rejects
   // `Promise.all` will throw at the first rejection, but all tasks will continue to process.
   return Promise.all(promises);
 }
