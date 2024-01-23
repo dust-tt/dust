@@ -151,8 +151,31 @@ async function handler(
           status_code: 400,
         });
       }
-      const { rows: rowsToUpsert, truncate } = bodyValidation.right;
+      const { truncate } = bodyValidation.right;
+      let { rows: rowsToUpsert } = bodyValidation.right;
 
+      // Make every key in the rows lowercase and ensure there are no duplicates.
+      const allKeys = rowsToUpsert.map((row) => Object.keys(row.value)).flat();
+      const keysSet = new Set<string>();
+      for (const key of allKeys) {
+        if (keysSet.has(key)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Duplicate key: ${key}`,
+            },
+          });
+        }
+        keysSet.add(key);
+      }
+      rowsToUpsert = rowsToUpsert.map((row) => {
+        const value: Record<string, string | number | boolean | null> = {};
+        for (const [key, val] of Object.entries(row.value)) {
+          value[key.toLowerCase()] = val;
+        }
+        return { row_id: row.row_id, value };
+      });
       const upsertRes = await coreAPI.upsertTableRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
