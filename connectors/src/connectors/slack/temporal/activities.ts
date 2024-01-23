@@ -14,6 +14,7 @@ import type {
   Channel,
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
+import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
 import {
@@ -24,7 +25,6 @@ import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/err
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import {
   deleteFromDataSource,
@@ -326,9 +326,11 @@ export async function syncMultipleNoNThreaded(
   timestampsMs: number[],
   connectorId: ModelId
 ) {
-  await concurrentExecutor(
-    timestampsMs,
-    async (startTsMs) =>
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
+
+  const promises = [];
+  for (const startTsMs of timestampsMs) {
+    const p = queue.add(() =>
       syncNonThreaded(
         channelId,
         channelName,
@@ -336,9 +338,11 @@ export async function syncMultipleNoNThreaded(
         getWeekEnd(new Date(startTsMs)).getTime(),
         connectorId,
         true // isBatchSync
-      ),
-    { concurrency: MAX_CONCURRENCY_LEVEL }
-  );
+      )
+    );
+    promises.push(p);
+  }
+  return Promise.all(promises);
 }
 
 export async function syncNonThreaded(
@@ -478,9 +482,11 @@ export async function syncThreads(
   threadsTs: string[],
   connectorId: ModelId
 ) {
-  await concurrentExecutor(
-    threadsTs,
-    async (threadTs) => {
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
+
+  const promises = [];
+  for (const threadTs of threadsTs) {
+    const p = queue.add(async () => {
       // we first check if the bot still has read permissions on the channel
       // there could be a race condition if we are in the middle of syncing a channel but
       // the user revokes the bot's permissions
@@ -516,9 +522,10 @@ export async function syncThreads(
         connectorId,
         true // isBatchSync
       );
-    },
-    { concurrency: MAX_CONCURRENCY_LEVEL }
-  );
+    });
+    promises.push(p);
+  }
+  return Promise.all(promises);
 }
 
 export async function syncThread(
