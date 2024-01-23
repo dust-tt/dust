@@ -13,8 +13,8 @@ import {
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
-  launchConfluenceFullSyncWorkflow,
   launchConfluenceRemoveSpacesSyncWorkflow,
+  launchConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
@@ -81,9 +81,7 @@ export async function createConfluenceConnector(
       return connector;
     });
 
-    const workflowStarted = await launchConfluenceFullSyncWorkflow(
-      connector.id
-    );
+    const workflowStarted = await launchConfluenceSyncWorkflow(connector.id);
     if (workflowStarted.isErr()) {
       return new Err(workflowStarted.error);
     }
@@ -112,13 +110,15 @@ function createConnectorResourceFromSpace(
   baseUrl: string,
   permission: ConnectorPermission
 ): ConnectorResource {
+  const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
+
   return {
     provider: "confluence",
     internalId: space.id.toString(),
     parentInternalId: null,
     type: "folder",
     title: space.name || "Unnamed Space",
-    sourceUrl: `${baseUrl}/wiki${space.urlSuffix}`,
+    sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
     expandable: false,
     permission: permission,
     dustDocumentId: null,
@@ -261,7 +261,7 @@ export async function setConfluenceConnectorPermissions(
 
   const addedSpacesResult = await startWorkflowIfNecessary(
     addedSpaceIds,
-    launchConfluenceFullSyncWorkflow,
+    launchConfluenceSyncWorkflow,
     connectorId
   );
   if (addedSpacesResult.isErr()) {

@@ -126,6 +126,7 @@ export class ConfluencePage extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastVisitedAt: CreationOptional<Date>;
 
   declare externalUrl: string;
   declare pageId: string;
@@ -150,6 +151,11 @@ ConfluencePage.init(
       defaultValue: DataTypes.NOW,
     },
     updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastVisitedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,

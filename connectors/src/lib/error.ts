@@ -51,10 +51,18 @@ export class HTTPError extends Error {
   }
 }
 
+export interface NotFoundError extends HTTPError {
+  statusCode: 404;
+}
+
 // This error is thrown when we are dealing with a revoked OAuth token.
 export class ExternalOauthTokenError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message);
     this.name = "ExternalOauthTokenError";
   }
+}
+
+export function isNotFoundError(err: unknown): err is NotFoundError {
+  return err instanceof HTTPError && err.statusCode === 404;
 }

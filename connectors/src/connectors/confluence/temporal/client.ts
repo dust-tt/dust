@@ -5,20 +5,21 @@ import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
-  makeConfluenceFullSyncWorkflowId,
   makeConfluenceRemoveSpacesWorkflowId,
+  makeConfluenceSyncWorkflowId,
 } from "@connectors/connectors/confluence/temporal/utils";
 import {
-  confluenceFullSyncWorkflow,
   confluenceRemoveSpacesWorkflow,
+  confluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 
-export async function launchConfluenceFullSyncWorkflow(
+export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
-  spaceIds: string[] = []
+  spaceIds: string[] = [],
+  forceUpsert = false
 ): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -35,16 +36,17 @@ export async function launchConfluenceFullSyncWorkflow(
 
   // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
-    await client.workflow.signalWithStart(confluenceFullSyncWorkflow, {
+    await client.workflow.signalWithStart(confluenceSyncWorkflow, {
       args: [
         {
           connectorId: connector.id,
           dataSourceConfig,
           connectionId: connector.connectionId,
+          forceUpsert,
         },
       ],
       taskQueue: QUEUE_NAME,
-      workflowId: makeConfluenceFullSyncWorkflowId(connector.id),
+      workflowId: makeConfluenceSyncWorkflowId(connector.id),
       searchAttributes: {
         connectorId: [connectorId],
       },
@@ -53,6 +55,7 @@ export async function launchConfluenceFullSyncWorkflow(
       memo: {
         connectorId,
       },
+      cronSchedule: "0 * * * *", // Every hour.
     });
   } catch (err) {
     return new Err(err as Error);

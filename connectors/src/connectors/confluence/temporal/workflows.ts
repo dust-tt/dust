@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import type { WorkflowInfo } from "@temporalio/workflow";
 import {
   executeChild,
   proxyActivities,
@@ -20,6 +21,7 @@ import {
 const {
   confluenceGetSpaceNameActivity,
   confluenceListPageIdsInSpaceActivity,
+  confluenceRemoveUnvisitedPagesActivity,
   confluenceRemoveSpaceActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
@@ -31,16 +33,18 @@ const {
   startToCloseTimeout: "20 minutes",
 });
 
-export async function confluenceFullSyncWorkflow({
+export async function confluenceSyncWorkflow({
   connectionId,
   connectorId,
   dataSourceConfig,
   spaceIdsToBrowse,
+  forceUpsert = false,
 }: {
   connectionId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   spaceIdsToBrowse?: string[];
+  forceUpsert: boolean;
 }) {
   await confluenceSaveStartSyncActivity(connectorId);
 
@@ -86,6 +90,7 @@ export async function confluenceFullSyncWorkflow({
             dataSourceConfig,
             isBatchSync: true,
             spaceId,
+            forceUpsert,
           },
         ],
         memo,
@@ -105,12 +110,16 @@ interface ConfluenceSpaceSyncWorkflowInput {
   dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   spaceId: string;
+  forceUpsert: boolean;
 }
 
 export async function confluenceSpaceSyncWorkflow(
   params: ConfluenceSpaceSyncWorkflowInput
 ) {
   const uniquePageIds = new Set<string>();
+  const visitedAtMs = new Date().getTime();
+
+  const { connectorId, spaceId } = params;
 
   const confluenceConfig = await fetchConfluenceConfigurationActivity(
     params.connectorId
@@ -122,6 +131,11 @@ export async function confluenceSpaceSyncWorkflow(
     ...params,
     confluenceCloudId: confluenceConfig?.cloudId,
   });
+  // If the space does not exist, launch a workflow to remove the space.
+  if (spaceName === null) {
+    const wInfo = workflowInfo();
+    return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
+  }
 
   // Retrieve and loop through all pages for a given space.
   let nextPageCursor: string | null = "";
@@ -144,10 +158,44 @@ export async function confluenceSpaceSyncWorkflow(
       ...params,
       spaceName,
       pageId,
+      visitedAtMs,
     });
   }
 
+  await confluenceRemoveUnvisitedPagesActivity({
+    connectorId,
+    lastVisitedAt: visitedAtMs,
+    spaceId,
+  });
+
   return uniquePageIds.size;
+}
+
+async function startConfluenceRemoveSpaceWorkflow(
+  parentWorkflowInfo: WorkflowInfo,
+  connectorId: ModelId,
+  spaceId: string
+) {
+  const {
+    memo,
+    searchAttributes: parentSearchAttributes,
+    workflowId,
+  } = parentWorkflowInfo;
+
+  await executeChild(confluenceRemoveSpaceWorkflow, {
+    workflowId: makeConfluenceRemoveSpaceWorkflowIdFromParentId(
+      workflowId,
+      spaceId
+    ),
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        connectorId,
+        spaceId,
+      },
+    ],
+    memo,
+  });
 }
 
 // TODO(2024-01-19 flav) Build a factory to make workspace with a signal handler.
@@ -171,11 +219,7 @@ export async function confluenceRemoveSpacesWorkflow({
     }
   });
 
-  const {
-    workflowId,
-    searchAttributes: parentSearchAttributes,
-    memo,
-  } = workflowInfo();
+  const wInfo = workflowInfo();
 
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
@@ -184,20 +228,7 @@ export async function confluenceRemoveSpacesWorkflow({
     const spaceIdsToProcess = new Set(uniqueSpaceIds);
     for (const spaceId of spaceIdsToProcess) {
       // Async operation yielding control to the Temporal runtime.
-      await executeChild(confluenceRemoveSpaceWorkflow, {
-        workflowId: makeConfluenceRemoveSpaceWorkflowIdFromParentId(
-          workflowId,
-          spaceId
-        ),
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            connectorId,
-            spaceId,
-          },
-        ],
-        memo,
-      });
+      await startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
 
       // Remove the processed space from the original set after the async operation.
       uniqueSpaceIds.delete(spaceId);

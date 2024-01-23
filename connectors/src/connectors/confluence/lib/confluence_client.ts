@@ -2,6 +2,8 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import { PathReporter } from "io-ts/PathReporter";
 
+import { HTTPError } from "@connectors/lib/error";
+
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
 const ConfluenceAccessibleResourcesCodec = t.array(
@@ -105,8 +107,9 @@ export class ConfluenceClient {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`
+      throw new HTTPError(
+        `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
+        response.status
       );
     }
 

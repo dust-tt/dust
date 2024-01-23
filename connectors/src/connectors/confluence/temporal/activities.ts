@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { Op } from "sequelize";
 import TurndownService from "turndown";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
@@ -16,6 +17,7 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { isNotFoundError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
@@ -126,14 +128,28 @@ export async function confluenceGetSpaceNameActivity({
   connectionId: string;
   spaceId: string;
 }) {
+  const localLogger = logger.child({
+    spaceId,
+  });
+
   const client = await getConfluenceClient({
     cloudId: confluenceCloudId,
     connectionId: connectionId,
   });
 
-  const space = await client.getSpaceById(spaceId);
+  try {
+    const space = await client.getSpaceById(spaceId);
 
-  return space.name;
+    return space.name;
+  } catch (err) {
+    if (isNotFoundError(err)) {
+      localLogger.info("Deleting stale Confluence space.");
+
+      return null;
+    }
+
+    throw err;
+  }
 }
 
 export async function confluenceListPageIdsInSpaceActivity({
@@ -171,10 +187,54 @@ export async function confluenceListPageIdsInSpaceActivity({
 }
 
 async function upsertConfluencePageInDb(
-  connectionId: string,
-  dataSourceConfig: DataSourceConfig,
-  page: ConfluencePageWithBodyType
+  connectorId: ModelId,
+  page: ConfluencePageWithBodyType,
+  visitedAtMs: number
 ) {
+  await ConfluencePage.upsert({
+    connectorId,
+    pageId: page.id,
+    spaceId: page.spaceId,
+    parentId: page.parentId,
+    title: page.title,
+    externalUrl: page._links.tinyui,
+    version: page.version.number,
+    lastVisitedAt: new Date(visitedAtMs),
+  });
+}
+
+interface ConfluenceUpsertPageActivityInput {
+  connectionId: string;
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  isBatchSync: boolean;
+  pageId: string;
+  spaceId: string;
+  spaceName: string;
+  forceUpsert: boolean;
+  visitedAtMs: number;
+}
+
+export async function confluenceUpsertPageActivity({
+  connectionId,
+  connectorId,
+  dataSourceConfig,
+  isBatchSync,
+  pageId,
+  spaceId,
+  spaceName,
+  forceUpsert,
+  visitedAtMs,
+}: ConfluenceUpsertPageActivityInput) {
+  const loggerArgs = {
+    connectorId,
+    dataSourceName: dataSourceConfig.dataSourceName,
+    pageId,
+    spaceId,
+    workspaceId: dataSourceConfig.workspaceId,
+  };
+  const localLogger = logger.child(loggerArgs);
+
   const connector = await Connector.findOne({
     where: {
       connectionId,
@@ -186,45 +246,6 @@ async function upsertConfluencePageInDb(
   if (!connector) {
     throw new Error(`Connector not found (connectionId: ${connectionId})`);
   }
-
-  await ConfluencePage.upsert({
-    connectorId: connector.id,
-    pageId: page.id,
-    spaceId: page.spaceId,
-    parentId: page.parentId,
-    title: page.title,
-    externalUrl: page._links.tinyui,
-    version: page.version.number,
-  });
-}
-
-interface ConfluenceUpsertPageActivityInput {
-  spaceId: string;
-  spaceName: string;
-  pageId: string;
-  dataSourceConfig: DataSourceConfig;
-  isBatchSync: boolean;
-  connectionId: string;
-  connectorId: ModelId;
-}
-
-export async function confluenceUpsertPageActivity({
-  spaceId,
-  spaceName,
-  connectorId,
-  pageId,
-  dataSourceConfig,
-  connectionId,
-  isBatchSync,
-}: ConfluenceUpsertPageActivityInput) {
-  const loggerArgs = {
-    connectorId,
-    dataSourceName: dataSourceConfig.dataSourceName,
-    pageId,
-    spaceId,
-    workspaceId: dataSourceConfig.workspaceId,
-  };
-  const localLogger = logger.child(loggerArgs);
 
   const isPageSkipped = await isConfluencePageSkipped(connectorId, pageId);
   if (isPageSkipped) {
@@ -244,6 +265,22 @@ export async function confluenceUpsertPageActivity({
   localLogger.info("Upserting Confluence page.");
 
   const page = await client.getPageById(pageId);
+
+  const pageAlreadyInDb = await ConfluencePage.findOne({
+    attributes: ["version"],
+    where: {
+      connectorId,
+      pageId,
+    },
+  });
+  const isSameVersion =
+    pageAlreadyInDb && pageAlreadyInDb.version === page.version.number;
+  // Only index in DB if the page does not exist or we want to upsert.
+  if (isSameVersion && !forceUpsert) {
+    // Simply record that we visited the page.
+    return upsertConfluencePageInDb(connectorId, page, visitedAtMs);
+  }
+
   const markdown = turndownService.turndown(page.body.storage.value);
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
@@ -294,7 +331,44 @@ export async function confluenceUpsertPageActivity({
 
   localLogger.info("Upserting Confluence page in DB.");
 
-  await upsertConfluencePageInDb(connectionId, dataSourceConfig, page);
+  await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
+}
+
+export async function confluenceRemoveUnvisitedPagesActivity({
+  connectorId,
+  lastVisitedAt,
+  spaceId,
+}: {
+  connectorId: ModelId;
+  lastVisitedAt: number;
+  spaceId: string;
+}) {
+  const connector = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error(`Connector not found (id: ${connectorId})`);
+  }
+
+  const unvisitedPages = await ConfluencePage.findAll({
+    attributes: ["pageId"],
+    where: {
+      connectorId,
+      spaceId,
+      lastVisitedAt: {
+        [Op.ne]: new Date(lastVisitedAt),
+      },
+    },
+  });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  for (const page of unvisitedPages) {
+    // TODO(2024-01-22 flav) Add an extra check to ensure that the page does not exist anymore in Confluence.
+    await deletePage(connectorId, page.pageId, dataSourceConfig);
+  }
 }
 
 async function deletePage(
