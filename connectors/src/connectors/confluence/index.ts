@@ -124,19 +124,19 @@ export async function cleanupConfluenceConnector(
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       ConfluenceSpace.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       ConfluencePage.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
     ]);
 
@@ -149,7 +149,7 @@ export async function cleanupConfluenceConnector(
     }
 
     await connector.destroy({
-      transaction: transaction,
+      transaction,
     });
 
     return new Ok(undefined);
