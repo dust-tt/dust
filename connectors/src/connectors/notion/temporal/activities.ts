@@ -285,6 +285,7 @@ export async function getPagesAndDatabasesToSync({
       // Notion workspaces are resynced daily so nothing is lost forever.
       switch (e.code) {
         case "internal_server_error":
+        case "validation_error":
           if (Context.current().info.attempt > 20) {
             localLogger.error(
               {
@@ -299,7 +300,7 @@ export async function getPagesAndDatabasesToSync({
               nextCursor: null,
             };
           }
-          break;
+          throw e;
 
         case "unauthorized":
           throw new ExternalOauthTokenError(e);
