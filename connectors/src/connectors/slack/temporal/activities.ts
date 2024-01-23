@@ -1,5 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import { cacheWithRedis, safeSubstring } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIPlatformError,
@@ -696,7 +696,7 @@ export async function formatMessagesForUpsert({
 
   const title = isThread
     ? `Thread in #${channelName}: ${
-        first.text.replace(/\s+/g, " ").trim().substring(0, 128) + "..."
+        safeSubstring(first.text.replace(/\s+/g, " ").trim(), 0, 128) + "..."
       }`
     : `Messages in #${channelName}`;
 
