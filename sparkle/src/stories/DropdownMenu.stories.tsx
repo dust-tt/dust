@@ -8,11 +8,14 @@ import {
   ClipboardIcon,
   DropdownMenu,
   ListAddIcon,
+  ListIcon,
   ListRemoveIcon,
   LockIcon,
   PencilSquareIcon,
   PlanetIcon,
+  PlusIcon,
   RobotIcon,
+  Searchbar,
   SliderToggle,
   TrashIcon,
   UserGroupIcon,
@@ -26,6 +29,12 @@ const meta = {
 export default meta;
 
 export const DropdownExample = () => {
+  const [inputValue, setInputValue] = useState("");
+
+  const handleChange = (value: string) => {
+    setInputValue(value);
+  };
+
   const [isToggled, setIsToggled] = useState(false);
 
   const handleToggle = () => {
@@ -79,6 +88,119 @@ export const DropdownExample = () => {
               label="Remove from my list"
               href="#"
               icon={ListRemoveIcon}
+            />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
+        <div className="s-text-sm">Assistant selector menu example:</div>
+        <DropdownMenu>
+          <DropdownMenu.Button icon={RobotIcon} />
+          <DropdownMenu.Items
+            width={240}
+            origin="topRight"
+            topBar={
+              <div className="s-flex s-flex-grow s-flex-row s-border-b s-border-structure-50 s-p-2">
+                <Searchbar
+                  placeholder="Placeholder"
+                  size="xs"
+                  name="input"
+                  value={inputValue}
+                  onChange={handleChange}
+                  className="s-w-full"
+                ></Searchbar>
+              </div>
+            }
+            bottomBar={
+              <div className="s-flex s-border-t s-border-structure-50 s-p-2">
+                <Button
+                  label="Manage"
+                  variant="tertiary"
+                  size="xs"
+                  icon={ListIcon}
+                />
+                <div className="s-flex-grow" />
+                <Button
+                  label="New"
+                  variant="secondary"
+                  size="xs"
+                  icon={PlusIcon}
+                />
+              </div>
+            }
+          >
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@gpt4"
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+            />
+            <DropdownMenu.Item
+              label="@slack"
+              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
             />
           </DropdownMenu.Items>
         </DropdownMenu>
@@ -232,20 +354,6 @@ export const DropdownExample = () => {
       </div>
       <div className="s-h-12" />
       <div className="s-flex s-gap-6">
-        <div className="s-text-sm">With custom menu</div>
-        <DropdownMenu>
-          <DropdownMenu.Button icon={RobotIcon} />
-          <DropdownMenu.Items origin="topRight">
-            <div className="s-flex s-flex-col s-gap-2 s-p-3">
-              testing custom stuff
-              <Button label="hello" />
-              <SliderToggle selected={isToggled} onClick={handleToggle} />
-            </div>
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-      <div className="s-h-12" />
-      <div className="s-flex s-gap-6">
         <div className="s-text-sm">With visuals in items</div>
         <DropdownMenu>
           <DropdownMenu.Button icon={RobotIcon} />
@@ -258,6 +366,20 @@ export const DropdownExample = () => {
               label="@slack"
               visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
             />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
+        <div className="s-text-sm">With custom menu</div>
+        <DropdownMenu>
+          <DropdownMenu.Button icon={RobotIcon} />
+          <DropdownMenu.Items origin="topRight">
+            <div className="s-flex s-flex-col s-gap-2 s-p-3">
+              testing custom stuff
+              <Button label="hello" />
+              <SliderToggle selected={isToggled} onClick={handleToggle} />
+            </div>
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
