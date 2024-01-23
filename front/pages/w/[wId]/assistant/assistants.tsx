@@ -121,12 +121,12 @@ export default function PersonalAssistants({
 
   const tabs = [
     {
-      label: "By Me/Teammates",
+      label: "Personal & Shared Assistants",
       href: `/w/${owner.sId}/assistant/assistants?view=personal`,
       current: view === "personal",
     },
     {
-      label: "By Workspace",
+      label: "Company Assistants",
       href: `/w/${owner.sId}/assistant/assistants?view=workspace`,
       current: view === "workspace",
     },

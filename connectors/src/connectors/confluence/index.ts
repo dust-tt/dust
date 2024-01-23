@@ -8,6 +8,7 @@ import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
   getConfluenceCloudInformation,
+  getConfluenceUserAccountId,
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
@@ -52,6 +53,8 @@ export async function createConfluenceConnector(
     return new Err(new Error("Confluence access token is invalid"));
   }
 
+  const userAccountId = await getConfluenceUserAccountId(confluenceAccessToken);
+
   const { id: cloudId, url: cloudUrl } = confluenceCloudInformation;
   try {
     const connector = await sequelize_conn.transaction(async (transaction) => {
@@ -70,6 +73,7 @@ export async function createConfluenceConnector(
           cloudId,
           connectorId: connector.id,
           url: cloudUrl,
+          userAccountId,
         },
         { transaction }
       );

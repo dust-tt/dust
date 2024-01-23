@@ -224,15 +224,39 @@ impl Table {
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
-        // Validate the tables schema, merge it if necessary and store it in the schema cache.
-        let table_schema = match self.schema() {
-            // If there is no existing schema cache, simply use the new schema.
-            None => TableSchema::from_rows(&rows)?,
-            Some(existing_table_schema) => {
-                // If there is an existing schema cache, merge it with the new schema.
-                existing_table_schema.merge(&TableSchema::from_rows(&rows)?)?
+        // Validate that all rows keys are lowercase.
+        for (row_index, row) in rows.iter().enumerate() {
+            let object = match row.value().as_object() {
+                Some(object) => object,
+                None => Err(anyhow!("Row {} is not an object", row_index,))?,
+            };
+            match object.keys().find(|key| match key.chars().next() {
+                Some(c) => !c.is_ascii_lowercase(),
+                None => false,
+            }) {
+                Some(key) => Err(anyhow!(
+                    "Row {} has a key '{}' that is not lowercase",
+                    row_index,
+                    key
+                ))?,
+                None => (),
             }
+        }
+
+        // Validate the tables schema, merge it if necessary and store it in the schema cache.
+        let table_schema = match truncate {
+            // If the new rows replace existing ones, we need to clear the schema cache.
+            true => TableSchema::from_rows(&rows)?,
+            false => match self.schema() {
+                // If there is no existing schema cache, simply use the new schema.
+                None => TableSchema::from_rows(&rows)?,
+                Some(existing_table_schema) => {
+                    // If there is an existing schema cache, merge it with the new schema.
+                    existing_table_schema.merge(&TableSchema::from_rows(&rows)?)?
+                }
+            },
         };
+
         store
             .update_table_schema(
                 &self.project,

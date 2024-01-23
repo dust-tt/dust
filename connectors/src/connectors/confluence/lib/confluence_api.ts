@@ -18,6 +18,14 @@ export async function getConfluenceCloudInformation(accessToken: string) {
   }
 }
 
+export async function getConfluenceUserAccountId(accessToken: string) {
+  const client = new ConfluenceClient(accessToken);
+
+  const userAccount = await client.getUserAccount();
+
+  return userAccount.account_id;
+}
+
 async function fetchConfluenceConfiguration(connectorId: ModelId) {
   const confluenceConfig = await ConfluenceConfiguration.findOne({
     where: {

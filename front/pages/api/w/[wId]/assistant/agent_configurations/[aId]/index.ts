@@ -98,19 +98,6 @@ async function handler(
           },
         });
       }
-      if (
-        assistant.scope !== "private" &&
-        bodyValidation.right.assistant.scope === "private"
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Non-private assistants cannot be set back to private.",
-          },
-        });
-      }
-
       const agentConfiguration = await createOrUpgradeAgentConfiguration(
         auth,
         bodyValidation.right,
