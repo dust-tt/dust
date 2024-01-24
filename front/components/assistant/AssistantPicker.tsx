@@ -82,7 +82,11 @@ export function AssistantPicker({
                 onItemClick(c);
                 setSearchText("");
               }}
-              href={isBuilder(owner) ? `/w/${owner.sId}/builder/assistants/${c.sId}` : undefined}
+              href={
+                isBuilder(owner)
+                  ? `/w/${owner.sId}/builder/assistants/${c.sId}`
+                  : undefined
+              }
             />
           ))}
         </div>
