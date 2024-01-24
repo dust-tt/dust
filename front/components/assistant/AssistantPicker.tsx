@@ -13,7 +13,6 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -26,7 +25,6 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
-  showBuilderButtons,
   size = "md",
 }: {
   owner: WorkspaceType;
@@ -71,26 +69,54 @@ export function AssistantPicker({
           />
         )}
       </div>
-      <DropdownMenu.Items origin="auto" width={280}>
-        {assistants.length > 7 && (
-          <div className="border-b border-structure-100 pb-2 pt-1">
-            <Searchbar
-              placeholder="Search"
-              name="input"
-              size="xs"
-              value={searchText}
-              onChange={setSearchText}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && searchedAssistants.length > 0) {
-                  onItemClick(searchedAssistants[0]);
-                  setSearchText("");
-                }
-              }}
-            />
+      <DropdownMenu.Items
+        origin="auto"
+        width={280}
+        topBar={
+          <>
+            {assistants.length > 7 && (
+              <div className="flex flex-grow flex-row border-b border-structure-50 p-2">
+                <Searchbar
+                  placeholder="Search"
+                  name="input"
+                  size="xs"
+                  value={searchText}
+                  onChange={setSearchText}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchedAssistants.length > 0) {
+                      onItemClick(searchedAssistants[0]);
+                      setSearchText("");
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </>
+        }
+        bottomBar={
+          <div className="flex border-t border-structure-50 p-2">
+            <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+              <Button
+                label="Create"
+                size="xs"
+                variant="primary"
+                icon={PlusIcon}
+                className="mr-2"
+              />
+            </Link>
+            <div className="s-flex-grow" />
+            <Link href={`/w/${owner.sId}/assistant/assistants`}>
+              <Button
+                label="My Assistants"
+                size="xs"
+                variant="tertiary"
+                icon={ListIcon}
+              />
+            </Link>
           </div>
-        )}
-        <div className="max-h-[22.5rem] overflow-y-auto [&>*]:w-full">
-          {searchedAssistants.map((c) => (
+        }
+      >
+        {searchedAssistants.map((c) => (
             <div
               key={`assistant-picker-container-${c.sId}`}
               className="flex flex-row items-center justify-between pr-2"
@@ -103,11 +129,6 @@ export function AssistantPicker({
                   onItemClick(c);
                   setSearchText("");
                 }}
-                href={
-                  isBuilder(owner)
-                    ? `/w/${owner.sId}/builder/assistants/${c.sId}`
-                    : undefined
-                }
               />
               <IconButton
                 icon={MoreIcon}
@@ -119,30 +140,6 @@ export function AssistantPicker({
               />
             </div>
           ))}
-        </div>
-        {showBuilderButtons && (
-          <div className="flex flex-row justify-between border-t border-structure-100 px-3 pb-1 pt-2">
-            <Link
-              href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-            >
-              <Button
-                label="Create"
-                size="xs"
-                variant="secondary"
-                icon={PlusIcon}
-                className="mr-2"
-              />
-            </Link>
-            <Link href={`/w/${owner.sId}/assistant/assistants`}>
-              <Button
-                label="My assistants"
-                size="xs"
-                variant="tertiary"
-                icon={ListIcon}
-              />
-            </Link>
-          </div>
-        )}
       </DropdownMenu.Items>
     </DropdownMenu>
   );
