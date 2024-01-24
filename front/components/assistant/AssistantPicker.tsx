@@ -2,10 +2,10 @@ import {
   Button,
   DropdownMenu,
   Item,
+  ListIcon,
   PlusIcon,
   RobotIcon,
   Searchbar,
-  ListIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -55,7 +55,7 @@ export function AssistantPicker({
       </div>
       <DropdownMenu.Items origin="auto" width={280}>
         {assistants.length > 7 && (
-          <div className="border-b border-structure-100 px-2 pb-2 pt-1">
+          <div className="border-b border-structure-100 pb-2 pt-1">
             <Searchbar
               placeholder="Search"
               name="input"
@@ -78,7 +78,6 @@ export function AssistantPicker({
               label={"@" + c.name}
               visual={c.pictureUrl}
               hasAction={false}
-              className="px-3"
               onClick={() => {
                 onItemClick(c);
                 setSearchText("");
