@@ -18,6 +18,8 @@ import { useEffect, useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
 
+import { AssistantDetails } from "./AssistantDetails";
+
 export function AssistantPicker({
   owner,
   assistants,
@@ -35,6 +37,7 @@ export function AssistantPicker({
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
+  const [showDetails, setShowDetails] = useState<LightAgentConfigurationType | null>(null);
 
   useEffect(() => {
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
@@ -42,6 +45,22 @@ export function AssistantPicker({
 
   return (
     <DropdownMenu>
+
+      {showDetails && (
+        <AssistantDetails
+          owner={owner}
+          assistant={showDetails}
+          show={showDetails !== null}
+          onClose={() => {
+            setShowDetails(null);
+          }}
+          onUpdate={() => {
+            void mutateAgentConfigurations();
+          }}
+          flow="personal"
+        />
+      )}
+
       <div onClick={() => setSearchText("")} className="flex">
         {pickerButton ? (
           <DropdownMenu.Button size={size}>{pickerButton}</DropdownMenu.Button>
@@ -91,7 +110,7 @@ export function AssistantPicker({
               />
               <IconButton
                 icon={MoreIcon}
-                onClick={() => {console.log('ellipsis clicked')}}
+                onClick={() => {setShowDetails(c);}}
                 variant="tertiary"
                 size="sm"
               />
