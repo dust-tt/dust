@@ -93,11 +93,10 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
-  const { agentConfigurations, mutateAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-    });
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+  });
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
@@ -192,9 +191,6 @@ export default function AssistantNew({
               show={showDetails !== null}
               onClose={() => {
                 setShowDetails(null);
-              }}
-              onUpdate={async () => {
-                await mutateAgentConfigurations();
               }}
               flow="personal"
             />
