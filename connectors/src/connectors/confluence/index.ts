@@ -13,9 +13,10 @@ import {
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
-  getIdFromConfluenceInternalId,
-  isConfluenceInternalPageId,
-  makeConfluenceInternalPageId,
+  getIdFromConfluencePublicId,
+  isConfluencePublicPageId,
+  makeConfluencePublicPageId,
+  makeConfluencePublicSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   retrieveAvailableSpaces,
@@ -298,9 +299,8 @@ export async function setConfluenceConnectorPermissions(
 
   const addedSpaceIds = [];
   const removedSpaceIds = [];
-  // Operate on Confluence native IDs instead of internal IDs because the database
-  // only stores a selection of user-specified spaces, identified by their Confluence IDs (spaceId).
-  for (const [confluenceId, permission] of Object.entries(permissions)) {
+  for (const [publicId, permission] of Object.entries(permissions)) {
+    const confluenceId = getIdFromConfluencePublicId(publicId);
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
@@ -355,15 +355,15 @@ export async function retrieveConfluenceObjectsTitles(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<Record<string, string>, Error>> {
-  const ids = internalIds
-    .map((id) => getIdFromConfluenceInternalId(id))
-    .filter((id): id is number => Boolean(id));
+  const confluenceSpaceIds = internalIds.map((id) =>
+    getIdFromConfluencePublicId(id)
+  );
 
   const confluenceSpaces = await ConfluenceSpace.findAll({
     attributes: ["id", "spaceId", "name"],
     where: {
       connectorId: connectorId,
-      id: ids,
+      spaceId: confluenceSpaceIds,
     },
   });
 

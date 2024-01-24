@@ -3,29 +3,26 @@ enum ConfluenceInternalIdPrefix {
   Page = "page_",
 }
 
-export function makeConfluenceInternalSpaceId(spaceId: string) {
-  return `${ConfluenceInternalIdPrefix.Space}${spaceId}`;
+export function makeConfluencePublicSpaceId(confluenceSpaceId: string) {
+  return `${ConfluenceInternalIdPrefix.Space}${confluenceSpaceId}`;
 }
 
-export function makeConfluenceInternalPageId(pageId: number) {
-  return `${ConfluenceInternalIdPrefix.Page}${pageId}`;
+export function makeConfluencePublicPageId(confluencePageId: string) {
+  return `${ConfluenceInternalIdPrefix.Page}${confluencePageId}`;
 }
 
-export function getIdFromConfluenceInternalId(internalId: string) {
+export function getIdFromConfluencePublicId(internalId: string) {
   const prefixPattern = `^(${ConfluenceInternalIdPrefix.Space}|${ConfluenceInternalIdPrefix.Page})`;
-  const id = internalId.replace(new RegExp(prefixPattern), "");
-
-  const parsedInt = parseInt(id, 10);
-  return isNaN(parsedInt) ? null : parsedInt;
+  return internalId.replace(new RegExp(prefixPattern), "");
 }
 
-export function isConfluenceInternalSpaceId(
+export function isConfluencePublicSpaceId(
   internalId: string
 ): internalId is `${ConfluenceInternalIdPrefix.Space}${string}` {
   return internalId.startsWith(ConfluenceInternalIdPrefix.Space);
 }
 
-export function isConfluenceInternalPageId(
+export function isConfluencePublicPageId(
   internalId: string
 ): internalId is `${ConfluenceInternalIdPrefix.Page}${string}` {
   return internalId.startsWith(ConfluenceInternalIdPrefix.Page);
