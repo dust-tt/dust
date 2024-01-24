@@ -15,13 +15,16 @@ import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/
 import {
   launchConfluenceRemoveSpacesSyncWorkflow,
   launchConfluenceSyncWorkflow,
+  stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
+  ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
+import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
@@ -103,6 +106,101 @@ export async function updateConfluenceConnector(
 ): Promise<Result<string, ConnectorsAPIErrorResponse>> {
   console.log({ connectorId, connectionId });
   throw new Error("Not implemented");
+}
+
+export async function stopConfluenceConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  // TODO(2024-01-23 flav) Change the prototype to take a ModelId.
+  const connectorIdAsNumber = parseInt(connectorId, 10);
+  const res = await stopConfluenceSyncWorkflow(connectorIdAsNumber);
+  if (res.isErr()) {
+    return res;
+  }
+
+  return new Ok(connectorId.toString());
+}
+
+export async function resumeConfluenceConnector(
+  connectorId: string
+): Promise<Result<string, Error>> {
+  try {
+    const connector = await Connector.findOne({
+      where: {
+        id: connectorId,
+      },
+    });
+
+    if (!connector) {
+      return new Err(
+        new Error(`Confluence connector not found (connectorId: ${connectorId}`)
+      );
+    }
+
+    const connectorState = await ConfluenceConfiguration.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    if (!connectorState) {
+      return new Err(new Error("Confluence configuration not found"));
+    }
+
+    await launchConfluenceSyncWorkflow(connector.id);
+
+    return new Ok(connector.id.toString());
+  } catch (err) {
+    return new Err(err as Error);
+  }
+}
+
+export async function cleanupConfluenceConnector(
+  connectorId: string
+): Promise<Result<void, Error>> {
+  const connector = await Connector.findOne({
+    where: { type: "confluence", id: connectorId },
+  });
+  if (!connector) {
+    logger.error({ connectorId }, "Confluence connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  return sequelize_conn.transaction(async (transaction) => {
+    await Promise.all([
+      ConfluenceConfiguration.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      ConfluenceSpace.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      ConfluencePage.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+    ]);
+
+    const nangoRes = await nangoDeleteConnection(
+      connector.connectionId,
+      getRequiredNangoConfluenceConnectorId()
+    );
+    if (nangoRes.isErr()) {
+      throw nangoRes.error;
+    }
+
+    await connector.destroy({
+      transaction,
+    });
+
+    return new Ok(undefined);
+  });
 }
 
 function createConnectorResourceFromSpace(
@@ -198,7 +296,7 @@ async function startWorkflowIfNecessary(
   workflowLauncher: (
     connectorId: ModelId,
     spaceIds: string[]
-  ) => Promise<Result<void, Error>>,
+  ) => Promise<Result<string, Error>>,
   connectorId: ModelId
 ): Promise<Result<void, Error>> {
   if (spaceIds.length > 0) {

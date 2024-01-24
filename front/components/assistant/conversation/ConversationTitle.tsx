@@ -175,9 +175,9 @@ export function ConversationTitle({
                     icon={TrashIcon}
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items width={280}>
-                  <div className="flex flex-col gap-y-4 px-4 py-4">
-                    <div className="flex flex-col gap-y-2">
+                <DropdownMenu.Items width={240}>
+                  <div className="flex flex-col gap-y-4 py-4">
+                    <div className="flex flex-col">
                       <div className="grow text-sm font-medium text-element-800">
                         Are you sure you want to delete?
                       </div>
@@ -186,7 +186,7 @@ export function ConversationTitle({
                         This will delete the conversation for everyone.
                       </div>
                     </div>
-                    <div className="flex justify-center">
+                    <div className="flex">
                       <Button
                         variant="primaryWarning"
                         size="sm"
@@ -221,19 +221,14 @@ export function ConversationTitle({
               </div>
             </DropdownMenu.Button>
             <DropdownMenu.Items width={280}>
-              <div className="flex flex-col gap-y-4 p-4">
-                <div className="flex flex-col gap-y-2">
-                  <div className="grow text-sm font-medium text-element-800">
-                    Share this conversation with others
-                  </div>
-                  <div className="text-sm font-normal text-element-700">
-                    Share the conversation link with other members of your
-                    workspace to invite them to contribute.
-                  </div>
+              <div className="flex flex-col gap-y-4 py-4">
+                <div className="text-sm font-normal text-element-700">
+                  Share the conversation link with other members of your
+                  workspace to invite them to contribute.
                 </div>
-                <div className="flex justify-center">
+                <div className="flex">
                   <Button
-                    variant="secondary"
+                    variant="primary"
                     size="sm"
                     label={copyLinkSuccess ? "Copied!" : "Copy the link"}
                     icon={copyLinkSuccess ? ClipboardCheckIcon : LinkStrokeIcon}
