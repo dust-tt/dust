@@ -7,7 +7,8 @@ import {
   MoreIcon,
   PlusIcon,
   RobotIcon,
-  Searchbar} from "@dust-tt/sparkle";
+  Searchbar,
+} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
@@ -37,7 +38,8 @@ export function AssistantPicker({
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
-  const [showDetails, setShowDetails] = useState<LightAgentConfigurationType | null>(null);
+  const [showDetails, setShowDetails] =
+    useState<LightAgentConfigurationType | null>(null);
 
   useEffect(() => {
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
@@ -45,7 +47,6 @@ export function AssistantPicker({
 
   return (
     <DropdownMenu>
-
       {showDetails && (
         <AssistantDetails
           owner={owner}
@@ -93,7 +94,10 @@ export function AssistantPicker({
         )}
         <div className="max-h-[22.5rem] overflow-y-auto [&>*]:w-full">
           {searchedAssistants.map((c) => (
-            <div key={`assistant-picker-container-${c.sId}`} className="flex flex-row justify-between items-center pr-2">
+            <div
+              key={`assistant-picker-container-${c.sId}`}
+              className="flex flex-row items-center justify-between pr-2"
+            >
               <Item.Avatar
                 key={`assistant-picker-${c.sId}`}
                 label={"@" + c.name}
@@ -110,7 +114,9 @@ export function AssistantPicker({
               />
               <IconButton
                 icon={MoreIcon}
-                onClick={() => {setShowDetails(c);}}
+                onClick={() => {
+                  setShowDetails(c);
+                }}
                 variant="tertiary"
                 size="sm"
               />
@@ -119,7 +125,9 @@ export function AssistantPicker({
         </div>
         {showBuilderButtons && (
           <div className="flex flex-row justify-between border-t border-structure-100 px-3 pb-1 pt-2">
-            <Link href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}>
+            <Link
+              href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+            >
               <Button
                 label="Create"
                 size="xs"
