@@ -13,6 +13,15 @@ import {
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
+  getIdFromConfluenceInternalId,
+  isConfluenceInternalPageId,
+  makeConfluenceInternalPageId,
+} from "@connectors/connectors/confluence/lib/internal_ids";
+import {
+  retrieveAvailableSpaces,
+  retrieveSynchronizedData,
+} from "@connectors/connectors/confluence/lib/permissions";
+import {
   launchConfluenceRemoveSpacesSyncWorkflow,
   launchConfluenceSyncWorkflow,
   stopConfluenceSyncWorkflow,
@@ -203,27 +212,6 @@ export async function cleanupConfluenceConnector(
   });
 }
 
-function createConnectorResourceFromSpace(
-  space: ConfluenceSpace | ConfluenceSpaceType,
-  baseUrl: string,
-  permission: ConnectorPermission
-): ConnectorResource {
-  const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
-
-  return {
-    provider: "confluence",
-    internalId: space.id.toString(),
-    parentInternalId: null,
-    type: "folder",
-    title: space.name || "Unnamed Space",
-    sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
-    expandable: false,
-    permission: permission,
-    dustDocumentId: null,
-    lastUpdatedAt: null,
-  };
-}
-
 export async function retrieveConfluenceConnectorPermissions({
   connectorId,
   parentInternalId,
@@ -231,14 +219,6 @@ export async function retrieveConfluenceConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  if (parentInternalId) {
-    return new Err(
-      new Error(
-        "Confluence connector does not support permission retrieval with `parentInternalId`"
-      )
-    );
-  }
-
   const connector = await Connector.findOne({
     where: {
       id: connectorId,
@@ -259,36 +239,26 @@ export async function retrieveConfluenceConnectorPermissions({
     return new Err(new Error("Confluence configuration not found"));
   }
 
-  const syncedSpaces = await ConfluenceSpace.findAll({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-
-  let allSpaces: ConnectorResource[] = [];
   if (filterPermission === "read") {
-    allSpaces = syncedSpaces.map((space) =>
-      createConnectorResourceFromSpace(
-        space,
-        confluenceConfig.url,
-        filterPermission
-      )
+    const data = await retrieveSynchronizedData(
+      connector,
+      confluenceConfig,
+      parentInternalId
     );
+
+    if (data.isErr()) {
+      return new Err(data.error);
+    }
+
+    return new Ok(data.value);
   } else {
-    const spaces = await listConfluenceSpaces(connector, confluenceConfig);
+    const allSpaces = await retrieveAvailableSpaces(
+      connector,
+      confluenceConfig
+    );
 
-    allSpaces = spaces.map((space) => {
-      const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
-
-      return createConnectorResourceFromSpace(
-        space,
-        confluenceConfig.url,
-        isSynced ? "read" : "none"
-      );
-    });
+    return new Ok(allSpaces);
   }
-
-  return new Ok(allSpaces);
 }
 
 async function startWorkflowIfNecessary(
@@ -328,31 +298,34 @@ export async function setConfluenceConnectorPermissions(
 
   const addedSpaceIds = [];
   const removedSpaceIds = [];
-  for (const [id, permission] of Object.entries(permissions)) {
+  // Operate on Confluence native IDs instead of internal IDs because the database
+  // only stores a selection of user-specified spaces, identified by their Confluence IDs (spaceId).
+  for (const [confluenceId, permission] of Object.entries(permissions)) {
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
           connectorId,
-          spaceId: id,
+          spaceId: confluenceId,
         },
       });
 
-      removedSpaceIds.push(id);
-      // TODO(2024-01-09 flav) start a workflow to delete all pages within a Space.
+      removedSpaceIds.push(confluenceId);
     } else if (permission === "read") {
-      const confluenceSpace = spaces.find((s) => s.id === id);
+      const confluenceSpace = spaces.find((s) => s.id === confluenceId);
 
       await ConfluenceSpace.upsert({
         connectorId: connectorId,
-        name: confluenceSpace?.name ?? id,
-        spaceId: id,
+        name: confluenceSpace?.name ?? confluenceId,
+        spaceId: confluenceId,
         urlSuffix: confluenceSpace?._links.webui,
       });
 
-      addedSpaceIds.push(id);
+      addedSpaceIds.push(confluenceId);
     } else {
       return new Err(
-        new Error(`Invalid permission ${permission} for resource ${id}`)
+        new Error(
+          `Invalid permission ${permission} for resource ${confluenceId}`
+        )
       );
     }
   }
@@ -382,11 +355,15 @@ export async function retrieveConfluenceObjectsTitles(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<Record<string, string>, Error>> {
+  const ids = internalIds
+    .map((id) => getIdFromConfluenceInternalId(id))
+    .filter((id): id is number => Boolean(id));
+
   const confluenceSpaces = await ConfluenceSpace.findAll({
     attributes: ["id", "spaceId", "name"],
     where: {
       connectorId: connectorId,
-      spaceId: internalIds,
+      id: ids,
     },
   });
 
