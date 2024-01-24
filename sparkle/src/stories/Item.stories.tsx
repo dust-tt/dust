@@ -173,31 +173,37 @@ export const ListItemExample = () => (
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg"
           hasEllipsis={true}
+          ellipsisOnClick={() => console.log("ellipsis clicked")}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"
           hasEllipsis={true}
+          ellipsisOnClick={() => console.log("ellipsis clicked")}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
           hasEllipsis={true}
+          ellipsisOnClick={() => console.log("ellipsis clicked")}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
           hasEllipsis={true}
+          ellipsisOnClick={() => console.log("ellipsis clicked")}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
           hasEllipsis={true}
+          ellipsisOnClick={() => console.log("ellipsis clicked")}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
           hasEllipsis={true}
+          ellipsisOnClick={() => console.log("ellipsis clicked")}
           disabled
         />
       </Item.List>
