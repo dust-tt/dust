@@ -36,7 +36,7 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  if (!owner || !plan || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -69,7 +69,6 @@ async function handler(
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private"].includes(req.body.visibility) ||
         !(typeof req.body.assistantDefaultSelected === "boolean")
       ) {
         return apiError(req, res, {
@@ -162,7 +161,6 @@ async function handler(
       const ds = await DataSource.create({
         name: req.body.name,
         description: description,
-        visibility: req.body.visibility,
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected: req.body.assistantDefaultSelected,
@@ -173,7 +171,6 @@ async function handler(
           id: ds.id,
           name: ds.name,
           description: ds.description,
-          visibility: ds.visibility,
           dustAPIProjectId: ds.dustAPIProjectId,
           assistantDefaultSelected: ds.assistantDefaultSelected,
           connectorId: null,

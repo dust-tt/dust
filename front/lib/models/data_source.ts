@@ -74,8 +74,7 @@ DataSource.init(
     modelName: "data_source",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["workspaceId", "visibility"] },
-      { fields: ["workspaceId", "name", "visibility"] },
+      { fields: ["workspaceId", "name"] },
       { fields: ["workspaceId", "name"], unique: true },
     ],
   }

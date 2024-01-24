@@ -119,7 +119,6 @@ export default function DataSourceNew({
       body: JSON.stringify({
         name: dataSourceName,
         description: dataSourceDescription,
-        visibility: "private",
         assistantDefaultSelected: false,
       }),
     });
