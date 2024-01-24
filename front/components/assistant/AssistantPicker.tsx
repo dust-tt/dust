@@ -5,7 +5,7 @@ import {
   PlusIcon,
   RobotIcon,
   Searchbar,
-  WrenchIcon,
+  ListIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -53,7 +53,7 @@ export function AssistantPicker({
           />
         )}
       </div>
-      <DropdownMenu.Items origin="auto" width={240}>
+      <DropdownMenu.Items origin="auto" width={280}>
         {assistants.length > 7 && (
           <div className="border-b border-structure-100 px-2 pb-2 pt-1">
             <Searchbar
@@ -94,14 +94,15 @@ export function AssistantPicker({
                 size="xs"
                 variant="secondary"
                 icon={PlusIcon}
+                className="mr-2"
               />
             </Link>
-            <Link href={`/w/${owner.sId}/builder/assistants`}>
+            <Link href={`/w/${owner.sId}/assistant/assistants`}>
               <Button
-                label="Manage"
+                label="My assistants"
                 size="xs"
                 variant="tertiary"
-                icon={WrenchIcon}
+                icon={ListIcon}
               />
             </Link>
           </div>
