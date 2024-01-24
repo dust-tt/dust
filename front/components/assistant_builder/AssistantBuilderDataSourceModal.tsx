@@ -1,5 +1,4 @@
 import {
-  ChevronLeftIcon,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
   Item,
