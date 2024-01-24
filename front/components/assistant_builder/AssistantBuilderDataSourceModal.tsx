@@ -1,4 +1,5 @@
 import {
+  ChevronLeftIcon,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
   Item,
@@ -50,12 +51,16 @@ export default function AssistantBuilderDataSourceModal({
     }
   }, [dataSourceToManage]);
 
+  const onReset = () => {
+    setSelectedDataSource(null);
+    setSelectedResources({});
+    setIsSelectAll(false);
+  };
+
   const onClose = () => {
     setOpen(false);
     setTimeout(() => {
-      setSelectedDataSource(null);
-      setSelectedResources({});
-      setIsSelectAll(false);
+      onReset();
     }, 200);
   };
 
@@ -77,7 +82,7 @@ export default function AssistantBuilderDataSourceModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={selectedDataSource && !dataSourceToManage ? onReset : onClose}
       onSave={() => onSaveLocal({ isSelectAll })}
       hasChanged={
         !!selectedDataSource &&
