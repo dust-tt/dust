@@ -1,7 +1,10 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { DropdownMenu, Item } from "../index_with_tw_base";
+import { More } from "@sparkle/icons/solid";
+import { classNames } from "@sparkle/lib/utils";
+
+import { DropdownMenu, Icon, Item } from "../index_with_tw_base";
 import { Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -10,6 +13,31 @@ const meta = {
 } satisfies Meta<typeof Item>;
 
 export default meta;
+
+type ItemEllipsisActionProps = {
+  disabled?: boolean;
+};
+
+const ItemEllipsisAction: React.FC<ItemEllipsisActionProps> = ({ disabled = false }) => {
+  return (
+    <div onClick={() => {!disabled && console.log('ellipsis clicked')}}>
+      <Icon
+        visual={More}
+        className={classNames(
+            "s-shrink-0 s-transition-all s-duration-200 s-ease-out s-opacity-50",
+            disabled
+              ? "s-text-element-500 dark:s-text-element-500-dark"
+              : classNames(
+                  "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+                  "hover:s-opacity-100 cursor-pointer"
+                )
+          )
+        }
+        size="sm"
+      />
+    </div>
+  );
+}
 
 export const ListItemExample = () => (
   <div className="s-grid s-grid-cols-3 s-gap-8">
@@ -172,38 +200,38 @@ export const ListItemExample = () => (
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg"
-          hasEllipsis={true}
-          ellipsisOnClick={() => console.log("ellipsis clicked")}
+          hasAction={true}
+          action={ItemEllipsisAction}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"
-          hasEllipsis={true}
-          ellipsisOnClick={() => console.log("ellipsis clicked")}
+          hasAction={true}
+          action={ItemEllipsisAction}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
-          hasEllipsis={true}
-          ellipsisOnClick={() => console.log("ellipsis clicked")}
+          hasAction={true}
+          action={ItemEllipsisAction}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
-          hasEllipsis={true}
-          ellipsisOnClick={() => console.log("ellipsis clicked")}
+          hasAction={true}
+          action={ItemEllipsisAction}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
-          hasEllipsis={true}
-          ellipsisOnClick={() => console.log("ellipsis clicked")}
+          hasAction={true}
+          action={ItemEllipsisAction}
         />
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
-          hasEllipsis={true}
-          ellipsisOnClick={() => console.log("ellipsis clicked")}
+          hasAction={true}
+          action={() => <ItemEllipsisAction disabled />}
           disabled
         />
       </Item.List>
