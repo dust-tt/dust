@@ -70,7 +70,7 @@ async function handler(
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
         !["public", "private"].includes(req.body.visibility) ||
-        !(typeof req.body.assistantDefaultSelected == "boolean")
+        !(typeof req.body.assistantDefaultSelected === "boolean")
       ) {
         return apiError(req, res, {
           status_code: 400,

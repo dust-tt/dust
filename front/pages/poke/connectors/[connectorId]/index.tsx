@@ -7,10 +7,7 @@ import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(
-    session,
-    context.params?.wId as string
-  );
+  const auth = await Authenticator.fromSuperUserSession(session, null);
 
   if (!auth.isDustSuperUser()) {
     return {

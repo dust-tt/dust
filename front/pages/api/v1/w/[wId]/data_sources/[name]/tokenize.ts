@@ -9,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostDatasourceTokenizeBody = {
   text: string;
@@ -23,7 +23,7 @@ type PostDatasourceTokenizeResponseBody = {
   tokens: CoreAPITokenType[];
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     PostDatasourceTokenizeResponseBody | ReturnedAPIErrorType
@@ -104,3 +104,5 @@ export default async function handler(
       });
   }
 }
+
+export default withLogging(handler);

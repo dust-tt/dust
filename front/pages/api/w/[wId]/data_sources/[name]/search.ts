@@ -8,7 +8,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -44,7 +44,7 @@ type DatasourceSearchResponseBody = {
   documents: Array<DocumentType>;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<DatasourceSearchResponseBody>
 ): Promise<void> {
@@ -170,3 +170,5 @@ export default async function handler(
       });
   }
 }
+
+export default withLogging(handler);

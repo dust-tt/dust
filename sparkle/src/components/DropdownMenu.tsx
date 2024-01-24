@@ -301,6 +301,8 @@ interface DropdownItemsProps {
   width?: number;
   marginLeft?: number;
   children: React.ReactNode;
+  topBar?: React.ReactNode;
+  bottomBar?: React.ReactNode;
 }
 
 DropdownMenu.Items = function ({
@@ -308,6 +310,8 @@ DropdownMenu.Items = function ({
   width = 160,
   marginLeft,
   children,
+  topBar,
+  bottomBar,
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
   const [buttonHeight, setButtonHeight] = useState(0);
@@ -377,12 +381,18 @@ DropdownMenu.Items = function ({
       leaveTo={getOriginTransClass(origin)}
     >
       <Menu.Items
-        className={`s-absolute s-z-10 ${getOriginClass(
-          origin
-        )} s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-px-5 s-py-1.5 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark`}
+        className={classNames(
+          "s-absolute s-z-10",
+          getOriginClass(origin),
+          "s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark"
+        )}
         style={styleInsert(origin, marginLeft)}
       >
-        <StandardItem.List>{children}</StandardItem.List>
+        {topBar}
+        <div className="s-max-h-[344px] s-overflow-auto s-px-5 s-py-1.5">
+          <StandardItem.List>{children}</StandardItem.List>
+        </div>
+        {bottomBar}
       </Menu.Items>
     </Transition>
   );

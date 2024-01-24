@@ -192,10 +192,9 @@ export const subNavigationBuild = ({
     variant: "secondary",
     menus: dataSourceItems,
   });
-
   nav.push({
     id: "developers",
-    label: isAdmin(owner) ? "Developers" : null,
+    label: "Developers",
     variant: "secondary",
     menus: [
       {

@@ -31,6 +31,9 @@ export { AssistantPreview2 };
 import { Banner } from "./components/Banner";
 export { Banner };
 
+import { Notification } from "./components/Notification";
+export { Notification };
+
 import { Chip } from "./components/Chip";
 export { Chip };
 

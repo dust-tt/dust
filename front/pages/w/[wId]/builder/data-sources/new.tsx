@@ -1,4 +1,4 @@
-import { Checkbox, Page } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -61,9 +61,6 @@ export default function DataSourceNew({
 
   const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState("");
-  const [assistantDefaultSelected, setAssistantDefaultSelected] =
-    useState(true);
-
   const [dataSourceDescription, setDataSourceDescription] = useState("");
 
   const formValidation = useCallback(() => {
@@ -102,18 +99,9 @@ export default function DataSourceNew({
       edited = true;
     }
 
-    if (assistantDefaultSelected === false) {
-      edited = true;
-    }
-
     setIsEdited(edited);
     setIsValid(valid);
-  }, [
-    dataSourceName,
-    dataSourceDescription,
-    dataSources,
-    assistantDefaultSelected,
-  ]);
+  }, [dataSourceName, dataSourceDescription, dataSources]);
 
   useEffect(() => {
     formValidation();
@@ -132,7 +120,7 @@ export default function DataSourceNew({
         name: dataSourceName,
         description: dataSourceDescription,
         visibility: "private",
-        assistantDefaultSelected,
+        assistantDefaultSelected: false,
       }),
     });
     if (res.ok) {
@@ -238,27 +226,6 @@ export default function DataSourceNew({
                 A good description will help users discover and understand the
                 purpose of your Folder.
               </p>
-            </div>
-
-            <div className="mt-2 sm:col-span-6">
-              <div className="flex justify-between">
-                <label
-                  htmlFor="assistantDefaultSelected"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Availability to the @dust assistant
-                </label>
-              </div>
-              <div className="mt-2 flex items-center">
-                <Checkbox
-                  checked={assistantDefaultSelected}
-                  onChange={(checked) => setAssistantDefaultSelected(checked)}
-                />
-                <p className="ml-3 block text-sm text-sm font-normal text-gray-500">
-                  Make this Folder available to the{" "}
-                  <span className="font-semibold">@dust</span> assistant.
-                </p>
-              </div>
             </div>
           </div>
         </div>

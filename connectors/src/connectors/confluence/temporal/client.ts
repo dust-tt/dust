@@ -1,7 +1,10 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { ScheduleOptionsAction } from "@temporalio/client";
-import { ScheduleOverlapPolicy } from "@temporalio/client";
+import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
@@ -19,13 +22,14 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
+import logger from "@connectors/logger/logger";
 import { isScheduleAlreadyRunning } from "@connectors/types/errors";
 
 export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = [],
   forceUpsert = false
-): Promise<Result<undefined, Error>> {
+): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -39,6 +43,8 @@ export async function launchConfluenceSyncWorkflow(
     spaceId: sId,
   }));
 
+  const workflowId = makeConfluenceSyncWorkflowId(connector.id);
+
   // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(confluenceSyncWorkflow, {
@@ -51,7 +57,7 @@ export async function launchConfluenceSyncWorkflow(
         },
       ],
       taskQueue: QUEUE_NAME,
-      workflowId: makeConfluenceSyncWorkflowId(connector.id),
+      workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
@@ -66,13 +72,13 @@ export async function launchConfluenceSyncWorkflow(
     return new Err(err as Error);
   }
 
-  return new Ok(undefined);
+  return new Ok(workflowId);
 }
 
 export async function launchConfluenceRemoveSpacesSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = []
-) {
+): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
@@ -84,6 +90,8 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
     spaceId: sId,
   }));
 
+  const workflowId = makeConfluenceRemoveSpacesWorkflowId(connector.id);
+
   try {
     await client.workflow.signalWithStart(confluenceRemoveSpacesWorkflow, {
       args: [
@@ -93,7 +101,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
         },
       ],
       taskQueue: QUEUE_NAME,
-      workflowId: makeConfluenceRemoveSpacesWorkflowId(connector.id),
+      workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
@@ -107,7 +115,43 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
     return new Err(err as Error);
   }
 
-  return new Ok(undefined);
+  return new Ok(workflowId);
+}
+
+export async function stopConfluenceSyncWorkflow(
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  const client = await getTemporalClient();
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(
+      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
+    );
+  }
+
+  const workflowId = makeConfluenceSyncWorkflowId(connectorId);
+
+  try {
+    const handle: WorkflowHandle<typeof confluenceSyncWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      "Failed to stop Confluence workflow."
+    );
+    return new Err(e as Error);
+  }
 }
 
 export async function launchConfluencePersonalDataReportingSchedule() {

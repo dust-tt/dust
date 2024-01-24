@@ -2,7 +2,12 @@ import type {
   CoreAPIDataSourceDocumentSection,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { DustAPI, EMBEDDING_CONFIG, sectionFullText } from "@dust-tt/types";
+import {
+  DustAPI,
+  EMBEDDING_CONFIG,
+  safeSubstring,
+  sectionFullText,
+} from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -253,9 +258,11 @@ export async function renderPrefixSection(
       sections: [],
     };
   }
-  let targetPrefix = prefix.substring(0, MAX_PREFIX_CHARS);
+  let targetPrefix = safeSubstring(prefix, 0, MAX_PREFIX_CHARS);
   let targetContent =
-    prefix.length > MAX_PREFIX_CHARS ? prefix.substring(MAX_PREFIX_CHARS) : "";
+    prefix.length > MAX_PREFIX_CHARS
+      ? safeSubstring(prefix, MAX_PREFIX_CHARS)
+      : "";
 
   const tokens = await tokenize(targetPrefix, dataSourceConfig);
 
@@ -376,8 +383,12 @@ export async function renderDocumentTitleAndContent({
   lastEditor?: string;
   content: CoreAPIDataSourceDocumentSection | null;
 }): Promise<CoreAPIDataSourceDocumentSection> {
-  author = author?.substring(0, MAX_AUTHOR_CHAR_LENGTH);
-  lastEditor = lastEditor?.substring(0, MAX_AUTHOR_CHAR_LENGTH);
+  author = author
+    ? safeSubstring(author, 0, MAX_AUTHOR_CHAR_LENGTH)
+    : undefined;
+  lastEditor = lastEditor
+    ? safeSubstring(lastEditor, 0, MAX_AUTHOR_CHAR_LENGTH)
+    : undefined;
   if (title && title.trim()) {
     title = `$title: ${title}\n`;
   } else {

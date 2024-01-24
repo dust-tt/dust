@@ -4,6 +4,7 @@ import {
   DriveLogo,
   DropdownMenu,
   GithubLogo,
+  GlobeAltIcon,
   Input,
   IntercomLogo,
   NotionLogo,
@@ -230,6 +231,12 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Intercom",
     IconComponent: () => <IntercomLogo className="h-4 w-4" />,
+  },
+  isWebCrawlerAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Websites",
+    IconComponent: () => <GlobeAltIcon className="h-4 w-4" />,
   },
   maxMessages: {
     type: "number",
