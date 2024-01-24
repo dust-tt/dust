@@ -1,8 +1,10 @@
 import {
   Button,
   DropdownMenu,
+  IconButton,
   Item,
   ListIcon,
+  MoreIcon,
   PlusIcon,
   RobotIcon,
   Searchbar,
@@ -14,6 +16,7 @@ import type {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { filterAndSortAgents } from "@app/lib/utils";
 
 export function AssistantPicker({
@@ -32,6 +35,8 @@ export function AssistantPicker({
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
+  const [showDetails, setShowDetails] =
+    useState<LightAgentConfigurationType | null>(null);
 
   useEffect(() => {
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
@@ -39,6 +44,18 @@ export function AssistantPicker({
 
   return (
     <DropdownMenu>
+      {showDetails && (
+        <AssistantDetails
+          owner={owner}
+          assistant={showDetails}
+          show={showDetails !== null}
+          onClose={() => {
+            setShowDetails(null);
+          }}
+          flow="personal"
+        />
+      )}
+
       <div onClick={() => setSearchText("")} className="flex">
         {pickerButton ? (
           <DropdownMenu.Button size={size}>{pickerButton}</DropdownMenu.Button>
@@ -53,7 +70,7 @@ export function AssistantPicker({
       </div>
       <DropdownMenu.Items
         origin="auto"
-        width={240}
+        width={280}
         topBar={
           <>
             {assistants.length > 7 && (
@@ -77,18 +94,21 @@ export function AssistantPicker({
         }
         bottomBar={
           <div className="flex border-t border-structure-50 p-2">
-            <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+            <Link
+              href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+            >
               <Button
                 label="Create"
                 size="xs"
                 variant="primary"
                 icon={PlusIcon}
+                className="mr-2"
               />
             </Link>
             <div className="s-flex-grow" />
             <Link href={`/w/${owner.sId}/assistant/assistants`}>
               <Button
-                label="My Assistant"
+                label="My Assistants"
                 size="xs"
                 variant="tertiary"
                 icon={ListIcon}
@@ -98,16 +118,29 @@ export function AssistantPicker({
         }
       >
         {searchedAssistants.map((c) => (
-          <Item.Avatar
-            key={`assistant-picker-${c.sId}`}
-            label={"@" + c.name}
-            visual={c.pictureUrl}
-            hasAction={false}
-            onClick={() => {
-              onItemClick(c);
-              setSearchText("");
-            }}
-          />
+          <div
+            key={`assistant-picker-container-${c.sId}`}
+            className="flex flex-row items-center justify-between pr-2"
+          >
+            <Item.Avatar
+              key={`assistant-picker-${c.sId}`}
+              label={"@" + c.name}
+              visual={c.pictureUrl}
+              hasAction={false}
+              onClick={() => {
+                onItemClick(c);
+                setSearchText("");
+              }}
+            />
+            <IconButton
+              icon={MoreIcon}
+              onClick={() => {
+                setShowDetails(c);
+              }}
+              variant="tertiary"
+              size="sm"
+            />
+          </div>
         ))}
       </DropdownMenu.Items>
     </DropdownMenu>

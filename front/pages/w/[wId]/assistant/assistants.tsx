@@ -191,9 +191,6 @@ export default function PersonalAssistants({
           onClose={() => {
             setShowDetails(null);
           }}
-          onUpdate={() => {
-            void mutateAgentConfigurations();
-          }}
           flow="personal"
         />
       )}
