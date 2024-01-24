@@ -116,6 +116,14 @@ export async function deleteDataSource(
   const dustAPIProjectId = dataSource.dustAPIProjectId;
 
   if (dataSource.connectorId) {
+    if (!auth.isAdmin()) {
+      return new Err({
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can delete connected data sources.",
+      });
+    }
+
     const connectorsAPI = new ConnectorsAPI(logger);
     const connDeleteRes = await connectorsAPI.deleteConnector(
       dataSource.connectorId.toString(),
