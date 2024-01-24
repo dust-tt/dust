@@ -16,9 +16,8 @@ import type {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { filterAndSortAgents } from "@app/lib/utils";
-
-import { AssistantDetails } from "./AssistantDetails";
 
 export function AssistantPicker({
   owner,
