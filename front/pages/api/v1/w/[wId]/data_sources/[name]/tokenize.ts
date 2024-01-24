@@ -40,13 +40,14 @@ async function handler(
 
   if (!auth.workspace() || !auth.isBuilder()) {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: 404,
       api_error: {
-        type: "workspace_auth_error",
-        message: "You don't have permission to access this resource.",
+        type: "workspace_not_found",
+        message: "The workspace you requested was not found.",
       },
     });
   }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {

@@ -67,7 +67,7 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  if (!owner || !plan || !auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -115,17 +115,6 @@ async function handler(
       return;
 
     case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "You can only alter the data souces of the workspaces for which you are a builder.",
-          },
-        });
-      }
-
       if (dataSource.connectorId && !keyRes.value.isSystem) {
         return apiError(req, res, {
           status_code: 403,

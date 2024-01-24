@@ -294,7 +294,6 @@ async function handler(
       let dataSource = await DataSource.create({
         name: dataSourceName,
         description: dataSourceDescription,
-        visibility: "private",
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected,
@@ -390,7 +389,6 @@ async function handler(
           id: dataSource.id,
           name: dataSource.name,
           description: dataSource.description,
-          visibility: dataSource.visibility,
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
           connectorProvider: provider,
