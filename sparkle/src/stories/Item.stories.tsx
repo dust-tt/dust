@@ -14,31 +14,6 @@ const meta = {
 
 export default meta;
 
-type ItemEllipsisActionProps = {
-  disabled?: boolean;
-};
-
-const ItemEllipsisAction: React.FC<ItemEllipsisActionProps> = ({ disabled = false }) => {
-  return (
-    <div onClick={() => {!disabled && console.log('ellipsis clicked')}}>
-      <Icon
-        visual={More}
-        className={classNames(
-            "s-shrink-0 s-transition-all s-duration-200 s-ease-out s-opacity-50",
-            disabled
-              ? "s-text-element-500 dark:s-text-element-500-dark"
-              : classNames(
-                  "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
-                  "hover:s-opacity-100 cursor-pointer"
-                )
-          )
-        }
-        size="sm"
-      />
-    </div>
-  );
-}
-
 export const ListItemExample = () => (
   <div className="s-grid s-grid-cols-3 s-gap-8">
     <div>
@@ -189,49 +164,6 @@ export const ListItemExample = () => (
         <Item.Avatar
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
-          disabled
-        />
-      </Item.List>
-    </div>
-
-    <div>
-      Avatar example with ellipsis:
-      <Item.List className="s-w-40">
-        <Item.Avatar
-          label="@handle"
-          visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg"
-          hasAction={true}
-          action={ItemEllipsisAction}
-        />
-        <Item.Avatar
-          label="@handle"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"
-          hasAction={true}
-          action={ItemEllipsisAction}
-        />
-        <Item.Avatar
-          label="@handle"
-          visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
-          hasAction={true}
-          action={ItemEllipsisAction}
-        />
-        <Item.Avatar
-          label="@handle"
-          visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
-          hasAction={true}
-          action={ItemEllipsisAction}
-        />
-        <Item.Avatar
-          label="@handle"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
-          hasAction={true}
-          action={ItemEllipsisAction}
-        />
-        <Item.Avatar
-          label="@handle"
-          visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
-          hasAction={true}
-          action={() => <ItemEllipsisAction disabled />}
           disabled
         />
       </Item.List>
