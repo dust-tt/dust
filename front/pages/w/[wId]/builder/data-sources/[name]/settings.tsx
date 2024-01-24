@@ -1,9 +1,5 @@
 import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  DataSourceVisibility,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
@@ -72,7 +68,6 @@ export default function DataSourceSettings({
     settings:
       | {
           description: string;
-          visibility: DataSourceVisibility;
           assistantDefaultSelected: boolean;
         }
       | { assistantDefaultSelected: boolean }
@@ -105,7 +100,6 @@ export default function DataSourceSettings({
       dataSource={dataSource}
       handleUpdate={(settings: {
         description: string;
-        visibility: DataSourceVisibility;
         assistantDefaultSelected: boolean;
       }) => handleUpdate(settings)}
       gaTrackingId={gaTrackingId}
@@ -125,7 +119,6 @@ function StandardDataSourceSettings({
   dataSource: DataSourceType;
   handleUpdate: (settings: {
     description: string;
-    visibility: DataSourceVisibility;
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
   gaTrackingId: string;
@@ -197,7 +190,6 @@ function StandardDataSourceSettings({
                   setIsSavingOrDeleting(true);
                   await handleUpdate({
                     description: dataSourceDescription,
-                    visibility: "private",
                     assistantDefaultSelected:
                       dataSource.assistantDefaultSelected,
                   });

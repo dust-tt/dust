@@ -101,9 +101,6 @@ export async function isWorkflowDeletableActivity({
   const dataSources = await DataSource.findAll({
     where: {
       workspaceId: workspace.id,
-      visibility: {
-        [Op.or]: ["public", "private", "unlisted"],
-      },
     },
     limit: 1,
   });

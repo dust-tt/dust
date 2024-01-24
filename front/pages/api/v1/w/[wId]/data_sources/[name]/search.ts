@@ -63,6 +63,16 @@ async function handler(
     req.query.wId as string
   );
 
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {

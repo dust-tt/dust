@@ -55,7 +55,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -79,17 +79,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      // Only member of the workspace can search a DataSource since it costs money for embedding.
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-      }
-
       // I could not find a way to make the query params be an array if there is only one tag.
       if (req.query.tags_in && typeof req.query.tags_in === "string") {
         req.query.tags_in = [req.query.tags_in];
