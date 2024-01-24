@@ -90,7 +90,7 @@ export function AssistantPicker({
             />
           ))}
         </div>
-        {isBuilder(owner) && showBuilderButtons && (
+        {showBuilderButtons && (
           <div className="flex flex-row justify-between border-t border-structure-100 px-3 pb-1 pt-2">
             <Link href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}>
               <Button
