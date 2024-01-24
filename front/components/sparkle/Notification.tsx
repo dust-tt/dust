@@ -92,7 +92,7 @@ export function Notification({ title, description, type }: NotificationType) {
       leaveTo="translate-y-16 opacity-0"
     >
       <SparkleNotification
-        type={type}
+        variant={type}
         description={description}
         title={title}
         onClick={() => setShowNotification(false)}
