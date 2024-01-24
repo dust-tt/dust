@@ -1,10 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { More } from "@sparkle/icons/solid";
-import { classNames } from "@sparkle/lib/utils";
-
-import { DropdownMenu, Icon, Item } from "../index_with_tw_base";
+import { DropdownMenu, Item } from "../index_with_tw_base";
 import { Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
