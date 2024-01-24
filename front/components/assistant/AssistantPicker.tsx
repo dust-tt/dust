@@ -17,6 +17,7 @@ import { isBuilder } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { useAgentConfigurations } from "@app/lib/swr";
 import { filterAndSortAgents } from "@app/lib/utils";
 
 import { AssistantDetails } from "./AssistantDetails";
@@ -40,6 +41,14 @@ export function AssistantPicker({
   const [searchedAssistants, setSearchedAssistants] = useState(assistants);
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
+
+
+  const { mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list",
+      includes: ["authors"],
+    });
 
   useEffect(() => {
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
