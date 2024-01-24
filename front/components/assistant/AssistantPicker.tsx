@@ -1,12 +1,13 @@
 import {
   Button,
   DropdownMenu,
+  IconButton,
   Item,
   ListIcon,
+  MoreIcon,
   PlusIcon,
   RobotIcon,
-  Searchbar,
-} from "@dust-tt/sparkle";
+  Searchbar} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
@@ -73,21 +74,28 @@ export function AssistantPicker({
         )}
         <div className="max-h-[22.5rem] overflow-y-auto [&>*]:w-full">
           {searchedAssistants.map((c) => (
-            <Item.Avatar
-              key={`assistant-picker-${c.sId}`}
-              label={"@" + c.name}
-              visual={c.pictureUrl}
-              hasAction={false}
-              onClick={() => {
-                onItemClick(c);
-                setSearchText("");
-              }}
-              href={
-                isBuilder(owner)
-                  ? `/w/${owner.sId}/builder/assistants/${c.sId}`
-                  : undefined
-              }
-            />
+            <div key={`assistant-picker-container-${c.sId}`} className="flex flex-row justify-between items-center pr-2">
+              <Item.Avatar
+                key={`assistant-picker-${c.sId}`}
+                label={"@" + c.name}
+                visual={c.pictureUrl}
+                onClick={() => {
+                  onItemClick(c);
+                  setSearchText("");
+                }}
+                href={
+                  isBuilder(owner)
+                    ? `/w/${owner.sId}/builder/assistants/${c.sId}`
+                    : undefined
+                }
+              />
+              <IconButton
+                icon={MoreIcon}
+                onClick={() => {console.log('ellipsis clicked')}}
+                variant="tertiary"
+                size="sm"
+              />
+            </div>
           ))}
         </div>
         {showBuilderButtons && (
