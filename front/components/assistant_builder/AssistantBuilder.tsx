@@ -323,7 +323,7 @@ export default function AssistantBuilder({
   ]);
 
   const assistantHandleIsValid = useCallback((handle: string) => {
-    return /^[a-zA-Z0-9_-]{1,20}$/.test(removeLeadingAt(handle));
+    return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
   }, []);
 
   const assistantHandleIsAvailable = useCallback(
@@ -368,8 +368,8 @@ export default function AssistantBuilder({
       valid = false;
     } else {
       if (!assistantHandleIsValid(builderState.handle)) {
-        if (builderState.handle.length > 20) {
-          setAssistantHandleError("The name must be 20 characters or less");
+        if (builderState.handle.length > 30) {
+          setAssistantHandleError("The name must be 30 characters or less");
         } else {
           setAssistantHandleError("Only letters, numbers, _ and - allowed");
         }
