@@ -4,6 +4,7 @@ import {
   Item,
   Modal,
   Page,
+  Searchbar,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { ConnectorProvider, DataSourceType } from "@dust-tt/types";
@@ -18,6 +19,7 @@ import type { AssistantBuilderDataSourceConfiguration } from "@app/components/as
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { subFilter } from "@app/lib/utils";
 import type { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export default function AssistantBuilderDataSourceModal({
@@ -143,6 +145,12 @@ function PickDataSource({
   show: boolean;
   onPick: (dataSource: DataSourceType) => void;
 }) {
+  const [query, setQuery] = useState<string>("");
+
+  const filtered = dataSources.filter((ds) => {
+    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
+  });
+
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
@@ -150,7 +158,13 @@ function PickDataSource({
           title="Select Data Sources in:"
           icon={CloudArrowLeftRightIcon}
         />
-        {orderDatasourceByImportance(dataSources).map((ds) => (
+        <Searchbar
+          name="search"
+          onChange={setQuery}
+          value={query}
+          placeholder="Search..."
+        />
+        {orderDatasourceByImportance(filtered).map((ds) => (
           <Item.Navigation
             label={getDisplayNameForDataSource(ds)}
             icon={
