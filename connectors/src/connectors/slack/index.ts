@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
+import { AxiosError } from "axios";
 import PQueue from "p-queue";
 
 import type {
@@ -248,9 +249,8 @@ export async function uninstallSlack(nangoConnectionId: string) {
     throw new Error("SLACK_CLIENT_SECRET is not defined");
   }
 
-  const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
-
   try {
+    const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
     const slackClient = await getSlackClient(slackAccessToken);
     await slackClient.auth.test();
     const deleteRes = await slackClient.apps.uninstall({
@@ -265,7 +265,20 @@ export async function uninstallSlack(nangoConnectionId: string) {
       );
     }
   } catch (e) {
-    if (e instanceof ExternalOauthTokenError) {
+    if (
+      e instanceof AxiosError &&
+      e.response?.status === 400 &&
+      e.response?.data?.type === "unknown_connection"
+    ) {
+      logger.info(
+        {
+          nangoConnectionId,
+          error: `Unknown nango connection: ${e.response.data.error}`,
+        },
+        "Unknown nango connection, skipping uninstallation of the Slack app"
+      );
+      return new Ok(undefined);
+    } else if (e instanceof ExternalOauthTokenError) {
       logger.info(
         {
           nangoConnectionId,
