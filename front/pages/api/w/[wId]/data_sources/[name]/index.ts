@@ -169,7 +169,7 @@ async function handler(
         });
       }
 
-      // We only expose deleting non-managed data sources.
+      // We only expose deleted non-managed data sources.
       if (dataSource.connectorId) {
         return apiError(req, res, {
           status_code: 400,
