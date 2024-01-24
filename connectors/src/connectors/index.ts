@@ -6,6 +6,7 @@ import {
   resumeConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceObjectsTitles,
+  retrieveConfluenceResourceParents,
   setConfluenceConnectorPermissions,
   stopConfluenceConnector,
   updateConfluenceConnector,
@@ -252,7 +253,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResourceParentsRetriever
 > = {
-  confluence: async () => new Ok([]), // Confluence is flat.
+  confluence: retrieveConfluenceResourceParents,
   notion: retrieveNotionResourceParents,
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat

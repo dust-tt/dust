@@ -15,6 +15,7 @@ import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/
 import {
   getIdFromConfluencePublicId,
   isConfluencePublicPageId,
+  isConfluencePublicSpaceId,
   makeConfluencePublicPageId,
   makeConfluencePublicSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
@@ -376,4 +377,71 @@ export async function retrieveConfluenceObjectsTitles(
   );
 
   return new Ok(titles);
+}
+
+export async function retrieveConfluenceResourceParents(
+  connectorId: ModelId,
+  publicId: string
+): Promise<Result<string[], Error>> {
+  const confluenceId = getIdFromConfluencePublicId(publicId);
+
+  if (isConfluencePublicPageId(publicId)) {
+    const currentPage = await ConfluencePage.findOne({
+      attributes: ["pageId", "parentId", "spaceId"],
+      where: {
+        connectorId,
+        pageId: confluenceId,
+      },
+    });
+
+    if (!currentPage) {
+      return new Err(new Error("Confluence page not found."));
+    }
+
+    // If the page does not have a parentId, return only the spaceId.
+    if (!currentPage.parentId) {
+      return new Ok([makeConfluencePublicSpaceId(currentPage.spaceId)]);
+    }
+
+    // Currently opting for a best-effort strategy to reduce database queries,
+    // this logic may be enhanced later for important Confluence connections.
+    // By fetching all pages within a space, we reconstruct parent-child
+    // relationships in-app, minimizing database interactions.
+    const allPages = await ConfluencePage.findAll({
+      attributes: ["pageId", "parentId"],
+      where: {
+        connectorId,
+        spaceId: currentPage.spaceId,
+      },
+    });
+
+    // Map each pageId to its respective parentId.
+    const pageIdToParentIdMap = new Map(
+      allPages.map((page) => [page.pageId, page.parentId])
+    );
+
+    const parentIds = [];
+    let currentId = currentPage.pageId;
+
+    // Traverse the hierarchy upwards until no further parent IDs are found.
+    while (pageIdToParentIdMap.has(currentId)) {
+      const parentId = pageIdToParentIdMap.get(currentId);
+      if (parentId) {
+        parentIds.push(parentId);
+        // Move up the hierarchy.
+        currentId = parentId;
+      } else {
+        // No more parents, exit the loop.
+        break;
+      }
+    }
+
+    return new Ok([
+      // Add the space id at the beginning.
+      makeConfluencePublicSpaceId(currentPage.spaceId),
+      ...parentIds.map((p) => makeConfluencePublicPageId(p)),
+    ]);
+  }
+
+  return new Ok([]);
 }
