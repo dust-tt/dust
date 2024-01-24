@@ -167,7 +167,7 @@ export const ListItemExample = () => (
     </div>
 
     <div>
-      Avatar example:
+      Avatar example with ellipsis:
       <Item.List className="s-w-40">
         <Item.Avatar
           label="@handle"

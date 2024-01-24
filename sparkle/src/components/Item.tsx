@@ -215,6 +215,7 @@ interface AvatarItemProps {
   className?: string;
   hasAction?: boolean | "hover";
   hasEllipsis?: boolean;
+  ellipsisOnClick?: (event: MouseEvent<HTMLDivElement>) => void;
   href?: string;
 }
 
@@ -222,6 +223,7 @@ Item.Avatar = function ({
   description,
   hasAction = false,
   hasEllipsis = false,
+  ellipsisOnClick,
   ...otherProps
 }: AvatarItemProps) {
   return (
@@ -232,6 +234,7 @@ Item.Avatar = function ({
       description={description}
       hasAction={hasAction}
       hasEllipsis={hasEllipsis}
+      ellipsisOnClick={ellipsisOnClick}
     />
   );
 };
