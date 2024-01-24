@@ -117,29 +117,30 @@ export function AssistantPicker({
         }
       >
         {searchedAssistants.map((c) => (
-            <div
-              key={`assistant-picker-container-${c.sId}`}
-              className="flex flex-row items-center justify-between pr-2"
-            >
-              <Item.Avatar
-                key={`assistant-picker-${c.sId}`}
-                label={"@" + c.name}
-                visual={c.pictureUrl}
-                onClick={() => {
-                  onItemClick(c);
-                  setSearchText("");
-                }}
-              />
-              <IconButton
-                icon={MoreIcon}
-                onClick={() => {
-                  setShowDetails(c);
-                }}
-                variant="tertiary"
-                size="sm"
-              />
-            </div>
-          ))}
+          <div
+            key={`assistant-picker-container-${c.sId}`}
+            className="flex flex-row items-center justify-between pr-2"
+          >
+            <Item.Avatar
+              key={`assistant-picker-${c.sId}`}
+              label={"@" + c.name}
+              visual={c.pictureUrl}
+              hasAction={false}
+              onClick={() => {
+                onItemClick(c);
+                setSearchText("");
+              }}
+            />
+            <IconButton
+              icon={MoreIcon}
+              onClick={() => {
+                setShowDetails(c);
+              }}
+              variant="tertiary"
+              size="sm"
+            />
+          </div>
+        ))}
       </DropdownMenu.Items>
     </DropdownMenu>
   );
