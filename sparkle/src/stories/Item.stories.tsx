@@ -165,5 +165,42 @@ export const ListItemExample = () => (
         />
       </Item.List>
     </div>
+
+    <div>
+      Avatar example:
+      <Item.List className="s-w-40">
+        <Item.Avatar
+          label="@handle"
+          visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg"
+          hasEllipsis={true}
+        />
+        <Item.Avatar
+          label="@handle"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"
+          hasEllipsis={true}
+        />
+        <Item.Avatar
+          label="@handle"
+          visual="https://dust.tt/static/droidavatar/Droid_Orange_2.jpg"
+          hasEllipsis={true}
+        />
+        <Item.Avatar
+          label="@handle"
+          visual="https://dust.tt/static/droidavatar/Droid_Red_2.jpg"
+          hasEllipsis={true}
+        />
+        <Item.Avatar
+          label="@handle"
+          visual="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
+          hasEllipsis={true}
+        />
+        <Item.Avatar
+          label="@handle"
+          visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
+          hasEllipsis={true}
+          disabled
+        />
+      </Item.List>
+    </div>
   </div>
 );

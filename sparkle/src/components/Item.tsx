@@ -5,7 +5,7 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { ChevronRight } from "@sparkle/icons/solid";
+import { ChevronRight, More } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Avatar } from "./Avatar";
@@ -43,6 +43,8 @@ type ItemProps = {
   icon?: ComponentType;
   action?: ComponentType;
   hasAction?: boolean | "hover";
+  hasEllipsis?: boolean;
+  // onClickEllipsis?: (event: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
   href?: string;
 };
@@ -56,6 +58,7 @@ export function Item({
   spacing = "sm",
   action = ChevronRight,
   hasAction = true,
+  hasEllipsis = false,
   onClick,
   selected = false,
   disabled = false,
@@ -139,11 +142,10 @@ export function Item({
         </div>
       </div>
 
-      <Icon
-        visual={action}
-        className={
-          hasAction
-            ? classNames(
+      {hasAction ? (
+          <Icon
+            visual={action}
+            className={classNames(
                 "s-shrink-0 s-transition-all s-duration-200 s-ease-out",
                 hasAction === "hover"
                   ? "s-opacity-0 group-hover:s-opacity-100 "
@@ -157,10 +159,31 @@ export function Item({
                       hasAction ? "group-hover:s-opacity-100" : ""
                     )
               )
-            : "s-hidden"
-        }
-        size="sm"
-      />
+            }
+            size="sm"
+          />
+      ) : null}
+
+      {hasEllipsis ? (
+          <Icon
+            visual={More}
+            className={classNames(
+                "s-shrink-0 s-transition-all s-duration-200 s-ease-out",
+                disabled
+                  ? "s-text-element-500 dark:s-text-element-500-dark"
+                  : selected
+                  ? "s-text-action-400 s-opacity-100 dark:s-text-action-600-dark"
+                  : classNames(
+                      "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+                      hasAction ? "group-hover:s-opacity-100" : ""
+                    )
+              )
+            }
+            size="sm"
+          />
+      ) : null}
+      
+
     </Link>
   );
 }
@@ -187,12 +210,14 @@ interface AvatarItemProps {
   visual?: string | React.ReactNode;
   className?: string;
   hasAction?: boolean | "hover";
+  hasEllipsis?: boolean;
   href?: string;
 }
 
 Item.Avatar = function ({
   description,
   hasAction = false,
+  hasEllipsis = false,
   ...otherProps
 }: AvatarItemProps) {
   return (
@@ -202,6 +227,7 @@ Item.Avatar = function ({
       spacing={description ? "md" : "sm"}
       description={description}
       hasAction={hasAction}
+      hasEllipsis={hasEllipsis}
     />
   );
 };
