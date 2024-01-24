@@ -175,6 +175,25 @@ async function handler(
             "Failed to upsert rows."
           );
 
+          const delRes = await coreAPI.deleteTable({
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceName: dataSource.name,
+            tableId,
+          });
+
+          if (delRes.isErr()) {
+            logger.error(
+              {
+                dataSourceName: dataSource.name,
+                workspaceId: owner.id,
+                tableId,
+                tableName: name,
+                error: delRes.error,
+              },
+              "Failed to delete table after failed upsert."
+            );
+          }
+
           return apiError(req, res, {
             status_code: 500,
             api_error: {
