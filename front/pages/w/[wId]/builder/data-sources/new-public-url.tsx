@@ -1,4 +1,4 @@
-import { Checkbox, Page } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
