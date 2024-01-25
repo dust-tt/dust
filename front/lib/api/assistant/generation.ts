@@ -107,7 +107,7 @@ export async function renderConversationForModel({
       );
       messages.unshift({
         role: "user" as const,
-        name: m.context.username,
+        name: m.context.fullName || m.context.username,
         content,
       });
     } else if (isContentFragmentType(m)) {
