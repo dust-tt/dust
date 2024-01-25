@@ -12,6 +12,7 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
@@ -137,20 +138,29 @@ const DataSourcePage = ({
         <div className="px-8 py-8"></div>
         <Page.Vertical align="stretch">
           <Page.SectionHeader title={`${dataSource.name}`} />
+          <div className="text-sm font-bold text-action-500">
+            <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
+          </div>
 
-          <div className="my-8 flex flex-col gap-y-4">
+          {dataSource.connectorId && (
+            <div className="flex flex-col text-sm text-action-500">
+              <Link
+                href={`https://cloud.temporal.io/namespaces/dust-prod.gmnlm/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
+              >
+                Temporal (ConnectorId)
+              </Link>
+              <Link
+                href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
+              >
+                Datadog: Logs DSSTAT Qdrant search
+              </Link>
+            </div>
+          )}
+
+          <div className="my-4 flex flex-col gap-y-4">
             <JsonViewer value={dataSource} rootName={false} />
             <JsonViewer value={coreDataSource} rootName={false} />
             <JsonViewer value={connector} rootName={false} />
-          </div>
-
-          <div className="flex flex-row">
-            <a
-              href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
-              className="text-sm text-blue-500"
-            >
-              Datadog: Logs DSSTAT Qdrant search
-            </a>
           </div>
 
           <div className="mt-4 flex flex-row">
