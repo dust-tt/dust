@@ -938,7 +938,7 @@ export function parsePageBlock(block: BlockObjectResponse): ParsedNotionBlock {
     const fileUrl =
       "external" in fileContainer
         ? fileContainer.external.url
-        : fileContainer.file.url;
+        : fileContainer.file?.url || "NO_URL";
     const caption = parseRichText(fileContainer.caption);
     const fileText =
       caption && caption.length
