@@ -8,10 +8,7 @@ import {
   fetchIntercomCollections,
   fetchIntercomHelpCenter,
 } from "@connectors/connectors/intercom/lib/intercom_api";
-import {
-  getHelpCenterArticleDocumentId,
-  getHelpCenterCollectionDocumentId,
-} from "@connectors/connectors/intercom/lib/utils";
+import { getHelpCenterArticleDocumentId } from "@connectors/connectors/intercom/lib/utils";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -167,21 +164,7 @@ async function _deleteCollection({
   );
 
   // Then we delete the collection
-  const dsCollectionId = getHelpCenterCollectionDocumentId(
-    collection.intercomWorkspaceId,
-    collectionId
-  );
-  await Promise.all([
-    deleteFromDataSource(
-      {
-        dataSourceName: dataSourceConfig.dataSourceName,
-        workspaceId: dataSourceConfig.workspaceId,
-        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-      },
-      dsCollectionId
-    ),
-    collection.destroy(),
-  ]);
+  await collection.destroy();
   logger.info(
     { ...loggerArgs, collectionId },
     "[Intercom] Collection deleted."
@@ -251,36 +234,6 @@ async function _syncCollection({
     });
   }
 
-  const collectionContent = await renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title: collection.name,
-    content: { prefix: null, content: collection.description, sections: [] },
-    createdAt: new Date(collection.created_at),
-    updatedAt: new Date(collection.updated_at),
-  });
-  const collectionDsDocumentId = getHelpCenterCollectionDocumentId(
-    collection.workspace_id,
-    collection.id
-  );
-  await upsertToDatasource({
-    dataSourceConfig,
-    documentId: collectionDsDocumentId,
-    documentContent: collectionContent,
-    documentUrl: collection.url,
-    timestampMs: collection.updated_at,
-    tags: [`name:${collection.name}`, `lastUpdatedAt:${collection.updated_at}`],
-    parents,
-    retries: 3,
-    delayBetweenRetriesMs: 500,
-    loggerArgs: {
-      ...loggerArgs,
-      collectionId: collection.id,
-    },
-    upsertContext: {
-      sync_type: "batch",
-    },
-  });
-
   // Sync the Collection's articles
   const [childrenArticlesOnIntercom, childrenArticlesOnDb] = await Promise.all([
     fetchIntercomArticles(intercomClient, collection.id),
@@ -316,12 +269,17 @@ async function _syncCollection({
       });
     }
 
+    const content =
+      "PARENT CATEGORY: " +
+      collection.description +
+      "\nCONTENT: " +
+      articleOnIntercom.body;
     const articleContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
       title: articleOnIntercom.title,
       content: {
         prefix: `TITLE: ${articleOnIntercom.title}`,
-        content: articleOnIntercom.body,
+        content: content,
         sections: [],
       },
       createdAt: new Date(articleOnIntercom.created_at),
@@ -342,7 +300,7 @@ async function _syncCollection({
         `createdAt:${articleOnIntercom.created_at}`,
         `updatedAt:${articleOnIntercom.updated_at}`,
       ],
-      parents: [...parents, collectionDsDocumentId],
+      parents: [...parents, collection.id],
       retries: 3,
       delayBetweenRetriesMs: 500,
       loggerArgs: {
@@ -376,7 +334,7 @@ async function _syncCollection({
         dataSourceConfig,
         loggerArgs,
         collection: collectionOnIntercom,
-        parents: [...parents, collectionDsDocumentId],
+        parents: [...parents, collection.id],
       });
     })
   );
