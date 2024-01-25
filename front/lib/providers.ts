@@ -63,14 +63,6 @@ export const modelProviders: ModelProvider[] = [
     embed: false, // To enable once we support embeddings on Mistral AI.
   },
   {
-    providerId: "textsynth",
-    name: "TextSynth",
-    built: true,
-    enabled: false,
-    chat: true,
-    embed: false,
-  },
-  {
     providerId: "google_vertex_ai",
     name: "Google Vertex AI",
     built: true,
