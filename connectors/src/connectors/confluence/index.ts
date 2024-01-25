@@ -13,6 +13,16 @@ import {
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
+  getIdFromConfluenceInternalId,
+  isConfluenceInternalPageId,
+  makeConfluenceInternalPageId,
+  makeConfluenceInternalSpaceId,
+} from "@connectors/connectors/confluence/lib/internal_ids";
+import {
+  retrieveAvailableSpaces,
+  retrieveHierarchyForParent,
+} from "@connectors/connectors/confluence/lib/permissions";
+import {
   launchConfluencePersonalDataReportingSchedule,
   launchConfluenceRemoveSpacesSyncWorkflow,
   launchConfluenceSyncWorkflow,
@@ -273,27 +283,6 @@ export async function cleanupConfluenceConnector(
   });
 }
 
-function createConnectorResourceFromSpace(
-  space: ConfluenceSpace | ConfluenceSpaceType,
-  baseUrl: string,
-  permission: ConnectorPermission
-): ConnectorResource {
-  const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
-
-  return {
-    provider: "confluence",
-    internalId: space.id.toString(),
-    parentInternalId: null,
-    type: "folder",
-    title: space.name || "Unnamed Space",
-    sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
-    expandable: false,
-    permission: permission,
-    dustDocumentId: null,
-    lastUpdatedAt: null,
-  };
-}
-
 export async function retrieveConfluenceConnectorPermissions({
   connectorId,
   parentInternalId,
@@ -301,14 +290,6 @@ export async function retrieveConfluenceConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  if (parentInternalId) {
-    return new Err(
-      new Error(
-        "Confluence connector does not support permission retrieval with `parentInternalId`"
-      )
-    );
-  }
-
   const connector = await Connector.findOne({
     where: {
       id: connectorId,
@@ -329,36 +310,30 @@ export async function retrieveConfluenceConnectorPermissions({
     return new Err(new Error("Confluence configuration not found"));
   }
 
-  const syncedSpaces = await ConfluenceSpace.findAll({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-
-  let allSpaces: ConnectorResource[] = [];
+  // When the filter permission is set to 'read', the full hierarchy of spaces
+  // and pages that Dust can access is displayed to the user.
   if (filterPermission === "read") {
-    allSpaces = syncedSpaces.map((space) =>
-      createConnectorResourceFromSpace(
-        space,
-        confluenceConfig.url,
-        filterPermission
-      )
+    const data = await retrieveHierarchyForParent(
+      connector,
+      confluenceConfig,
+      parentInternalId
     );
+
+    if (data.isErr()) {
+      return new Err(data.error);
+    }
+
+    return new Ok(data.value);
   } else {
-    const spaces = await listConfluenceSpaces(connector, confluenceConfig);
+    // If the permission is not set to 'read', users are limited to selecting only
+    // spaces for synchronization with Dust.
+    const allSpaces = await retrieveAvailableSpaces(
+      connector,
+      confluenceConfig
+    );
 
-    allSpaces = spaces.map((space) => {
-      const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
-
-      return createConnectorResourceFromSpace(
-        space,
-        confluenceConfig.url,
-        isSynced ? "read" : "none"
-      );
-    });
+    return new Ok(allSpaces);
   }
-
-  return new Ok(allSpaces);
 }
 
 async function startWorkflowIfNecessary(
@@ -398,31 +373,33 @@ export async function setConfluenceConnectorPermissions(
 
   const addedSpaceIds = [];
   const removedSpaceIds = [];
-  for (const [id, permission] of Object.entries(permissions)) {
+  for (const [internalId, permission] of Object.entries(permissions)) {
+    const confluenceId = getIdFromConfluenceInternalId(internalId);
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
           connectorId,
-          spaceId: id,
+          spaceId: confluenceId,
         },
       });
 
-      removedSpaceIds.push(id);
-      // TODO(2024-01-09 flav) start a workflow to delete all pages within a Space.
+      removedSpaceIds.push(confluenceId);
     } else if (permission === "read") {
-      const confluenceSpace = spaces.find((s) => s.id === id);
+      const confluenceSpace = spaces.find((s) => s.id === confluenceId);
 
       await ConfluenceSpace.upsert({
         connectorId: connectorId,
-        name: confluenceSpace?.name ?? id,
-        spaceId: id,
+        name: confluenceSpace?.name ?? confluenceId,
+        spaceId: confluenceId,
         urlSuffix: confluenceSpace?._links.webui,
       });
 
-      addedSpaceIds.push(id);
+      addedSpaceIds.push(confluenceId);
     } else {
       return new Err(
-        new Error(`Invalid permission ${permission} for resource ${id}`)
+        new Error(
+          `Invalid permission ${permission} for resource ${confluenceId}`
+        )
       );
     }
   }
@@ -452,11 +429,15 @@ export async function retrieveConfluenceObjectsTitles(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<Record<string, string>, Error>> {
+  const confluenceSpaceIds = internalIds.map((id) =>
+    getIdFromConfluenceInternalId(id)
+  );
+
   const confluenceSpaces = await ConfluenceSpace.findAll({
     attributes: ["id", "spaceId", "name"],
     where: {
       connectorId: connectorId,
-      spaceId: internalIds,
+      spaceId: confluenceSpaceIds,
     },
   });
 
@@ -469,4 +450,72 @@ export async function retrieveConfluenceObjectsTitles(
   );
 
   return new Ok(titles);
+}
+
+export async function retrieveConfluenceResourceParents(
+  connectorId: ModelId,
+  internalId: string
+): Promise<Result<string[], Error>> {
+  const confluenceId = getIdFromConfluenceInternalId(internalId);
+
+  if (isConfluenceInternalPageId(internalId)) {
+    const currentPage = await ConfluencePage.findOne({
+      attributes: ["pageId", "parentId", "spaceId"],
+      where: {
+        connectorId,
+        pageId: confluenceId,
+      },
+    });
+
+    if (!currentPage) {
+      return new Err(new Error("Confluence page not found."));
+    }
+
+    // If the page does not have a parentId, return only the spaceId.
+    if (!currentPage.parentId) {
+      return new Ok([makeConfluenceInternalSpaceId(currentPage.spaceId)]);
+    }
+
+    // Currently opting for a best-effort strategy to reduce database queries,
+    // this logic may be enhanced later for important Confluence connections.
+    // By fetching all pages within a space, we reconstruct parent-child
+    // relationships in-app, minimizing database interactions.
+    // If needed we could move the same approach as Notion and cache the results in Redis.
+    const allPages = await ConfluencePage.findAll({
+      attributes: ["pageId", "parentId"],
+      where: {
+        connectorId,
+        spaceId: currentPage.spaceId,
+      },
+    });
+
+    // Map each pageId to its respective parentId.
+    const pageIdToParentIdMap = new Map(
+      allPages.map((page) => [page.pageId, page.parentId])
+    );
+
+    const parentIds = [];
+    let currentId = currentPage.pageId;
+
+    // Traverse the hierarchy upwards until no further parent IDs are found.
+    while (pageIdToParentIdMap.has(currentId)) {
+      const parentId = pageIdToParentIdMap.get(currentId);
+      if (parentId) {
+        parentIds.push(parentId);
+        // Move up the hierarchy.
+        currentId = parentId;
+      } else {
+        // No more parents, exit the loop.
+        break;
+      }
+    }
+
+    return new Ok([
+      // Add the space id at the beginning.
+      makeConfluenceInternalSpaceId(currentPage.spaceId),
+      ...parentIds.map((p) => makeConfluenceInternalPageId(p)),
+    ]);
+  }
+
+  return new Ok([]);
 }

@@ -32,7 +32,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Grant tailored access to your organization's Confluence shared spaces.",
     limitations: null,
     logoComponent: ConfluenceLogo,
-    isNested: false,
+    isNested: true,
     dustWorkspaceOnly: true,
   },
   notion: {

@@ -171,6 +171,7 @@ ConfluencePage.init(
     parentId: {
       type: DataTypes.STRING,
       allowNull: true,
+      defaultValue: null,
     },
     pageId: {
       type: DataTypes.STRING,
@@ -193,7 +194,7 @@ ConfluencePage.init(
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["connectorId", "pageId"], unique: true },
-      { fields: ["connectorId", "spaceId"] },
+      { fields: ["connectorId", "spaceId", "parentId"] },
       { fields: ["connectorId", "lastVisitedAt"] },
     ],
     modelName: "confluence_pages",
