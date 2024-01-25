@@ -25,7 +25,10 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
+import {
+  nango_client,
+  nangoDeleteConnection,
+} from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
@@ -99,13 +102,78 @@ export async function createConfluenceConnector(
   }
 }
 
-export async function updateConfluenceConnector(): Promise<
-  Result<string, ConnectorsAPIErrorResponse>
-> {
-  // Nango's Confluence integration doesn't provide the associated workspace.
-  // Currently, we can't support connection changes, as it's not possible to
-  // check if the workspace is being changed.
-  return new Err(new Error("Updating Confluence connection is not supported."));
+export async function updateConfluenceConnector(
+  connectorId: ModelId,
+  {
+    connectionId,
+  }: {
+    connectionId?: NangoConnectionId | null;
+  }
+): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+  const connector = await Connector.findOne({
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found.");
+    return new Err({
+      error: {
+        message: "Connector not found",
+        type: "connector_not_found",
+      },
+    });
+  }
+
+  if (connectionId) {
+    const { connectionId: oldConnectionId } = connector;
+
+    const currentCloudInformation = await ConfluenceConfiguration.findOne({
+      attributes: ["cloudId"],
+      where: {
+        connectorId,
+      },
+    });
+
+    const newConnection = await nango_client().getConnection(
+      getRequiredNangoConfluenceConnectorId(),
+      connectionId,
+      false
+    );
+
+    const confluenceAccessToken = newConnection?.credentials?.access_token;
+    const newConfluenceCloudInformation = await getConfluenceCloudInformation(
+      confluenceAccessToken
+    );
+
+    // Change connection only if "cloudId" matches.
+    if (
+      newConfluenceCloudInformation &&
+      currentCloudInformation &&
+      newConfluenceCloudInformation.id === currentCloudInformation.cloudId
+    ) {
+      await connector.update({ connectionId });
+
+      nangoDeleteConnection(
+        oldConnectionId,
+        getRequiredNangoConfluenceConnectorId()
+      ).catch((e) => {
+        logger.error(
+          { error: e, oldConnectionId },
+          "Error deleting old Nango connection"
+        );
+      });
+    } else {
+      return new Err({
+        error: {
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change workspace of a Notion connector",
+        },
+      });
+    }
+  }
+
+  return new Ok(connector.id.toString());
 }
 
 export async function stopConfluenceConnector(
