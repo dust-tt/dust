@@ -3,6 +3,7 @@ import axios from "axios";
 
 import type { WorkflowError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 
 import type { Result } from "./result";
 import { Err, Ok } from "./result";
@@ -83,6 +84,7 @@ export async function nangoDeleteConnection(
   if (res.ok) {
     return new Ok(undefined);
   } else {
+    logger.error({ connectionId }, "Could not delete Nango connection.");
     if (res) {
       return new Err(
         new Error(

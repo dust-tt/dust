@@ -154,16 +154,18 @@ export async function updateConfluenceConnector(
     ) {
       await connector.update({ connectionId });
 
-      nangoDeleteConnection(
+      await nangoDeleteConnection(
         oldConnectionId,
         getRequiredNangoConfluenceConnectorId()
-      ).catch((e) => {
-        logger.error(
-          { error: e, oldConnectionId },
-          "Error deleting old Nango connection"
-        );
-      });
+      );
     } else {
+      // If the new connection does not grant us access to the same cloud id
+      // delete the Nango Connection.
+      await nangoDeleteConnection(
+        connectionId,
+        getRequiredNangoConfluenceConnectorId()
+      );
+
       return new Err({
         error: {
           type: "connector_oauth_target_mismatch",
