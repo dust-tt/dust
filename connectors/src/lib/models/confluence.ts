@@ -194,6 +194,7 @@ ConfluencePage.init(
     indexes: [
       { fields: ["connectorId", "pageId"], unique: true },
       { fields: ["connectorId", "spaceId"] },
+      { fields: ["connectorId", "lastVisitedAt"] },
     ],
     modelName: "confluence_pages",
   }
