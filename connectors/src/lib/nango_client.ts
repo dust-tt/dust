@@ -9,6 +9,7 @@ import {
 } from "@connectors/lib/error";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
+import logger from "@connectors/logger/logger";
 
 const { NANGO_SECRET_KEY } = process.env;
 
@@ -90,6 +91,7 @@ export async function nangoDeleteConnection(
   if (res.ok) {
     return new Ok(undefined);
   } else {
+    logger.error({ connectionId }, "Could not delete Nango connection.");
     if (res) {
       return new Err(
         new Error(
