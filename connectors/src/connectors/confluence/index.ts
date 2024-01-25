@@ -99,16 +99,13 @@ export async function createConfluenceConnector(
   }
 }
 
-export async function updateConfluenceConnector(
-  connectorId: ModelId,
-  {
-    connectionId,
-  }: {
-    connectionId?: NangoConnectionId | null;
-  }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
-  console.log({ connectorId, connectionId });
-  throw new Error("Not implemented");
+export async function updateConfluenceConnector(): Promise<
+  Result<string, ConnectorsAPIErrorResponse>
+> {
+  // Nango's Confluence integration doesn't provide the associated workspace.
+  // Currently, we can't support connection changes, as it's not possible to
+  // check if the workspace is being changed.
+  return new Err(new Error("Updating Confluence connection is not supported."));
 }
 
 export async function stopConfluenceConnector(
