@@ -441,7 +441,8 @@ To learn how to develop an app you can explore Dust technical documentation here
 
 ### When asking a question about data within Slack, the link to the thread isn’t always the right one
 
-When messages are not threaded, Dust points to the window of the channel message that represents the chunk whose URL is the first message. To optimize Dust synchronization and retrieval of Slack messages, we recommend formatting Slack threads as is: first message with the title and then create a thread.
+In a given channel, messages that are not part of a slack thread are grouped together by Dust according to the time they were sent. The link provided by dust is then for the first message of the group. The message that matched your question might be further down.
+To optimize dust retrieval of a piece of information on Slack, we recommend creating a first message with only the title, then following up in a thread from the message with all the information.
 
 ### I haven’t received a login, or I am having trouble logging in
 
