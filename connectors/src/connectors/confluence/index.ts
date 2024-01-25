@@ -299,8 +299,8 @@ export async function setConfluenceConnectorPermissions(
 
   const addedSpaceIds = [];
   const removedSpaceIds = [];
-  for (const [publicId, permission] of Object.entries(permissions)) {
-    const confluenceId = getIdFromConfluenceInternalId(publicId);
+  for (const [internalId, permission] of Object.entries(permissions)) {
+    const confluenceId = getIdFromConfluenceInternalId(internalId);
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
@@ -380,11 +380,11 @@ export async function retrieveConfluenceObjectsTitles(
 
 export async function retrieveConfluenceResourceParents(
   connectorId: ModelId,
-  publicId: string
+  internalId: string
 ): Promise<Result<string[], Error>> {
-  const confluenceId = getIdFromConfluenceInternalId(publicId);
+  const confluenceId = getIdFromConfluenceInternalId(internalId);
 
-  if (isConfluenceInternalPageId(publicId)) {
+  if (isConfluenceInternalPageId(internalId)) {
     const currentPage = await ConfluencePage.findOne({
       attributes: ["pageId", "parentId", "spaceId"],
       where: {
@@ -406,6 +406,7 @@ export async function retrieveConfluenceResourceParents(
     // this logic may be enhanced later for important Confluence connections.
     // By fetching all pages within a space, we reconstruct parent-child
     // relationships in-app, minimizing database interactions.
+    // If needed we could move the same approach as Notion and cache the results in Redis.
     const allPages = await ConfluencePage.findAll({
       attributes: ["pageId", "parentId"],
       where: {

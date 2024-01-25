@@ -23,22 +23,32 @@ import {
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 
+function isConfluenceSpaceModel(
+  confluenceSpace: unknown
+): confluenceSpace is ConfluenceSpace {
+  return (
+    typeof confluenceSpace === "object" &&
+    confluenceSpace !== null &&
+    "spaceId" in confluenceSpace &&
+    typeof confluenceSpace.spaceId === "string"
+  );
+}
+
 function createConnectorResourceFromSpace(
   space: ConfluenceSpace | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
-  { isExpandable, usePublicId }: { isExpandable: boolean; usePublicId: boolean }
+  {
+    isExpandable,
+    useInternalId,
+  }: { isExpandable: boolean; useInternalId: boolean }
 ): ConnectorResource {
   const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
-  const { spaceId: rSpaceId } = space;
-  const spaceId =
-    "spaceId" in space && typeof space.spaceId === "string"
-      ? space.spaceId
-      : space.id;
+  const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
 
   return {
     provider: "confluence",
-    internalId: usePublicId
+    internalId: useInternalId
       ? makeConfluenceInternalSpaceId(spaceId)
       : space.id.toString(),
     parentInternalId: null,
@@ -89,9 +99,9 @@ async function checkPageHasChildren(connectorId: ModelId, pageId: string) {
 async function getSynchronizedSpaces(
   connectorId: ModelId,
   confluenceConfig: ConfluenceConfiguration,
-  parentPublicId: string
+  parentInternalId: string
 ): Promise<Result<ConnectorResource[], Error>> {
-  const confluenceId = getIdFromConfluenceInternalId(parentPublicId);
+  const confluenceId = getIdFromConfluenceInternalId(parentInternalId);
 
   const parentSpace = await ConfluenceSpace.findOne({
     attributes: ["id", "spaceId"],
@@ -136,9 +146,9 @@ async function getSynchronizedSpaces(
 async function getSynchronizedChildrenPages(
   connectorId: ModelId,
   confluenceConfig: ConfluenceConfiguration,
-  parentPublicId: string
+  parentInternalId: string
 ): Promise<Result<ConnectorResource[], Error>> {
-  const confluenceId = getIdFromConfluenceInternalId(parentPublicId);
+  const confluenceId = getIdFromConfluenceInternalId(parentInternalId);
 
   const parentPage = await ConfluencePage.findOne({
     attributes: ["id", "pageId"],
@@ -180,16 +190,16 @@ async function getSynchronizedChildrenPages(
 export async function retrieveSynchronizedData(
   connector: Connector,
   confluenceConfig: ConfluenceConfiguration,
-  parentPublicId: string | null
+  parentInternalId: string | null
 ) {
   const { id: connectorId } = connector;
 
-  if (parentPublicId) {
-    if (isConfluenceInternalSpaceId(parentPublicId)) {
+  if (parentInternalId) {
+    if (isConfluenceInternalSpaceId(parentInternalId)) {
       const resources = await getSynchronizedSpaces(
         connectorId,
         confluenceConfig,
-        parentPublicId
+        parentInternalId
       );
 
       if (resources.isErr()) {
@@ -197,11 +207,11 @@ export async function retrieveSynchronizedData(
       }
 
       return new Ok(resources.value);
-    } else if (isConfluenceInternalPageId(parentPublicId)) {
+    } else if (isConfluenceInternalPageId(parentInternalId)) {
       const resources = await getSynchronizedChildrenPages(
         connectorId,
         confluenceConfig,
-        parentPublicId
+        parentInternalId
       );
 
       if (resources.isErr()) {
@@ -223,7 +233,7 @@ export async function retrieveSynchronizedData(
   const allSpaces = syncedSpaces.map((space) =>
     createConnectorResourceFromSpace(space, confluenceConfig.url, "read", {
       isExpandable: true,
-      usePublicId: true,
+      useInternalId: true,
     })
   );
 
@@ -251,7 +261,7 @@ export async function retrieveAvailableSpaces(
       space,
       confluenceConfig.url,
       isSynced ? "read" : "none",
-      { isExpandable: false, usePublicId: false }
+      { isExpandable: false, useInternalId: false }
     );
   });
 }
