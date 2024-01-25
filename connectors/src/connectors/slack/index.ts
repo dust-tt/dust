@@ -1,6 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
-import { AxiosError } from "axios";
 import PQueue from "p-queue";
 
 import type {
@@ -18,7 +17,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOauthTokenError, NangoError } from "@connectors/lib/error";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -265,15 +264,11 @@ export async function uninstallSlack(nangoConnectionId: string) {
       );
     }
   } catch (e) {
-    if (
-      e instanceof AxiosError &&
-      e.response?.status === 400 &&
-      e.response?.data?.type === "unknown_connection"
-    ) {
+    if (e instanceof NangoError && e.type === "unknown_connection") {
       logger.info(
         {
           nangoConnectionId,
-          error: `Unknown nango connection: ${e.response.data.error}`,
+          error: `Nango error: unknown connection: ${e.message}`,
         },
         "Unknown nango connection, skipping uninstallation of the Slack app"
       );

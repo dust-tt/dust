@@ -63,6 +63,19 @@ export class ExternalOauthTokenError extends Error {
   }
 }
 
+export const NANGO_ERROR_TYPES = ["unknown_connection"];
+export type NangoErrorType = (typeof NANGO_ERROR_TYPES)[number];
+export class NangoError extends Error {
+  readonly type: NangoErrorType;
+
+  constructor(type: NangoErrorType, readonly innerError?: Error) {
+    super(innerError?.message);
+    this.name = "NangoError";
+    this.type = type;
+    this.innerError = innerError;
+  }
+}
+
 export function isNotFoundError(err: unknown): err is NotFoundError {
   return err instanceof HTTPError && err.statusCode === 404;
 }
