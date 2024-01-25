@@ -37,6 +37,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { assistantUsageMessage } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
@@ -46,14 +47,12 @@ export function AssistantDetails({
   assistant,
   show,
   onClose,
-  onUpdate,
   flow,
 }: {
   owner: WorkspaceType;
   assistant: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
-  onUpdate: () => void;
   flow: AssistantDetailsFlow;
 }) {
   const agentUsage = useAgentUsage({
@@ -126,6 +125,12 @@ export function AssistantDetails({
       ) : null
     ) : null;
 
+  const { mutateAgentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    includes: ["authors"],
+  });
+
   return (
     <Modal
       isOpen={show}
@@ -139,7 +144,7 @@ export function AssistantDetails({
           owner={owner}
           agentConfiguration={assistant}
           detailsModalClose={onClose}
-          onUpdate={onUpdate}
+          onUpdate={mutateAgentConfigurations}
           onClose={onClose}
           flow={flow}
         />

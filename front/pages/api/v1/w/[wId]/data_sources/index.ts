@@ -23,6 +23,16 @@ async function handler(
     req.query.wId as string
   );
 
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you requested was not found.",
+      },
+    });
+  }
+
   const dataSources = await getDataSources(auth);
 
   switch (req.method) {

@@ -211,9 +211,6 @@ export default function AssistantsGallery({
           onClose={() => {
             setShowDetails(null);
           }}
-          onUpdate={() => {
-            void mutateAgentConfigurations();
-          }}
           flow={flow === "workspace_add" ? "workspace" : "personal"}
         />
       )}

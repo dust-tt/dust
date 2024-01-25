@@ -1,15 +1,7 @@
-import {
-  CheckCircleStrokeIcon,
-  Icon,
-  IconButton,
-  XCircleStrokeIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Notification as SparkleNotification } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-
-import { classNames } from "@app/lib/utils";
 
 export type NotificationType = {
   title?: string;
@@ -99,41 +91,12 @@ export function Notification({ title, description, type }: NotificationType) {
       leaveFrom="translate-y-0 opacity-100"
       leaveTo="translate-y-16 opacity-0"
     >
-      <div className="pointer-events-auto flex items-start gap-3 rounded-md border border-structure-100 bg-structure-0 p-2 shadow-md">
-        {type === "success" ? (
-          <Icon
-            size="sm"
-            visual={CheckCircleStrokeIcon}
-            className="pt-0.5 text-success-500"
-          />
-        ) : (
-          <Icon
-            size="sm"
-            visual={XCircleStrokeIcon}
-            className="pt-0.5 text-warning-500"
-          />
-        )}
-        <div className="flex flex-col">
-          <div
-            className={classNames(
-              "text-md font-semibold",
-              type === "success" ? "text-success-500" : "text-warning-500"
-            )}
-          >
-            {title || type}
-          </div>
-          <div className="text-sm font-normal text-element-700">
-            {description}
-          </div>
-        </div>
-        <IconButton
-          className="pt-0.5"
-          icon={XMarkIcon}
-          size="sm"
-          variant="secondary"
-          onClick={() => setShowNotification(false)}
-        />
-      </div>
+      <SparkleNotification
+        variant={type}
+        description={description}
+        title={title}
+        onClick={() => setShowNotification(false)}
+      />
     </Transition>
   );
 }

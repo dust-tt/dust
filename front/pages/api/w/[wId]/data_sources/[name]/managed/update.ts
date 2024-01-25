@@ -43,6 +43,17 @@ async function handler(
     });
   }
 
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
+      },
+    });
+  }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
@@ -60,17 +71,6 @@ async function handler(
       api_error: {
         type: "data_source_not_managed",
         message: "The data source you requested is not managed.",
-      },
-    });
-  }
-
-  if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
       },
     });
   }

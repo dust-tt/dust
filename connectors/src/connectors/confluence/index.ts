@@ -23,6 +23,7 @@ import {
   retrieveSynchronizedData,
 } from "@connectors/connectors/confluence/lib/permissions";
 import {
+  launchConfluencePersonalDataReportingSchedule,
   launchConfluenceRemoveSpacesSyncWorkflow,
   launchConfluenceSyncWorkflow,
   stopConfluenceSyncWorkflow,
@@ -98,6 +99,8 @@ export async function createConfluenceConnector(
     if (workflowStarted.isErr()) {
       return new Err(workflowStarted.error);
     }
+
+    await launchConfluencePersonalDataReportingSchedule();
 
     return new Ok(connector.id.toString());
   } catch (e) {

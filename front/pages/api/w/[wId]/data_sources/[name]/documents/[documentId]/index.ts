@@ -33,7 +33,8 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+
+  if (!owner || !plan || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

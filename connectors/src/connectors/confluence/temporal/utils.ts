@@ -22,6 +22,10 @@ export function makeConfluenceRemoveSpaceWorkflowIdFromParentId(
   return `${parentWorkflowId}-space-${spaceId}`;
 }
 
+export function makeConfluencePersonalDataWorkflowId() {
+  return `confluence-personal-data-reporting`;
+}
+
 export function makeConfluencePageId(pageId: string) {
   // Omit space reference in the ID to accommodate Confluence pages moving between spaces.
   return `confluence-page-${pageId}`;

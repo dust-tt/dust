@@ -74,7 +74,6 @@ async function main() {
         let dataSource = await DataSource.create({
           name: dataSourceName,
           description: dataSourceDescription,
-          visibility: "private",
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
           workspaceId: workspaceId,
         });

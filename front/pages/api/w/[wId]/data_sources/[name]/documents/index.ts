@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetDocumentsResponseBody = {
   documents: Array<DocumentType>;
@@ -26,16 +26,27 @@ async function handler(
       : await Authenticator.fromSession(session, req.query.wId as string);
 
   const owner = auth.workspace();
-  if (!owner) {
-    res.status(404).end();
-    return;
+
+  if (!owner || !auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
   }
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
   }
 
   switch (req.method) {
@@ -54,8 +65,15 @@ async function handler(
       });
 
       if (documents.isErr()) {
-        res.status(400).end();
-        return;
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "internal_server_error",
+            message:
+              "We encountered an error while fetching the data source documents.",
+            data_source_error: documents.error,
+          },
+        });
       }
 
       res.status(200).json({
@@ -65,8 +83,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
   }
 }
 

@@ -21,7 +21,6 @@ export class DataSource extends Model<
 
   declare name: string;
   declare description: string | null;
-  declare visibility: "public" | "private";
   declare assistantDefaultSelected: boolean;
   declare dustAPIProjectId: string;
   declare connectorId: string | null;
@@ -55,10 +54,6 @@ DataSource.init(
     description: {
       type: DataTypes.TEXT,
     },
-    visibility: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     assistantDefaultSelected: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -79,8 +74,7 @@ DataSource.init(
     modelName: "data_source",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["workspaceId", "visibility"] },
-      { fields: ["workspaceId", "name", "visibility"] },
+      { fields: ["workspaceId", "name"] },
       { fields: ["workspaceId", "name"], unique: true },
     ],
   }
