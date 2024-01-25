@@ -9,6 +9,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 
 export class DataSource extends Model<
@@ -19,6 +20,10 @@ export class DataSource extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  // Corresponds to the ID of the last user to configure the connection.
+  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedAt: CreationOptional<Date>;
+
   declare name: string;
   declare description: string | null;
   declare assistantDefaultSelected: boolean;
@@ -28,6 +33,7 @@ export class DataSource extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare workspace: NonAttribute<Workspace>;
+  declare editedByUser: NonAttribute<User>;
 }
 
 DataSource.init(
@@ -45,6 +51,12 @@ DataSource.init(
     updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    editedAt: {
+      type: DataTypes.DATE,
+      // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
+      allowNull: true,
       defaultValue: DataTypes.NOW,
     },
     name: {
@@ -87,4 +99,17 @@ Workspace.hasMany(DataSource, {
 DataSource.belongsTo(Workspace, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
+});
+
+User.hasMany(DataSource, {
+  as: "dataSources",
+  // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
+  foreignKey: { name: "workspaceId", allowNull: true },
+  // /!\ We don't want to delete the data source when a user gets deleted.
+  onDelete: "SET NULL",
+});
+DataSource.belongsTo(User, {
+  as: "editedByUser",
+  // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });

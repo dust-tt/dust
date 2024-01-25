@@ -35,8 +35,9 @@ async function handler(
   );
 
   const owner = auth.workspace();
+  const user = auth.user();
   const plan = auth.plan();
-  if (!owner || !plan || !auth.isUser()) {
+  if (!owner || !plan || !user || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -164,6 +165,7 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected: req.body.assistantDefaultSelected,
+        editedByUserId: user.id,
       });
 
       res.status(201).json({

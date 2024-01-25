@@ -6,7 +6,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSource } from "@app/lib/api/data_sources";
+import {
+  getDataSource,
+  updateDataSourceConnectedBy,
+} from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -124,6 +127,9 @@ async function handler(
           });
         }
       }
+
+      await updateDataSourceConnectedBy(auth, dataSource);
+
       res.status(200).json(updateRes.value);
       return;
 

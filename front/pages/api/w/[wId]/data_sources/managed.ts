@@ -56,9 +56,11 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
+  const user = auth.user();
   if (
     !owner ||
     !plan ||
+    !user ||
     // No role under "builder" can create a managed data source.
     // We perform a more detailed check below for each provider,
     // but this is a first line of defense.
@@ -297,6 +299,7 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected,
+        editedByUserId: user.id,
       });
 
       const connectorsAPI = new ConnectorsAPI(logger);
