@@ -24,11 +24,14 @@ import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
+
 export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;
   connector: ConnectorType | null;
+  temporalWorkspace: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
@@ -87,6 +90,7 @@ export const getServerSideProps: GetServerSideProps<{
       dataSource,
       coreDataSource: coreDataSourceRes.value.data_source,
       connector,
+      temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
     },
   };
 };
@@ -96,6 +100,7 @@ const DataSourcePage = ({
   dataSource,
   coreDataSource,
   connector,
+  temporalWorkspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
@@ -145,7 +150,7 @@ const DataSourcePage = ({
           {dataSource.connectorId && (
             <div className="flex flex-col text-sm text-action-500">
               <Link
-                href={`https://cloud.temporal.io/namespaces/dust-prod.gmnlm/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
+                href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
               >
                 Temporal: ConnectorId
               </Link>
