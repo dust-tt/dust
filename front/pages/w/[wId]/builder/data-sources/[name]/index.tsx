@@ -791,12 +791,9 @@ function ManagedDataSourceView({
 
   const shouldDisplayManagePermissionButton = [
     "confluence",
-    "slack",
     "google_drive",
-    "github",
-    "notion",
+    "slack",
     "intercom",
-    "webcrawler",
   ].includes(connectorProvider);
 
   return (
