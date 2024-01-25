@@ -6,6 +6,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { Connector } from "@connectors/lib/models";
 import { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import logger from "@connectors/logger/logger";
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
   const connector = await Connector.findOne({
@@ -52,19 +53,16 @@ export async function saveIntercomConnectorStartSync({
 }
 
 /**
- * Syncs all Intercom Help Centers Collections & articles for a given connector.
+ * Syncs an Intercom Help Center for a given connector.
  */
-export async function syncHelpCentersActivity({
+export async function syncHelpCenterActivity({
   connectorId,
+  helpCenterId,
 }: {
   connectorId: ModelId;
+  helpCenterId: string;
 }) {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    throw new Error(
-      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
-    );
-  }
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -74,19 +72,36 @@ export async function syncHelpCentersActivity({
   };
 
   const intercomClient = await getIntercomClient(connector.connectionId);
-  const helpCentersOnDb = await IntercomHelpCenter.findAll({
+  const helpCenter = await IntercomHelpCenter.findOne({
     where: {
       connectorId,
+      helpCenterId,
     },
   });
 
-  helpCentersOnDb.map(async (helpCenter) => {
-    await syncHelpCenter({
-      connector,
-      intercomClient,
-      dataSourceConfig,
-      helpCenter,
-      loggerArgs,
-    });
+  if (!helpCenter) {
+    throw new Error(
+      `[Intercom] Help Center not found. ConnectorId: ${connectorId}, HelpCenterId: ${helpCenterId}`
+    );
+  }
+  // Intercom temp Daph
+  logger.info("syncHelpCenterActivity", { loggerArgs, helpCenterId });
+  await syncHelpCenter({
+    connector,
+    intercomClient,
+    dataSourceConfig,
+    helpCenter,
+    loggerArgs,
   });
+}
+
+export async function getHelpCenterIdsToSyncActivity(connectorId: ModelId) {
+  const helpCenters = await IntercomHelpCenter.findAll({
+    attributes: ["helpCenterId"],
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  return helpCenters.map((i) => i.helpCenterId);
 }

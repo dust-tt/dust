@@ -18,8 +18,8 @@ import {
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
-  launchIntercomHelpCentersSyncWorkflow,
-  stopIntercomHelpCentersSyncWorkflow,
+  launchIntercomSyncWorkflow,
+  stopIntercomSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -57,10 +57,8 @@ export async function createIntercomConnector(
       dataSourceName: dataSourceConfig.dataSourceName,
     });
 
-    const connectorIdAsString = connector.id.toString();
-    await launchIntercomHelpCentersSyncWorkflow(connectorIdAsString);
-
-    return new Ok(connectorIdAsString);
+    await launchIntercomSyncWorkflow(connector.id);
+    return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "[Intercom] Error creating connector.");
     return new Err(e as Error);
@@ -191,7 +189,7 @@ export async function cleanupIntercomConnector(
 export async function stopIntercomConnector(
   connectorId: string
 ): Promise<Result<string, Error>> {
-  const res = await stopIntercomHelpCentersSyncWorkflow(connectorId);
+  const res = await stopIntercomSyncWorkflow(connectorId);
   if (res.isErr()) {
     return res;
   }
@@ -210,7 +208,7 @@ export async function resumeIntercomConnector(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   try {
-    await launchIntercomHelpCentersSyncWorkflow(connectorId);
+    await launchIntercomSyncWorkflow(connector.id);
   } catch (e) {
     logger.error(
       {
@@ -250,6 +248,23 @@ export async function retrieveIntercomConnectorPermissions({
   }
 }
 
+async function startWorkflowIfNecessary(
+  helpCenterIds: string[],
+  workflowLauncher: (
+    connectorId: ModelId,
+    helpCenterIds: string[]
+  ) => Promise<Result<string, Error>>,
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  if (helpCenterIds.length > 0) {
+    const workflowStarted = await workflowLauncher(connectorId, helpCenterIds);
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
+  }
+  return new Ok(undefined);
+}
+
 export async function setIntercomConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
@@ -261,6 +276,7 @@ export async function setIntercomConnectorPermissions(
   }
 
   const intercomClient = await getIntercomClient(connector.connectionId);
+  const toBeSignaledHelpCenterIds = new Set<string>();
   try {
     for (const [id, permission] of Object.entries(permissions)) {
       if (permission !== "none" && permission !== "read") {
@@ -272,6 +288,7 @@ export async function setIntercomConnectorPermissions(
       }
       if (id.startsWith("help_center_")) {
         const helpCenterId = id.replace("help_center_", "");
+        toBeSignaledHelpCenterIds.add(helpCenterId);
         if (permission === "none") {
           await revokeSyncHelpCenter({
             connector,
@@ -290,20 +307,36 @@ export async function setIntercomConnectorPermissions(
       } else if (id.startsWith("collection_")) {
         const collectionId = id.replace("collection_", "");
         if (permission === "none") {
-          await revokeSyncCollection({
+          const revokedCollection = await revokeSyncCollection({
             connector,
             collectionId,
           });
+          if (revokedCollection) {
+            toBeSignaledHelpCenterIds.add(revokedCollection.helpCenterId);
+          }
         }
         if (permission === "read") {
-          await allowSyncCollection({
+          const newCollection = await allowSyncCollection({
             connector,
             intercomClient,
             collectionId,
           });
+          if (newCollection) {
+            toBeSignaledHelpCenterIds.add(newCollection.helpCenterId);
+          }
         }
       }
     }
+
+    const addedSpacesResult = await startWorkflowIfNecessary(
+      [...toBeSignaledHelpCenterIds],
+      launchIntercomSyncWorkflow,
+      connectorId
+    );
+    if (addedSpacesResult.isErr()) {
+      return new Err(addedSpacesResult.error);
+    }
+
     return new Ok(undefined);
   } catch (e) {
     logger.error(
