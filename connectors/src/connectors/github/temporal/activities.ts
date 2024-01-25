@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
@@ -807,6 +808,7 @@ async function garbageCollectCodeSync(
     const fq = new PQueue({ concurrency: 8 });
     filesToDelete.forEach((f) =>
       fq.add(async () => {
+        Context.current().heartbeat();
         await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
         // Only destroy once we succesfully removed from the data source. This is idempotent and will
         // work as expected when retried.
@@ -886,6 +888,7 @@ export async function githubCodeSyncActivity({
     throw new Error(`Connector state not found for connector ${connector.id}`);
   }
 
+  Context.current().heartbeat();
   if (!connectorState.codeSyncEnabled) {
     // Garbage collect any existing code files.
     localLogger.info("Code sync disabled for connector");
@@ -944,6 +947,7 @@ export async function githubCodeSyncActivity({
     "Attempting download of Github repository for sync"
   );
 
+  Context.current().heartbeat();
   const { tempDir, files, directories } = await processRepository({
     installationId,
     repoLogin,
@@ -951,6 +955,7 @@ export async function githubCodeSyncActivity({
     repoId,
     loggerArgs,
   });
+  Context.current().heartbeat();
 
   try {
     localLogger.info(
@@ -977,6 +982,7 @@ export async function githubCodeSyncActivity({
     const fq = new PQueue({ concurrency: 4 });
     files.forEach((f) =>
       fq.add(async () => {
+        Context.current().heartbeat();
         // Read file (files are 1MB at most).
         const content = await fs.readFile(f.localFilePath);
         const contentHash = blake3(content).toString("hex");
@@ -1080,6 +1086,7 @@ export async function githubCodeSyncActivity({
     const dq = new PQueue({ concurrency: 8 });
     directories.forEach((d) =>
       dq.add(async () => {
+        Context.current().heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
 
         // Find directory or create it.
@@ -1133,6 +1140,8 @@ export async function githubCodeSyncActivity({
     );
     await dq.onIdle();
 
+    Context.current().heartbeat();
+
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
     await garbageCollectCodeSync(
@@ -1148,7 +1157,9 @@ export async function githubCodeSyncActivity({
       githubCodeRepository.codeUpdatedAt = repoUpdatedAt;
       await githubCodeRepository.save();
     }
+    Context.current().heartbeat();
   } finally {
+    Context.current().heartbeat();
     await cleanUpProcessRepository(tempDir);
     localLogger.info(
       {
