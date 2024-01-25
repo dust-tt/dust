@@ -15,7 +15,6 @@ import React, { useContext } from "react";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
 import { useConversations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { set } from "date-fns";
 
 export function AssistantSidebarMenu({
   owner,
