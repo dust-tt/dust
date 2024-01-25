@@ -10,8 +10,9 @@ import { isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useContext } from "react";
 
+import { SidebarContext } from "@app/components/sparkle/AppLayout";
 import { useConversations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -23,7 +24,7 @@ export function AssistantSidebarMenu({
   triggerInputAnimation: (() => void) | null;
 }) {
   const router = useRouter();
-
+  const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsLoading, isConversationsError } =
     useConversations({
       workspaceId: owner.sId,
@@ -95,6 +96,9 @@ export function AssistantSidebarMenu({
             <Link
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {
+                if (router.pathname === "/w/[wId]/assistant/new") {
+                  setSidebarOpen(false);
+                }
                 if (
                   router.pathname === "/w/[wId]/assistant/new" &&
                   triggerInputAnimation
