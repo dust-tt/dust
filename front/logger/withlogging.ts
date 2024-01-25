@@ -1,7 +1,7 @@
-import { APIErrorWithStatusCode } from "@dust-tt/types";
+import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
-import { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import logger from "./logger";
 

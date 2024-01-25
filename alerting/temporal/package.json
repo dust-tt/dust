@@ -13,7 +13,7 @@
   "dependencies": {
     "@datadog/datadog-api-client": "^1.17.0",
     "axios": "^1.5.1",
-    "dd-trace": "^4.16.0",
+    "dd-trace": "^5.1.0",
     "zod": "^3.22.4"
   }
 }
