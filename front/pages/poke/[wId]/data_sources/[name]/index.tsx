@@ -147,12 +147,12 @@ const DataSourcePage = ({
               <Link
                 href={`https://cloud.temporal.io/namespaces/dust-prod.gmnlm/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
               >
-                Temporal (ConnectorId)
+                Temporal: ConnectorId
               </Link>
               <Link
                 href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
               >
-                Datadog: Logs DSSTAT Qdrant search
+                Datadog: DSSTAT Qdrant search logs
               </Link>
             </div>
           )}
