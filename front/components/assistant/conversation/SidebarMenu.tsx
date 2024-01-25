@@ -15,6 +15,7 @@ import React, { useContext } from "react";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
 import { useConversations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { set } from "date-fns";
 
 export function AssistantSidebarMenu({
   owner,
@@ -96,9 +97,7 @@ export function AssistantSidebarMenu({
             <Link
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {
-                if (router.pathname === "/w/[wId]/assistant/new") {
-                  setSidebarOpen(false);
-                }
+                setSidebarOpen(false);
                 if (
                   router.pathname === "/w/[wId]/assistant/new" &&
                   triggerInputAnimation
@@ -137,6 +136,7 @@ export function AssistantSidebarMenu({
                           return (
                             <Item.Entry
                               key={c.sId}
+                              onClick={() => setSidebarOpen(false)}
                               selected={router.query.cId === c.sId}
                               label={
                                 c.title ||
