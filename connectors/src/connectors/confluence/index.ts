@@ -20,7 +20,7 @@ import {
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   retrieveAvailableSpaces,
-  retrieveSynchronizedData,
+  retrieveHierarchyForParent,
 } from "@connectors/connectors/confluence/lib/permissions";
 import {
   launchConfluencePersonalDataReportingSchedule,
@@ -243,8 +243,10 @@ export async function retrieveConfluenceConnectorPermissions({
     return new Err(new Error("Confluence configuration not found"));
   }
 
+  // When the filter permission is set to 'read', the full hierarchy of spaces
+  // and pages that Dust can access is displayed to the user.
   if (filterPermission === "read") {
-    const data = await retrieveSynchronizedData(
+    const data = await retrieveHierarchyForParent(
       connector,
       confluenceConfig,
       parentInternalId
@@ -256,6 +258,8 @@ export async function retrieveConfluenceConnectorPermissions({
 
     return new Ok(data.value);
   } else {
+    // If the permission is not set to 'read', users are limited to selecting only
+    // spaces for synchronization with Dust.
     const allSpaces = await retrieveAvailableSpaces(
       connector,
       confluenceConfig

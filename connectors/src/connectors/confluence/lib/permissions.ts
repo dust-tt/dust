@@ -184,7 +184,7 @@ async function getSynchronizedChildrenPages(
   return new Ok(allPages);
 }
 
-export async function retrieveSynchronizedData(
+export async function retrieveHierarchyForParent(
   connector: Connector,
   confluenceConfig: ConfluenceConfiguration,
   parentInternalId: string | null
