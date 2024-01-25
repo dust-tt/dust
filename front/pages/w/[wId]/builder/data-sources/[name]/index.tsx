@@ -789,6 +789,13 @@ function ManagedDataSourceView({
     };
   };
 
+  const shouldDisplayManagePermissionButton = [
+    "confluence",
+    "google_drive",
+    "slack",
+    "intercom",
+  ].includes(connectorProvider);
+
   return (
     <>
       <ConnectorPermissionsModal
@@ -799,25 +806,41 @@ function ManagedDataSourceView({
         setOpen={setShowPermissionModal}
       />
       <div className="flex flex-col pt-4">
-        <Page.Header
-          title={(() => {
-            switch (connectorProvider) {
-              case "confluence":
-              case "slack":
-              case "google_drive":
-              case "github":
-              case "notion":
-              case "intercom":
-                return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
-              case "webcrawler":
-                return `Manage Website`;
+        <div className="flex flex-row items-end">
+          <Page.Header
+            title={(() => {
+              switch (connectorProvider) {
+                case "confluence":
+                case "slack":
+                case "google_drive":
+                case "github":
+                case "notion":
+                case "intercom":
+                  return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
+                case "webcrawler":
+                  return `Manage Website`;
 
-              default:
-                assertNever(connectorProvider);
-            }
-          })()}
-          icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
-        />
+                default:
+                  assertNever(connectorProvider);
+              }
+            })()}
+            icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
+          />
+          {shouldDisplayManagePermissionButton ? (
+            <Button
+              className="ml-auto"
+              label="Manage permissions"
+              variant="tertiary"
+              icon={LockIcon}
+              disabled={readOnly || !isAdmin}
+              onClick={() => {
+                void handleUpdatePermissions();
+              }}
+            />
+          ) : (
+            <></>
+          )}
+        </div>
         <div className="pt-2">
           <ConnectorSyncingChip connector={connector} />
         </div>
@@ -833,26 +856,15 @@ function ManagedDataSourceView({
                     case "slack":
                     case "intercom":
                       return (
-                        <>
-                          <Button
-                            label="Add / Remove data"
-                            variant="primary"
-                            icon={ListCheckIcon}
-                            disabled={readOnly || !isAdmin}
-                            onClick={() => {
-                              setShowPermissionModal(true);
-                            }}
-                          />
-                          <Button
-                            label="Manage permissions"
-                            variant="secondary"
-                            icon={LockIcon}
-                            disabled={readOnly || !isAdmin}
-                            onClick={() => {
-                              void handleUpdatePermissions();
-                            }}
-                          />
-                        </>
+                        <Button
+                          label="Add / Remove data"
+                          variant="primary"
+                          icon={ListCheckIcon}
+                          disabled={readOnly || !isAdmin}
+                          onClick={() => {
+                            setShowPermissionModal(true);
+                          }}
+                        />
                       );
                     case "notion":
                     case "github":
