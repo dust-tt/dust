@@ -112,9 +112,14 @@ export async function renderConversationForModel({
       });
     } else if (isContentFragmentType(m)) {
       messages.unshift({
-        role: "content_fragment" as const,
-        name: "inject_content_fragment",
-        content: `${m.title}\nCONTENT:\n${m.content}`,
+        role: "content_fragment",
+        name: `inject_${m.contentType}`,
+        content:
+          `TITLE: ${m.title}\n` +
+          `TYPE: ${m.contentType}${
+            m.contentType === "file_attachment" ? " (user provided)" : ""
+          }\n` +
+          `CONTENT:\n${m.content}`,
       });
     } else {
       ((x: never) => {
