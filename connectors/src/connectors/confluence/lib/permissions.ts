@@ -38,19 +38,16 @@ function createConnectorResourceFromSpace(
   space: ConfluenceSpace | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
-  {
-    isExpandable,
-    useInternalId,
-  }: { isExpandable: boolean; useInternalId: boolean }
+  { isExpandable }: { isExpandable: boolean }
 ): ConnectorResource {
-  const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
+  const urlSuffix = isConfluenceSpaceModel(space)
+    ? space.urlSuffix
+    : space._links.webui;
   const spaceId = isConfluenceSpaceModel(space) ? space.spaceId : space.id;
 
   return {
     provider: "confluence",
-    internalId: useInternalId
-      ? makeConfluenceInternalSpaceId(spaceId)
-      : space.id.toString(),
+    internalId: makeConfluenceInternalSpaceId(spaceId),
     parentInternalId: null,
     type: "folder",
     title: space.name || "Unnamed Space",
@@ -233,7 +230,6 @@ export async function retrieveSynchronizedData(
   const allSpaces = syncedSpaces.map((space) =>
     createConnectorResourceFromSpace(space, confluenceConfig.url, "read", {
       isExpandable: true,
-      useInternalId: true,
     })
   );
 
@@ -261,7 +257,7 @@ export async function retrieveAvailableSpaces(
       space,
       confluenceConfig.url,
       isSynced ? "read" : "none",
-      { isExpandable: false, useInternalId: false }
+      { isExpandable: false }
     );
   });
 }
