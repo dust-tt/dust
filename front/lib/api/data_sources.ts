@@ -82,7 +82,7 @@ export async function getDataSources(
 
 export async function updateDataSourceConnectedBy(
   auth: Authenticator,
-  name: string
+  dataSource: DataSourceType
 ): Promise<Result<undefined, APIError>> {
   const owner = auth.workspace();
   const user = auth.user();
@@ -108,8 +108,8 @@ export async function updateDataSourceConnectedBy(
     },
     {
       where: {
+        id: dataSource.id,
         workspaceId: owner.id,
-        name,
       },
     }
   );

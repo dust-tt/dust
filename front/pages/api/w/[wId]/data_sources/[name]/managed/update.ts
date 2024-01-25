@@ -128,7 +128,7 @@ async function handler(
         }
       }
 
-      await updateDataSourceConnectedBy(auth, dataSource.name);
+      await updateDataSourceConnectedBy(auth, dataSource);
 
       res.status(200).json(updateRes.value);
       return;
