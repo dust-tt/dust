@@ -116,8 +116,7 @@ export default function MistralAISetup({
                         It can be found{" "}
                         <a
                           className="font-bold text-action-600 hover:text-action-500"
-                          // TODO(flav) Update link.
-                          href=""
+                          href="https://console.mistral.ai/user/api-keys/"
                           target="_blank"
                         >
                           here
