@@ -17,7 +17,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOauthTokenError, NangoError } from "@connectors/lib/error";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   SlackChannel,
@@ -248,9 +248,8 @@ export async function uninstallSlack(nangoConnectionId: string) {
     throw new Error("SLACK_CLIENT_SECRET is not defined");
   }
 
-  const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
-
   try {
+    const slackAccessToken = await getSlackAccessToken(nangoConnectionId);
     const slackClient = await getSlackClient(slackAccessToken);
     await slackClient.auth.test();
     const deleteRes = await slackClient.apps.uninstall({
@@ -265,7 +264,16 @@ export async function uninstallSlack(nangoConnectionId: string) {
       );
     }
   } catch (e) {
-    if (e instanceof ExternalOauthTokenError) {
+    if (e instanceof NangoError && e.type === "unknown_connection") {
+      logger.info(
+        {
+          nangoConnectionId,
+          error: `Nango error: unknown connection: ${e.message}`,
+        },
+        "Unknown nango connection, skipping uninstallation of the Slack app"
+      );
+      return new Ok(undefined);
+    } else if (e instanceof ExternalOauthTokenError) {
       logger.info(
         {
           nangoConnectionId,
