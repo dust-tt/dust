@@ -299,7 +299,7 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected,
-        connectedByUserId: user.id,
+        editedByUserId: user.id,
       });
 
       const connectorsAPI = new ConnectorsAPI(logger);

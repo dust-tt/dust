@@ -103,8 +103,8 @@ export async function updateDataSourceConnectedBy(
 
   await DataSource.update(
     {
-      connectedAt: new Date(),
-      connectedByUserId: user.id,
+      editedAt: new Date(),
+      editedByUserId: user.id,
     },
     {
       where: {

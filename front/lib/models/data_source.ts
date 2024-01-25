@@ -21,8 +21,8 @@ export class DataSource extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   // Corresponds to the ID of the last user to configure the connection.
-  declare connectedByUserId: ForeignKey<User["id"]>;
-  declare connectedAt: CreationOptional<Date>;
+  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedAt: CreationOptional<Date>;
 
   declare name: string;
   declare description: string | null;
@@ -33,7 +33,7 @@ export class DataSource extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare workspace: NonAttribute<Workspace>;
-  declare connectedByUser: NonAttribute<User>;
+  declare editedByUser: NonAttribute<User>;
 }
 
 DataSource.init(
@@ -53,7 +53,7 @@ DataSource.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    connectedAt: {
+    editedAt: {
       type: DataTypes.DATE,
       // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
       allowNull: true,
@@ -109,7 +109,7 @@ User.hasMany(DataSource, {
   onDelete: "SET NULL",
 });
 DataSource.belongsTo(User, {
-  as: "connectedByUser",
+  as: "editedByUser",
   // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
-  foreignKey: { name: "connectedByUserId", allowNull: true },
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });

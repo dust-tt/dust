@@ -165,7 +165,7 @@ async function handler(
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
         assistantDefaultSelected: req.body.assistantDefaultSelected,
-        connectedByUserId: user.id,
+        editedByUserId: user.id,
       });
 
       res.status(201).json({
