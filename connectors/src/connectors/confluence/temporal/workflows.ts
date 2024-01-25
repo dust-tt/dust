@@ -14,6 +14,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 // The Temporal bundle does not support the use of aliases in import statements.
 import { spaceUpdatesSignal } from "./signals";
 import {
+  makeConfluenceRemoveSpacesWorkflowId,
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
 } from "./utils";
@@ -22,10 +23,14 @@ const {
   confluenceGetSpaceNameActivity,
   confluenceListPageIdsInSpaceActivity,
   confluenceRemoveUnvisitedPagesActivity,
+  fetchConfluenceSpaceIdsForConnectorActivity,
   confluenceRemoveSpaceActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
   confluenceUpsertPageActivity,
+
+  confluenceGetReportPersonalActionActivity,
+  fetchConfluenceUserAccountAndConnectorIdsActivity,
 
   fetchConfluenceConfigurationActivity,
   getSpaceIdsToSyncActivity,
@@ -206,7 +211,14 @@ export async function confluenceRemoveSpacesWorkflow({
   connectorId: ModelId;
   spaceIds: string[];
 }) {
-  const uniqueSpaceIds = new Set(spaceIds);
+  let spaceIdsToDelete = spaceIds;
+  if (spaceIds.length === 0) {
+    spaceIdsToDelete = await fetchConfluenceSpaceIdsForConnectorActivity({
+      connectorId,
+    });
+  }
+
+  const uniqueSpaceIds = new Set(spaceIdsToDelete);
 
   setHandler(spaceUpdatesSignal, (spaceUpdates: SpaceUpdatesSignal[]) => {
     // If we get a signal, update the workflow state by adding/removing space ids.
@@ -244,4 +256,34 @@ export async function confluenceRemoveSpaceWorkflow({
   spaceId: string;
 }) {
   await confluenceRemoveSpaceActivity(connectorId, spaceId);
+}
+
+export async function confluencePersonalDataReportingWorkflow() {
+  const userAccountAndConnectorIds =
+    await fetchConfluenceUserAccountAndConnectorIdsActivity();
+
+  // TODO(2024-01-23 flav) Consider chunking array of userAccounts to speed things up.
+  for (const blob of userAccountAndConnectorIds) {
+    const shouldDeleteConnector =
+      await confluenceGetReportPersonalActionActivity(blob);
+
+    if (shouldDeleteConnector) {
+      const { memo, searchAttributes: parentSearchAttributes } = workflowInfo();
+
+      // If the account is closed, remove all associated Spaces and Pages from storage.
+      await executeChild(confluenceRemoveSpacesWorkflow, {
+        workflowId: makeConfluenceRemoveSpacesWorkflowId(blob.connectorId),
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectorId: blob.connectorId,
+            spaceIds: [],
+          },
+        ],
+        memo,
+      });
+
+      // TODO(2024-01-23 flav) Implement logic to remove row in the Connector table and stop all workflows.
+    }
+  }
 }

@@ -49,7 +49,7 @@ async function getConfluenceAccessToken(connectionId: string) {
 }
 
 async function getConfluenceClient(config: {
-  cloudId: string;
+  cloudId?: string;
   connectionId: string;
 }) {
   const accessToken = await getConfluenceAccessToken(config.connectionId);
@@ -438,4 +438,79 @@ export async function confluenceRemoveSpaceActivity(
   for (const page of allPages) {
     await deletePage(connectorId, page.pageId, dataSourceConfig);
   }
+}
+
+export async function fetchConfluenceSpaceIdsForConnectorActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const spacesForConnector = await ConfluenceSpace.findAll({
+    attributes: ["spaceId"],
+    where: {
+      connectorId,
+    },
+  });
+
+  return spacesForConnector.map((s) => s.spaceId);
+}
+
+// Personal Data Reporting logic.
+
+interface ConfluenceUserAccountAndConnectorId {
+  connectorId: ModelId;
+  userAccountId: string;
+}
+
+export async function fetchConfluenceUserAccountAndConnectorIdsActivity(): Promise<
+  ConfluenceUserAccountAndConnectorId[]
+> {
+  return ConfluenceConfiguration.findAll({
+    attributes: ["connectorId", "userAccountId"],
+  });
+}
+
+export async function confluenceGetReportPersonalActionActivity(
+  params: ConfluenceUserAccountAndConnectorId
+) {
+  const { connectorId, userAccountId } = params;
+
+  const connector = await Connector.findOne({
+    attributes: ["connectionId"],
+    where: {
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
+
+  // We look for the oldest updated data.
+  const oldestPageSync = await ConfluencePage.findOne({
+    where: {
+      connectorId,
+    },
+    order: [["lastVisitedAt", "ASC"]],
+  });
+
+  if (oldestPageSync) {
+    const client = await getConfluenceClient({
+      connectionId: connector.connectionId,
+    });
+
+    const result = await client.reportAccount({
+      accountId: userAccountId,
+      updatedAt: oldestPageSync.lastVisitedAt,
+    });
+
+    if (result && result.status === "closed") {
+      logger.info(
+        { connectorId, userAccountId },
+        "Confluence report accounts API, account closed."
+      );
+      return true;
+    }
+  }
+
+  return false;
 }

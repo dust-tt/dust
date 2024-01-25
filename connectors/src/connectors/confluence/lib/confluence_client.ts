@@ -1,6 +1,5 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-import { PathReporter } from "io-ts/PathReporter";
 
 import { HTTPError } from "@connectors/lib/error";
 
@@ -78,6 +77,15 @@ const ConfluenceUserProfileCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+const ConfluenceReportAccounts = t.type({
+  accounts: t.array(
+    t.type({
+      accountId: t.string,
+      status: t.union([t.literal("closed"), t.literal("updated")]),
+    })
+  ),
+});
+
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
     return null;
@@ -117,7 +125,41 @@ export class ConfluenceClient {
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
-      console.error(PathReporter.report(result));
+      throw new Error("Response validation failed");
+    }
+
+    return result.right;
+  }
+
+  private async postRequest<T>(
+    endpoint: string,
+    data: unknown,
+    codec: t.Type<T>
+  ): Promise<T | undefined> {
+    const response = await fetch(`${this.apiUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new HTTPError(
+        `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
+        response.status
+      );
+    }
+
+    if (response.status === 204) {
+      return undefined; // Return undefined for 204 No Content.
+    }
+
+    const responseBody = await response.json();
+    const result = codec.decode(responseBody);
+
+    if (isLeft(result)) {
       throw new Error("Response validation failed");
     }
 
@@ -195,5 +237,22 @@ export class ConfluenceClient {
 
   async getUserAccount() {
     return this.request("/me", ConfluenceUserProfileCodec);
+  }
+
+  async reportAccount({
+    accountId,
+    updatedAt,
+  }: {
+    accountId: string;
+    updatedAt: Date;
+  }) {
+    const results = await this.postRequest(
+      "/app/report-accounts",
+      { accounts: [{ accountId, updatedAt: updatedAt.toISOString() }] },
+      ConfluenceReportAccounts
+    );
+
+    const [firstAccount] = results?.accounts ?? [];
+    return firstAccount;
   }
 }

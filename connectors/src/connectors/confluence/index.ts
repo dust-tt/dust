@@ -13,6 +13,7 @@ import {
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
+  launchConfluencePersonalDataReportingSchedule,
   launchConfluenceRemoveSpacesSyncWorkflow,
   launchConfluenceSyncWorkflow,
   stopConfluenceSyncWorkflow,
@@ -88,6 +89,8 @@ export async function createConfluenceConnector(
     if (workflowStarted.isErr()) {
       return new Err(workflowStarted.error);
     }
+
+    await launchConfluencePersonalDataReportingSchedule();
 
     return new Ok(connector.id.toString());
   } catch (e) {
