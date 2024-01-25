@@ -80,6 +80,43 @@ export async function getDataSources(
   });
 }
 
+export async function updateDataSourceConnectedBy(
+  auth: Authenticator,
+  name: string
+): Promise<Result<undefined, APIError>> {
+  const owner = auth.workspace();
+  const user = auth.user();
+  if (!owner || !user) {
+    return new Err({
+      type: "workspace_not_found",
+      message: "Could not find the workspace.",
+    });
+  }
+
+  if (!auth.isAdmin()) {
+    return new Err({
+      type: "workspace_auth_error",
+      message:
+        "Only users that are `admins` for the current workspace can update data sources.",
+    });
+  }
+
+  await DataSource.update(
+    {
+      connectedAt: new Date(),
+      connectedByUserId: user.id,
+    },
+    {
+      where: {
+        workspaceId: owner.id,
+        name,
+      },
+    }
+  );
+
+  return new Ok(undefined);
+}
+
 export async function deleteDataSource(
   auth: Authenticator,
   dataSourceName: string
