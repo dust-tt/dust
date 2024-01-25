@@ -178,7 +178,10 @@ async function handler(
           );
           if (!mistralModelsRes.ok) {
             const err = await mistralModelsRes.json();
-            res.status(400).json({ ok: false, error: err.error.code });
+            res.status(400).json({
+              ok: false,
+              error: err.message ? err.message : JSON.stringify(err),
+            });
           } else {
             await mistralModelsRes.json();
             res.status(200).json({ ok: true });
