@@ -10,22 +10,22 @@ Do not make up URLs about Dust; only refer to URLs mentioned in this document.
 
 ## What is Dust?
 
-Dust is a platform powered by GPT4-Turbo, Claude 2.1, Gemini Pro, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks. You can create personal assistants and shared assistants with your team. 
+Dust is a platform powered by GPT4-Turbo, Claude 2.1, Gemini Pro, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks. You can create personal assistants and shared assistants with your team.
 
 ## General concepts
 
 ### Assistants
 
-Dust assistants are AI-powered agents that employ frontier models like GGPT4-Turbo, Claude 2.1, Gemini Pro, and Mistral. You can use two types of assistants inside Dust.
+Dust assistants are AI-powered agents that employ frontier models like GPT4-Turbo, Claude 2.1, Gemini Pro, and Mistral. You can use two types of assistants inside Dust.
 
 - Frontier model assistants: They are based on advanced large-scale models like GPT4, Gemini Pro, Mistral Medium, and Claude2 created by major AI developers (OpenAI, Google DeepMind, etc.). @gpt4, @claude, @gemini-pro, and @mistral-medium can handle a variety of tasks, such as summarization, translation, and content generation, and help you answer questions.
 - Custom assistants: created by Dust, yourself (personal assistants), or builders (workspace assistants). Custom assistants package specific use cases, are powered by the LLM of your choice, and are instructed to complete specific tasks. @notion or @slack created by Dust interact with synced documents from those platforms. You can create a custom Data assistant for SQL query generation, customer support, UX feedback, or specialized document creation like a memo.
 
-To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4, @claude, @gemini-pro, @mistra-medium offers direct large language model access. Multiple assistants can be chained to complete complex tasks. To make the most of Dust, our recommendation is to create custom assistants with a very specific objective detailed in the Instruction part and selected knowledge. 
+To illustrate, while @dust handles organizational questions, @help provides Dust support, @slack searches Slack, and @gpt4, @claude, @gemini-pro, @mistral-medium offers direct large language model access. Multiple assistants can be chained to complete complex tasks. To make the most of Dust, our recommendation is to create custom assistants with a very specific objective detailed in the Instruction part and selected knowledge.
 
 ### Assistants Gallery
 
-From there, you can create your personal list of assistants. Click on `+Add` to add an assistant to your list. Assistants can be created by yourself, your teammates, or Dust. 
+From there, you can create your personal list of assistants. Click on `+Add` to add an assistant to your list. Assistants can be created by yourself, your teammates, or Dust.
 
 ### Conversation
 
@@ -47,7 +47,7 @@ Folders are custom data sources created by builders to provide assistants with s
 
 ### Synchronizing
 
-Synchronizing data with Dust means Dust will extract it and that the data will be available for data retrieval by the assistants. 
+Synchronizing data with Dust means Dust will extract it and that the data will be available for data retrieval by the assistants.
 
 ### Retrieve
 
@@ -124,7 +124,7 @@ The admin needs to select the Slack channels you want to synchronize with Dust; 
 
 To synchronize Notion pages, the admin can only select top-level pages. To add lower-level pages, the admin can use the search bar and select the desired pages. Notion API doesn’t allow navigation.
 
-To verify if a Notion page is synchronized with Dust, as Notion admin, go to the selected page, click on `...`on the top right, and check if Dust is one of the `connections`. You can manually synchronize the page by adding Dust as a connection directly from the Notion page. 
+To verify if a Notion page is synchronized with Dust, as Notion admin, go to the selected page, click on `...`on the top right, and check if Dust is one of the `connections`. You can manually synchronize the page by adding Dust as a connection directly from the Notion page.
 
 **How to update Connections**
 
@@ -136,7 +136,7 @@ Slack: Dust doesn't take into account private channels, group direct messages, e
 Notion: Dust doesn't take into account external files or content behind a URL.
 Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
-Public Websites: Up to 500 web pages from a public website can be synchronized. 
+Public Websites: Up to 500 web pages from a public website can be synchronized.
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
 
@@ -151,7 +151,7 @@ To see if a document has synced and view its contents:
 
 ### How to add data that are not supported as a Connection by Dust
 
-As a user, you can add your data to a connected platform like Notion or Google Drive. Ask an admin to verify if the data you added are synchronized with Dust. 
+As a user, you can add your data to a connected platform like Notion or Google Drive. Ask an admin to verify if the data you added are synchronized with Dust.
 
 Admins/builders can add a Folders by:
 
@@ -162,7 +162,7 @@ Admins/builders can add a Folders by:
 
 ### What are the documents and PDF current limits?
 
-Documents up to 2MB can be uploaded manually via Folders and 10MB from the conversation. 
+Documents up to 2MB can be uploaded manually via Folders and 10MB from the conversation.
 
 ### **Does Dust use user and company data to train its models?**
 
@@ -176,7 +176,7 @@ A 750KB plain text document could contain around 125,000 words, assuming an aver
 
 To configure the @dust assistant, got to `Assistants` > `Dust Assistants` and click on the `Manage` button next to the @dust assistant. You'll be enable / disable @dust and select which data sources it has access to.
 
-Think about @dust as your general assistant to explore all the data synchronized with Dust. Don’t expect 100% accurate answers but use Dust as a router to navigate your knowledge. 
+Think about @dust as your general assistant to explore all the data synchronized with Dust. Don’t expect 100% accurate answers but use Dust as a router to navigate your knowledge.
 
 ## Dust’s plans
 
@@ -218,14 +218,14 @@ To manage your subscription:
 
 ### What can I use an assistant for?
 
-Assistants can answer questions and chat with you. Think about your assistants as an extension of yourself to create content in a specific format. Each assistant is different, so check their descriptions to see which one(s) to use. Try to chain assistants to complete complex tasks. 
+Assistants can answer questions and chat with you. Think about your assistants as an extension of yourself to create content in a specific format. Each assistant is different, so check their descriptions to see which one(s) to use. Try to chain assistants to complete complex tasks.
 
 - Use @dust for questions about your company; it uses GPT-4 and knows public data until April 2023.
 - Use @help for help with Dust features.
 - Use @slack to find info in Slack.
-- Use @gpt4 @gemini-pro, @mistral-medium, or @claude for tasks with the latest AI models.
+- Use @gpt4, @gemini-pro, @mistral-medium, or @claude for tasks with the latest AI models.
 
-You can combine assistants, like asking @dust for customer insights and then having @claude and @gpt4 help write a memo based on that info. But the most important thing to make the most of Dust is creating custom assistants: personal assistants or shared assistants with your team.  
+You can combine assistants, like asking @dust for customer insights and then having @claude and @gpt4 help write a memo based on that info. But the most important thing to make the most of Dust is creating custom assistants: personal assistants or shared assistants with your team.
 
 ### Technically, how do assistants work?
 
@@ -254,7 +254,7 @@ Users can search for assistants inside the `Assistant Gallery`. Admin and builde
 
 ### What are custom assistants?
 
-Custom assistants are AI agents created by users and builders in your workspace. They are made to achieve specific tasks defined by builders. They can be personal or shared with the team. 
+Custom assistants are AI agents created by users and builders in your workspace. They are made to achieve specific tasks defined by builders. They can be personal or shared with the team.
 
 ### How to create a custom assistant?
 
@@ -262,25 +262,25 @@ To create a custom assistant:
 
 As a user, Navigate to `Chat` > `My Assistants` > `+New`.
 
-As a builder or admin: 
+As a builder or admin:
 
 1. To create a Personal or Shared assistant: Navigate to `Chat` > `My Assistants` > `+New`.
-2. To create a Company assistant for all members of the workspace: Navigate to `Build` > `Manage Assistants` > `+New`. You can also duplicate existing assistants from the Assistants Gallery. 
+2. To create a Company assistant for all members of the workspace: Navigate to `Build` > `Manage Assistants` > `+New`. You can also duplicate existing assistants from the Assistants Gallery.
 
 Setup involves:
 
 - **Instructions**: Write clear, detailed prompts for the assistant.
 - **Advanced Settings**: Pick a model and set the creativity level (temperature).
-    - **Deterministic (0)**: Straightforward, factual answers.
-    - **Factual (0.2)**: A slight bit of unpredictability.
-    - **Balanced (0.7)**: More variety in responses.
-    - **Creative (1.0)**: High creativity for brainstorming.
+  - **Deterministic (0)**: Straightforward, factual answers.
+  - **Factual (0.2)**: A slight bit of unpredictability.
+  - **Balanced (0.7)**: More variety in responses.
+  - **Creative (1.0)**: High creativity for brainstorming.
 - **Actions**:
-    - No action: to use the model with no data source retrieval.
-    - Search in data sources: To use semantic search to retrieve data.
-    - Advanced actions:
-        - Use most recent in data sources: to process all data between now and X. Adapt the timeframe to the model's context window. Avoid +1month timeframe if you know your data set is large.
-        - Run a Dust app: If you want to chain a Dust App to your custom assistant.
+  - No action: to use the model with no data source retrieval.
+  - Search in data sources: To use semantic search to retrieve data.
+  - Advanced actions:
+    - Use most recent in data sources: to process all data between now and X. Adapt the timeframe to the model's context window. Avoid +1month timeframe if you know your data set is large.
+    - Run a Dust app: If you want to chain a Dust App to your custom assistant.
 
 ### How to create a Dust LLM app?
 
@@ -310,14 +310,14 @@ or
 
 Ethan Mollick, a professor at the Wharton School who writes about AI, concludes that GPT-4 is better at solving math problems, while Claude 2 is better at writing.
 
-| Model | See images | Internet connection | Personality | When to use it |
-| --- | --- | --- | --- | --- |
-| GPT-3.5 |  | No | Neutral | Fast and capable, but other models are now stronger. |
-| GPT-4 | Soon | No | Helpful, a little preachy | Strongest model if you want to complete more complex task. |
-| GPT4-Turbo | Soon | No | Neutral | Strongest model if you want to complete more complex task. |
-| Claude 2 |  | No | Pleasant |  |
-| Claude 2.1 |  | No | Pleasant | Strongest model with a large amount of text. Answer with fewer words than Claude 2. |
-| Claude Instant |  | No | Pleasant | Same as Claude 2 but will answer faster and with fewer words. |
+| Model          | See images | Internet connection | Personality               | When to use it                                                                      |
+| -------------- | ---------- | ------------------- | ------------------------- | ----------------------------------------------------------------------------------- |
+| GPT-3.5        |            | No                  | Neutral                   | Fast and capable, but other models are now stronger.                                |
+| GPT-4          | Soon       | No                  | Helpful, a little preachy | Strongest model if you want to complete more complex task.                          |
+| GPT4-Turbo     | Soon       | No                  | Neutral                   | Strongest model if you want to complete more complex task.                          |
+| Claude 2       |            | No                  | Pleasant                  |                                                                                     |
+| Claude 2.1     |            | No                  | Pleasant                  | Strongest model with a large amount of text. Answer with fewer words than Claude 2. |
+| Claude Instant |            | No                  | Pleasant                  | Same as Claude 2 but will answer faster and with fewer words.                       |
 
 Table with results as of summer 2023, based on Ethan Mollick analysis - [oneusefulthing.org](http://oneusefulthing.org/).
 
