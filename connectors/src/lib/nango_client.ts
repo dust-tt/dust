@@ -7,7 +7,6 @@ import {
   NANGO_ERROR_TYPES,
   NangoError,
 } from "@connectors/lib/error";
-
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 
