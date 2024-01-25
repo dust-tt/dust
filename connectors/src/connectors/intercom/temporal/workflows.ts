@@ -11,10 +11,14 @@ import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/tempo
 
 import { intercomUpdatesSignal } from "./signals";
 
-const { getHelpCenterIdsToSyncActivity, syncHelpCenterActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "30 minutes",
-  });
+const {
+  getHelpCenterIdsToSyncActivity,
+  syncHelpCenterOnlyActivity,
+  getCollectionsIdsToSyncActivity,
+  syncCollectionActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
 
 const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
   proxyActivities<typeof activities>({
@@ -56,12 +60,17 @@ export async function intercomSyncWorkflow({
     memo,
   } = workflowInfo();
 
+  const currentSyncMs = new Date().getTime();
+
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (uniqueHelpCenterIds.size > 0) {
     // Create a copy of the set to iterate over, to avoid issues with concurrent modification.
     const helpCenterIdsToProcess = new Set(uniqueHelpCenterIds);
     for (const helpCenterId of helpCenterIdsToProcess) {
+      if (!uniqueHelpCenterIds.has(helpCenterId)) {
+        continue;
+      }
       // Async operation yielding control to the Temporal runtime.
       await executeChild(intercomHelpCenterSyncWorklow, {
         workflowId: `${workflowId}-help-center-${helpCenterId}`,
@@ -70,6 +79,7 @@ export async function intercomSyncWorkflow({
           {
             connectorId,
             helpCenterId,
+            currentSyncMs,
           },
         ],
         memo,
@@ -90,12 +100,29 @@ export async function intercomSyncWorkflow({
 export async function intercomHelpCenterSyncWorklow({
   connectorId,
   helpCenterId,
+  currentSyncMs,
 }: {
   connectorId: ModelId;
   helpCenterId: string;
+  currentSyncMs: number;
 }) {
-  await syncHelpCenterActivity({
+  await syncHelpCenterOnlyActivity({
+    connectorId,
+    helpCenterId,
+    currentSyncMs,
+  });
+
+  const collectionIds = await getCollectionsIdsToSyncActivity({
     connectorId,
     helpCenterId,
   });
+
+  for (const collectionId of collectionIds) {
+    await syncCollectionActivity({
+      connectorId,
+      helpCenterId,
+      collectionId,
+      currentSyncMs,
+    });
+  }
 }

@@ -328,13 +328,13 @@ export async function setIntercomConnectorPermissions(
       }
     }
 
-    const addedSpacesResult = await startWorkflowIfNecessary(
+    const sendSignalToWorkflowResult = await startWorkflowIfNecessary(
       [...toBeSignaledHelpCenterIds],
       launchIntercomSyncWorkflow,
       connectorId
     );
-    if (addedSpacesResult.isErr()) {
-      return new Err(addedSpacesResult.error);
+    if (sendSignalToWorkflowResult.isErr()) {
+      return new Err(sendSignalToWorkflowResult.error);
     }
 
     return new Ok(undefined);

@@ -6,7 +6,7 @@ import {
   fetchIntercomArticles,
   fetchIntercomCollection,
   fetchIntercomCollections,
-  fetchIntercomHelpCenter,
+  getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import { getHelpCenterArticleDocumentId } from "@connectors/connectors/intercom/lib/utils";
 import {
@@ -14,7 +14,6 @@ import {
   renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import type { Connector } from "@connectors/lib/models";
 import type { IntercomHelpCenter } from "@connectors/lib/models/intercom";
 import {
   IntercomArticle,
@@ -24,59 +23,19 @@ import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 /**
- * This function syncs a Help Center and its children (collections & articles)
- * from Intercom to the database and the core data source.
- *
- * If the Help Center is not on Intercom anymore or if we have revoked permissions:
- * -> We delete it and its children from the database and the core data source.
- *
- * If the Help Center is on Intercom and we have read permissions:
- * -> We loop on all level 1 collections of the Help Center and sync them.
+ * If our rights were revoked or the help center is not on intercom anymore we delete it
  */
-export async function syncHelpCenter({
-  connector,
-  intercomClient,
+export async function removeHelpCenter({
+  connectorId,
   dataSourceConfig,
   helpCenter,
   loggerArgs,
 }: {
-  connector: Connector;
-  intercomClient: IntercomClient;
+  connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   helpCenter: IntercomHelpCenter;
   loggerArgs: Record<string, string | number>;
-}) {
-  const connectorId = connector.id;
-  const helpCenterOnIntercom = await fetchIntercomHelpCenter(
-    connector.connectionId,
-    helpCenter.helpCenterId
-  );
-
-  // If our rights were revoked or the help center is not on intercom anymore we delete it
-  if (!helpCenterOnIntercom || helpCenter.permission === "none") {
-    const level1Collections = await IntercomCollection.findAll({
-      where: {
-        connectorId: connector.id,
-        helpCenterId: helpCenter.helpCenterId,
-        parentId: null,
-      },
-    });
-    await Promise.all(
-      level1Collections.map(async (collection) => {
-        await _deleteCollection({
-          connectorId,
-          dataSourceConfig,
-          collection,
-          loggerArgs,
-        });
-      })
-    );
-    await helpCenter.destroy();
-    return;
-  }
-
-  // Otherwise we update its name and sync its collections
-  await helpCenter.update({ name: helpCenterOnIntercom.display_name });
+}): Promise<void> {
   const level1Collections = await IntercomCollection.findAll({
     where: {
       connectorId,
@@ -86,44 +45,70 @@ export async function syncHelpCenter({
   });
   await Promise.all(
     level1Collections.map(async (collection) => {
-      if (collection.permission === "none") {
-        await _deleteCollection({
-          connectorId,
-          dataSourceConfig,
-          collection,
-          loggerArgs,
-        });
-      } else {
-        const collectionOnIntercom = await fetchIntercomCollection(
-          intercomClient,
-          collection.collectionId
-        );
-        if (!collectionOnIntercom) {
-          await _deleteCollection({
-            connectorId,
-            dataSourceConfig,
-            collection,
-            loggerArgs,
-          });
-        } else {
-          await _syncCollection({
-            connectorId,
-            intercomClient,
-            dataSourceConfig,
-            loggerArgs,
-            collection: collectionOnIntercom,
-            parents: [],
-          });
-        }
-      }
+      await _deleteCollection({
+        connectorId,
+        dataSourceConfig,
+        collection,
+        loggerArgs,
+      });
     })
   );
+  await helpCenter.destroy();
+}
+
+export async function syncCollection({
+  connectorId,
+  connectionId,
+  dataSourceConfig,
+  loggerArgs,
+  collection,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  connectionId: string;
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number>;
+  collection: IntercomCollection;
+  currentSyncMs: number;
+}) {
+  if (collection.permission === "none") {
+    await _deleteCollection({
+      connectorId,
+      collection,
+      dataSourceConfig,
+      loggerArgs,
+    });
+  } else {
+    const intercomClient = await getIntercomClient(connectionId);
+    const collectionOnIntercom = await fetchIntercomCollection(
+      intercomClient,
+      collection.collectionId
+    );
+    if (collectionOnIntercom) {
+      await _upsertCollection({
+        connectorId,
+        collection: collectionOnIntercom,
+        parents: [],
+        dataSourceConfig,
+        intercomClient,
+        loggerArgs,
+        currentSyncMs,
+      });
+    } else {
+      await _deleteCollection({
+        connectorId,
+        collection,
+        dataSourceConfig,
+        loggerArgs,
+      });
+    }
+  }
 }
 
 /**
  * Deletes a collection and its children (collection & articles) from the database and the core data source.
  */
-async function _deleteCollection({
+export async function _deleteCollection({
   connectorId,
   dataSourceConfig,
   collection,
@@ -192,13 +177,14 @@ async function _deleteCollection({
 /**
  * Syncs a collection and its children (collection & articles) from the database and the core data source.
  */
-async function _syncCollection({
+export async function _upsertCollection({
   connectorId,
   intercomClient,
   dataSourceConfig,
   loggerArgs,
   collection,
   parents,
+  currentSyncMs,
 }: {
   connectorId: ModelId;
   intercomClient: IntercomClient;
@@ -206,6 +192,7 @@ async function _syncCollection({
   collection: IntercomCollectionType;
   loggerArgs: Record<string, string | number>;
   parents: string[];
+  currentSyncMs: number;
 }) {
   // Sync the Collection
   let collectionOnDb = await IntercomCollection.findOne({
@@ -219,6 +206,7 @@ async function _syncCollection({
     await collectionOnDb.update({
       name: collection.name,
       description: collection.description,
+      lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
     collectionOnDb = await IntercomCollection.create({
@@ -231,6 +219,7 @@ async function _syncCollection({
       description: collection.description,
       url: collection.url,
       permission: "read",
+      lastUpsertedTs: new Date(currentSyncMs),
     });
   }
 
@@ -251,6 +240,7 @@ async function _syncCollection({
       article = await matchingArticleOnDb.update({
         title: articleOnIntercom.title,
         url: articleOnIntercom.url,
+        lastUpsertedTs: new Date(currentSyncMs),
       });
     } else {
       article = await IntercomArticle.create({
@@ -266,6 +256,7 @@ async function _syncCollection({
         parents: articleOnIntercom.parent_ids,
         state: articleOnIntercom.state === "published" ? "published" : "draft",
         permission: "read",
+        lastUpsertedTs: new Date(currentSyncMs),
       });
     }
 
@@ -328,13 +319,14 @@ async function _syncCollection({
 
   await Promise.all(
     childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
-      await _syncCollection({
+      await _upsertCollection({
         connectorId,
         intercomClient,
         dataSourceConfig,
         loggerArgs,
         collection: collectionOnIntercom,
         parents: [...parents, collection.id],
+        currentSyncMs,
       });
     })
   );

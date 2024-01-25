@@ -49,7 +49,7 @@ export async function launchIntercomSyncWorkflow(
       memo: {
         connectorId,
       },
-      cronSchedule: "0 * * * *", // Every hour.
+      cronSchedule: "30 * * * *", // Every hour, at 30 of the hour.
     });
   } catch (err) {
     return new Err(err as Error);
