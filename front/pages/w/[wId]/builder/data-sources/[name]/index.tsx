@@ -642,6 +642,39 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
+interface ConnectorUiConfig {
+  displayManagePermissionButton: boolean;
+  addDataButtonLabel: string | null;
+}
+
+function getRenderingConfigForConnectorProvider(
+  connectorProvider: ConnectorProvider
+): ConnectorUiConfig {
+  switch (connectorProvider) {
+    case "confluence":
+    case "google_drive":
+    case "slack":
+    case "intercom":
+      return {
+        displayManagePermissionButton: true,
+        addDataButtonLabel: "Add / Remove data",
+      };
+    case "notion":
+    case "github":
+      return {
+        displayManagePermissionButton: false,
+        addDataButtonLabel: "Add / Remove data, manage permissions",
+      };
+    case "webcrawler":
+      return {
+        displayManagePermissionButton: false,
+        addDataButtonLabel: null,
+      };
+    default:
+      assertNever(connectorProvider);
+  }
+}
+
 function ManagedDataSourceView({
   owner,
   readOnly,
@@ -789,12 +822,8 @@ function ManagedDataSourceView({
     };
   };
 
-  const shouldDisplayManagePermissionButton = [
-    "confluence",
-    "google_drive",
-    "slack",
-    "intercom",
-  ].includes(connectorProvider);
+  const { displayManagePermissionButton, addDataButtonLabel } =
+    getRenderingConfigForConnectorProvider(connectorProvider);
 
   return (
     <>
@@ -826,7 +855,7 @@ function ManagedDataSourceView({
             })()}
             icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
           />
-          {shouldDisplayManagePermissionButton ? (
+          {isAdmin && displayManagePermissionButton ? (
             <Button
               className="ml-auto"
               label="Manage permissions"
@@ -849,43 +878,21 @@ function ManagedDataSourceView({
           <>
             <div className="flex flex-col pb-4 pt-8">
               <Button.List>
-                {(() => {
-                  switch (connectorProvider) {
-                    case "confluence":
-                    case "google_drive":
-                    case "slack":
-                    case "intercom":
-                      return (
-                        <Button
-                          label="Add / Remove data"
-                          variant="primary"
-                          icon={ListCheckIcon}
-                          disabled={readOnly || !isAdmin}
-                          onClick={() => {
-                            setShowPermissionModal(true);
-                          }}
-                        />
-                      );
-                    case "notion":
-                    case "github":
-                      return (
-                        <Button
-                          label="Add / Remove data, manage permissions"
-                          variant="primary"
-                          icon={ListCheckIcon}
-                          onClick={() => {
-                            void handleUpdatePermissions();
-                          }}
-                        />
-                      );
-                    case "webcrawler":
-                      return null;
-                    default:
-                      ((p: never) => {
-                        throw new Error(`Unknown connector provider ${p}`);
-                      })(connectorProvider);
-                  }
-                })()}
+                {addDataButtonLabel && (
+                  <Button
+                    label={addDataButtonLabel}
+                    variant="primary"
+                    icon={ListCheckIcon}
+                    disabled={readOnly || !isAdmin}
+                    onClick={() => {
+                      if (displayManagePermissionButton) {
+                        setShowPermissionModal(true);
+                      } else {
+                        void handleUpdatePermissions();
+                      }
+                    }}
+                  />
+                )}
               </Button.List>
               <div className="pt-2 text-sm font-normal text-element-700">
                 {(() => {
