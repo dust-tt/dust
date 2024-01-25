@@ -236,36 +236,31 @@ export default function Subscription({
                 )}
               </div>
             </div>
-            {!plan ||
-              ([
-                FREE_TEST_PLAN_CODE,
-                PRO_PLAN_SEAT_29_CODE,
-                FREE_UPGRADED_PLAN_CODE,
-              ].includes(plan.code) && (
-                <div className="pt-2">
-                  <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="s-h-full s-w-full pt-2">
-                    <PricePlans
-                      size="xs"
-                      className="lg:hidden"
-                      isTabs
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                    />
-                    <PricePlans
-                      size="xs"
-                      flexCSS="gap-3"
-                      className="hidden lg:flex"
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                    />
-                  </div>
-                </div>
-              ))}
+
+            <div className="pt-2">
+              <Page.H variant="h5">Manage my plan</Page.H>
+              <div className="s-h-full s-w-full pt-2">
+                <PricePlans
+                  size="xs"
+                  className="lg:hidden"
+                  isTabs
+                  plan={plan}
+                  onClickProPlan={onClickProPlan}
+                  onClickEnterprisePlan={onClickEnterprisePlan}
+                  isProcessing={isProcessing}
+                />
+                <PricePlans
+                  size="xs"
+                  flexCSS="gap-3"
+                  className="hidden lg:flex"
+                  plan={plan}
+                  onClickProPlan={onClickProPlan}
+                  onClickEnterprisePlan={onClickEnterprisePlan}
+                  isProcessing={isProcessing}
+                />
+              </div>
+            </div>
+
             <Link href="/terms" target="_blank" className="text-sm">
               Terms of use apply to all plans.
             </Link>
