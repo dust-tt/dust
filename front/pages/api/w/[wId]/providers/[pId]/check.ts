@@ -188,31 +188,6 @@ async function handler(
           }
           return;
 
-        case "textsynth":
-          const testCompletion = await fetch(
-            "https://api.textsynth.com/v1/engines/mistral_7B/completions",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${config.api_key}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                prompt: "<html>",
-                max_tokens: 1,
-              }),
-            }
-          );
-
-          if (!testCompletion.ok) {
-            const err = await testCompletion.json();
-            res.status(400).json({ ok: false, error: err.error });
-          } else {
-            await testCompletion.json();
-            res.status(200).json({ ok: true });
-          }
-          return;
-
         case "serpapi":
           const testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,

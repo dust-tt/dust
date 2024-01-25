@@ -259,27 +259,6 @@ async function handler(
           }
           return;
 
-        case "textsynth":
-          if (chat) {
-            res.status(200).json({
-              models: [
-                { id: "mistral_7B_instruct" },
-                { id: "falcon_40B-chat" },
-              ],
-            });
-            return;
-          }
-          res.status(200).json({
-            models: [
-              { id: "mistral_7B" },
-              { id: "mistral_7B_instruct" },
-              { id: "falcon_7B" },
-              { id: "falcon_40B" },
-              { id: "llama2_7B" },
-            ],
-          });
-          return;
-
         case "google_vertex_ai":
           return res.status(200).json({
             models: [{ id: "gemini-pro" }],
