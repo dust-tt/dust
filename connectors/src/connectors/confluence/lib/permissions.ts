@@ -10,11 +10,11 @@ import { Op } from "sequelize";
 import { listConfluenceSpaces } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
-  getIdFromConfluencePublicId,
-  isConfluencePublicPageId,
-  isConfluencePublicSpaceId,
-  makeConfluencePublicPageId,
-  makeConfluencePublicSpaceId,
+  getIdFromConfluenceInternalId,
+  isConfluenceInternalPageId,
+  isConfluenceInternalSpaceId,
+  makeConfluenceInternalPageId,
+  makeConfluenceInternalSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import type { Connector } from "@connectors/lib/models";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
@@ -30,13 +30,16 @@ function createConnectorResourceFromSpace(
   { isExpandable, usePublicId }: { isExpandable: boolean; usePublicId: boolean }
 ): ConnectorResource {
   const urlSuffix = "_links" in space ? space._links.webui : space.urlSuffix;
-  // This is not needed.
-  const spaceId = typeof space.id === "string" ? space.id : space.spaceId;
+  const { spaceId: rSpaceId } = space;
+  const spaceId =
+    "spaceId" in space && typeof space.spaceId === "string"
+      ? space.spaceId
+      : space.id;
 
   return {
     provider: "confluence",
     internalId: usePublicId
-      ? makeConfluencePublicSpaceId(spaceId)
+      ? makeConfluenceInternalSpaceId(spaceId)
       : space.id.toString(),
     parentInternalId: null,
     type: "folder",
@@ -57,11 +60,11 @@ function createConnectorResourceFromPage(
 ): ConnectorResource {
   return {
     provider: "confluence",
-    internalId: makeConfluencePublicPageId(page.pageId),
-    parentPublicId:
+    internalId: makeConfluenceInternalPageId(page.pageId),
+    parentInternalId:
       parent.type === "space"
-        ? makeConfluencePublicSpaceId(parent.id)
-        : makeConfluencePublicPageId(parent.id),
+        ? makeConfluenceInternalSpaceId(parent.id)
+        : makeConfluenceInternalPageId(parent.id),
     type: "file",
     title: page.title,
     sourceUrl: `${baseUrl}/wiki${page.externalUrl}`,
@@ -88,7 +91,7 @@ async function getSynchronizedSpaces(
   confluenceConfig: ConfluenceConfiguration,
   parentPublicId: string
 ): Promise<Result<ConnectorResource[], Error>> {
-  const confluenceId = getIdFromConfluencePublicId(parentPublicId);
+  const confluenceId = getIdFromConfluenceInternalId(parentPublicId);
 
   const parentSpace = await ConfluenceSpace.findOne({
     attributes: ["id", "spaceId"],
@@ -135,7 +138,7 @@ async function getSynchronizedChildrenPages(
   confluenceConfig: ConfluenceConfiguration,
   parentPublicId: string
 ): Promise<Result<ConnectorResource[], Error>> {
-  const confluenceId = getIdFromConfluencePublicId(parentPublicId);
+  const confluenceId = getIdFromConfluenceInternalId(parentPublicId);
 
   const parentPage = await ConfluencePage.findOne({
     attributes: ["id", "pageId"],
@@ -182,7 +185,7 @@ export async function retrieveSynchronizedData(
   const { id: connectorId } = connector;
 
   if (parentPublicId) {
-    if (isConfluencePublicSpaceId(parentPublicId)) {
+    if (isConfluenceInternalSpaceId(parentPublicId)) {
       const resources = await getSynchronizedSpaces(
         connectorId,
         confluenceConfig,
@@ -194,7 +197,7 @@ export async function retrieveSynchronizedData(
       }
 
       return new Ok(resources.value);
-    } else if (isConfluencePublicPageId(parentPublicId)) {
+    } else if (isConfluenceInternalPageId(parentPublicId)) {
       const resources = await getSynchronizedChildrenPages(
         connectorId,
         confluenceConfig,

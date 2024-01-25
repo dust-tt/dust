@@ -13,11 +13,10 @@ import {
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import {
-  getIdFromConfluencePublicId,
-  isConfluencePublicPageId,
-  isConfluencePublicSpaceId,
-  makeConfluencePublicPageId,
-  makeConfluencePublicSpaceId,
+  getIdFromConfluenceInternalId,
+  isConfluenceInternalPageId,
+  makeConfluenceInternalPageId,
+  makeConfluenceInternalSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   retrieveAvailableSpaces,
@@ -301,7 +300,7 @@ export async function setConfluenceConnectorPermissions(
   const addedSpaceIds = [];
   const removedSpaceIds = [];
   for (const [publicId, permission] of Object.entries(permissions)) {
-    const confluenceId = getIdFromConfluencePublicId(publicId);
+    const confluenceId = getIdFromConfluenceInternalId(publicId);
     if (permission === "none") {
       await ConfluenceSpace.destroy({
         where: {
@@ -357,7 +356,7 @@ export async function retrieveConfluenceObjectsTitles(
   internalIds: string[]
 ): Promise<Result<Record<string, string>, Error>> {
   const confluenceSpaceIds = internalIds.map((id) =>
-    getIdFromConfluencePublicId(id)
+    getIdFromConfluenceInternalId(id)
   );
 
   const confluenceSpaces = await ConfluenceSpace.findAll({
@@ -383,9 +382,9 @@ export async function retrieveConfluenceResourceParents(
   connectorId: ModelId,
   publicId: string
 ): Promise<Result<string[], Error>> {
-  const confluenceId = getIdFromConfluencePublicId(publicId);
+  const confluenceId = getIdFromConfluenceInternalId(publicId);
 
-  if (isConfluencePublicPageId(publicId)) {
+  if (isConfluenceInternalPageId(publicId)) {
     const currentPage = await ConfluencePage.findOne({
       attributes: ["pageId", "parentId", "spaceId"],
       where: {
@@ -400,7 +399,7 @@ export async function retrieveConfluenceResourceParents(
 
     // If the page does not have a parentId, return only the spaceId.
     if (!currentPage.parentId) {
-      return new Ok([makeConfluencePublicSpaceId(currentPage.spaceId)]);
+      return new Ok([makeConfluenceInternalSpaceId(currentPage.spaceId)]);
     }
 
     // Currently opting for a best-effort strategy to reduce database queries,
@@ -438,8 +437,8 @@ export async function retrieveConfluenceResourceParents(
 
     return new Ok([
       // Add the space id at the beginning.
-      makeConfluencePublicSpaceId(currentPage.spaceId),
-      ...parentIds.map((p) => makeConfluencePublicPageId(p)),
+      makeConfluenceInternalSpaceId(currentPage.spaceId),
+      ...parentIds.map((p) => makeConfluenceInternalPageId(p)),
     ]);
   }
 

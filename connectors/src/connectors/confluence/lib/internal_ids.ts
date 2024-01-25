@@ -3,26 +3,26 @@ enum ConfluenceInternalIdPrefix {
   Page = "page_",
 }
 
-export function makeConfluencePublicSpaceId(confluenceSpaceId: string) {
+export function makeConfluenceInternalSpaceId(confluenceSpaceId: string) {
   return `${ConfluenceInternalIdPrefix.Space}${confluenceSpaceId}`;
 }
 
-export function makeConfluencePublicPageId(confluencePageId: string) {
+export function makeConfluenceInternalPageId(confluencePageId: string) {
   return `${ConfluenceInternalIdPrefix.Page}${confluencePageId}`;
 }
 
-export function getIdFromConfluencePublicId(internalId: string) {
+export function getIdFromConfluenceInternalId(internalId: string) {
   const prefixPattern = `^(${ConfluenceInternalIdPrefix.Space}|${ConfluenceInternalIdPrefix.Page})`;
   return internalId.replace(new RegExp(prefixPattern), "");
 }
 
-export function isConfluencePublicSpaceId(
+export function isConfluenceInternalSpaceId(
   internalId: string
 ): internalId is `${ConfluenceInternalIdPrefix.Space}${string}` {
   return internalId.startsWith(ConfluenceInternalIdPrefix.Space);
 }
 
-export function isConfluencePublicPageId(
+export function isConfluenceInternalPageId(
   internalId: string
 ): internalId is `${ConfluenceInternalIdPrefix.Page}${string}` {
   return internalId.startsWith(ConfluenceInternalIdPrefix.Page);
