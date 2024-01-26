@@ -930,7 +930,10 @@ function ManagedDataSourceView({
                     icon={ListCheckIcon}
                     disabled={readOnly || !isAdmin}
                     onClick={() => {
-                      if (displayDataSourceDetailsModal) {
+                      if (
+                        !displayManagePermissionButton &&
+                        displayDataSourceDetailsModal
+                      ) {
                         setShowDataSourceDetailsModal(true);
                       } else if (displayManagePermissionButton) {
                         setShowPermissionModal(true);
