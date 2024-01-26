@@ -655,22 +655,34 @@ interface ConnectorUiConfig {
 function getRenderingConfigForConnectorProvider(
   connectorProvider: ConnectorProvider
 ): ConnectorUiConfig {
+  const commonConfig = {
+    displayManagePermissionButton: true,
+    addDataButtonLabel: "Add / Remove data",
+  };
+
   switch (connectorProvider) {
     case "confluence":
     case "google_drive":
+      return {
+        ...commonConfig,
+        displayDataSourceDetailsModal: true,
+      };
+
     case "slack":
     case "intercom":
       return {
-        displayDataSourceDetailsModal: ["confluence", "google_drive"].includes(
-          connectorProvider
-        ),
-        displayManagePermissionButton: true,
-        addDataButtonLabel: "Add / Remove data",
+        ...commonConfig,
+        displayDataSourceDetailsModal: false,
       };
     case "notion":
+      return {
+        displayDataSourceDetailsModal: true,
+        displayManagePermissionButton: false,
+        addDataButtonLabel: "Add / Remove data, manage permissions",
+      };
     case "github":
       return {
-        displayDataSourceDetailsModal: connectorProvider === "notion",
+        displayDataSourceDetailsModal: false,
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
       };
