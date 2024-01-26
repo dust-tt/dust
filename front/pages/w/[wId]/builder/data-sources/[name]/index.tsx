@@ -862,6 +862,7 @@ function ManagedDataSourceView({
         }}
         onClick={() => {
           if (displayManagePermissionButton) {
+          if (!displayManagePermissionButton) {
             setShowPermissionModal(true);
           } else {
             void handleUpdatePermissions();
