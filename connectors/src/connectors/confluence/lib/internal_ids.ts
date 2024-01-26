@@ -1,6 +1,6 @@
 enum ConfluenceInternalIdPrefix {
-  Space = "space_",
-  Page = "page_",
+  Space = "cspace_",
+  Page = "cpage_",
 }
 
 export function makeConfluenceInternalSpaceId(confluenceSpaceId: string) {

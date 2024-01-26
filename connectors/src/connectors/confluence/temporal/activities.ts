@@ -6,6 +6,8 @@ import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
+import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
+import { makeConfluenceInternalPageId } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
@@ -311,6 +313,18 @@ export async function confluenceUpsertPageActivity({
       `version:${page.version.number}`,
     ];
 
+    // Retrieve parents using the internal ID, which aligns with the permissions
+    // view rendering and RAG requirements.
+    const parents = [makeConfluenceInternalPageId(page.id)];
+    if (page.parentId) {
+      const parentIds = await getConfluencePageParentIds(connectorId, {
+        pageId: page.id,
+        parentId: page.parentId,
+        spaceId: page.spaceId,
+      });
+      parents.push(...parentIds);
+    }
+
     await upsertToDatasource({
       dataSourceConfig,
       delayBetweenRetriesMs: 500,
@@ -318,8 +332,7 @@ export async function confluenceUpsertPageActivity({
       documentId,
       documentUrl,
       loggerArgs,
-      // TODO(2024-01-18 flav) Add parent page internal id.
-      parents: [documentId],
+      parents,
       retries: 3,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
