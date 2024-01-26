@@ -261,7 +261,7 @@ export async function _upsertCollection({
     }
 
     const content =
-      "PARENT CATEGORY: " +
+      "CATEGORY: " +
       collection.description +
       "\nCONTENT: " +
       articleOnIntercom.body;
