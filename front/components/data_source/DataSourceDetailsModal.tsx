@@ -32,6 +32,8 @@ export default function DataSourceDetailsModal({
     return <></>;
   }
 
+  const { name: providerName } = CONNECTOR_CONFIGURATIONS[connectorProvider];
+
   return (
     <Modal
       isOpen={visible}
@@ -40,7 +42,7 @@ export default function DataSourceDetailsModal({
       hasChanged={false}
       variant="side-sm"
     >
-      <Page>
+      <Page variant="modal">
         <Page.Layout direction="vertical">
           <Page.Layout direction="horizontal" sizing="grow" gap="md">
             <Icon
@@ -49,7 +51,8 @@ export default function DataSourceDetailsModal({
               size="lg"
             />
             <Page.H variant="h5">
-              Edit {dataSource.connectorProvider}'s permissions
+              Edit {providerName}
+              's permissions
             </Page.H>
           </Page.Layout>
           <ContentMessage title="Important" variant="pink">
@@ -57,7 +60,7 @@ export default function DataSourceDetailsModal({
             data structure in Dust and Assistants using them. It is advise to
             use edit permission using{" "}
             <span className="font-bold">
-              the same <span className="capitalize">{connectorProvider}</span>{" "}
+              the same <span className="capitalize">{providerName}</span>{" "}
               Account.
             </span>
           </ContentMessage>
@@ -88,6 +91,7 @@ export default function DataSourceDetailsModal({
               icon={LockIcon}
               label="Change Permissions"
               onClick={onClick}
+              hasMagnifying={false}
             />
           </div>
         </Page.Layout>
