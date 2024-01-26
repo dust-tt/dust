@@ -18,6 +18,10 @@ import {
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  getHelpCenterCollectionIdFromInternalId,
+  getHelpCenterIdFromInternalId,
+} from "@connectors/connectors/intercom/lib/utils";
+import {
   launchIntercomSyncWorkflow,
   stopIntercomSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/client";
@@ -286,8 +290,14 @@ export async function setIntercomConnectorPermissions(
           )
         );
       }
-      if (id.startsWith("help_center_")) {
-        const helpCenterId = id.replace("help_center_", "");
+
+      const helpCenterId = getHelpCenterIdFromInternalId(connectorId, id);
+      const collectionId = getHelpCenterCollectionIdFromInternalId(
+        connectorId,
+        id
+      );
+
+      if (helpCenterId) {
         toBeSignaledHelpCenterIds.add(helpCenterId);
         if (permission === "none") {
           await revokeSyncHelpCenter({
@@ -304,8 +314,7 @@ export async function setIntercomConnectorPermissions(
             withChildren: true,
           });
         }
-      } else if (id.startsWith("collection_")) {
-        const collectionId = id.replace("collection_", "");
+      } else if (collectionId) {
         if (permission === "none") {
           const revokedCollection = await revokeSyncCollection({
             connector,

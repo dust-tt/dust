@@ -8,7 +8,11 @@ import {
   fetchIntercomCollections,
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
-import { getHelpCenterArticleDocumentId } from "@connectors/connectors/intercom/lib/utils";
+import {
+  getHelpCenterArticleInternalId,
+  getHelpCenterCollectionInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/intercom/lib/utils";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -130,8 +134,8 @@ export async function _deleteCollection({
   });
   await Promise.all(
     articles.map(async (article) => {
-      const dsArticleId = getHelpCenterArticleDocumentId(
-        article.intercomWorkspaceId,
+      const dsArticleId = getHelpCenterArticleInternalId(
+        connectorId,
         article.articleId
       );
       await Promise.all([
@@ -277,10 +281,19 @@ export async function _upsertCollection({
       updatedAt: new Date(articleOnIntercom.updated_at),
     });
 
+    // Parents in the Core datasource should map the internal ids that we use in the permission modal
+    // Parents of an article are all the collections above it and the help center
+    const parentsInternalsIds = articleOnIntercom.parent_ids.map((id) =>
+      getHelpCenterCollectionInternalId(connectorId, id)
+    );
+    parentsInternalsIds.push(
+      getHelpCenterInternalId(connectorId, collection.help_center_id)
+    );
+
     return upsertToDatasource({
       dataSourceConfig,
-      documentId: getHelpCenterArticleDocumentId(
-        articleOnIntercom.workspace_id,
+      documentId: getHelpCenterArticleInternalId(
+        connectorId,
         articleOnIntercom.id
       ),
       documentContent: articleContent,
@@ -291,7 +304,7 @@ export async function _upsertCollection({
         `createdAt:${articleOnIntercom.created_at}`,
         `updatedAt:${articleOnIntercom.updated_at}`,
       ],
-      parents: [...parents, collection.id],
+      parents: parentsInternalsIds,
       retries: 3,
       delayBetweenRetriesMs: 500,
       loggerArgs: {
