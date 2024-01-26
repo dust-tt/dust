@@ -58,7 +58,7 @@ async function _getParents(
       return parents;
     case "page":
     case "database": {
-      if (pageOrDbId in seen) {
+      if (seen.has(pageOrDbId)) {
         logger.error(
           {
             connectorId,
