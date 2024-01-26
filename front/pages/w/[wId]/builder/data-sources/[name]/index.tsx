@@ -861,11 +861,7 @@ function ManagedDataSourceView({
           setShowDataSourceDetailsModal(false);
         }}
         onClick={() => {
-          if (displayManagePermissionButton) {
-            setShowPermissionModal(true);
-          } else {
-            void handleUpdatePermissions();
-          }
+          void handleUpdatePermissions();
         }}
       />
       <ConnectorPermissionsModal
@@ -906,6 +902,8 @@ function ManagedDataSourceView({
               onClick={() => {
                 if (displayDataSourceDetailsModal) {
                   setShowDataSourceDetailsModal(true);
+                } else if (displayManagePermissionButton) {
+                  setShowPermissionModal(true);
                 } else {
                   void handleUpdatePermissions();
                 }
@@ -930,7 +928,10 @@ function ManagedDataSourceView({
                     icon={ListCheckIcon}
                     disabled={readOnly || !isAdmin}
                     onClick={() => {
-                      if (displayDataSourceDetailsModal) {
+                      if (
+                        !displayManagePermissionButton &&
+                        displayDataSourceDetailsModal
+                      ) {
                         setShowDataSourceDetailsModal(true);
                       } else if (displayManagePermissionButton) {
                         setShowPermissionModal(true);
