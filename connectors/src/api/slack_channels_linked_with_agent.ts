@@ -161,11 +161,7 @@ type GetSlackChannelsLinkedWithAgentResBody = WithConnectorsAPIErrorReponse<{
 }>;
 
 const _getSlackChannelsLinkedWithAgentHandler = async (
-  req: Request<
-    Record<string, string>,
-    { slackChannelIds: string[] },
-    undefined
-  >,
+  req: Request<Record<string, string>>,
   res: Response<GetSlackChannelsLinkedWithAgentResBody>
 ) => {
   const { connector_id: connectorId } = req.query;
