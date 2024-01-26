@@ -5,13 +5,13 @@ import { getApps } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetAppsResponseBody = WithAPIErrorReponse<{
+export type GetAppsResponseBody = {
   apps: AppType[];
-}>;
+};
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetAppsResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<GetAppsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
