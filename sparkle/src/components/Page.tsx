@@ -16,7 +16,7 @@ Page.defaultProps = {
 
 export function Page({ children, variant }: PageProps) {
   const mainVariantClasses =
-    variant === "normal" ? "s-h-full s-py-16" : "s-h-full s-py-6";
+    variant === "normal" ? "s-h-full s-py-16" : "s-h-full s-py-4";
   const divVariantClassNames =
     variant === "normal" ? "s-gap-6 s-px-6" : "s-gap-4";
 
