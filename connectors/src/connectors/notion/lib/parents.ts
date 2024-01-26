@@ -25,9 +25,11 @@ import logger from "@connectors/logger/logger";
 async function _getParents(
   connectorId: ModelId,
   pageOrDbId: string,
+  seen: Set<string>,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string
 ): Promise<string[]> {
+  logger.info({ connectorId, pageOrDbId }, "getParents");
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
     (await getNotionPageFromConnectorsDb(connectorId, pageOrDbId)) ||
@@ -56,12 +58,36 @@ async function _getParents(
       return parents;
     case "page":
     case "database": {
+      if (pageOrDbId in seen) {
+        logger.error(
+          {
+            connectorId,
+            pageOrDbId,
+            seen,
+            parentId: pageOrDb.parentId,
+          },
+          "getParents infinite loop"
+        );
+        throw new Error("getParent infinite loop detected");
+      }
+      seen.add(pageOrDbId);
+      if (!pageOrDb.parentId) {
+        logger.error(
+          {
+            connectorId,
+            pageOrDbId,
+            parentId: pageOrDb.parentId,
+          },
+          "getParents parentId is undefined"
+        );
+        throw new Error("getParent parentId is undefined");
+      }
       return parents.concat(
         // parentId cannot be undefined if parentType is page or database as per
         // Notion API
         //
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        await getParents(connectorId, pageOrDb.parentId!, memoizationKey)
+        await getParents(connectorId, pageOrDb.parentId, seen, memoizationKey)
       );
     }
     default:
@@ -71,7 +97,7 @@ async function _getParents(
 
 export const getParents = cacheWithRedis(
   _getParents,
-  (connectorId, pageOrDbId, memoizationKey) => {
+  (connectorId, pageOrDbId, seen, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
   60 * 10 * 1000
@@ -112,7 +138,12 @@ export async function updateAllParentsFields(
   for (const pageId of pageIdsToUpdate) {
     promises.push(
       q.add(async () => {
-        const parents = await getParents(connectorId, pageId, memoizationKey);
+        const parents = await getParents(
+          connectorId,
+          pageId,
+          new Set(),
+          memoizationKey
+        );
         logger.info(
           {
             connectorId,

@@ -496,7 +496,12 @@ export async function retrieveNotionResourceParents(
   const memo = memoizationKey || uuidv4();
 
   try {
-    const parents = await getParents(connectorId, internalId, memo);
+    const parents = await getParents(
+      connectorId,
+      internalId,
+      new Set<string>(),
+      memo
+    );
 
     return new Ok(parents);
   } catch (e) {
