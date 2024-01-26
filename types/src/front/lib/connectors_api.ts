@@ -408,11 +408,11 @@ export class ConnectorsAPI {
         message: `Unexpected response format from ConnectorsAPI: ${error}`,
       };
       this._logger.error(
-        { error: err, parseError: error, status: response.status },
+        { connectorsError: err, parseError: error, status: response.status },
         "ConnectorsAPI error"
       );
       this._logger.error(
-        { error: err, parseError: error, status: response.status },
+        { connectorsError: err, parseError: error, status: response.status },
         `ConnectorsAPI error, raw response text: ${text}`
       );
       return new Err(err);
@@ -425,7 +425,7 @@ export class ConnectorsAPI {
 
         if (isConnectorsAPIError(err)) {
           this._logger.error(
-            { error: err, status: response.status },
+            { connectorsError: err, status: response.status },
             "ConnectorsAPI error"
           );
           return new Err(err);
@@ -435,7 +435,7 @@ export class ConnectorsAPI {
             message: "Unexpected error format from ConnectorAPI",
           };
           this._logger.error(
-            { error: err, json, status: response.status },
+            { connectorsError: err, json, status: response.status },
             "ConnectorsAPI error"
           );
           return new Err(err);
