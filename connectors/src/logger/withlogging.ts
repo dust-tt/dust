@@ -1,5 +1,5 @@
 import type {
-  ConnnectorsAPIErrorWithStatusCode,
+  ConnectorsAPIErrorWithStatusCode,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
@@ -77,7 +77,7 @@ export const withLogging = (handler: any) => {
 export function apiError<T>(
   req: Request,
   res: Response<WithConnectorsAPIErrorReponse<T>>,
-  apiError: ConnnectorsAPIErrorWithStatusCode,
+  apiError: ConnectorsAPIErrorWithStatusCode,
   error?: Error
 ): void {
   logger.error(

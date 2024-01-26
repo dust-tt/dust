@@ -23,7 +23,7 @@ export type ConnectorsAPIErrorResponse = {
   error: ConnectorsAPIError;
 };
 
-export type ConnnectorsAPIErrorWithStatusCode = {
+export type ConnectorsAPIErrorWithStatusCode = {
   api_error: ConnectorsAPIError;
   status_code: number;
 };
