@@ -1788,6 +1788,7 @@ export async function renderAndUpsertPageFromCache({
     const parents = await getParents(
       connectorId,
       pageId,
+      new Set<string>(),
       runTimestamp.toString()
     );
 
