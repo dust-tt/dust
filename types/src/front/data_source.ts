@@ -15,6 +15,12 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
 
+interface EditedByUser {
+  fullName: string | null;
+  pictureUrl: string | null;
+  editedAt: number | null;
+}
+
 export type DataSourceType = {
   id: ModelId;
   name: string;
@@ -23,4 +29,5 @@ export type DataSourceType = {
   dustAPIProjectId: string;
   connectorId: string | null;
   connectorProvider: ConnectorProvider | null;
+  editedByUser?: EditedByUser | null;
 };

@@ -31,6 +31,7 @@ import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import DataSourceDetailsModal from "@app/components/data_source/DataSourceDetailsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -95,7 +96,10 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string, {
+    includeEditedBy: true,
+  });
+
   if (!dataSource) {
     return {
       notFound: true,
@@ -643,6 +647,7 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
 };
 
 interface ConnectorUiConfig {
+  displayDataSourceDetailsModal: boolean;
   displayManagePermissionButton: boolean;
   addDataButtonLabel: string | null;
 }
@@ -656,17 +661,22 @@ function getRenderingConfigForConnectorProvider(
     case "slack":
     case "intercom":
       return {
+        displayDataSourceDetailsModal: ["confluence", "google_drive"].includes(
+          connectorProvider
+        ),
         displayManagePermissionButton: true,
         addDataButtonLabel: "Add / Remove data",
       };
     case "notion":
     case "github":
       return {
+        displayDataSourceDetailsModal: connectorProvider === "notion",
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
       };
     case "webcrawler":
       return {
+        displayDataSourceDetailsModal: false,
         displayManagePermissionButton: false,
         addDataButtonLabel: null,
       };
@@ -706,6 +716,8 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showDataSourceDetailsModal, setShowDataSourceDetailsModal] =
+    useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -822,11 +834,28 @@ function ManagedDataSourceView({
     };
   };
 
-  const { displayManagePermissionButton, addDataButtonLabel } =
-    getRenderingConfigForConnectorProvider(connectorProvider);
+  const {
+    displayDataSourceDetailsModal,
+    displayManagePermissionButton,
+    addDataButtonLabel,
+  } = getRenderingConfigForConnectorProvider(connectorProvider);
 
   return (
     <>
+      <DataSourceDetailsModal
+        dataSource={dataSource}
+        visible={showDataSourceDetailsModal}
+        onClose={() => {
+          setShowDataSourceDetailsModal(false);
+        }}
+        onClick={() => {
+          if (displayManagePermissionButton) {
+            setShowPermissionModal(true);
+          } else {
+            void handleUpdatePermissions();
+          }
+        }}
+      />
       <ConnectorPermissionsModal
         owner={owner}
         connector={connector}
@@ -863,7 +892,11 @@ function ManagedDataSourceView({
               icon={LockIcon}
               disabled={readOnly || !isAdmin}
               onClick={() => {
-                void handleUpdatePermissions();
+                if (displayDataSourceDetailsModal) {
+                  setShowDataSourceDetailsModal(true);
+                } else {
+                  void handleUpdatePermissions();
+                }
               }}
             />
           ) : (
@@ -885,7 +918,9 @@ function ManagedDataSourceView({
                     icon={ListCheckIcon}
                     disabled={readOnly || !isAdmin}
                     onClick={() => {
-                      if (displayManagePermissionButton) {
+                      if (displayDataSourceDetailsModal) {
+                        setShowDataSourceDetailsModal(true);
+                      } else if (displayManagePermissionButton) {
                         setShowPermissionModal(true);
                       } else {
                         void handleUpdatePermissions();
