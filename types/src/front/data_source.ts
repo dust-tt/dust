@@ -16,9 +16,9 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
 }
 
 interface EditedByUser {
-  fullName: string | null;
-  pictureUrl: string | null;
   editedAt: number | null;
+  fullName: string | null;
+  imageUrl: string | null;
 }
 
 export type DataSourceType = {

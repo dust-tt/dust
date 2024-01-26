@@ -26,7 +26,7 @@ export default function DataSourceDetailsModal({
   visible,
 }: DataSourceDetailsModalProps) {
   const { connectorProvider, editedByUser } = dataSource;
-  const { editedAt, fullName, pictureUrl } = editedByUser ?? {};
+  const { editedAt, fullName, imageUrl } = editedByUser ?? {};
 
   if (!connectorProvider) {
     return <></>;
@@ -67,7 +67,7 @@ export default function DataSourceDetailsModal({
               <Page.Layout direction="horizontal" sizing="grow" gap="md">
                 <Avatar
                   name={fullName ?? undefined}
-                  visual={pictureUrl}
+                  visual={imageUrl}
                   size="sm"
                 />
                 <Page.Layout direction="vertical" sizing="grow" gap="md">

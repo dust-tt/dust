@@ -31,7 +31,7 @@ function makeEditedBy(
     editedByUser: {
       editedAt: editedAt.getTime(),
       fullName: formatUserFullName(editedByUser),
-      pictureUrl: editedByUser.imageUrl,
+      imageUrl: editedByUser.imageUrl,
     },
   };
 }
