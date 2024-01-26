@@ -1,9 +1,9 @@
 import type {
   ConnectorPermission,
   ConnectorResource,
+  ConnectorsAPIError,
   ModelId,
 } from "@dust-tt/types";
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
@@ -119,7 +119,7 @@ export async function updateConfluenceConnector(
   }: {
     connectionId?: NangoConnectionId | null;
   }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+): Promise<Result<string, ConnectorsAPIError>> {
   const connector = await Connector.findOne({
     where: {
       id: connectorId,
@@ -128,10 +128,8 @@ export async function updateConfluenceConnector(
   if (!connector) {
     logger.error({ connectorId }, "Connector not found.");
     return new Err({
-      error: {
-        message: "Connector not found",
-        type: "connector_not_found",
-      },
+      message: "Connector not found",
+      type: "connector_not_found",
     });
   }
 
@@ -177,10 +175,8 @@ export async function updateConfluenceConnector(
       );
 
       return new Err({
-        error: {
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Notion connector",
-        },
+        type: "connector_oauth_target_mismatch",
+        message: "Cannot change the workspace of a Notion connector",
       });
     }
   }

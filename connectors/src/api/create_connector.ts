@@ -4,6 +4,7 @@ import type {
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
   Result,
+  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -24,9 +25,8 @@ import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
+type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 
 const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
   {

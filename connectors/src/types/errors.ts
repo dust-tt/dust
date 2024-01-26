@@ -1,10 +1,3 @@
-export type ConnectorsAPIErrorResponse = {
-  error: {
-    message: string;
-    type?: string;
-  };
-};
-
 export function isScheduleAlreadyRunning(err: unknown) {
   return (
     typeof err === "object" &&

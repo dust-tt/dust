@@ -208,10 +208,10 @@ export async function deleteDataSource(
     if (connDeleteRes.isErr()) {
       // If we get a not found we proceed with the deletion of the data source. This will enable
       // us to retry deletion of the data source if it fails at the Core level.
-      if (connDeleteRes.error.error.type !== "connector_not_found") {
+      if (connDeleteRes.error.type !== "connector_not_found") {
         return new Err({
           type: "internal_server_error",
-          message: `Error deleting connector: ${connDeleteRes.error.error.message}`,
+          message: `Error deleting connector`,
           connectors_error: connDeleteRes.error,
         });
       }

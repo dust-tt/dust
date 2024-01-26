@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -32,7 +32,6 @@ import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type {
   ConnectorPermission,
@@ -127,7 +126,7 @@ export async function updateSlackConnector(
   }: {
     connectionId?: string | null;
   }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+): Promise<Result<string, ConnectorsAPIError>> {
   if (!NANGO_SLACK_CONNECTOR_ID) {
     throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
   }
@@ -140,10 +139,8 @@ export async function updateSlackConnector(
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
-      error: {
-        message: "Connector not found",
-        type: "connector_not_found",
-      },
+      message: "Connector not found",
+      type: "connector_not_found",
     });
   }
 
@@ -155,10 +152,8 @@ export async function updateSlackConnector(
   if (!currentSlackConfig) {
     logger.error({ connectorId }, "Slack configuration not found");
     return new Err({
-      error: {
-        message: "Slack configuration not found",
-        type: "connector_not_found",
-      },
+      message: "Slack configuration not found",
+      type: "connector_not_found",
     });
   }
 
@@ -170,9 +165,8 @@ export async function updateSlackConnector(
     const teamInfoRes = await slackClient.team.info();
     if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
       return new Err({
-        error: {
-          message: "Can't get the Slack team information.",
-        },
+        type: "internal_server_error",
+        message: "Can't get the Slack team information.",
       });
     }
 
@@ -198,9 +192,8 @@ export async function updateSlackConnector(
 
         if (uninstallRes.isErr()) {
           return new Err({
-            error: {
-              message: "Failed to deactivate the mismatching Slack app",
-            },
+            type: "internal_server_error",
+            message: "Failed to deactivate the mismatching Slack app",
           });
         }
         logger.info(
@@ -222,10 +215,8 @@ export async function updateSlackConnector(
       }
 
       return new Err({
-        error: {
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the Slack Team of a Data Source",
-        },
+        type: "connector_oauth_target_mismatch",
+        message: "Cannot change the Slack Team of a Data Source",
       });
     }
 

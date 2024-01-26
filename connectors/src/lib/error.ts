@@ -1,26 +1,3 @@
-export type APIErrorType =
-  | "internal_server_error"
-  | "unknown_connector_provider"
-  | "invalid_request_error"
-  | "connector_not_found"
-  | "connector_configuration_not_found"
-  | "connector_update_error"
-  | "connector_update_unauthorized"
-  | "connector_oauth_target_mismatch"
-  | "not_found"
-  | "slack_channel_not_found"
-  | "connector_rate_limit_error";
-
-export type APIError = {
-  type: APIErrorType;
-  message: string;
-};
-
-export type APIErrorWithStatusCode = {
-  api_error: APIError;
-  status_code: number;
-};
-
 // JS cannot give you any guarantee about the shape of an error you `catch`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {

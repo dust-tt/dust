@@ -1,8 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 
 import type { Result } from "@connectors/lib/result";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import type {
   ConnectorPermission,
   ConnectorResource,
@@ -23,7 +22,7 @@ export type ConnectorUpdater = (
   params: {
     connectionId?: string | null;
   }
-) => Promise<Result<string, ConnectorsAPIErrorResponse>>;
+) => Promise<Result<string, ConnectorsAPIError>>;
 
 export type ConnectorStopper = (
   connectorId: string

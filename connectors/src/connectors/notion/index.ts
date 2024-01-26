@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
@@ -23,7 +23,6 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type { ConnectorResource } from "@connectors/types/resources";
 
@@ -87,7 +86,7 @@ export async function updateNotionConnector(
   }: {
     connectionId?: NangoConnectionId | null;
   }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+): Promise<Result<string, ConnectorsAPIError>> {
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -96,10 +95,8 @@ export async function updateNotionConnector(
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
-      error: {
-        message: "Connector not found",
-        type: "connector_not_found",
-      },
+      message: "Connector not found",
+      type: "connector_not_found",
     });
   }
 
@@ -122,18 +119,14 @@ export async function updateNotionConnector(
 
     if (!workspaceId || !newWorkspaceId) {
       return new Err({
-        error: {
-          type: "connector_update_error",
-          message: "Error retrieving nango connection info to update connector",
-        },
+        type: "connector_update_error",
+        message: "Error retrieving nango connection info to update connector",
       });
     }
     if (workspaceId !== newWorkspaceId) {
       return new Err({
-        error: {
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Notion connector",
-        },
+        type: "connector_oauth_target_mismatch",
+        message: "Cannot change workspace of a Notion connector",
       });
     }
 

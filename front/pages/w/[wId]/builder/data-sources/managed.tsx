@@ -134,7 +134,7 @@ export const getServerSideProps: GetServerSideProps<{
             provider: mds.connectorProvider,
             connector: null,
             fetchConnectorError: true,
-            fetchConnectorErrorMessage: statusRes.error.error.message,
+            fetchConnectorErrorMessage: statusRes.error.message,
           };
         }
         return {

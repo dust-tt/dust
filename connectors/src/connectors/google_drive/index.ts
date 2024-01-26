@@ -20,7 +20,6 @@ import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import type {
   ConnectorPermission,
   ConnectorResource,
@@ -42,7 +41,7 @@ import {
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
-import type { ModelId } from "@dust-tt/types";
+import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 const {
@@ -161,7 +160,7 @@ export async function updateGoogleDriveConnector(
   }: {
     connectionId?: NangoConnectionId | null;
   }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+): Promise<Result<string, ConnectorsAPIError>> {
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID not set");
   }
@@ -174,10 +173,8 @@ export async function updateGoogleDriveConnector(
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
-      error: {
-        message: "Connector not found",
-        type: "connector_not_found",
-      },
+      message: "Connector not found",
+      type: "connector_not_found",
     });
   }
 
@@ -203,19 +200,15 @@ export async function updateGoogleDriveConnector(
 
       if (!currentDriveUserDomain || !newDriveUserDomain) {
         return new Err({
-          error: {
-            type: "connector_update_error",
-            message: "Error retrieving google drive info to update connector",
-          },
+          type: "connector_update_error",
+          message: "Error retrieving google drive info to update connector",
         });
       }
 
       if (currentDriveUserDomain !== newDriveUserDomain) {
         return new Err({
-          error: {
-            type: "connector_oauth_target_mismatch",
-            message: "Cannot change domain of a Google Drive connector",
-          },
+          type: "connector_oauth_target_mismatch",
+          message: "Cannot change domain of a Google Drive connector",
         });
       }
     } catch (e) {

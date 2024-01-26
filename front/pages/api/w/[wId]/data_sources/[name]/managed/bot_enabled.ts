@@ -85,7 +85,8 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "data_source_error",
-            message: `Failed to retrieve bot enablement: ${botEnabledRes.error.error.message}`,
+            message: `Failed to retrieve bot enablement settings.`,
+            connectors_error: botEnabledRes.error,
           },
         });
       }
@@ -130,7 +131,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: setBotEnabledRes.error.error.message,
+            message: "Failed to edit the (bot) permissions of the data source.",
+            connectors_error: setBotEnabledRes.error,
           },
         });
       }

@@ -1,13 +1,15 @@
-import type { ConnectorType } from "@dust-tt/types";
+import type {
+  ConnectorType,
+  WithConnectorsAPIErrorReponse,
+} from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { Connector } from "@connectors/lib/models";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type GetConnectorRes = ConnectorType | ConnectorsAPIErrorResponse;
+type GetConnectorRes = WithConnectorsAPIErrorReponse<ConnectorType>;
 
 const _getConnector = async (
   req: Request<{ connector_id: string }, GetConnectorRes, undefined>,
