@@ -87,6 +87,7 @@ async function handler(
           api_error: {
             type: "internal_server_error",
             message: `Error tokenizing text: ${coreTokenizeRes.error.message}`,
+            data_source_error: coreTokenizeRes.error,
           },
         });
       }

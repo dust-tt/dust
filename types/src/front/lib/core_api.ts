@@ -29,11 +29,23 @@ export const EMBEDDING_CONFIG = {
   max_chunk_size: 512,
 };
 
-export type CoreAPIErrorResponse = {
+export type CoreAPIError = {
   message: string;
   code: string;
 };
-export type CoreAPIResponse<T> = Result<T, CoreAPIErrorResponse>;
+
+export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "code" in obj &&
+    typeof obj.code === "string"
+  );
+}
+
+export type CoreAPIResponse<T> = Result<T, CoreAPIError>;
 
 export type CoreAPIDatasetVersion = {
   hash: string;
@@ -1058,23 +1070,77 @@ export class CoreAPI {
   private async _resultFromResponse<T>(
     response: Response
   ): Promise<CoreAPIResponse<T>> {
-    try {
-      const jsonResponse = await response.json();
+    const parseError = async (response: Response, error: SyntaxError) => {
+      const text = await response.text();
 
-      if (jsonResponse.error) {
-        return new Err(jsonResponse.error);
-      }
-      return new Ok(jsonResponse.response);
-    } catch (err) {
-      const rawResponse = await response.text();
-
-      const message = `Dust Core API responded with status: ${response.status}.`;
+      const err: CoreAPIError = {
+        code: "unexpected_response_format",
+        message: `Unexpected response format from CoreAPI: ${error}`,
+      };
       this._logger.error(
-        { status: response.status, response: rawResponse },
-        message
+        { error: err, parseError: error, status: response.status },
+        "CoreAPI error"
       );
+      this._logger.error(
+        { error: err, parseError: error, status: response.status },
+        `CoreAPI error, raw response text: ${text}`
+      );
+      return new Err(err);
+    };
 
-      return new Err({ code: response.status.toString(), message });
+    if (!response.ok) {
+      try {
+        const json = await response.json();
+        const err = json?.error;
+
+        if (isCoreAPIError(err)) {
+          this._logger.error(
+            { error: err, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        } else {
+          const err: CoreAPIError = {
+            code: "unexpected_error_format",
+            message: "Unexpected error format from CoreAPI",
+          };
+          this._logger.error(
+            { error: err, json, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        }
+      } catch (e) {
+        return parseError(response, e as SyntaxError);
+      }
+    } else {
+      try {
+        const json = await response.json();
+        const err = json?.error;
+        const res = json?.response;
+
+        if (err && isCoreAPIError(err)) {
+          this._logger.error(
+            { error: err, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        } else if (res) {
+          return new Ok(res);
+        } else {
+          const err: CoreAPIError = {
+            code: "unexpected_response_format",
+            message: "Unexpected response format from CoreAPI",
+          };
+          this._logger.error(
+            { error: err, json, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        }
+      } catch (e) {
+        return parseError(response, e as SyntaxError);
+      }
     }
   }
 }
