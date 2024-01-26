@@ -34,7 +34,9 @@ export function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
-    typeof (obj as ConnectorsAPIError).message === "string" &&
-    typeof (obj as ConnectorsAPIError).type === "string"
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "type" in obj &&
+    typeof obj.type === "string"
   );
 }
