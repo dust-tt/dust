@@ -1,9 +1,9 @@
+import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import crypto from "crypto";
 import type { NextFunction, Request, Response } from "express";
 
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 const {
   DUST_CONNECTORS_SECRET,
@@ -41,6 +41,7 @@ const _authMiddlewareAPI = (
   if (!req.headers["authorization"]) {
     res.status(401).send({
       error: {
+        type: "authorization_error",
         message: "Missing Authorization header",
       },
     });
@@ -49,21 +50,31 @@ const _authMiddlewareAPI = (
   const authorization = req.headers["authorization"];
   if (typeof authorization !== "string") {
     return res.status(401).send({
-      error: { message: "Invalid Authorization header. Should be a string" },
+      error: {
+        type: "authorization_error",
+        message: "Invalid Authorization header. Should be a string",
+      },
     });
   }
 
   if (authorization.split(" ")[0] !== "Bearer") {
-    return res
-      .status(401)
-      .send({ error: { message: "Invalid Authorization header" } });
+    return res.status(401).send({
+      error: {
+        type: "authorization_error",
+        message: "Invalid Authorization header",
+      },
+    });
   }
   const secret = authorization.split(" ")[1];
   if (!secret) {
-    return res.status(401).send({ error: { message: "Missing API key" } });
+    return res.status(401).send({
+      error: { type: "authorization_error", message: "Missing API key" },
+    });
   }
   if (secret !== DUST_CONNECTORS_SECRET) {
-    return res.status(401).send({ error: { message: "Invalid API key" } });
+    return res.status(401).send({
+      error: { type: "authorization_error", message: "Invalid API key" },
+    });
   }
   next();
 };
@@ -79,6 +90,7 @@ const _authMiddlewareWebhooks = (
     if (parts.includes(DUST_CONNECTORS_WEBHOOKS_SECRET) === false) {
       return res.status(401).send({
         error: {
+          type: "authorization_error",
           message: "Invalid webhook secret",
         },
       });
@@ -143,7 +155,7 @@ const _authMiddlewareWebhooksGithub = (
     );
     return apiError(req, res, {
       api_error: {
-        type: "not_found",
+        type: "connector_not_found",
         message: "Not found.",
       },
       status_code: 404,

@@ -1,3 +1,4 @@
+import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
@@ -5,7 +6,6 @@ import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorResumeResBody =
   | { connectorId: string }

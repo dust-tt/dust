@@ -1,3 +1,4 @@
+import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -23,7 +24,7 @@ type PatchSlackChannelsLinkedWithAgentReqBody = t.TypeOf<
 
 type PatchSlackChannelsLinkedWithAgentResBody =
   | { success: true }
-  | APIErrorWithStatusCode;
+  | ConnectorsAPIErrorResponse;
 
 const _patchSlackChannelsLinkedWithAgentHandler = async (
   req: Request<
@@ -160,7 +161,7 @@ type GetSlackChannelsLinkedWithAgentResBody =
         agentConfigurationId: string;
       }[];
     }
-  | APIErrorWithStatusCode;
+  | ConnectorsAPIErrorResponse;
 
 const _getSlackChannelsLinkedWithAgentHandler = async (
   req: Request<

@@ -1,3 +1,4 @@
+import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import {
@@ -7,7 +8,6 @@ import {
 import { Connector } from "@connectors/lib/models";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorDeleteReqBody = {
   dataSourceName: string;

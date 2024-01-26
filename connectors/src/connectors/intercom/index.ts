@@ -1,4 +1,9 @@
-import type { ConnectorPermission, ModelId, Result } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ConnectorsAPIError,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -28,7 +33,6 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type { ConnectorResource } from "@connectors/types/resources";
 
@@ -70,7 +74,7 @@ export async function updateIntercomConnector(
   }: {
     connectionId?: NangoConnectionId | null;
   }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+): Promise<Result<string, ConnectorsAPIError>> {
   if (!NANGO_INTERCOM_CONNECTOR_ID) {
     throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
   }
@@ -79,10 +83,8 @@ export async function updateIntercomConnector(
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err({
-      error: {
-        message: "Connector not found",
-        type: "connector_not_found",
-      },
+      message: "Connector not found",
+      type: "connector_not_found",
     });
   }
 
@@ -99,10 +101,8 @@ export async function updateIntercomConnector(
 
     if (!oldIntercomWorkspaceId || !newIntercomWorkspaceId) {
       return new Err({
-        error: {
-          type: "connector_update_error",
-          message: "Error retrieving nango connection info to update connector",
-        },
+        type: "connector_update_error",
+        message: "Error retrieving nango connection info to update connector",
       });
     }
     if (oldIntercomWorkspaceId !== newIntercomWorkspaceId) {
@@ -115,10 +115,8 @@ export async function updateIntercomConnector(
         }
       );
       return new Err({
-        error: {
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change workspace of a Notion connector",
-        },
+        type: "connector_oauth_target_mismatch",
+        message: "Cannot change workspace of a Notion connector",
       });
     }
 
