@@ -57,7 +57,7 @@ export default function DataSourceDetailsModal({
           </Page.Layout>
           <ContentMessage title="Important" variant="pink">
             <span className="font-bold">Editing</span> can break the existing
-            data structure in Dust and Assistants using them. It is advise to
+            data structure in Dust and Assistants using them. It is advised to
             use edit permission using{" "}
             <span className="font-bold">
               the same <span className="capitalize">{providerName}</span>{" "}
