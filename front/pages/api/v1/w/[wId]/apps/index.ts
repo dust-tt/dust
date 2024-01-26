@@ -1,18 +1,17 @@
-import type { AppType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { AppType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApps } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetAppsResponseBody = {
+export type GetAppsResponseBody = WithAPIErrorReponse<{
   apps: AppType[];
-};
+}>;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetAppsResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<GetAppsResponseBody>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

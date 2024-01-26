@@ -1,3 +1,4 @@
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { GoogleAuth } from "google-auth-library";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,7 +11,7 @@ export type GetProvidersCheckResponseBody =
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetProvidersCheckResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<GetProvidersCheckResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,4 @@
-import type { AgentUserListStatus } from "@dust-tt/types";
+import type { AgentUserListStatus, WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -25,7 +25,7 @@ export type PostAgentListStatusRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostAgentListStatusResponseBody | { success: boolean }>
+  res: NextApiResponse<WithAPIErrorReponse<PostAgentListStatusResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

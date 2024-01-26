@@ -60,10 +60,6 @@ export type APIError = {
   connectors_error?: ConnectorsAPIError;
 };
 
-export type ReturnedAPIErrorType = {
-  error: APIError;
-};
-
 /**
  * Type to transport a HTTP error with its http status code (eg: 404)
  * and the error object returned by our public API endpoints (api/v1/*)
@@ -72,3 +68,9 @@ export type APIErrorWithStatusCode = {
   api_error: APIError;
   status_code: number;
 };
+
+export type ReturnedAPIErrorType = {
+  error: APIError;
+};
+
+export type WithAPIErrorReponse<T> = T | ReturnedAPIErrorType;

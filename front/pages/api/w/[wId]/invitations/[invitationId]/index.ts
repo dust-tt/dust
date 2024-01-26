@@ -1,4 +1,7 @@
-import type { MembershipInvitationType } from "@dust-tt/types";
+import type {
+  MembershipInvitationType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -11,7 +14,7 @@ export type GetMemberInvitationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetMemberInvitationsResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<GetMemberInvitationsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,4 @@
-import type { CoreAPIRow } from "@dust-tt/types";
+import type { CoreAPIRow, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -42,7 +42,9 @@ type ListTableRowsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<UpsertTableRowsResponseBody | ListTableRowsResponseBody>
+  res: NextApiResponse<
+    WithAPIErrorReponse<UpsertTableRowsResponseBody | ListTableRowsResponseBody>
+  >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
