@@ -6,7 +6,7 @@ import {
   SparklesIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { CoreAPIError, UserType, WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
   BlockRunConfig,
@@ -15,7 +15,6 @@ import type {
 } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { BlockType } from "@dust-tt/types";
-import type { CoreAPIErrorResponse } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -162,7 +161,7 @@ export default function AppView({
   );
   const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
   const [runRequested, setRunRequested] = useState(false);
-  const [runError, setRunError] = useState(null as null | CoreAPIErrorResponse);
+  const [runError, setRunError] = useState(null as null | CoreAPIError);
 
   const { run } = useSavedRunStatus(owner, app, (data) => {
     if (data && data.run) {
@@ -286,8 +285,8 @@ export default function AppView({
       ]);
 
       if (!runRes.ok) {
-        const error: ReturnedAPIErrorType = await runRes.json();
-        setRunError(error.error.run_error as CoreAPIErrorResponse);
+        const r: ReturnedAPIErrorType = await runRes.json();
+        setRunError(r.error.run_error as CoreAPIError);
       } else {
         setRunError(null);
         const [run] = await Promise.all([runRes.json()]);

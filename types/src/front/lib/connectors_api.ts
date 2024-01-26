@@ -405,7 +405,7 @@ export class ConnectorsAPI {
 
       const err: ConnectorsAPIError = {
         type: "unexpected_response_format",
-        message: `Unexpected response format from ConnectorAPI: ${error}`,
+        message: `Unexpected response format from ConnectorsAPI: ${error}`,
       };
       this._logger.error(
         { error: err, parseError: error, status: response.status },
@@ -426,7 +426,7 @@ export class ConnectorsAPI {
         if (isConnectorsAPIError(err)) {
           this._logger.error(
             { error: err, status: response.status },
-            "ConnectorAPI error"
+            "ConnectorsAPI error"
           );
           return new Err(err);
         } else {
@@ -443,13 +443,13 @@ export class ConnectorsAPI {
       } catch (e) {
         return parseError(response, e as SyntaxError);
       }
-    }
-
-    try {
-      const json = await response.json();
-      return new Ok(json);
-    } catch (e) {
-      return parseError(response, e as SyntaxError);
+    } else {
+      try {
+        const json = await response.json();
+        return new Ok(json);
+      } catch (e) {
+        return parseError(response, e as SyntaxError);
+      }
     }
   }
 }
