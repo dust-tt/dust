@@ -31,3 +31,11 @@ export const ContentExampleMultiLine = () => (
     </ContentMessage>
   </div>
 );
+
+export const ContentExamplePink = () => (
+  <div className="s-flex s-flex-col s-gap-4">
+    <ContentMessage title="This is a title" variant="pink">
+      This is a message. It can be multiple lines long.
+    </ContentMessage>
+  </div>
+);
