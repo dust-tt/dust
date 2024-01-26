@@ -8,7 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getDataSource,
-  updateDataSourceConnectedBy,
+  updateDataSourceEditedBy,
 } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -128,7 +128,7 @@ async function handler(
         }
       }
 
-      await updateDataSourceConnectedBy(auth, dataSource);
+      await updateDataSourceEditedBy(auth, dataSource);
 
       res.status(200).json(updateRes.value);
       return;

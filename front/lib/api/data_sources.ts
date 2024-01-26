@@ -4,18 +4,44 @@ import type {
   DataSourceType,
   Result,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+} from "@dust-tt/types";
 
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
-import { DataSource } from "@app/lib/models";
+import { DataSource, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
+function makeEditedBy(
+  editedByUser: User | undefined,
+  editedAt: Date | undefined
+) {
+  if (!editedByUser || !editedAt) {
+    return undefined;
+  }
+
+  return {
+    editedByUser: {
+      editedAt: editedAt.getTime(),
+      fullName: formatUserFullName(editedByUser),
+      imageUrl: editedByUser.imageUrl,
+    },
+  };
+}
+
 export async function getDataSource(
   auth: Authenticator,
-  name: string
+  name: string,
+  { includeEditedBy }: { includeEditedBy: boolean } = {
+    includeEditedBy: false,
+  }
 ): Promise<DataSourceType | null> {
   const owner = auth.workspace();
 
@@ -26,11 +52,23 @@ export async function getDataSource(
     return null;
   }
 
+  const includes = includeEditedBy
+    ? {
+        include: [
+          {
+            model: User,
+            as: "editedByUser",
+          },
+        ],
+      }
+    : undefined;
+
   const dataSource = await DataSource.findOne({
     where: {
       workspaceId: owner.id,
       name,
     },
+    ...includes,
   });
 
   if (!dataSource) {
@@ -45,6 +83,7 @@ export async function getDataSource(
     connectorId: dataSource.connectorId,
     connectorProvider: dataSource.connectorProvider,
     assistantDefaultSelected: dataSource.assistantDefaultSelected,
+    ...makeEditedBy(dataSource.editedByUser, dataSource.editedAt),
   };
 }
 
@@ -80,7 +119,7 @@ export async function getDataSources(
   });
 }
 
-export async function updateDataSourceConnectedBy(
+export async function updateDataSourceEditedBy(
   auth: Authenticator,
   dataSource: DataSourceType
 ): Promise<Result<undefined, APIError>> {
