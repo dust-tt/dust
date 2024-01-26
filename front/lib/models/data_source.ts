@@ -101,13 +101,6 @@ DataSource.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-User.hasMany(DataSource, {
-  as: "dataSources",
-  // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
-  foreignKey: { name: "workspaceId", allowNull: true },
-  // /!\ We don't want to delete the data source when a user gets deleted.
-  onDelete: "SET NULL",
-});
 DataSource.belongsTo(User, {
   as: "editedByUser",
   // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
