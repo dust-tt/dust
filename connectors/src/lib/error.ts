@@ -1,10 +1,3 @@
-import type { ConnectorsAPIError } from "@dust-tt/types";
-
-export type APIErrorWithStatusCode = {
-  api_error: ConnectorsAPIError;
-  status_code: number;
-};
-
 // JS cannot give you any guarantee about the shape of an error you `catch`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {

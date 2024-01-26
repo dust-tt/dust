@@ -1,3 +1,4 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
@@ -7,7 +8,6 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
 import { Ok } from "@connectors/lib/result";
@@ -35,10 +35,9 @@ type SlackWebhookReqBody = {
   };
 };
 
-type SlackWebhookResBody =
-  | { challenge: string }
-  | null
-  | APIErrorWithStatusCode;
+type SlackWebhookResBody = WithConnectorsAPIErrorReponse<{
+  challenge: string;
+} | null>;
 
 async function handleChatBot(req: Request, res: Response, logger: Logger) {
   const { event } = req.body;
@@ -399,7 +398,6 @@ const _webhookSlackAPIHandler = async (
           );
           return res.status(200).send();
         }
-        break;
       }
     }
 

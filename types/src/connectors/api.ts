@@ -23,6 +23,13 @@ export type ConnectorsAPIErrorResponse = {
   error: ConnectorsAPIError;
 };
 
+export type ConnnectorsAPIErrorWithStatusCode = {
+  api_error: ConnectorsAPIError;
+  status_code: number;
+};
+
+export type WithConnectorsAPIErrorReponse<T> = T | ConnectorsAPIErrorResponse;
+
 export function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
   return (
     typeof obj === "object" &&

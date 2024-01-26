@@ -1,4 +1,4 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import {
@@ -14,7 +14,7 @@ type ConnectorDeleteReqBody = {
   workspaceId: string;
 };
 
-type ConnectorDeleteResBody = { success: true } | ConnectorsAPIErrorResponse;
+type ConnectorDeleteResBody = WithConnectorsAPIErrorReponse<{ success: true }>;
 
 const _deleteConnectorAPIHandler = async (
   req: Request<

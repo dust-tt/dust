@@ -1,4 +1,4 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
@@ -9,9 +9,9 @@ import type {
   ConnectorResource,
 } from "@connectors/types/resources";
 
-type GetConnectorPermissionsRes =
-  | { resources: ConnectorResource[] }
-  | ConnectorsAPIErrorResponse;
+type GetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
+  resources: ConnectorResource[];
+}>;
 
 const _getConnectorPermissions = async (
   req: Request<{ connector_id: string }, GetConnectorPermissionsRes, undefined>,

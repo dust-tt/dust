@@ -1,11 +1,11 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { withLogging } from "@connectors/logger/withlogging";
 
-type GetSyncStatusRes = { workflowId: string } | ConnectorsAPIErrorResponse;
+type GetSyncStatusRes = WithConnectorsAPIErrorReponse<{ workflowId: string }>;
 
 const _syncConnectorAPIHandler = async (
   req: Request<{ connector_id: string }, GetSyncStatusRes, undefined>,

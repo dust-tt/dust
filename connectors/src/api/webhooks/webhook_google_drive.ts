@@ -1,13 +1,13 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { RateLimitError } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
-import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { GoogleDriveWebhook } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
-type GoogleDriveWebhookResBody = null | APIErrorWithStatusCode;
+type GoogleDriveWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
 const _webhookGoogleDriveAPIHandler = async (
   req: Request<Record<string, string>, GoogleDriveWebhookResBody>,

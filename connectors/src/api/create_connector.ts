@@ -1,10 +1,10 @@
 import type {
   ConnectorProvider,
-  ConnectorsAPIErrorResponse,
   ConnectorType,
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
   Result,
+  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -26,7 +26,7 @@ import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 
-type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
+type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 
 const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
   {

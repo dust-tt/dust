@@ -1,4 +1,6 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
+import type {
+  WithConnectorsAPIErrorReponse,
+} from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -16,14 +18,12 @@ type GetResourcesTitlesRequestBody = t.TypeOf<
   typeof GetResourcesTitlesRequestBodySchema
 >;
 
-type GetResourcesTitlesResponseBody =
-  | {
-      resources: {
-        internalId: string;
-        title: string | null;
-      }[];
-    }
-  | ConnectorsAPIErrorResponse;
+type GetResourcesTitlesResponseBody = WithConnectorsAPIErrorReponse<{
+  resources: {
+    internalId: string;
+    title: string | null;
+  }[];
+}>;
 
 const _getResourcesTitles = async (
   req: Request<

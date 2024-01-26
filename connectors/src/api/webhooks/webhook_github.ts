@@ -1,4 +1,4 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -42,7 +42,7 @@ const HANDLED_WEBHOOKS = {
 
 const logger = mainLogger.child({ provider: "github" });
 
-type GithubWebhookResBody = null | ConnectorsAPIErrorResponse;
+type GithubWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
 const _webhookGithubAPIHandler = async (
   req: Request<
