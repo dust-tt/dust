@@ -52,7 +52,7 @@ export default function DataSourceDetailsModal({
               Edit {dataSource.connectorProvider}'s permissions
             </Page.H>
           </Page.Layout>
-          <ContentMessage title="Important" /* variant="pink"*/>
+          <ContentMessage title="Important" variant="pink">
             <span className="font-bold">Editing</span> can break the existing
             data structure in Dust and Assistants using them. It is advise to
             use edit permission using{" "}

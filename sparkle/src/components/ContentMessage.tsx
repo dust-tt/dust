@@ -12,7 +12,7 @@ export interface ContentMessageProps {
 }
 
 ContentMessage.defaultProps = {
-  variant: "amber",
+  variant: "amber" as const,
 };
 
 export function ContentMessage({
