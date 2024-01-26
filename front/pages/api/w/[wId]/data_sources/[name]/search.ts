@@ -1,4 +1,4 @@
-import type { DocumentType } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorReponse } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { JSONSchemaType } from "ajv";
@@ -46,7 +46,7 @@ type DatasourceSearchResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<DatasourceSearchResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -8,9 +8,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    GetAgentConfigurationsResponseBody | ReturnedAPIErrorType | void
-  >
+  res: NextApiResponse<WithAPIErrorReponse<GetAgentConfigurationsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

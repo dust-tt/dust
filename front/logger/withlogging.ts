@@ -1,4 +1,7 @@
-import type { APIErrorWithStatusCode } from "@dust-tt/types";
+import type {
+  APIErrorWithStatusCode,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -74,9 +77,9 @@ export const withLogging = (handler: any, streaming = false) => {
   };
 };
 
-export function apiError(
+export function apiError<T>(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<WithAPIErrorReponse<T>>,
   apiError: APIErrorWithStatusCode,
   error?: Error
 ): void {
