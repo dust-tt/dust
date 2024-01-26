@@ -18,8 +18,12 @@ import {
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  getHelpCenterArticleIdFromInternalId,
+  getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
+  getHelpCenterCollectionInternalId,
   getHelpCenterIdFromInternalId,
+  getHelpCenterInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomSyncWorkflow,
@@ -392,14 +396,25 @@ export async function retrieveIntercomResourcesTitles(
 
   const titles: Record<string, string> = {};
   for (const helpCenter of helpCenters) {
-    titles[`help_center_${helpCenter.helpCenterId}`] = helpCenter.name;
+    const helpCenterInternalId = getHelpCenterInternalId(
+      connectorId,
+      helpCenter.helpCenterId
+    );
+    titles[helpCenterInternalId] = helpCenter.name;
   }
-  0;
   for (const collection of collections) {
-    titles[`collection_${collection.collectionId}`] = collection.name;
+    const collectionInternalId = getHelpCenterCollectionInternalId(
+      connectorId,
+      collection.collectionId
+    );
+    titles[collectionInternalId] = collection.name;
   }
   for (const article of articles) {
-    titles[`article_${article.articleId}`] = article.title;
+    const articleInternalId = getHelpCenterArticleInternalId(
+      connectorId,
+      article.articleId
+    );
+    titles[articleInternalId] = article.title;
   }
 
   return new Ok(titles);
@@ -409,29 +424,41 @@ export async function retrieveIntercomObjectsParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
-  if (internalId.startsWith("help_center_")) {
+  const helpCenterId = getHelpCenterIdFromInternalId(connectorId, internalId);
+  if (helpCenterId) {
     return new Ok([]);
   }
 
   const parents: string[] = [];
   let collection = null;
 
-  if (internalId.startsWith("collection_")) {
+  const collectionId = getHelpCenterCollectionIdFromInternalId(
+    connectorId,
+    internalId
+  );
+  const articleId = getHelpCenterArticleIdFromInternalId(
+    connectorId,
+    internalId
+  );
+
+  if (collectionId) {
     collection = await IntercomCollection.findOne({
       where: {
-        connectorId: connectorId,
-        collectionId: internalId.replace("collection_", ""),
+        connectorId,
+        collectionId,
       },
     });
-  } else if (internalId.startsWith("article_")) {
+  } else if (articleId) {
     const article = await IntercomArticle.findOne({
       where: {
-        connectorId: connectorId,
-        articleId: internalId.replace("article_", ""),
+        connectorId,
+        articleId,
       },
     });
     if (article && article.parentType === "collection" && article.parentId) {
-      parents.push(`collection_${article.parentId}`);
+      parents.push(
+        getHelpCenterCollectionInternalId(connectorId, article.parentId)
+      );
       collection = await IntercomCollection.findOne({
         where: {
           connectorId: connectorId,
@@ -442,7 +469,9 @@ export async function retrieveIntercomObjectsParents(
   }
 
   if (collection && collection.parentId) {
-    parents.push(`collection_${collection.parentId}`);
+    parents.push(
+      getHelpCenterCollectionInternalId(connectorId, collection.parentId)
+    );
     const parentCollection = await IntercomCollection.findOne({
       where: {
         connectorId: connectorId,
@@ -450,13 +479,18 @@ export async function retrieveIntercomObjectsParents(
       },
     });
     if (parentCollection && parentCollection.parentId) {
-      parents.push(`collection_${parentCollection.parentId}`);
+      parents.push(
+        getHelpCenterCollectionInternalId(
+          connectorId,
+          parentCollection.parentId
+        )
+      );
     }
     // we can stop here as Intercom has max 3 levels of collections
   }
 
   if (collection && collection.helpCenterId) {
-    parents.push(`help_center_${collection.helpCenterId}`);
+    parents.push(getHelpCenterInternalId(connectorId, collection.helpCenterId));
   }
 
   return new Ok(parents);
