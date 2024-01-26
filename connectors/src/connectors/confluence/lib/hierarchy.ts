@@ -34,11 +34,6 @@ export async function getConfluencePageParentIds(
     allPages.map((page) => [page.pageId, page.parentId])
   );
 
-  console.log(
-    ">> pageIdToParentIdMap:",
-    JSON.stringify([...pageIdToParentIdMap], null, 2)
-  );
-
   const parentIds = [];
   let currentId = page.pageId;
 
