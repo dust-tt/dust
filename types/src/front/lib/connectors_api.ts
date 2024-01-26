@@ -1,29 +1,14 @@
+import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { ConnectorProvider } from "../../front/data_source";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
-
-export type ConnectorsAPIErrorResponse = {
-  message: string;
-  type: string;
-};
-
-function isConnectorsAPIErrorResponse(
-  obj: unknown
-): obj is ConnectorsAPIErrorResponse {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    typeof (obj as ConnectorsAPIErrorResponse).message === "string" &&
-    typeof (obj as ConnectorsAPIErrorResponse).type === "string"
-  );
-}
 
 const {
   CONNECTORS_API = "http://127.0.0.1:3002",
   DUST_CONNECTORS_SECRET = "",
 } = process.env;
 
-export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIErrorResponse>;
+export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
 export type ConnectorErrorType = "oauth_token_revoked";
 
@@ -418,7 +403,7 @@ export class ConnectorsAPI {
     const parseError = async (response: Response, error: SyntaxError) => {
       const text = await response.text();
 
-      const err: ConnectorsAPIErrorResponse = {
+      const err: ConnectorsAPIError = {
         type: "unexpected_response_format",
         message: `Unexpected response format from ConnectorAPI: ${error}`,
       };
@@ -438,14 +423,14 @@ export class ConnectorsAPI {
         const json = await response.json();
         const err = json?.error;
 
-        if (isConnectorsAPIErrorResponse(err)) {
+        if (isConnectorsAPIError(err)) {
           this._logger.error(
             { error: err, status: response.status },
             "ConnectorAPI error"
           );
           return new Err(err);
         } else {
-          const err: ConnectorsAPIErrorResponse = {
+          const err: ConnectorsAPIError = {
             type: "unexpected_error_format",
             message: "Unexpected error format from ConnectorAPI",
           };

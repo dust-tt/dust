@@ -1,4 +1,4 @@
-import { ConnectorsAPIErrorResponse } from "./connectors_api";
+import { ConnectorsAPIError } from "../../connectors/api";
 import { CoreAPIErrorResponse } from "./core_api";
 
 export type InternalErrorWithStatusCode = {
@@ -57,7 +57,7 @@ export type APIError = {
   data_source_error?: CoreAPIErrorResponse;
   run_error?: CoreAPIErrorResponse;
   app_error?: CoreAPIErrorResponse;
-  connectors_error?: ConnectorsAPIErrorResponse;
+  connectors_error?: ConnectorsAPIError;
 };
 
 export type ReturnedAPIErrorType = {
