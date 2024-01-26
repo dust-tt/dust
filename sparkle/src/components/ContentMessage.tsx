@@ -24,8 +24,8 @@ export function ContentMessage({
   const variantClasses = {
     border: `s-border-${variant}-100`,
     background: `s-bg-${variant}-50`,
-    iconColor: `s-text-${variant}-600`,
-    titleColor: `s-text-${variant}-600`,
+    iconColor: `s-text-${variant}-800`,
+    titleColor: `s-text-${variant}-800`,
   };
 
   return (
