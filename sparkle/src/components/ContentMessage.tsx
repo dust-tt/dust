@@ -21,20 +21,34 @@ export function ContentMessage({
   children,
   className = "",
 }: ContentMessageProps) {
+  const variantClasses = {
+    border: `s-border-${variant}-100`,
+    background: `s-bg-${variant}-50`,
+    iconColor: `s-text-${variant}-600`,
+    titleColor: `s-text-${variant}-600`,
+  };
+
   return (
     <div
       className={classNames(
-        `s-flex s-max-w-[500px] s-gap-2 s-rounded-2xl s-border s-border-${variant}-100 s-bg-${variant}-50 s-p-4`,
+        "s-flex s-max-w-[500px] s-gap-2 s-rounded-2xl s-border s-p-4",
+        variantClasses.border,
+        variantClasses.background,
         className
       )}
     >
       <Icon
         size="md"
         visual={InformationCircleIcon}
-        className={`s-shrink-0 s-text-${variant}-600`}
+        className={classNames("s-shrink-0", variantClasses.iconColor)}
       />
       <div className="s-flex s-flex-col s-gap-2">
-        <div className={`s-text-base s-font-semibold s-text-${variant}-600`}>
+        <div
+          className={classNames(
+            "s-text-base s-font-semibold",
+            variantClasses.titleColor
+          )}
+        >
           {title}
         </div>
         <div className="s-text-sm s-text-element-800">{children}</div>
