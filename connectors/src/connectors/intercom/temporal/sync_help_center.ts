@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Client as IntercomClient } from "intercom-client";
+import TurndownService from "turndown";
 
 import type { IntercomCollectionType } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
@@ -16,6 +17,7 @@ import {
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
+  renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import type { IntercomHelpCenter } from "@connectors/lib/models/intercom";
@@ -25,6 +27,8 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const turndownService = new TurndownService();
 
 /**
  * If our rights were revoked or the help center is not on intercom anymore we delete it
@@ -264,57 +268,60 @@ export async function _upsertCollection({
       });
     }
 
-    const content =
-      "CATEGORY: " +
-      collection.description +
-      "\nCONTENT: " +
-      articleOnIntercom.body;
-    const articleContent = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: articleOnIntercom.title,
-      content: {
-        prefix: `TITLE: ${articleOnIntercom.title}`,
-        content: content,
-        sections: [],
-      },
-      createdAt: new Date(articleOnIntercom.created_at),
-      updatedAt: new Date(articleOnIntercom.updated_at),
-    });
-
-    // Parents in the Core datasource should map the internal ids that we use in the permission modal
-    // Parents of an article are all the collections above it and the help center
-    const parentsInternalsIds = articleOnIntercom.parent_ids.map((id) =>
-      getHelpCenterCollectionInternalId(connectorId, id)
+    const articleContentInMarkdown = turndownService.turndown(
+      articleOnIntercom.body
     );
-    parentsInternalsIds.push(
-      getHelpCenterInternalId(connectorId, collection.help_center_id)
-    );
+    // append the collection description at the beginning of the article
+    const markdown = `CATEGORY: ${collection.description}\n\nARTICLE:\n\n${articleContentInMarkdown}`;
 
-    return upsertToDatasource({
-      dataSourceConfig,
-      documentId: getHelpCenterArticleInternalId(
-        connectorId,
-        articleOnIntercom.id
-      ),
-      documentContent: articleContent,
-      documentUrl: articleOnIntercom.url,
-      timestampMs: articleOnIntercom.updated_at,
-      tags: [
-        `title:${articleOnIntercom.title}`,
-        `createdAt:${articleOnIntercom.created_at}`,
-        `updatedAt:${articleOnIntercom.updated_at}`,
-      ],
-      parents: parentsInternalsIds,
-      retries: 3,
-      delayBetweenRetriesMs: 500,
-      loggerArgs: {
-        ...loggerArgs,
-        articleId: article.id,
-      },
-      upsertContext: {
-        sync_type: "batch",
-      },
-    });
+    if (articleContentInMarkdown) {
+      const renderedMarkdown = await renderMarkdownSection(
+        dataSourceConfig,
+        markdown
+      );
+      const renderedPage = await renderDocumentTitleAndContent({
+        dataSourceConfig,
+        title: articleOnIntercom.title,
+        content: renderedMarkdown,
+        createdAt: new Date(articleOnIntercom.created_at),
+        updatedAt: new Date(articleOnIntercom.updated_at),
+      });
+
+      // Parents in the Core datasource should map the internal ids that we use in the permission modal
+      // Parents of an article are all the collections above it and the help center
+      const parentsInternalsIds = articleOnIntercom.parent_ids.map((id) =>
+        getHelpCenterCollectionInternalId(connectorId, id)
+      );
+      parentsInternalsIds.push(
+        getHelpCenterInternalId(connectorId, collection.help_center_id)
+      );
+
+      return upsertToDatasource({
+        dataSourceConfig,
+        documentId: getHelpCenterArticleInternalId(
+          connectorId,
+          articleOnIntercom.id
+        ),
+        documentContent: renderedPage,
+        documentUrl: articleOnIntercom.url,
+        timestampMs: articleOnIntercom.updated_at,
+        tags: [
+          `title:${articleOnIntercom.title}`,
+          `createdAt:${articleOnIntercom.created_at}`,
+          `updatedAt:${articleOnIntercom.updated_at}`,
+        ],
+        parents: parentsInternalsIds,
+        retries: 3,
+        delayBetweenRetriesMs: 500,
+        loggerArgs: {
+          ...loggerArgs,
+          articleId: article.id,
+        },
+        upsertContext: {
+          sync_type: "batch",
+        },
+      });
+    }
   });
   await Promise.all(promises);
 
