@@ -1120,6 +1120,10 @@ export class CoreAPI {
         const res = json?.response;
 
         if (err && isCoreAPIError(err)) {
+          this._logger.error(
+            { error: err, status: response.status },
+            "CoreAPI error"
+          );
           return new Err(err);
         } else if (res) {
           return new Ok(res);
