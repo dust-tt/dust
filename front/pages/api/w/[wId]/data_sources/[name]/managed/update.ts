@@ -1,4 +1,3 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -106,14 +105,14 @@ async function handler(
       });
 
       if (updateRes.isErr()) {
-        const errorRes = updateRes as { error: ConnectorsAPIErrorResponse };
-        const error = errorRes.error.error;
-
-        if (error.type === "connector_oauth_target_mismatch") {
+        if (updateRes.error.type === "connector_oauth_target_mismatch") {
           return apiError(req, res, {
             api_error: {
-              type: error.type,
-              message: error.message,
+              type: updateRes.error.type,
+              // The error message is meant to be user friendly and explannative, customized for the
+              // connection being updated.
+              message: `OAuth mismatch: ${updateRes.error.message}`,
+              connectors_error: updateRes.error,
             },
             status_code: 401,
           });
@@ -122,7 +121,8 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Could not update the connector: ${error.message}`,
+              message: `Could not update the connector`,
+              connectors_error: updateRes.error,
             },
           });
         }
