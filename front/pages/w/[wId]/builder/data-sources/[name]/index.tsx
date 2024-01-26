@@ -861,11 +861,7 @@ function ManagedDataSourceView({
           setShowDataSourceDetailsModal(false);
         }}
         onClick={() => {
-          if (!displayManagePermissionButton) {
-            setShowPermissionModal(true);
-          } else {
-            void handleUpdatePermissions();
-          }
+          void handleUpdatePermissions();
         }}
       />
       <ConnectorPermissionsModal
