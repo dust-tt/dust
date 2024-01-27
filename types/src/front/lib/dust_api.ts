@@ -382,12 +382,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.run);
-
-    // const json = await res.json();
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-    // return new Ok(json.run as RunType);
   }
 
   /**
@@ -455,12 +449,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.data_sources);
-
-    // const json = await res.json();
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-    // return new Ok(json.data_sources as DataSourceType[]);
   }
 
   async getAgentConfigurations(): Promise<
@@ -484,13 +472,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.agentConfigurations);
-
-    // const json = await res.json();
-
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-    // return new Ok(json.agentConfigurations as LightAgentConfigurationType[]);
   }
 
   async postContentFragment({
@@ -520,13 +501,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.contentFragment);
-
-    // const json = await res.json();
-
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-    // return new Ok(json.contentFragment as ContentFragmentType);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message
@@ -560,15 +534,6 @@ export class DustAPI {
     );
 
     return this._resultFromResponse(res);
-
-    // const json = await res.json();
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-
-    // return new Ok(
-    //   json as { conversation: ConversationType; message: UserMessageType }
-    // );
   }
 
   async postUserMessage({
@@ -598,13 +563,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.message);
-
-    // const json = await res.json();
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-
-    // return new Ok(json.message as UserMessageType);
   }
 
   async streamAgentMessageEvents({
@@ -743,13 +701,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.conversation);
-
-    // const json = await res.json();
-
-    // if (json.error) {
-    //   return new Err(json.error as DustAPIErrorResponse);
-    // }
-    // return new Ok(json.conversation as ConversationType);
   }
 
   async tokenize(
@@ -776,25 +727,6 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.tokens);
-
-    // try {
-    //   const dustRequestResult = await res.json();
-
-    //   if (dustRequestResult.error) {
-    //     return new Err(dustRequestResult.error as DustAPIErrorResponse);
-    //   }
-    //   return new Ok(dustRequestResult.tokens as CoreAPITokenType[]);
-    // } catch (err) {
-    //   const rawResponse = await res.text();
-
-    //   const message = `Dust API /tokenize responded with status: ${res.status}.`;
-    //   this._logger.error(
-    //     { status: res.status, response: rawResponse },
-    //     message
-    //   );
-
-    //   return new Err({ type: "bad_request", message });
-    // }
   }
 
   private async _resultFromResponse<T>(

@@ -71,6 +71,7 @@ export function isAPIError(obj: unknown): obj is APIError {
     typeof obj.message === "string" &&
     "type" in obj &&
     typeof obj.type === "string"
+    // TODO(spolu): check type is a valid APIErrorType
   );
 }
 
