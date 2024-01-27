@@ -39,6 +39,7 @@ import type {
   ParsedNotionBlock,
 } from "@connectors/connectors/notion/lib/types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
@@ -1218,9 +1219,10 @@ export async function cacheBlockChildren({
   localLogger.info(
     "notionBlockChildrenResultPageActivity: Saving blocks in cache."
   );
-  await Promise.all(
-    parsedBlocks.map((block, i) =>
-      NotionConnectorBlockCacheEntry.upsert({
+  await concurrentExecutor(
+    parsedBlocks,
+    async (block) => {
+      await NotionConnectorBlockCacheEntry.upsert({
         notionPageId: pageId,
         notionBlockId: block.id,
         blockType: block.type,
@@ -1229,8 +1231,9 @@ export async function cacheBlockChildren({
         indexInParent: currentIndexInParent + i,
         childDatabaseTitle: block.childDatabaseTitle,
         connectorId: connector.id,
-      })
-    )
+      });
+    },
+    { concurrency: 4 }
   );
 
   return {
