@@ -137,7 +137,12 @@ export class ActivityInboundLogInterceptor
           // this is a dust error
           errorType = error.type;
           this.logger.error(
-            { error, durationMs, attempt: this.context.info.attempt },
+            {
+              error,
+              dustError: error,
+              durationMs,
+              attempt: this.context.info.attempt,
+            },
             "Activity failed"
           );
         } else {
