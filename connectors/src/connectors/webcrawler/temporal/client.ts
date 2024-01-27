@@ -35,7 +35,9 @@ export async function launchCrawlWebsiteWorkflow(
       args: [connectorId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
       memo: {
         connectorId: connectorId,
       },
