@@ -397,59 +397,55 @@ export class ConnectorsAPI {
       Authorization: `Bearer ${DUST_CONNECTORS_SECRET}`,
     };
   }
-  async _resultFromResponse<T>(
+
+  private async _resultFromResponse<T>(
     response: Response
   ): Promise<ConnectorsAPIResponse<T>> {
-    const parseError = async (response: Response, error: SyntaxError) => {
-      const text = await response.text();
+    // We get the text and attempt to parse so that we can log the raw text in case of error (the
+    // body is already consumed by response.json() if used otherwise).
+    const text = await response.text();
 
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
       const err: ConnectorsAPIError = {
         type: "unexpected_response_format",
-        message: `Unexpected response format from ConnectorsAPI: ${error}`,
+        message: `Unexpected response format from ConnectorsAPI: ${e}`,
       };
       this._logger.error(
-        { connectorsError: err, parseError: error, status: response.status },
+        {
+          connectorsError: err,
+          parseError: e,
+          rawText: text,
+          status: response.status,
+        },
         "ConnectorsAPI error"
       );
-      this._logger.error(
-        { connectorsError: err, parseError: error, status: response.status },
-        `ConnectorsAPI error, raw response text: ${text}`
-      );
       return new Err(err);
-    };
+    }
 
     if (!response.ok) {
-      try {
-        const json = await response.json();
-        const err = json?.error;
-
-        if (isConnectorsAPIError(err)) {
-          this._logger.error(
-            { connectorsError: err, status: response.status },
-            "ConnectorsAPI error"
-          );
-          return new Err(err);
-        } else {
-          const err: ConnectorsAPIError = {
-            type: "unexpected_error_format",
-            message: "Unexpected error format from ConnectorAPI",
-          };
-          this._logger.error(
-            { connectorsError: err, json, status: response.status },
-            "ConnectorsAPI error"
-          );
-          return new Err(err);
-        }
-      } catch (e) {
-        return parseError(response, e as SyntaxError);
+      const err = json?.error;
+      if (isConnectorsAPIError(err)) {
+        this._logger.error(
+          { connectorsError: err, status: response.status },
+          "ConnectorsAPI error"
+        );
+        return new Err(err);
+      } else {
+        const err: ConnectorsAPIError = {
+          type: "unexpected_error_format",
+          message: "Unexpected error format from ConnectorAPI",
+        };
+        this._logger.error(
+          { connectorsError: err, json, status: response.status },
+          "ConnectorsAPI error"
+        );
+        return new Err(err);
       }
     } else {
-      try {
-        const json = await response.json();
-        return new Ok(json);
-      } catch (e) {
-        return parseError(response, e as SyntaxError);
-      }
+      return new Ok(json);
     }
   }
 }

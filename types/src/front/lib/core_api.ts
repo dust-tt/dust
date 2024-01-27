@@ -1070,76 +1070,73 @@ export class CoreAPI {
   private async _resultFromResponse<T>(
     response: Response
   ): Promise<CoreAPIResponse<T>> {
-    const parseError = async (response: Response, error: SyntaxError) => {
-      const text = await response.text();
+    // We get the text and attempt to parse so that we can log the raw text in case of error (the
+    // body is already consumed by response.json() if used otherwise).
+    const text = await response.text();
 
+    console.log("TEXT", text);
+
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
       const err: CoreAPIError = {
         code: "unexpected_response_format",
-        message: `Unexpected response format from CoreAPI: ${error}`,
+        message: `Unexpected response format from CoreAPI: ${e}`,
       };
       this._logger.error(
-        { coreError: err, parseError: error, status: response.status },
+        {
+          connectorsError: err,
+          rawText: text,
+          parseError: e,
+          status: response.status,
+        },
         "CoreAPI error"
       );
-      this._logger.error(
-        { coreError: err, parseError: error, status: response.status },
-        `CoreAPI error, raw response text: ${text}`
-      );
       return new Err(err);
-    };
+    }
 
     if (!response.ok) {
-      try {
-        const json = await response.json();
-        const err = json?.error;
-
-        if (isCoreAPIError(err)) {
-          this._logger.error(
-            { coreError: err, json, status: response.status },
-            "CoreAPI error"
-          );
-          return new Err(err);
-        } else {
-          const err: CoreAPIError = {
-            code: "unexpected_error_format",
-            message: "Unexpected error format from CoreAPI",
-          };
-          this._logger.error(
-            { coreError: err, json, status: response.status },
-            "CoreAPI error"
-          );
-          return new Err(err);
-        }
-      } catch (e) {
-        return parseError(response, e as SyntaxError);
+      const err = json?.error;
+      if (isCoreAPIError(err)) {
+        this._logger.error(
+          { coreError: err, status: response.status },
+          "CoreAPI error"
+        );
+        return new Err(err);
+      } else {
+        const err: CoreAPIError = {
+          code: "unexpected_error_format",
+          message: "Unexpected error format from CoreAPI",
+        };
+        this._logger.error(
+          { coreError: err, json, status: response.status },
+          "CoreAPI error"
+        );
+        return new Err(err);
       }
     } else {
-      try {
-        const json = await response.json();
-        const err = json?.error;
-        const res = json?.response;
+      const err = json?.error;
+      const res = json?.response;
 
-        if (err && isCoreAPIError(err)) {
-          this._logger.error(
-            { coreError: err, json, status: response.status },
-            "CoreAPI error"
-          );
-          return new Err(err);
-        } else if (res) {
-          return new Ok(res);
-        } else {
-          const err: CoreAPIError = {
-            code: "unexpected_response_format",
-            message: "Unexpected response format from CoreAPI",
-          };
-          this._logger.error(
-            { coreError: err, json, status: response.status },
-            "CoreAPI error"
-          );
-          return new Err(err);
-        }
-      } catch (e) {
-        return parseError(response, e as SyntaxError);
+      if (err && isCoreAPIError(err)) {
+        this._logger.error(
+          { coreError: err, json, status: response.status },
+          "CoreAPI error"
+        );
+        return new Err(err);
+      } else if (res) {
+        return new Ok(res);
+      } else {
+        const err: CoreAPIError = {
+          code: "unexpected_response_format",
+          message: "Unexpected response format from CoreAPI",
+        };
+        this._logger.error(
+          { coreError: err, json, status: response.status },
+          "CoreAPI error"
+        );
+        return new Err(err);
       }
     }
   }
