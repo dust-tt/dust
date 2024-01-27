@@ -1074,8 +1074,6 @@ export class CoreAPI {
     // body is already consumed by response.json() if used otherwise).
     const text = await response.text();
 
-    console.log("TEXT", text);
-
     let json = null;
     try {
       json = JSON.parse(text);
