@@ -1074,6 +1074,8 @@ export class CoreAPI {
     // body is already consumed by response.json() if used otherwise).
     const text = await response.text();
 
+    console.log("TEXT", text);
+
     let json = null;
     try {
       json = JSON.parse(text);
@@ -1114,7 +1116,28 @@ export class CoreAPI {
         return new Err(err);
       }
     } else {
-      return new Ok(json);
+      const err = json?.error;
+      const res = json?.response;
+
+      if (err && isCoreAPIError(err)) {
+        this._logger.error(
+          { coreError: err, json, status: response.status },
+          "CoreAPI error"
+        );
+        return new Err(err);
+      } else if (res) {
+        return new Ok(res);
+      } else {
+        const err: CoreAPIError = {
+          code: "unexpected_response_format",
+          message: "Unexpected response format from CoreAPI",
+        };
+        this._logger.error(
+          { coreError: err, json, status: response.status },
+          "CoreAPI error"
+        );
+        return new Err(err);
+      }
     }
   }
 }
