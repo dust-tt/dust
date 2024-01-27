@@ -62,11 +62,6 @@ export async function callAction<V extends t.Mixed>({
 
   const r = await prodAPI.runApp(app, config, [input]);
 
-  // const response = (await prodAPI.runApp(app, config, [input])) as Result<
-  //   unknown,
-  //   APIError
-  // >;
-
   if (r.isErr()) {
     return r;
   }
