@@ -44,6 +44,8 @@ export type NangoConnectionId = string;
 import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
   GOOGLE_CLIENT_ID,
