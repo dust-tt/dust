@@ -407,7 +407,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           true
         );
         if (connDeleteRes.isErr()) {
-          throw new Error(connDeleteRes.error.error.message);
+          throw new Error(connDeleteRes.error.message);
         }
       }
       const coreAPI = new CoreAPI(logger);
@@ -613,7 +613,7 @@ const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
       await Promise.all(
         schemas.map(async (s: EventSchema) => {
           args.eventSchemaId = s.id;
-          return await eventSchema("show", args);
+          return eventSchema("show", args);
         })
       );
       return;

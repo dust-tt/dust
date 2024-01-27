@@ -1,3 +1,4 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -9,16 +10,17 @@ import {
 } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 const ConfigSetReqBodySchema = t.type({
   configValue: t.string,
 });
 type ConfigSetReqBody = t.TypeOf<typeof ConfigSetReqBodySchema>;
 
-type ConfigGetResBody =
-  | { connectorId: number; configKey: string; configValue: string }
-  | ConnectorsAPIErrorResponse;
+type ConfigGetResBody = WithConnectorsAPIErrorReponse<{
+  connectorId: number;
+  configKey: string;
+  configValue: string;
+}>;
 
 const _getConnectorConfig = async (
   req: Request<{ connector_id: string; config_key: string }>,

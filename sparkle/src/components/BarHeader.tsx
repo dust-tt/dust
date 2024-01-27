@@ -108,7 +108,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           <Button
             size="sm"
             label="Cancel"
-            variant="secondaryWarning"
+            variant="tertiary"
             onClick={props.onCancel}
             disabled={!props.onCancel || props.isSaving}
           />
@@ -132,7 +132,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             size="sm"
             label="Delete"
             icon={Trash}
-            variant="secondaryWarning"
+            variant="tertiary"
             labelVisible={false}
             tooltipPosition="below"
             onClick={props.onDelete}
@@ -141,7 +141,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             size="sm"
             label="Share"
             icon={ArrowUpOnSquare}
-            variant="secondary"
+            variant="tertiary"
             onClick={props.onShare}
           />
         </>

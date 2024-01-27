@@ -1,5 +1,5 @@
-import { ConnectorsAPIErrorResponse } from "./connectors_api";
-import { CoreAPIErrorResponse } from "./core_api";
+import { ConnectorsAPIError } from "../../connectors/api";
+import { CoreAPIError } from "./core_api";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
@@ -54,14 +54,10 @@ export type APIErrorType =
 export type APIError = {
   type: APIErrorType;
   message: string;
-  data_source_error?: CoreAPIErrorResponse;
-  run_error?: CoreAPIErrorResponse;
-  app_error?: CoreAPIErrorResponse;
-  connectors_error?: ConnectorsAPIErrorResponse;
-};
-
-export type ReturnedAPIErrorType = {
-  error: APIError;
+  data_source_error?: CoreAPIError;
+  run_error?: CoreAPIError;
+  app_error?: CoreAPIError;
+  connectors_error?: ConnectorsAPIError;
 };
 
 /**
@@ -72,3 +68,9 @@ export type APIErrorWithStatusCode = {
   api_error: APIError;
   status_code: number;
 };
+
+export type ReturnedAPIErrorType = {
+  error: APIError;
+};
+
+export type WithAPIErrorReponse<T> = T | ReturnedAPIErrorType;

@@ -1,16 +1,16 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { UPDATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 type ConnectorUpdateReqBody = {
   connectionId?: string | null;
 };
-type ConnectorUpdateResBody =
-  | { connectorId: string }
-  | ConnectorsAPIErrorResponse;
+type ConnectorUpdateResBody = WithConnectorsAPIErrorReponse<{
+  connectorId: string;
+}>;
 
 const _getConnectorUpdateAPIHandler = async (
   req: Request<{ connector_id: string }, ConnectorUpdateReqBody>,
@@ -44,15 +44,9 @@ const _getConnectorUpdateAPIHandler = async (
   });
 
   if (updateRes.isErr()) {
-    const errorRes = updateRes as { error: ConnectorsAPIErrorResponse };
-    const error = errorRes.error.error;
-
-    if (error.type === "connector_oauth_target_mismatch") {
+    if (updateRes.error.type === "connector_oauth_target_mismatch") {
       return apiError(req, res, {
-        api_error: {
-          type: error.type,
-          message: error.message,
-        },
+        api_error: updateRes.error,
         status_code: 401,
       });
     } else {
@@ -60,7 +54,7 @@ const _getConnectorUpdateAPIHandler = async (
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Could not update the connector: ${error.message}`,
+          message: `Could not update the connector: ${updateRes.error.message}`,
         },
       });
     }

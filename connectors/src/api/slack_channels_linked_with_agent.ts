@@ -1,3 +1,4 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -6,7 +7,6 @@ import { Op } from "sequelize";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getChannels } from "@connectors/connectors/slack/temporal/activities";
-import type { APIErrorWithStatusCode } from "@connectors/lib/error";
 import { sequelize_conn } from "@connectors/lib/models";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -21,9 +21,9 @@ type PatchSlackChannelsLinkedWithAgentReqBody = t.TypeOf<
   typeof PatchSlackChannelsLinkedWithAgentReqBodySchema
 >;
 
-type PatchSlackChannelsLinkedWithAgentResBody =
-  | { success: true }
-  | APIErrorWithStatusCode;
+type PatchSlackChannelsLinkedWithAgentResBody = WithConnectorsAPIErrorReponse<{
+  success: true;
+}>;
 
 const _patchSlackChannelsLinkedWithAgentHandler = async (
   req: Request<
@@ -152,22 +152,16 @@ export const patchSlackChannelsLinkedWithAgentHandler = withLogging(
   _patchSlackChannelsLinkedWithAgentHandler
 );
 
-type GetSlackChannelsLinkedWithAgentResBody =
-  | {
-      slackChannels: {
-        slackChannelId: string;
-        slackChannelName: string;
-        agentConfigurationId: string;
-      }[];
-    }
-  | APIErrorWithStatusCode;
+type GetSlackChannelsLinkedWithAgentResBody = WithConnectorsAPIErrorReponse<{
+  slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    agentConfigurationId: string;
+  }[];
+}>;
 
 const _getSlackChannelsLinkedWithAgentHandler = async (
-  req: Request<
-    Record<string, string>,
-    { slackChannelIds: string[] } | APIErrorWithStatusCode,
-    undefined
-  >,
+  req: Request<Record<string, string>>,
   res: Response<GetSlackChannelsLinkedWithAgentResBody>
 ) => {
   const { connector_id: connectorId } = req.query;

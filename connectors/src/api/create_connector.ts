@@ -1,8 +1,10 @@
 import type {
   ConnectorProvider,
+  ConnectorType,
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
   Result,
+  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -23,10 +25,8 @@ import { errorFromAny } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorType } from "@connectors/types/connector";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type ConnectorCreateResBody = ConnectorType | ConnectorsAPIErrorResponse;
+type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 
 const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
   {
@@ -140,8 +140,10 @@ const _createConnectorAPIHandler = async (
     await connector.reload();
 
     return res.status(200).json({
-      id: connector.id,
+      id: connector.id.toString(),
       type: connector.type,
+      workspaceId: connector.workspaceId,
+      dataSourceName: connector.dataSourceName,
       lastSyncStatus: connector.lastSyncStatus,
       lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
       lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),

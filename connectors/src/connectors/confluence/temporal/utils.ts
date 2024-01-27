@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
-export function makeConfluenceFullSyncWorkflowId(connectorId: ModelId) {
-  return `confluence-fullsync-${connectorId}`;
+export function makeConfluenceSyncWorkflowId(connectorId: ModelId) {
+  return `confluence-sync-${connectorId}`;
 }
 
 export function makeConfluenceSpaceSyncWorkflowIdFromParentId(
@@ -20,6 +20,10 @@ export function makeConfluenceRemoveSpaceWorkflowIdFromParentId(
   spaceId: string
 ) {
   return `${parentWorkflowId}-space-${spaceId}`;
+}
+
+export function makeConfluencePersonalDataWorkflowId() {
+  return `confluence-personal-data-reporting`;
 }
 
 export function makeConfluencePageId(pageId: string) {

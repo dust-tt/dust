@@ -1,7 +1,6 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { User } from "@sparkle/icons/solid";
 import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
 
 import {
@@ -10,7 +9,6 @@ import {
   Chip,
   Cog6ToothIcon,
   ContextItem,
-  Icon,
   PencilSquareIcon,
   SliderToggle,
   TrashIcon,

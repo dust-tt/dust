@@ -56,9 +56,11 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
+  const user = auth.user();
   if (
     !owner ||
     !plan ||
+    !user ||
     // No role under "builder" can create a managed data source.
     // We perform a more detailed check below for each provider,
     // but this is a first line of defense.
@@ -175,33 +177,41 @@ async function handler(
       }
 
       let isDataSourceAllowedInPlan: boolean;
+      let assistantDefaultSelected: boolean;
       switch (provider) {
         case "confluence":
           isDataSourceAllowedInPlan =
             plan.limits.connections.isConfluenceAllowed;
+          assistantDefaultSelected = true;
           break;
         case "slack":
           isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
+          assistantDefaultSelected = true;
           break;
         case "notion":
           isDataSourceAllowedInPlan = plan.limits.connections.isNotionAllowed;
+          assistantDefaultSelected = true;
           break;
         case "github":
           isDataSourceAllowedInPlan = plan.limits.connections.isGithubAllowed;
+          assistantDefaultSelected = true;
           break;
         case "google_drive":
           isDataSourceAllowedInPlan =
             plan.limits.connections.isGoogleDriveAllowed;
+          assistantDefaultSelected = true;
           break;
         case "intercom":
           isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
+          assistantDefaultSelected = true;
           break;
         case "webcrawler":
           isDataSourceAllowedInPlan =
             plan.limits.connections.isWebCrawlerAllowed;
+          assistantDefaultSelected = false;
           break;
         default:
-          isDataSourceAllowedInPlan = false; // default to false if provider is not recognized
+          assertNever(provider);
       }
 
       // Enforce plan limits: managed DataSources.
@@ -286,10 +296,10 @@ async function handler(
       let dataSource = await DataSource.create({
         name: dataSourceName,
         description: dataSourceDescription,
-        visibility: "private",
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
         workspaceId: owner.id,
-        assistantDefaultSelected: true,
+        assistantDefaultSelected,
+        editedByUserId: user.id,
       });
 
       const connectorsAPI = new ConnectorsAPI(logger);
@@ -382,11 +392,10 @@ async function handler(
           id: dataSource.id,
           name: dataSource.name,
           description: dataSource.description,
-          visibility: dataSource.visibility,
           dustAPIProjectId: dataSource.dustAPIProjectId,
           connectorId: connectorsRes.value.id,
           connectorProvider: provider,
-          assistantDefaultSelected: true,
+          assistantDefaultSelected,
         },
         connector: connectorsRes.value,
       });

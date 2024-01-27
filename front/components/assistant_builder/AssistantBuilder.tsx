@@ -323,7 +323,7 @@ export default function AssistantBuilder({
   ]);
 
   const assistantHandleIsValid = useCallback((handle: string) => {
-    return /^[a-zA-Z0-9_-]{1,20}$/.test(removeLeadingAt(handle));
+    return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
   }, []);
 
   const assistantHandleIsAvailable = useCallback(
@@ -368,8 +368,8 @@ export default function AssistantBuilder({
       valid = false;
     } else {
       if (!assistantHandleIsValid(builderState.handle)) {
-        if (builderState.handle.length > 20) {
-          setAssistantHandleError("The name must be 20 characters or less");
+        if (builderState.handle.length > 30) {
+          setAssistantHandleError("The name must be 30 characters or less");
         } else {
           setAssistantHandleError("Only letters, numbers, _ and - allowed");
         }
@@ -953,7 +953,7 @@ export default function AssistantBuilder({
                     size="sm"
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items origin="auto" width={200}>
+                <DropdownMenu.Items origin="topLeft" width={260}>
                   {BASIC_ACTION_MODES.map((key) => (
                     <DropdownMenu.Item
                       key={key}
@@ -967,35 +967,24 @@ export default function AssistantBuilder({
                       }}
                     />
                   ))}
-                  <DropdownMenu.Item
-                    label="Advanced actions"
-                    hasChildren={true}
-                  >
-                    <DropdownMenu.Items
-                      origin="topLeft"
-                      width={250}
-                      marginLeft={40}
-                    >
-                      {ADVANCED_ACTION_MODES.filter((key) => {
-                        return (
-                          key !== "TABLES_QUERY" ||
-                          isActivatedStructuredDB(owner)
-                        );
-                      }).map((key) => (
-                        <DropdownMenu.Item
-                          key={key}
-                          label={ACTION_MODE_TO_LABEL[key]}
-                          onClick={() => {
-                            setEdited(true);
-                            setBuilderState((state) => ({
-                              ...state,
-                              actionMode: key,
-                            }));
-                          }}
-                        />
-                      ))}
-                    </DropdownMenu.Items>
-                  </DropdownMenu.Item>
+                  <DropdownMenu.SectionHeader label="Advanced actions" />
+                  {ADVANCED_ACTION_MODES.filter((key) => {
+                    return (
+                      key !== "TABLES_QUERY" || isActivatedStructuredDB(owner)
+                    );
+                  }).map((key) => (
+                    <DropdownMenu.Item
+                      key={key}
+                      label={ACTION_MODE_TO_LABEL[key]}
+                      onClick={() => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          actionMode: key,
+                        }));
+                      }}
+                    />
+                  ))}
                 </DropdownMenu.Items>
               </DropdownMenu>
             </div>

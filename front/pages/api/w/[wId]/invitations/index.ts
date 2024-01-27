@@ -1,4 +1,7 @@
-import type { MembershipInvitationType } from "@dust-tt/types";
+import type {
+  MembershipInvitationType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -19,7 +22,7 @@ export type GetWorkspaceInvitationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetWorkspaceInvitationsResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<GetWorkspaceInvitationsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

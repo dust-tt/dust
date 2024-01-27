@@ -114,7 +114,7 @@ To export your @dust conversation history in Slack, remember that it's like expo
 
 Connections are available only for paid plans.
 
-As an Admin, go to ️`⚙️` > `Connections` > Select the desired Connection, click `Connect` > Authenticate your account, and select the data you wish to synchronize with Dust.
+As an Admin, go to ️`Build` > `Connections` > Select the desired Connection, click `Connect` > Authenticate your account, and select the data you wish to synchronize with Dust.
 
 ##Slack
 
@@ -124,9 +124,11 @@ The admin needs to select the Slack channels you want to synchronize with Dust; 
 
 To synchronize Notion pages, the admin can only select top-level pages. To add lower-level pages, the admin can use the search bar and select the desired pages. Notion API doesn’t allow navigation.
 
+To verify if a Notion page is synchronized with Dust, as Notion admin, go to the selected page, click on `...`on the top right, and check if Dust is one of the `connections`. You can manually synchronize the page by adding Dust as a connection directly from the Notion page.
+
 **How to update Connections**
 
-As an admin, ️ ️`⚙️` > `Connections` > Select the desired Connection, click `Manage` > `Add/Remove data` > Explore, and either select or deselect the data you want to synchronize with Dust.
+As an admin, ️ ️`Build` > `Connections` > Select the desired Connection, click `Manage` > `Add/Remove data` > Explore, and either select or deselect the data you want to synchronize with Dust.
 
 ### What are Connections' current limits?
 
@@ -134,12 +136,13 @@ Slack: Dust doesn't take into account private channels, group direct messages, e
 Notion: Dust doesn't take into account external files or content behind a URL.
 Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
+Public Websites: Up to 500 web pages from a public website can be synchronized.
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
 
-Dust syncs quickly, usually in seconds or minutes. To check the last sync as an admin:
+Dust syncs quickly, usually in minutes. To check the last sync as an admin:
 
-- Go to `Assitants` > `Connections`.
+- Go to `Build` > `Connections`.
 - Look for "last sync ~ x s ago."
 
 To see if a document has synced and view its contents:
@@ -159,7 +162,7 @@ Admins/builders can add a Folders by:
 
 ### What are the documents and PDF current limits?
 
-Documents up to 10MB can be uploaded manually via Folders.
+Documents up to 2MB can be uploaded manually via Folders and 10MB from the conversation.
 
 ### **Does Dust use user and company data to train its models?**
 
@@ -186,7 +189,7 @@ Think about @dust as your general assistant to explore all the data synchronized
 
 ### **Dust Paid plans**
 
-You need to upgrade to a paid plan to get features like unlimited GPT-4 and Claude, connecting to Notion, Google Drive, GitHub, Slack, multiple members, and using the Dust Slackbot.
+You need to upgrade to a paid plan to get features like unlimited GPT-4, Gemini Pro, Mistral and Claude, connecting to Notion, Google Drive, GitHub, Slack, multiple members, and using the Dust Slackbot.
 
 Upgrade by:
 
@@ -220,7 +223,7 @@ Assistants can answer questions and chat with you. Think about your assistants a
 - Use @dust for questions about your company; it uses GPT-4 and knows public data until April 2023.
 - Use @help for help with Dust features.
 - Use @slack to find info in Slack.
-- Use @gpt4 or @claude for tasks with the latest AI models.
+- Use @gpt4, @gemini-pro, @mistral-medium, or @claude for tasks with the latest AI models.
 
 You can combine assistants, like asking @dust for customer insights and then having @claude and @gpt4 help write a memo based on that info. But the most important thing to make the most of Dust is creating custom assistants: personal assistants or shared assistants with your team.
 
@@ -240,7 +243,7 @@ Different assistants have varying levels of memory or "context windows." For ins
 Dust offers 3 types of assistants:
 
 - Data source assistants to interact directly with your Slack, Google Drive, Github or Notion in a conversational way, or all of them together via @dust.
-- Models assistants to interact with the strongest models available, currently GPT-4, Claude, and Mistral: @gpt4, @gpt3.5, @claude, @claude-instant.
+- Models assistants to interact with the strongest models available, currently GPT-4, Claude, and Mistral: @gpt4, @gpt3.5, @claude, @claude-instant, @gemini-pro, @mistral-medium.
 - Dust assistants like the @help to guide you when using Dust.
 
 ### How to search for assistants?
@@ -257,13 +260,12 @@ Custom assistants are AI agents created by users and builders in your workspace.
 
 To create a custom assistant:
 
-As a user, click on `>` next to `Assistants` and `+ Create an Assistant` .
+As a user, Navigate to `Chat` > `My Assistants` > `+New`.
 
 As a builder or admin:
 
-1. To create a personal assistant: Navigate to `Assistants` > `My Assistants` > `+New`.
-2. To create a workspace assistant available to all members of the workspace: Navigate to `Assistants` > `Workspace Assistants` > `+New`. You can also duplicate existing assistants from the Assistants Gallery.
-3. Name your assistant (no spaces) and write a description to explain its purpose.
+1. To create a Personal or Shared assistant: Navigate to `Chat` > `My Assistants` > `+New`.
+2. To create a Company assistant for all members of the workspace: Navigate to `Build` > `Manage Assistants` > `+New`. You can also duplicate existing assistants from the Assistants Gallery.
 
 Setup involves:
 
@@ -273,7 +275,12 @@ Setup involves:
   - **Factual (0.2)**: A slight bit of unpredictability.
   - **Balanced (0.7)**: More variety in responses.
   - **Creative (1.0)**: High creativity for brainstorming.
-- **Actions**: Link to Data Sources for better context, or skip if not needed.
+- **Actions**:
+  - No action: to use the model with no data source retrieval.
+  - Search in data sources: To use semantic search to retrieve data.
+  - Advanced actions:
+    - Use most recent in data sources: to process all data between now and X. Adapt the timeframe to the model's context window. Avoid +1month timeframe if you know your data set is large.
+    - Run a Dust app: If you want to chain a Dust App to your custom assistant.
 
 ### How to create a Dust LLM app?
 
@@ -359,10 +366,6 @@ To move text to Notion or Google Docs:
 
 Note: Assistants can't create documents in connected platforms for you.
 
-### What are things to ask @gpt3.5-turbo?
-
-GPT-3.5 is OpenAI's fastest model but is not as good as gpt4 for reasoning and will make more mistakes.
-
 ### What are things to ask @gpt4?
 
 GPT-4 Turbo is OpenAI’s top model and is good for tasks needing advanced thinking. It's better at coding tests and math and is helpful for people without coding or computer experience.
@@ -381,15 +384,13 @@ Claude was trained on data until early 2023. It won't know about events after th
 
 For builders, Claude 2.1 can handle the most context: 200k tokens, or 150,000 words, or over 500 pages of text.
 
-### What are things to ask @claude-instant?
+### What are things to ask @mistral-medium?
 
-Claude-instant can analyze and work with long sections of books, code, documents, transcripts, and more.
+A 7B dense Transformer, fast-deployed and easily customizable. Small yet powerful for a variety of use cases. Supports English and code, and a 8k context window.
 
-For builders, Claude-instant can handle the most context: 100k tokens, or about 175 pages of text.
+### What are things to ask @gemini-pro?
 
-### What are things to ask @mistral?
-
-Mistral-7B-instruct is a state-of-the-art 7.3 billion parameter language model. Mistral is a base model, proficient in various English language tasks.
+The Gemini models are trained to support 32k context length. Gemini Pro comes with strong reasoning, math, coding, and language understanding skills.
 
 ### What data do the assistants have access to?
 
@@ -437,6 +438,11 @@ As an Admin or a builder, to create Dust custom apps go to ️Admin > `Develop
 To learn how to develop an app you can explore Dust technical documentation here - https://docs.dust.tt/
 
 ## Troubles using Dust and limitations of the assistant
+
+### When asking a question about data within Slack, the link to the thread isn’t always the right one
+
+In a given channel, messages that are not part of a slack thread are grouped together by Dust according to the time they were sent. The link provided by dust is then for the first message of the group. The message that matched your question might be further down.
+To optimize dust retrieval of a piece of information on Slack, we recommend creating a first message with only the title, then following up in a thread from the message with all the information.
 
 ### I haven’t received a login, or I am having trouble logging in
 

@@ -29,11 +29,23 @@ export const EMBEDDING_CONFIG = {
   max_chunk_size: 512,
 };
 
-export type CoreAPIErrorResponse = {
+export type CoreAPIError = {
   message: string;
   code: string;
 };
-export type CoreAPIResponse<T> = Result<T, CoreAPIErrorResponse>;
+
+export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "code" in obj &&
+    typeof obj.code === "string"
+  );
+}
+
+export type CoreAPIResponse<T> = Result<T, CoreAPIError>;
 
 export type CoreAPIDatasetVersion = {
   hash: string;
@@ -116,7 +128,7 @@ export class CoreAPI {
     const response = await fetch(`${CORE_API}/projects`, {
       method: "POST",
     });
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async deleteProject({
@@ -128,7 +140,7 @@ export class CoreAPI {
       method: "DELETE",
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getDatasets({
@@ -143,7 +155,7 @@ export class CoreAPI {
       },
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getDataset({
@@ -165,7 +177,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async createDataset({
@@ -189,7 +201,7 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async cloneProject({
@@ -201,7 +213,7 @@ export class CoreAPI {
       method: "POST",
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async createRun({
@@ -232,7 +244,7 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async createRunStream({
@@ -272,7 +284,7 @@ export class CoreAPI {
     );
 
     if (!response.ok || !response.body) {
-      return _resultFromResponse(response);
+      return this._resultFromResponse(response);
     }
 
     let hasRunId = false;
@@ -351,7 +363,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getRunsBatch({
@@ -374,7 +386,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getRun({
@@ -391,7 +403,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getRunStatus({
@@ -408,7 +420,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getSpecification({
@@ -427,7 +439,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getRunBlock({
@@ -448,7 +460,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async createDataSource({
@@ -477,7 +489,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getDataSource({
@@ -496,7 +508,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async deleteDataSource({
@@ -513,7 +525,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async searchDataSource(
@@ -559,7 +571,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getDataSourceDocuments({
@@ -586,7 +598,7 @@ export class CoreAPI {
         method: "GET",
       }
     );
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getDataSourceDocument({
@@ -615,7 +627,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getDataSourceDocumentVersions({
@@ -658,7 +670,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async upsertDataSourceDocument({
@@ -713,7 +725,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async updateDataSourceDocumentTags({
@@ -749,7 +761,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async updateDataSourceDocumentParents({
@@ -782,7 +794,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async deleteDataSourceDocument({
@@ -803,7 +815,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async tokenize({
@@ -829,7 +841,7 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async dataSourceTokenize({
@@ -851,7 +863,7 @@ export class CoreAPI {
         body: JSON.stringify({ text }),
       }
     );
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async upsertTable({
@@ -882,7 +894,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getTable({
@@ -901,7 +913,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getTables({
@@ -922,7 +934,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async deleteTable({
@@ -941,7 +953,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async upsertTableRows({
@@ -971,7 +983,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getTableRow({
@@ -992,7 +1004,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async getTableRows({
@@ -1022,7 +1034,7 @@ export class CoreAPI {
       }
     );
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
 
   async queryDatabase({
@@ -1052,16 +1064,83 @@ export class CoreAPI {
       }),
     });
 
-    return _resultFromResponse(response);
+    return this._resultFromResponse(response);
   }
-}
 
-async function _resultFromResponse<T>(
-  response: Response
-): Promise<CoreAPIResponse<T>> {
-  const jsonResponse = await response.json();
-  if (jsonResponse.error) {
-    return new Err(jsonResponse.error);
+  private async _resultFromResponse<T>(
+    response: Response
+  ): Promise<CoreAPIResponse<T>> {
+    const parseError = async (response: Response, error: SyntaxError) => {
+      const text = await response.text();
+
+      const err: CoreAPIError = {
+        code: "unexpected_response_format",
+        message: `Unexpected response format from CoreAPI: ${error}`,
+      };
+      this._logger.error(
+        { coreError: err, parseError: error, status: response.status },
+        "CoreAPI error"
+      );
+      this._logger.error(
+        { coreError: err, parseError: error, status: response.status },
+        `CoreAPI error, raw response text: ${text}`
+      );
+      return new Err(err);
+    };
+
+    if (!response.ok) {
+      try {
+        const json = await response.json();
+        const err = json?.error;
+
+        if (isCoreAPIError(err)) {
+          this._logger.error(
+            { coreError: err, json, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        } else {
+          const err: CoreAPIError = {
+            code: "unexpected_error_format",
+            message: "Unexpected error format from CoreAPI",
+          };
+          this._logger.error(
+            { coreError: err, json, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        }
+      } catch (e) {
+        return parseError(response, e as SyntaxError);
+      }
+    } else {
+      try {
+        const json = await response.json();
+        const err = json?.error;
+        const res = json?.response;
+
+        if (err && isCoreAPIError(err)) {
+          this._logger.error(
+            { coreError: err, json, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        } else if (res) {
+          return new Ok(res);
+        } else {
+          const err: CoreAPIError = {
+            code: "unexpected_response_format",
+            message: "Unexpected response format from CoreAPI",
+          };
+          this._logger.error(
+            { coreError: err, json, status: response.status },
+            "CoreAPI error"
+          );
+          return new Err(err);
+        }
+      } catch (e) {
+        return parseError(response, e as SyntaxError);
+      }
+    }
   }
-  return new Ok(jsonResponse.response);
 }

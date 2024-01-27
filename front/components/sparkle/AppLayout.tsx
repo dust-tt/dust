@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useContext, useState } from "react";
 
 import type {
   SidebarNavigation,
@@ -174,6 +174,30 @@ function NavigationBar({
   );
 }
 
+export const SidebarContext = React.createContext<{
+  sidebarOpen: boolean;
+  setSidebarOpen: (value: boolean) => void;
+}>({
+  sidebarOpen: false,
+  setSidebarOpen: (value) => {
+    throw new Error("SidebarContext not initialized: " + value);
+  },
+});
+
+export const SidebarProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
+
 export default function AppLayout({
   owner,
   subscription,
@@ -199,7 +223,7 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   return (
     <>
       <Head>

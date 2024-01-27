@@ -1,3 +1,4 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -29,7 +30,6 @@ import {
 } from "@connectors/lib/models/github";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
 const HANDLED_WEBHOOKS = {
   installation_repositories: new Set(["added", "removed"]),
@@ -42,7 +42,7 @@ const HANDLED_WEBHOOKS = {
 
 const logger = mainLogger.child({ provider: "github" });
 
-type GithubWebhookResBody = null | ConnectorsAPIErrorResponse;
+type GithubWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
 const _webhookGithubAPIHandler = async (
   req: Request<
@@ -59,6 +59,7 @@ const _webhookGithubAPIHandler = async (
   if (!event || typeof event !== "string") {
     return res.status(400).json({
       error: {
+        type: "invalid_request_error",
         message: "Missing `x-github-event` header",
       },
     });

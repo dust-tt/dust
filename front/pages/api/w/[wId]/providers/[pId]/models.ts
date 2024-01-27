@@ -1,3 +1,4 @@
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -14,7 +15,9 @@ export type GetProviderModelsErrorResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    GetProviderModelsResponseBody | GetProviderModelsErrorResponseBody
+    WithAPIErrorReponse<
+      GetProviderModelsResponseBody | GetProviderModelsErrorResponseBody
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -257,27 +260,6 @@ async function handler(
             });
             res.status(200).json({ models: f });
           }
-          return;
-
-        case "textsynth":
-          if (chat) {
-            res.status(200).json({
-              models: [
-                { id: "mistral_7B_instruct" },
-                { id: "falcon_40B-chat" },
-              ],
-            });
-            return;
-          }
-          res.status(200).json({
-            models: [
-              { id: "mistral_7B" },
-              { id: "mistral_7B_instruct" },
-              { id: "falcon_7B" },
-              { id: "falcon_40B" },
-              { id: "llama2_7B" },
-            ],
-          });
           return;
 
         case "google_vertex_ai":

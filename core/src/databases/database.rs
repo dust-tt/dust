@@ -231,11 +231,11 @@ impl Table {
                 None => Err(anyhow!("Row {} is not an object", row_index,))?,
             };
             match object.keys().find(|key| match key.chars().next() {
-                Some(c) => !c.is_ascii_lowercase(),
+                Some(c) => c.is_ascii_uppercase(),
                 None => false,
             }) {
                 Some(key) => Err(anyhow!(
-                    "Row {} has a key '{}' that is not lowercase",
+                    "Row {} has a key '{}' that contains uppercase characters",
                     row_index,
                     key
                 ))?,

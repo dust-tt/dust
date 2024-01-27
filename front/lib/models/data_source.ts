@@ -9,6 +9,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
+import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 
 export class DataSource extends Model<
@@ -19,9 +20,12 @@ export class DataSource extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  // Corresponds to the ID of the last user to configure the connection.
+  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedAt: CreationOptional<Date>;
+
   declare name: string;
   declare description: string | null;
-  declare visibility: "public" | "private";
   declare assistantDefaultSelected: boolean;
   declare dustAPIProjectId: string;
   declare connectorId: string | null;
@@ -29,6 +33,7 @@ export class DataSource extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare workspace: NonAttribute<Workspace>;
+  declare editedByUser: NonAttribute<User>;
 }
 
 DataSource.init(
@@ -48,16 +53,18 @@ DataSource.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    editedAt: {
+      type: DataTypes.DATE,
+      // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     description: {
       type: DataTypes.TEXT,
-    },
-    visibility: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     assistantDefaultSelected: {
       type: DataTypes.BOOLEAN,
@@ -79,8 +86,7 @@ DataSource.init(
     modelName: "data_source",
     sequelize: front_sequelize,
     indexes: [
-      { fields: ["workspaceId", "visibility"] },
-      { fields: ["workspaceId", "name", "visibility"] },
+      { fields: ["workspaceId", "name"] },
       { fields: ["workspaceId", "name"], unique: true },
     ],
   }
@@ -93,4 +99,10 @@ Workspace.hasMany(DataSource, {
 DataSource.belongsTo(Workspace, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
+});
+
+DataSource.belongsTo(User, {
+  as: "editedByUser",
+  // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });

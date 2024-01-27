@@ -1,4 +1,4 @@
-import type { CoreAPIRow } from "@dust-tt/types";
+import type { CoreAPIRow, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -42,7 +42,9 @@ type ListTableRowsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<UpsertTableRowsResponseBody | ListTableRowsResponseBody>
+  res: NextApiResponse<
+    WithAPIErrorReponse<UpsertTableRowsResponseBody | ListTableRowsResponseBody>
+  >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -56,12 +58,12 @@ async function handler(
 
   const owner = auth.workspace();
   const plan = auth.plan();
-  if (!owner || !plan) {
+  if (!owner || !plan || !auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }

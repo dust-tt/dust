@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 
 import {
   getRepo,
@@ -19,7 +19,6 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 import type {
   ConnectorPermission,
   ConnectorResource,
@@ -85,7 +84,7 @@ export async function updateGithubConnector(
   }: {
     connectionId?: string | null;
   }
-): Promise<Result<string, ConnectorsAPIErrorResponse>> {
+): Promise<Result<string, ConnectorsAPIError>> {
   const c = await Connector.findOne({
     where: {
       id: connectorId,
@@ -94,10 +93,8 @@ export async function updateGithubConnector(
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
-      error: {
-        message: "Connector not found",
-        type: "connector_not_found",
-      },
+      message: "Connector not found",
+      type: "connector_not_found",
     });
   }
 
@@ -107,10 +104,8 @@ export async function updateGithubConnector(
 
     if (oldGithubInstallationId !== newGithubInstallationId) {
       return new Err({
-        error: {
-          type: "connector_oauth_target_mismatch",
-          message: "Cannot change the Installation Id of a Github Data Source",
-        },
+        type: "connector_oauth_target_mismatch",
+        message: "Cannot change the Installation Id of a Github Data Source",
       });
     }
 

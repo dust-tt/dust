@@ -41,7 +41,7 @@ export function Searchbar({
   };
 
   return (
-    <div className="s-relative s-m-px">
+    <div className="s-relative s-m-px s-flex-grow">
       <input
         type="text"
         name={name}

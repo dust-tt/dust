@@ -74,6 +74,19 @@ export const timeAgoFrom = (
   return seconds + "s";
 };
 
+// E.g: January 25, 2024, 5:17:00 PM.
+export function formatTimestampToFriendlyDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  });
+}
+
 export const validateUrl = (
   urlString: string
 ): {

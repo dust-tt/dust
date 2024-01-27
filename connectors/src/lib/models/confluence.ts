@@ -126,6 +126,7 @@ export class ConfluencePage extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastVisitedAt: CreationOptional<Date>;
 
   declare externalUrl: string;
   declare pageId: string;
@@ -154,6 +155,11 @@ ConfluencePage.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    lastVisitedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
     version: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -165,6 +171,7 @@ ConfluencePage.init(
     parentId: {
       type: DataTypes.STRING,
       allowNull: true,
+      defaultValue: null,
     },
     pageId: {
       type: DataTypes.STRING,
@@ -187,7 +194,8 @@ ConfluencePage.init(
     sequelize: sequelize_conn,
     indexes: [
       { fields: ["connectorId", "pageId"], unique: true },
-      { fields: ["connectorId", "spaceId"] },
+      { fields: ["connectorId", "spaceId", "parentId"] },
+      { fields: ["connectorId", "lastVisitedAt"] },
     ],
     modelName: "confluence_pages",
   }

@@ -1,3 +1,4 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -6,11 +7,10 @@ import * as reporter from "io-ts-reporters";
 import { SET_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type SetConnectorPermissionsRes =
-  | { success: true }
-  | ConnectorsAPIErrorResponse;
+type SetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
+  success: true;
+}>;
 
 const SetConnectorPermissionsRequestBodySchema = t.type({
   resources: t.array(

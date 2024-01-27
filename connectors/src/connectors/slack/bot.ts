@@ -118,11 +118,12 @@ export async function botAnswerMessageWithErrorHandling(
     } else {
       logger.info(
         {
+          connectorId: connector.id,
+          message,
           slackTeamId: slackTeamId,
           slackChannel: slackChannel,
           slackUserId: slackUserId,
           slackMessageTs: slackMessageTs,
-          message: message,
         },
         `Successfully answered to Slack Chat Bot message`
       );

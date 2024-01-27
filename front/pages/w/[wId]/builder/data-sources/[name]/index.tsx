@@ -31,6 +31,7 @@ import { useContext, useEffect, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import DataSourceDetailsModal from "@app/components/data_source/DataSourceDetailsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -95,7 +96,10 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.name as string, {
+    includeEditedBy: true,
+  });
+
   if (!dataSource) {
     return {
       notFound: true,
@@ -642,6 +646,57 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
+interface ConnectorUiConfig {
+  displayDataSourceDetailsModal: boolean;
+  displayManagePermissionButton: boolean;
+  addDataButtonLabel: string | null;
+}
+
+function getRenderingConfigForConnectorProvider(
+  connectorProvider: ConnectorProvider
+): ConnectorUiConfig {
+  const commonConfig = {
+    displayManagePermissionButton: true,
+    addDataButtonLabel: "Add / Remove data",
+  };
+
+  switch (connectorProvider) {
+    case "confluence":
+    case "google_drive":
+      return {
+        ...commonConfig,
+        displayDataSourceDetailsModal: true,
+      };
+
+    case "slack":
+    case "intercom":
+      return {
+        ...commonConfig,
+        displayDataSourceDetailsModal: false,
+      };
+    case "notion":
+      return {
+        displayDataSourceDetailsModal: true,
+        displayManagePermissionButton: false,
+        addDataButtonLabel: "Add / Remove data, manage permissions",
+      };
+    case "github":
+      return {
+        displayDataSourceDetailsModal: false,
+        displayManagePermissionButton: false,
+        addDataButtonLabel: "Add / Remove data, manage permissions",
+      };
+    case "webcrawler":
+      return {
+        displayDataSourceDetailsModal: false,
+        displayManagePermissionButton: false,
+        addDataButtonLabel: null,
+      };
+    default:
+      assertNever(connectorProvider);
+  }
+}
+
 function ManagedDataSourceView({
   owner,
   readOnly,
@@ -673,6 +728,8 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showDataSourceDetailsModal, setShowDataSourceDetailsModal] =
+    useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -789,8 +846,24 @@ function ManagedDataSourceView({
     };
   };
 
+  const {
+    displayDataSourceDetailsModal,
+    displayManagePermissionButton,
+    addDataButtonLabel,
+  } = getRenderingConfigForConnectorProvider(connectorProvider);
+
   return (
     <>
+      <DataSourceDetailsModal
+        dataSource={dataSource}
+        visible={showDataSourceDetailsModal}
+        onClose={() => {
+          setShowDataSourceDetailsModal(false);
+        }}
+        onClick={() => {
+          void handleUpdatePermissions();
+        }}
+      />
       <ConnectorPermissionsModal
         owner={owner}
         connector={connector}
@@ -799,25 +872,45 @@ function ManagedDataSourceView({
         setOpen={setShowPermissionModal}
       />
       <div className="flex flex-col pt-4">
-        <Page.Header
-          title={(() => {
-            switch (connectorProvider) {
-              case "confluence":
-              case "slack":
-              case "google_drive":
-              case "github":
-              case "notion":
-              case "intercom":
-                return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
-              case "webcrawler":
-                return `Manage Website`;
+        <div className="flex flex-row items-end">
+          <Page.Header
+            title={(() => {
+              switch (connectorProvider) {
+                case "confluence":
+                case "slack":
+                case "google_drive":
+                case "github":
+                case "notion":
+                case "intercom":
+                  return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
+                case "webcrawler":
+                  return `Manage Website`;
 
-              default:
-                assertNever(connectorProvider);
-            }
-          })()}
-          icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
-        />
+                default:
+                  assertNever(connectorProvider);
+              }
+            })()}
+            icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
+          />
+          {isAdmin && displayManagePermissionButton ? (
+            <Button
+              className="ml-auto"
+              label="Manage permissions"
+              variant="tertiary"
+              icon={LockIcon}
+              disabled={readOnly || !isAdmin}
+              onClick={() => {
+                if (displayDataSourceDetailsModal) {
+                  setShowDataSourceDetailsModal(true);
+                } else {
+                  void handleUpdatePermissions();
+                }
+              }}
+            />
+          ) : (
+            <></>
+          )}
+        </div>
         <div className="pt-2">
           <ConnectorSyncingChip connector={connector} />
         </div>
@@ -826,54 +919,26 @@ function ManagedDataSourceView({
           <>
             <div className="flex flex-col pb-4 pt-8">
               <Button.List>
-                {(() => {
-                  switch (connectorProvider) {
-                    case "confluence":
-                    case "google_drive":
-                    case "slack":
-                    case "intercom":
-                      return (
-                        <>
-                          <Button
-                            label="Add / Remove data"
-                            variant="primary"
-                            icon={ListCheckIcon}
-                            disabled={readOnly || !isAdmin}
-                            onClick={() => {
-                              setShowPermissionModal(true);
-                            }}
-                          />
-                          <Button
-                            label="Manage permissions"
-                            variant="secondary"
-                            icon={LockIcon}
-                            disabled={readOnly || !isAdmin}
-                            onClick={() => {
-                              void handleUpdatePermissions();
-                            }}
-                          />
-                        </>
-                      );
-                    case "notion":
-                    case "github":
-                      return (
-                        <Button
-                          label="Add / Remove data, manage permissions"
-                          variant="primary"
-                          icon={ListCheckIcon}
-                          onClick={() => {
-                            void handleUpdatePermissions();
-                          }}
-                        />
-                      );
-                    case "webcrawler":
-                      return null;
-                    default:
-                      ((p: never) => {
-                        throw new Error(`Unknown connector provider ${p}`);
-                      })(connectorProvider);
-                  }
-                })()}
+                {addDataButtonLabel && (
+                  <Button
+                    label={addDataButtonLabel}
+                    variant="primary"
+                    icon={ListCheckIcon}
+                    disabled={readOnly || !isAdmin}
+                    onClick={() => {
+                      if (
+                        !displayManagePermissionButton &&
+                        displayDataSourceDetailsModal
+                      ) {
+                        setShowDataSourceDetailsModal(true);
+                      } else if (displayManagePermissionButton) {
+                        setShowPermissionModal(true);
+                      } else {
+                        void handleUpdatePermissions();
+                      }
+                    }}
+                  />
+                )}
               </Button.List>
               <div className="pt-2 text-sm font-normal text-element-700">
                 {(() => {

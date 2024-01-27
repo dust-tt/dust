@@ -1,11 +1,11 @@
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { Connector } from "@connectors/lib/models";
 import { withLogging } from "@connectors/logger/withlogging";
-import type { ConnectorsAPIErrorResponse } from "@connectors/types/errors";
 
-type GetSyncStatusRes = { workflowId: string } | ConnectorsAPIErrorResponse;
+type GetSyncStatusRes = WithConnectorsAPIErrorReponse<{ workflowId: string }>;
 
 const _syncConnectorAPIHandler = async (
   req: Request<{ connector_id: string }, GetSyncStatusRes, undefined>,
@@ -14,6 +14,7 @@ const _syncConnectorAPIHandler = async (
   if (!req.params.connector_id) {
     res.status(400).send({
       error: {
+        type: "invalid_request_error",
         message: `Missing required parameters. Required : connector_id`,
       },
     });
@@ -25,6 +26,7 @@ const _syncConnectorAPIHandler = async (
   if (!connector) {
     res.status(404).send({
       error: {
+        type: "connector_not_found",
         message: `Connector with id ${req.params.connector_id} not found`,
       },
     });
@@ -37,6 +39,7 @@ const _syncConnectorAPIHandler = async (
   if (launchRes.isErr()) {
     res.status(500).send({
       error: {
+        type: "internal_server_error",
         message: launchRes.error.message,
       },
     });

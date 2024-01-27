@@ -1,9 +1,11 @@
+import type {
+  ConnectorsAPIErrorWithStatusCode,
+  WithConnectorsAPIErrorReponse,
+} from "@dust-tt/types";
 import type { Request, Response } from "express";
 import StatsD from "hot-shots";
 
-import type { APIErrorWithStatusCode } from "@connectors/lib/error";
-
-import logger from "./logger";
+import logger from "@connectors/logger/logger";
 
 export const statsDClient = new StatsD();
 
@@ -72,10 +74,10 @@ export const withLogging = (handler: any) => {
   };
 };
 
-export function apiError(
+export function apiError<T>(
   req: Request,
-  res: Response,
-  apiError: APIErrorWithStatusCode,
+  res: Response<WithConnectorsAPIErrorReponse<T>>,
+  apiError: ConnectorsAPIErrorWithStatusCode,
   error?: Error
 ): void {
   logger.error(

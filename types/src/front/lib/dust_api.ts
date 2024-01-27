@@ -717,10 +717,24 @@ export class DustAPI {
         text,
       }),
     });
-    const dustRequestResult = await res.json();
-    if (dustRequestResult.error) {
-      return new Err(dustRequestResult.error as DustAPIErrorResponse);
+
+    try {
+      const dustRequestResult = await res.json();
+
+      if (dustRequestResult.error) {
+        return new Err(dustRequestResult.error as DustAPIErrorResponse);
+      }
+      return new Ok(dustRequestResult.tokens as CoreAPITokenType[]);
+    } catch (err) {
+      const rawResponse = await res.text();
+
+      const message = `Dust API /tokenize responded with status: ${res.status}.`;
+      this._logger.error(
+        { status: res.status, response: rawResponse },
+        message
+      );
+
+      return new Err({ type: "bad_request", message });
     }
-    return new Ok(dustRequestResult.tokens as CoreAPITokenType[]);
   }
 }

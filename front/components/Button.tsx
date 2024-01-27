@@ -59,7 +59,7 @@ export function SignInDropDownButton({
         />
       </DropdownMenu.Button>
       <DropdownMenu.Items origin="topRight" width={240}>
-        <div className="flex flex-col gap-2 p-4">
+        <div className="flex flex-col gap-3 py-4">
           <Button
             variant="tertiary"
             size="md"

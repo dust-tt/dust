@@ -194,11 +194,28 @@ pub struct Chunk {
 /// corresponding to its hierarchy, ordered by closest parent first.
 ///
 /// Parents are at the time of writing only relevant for managed datasources
-/// since standard datasources do not allow specifying a hierarchy. A parent is
-/// represented by a string of characters which correspond to the parent's
-/// external id, provided by the managed datasource’s API (e.g. the Notion id
-/// for Notion pages and databases).
+/// since standard datasources do not allow specifying a hierarchy.
 ///
+/// Parents id
+/// ----------
+/// A parent is represented by a string of characters that:
+/// - should be unique per workspace;
+/// - should be the same as the one used in connectors for permissions (often
+///   the one stored in DB `dust-connectors` in the parent document
+///   corresponding table)
+///
+/// For some sources, this is well emboodied by  the parent's external id,
+/// provided by the managed datasource’s API: the Notion id (notionPageId column
+/// in `notion_pages`) for Notion pages and databases, the Google drive id
+/// (driveFileId column in `google_drive_documents`).
+///
+/// For other sources, such as github: github issues / discussions do not have a
+/// proper external id, so we use our computed document id. The repo is
+/// considered a parent, and has a proper external “repo id”, which is stored at
+/// 2nd place in the array
+///
+/// Parents array
+/// -------------
 /// At index 0 is the string id of the document itself, then at index 1 its
 /// direct parent, then at index 2 is the direct parent of the element
 /// represented at index 1, etc. It is assumed that a document (or folder, or
@@ -219,10 +236,6 @@ pub struct Chunk {
 /// messages from a channel. A channel does not have any parent, and there are
 /// no slack ids for our slack "documents" so the only value in the parents
 /// array is the slack channel id
-///
-/// For github, github issues / discussions do not have a proper external id, so
-/// we use our computed document id. The repo is considered a parent, and has a
-/// proper external “repo id”, which is stored at 2nd place in the array
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Document {

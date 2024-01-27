@@ -1,4 +1,4 @@
-import type { DocumentType } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorReponse } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { JSONSchemaType } from "ajv";
@@ -8,7 +8,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -44,9 +44,9 @@ type DatasourceSearchResponseBody = {
   documents: Array<DocumentType>;
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<DatasourceSearchResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -55,7 +55,7 @@ export default async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -79,17 +79,6 @@ export default async function handler(
 
   switch (req.method) {
     case "GET": {
-      // Only member of the workspace can search a DataSource since it costs money for embedding.
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-      }
-
       // I could not find a way to make the query params be an array if there is only one tag.
       if (req.query.tags_in && typeof req.query.tags_in === "string") {
         req.query.tags_in = [req.query.tags_in];
@@ -170,3 +159,5 @@ export default async function handler(
       });
   }
 }
+
+export default withLogging(handler);

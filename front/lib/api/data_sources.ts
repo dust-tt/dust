@@ -4,40 +4,71 @@ import type {
   DataSourceType,
   Result,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
-import { Op } from "sequelize";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+} from "@dust-tt/types";
 
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
-import { DataSource } from "@app/lib/models";
+import { DataSource, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
+function makeEditedBy(
+  editedByUser: User | undefined,
+  editedAt: Date | undefined
+) {
+  if (!editedByUser || !editedAt) {
+    return undefined;
+  }
+
+  return {
+    editedByUser: {
+      editedAt: editedAt.getTime(),
+      fullName: formatUserFullName(editedByUser),
+      imageUrl: editedByUser.imageUrl,
+    },
+  };
+}
+
 export async function getDataSource(
   auth: Authenticator,
-  name: string
+  name: string,
+  { includeEditedBy }: { includeEditedBy: boolean } = {
+    includeEditedBy: false,
+  }
 ): Promise<DataSourceType | null> {
   const owner = auth.workspace();
-  if (!owner) {
+
+  // This condition is critical it checks that we can identify the workspace and that the current
+  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
+  // be possible to access data sources without being authenticated.
+  if (!owner || !auth.isUser()) {
     return null;
   }
 
-  const dataSource = await DataSource.findOne({
-    where: auth.isUser()
-      ? {
-          workspaceId: owner.id,
-          visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
+  const includes = includeEditedBy
+    ? {
+        include: [
+          {
+            model: User,
+            as: "editedByUser",
           },
-          name,
-        }
-      : {
-          workspaceId: owner.id,
-          // Do not include 'unlisted' here.
-          visibility: "public",
-          name,
-        },
+        ],
+      }
+    : undefined;
+
+  const dataSource = await DataSource.findOne({
+    where: {
+      workspaceId: owner.id,
+      name,
+    },
+    ...includes,
   });
 
   if (!dataSource) {
@@ -48,11 +79,11 @@ export async function getDataSource(
     id: dataSource.id,
     name: dataSource.name,
     description: dataSource.description,
-    visibility: dataSource.visibility,
     dustAPIProjectId: dataSource.dustAPIProjectId,
     connectorId: dataSource.connectorId,
     connectorProvider: dataSource.connectorProvider,
     assistantDefaultSelected: dataSource.assistantDefaultSelected,
+    ...makeEditedBy(dataSource.editedByUser, dataSource.editedAt),
   };
 }
 
@@ -60,23 +91,18 @@ export async function getDataSources(
   auth: Authenticator
 ): Promise<DataSourceType[]> {
   const owner = auth.workspace();
-  if (!owner) {
+
+  // This condition is critical it checks that we can identify the workspace and that the current
+  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
+  // be possible to access data sources without being authenticated.
+  if (!owner || !auth.isUser()) {
     return [];
   }
 
   const dataSources = await DataSource.findAll({
-    where: auth.isUser()
-      ? {
-          workspaceId: owner.id,
-          visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
-          },
-        }
-      : {
-          workspaceId: owner.id,
-          // Do not include 'unlisted' here.
-          visibility: "public",
-        },
+    where: {
+      workspaceId: owner.id,
+    },
     order: [["updatedAt", "DESC"]],
   });
 
@@ -85,7 +111,6 @@ export async function getDataSources(
       id: dataSource.id,
       name: dataSource.name,
       description: dataSource.description,
-      visibility: dataSource.visibility,
       dustAPIProjectId: dataSource.dustAPIProjectId,
       connectorId: dataSource.connectorId,
       connectorProvider: dataSource.connectorProvider,
@@ -93,27 +118,67 @@ export async function getDataSources(
     };
   });
 }
-export async function deleteDataSource(
+
+export async function updateDataSourceEditedBy(
   auth: Authenticator,
-  dataSourceName: string
-): Promise<Result<{ success: true }, APIError>> {
-  const workspace = auth.workspace();
-  if (!workspace) {
+  dataSource: DataSourceType
+): Promise<Result<undefined, APIError>> {
+  const owner = auth.workspace();
+  const user = auth.user();
+  if (!owner || !user) {
     return new Err({
       type: "workspace_not_found",
       message: "Could not find the workspace.",
     });
   }
+
   if (!auth.isAdmin()) {
     return new Err({
       type: "workspace_auth_error",
       message:
-        "Only users that are `admins` for the current workspace can delete data sources.",
+        "Only users that are `admins` for the current workspace can update data sources.",
     });
   }
+
+  await DataSource.update(
+    {
+      editedAt: new Date(),
+      editedByUserId: user.id,
+    },
+    {
+      where: {
+        id: dataSource.id,
+        workspaceId: owner.id,
+      },
+    }
+  );
+
+  return new Ok(undefined);
+}
+
+export async function deleteDataSource(
+  auth: Authenticator,
+  dataSourceName: string
+): Promise<Result<{ success: true }, APIError>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err({
+      type: "workspace_not_found",
+      message: "Could not find the workspace.",
+    });
+  }
+
+  if (!auth.isBuilder()) {
+    return new Err({
+      type: "workspace_auth_error",
+      message:
+        "Only users that are `builders` for the current workspace can delete data sources.",
+    });
+  }
+
   const dataSource = await DataSource.findOne({
     where: {
-      workspaceId: workspace.id,
+      workspaceId: owner.id,
       name: dataSourceName,
     },
   });
@@ -126,8 +191,16 @@ export async function deleteDataSource(
 
   const dustAPIProjectId = dataSource.dustAPIProjectId;
 
-  const connectorsAPI = new ConnectorsAPI(logger);
   if (dataSource.connectorId) {
+    if (!auth.isAdmin()) {
+      return new Err({
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can delete connected data sources.",
+      });
+    }
+
+    const connectorsAPI = new ConnectorsAPI(logger);
     const connDeleteRes = await connectorsAPI.deleteConnector(
       dataSource.connectorId.toString(),
       true
@@ -135,10 +208,11 @@ export async function deleteDataSource(
     if (connDeleteRes.isErr()) {
       // If we get a not found we proceed with the deletion of the data source. This will enable
       // us to retry deletion of the data source if it fails at the Core level.
-      if (connDeleteRes.error.error.type !== "connector_not_found") {
+      if (connDeleteRes.error.type !== "connector_not_found") {
         return new Err({
           type: "internal_server_error",
-          message: `Error deleting connector: ${connDeleteRes.error.error.message}`,
+          message: `Error deleting connector`,
+          connectors_error: connDeleteRes.error,
         });
       }
     }
@@ -153,13 +227,14 @@ export async function deleteDataSource(
     return new Err({
       type: "internal_server_error",
       message: `Error deleting core data source: ${coreDeleteRes.error.message}`,
+      data_source_error: coreDeleteRes.error,
     });
   }
 
   await dataSource.destroy();
 
   await launchScrubDataSourceWorkflow({
-    wId: workspace.sId,
+    wId: owner.sId,
     dustAPIProjectId,
   });
   if (dataSource.connectorProvider)

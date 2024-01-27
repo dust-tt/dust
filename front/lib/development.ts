@@ -28,6 +28,7 @@ export function isActivatedStructuredDB(owner: WorkspaceType) {
       "a29e7fb74f329d26a16785989f6efb80",
       "02da873b8c9404f9005d724ea02b84b1",
       "f441aae51356fbd85718c5b259884af5",
+      "9904970eeaa283f18656c6e60b66cb19",
     ].includes(hashedWorkspaceId)
   );
 }
@@ -48,6 +49,8 @@ export function isActivatedPublicURLs(owner: WorkspaceType) {
       "02da873b8c9404f9005d724ea02b84b1",
       "a29e7fb74f329d26a16785989f6efb80",
       "2b121e50d0a35014c6057d1241c4448c",
+      "f441aae51356fbd85718c5b259884af5",
+      "8dfd4e7ab0db100b5041f2f56b5106ef", // pauline
     ].includes(hashedWorkspaceId)
   );
 }

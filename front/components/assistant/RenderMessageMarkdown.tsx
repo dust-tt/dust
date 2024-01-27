@@ -395,23 +395,19 @@ function TableBlock({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="relative w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
-      <div className="absolute right-2 top-2">
-        <div className="flex gap-2">
-          <div className="text-xs text-slate-300">
-            <a onClick={handleCopyTable} className="cursor-pointer">
-              {isCopied ? "Copied!" : "Copy"}
-            </a>
-          </div>
-          <IconButton
-            variant="tertiary"
-            size="xs"
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            onClick={handleCopyTable}
-          />
-        </div>
+    <div className="relative">
+      <div className="relative w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
+        <table className="w-full table-auto">{children}</table>
       </div>
-      <table className="w-full table-auto">{children}</table>
+
+      <div className="absolute right-2 top-2 mx-2 rounded-xl bg-structure-50">
+        <IconButton
+          variant="tertiary"
+          size="xs"
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          onClick={handleCopyTable}
+        />
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import type { WorkflowInfo } from "@temporalio/workflow";
 import {
   executeChild,
   proxyActivities,
@@ -13,6 +14,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 // The Temporal bundle does not support the use of aliases in import statements.
 import { spaceUpdatesSignal } from "./signals";
 import {
+  makeConfluenceRemoveSpacesWorkflowId,
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
 } from "./utils";
@@ -20,10 +22,15 @@ import {
 const {
   confluenceGetSpaceNameActivity,
   confluenceListPageIdsInSpaceActivity,
+  confluenceRemoveUnvisitedPagesActivity,
+  fetchConfluenceSpaceIdsForConnectorActivity,
   confluenceRemoveSpaceActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
   confluenceUpsertPageActivity,
+
+  confluenceGetReportPersonalActionActivity,
+  fetchConfluenceUserAccountAndConnectorIdsActivity,
 
   fetchConfluenceConfigurationActivity,
   getSpaceIdsToSyncActivity,
@@ -31,16 +38,18 @@ const {
   startToCloseTimeout: "20 minutes",
 });
 
-export async function confluenceFullSyncWorkflow({
+export async function confluenceSyncWorkflow({
   connectionId,
   connectorId,
   dataSourceConfig,
   spaceIdsToBrowse,
+  forceUpsert = false,
 }: {
   connectionId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   spaceIdsToBrowse?: string[];
+  forceUpsert: boolean;
 }) {
   await confluenceSaveStartSyncActivity(connectorId);
 
@@ -86,6 +95,7 @@ export async function confluenceFullSyncWorkflow({
             dataSourceConfig,
             isBatchSync: true,
             spaceId,
+            forceUpsert,
           },
         ],
         memo,
@@ -105,12 +115,16 @@ interface ConfluenceSpaceSyncWorkflowInput {
   dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   spaceId: string;
+  forceUpsert: boolean;
 }
 
 export async function confluenceSpaceSyncWorkflow(
   params: ConfluenceSpaceSyncWorkflowInput
 ) {
   const uniquePageIds = new Set<string>();
+  const visitedAtMs = new Date().getTime();
+
+  const { connectorId, spaceId } = params;
 
   const confluenceConfig = await fetchConfluenceConfigurationActivity(
     params.connectorId
@@ -122,6 +136,11 @@ export async function confluenceSpaceSyncWorkflow(
     ...params,
     confluenceCloudId: confluenceConfig?.cloudId,
   });
+  // If the space does not exist, launch a workflow to remove the space.
+  if (spaceName === null) {
+    const wInfo = workflowInfo();
+    return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
+  }
 
   // Retrieve and loop through all pages for a given space.
   let nextPageCursor: string | null = "";
@@ -144,10 +163,44 @@ export async function confluenceSpaceSyncWorkflow(
       ...params,
       spaceName,
       pageId,
+      visitedAtMs,
     });
   }
 
+  await confluenceRemoveUnvisitedPagesActivity({
+    connectorId,
+    lastVisitedAt: visitedAtMs,
+    spaceId,
+  });
+
   return uniquePageIds.size;
+}
+
+async function startConfluenceRemoveSpaceWorkflow(
+  parentWorkflowInfo: WorkflowInfo,
+  connectorId: ModelId,
+  spaceId: string
+) {
+  const {
+    memo,
+    searchAttributes: parentSearchAttributes,
+    workflowId,
+  } = parentWorkflowInfo;
+
+  await executeChild(confluenceRemoveSpaceWorkflow, {
+    workflowId: makeConfluenceRemoveSpaceWorkflowIdFromParentId(
+      workflowId,
+      spaceId
+    ),
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        connectorId,
+        spaceId,
+      },
+    ],
+    memo,
+  });
 }
 
 // TODO(2024-01-19 flav) Build a factory to make workspace with a signal handler.
@@ -158,7 +211,14 @@ export async function confluenceRemoveSpacesWorkflow({
   connectorId: ModelId;
   spaceIds: string[];
 }) {
-  const uniqueSpaceIds = new Set(spaceIds);
+  let spaceIdsToDelete = spaceIds;
+  if (spaceIds.length === 0) {
+    spaceIdsToDelete = await fetchConfluenceSpaceIdsForConnectorActivity({
+      connectorId,
+    });
+  }
+
+  const uniqueSpaceIds = new Set(spaceIdsToDelete);
 
   setHandler(spaceUpdatesSignal, (spaceUpdates: SpaceUpdatesSignal[]) => {
     // If we get a signal, update the workflow state by adding/removing space ids.
@@ -171,11 +231,7 @@ export async function confluenceRemoveSpacesWorkflow({
     }
   });
 
-  const {
-    workflowId,
-    searchAttributes: parentSearchAttributes,
-    memo,
-  } = workflowInfo();
+  const wInfo = workflowInfo();
 
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
@@ -184,20 +240,7 @@ export async function confluenceRemoveSpacesWorkflow({
     const spaceIdsToProcess = new Set(uniqueSpaceIds);
     for (const spaceId of spaceIdsToProcess) {
       // Async operation yielding control to the Temporal runtime.
-      await executeChild(confluenceRemoveSpaceWorkflow, {
-        workflowId: makeConfluenceRemoveSpaceWorkflowIdFromParentId(
-          workflowId,
-          spaceId
-        ),
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            connectorId,
-            spaceId,
-          },
-        ],
-        memo,
-      });
+      await startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
 
       // Remove the processed space from the original set after the async operation.
       uniqueSpaceIds.delete(spaceId);
@@ -213,4 +256,34 @@ export async function confluenceRemoveSpaceWorkflow({
   spaceId: string;
 }) {
   await confluenceRemoveSpaceActivity(connectorId, spaceId);
+}
+
+export async function confluencePersonalDataReportingWorkflow() {
+  const userAccountAndConnectorIds =
+    await fetchConfluenceUserAccountAndConnectorIdsActivity();
+
+  // TODO(2024-01-23 flav) Consider chunking array of userAccounts to speed things up.
+  for (const blob of userAccountAndConnectorIds) {
+    const shouldDeleteConnector =
+      await confluenceGetReportPersonalActionActivity(blob);
+
+    if (shouldDeleteConnector) {
+      const { memo, searchAttributes: parentSearchAttributes } = workflowInfo();
+
+      // If the account is closed, remove all associated Spaces and Pages from storage.
+      await executeChild(confluenceRemoveSpacesWorkflow, {
+        workflowId: makeConfluenceRemoveSpacesWorkflowId(blob.connectorId),
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectorId: blob.connectorId,
+            spaceIds: [],
+          },
+        ],
+        memo,
+      });
+
+      // TODO(2024-01-23 flav) Implement logic to remove row in the Connector table and stop all workflows.
+    }
+  }
 }

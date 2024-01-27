@@ -1,3 +1,4 @@
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { GoogleAuth } from "google-auth-library";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,7 +11,7 @@ export type GetProvidersCheckResponseBody =
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetProvidersCheckResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<GetProvidersCheckResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -178,34 +179,12 @@ async function handler(
           );
           if (!mistralModelsRes.ok) {
             const err = await mistralModelsRes.json();
-            res.status(400).json({ ok: false, error: err.error.code });
+            res.status(400).json({
+              ok: false,
+              error: err.message ? err.message : JSON.stringify(err),
+            });
           } else {
             await mistralModelsRes.json();
-            res.status(200).json({ ok: true });
-          }
-          return;
-
-        case "textsynth":
-          const testCompletion = await fetch(
-            "https://api.textsynth.com/v1/engines/mistral_7B/completions",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${config.api_key}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                prompt: "<html>",
-                max_tokens: 1,
-              }),
-            }
-          );
-
-          if (!testCompletion.ok) {
-            const err = await testCompletion.json();
-            res.status(400).json({ ok: false, error: err.error });
-          } else {
-            await testCompletion.json();
             res.status(200).json({ ok: true });
           }
           return;

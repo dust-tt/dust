@@ -7,12 +7,27 @@ import { Icon } from "./Icon";
 
 interface PageProps {
   children: React.ReactNode;
+  variant: "modal" | "normal";
 }
 
-export function Page({ children }: PageProps) {
+Page.defaultProps = {
+  variant: "normal" as const,
+};
+
+export function Page({ children, variant }: PageProps) {
+  const mainVariantClasses =
+    variant === "normal" ? "s-h-full s-py-16" : "s-h-full s-py-4";
+  const divVariantClassNames =
+    variant === "normal" ? "s-gap-6 s-px-6" : "s-gap-4";
+
   return (
-    <main className="s-h-full s-py-16">
-      <div className="s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-gap-6 s-px-6 s-text-sm s-font-normal s-text-element-800">
+    <main className={mainVariantClasses}>
+      <div
+        className={classNames(
+          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal s-text-element-800",
+          divVariantClassNames
+        )}
+      >
         {children}
       </div>
     </main>

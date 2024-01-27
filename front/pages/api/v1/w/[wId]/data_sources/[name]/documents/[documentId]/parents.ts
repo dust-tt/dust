@@ -25,7 +25,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -49,17 +49,6 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "You can only alter the data souces of the workspaces for which you are a builder.",
-          },
-        });
-      }
-
       if (
         !req.body ||
         !Array.isArray(req.body.parents) ||

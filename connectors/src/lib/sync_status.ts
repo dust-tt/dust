@@ -1,12 +1,12 @@
-import type { ModelId } from "@dust-tt/types";
+import type {
+  ConnectorErrorType,
+  ConnectorSyncStatus,
+  ModelId,
+} from "@dust-tt/types";
 
 import { Connector } from "@connectors/lib/models";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
-import type {
-  ConnectorErrorType,
-  ConnectorSyncStatus,
-} from "@connectors/types/connector";
 
 async function syncFinished({
   connectorId,

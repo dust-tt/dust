@@ -9,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostDatasourceTokenizeBody = {
   text: string;
@@ -23,7 +23,7 @@ type PostDatasourceTokenizeResponseBody = {
   tokens: CoreAPITokenType[];
 };
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     PostDatasourceTokenizeResponseBody | ReturnedAPIErrorType
@@ -40,13 +40,14 @@ export default async function handler(
 
   if (!auth.workspace() || !auth.isBuilder()) {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: 404,
       api_error: {
-        type: "workspace_auth_error",
-        message: "You don't have permission to access this resource.",
+        type: "workspace_not_found",
+        message: "The workspace you requested was not found.",
       },
     });
   }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
 
   if (!dataSource) {
@@ -86,6 +87,7 @@ export default async function handler(
           api_error: {
             type: "internal_server_error",
             message: `Error tokenizing text: ${coreTokenizeRes.error.message}`,
+            data_source_error: coreTokenizeRes.error,
           },
         });
       }
@@ -104,3 +106,5 @@ export default async function handler(
       });
   }
 }
+
+export default withLogging(handler);

@@ -2,10 +2,14 @@ import { Nango } from "@nangohq/node";
 import axios from "axios";
 
 import type { WorkflowError } from "@connectors/lib/error";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
-
-import type { Result } from "./result";
-import { Err, Ok } from "./result";
+import {
+  ExternalOauthTokenError,
+  NANGO_ERROR_TYPES,
+  NangoError,
+} from "@connectors/lib/error";
+import type { Result } from "@connectors/lib/result";
+import { Err, Ok } from "@connectors/lib/result";
+import logger from "@connectors/logger/logger";
 
 const { NANGO_SECRET_KEY } = process.env;
 
@@ -34,6 +38,10 @@ class CustomNango extends Nango {
               errorText.includes("invalid_grant")
             ) {
               throw new ExternalOauthTokenError();
+            }
+            const errorType = e.response.data.type;
+            if (NANGO_ERROR_TYPES.includes(errorType)) {
+              throw new NangoError(errorType, e);
             }
           }
         }
@@ -83,6 +91,7 @@ export async function nangoDeleteConnection(
   if (res.ok) {
     return new Ok(undefined);
   } else {
+    logger.error({ connectionId }, "Could not delete Nango connection.");
     if (res) {
       return new Err(
         new Error(

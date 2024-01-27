@@ -48,7 +48,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+
+  if (!owner || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -225,7 +226,8 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: connectorsRes.error.error.message,
+            message: "Failed to set the permissions of the data source.",
+            connectors_error: connectorsRes.error,
           },
         });
       }

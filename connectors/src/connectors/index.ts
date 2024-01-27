@@ -1,12 +1,17 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 
 import {
+  cleanupConfluenceConnector,
   createConfluenceConnector,
+  resumeConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceObjectsTitles,
+  retrieveConfluenceResourceParents,
   setConfluenceConnectorPermissions,
+  stopConfluenceConnector,
   updateConfluenceConnector,
 } from "@connectors/connectors/confluence";
+import { launchConfluenceSyncWorkflow } from "@connectors/connectors/confluence/temporal/client";
 import {
   cleanupGithubConnector,
   createGithubConnector,
@@ -127,9 +132,7 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorStopper
 > = {
-  confluence: () => {
-    throw new Error("Not yet implemented!");
-  },
+  confluence: stopConfluenceConnector,
   slack: async (connectorId: string) => {
     logger.info({ connectorId }, `Stopping Slack connector is a no-op.`);
     return new Ok(connectorId);
@@ -150,9 +153,7 @@ export const DELETE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorCleaner
 > = {
-  confluence: () => {
-    throw new Error("Not yet implemented!");
-  },
+  confluence: cleanupConfluenceConnector,
   slack: cleanupSlackConnector,
   notion: cleanupNotionConnector,
   github: cleanupGithubConnector,
@@ -165,9 +166,7 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResumer
 > = {
-  confluence: () => {
-    throw new Error("Not yet implemented!");
-  },
+  confluence: resumeConfluenceConnector,
   slack: async (connectorId: string) => {
     logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
     return new Ok(connectorId);
@@ -185,8 +184,10 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
-    confluence: () => {
-      throw new Error("Not yet implemented!");
+    confluence: (connectorId: string) => {
+      // TODO(2024-01-23 flav) Remove once prototype is fixed.
+      const connectorIdAsNumber = parseInt(connectorId, 10);
+      return launchConfluenceSyncWorkflow(connectorIdAsNumber);
     },
     slack: launchSlackSyncWorkflow,
     notion: fullResyncNotionConnector,
@@ -252,7 +253,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorResourceParentsRetriever
 > = {
-  confluence: async () => new Ok([]), // Confluence is flat.
+  confluence: retrieveConfluenceResourceParents,
   notion: retrieveNotionResourceParents,
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
