@@ -5,7 +5,7 @@ import type * as activities from "@connectors/connectors/webcrawler/temporal/act
 
 const { crawlWebsiteByConnectorId } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
-  heartbeatTimeout: "120 seconds",
+  heartbeatTimeout: "600 seconds",
 });
 
 export async function crawlWebsiteWorkflow(
