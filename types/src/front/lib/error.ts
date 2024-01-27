@@ -49,7 +49,10 @@ export type APIErrorType =
   | "global_agent_error"
   | "stripe_invalid_product_id_error"
   | "rate_limit_error"
-  | "subscription_payment_failed";
+  | "subscription_payment_failed"
+  // Used in the DustAPI client:
+  | "unexpected_error_format"
+  | "unexpected_response_format";
 
 export type APIError = {
   type: APIErrorType;
@@ -59,6 +62,18 @@ export type APIError = {
   app_error?: CoreAPIError;
   connectors_error?: ConnectorsAPIError;
 };
+
+export function isAPIError(obj: unknown): obj is APIError {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "type" in obj &&
+    typeof obj.type === "string"
+    // TODO(spolu): check type is a valid APIErrorType
+  );
+}
 
 /**
  * Type to transport a HTTP error with its http status code (eg: 404)

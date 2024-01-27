@@ -25,13 +25,9 @@ import {
 } from "./api/assistant/agent";
 import { UserMessageErrorEvent } from "./api/assistant/conversation";
 import { GenerationTokensEvent } from "./api/assistant/generation";
+import { APIError, isAPIError } from "./error";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
-
-export type DustAPIErrorResponse = {
-  type: string;
-  message: string;
-};
 
 export type DustAppType = {
   workspaceId: string;
@@ -145,6 +141,8 @@ export type DustAPICredentials = {
 type PublicPostContentFragmentRequestBody = t.TypeOf<
   typeof PublicPostContentFragmentRequestBodySchema
 >;
+
+export type DustAPIResponse<T> = Result<T, APIError>;
 
 /**
  * This help functions process a streamed response in the format of the Dust API for running
@@ -355,7 +353,7 @@ export class DustAPI {
     { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
       useWorkspaceCredentials: false,
     }
-  ) {
+  ): Promise<DustAPIResponse<RunType>> {
     let url = `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${
       app.appId
     }/runs`;
@@ -377,11 +375,13 @@ export class DustAPI {
       }),
     });
 
-    const json = await res.json();
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
+    const r: DustAPIResponse<{ run: RunType }> = await this._resultFromResponse(
+      res
+    );
+    if (r.isErr()) {
+      return r;
     }
-    return new Ok(json.run as RunType);
+    return new Ok(r.value.run);
   }
 
   /**
@@ -430,7 +430,9 @@ export class DustAPI {
    *
    * @param workspaceId string the workspace id to fetch data sources for
    */
-  async getDataSources(workspaceId: string) {
+  async getDataSources(
+    workspaceId: string
+  ): Promise<DustAPIResponse<DataSourceType[]>> {
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${workspaceId}/data_sources`,
       {
@@ -441,14 +443,17 @@ export class DustAPI {
       }
     );
 
-    const json = await res.json();
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
+    const r: DustAPIResponse<{ data_sources: DataSourceType[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
     }
-    return new Ok(json.data_sources as DataSourceType[]);
+    return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations() {
+  async getAgentConfigurations(): Promise<
+    DustAPIResponse<LightAgentConfigurationType[]>
+  > {
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
       {
@@ -460,12 +465,13 @@ export class DustAPI {
       }
     );
 
-    const json = await res.json();
-
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
+    const r: DustAPIResponse<{
+      agentConfigurations: LightAgentConfigurationType[];
+    }> = await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
     }
-    return new Ok(json.agentConfigurations as LightAgentConfigurationType[]);
+    return new Ok(r.value.agentConfigurations);
   }
 
   async postContentFragment({
@@ -474,7 +480,7 @@ export class DustAPI {
   }: {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
-  }) {
+  }): Promise<DustAPIResponse<ContentFragmentType>> {
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
       {
@@ -489,12 +495,12 @@ export class DustAPI {
       }
     );
 
-    const json = await res.json();
-
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
+    const r: DustAPIResponse<{ contentFragment: ContentFragmentType }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
     }
-    return new Ok(json.contentFragment as ContentFragmentType);
+    return new Ok(r.value.contentFragment);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message
@@ -505,10 +511,10 @@ export class DustAPI {
     message,
     contentFragment,
   }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema>): Promise<
-    Result<
-      { conversation: ConversationType; message: UserMessageType },
-      DustAPIErrorResponse
-    >
+    DustAPIResponse<{
+      conversation: ConversationType;
+      message: UserMessageType;
+    }>
   > {
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
@@ -527,14 +533,7 @@ export class DustAPI {
       }
     );
 
-    const json = await res.json();
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
-    }
-
-    return new Ok(
-      json as { conversation: ConversationType; message: UserMessageType }
-    );
+    return this._resultFromResponse(res);
   }
 
   async postUserMessage({
@@ -543,7 +542,7 @@ export class DustAPI {
   }: {
     conversationId: string;
     message: t.TypeOf<typeof PublicPostMessagesRequestBodySchema>;
-  }) {
+  }): Promise<DustAPIResponse<UserMessageType>> {
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
       {
@@ -558,12 +557,12 @@ export class DustAPI {
       }
     );
 
-    const json = await res.json();
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
+    const r: DustAPIResponse<{ message: UserMessageType }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
     }
-
-    return new Ok(json.message as UserMessageType);
+    return new Ok(r.value.message);
   }
 
   async streamAgentMessageEvents({
@@ -680,7 +679,11 @@ export class DustAPI {
     return new Ok({ eventStream: streamEvents() });
   }
 
-  async getConversation({ conversationId }: { conversationId: string }) {
+  async getConversation({
+    conversationId,
+  }: {
+    conversationId: string;
+  }): Promise<DustAPIResponse<ConversationType>> {
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
@@ -692,18 +695,18 @@ export class DustAPI {
       }
     );
 
-    const json = await res.json();
-
-    if (json.error) {
-      return new Err(json.error as DustAPIErrorResponse);
+    const r: DustAPIResponse<{ conversation: ConversationType }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
     }
-    return new Ok(json.conversation as ConversationType);
+    return new Ok(r.value.conversation);
   }
 
   async tokenize(
     text: string,
     dataSourceName: string
-  ): Promise<Result<CoreAPITokenType[], DustAPIErrorResponse>> {
+  ): Promise<DustAPIResponse<CoreAPITokenType[]>> {
     const urlSafeName = encodeURIComponent(dataSourceName);
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${urlSafeName}/tokenize`;
 
@@ -718,23 +721,62 @@ export class DustAPI {
       }),
     });
 
+    const r: DustAPIResponse<{ tokens: CoreAPITokenType[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.tokens);
+  }
+
+  private async _resultFromResponse<T>(
+    response: Response
+  ): Promise<DustAPIResponse<T>> {
+    // We get the text and attempt to parse so that we can log the raw text in case of error (the
+    // body is already consumed by response.json() if used otherwise).
+    const text = await response.text();
+
+    let json = null;
     try {
-      const dustRequestResult = await res.json();
-
-      if (dustRequestResult.error) {
-        return new Err(dustRequestResult.error as DustAPIErrorResponse);
-      }
-      return new Ok(dustRequestResult.tokens as CoreAPITokenType[]);
-    } catch (err) {
-      const rawResponse = await res.text();
-
-      const message = `Dust API /tokenize responded with status: ${res.status}.`;
+      json = JSON.parse(text);
+    } catch (e) {
+      const err: APIError = {
+        type: "unexpected_response_format",
+        message: `Unexpected response format from ConnectorsAPI: ${e}`,
+      };
       this._logger.error(
-        { status: res.status, response: rawResponse },
-        message
+        {
+          connectorsError: err,
+          parseError: e,
+          rawText: text,
+          status: response.status,
+        },
+        "DustAPI error"
       );
+      return new Err(err);
+    }
 
-      return new Err({ type: "bad_request", message });
+    if (!response.ok) {
+      const err = json?.error;
+      if (isAPIError(err)) {
+        this._logger.error(
+          { connectorsError: err, status: response.status },
+          "DustAPI error"
+        );
+        return new Err(err);
+      } else {
+        const err: APIError = {
+          type: "unexpected_error_format",
+          message: "Unexpected error format from ConnectorAPI",
+        };
+        this._logger.error(
+          { connectorsError: err, json, status: response.status },
+          "DustAPI error"
+        );
+        return new Err(err);
+      }
+    } else {
+      return new Ok(json);
     }
   }
 }
