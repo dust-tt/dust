@@ -1078,11 +1078,11 @@ export class CoreAPI {
         message: `Unexpected response format from CoreAPI: ${error}`,
       };
       this._logger.error(
-        { error: err, parseError: error, status: response.status },
+        { coreError: err, parseError: error, status: response.status },
         "CoreAPI error"
       );
       this._logger.error(
-        { error: err, parseError: error, status: response.status },
+        { coreError: err, parseError: error, status: response.status },
         `CoreAPI error, raw response text: ${text}`
       );
       return new Err(err);
@@ -1095,7 +1095,7 @@ export class CoreAPI {
 
         if (isCoreAPIError(err)) {
           this._logger.error(
-            { error: err, status: response.status },
+            { coreError: err, json, status: response.status },
             "CoreAPI error"
           );
           return new Err(err);
@@ -1105,7 +1105,7 @@ export class CoreAPI {
             message: "Unexpected error format from CoreAPI",
           };
           this._logger.error(
-            { error: err, json, status: response.status },
+            { coreError: err, json, status: response.status },
             "CoreAPI error"
           );
           return new Err(err);
@@ -1121,7 +1121,7 @@ export class CoreAPI {
 
         if (err && isCoreAPIError(err)) {
           this._logger.error(
-            { error: err, status: response.status },
+            { coreError: err, json, status: response.status },
             "CoreAPI error"
           );
           return new Err(err);
@@ -1133,7 +1133,7 @@ export class CoreAPI {
             message: "Unexpected response format from CoreAPI",
           };
           this._logger.error(
-            { error: err, json, status: response.status },
+            { coreError: err, json, status: response.status },
             "CoreAPI error"
           );
           return new Err(err);
