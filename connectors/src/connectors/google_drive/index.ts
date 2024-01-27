@@ -372,34 +372,39 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const resources = (
-        await Promise.all(
-          folders.map(async (f): Promise<ConnectorResource | null> => {
-            const fd = await getGoogleDriveObject(authCredentials, f.folderId);
-            if (!fd) {
-              return null;
-            }
-            return {
-              provider: c.type,
-              internalId: f.folderId,
-              parentInternalId: null,
-              type: "folder",
-              title: fd.name || "",
-              sourceUrl: null, // Out of consistency we don't send `fd.webViewLink`.
-              dustDocumentId: null,
-              lastUpdatedAt: fd.updatedAtMs || null,
-              expandable:
-                (await GoogleDriveFiles.findOne({
-                  where: {
-                    connectorId: connectorId,
-                    parentId: f.folderId,
-                  },
-                })) !== null,
-              permission: "read",
-            };
-          })
-        )
-      ).flatMap((f) => (f ? [f] : []));
+      const folderAsConnectorResources = await concurrentExecutor(
+        folders,
+        async (f): Promise<ConnectorResource | null> => {
+          const fd = await getGoogleDriveObject(authCredentials, f.folderId);
+          if (!fd) {
+            return null;
+          }
+          return {
+            provider: c.type,
+            internalId: f.folderId,
+            parentInternalId: null,
+            type: "folder",
+            title: fd.name || "",
+            sourceUrl: null, // Out of consistency we don't send `fd.webViewLink`.
+            dustDocumentId: null,
+            lastUpdatedAt: fd.updatedAtMs || null,
+            expandable:
+              (await GoogleDriveFiles.findOne({
+                where: {
+                  connectorId: connectorId,
+                  parentId: f.folderId,
+                },
+              })) !== null,
+            permission: "read",
+          };
+        },
+        { concurrency: 4 }
+      );
+
+      // Filter out the `null`.
+      const resources = folderAsConnectorResources.flatMap((f) =>
+        f ? [f] : []
+      );
 
       resources.sort((a, b) => {
         return a.title.localeCompare(b.title);
@@ -415,35 +420,35 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const resources: ConnectorResource[] = await Promise.all(
-        folderOrFiles.map((f) => {
-          return (async () => {
-            return {
-              provider: c.type,
-              internalId: f.driveFileId,
-              parentInternalId: null,
-              type:
-                f.mimeType === "application/vnd.google-apps.folder"
-                  ? "folder"
-                  : "file",
-              title: f.name || "",
-              dustDocumentId:
-                f.mimeType === "application/vnd.google-apps.folder"
-                  ? null
-                  : getDocumentId(f.driveFileId),
-              lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
-              sourceUrl: null,
-              expandable:
-                (await GoogleDriveFiles.findOne({
-                  where: {
-                    connectorId: connectorId,
-                    parentId: f.driveFileId,
-                  },
-                })) !== null,
-              permission: "read",
-            };
-          })();
-        })
+      const resources = await concurrentExecutor(
+        folderOrFiles,
+        async (f): Promise<ConnectorResource> => {
+          return {
+            provider: c.type,
+            internalId: f.driveFileId,
+            parentInternalId: null,
+            type:
+              f.mimeType === "application/vnd.google-apps.folder"
+                ? "folder"
+                : "file",
+            title: f.name || "",
+            dustDocumentId:
+              f.mimeType === "application/vnd.google-apps.folder"
+                ? null
+                : getDocumentId(f.driveFileId),
+            lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
+            sourceUrl: null,
+            expandable:
+              (await GoogleDriveFiles.findOne({
+                where: {
+                  connectorId: connectorId,
+                  parentId: f.driveFileId,
+                },
+              })) !== null,
+            permission: "read",
+          };
+        },
+        { concurrency: 4 }
       );
 
       // Sorting resources, folders first then alphabetically.
