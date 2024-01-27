@@ -742,11 +742,11 @@ export class DustAPI {
     } catch (e) {
       const err: APIError = {
         type: "unexpected_response_format",
-        message: `Unexpected response format from ConnectorsAPI: ${e}`,
+        message: `Unexpected response format from DustAPI: ${e}`,
       };
       this._logger.error(
         {
-          connectorsError: err,
+          dustError: err,
           parseError: e,
           rawText: text,
           status: response.status,
@@ -760,17 +760,17 @@ export class DustAPI {
       const err = json?.error;
       if (isAPIError(err)) {
         this._logger.error(
-          { connectorsError: err, status: response.status },
+          { dustError: err, status: response.status },
           "DustAPI error"
         );
         return new Err(err);
       } else {
         const err: APIError = {
           type: "unexpected_error_format",
-          message: "Unexpected error format from ConnectorAPI",
+          message: "Unexpected error format from DustAPI",
         };
         this._logger.error(
-          { connectorsError: err, json, status: response.status },
+          { dustError: err, json, status: response.status },
           "DustAPI error"
         );
         return new Err(err);
