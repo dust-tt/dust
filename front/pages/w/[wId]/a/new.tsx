@@ -54,7 +54,7 @@ export default function NewApp({
   const [appName, setAppName] = useState("");
   const [appNameError, setAppNameError] = useState("");
   const [appDescription, setAppDescription] = useState("");
-  const [appVisibility, setAppVisibility] = useState("public");
+  const [appVisibility, setAppVisibility] = useState("private");
 
   const [creating, setCreating] = useState(false);
 
@@ -204,7 +204,8 @@ export default function NewApp({
                   >
                     Public
                     <p className="mt-0 text-sm font-normal text-gray-500">
-                      Anyone on the Internet can see the app. Only you can edit.
+                      Anyone on the Internet can see the app. Only builders of
+                      your workspace can edit.
                     </p>
                   </label>
                 </div>
@@ -228,31 +229,7 @@ export default function NewApp({
                   >
                     Private
                     <p className="mt-0 text-sm font-normal text-gray-500">
-                      Only you can see and edit the app.
-                    </p>
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    id="appVisibilityUnlisted"
-                    name="visibility"
-                    type="radio"
-                    value="unlisted"
-                    className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                    checked={appVisibility == "unlisted"}
-                    onChange={(e) => {
-                      if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="app-visibility-unlisted"
-                    className="ml-3 block text-sm font-medium text-gray-700"
-                  >
-                    Unlisted
-                    <p className="mt-0 text-sm font-normal text-gray-500">
-                      Anyone with the link can see the app. Only you can edit.
+                      Only builders of your workspace can see and edit the app.
                     </p>
                   </label>
                 </div>

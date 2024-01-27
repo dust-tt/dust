@@ -1,6 +1,5 @@
-import type { Action } from "@dust-tt/types";
-import type { DustAPIErrorResponse, DustAppConfigType } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
+import type { Action, DustAPIResponse } from "@dust-tt/types";
+import type { DustAppConfigType } from "@dust-tt/types";
 import { cloneBaseConfig } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -45,7 +44,7 @@ export async function callAction<V extends t.Mixed>({
   config,
   responseValueSchema,
 }: CallActionParams<V>): Promise<
-  Result<t.TypeOf<typeof responseValueSchema>, DustAPIErrorResponse>
+  DustAPIResponse<t.TypeOf<typeof responseValueSchema>>
 > {
   const app = cloneBaseConfig(action.app);
 
@@ -61,13 +60,10 @@ export async function callAction<V extends t.Mixed>({
 
   const prodAPI = new DustAPI(prodCredentials, logger);
 
-  const response = (await prodAPI.runApp(app, config, [input])) as Result<
-    unknown,
-    DustAPIErrorResponse
-  >;
+  const r = await prodAPI.runApp(app, config, [input]);
 
-  if (response.isErr()) {
-    return response;
+  if (r.isErr()) {
+    return r;
   }
 
   // create a schema validator using the provided schema + the base response schema
@@ -81,18 +77,18 @@ export async function callAction<V extends t.Mixed>({
   const responseChecker = (response: unknown): response is responseType =>
     isRight(responseSchema.decode(response));
 
-  if (responseChecker(response.value)) {
+  if (responseChecker(r.value)) {
     // the response is a valid success response for the action
     // return the "value" field of the first result
-    return new Ok(response.value.results[0][0].value);
+    return new Ok(r.value.results[0][0].value);
   }
 
-  if (isActionResponseBase(response.value)) {
+  if (isActionResponseBase(r.value)) {
     // the response is of the right shape, but it's not a success response
     return new Err({
       type: "action_failed",
       message: `Doc Tracker action failed response: ${JSON.stringify(
-        response.value.status
+        r.value.status
       )}`,
     });
   }
