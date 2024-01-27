@@ -2,7 +2,7 @@ import PQueue from "p-queue";
 
 export async function concurrentExecutor<T>(
   items: T[],
-  iterator: (item: T, idx?: number) => Promise<void>,
+  iterator: (item: T, idx: number) => Promise<void>,
   { concurrency = 8 }: { concurrency: number }
 ) {
   const queue = new PQueue({ concurrency });

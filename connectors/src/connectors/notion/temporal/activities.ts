@@ -1221,14 +1221,14 @@ export async function cacheBlockChildren({
   );
   await concurrentExecutor(
     parsedBlocks,
-    async (block) => {
+    async (block, idx) => {
       await NotionConnectorBlockCacheEntry.upsert({
         notionPageId: pageId,
         notionBlockId: block.id,
         blockType: block.type,
         blockText: block.text,
         parentBlockId: blockId,
-        indexInParent: currentIndexInParent + i,
+        indexInParent: currentIndexInParent + idx,
         childDatabaseTitle: block.childDatabaseTitle,
         connectorId: connector.id,
       });
