@@ -1,6 +1,8 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
+import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import type {
@@ -19,7 +21,6 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -595,18 +596,22 @@ export async function githubRepoGarbageCollectActivity(
     },
   });
 
-  await concurrentExecutor(
-    issuesInRepo,
-    async (issue) =>
-      deleteIssue(
-        dataSourceConfig,
-        installationId,
-        repoId,
-        issue.issueNumber,
-        loggerArgs
-      ),
-    { concurrency: 5 }
-  );
+  const queue = new PQueue({ concurrency: 5 });
+  const promises = [];
+
+  for (const issue of issuesInRepo) {
+    promises.push(
+      queue.add(() =>
+        deleteIssue(
+          dataSourceConfig,
+          installationId,
+          repoId,
+          issue.issueNumber,
+          loggerArgs
+        )
+      )
+    );
+  }
 
   const discussionsInRepo = await GithubDiscussion.findAll({
     where: {
@@ -615,18 +620,21 @@ export async function githubRepoGarbageCollectActivity(
     },
   });
 
-  await concurrentExecutor(
-    discussionsInRepo,
-    async (discussion) =>
-      deleteDiscussion(
-        dataSourceConfig,
-        installationId,
-        repoId,
-        discussion.discussionNumber,
-        loggerArgs
-      ),
-    { concurrency: 5 }
-  );
+  for (const discussion of discussionsInRepo) {
+    promises.push(
+      queue.add(() =>
+        deleteDiscussion(
+          dataSourceConfig,
+          installationId,
+          repoId,
+          discussion.discussionNumber,
+          loggerArgs
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
 }
 
 async function deleteIssue(
@@ -797,20 +805,17 @@ async function garbageCollectCodeSync(
       "GarbageCollectCodeSync: deleting files"
     );
 
-    await concurrentExecutor(
-      filesToDelete,
-      async (file) => {
-        await deleteFromDataSource(
-          dataSourceConfig,
-          file.documentId,
-          loggerArgs
-        );
+    const fq = new PQueue({ concurrency: 8 });
+    filesToDelete.forEach((f) =>
+      fq.add(async () => {
+        Context.current().heartbeat();
+        await deleteFromDataSource(dataSourceConfig, f.documentId, loggerArgs);
         // Only destroy once we succesfully removed from the data source. This is idempotent and will
         // work as expected when retried.
-        await file.destroy();
-      },
-      { concurrency: 8 }
+        await f.destroy();
+      })
     );
+    await fq.onIdle();
   }
 
   const directoriesToDelete = await GithubCodeDirectory.findAll({
@@ -883,6 +888,7 @@ export async function githubCodeSyncActivity({
     throw new Error(`Connector state not found for connector ${connector.id}`);
   }
 
+  Context.current().heartbeat();
   if (!connectorState.codeSyncEnabled) {
     // Garbage collect any existing code files.
     localLogger.info("Code sync disabled for connector");
@@ -941,6 +947,7 @@ export async function githubCodeSyncActivity({
     "Attempting download of Github repository for sync"
   );
 
+  Context.current().heartbeat();
   const { tempDir, files, directories } = await processRepository({
     installationId,
     repoLogin,
@@ -948,6 +955,7 @@ export async function githubCodeSyncActivity({
     repoId,
     loggerArgs,
   });
+  Context.current().heartbeat();
 
   try {
     localLogger.info(
@@ -971,9 +979,10 @@ export async function githubCodeSyncActivity({
     const updatedDirectories: { [key: string]: boolean } = {};
     let repoUpdatedAt: Date | null = null;
 
-    await concurrentExecutor(
-      files,
-      async (f) => {
+    const fq = new PQueue({ concurrency: 4 });
+    files.forEach((f) =>
+      fq.add(async () => {
+        Context.current().heartbeat();
         // Read file (files are 1MB at most).
         const content = await fs.readFile(f.localFilePath);
         const contentHash = blake3(content).toString("hex");
@@ -1070,13 +1079,14 @@ export async function githubCodeSyncActivity({
         // Finally we update the lastSeenAt for all files we've seen, and save.
         githubCodeFile.lastSeenAt = codeSyncStartedAt;
         await githubCodeFile.save();
-      },
-      { concurrency: 4 }
+      })
     );
+    await fq.onIdle();
 
-    await concurrentExecutor(
-      directories,
-      async (d) => {
+    const dq = new PQueue({ concurrency: 8 });
+    directories.forEach((d) =>
+      dq.add(async () => {
+        Context.current().heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
 
         // Find directory or create it.
@@ -1126,9 +1136,11 @@ export async function githubCodeSyncActivity({
         githubCodeDirectory.lastSeenAt = codeSyncStartedAt;
 
         await githubCodeDirectory.save();
-      },
-      { concurrency: 8 }
+      })
     );
+    await dq.onIdle();
+
+    Context.current().heartbeat();
 
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
@@ -1145,7 +1157,9 @@ export async function githubCodeSyncActivity({
       githubCodeRepository.codeUpdatedAt = repoUpdatedAt;
       await githubCodeRepository.save();
     }
+    Context.current().heartbeat();
   } finally {
+    Context.current().heartbeat();
     await cleanUpProcessRepository(tempDir);
     localLogger.info(
       {
