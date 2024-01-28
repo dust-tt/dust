@@ -81,7 +81,10 @@ export async function joinChannel(
   connectorId: ModelId,
   channelId: string
 ): Promise<
-  Result<{ result: "ok" | "already_joined"; channel: Channel }, Error>
+  Result<
+    { result: "ok" | "already_joined" | "is_archived"; channel: Channel },
+    Error
+  >
 > {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -96,6 +99,9 @@ export async function joinChannel(
     }
     if (channelInfo.channel?.is_member) {
       return new Ok({ result: "already_joined", channel: channelInfo.channel });
+    }
+    if (channelInfo.channel?.is_archived) {
+      return new Ok({ result: "is_archived", channel: channelInfo.channel });
     }
     const joinRes = await client.conversations.join({ channel: channelId });
     if (joinRes.ok) {
