@@ -56,6 +56,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     {
       maxRequestsPerCrawl: MAX_PAGES,
       maxConcurrency: CONCURRENCY,
+      maxRequestsPerMinute: 256,
 
       async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
@@ -188,16 +189,42 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     })
   );
 
-  await crawler.run([webCrawlerConfig.url]);
+  await crawler.addRequests([webCrawlerConfig.url]);
 
-  await crawler.teardown();
+  const crawlPromise = crawler.run([webCrawlerConfig.url]);
+  let isResolved = false;
+  crawlPromise
+    .then(() => {
+      isResolved = true;
+    })
+    .catch((e) => {
+      logger.error(
+        {
+          error: e,
+          connectorId: connector.id,
+          configId: webCrawlerConfig.id,
+        },
+        "Webcrawler error while crawling"
+      );
+    });
+  try {
+    while (!isResolved) {
+      await Context.current().sleep(1000); // allows the activity to react to cancellation
+    }
+  } catch (e) {
+    // stops the crawling
+    await crawler.autoscaledPool?.abort();
+    throw e;
+  } finally {
+    await crawler.teardown();
+  }
 
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
   }
   if (upsertingError > 0) {
     throw new Error(
-      `Webcrawler failed whlie upserting documents to Dust. Error count: ${upsertingError}`
+      `Webcrawler failed while upserting documents to Dust. Error count: ${upsertingError}`
     );
   }
 
