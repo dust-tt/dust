@@ -1,3 +1,4 @@
+import type { WhitelistableFeature } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -17,7 +18,7 @@ export class FeatureFlag extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare name: string;
+  declare name: WhitelistableFeature;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }

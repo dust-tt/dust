@@ -16,6 +16,7 @@ export * from "./front/data_source";
 export * from "./front/dataset";
 export * from "./front/document";
 export * from "./front/extract";
+export * from "./front/feature_flags";
 export * from "./front/key";
 export * from "./front/lib/actions/registry";
 export * from "./front/lib/actions/types";
