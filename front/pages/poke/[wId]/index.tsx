@@ -342,7 +342,6 @@ const WorkspacePage = ({
 
         await mutate(`/api/poke/workspaces/${owner.sId}/features`);
       } catch (e) {
-        console.error(e);
         sendNotification({
           title: "Error",
           description: `An error occurred while toggling feature "${feature}": ${JSON.stringify(
