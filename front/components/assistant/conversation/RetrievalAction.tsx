@@ -150,7 +150,7 @@ export default function RetrievalAction({
                         ) : (
                           <Icon
                             visual={
-                              CONNECTOR_CONFIGURATIONS[provider]?.logoComponent
+                              CONNECTOR_CONFIGURATIONS[provider].logoComponent
                             }
                             size="sm"
                             className="mr-1 inline-block"
@@ -183,7 +183,7 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
             <div className={classNames("mr-1 flex")}>
               {provider !== "none" ? (
                 <Icon
-                  visual={CONNECTOR_CONFIGURATIONS[provider]?.logoComponent}
+                  visual={CONNECTOR_CONFIGURATIONS[provider].logoComponent}
                   size="sm"
                   className="mr-1 inline-block"
                 />
