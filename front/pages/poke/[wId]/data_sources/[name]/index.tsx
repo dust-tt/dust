@@ -4,6 +4,7 @@ import {
   DocumentTextIcon,
   EyeIcon,
   Page,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import type { CoreAPIDataSource, DataSourceType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -19,6 +20,7 @@ import { useEffect, useState } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -31,6 +33,11 @@ export const getServerSideProps: GetServerSideProps<{
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;
   connector: ConnectorType | null;
+  features: {
+    slackBotEnabled: boolean;
+    googleDrivePdfEnabled: boolean;
+    githubCodeSyncEnabled: boolean;
+  };
   temporalWorkspace: string;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
@@ -84,12 +91,62 @@ export const getServerSideProps: GetServerSideProps<{
     }
   }
 
+  const features: {
+    slackBotEnabled: boolean;
+    googleDrivePdfEnabled: boolean;
+    githubCodeSyncEnabled: boolean;
+  } = {
+    slackBotEnabled: false,
+    googleDrivePdfEnabled: false,
+    githubCodeSyncEnabled: false,
+  };
+
+  const connectorsAPI = new ConnectorsAPI(logger);
+  if (dataSource.connectorId) {
+    switch (dataSource.connectorProvider) {
+      case "slack":
+        const botEnabledRes = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "botEnabled"
+        );
+        if (botEnabledRes.isErr()) {
+          throw botEnabledRes.error;
+        }
+        features.slackBotEnabled = botEnabledRes.value.configValue === "true";
+        break;
+      case "google_drive":
+        const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "pdfEnabled"
+        );
+        if (gdrivePDFEnabledRes.isErr()) {
+          throw gdrivePDFEnabledRes.error;
+        }
+        features.googleDrivePdfEnabled =
+          gdrivePDFEnabledRes.value.configValue === "true";
+        break;
+      case "github":
+        const githubConnectorEnabledRes =
+          await connectorsAPI.getConnectorConfig(
+            dataSource.connectorId,
+            "codeSyncEnabled"
+          );
+        if (githubConnectorEnabledRes.isErr()) {
+          throw githubConnectorEnabledRes.error;
+        }
+        features.githubCodeSyncEnabled =
+          githubConnectorEnabledRes.value.configValue === "true";
+        break;
+    }
+  }
+
   return {
     props: {
       owner,
       dataSource,
       coreDataSource: coreDataSourceRes.value.data_source,
       connector,
+      features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
     },
   };
@@ -101,6 +158,7 @@ const DataSourcePage = ({
   coreDataSource,
   connector,
   temporalWorkspace,
+  features,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
@@ -136,6 +194,81 @@ const DataSourcePage = ({
     last = total;
   }
 
+  const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "botEnabled",
+            botEnabled: `${!features.slackBotEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
+  const { submit: onGdrivePDFToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-google_drive/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "pdfEnabled",
+            configValue: `${!features.googleDrivePdfEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle Gdrive PDF sync.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("Failed to toggle Gdrive PDF sync.");
+    }
+  });
+
+  const { submit: onGithubCodeSyncToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-github/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "codeSyncEnabled",
+            configValue: `${!features.githubCodeSyncEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
@@ -166,6 +299,71 @@ const DataSourcePage = ({
             <JsonViewer value={dataSource} rootName={false} />
             <JsonViewer value={coreDataSource} rootName={false} />
             <JsonViewer value={connector} rootName={false} />
+          </div>
+
+          {dataSource.connectorProvider === "slack" && (
+            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+              <div>Slackbot enabled?</div>
+              <SliderToggle
+                selected={features.slackBotEnabled}
+                onClick={onSlackbotToggle}
+              />
+            </div>
+          )}
+          {dataSource.connectorProvider === "google_drive" && (
+            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+              <div>PDF syncing enabled?</div>
+              <SliderToggle
+                selected={features.googleDrivePdfEnabled}
+                onClick={onGdrivePDFToggle}
+              />
+            </div>
+          )}
+          {dataSource.connectorProvider === "github" && (
+            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+              <div>Code sync enabled?</div>
+              <SliderToggle
+                selected={features.githubCodeSyncEnabled}
+                onClick={onGithubCodeSyncToggle}
+              />
+            </div>
+          )}
+
+          <div>
+            <p className="mb-2 text-sm font-bold text-gray-600">
+              Last Sync Start:{" "}
+              {connector?.lastSyncStartTime ? (
+                timeAgoFrom(connector?.lastSyncStartTime)
+              ) : (
+                <span className="text-warning-500">never</span>
+              )}
+            </p>
+            <p className="mb-2 text-sm font-bold text-gray-600">
+              Last Sync Finish:{" "}
+              {connector?.lastSyncFinishTime ? (
+                timeAgoFrom(connector?.lastSyncFinishTime)
+              ) : (
+                <span className="text-warning-500">never</span>
+              )}
+            </p>
+            <p className="mb-2 text-sm font-bold text-gray-600">
+              Last Sync Status:{" "}
+              {connector?.lastSyncStatus ? (
+                connector?.lastSyncStatus
+              ) : (
+                <span className="text-warning-500">N/A</span>
+              )}
+            </p>
+            <p className="mb-2 text-sm font-bold text-gray-600">
+              Last Sync Success:{" "}
+              {connector?.lastSyncSuccessfulTime ? (
+                <span className="text-green-600">
+                  {timeAgoFrom(connector?.lastSyncSuccessfulTime)}
+                </span>
+              ) : (
+                <span className="text-warning-600">"Never"</span>
+              )}
+            </p>
           </div>
 
           <div className="mt-4 flex flex-row">
@@ -210,7 +408,7 @@ const DataSourcePage = ({
             </div>
           </div>
 
-          <div className="py-8">
+          <div className="pb-8 pt-2">
             <ContextItem.List>
               {documents.map((d) => (
                 <ContextItem
