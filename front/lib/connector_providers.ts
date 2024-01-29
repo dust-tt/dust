@@ -14,19 +14,18 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   {
     name: string;
     connectorProvider: ConnectorProvider;
-    isBuilt: boolean;
+    status: "preview" | "built-dust-only" | "built";
     hide: boolean;
     logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
     description: string;
     limitations: string | null;
     isNested: boolean;
-    dustWorkspaceOnly?: boolean;
   }
 > = {
   confluence: {
     name: "Confluence",
     connectorProvider: "confluence",
-    isBuilt: true,
+    status: "built",
     hide: false,
     description:
       "Grant tailored access to your organization's Confluence shared spaces.",
@@ -37,7 +36,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   notion: {
     name: "Notion",
     connectorProvider: "notion",
-    isBuilt: true,
+    status: "built",
     hide: false,
     description:
       "Authorize granular access to your company's Notion workspace, by top-level pages.",
@@ -48,7 +47,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   google_drive: {
     name: "Google Drive™",
     connectorProvider: "google_drive",
-    isBuilt: true,
+    status: "built",
     hide: false,
     description:
       "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexation.",
@@ -60,7 +59,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   slack: {
     name: "Slack",
     connectorProvider: "slack",
-    isBuilt: true,
+    status: "built",
     hide: false,
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
@@ -71,7 +70,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   github: {
     name: "GitHub",
     connectorProvider: "github",
-    isBuilt: true,
+    status: "built",
     hide: false,
     description:
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexation is coming soon.",
@@ -83,7 +82,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   intercom: {
     name: "Intercom",
     connectorProvider: "intercom",
-    isBuilt: false,
+    status: "built-dust-only",
     hide: false,
     description:
       "Authorize access to your Intercom Help Center Collections & Articles. Conversations coming soon.",
@@ -94,7 +93,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   webcrawler: {
     name: "Web Crawler",
     connectorProvider: "webcrawler",
-    isBuilt: true,
+    status: "built",
     hide: true,
     description: "Crawl a website.",
     limitations: null,

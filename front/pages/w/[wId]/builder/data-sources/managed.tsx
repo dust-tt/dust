@@ -54,7 +54,7 @@ type DataSourceIntegration = {
   connector: ConnectorType | null;
   fetchConnectorError: boolean;
   fetchConnectorErrorMessage?: string | null;
-  isBuilt: boolean;
+  status: "preview" | "built-dust-only" | "built";
   connectorProvider: ConnectorProvider;
   description: string;
   limitations: string | null;
@@ -164,7 +164,7 @@ export const getServerSideProps: GetServerSideProps<{
     return {
       name: integration.name,
       connectorProvider: integration.connectorProvider,
-      isBuilt: integration.isBuilt,
+      status: integration.status,
       description: integration.description,
       limitations: integration.limitations,
       dataSourceName: mc.dataSourceName,
@@ -207,7 +207,7 @@ export const getServerSideProps: GetServerSideProps<{
       integrations.push({
         name: integration.name,
         connectorProvider: integration.connectorProvider,
-        isBuilt: integration.isBuilt,
+        status: integration.status,
         description: integration.description,
         limitations: integration.limitations,
         dataSourceName: null,
@@ -515,12 +515,11 @@ export default function DataSourcesView({
             .filter(
               (ds) => !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide
             )
-            .filter(
-              (ds) =>
-                !CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                  .dustWorkspaceOnly || isDevelopmentOrDustWorkspace(owner)
-            )
             .map((ds) => {
+              const isBuilt =
+                ds.status === "built" ||
+                (ds.status === "built-dust-only" &&
+                  isDevelopmentOrDustWorkspace(owner));
               return (
                 <ContextItem
                   key={
@@ -585,24 +584,23 @@ export default function DataSourcesView({
                                 })(ds.connectorProvider);
                             }
 
-                            if (isDataSourceAllowedInPlan && ds.isBuilt) {
-                              setShowConfirmConnection(ds);
-                            } else if (
-                              isDataSourceAllowedInPlan &&
-                              !ds.isBuilt
-                            ) {
-                              setShowPreviewPopupForProvider(
-                                ds.connectorProvider
-                              );
-                            } else {
+                            if (!isDataSourceAllowedInPlan) {
                               setShowUpgradePopupForProvider(
                                 ds.connectorProvider as ConnectorProvider
                               );
+                            } else {
+                              if (isBuilt) {
+                                setShowConfirmConnection(ds);
+                              } else {
+                                setShowPreviewPopupForProvider(
+                                  ds.connectorProvider
+                                );
+                              }
                             }
                             return;
                           };
 
-                          const label = !ds.isBuilt
+                          const label = !isBuilt
                             ? "Preview"
                             : !isLoadingByProvider[
                                 ds.connectorProvider as ConnectorProvider
@@ -615,7 +613,7 @@ export default function DataSourcesView({
                               <Button
                                 variant="primary"
                                 icon={
-                                  ds.isBuilt
+                                  isBuilt
                                     ? CloudArrowLeftRightIcon
                                     : InformationCircleIcon
                                 }
@@ -630,7 +628,7 @@ export default function DataSourcesView({
                                 variant="secondary"
                                 icon={Cog6ToothIcon}
                                 disabled={
-                                  !ds.isBuilt ||
+                                  !isBuilt ||
                                   isLoadingByProvider[
                                     ds.connectorProvider as ConnectorProvider
                                   ] ||
