@@ -273,7 +273,7 @@ export class NotionConnectorPageCacheEntry extends Model<
   declare lastEditedTime: string;
   declare url: string;
 
-  declare workflowId: string | null;
+  declare workflowId: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -337,7 +337,7 @@ NotionConnectorPageCacheEntry.init(
     },
     workflowId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
@@ -375,7 +375,7 @@ export class NotionConnectorBlockCacheEntry extends Model<
   // special case for child DBs
   declare childDatabaseTitle?: string | null;
 
-  declare workflowId: string | null;
+  declare workflowId: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -426,7 +426,7 @@ NotionConnectorBlockCacheEntry.init(
     },
     workflowId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
@@ -458,7 +458,7 @@ export class NotionConnectorResourcesToCheckCacheEntry extends Model<
   declare notionId: string;
   declare resourceType: "page" | "database";
 
-  declare workflowId: string | null;
+  declare workflowId: string;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -489,7 +489,7 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     },
     workflowId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
