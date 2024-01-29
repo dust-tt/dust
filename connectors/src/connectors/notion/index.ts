@@ -50,8 +50,10 @@ export async function createNotionConnector(
     return new Err(new Error("Notion access token is invalid"));
   }
 
+  let connector: Connector;
+  let notionConnectorState: NotionConnectorState;
   try {
-    const connector = await sequelize_conn.transaction(async (transaction) => {
+    const txRes = await sequelize_conn.transaction(async (transaction) => {
       const connector = await Connector.create(
         {
           type: "notion",
@@ -62,21 +64,39 @@ export async function createNotionConnector(
         },
         { transaction }
       );
-      await NotionConnectorState.create(
+      const connectorState = await NotionConnectorState.create(
         {
           connectorId: connector.id,
         },
         { transaction }
       );
 
-      return connector;
+      return { connector, connectorState };
     });
-    await launchNotionSyncWorkflow(connector.id);
-    return new Ok(connector.id.toString());
+    connector = txRes.connector;
+    notionConnectorState = txRes.connectorState;
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
     return new Err(e as Error);
   }
+
+  try {
+    await launchNotionSyncWorkflow(connector.id);
+  } catch (e) {
+    logger.error(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+        error: e,
+      },
+      "Error launching notion sync workflow."
+    );
+    await notionConnectorState.destroy();
+    await connector.destroy();
+    return new Err(e as Error);
+  }
+
+  return new Ok(connector.id.toString());
 }
 
 export async function updateNotionConnector(
