@@ -272,7 +272,7 @@ export async function _upsertCollection({
       articleOnIntercom.body
     );
     // append the collection description at the beginning of the article
-    const markdown = `CATEGORY: ${collection.description}\n\nARTICLE:\n\n${articleContentInMarkdown}`;
+    const markdown = `CATEGORY: ${collection.description}\n\n${articleContentInMarkdown}`;
 
     if (articleContentInMarkdown) {
       const renderedMarkdown = await renderMarkdownSection(
