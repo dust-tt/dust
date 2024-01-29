@@ -1034,10 +1034,7 @@ export async function cachePage({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
   if (pageInCache) {
@@ -1191,10 +1188,7 @@ export async function cacheBlockChildren({
         notionPageId: pageId,
         notionBlockId: parsedBlocks.map((b) => b.id),
         connectorId: connector.id,
-        workflowId: {
-          // TODO(@fontanierh): remove `null` case.
-          [Op.or]: [topLevelWorkflowId, null],
-        },
+        workflowId: topLevelWorkflowId,
       },
       attributes: ["notionBlockId"],
     });
@@ -1340,10 +1334,7 @@ export async function cacheDatabaseChildren({
     where: {
       notionPageId: resultPage.results.map((r) => r.id),
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
     attributes: ["notionPageId"],
   });
@@ -1576,10 +1567,7 @@ export async function renderAndUpsertPageFromCache({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
   if (!pageCacheEntry) {
@@ -1593,10 +1581,7 @@ export async function renderAndUpsertPageFromCache({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
 
@@ -1628,10 +1613,7 @@ export async function renderAndUpsertPageFromCache({
     where: {
       parentId: Object.keys(blocksByParentId),
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
   const childDatabases: Record<string, NotionConnectorPageCacheEntry[]> = {};
@@ -1900,10 +1882,7 @@ export async function renderAndUpsertPageFromCache({
           notionId: childDatabaseIdsToCheck,
           resourceType: "database",
           connectorId: connector.id,
-          workflowId: {
-            // TODO(@fontanierh): remove `null` case.
-            [Op.or]: [topLevelWorkflowId, null],
-          },
+          workflowId: topLevelWorkflowId,
         },
         attributes: ["notionId"],
       })
@@ -1916,10 +1895,7 @@ export async function renderAndUpsertPageFromCache({
           notionId: childPageIdsToCheck,
           resourceType: "page",
           connectorId: connector.id,
-          workflowId: {
-            // TODO(@fontanierh): remove `null` case.
-            [Op.or]: [topLevelWorkflowId, null],
-          },
+          workflowId: topLevelWorkflowId,
         },
         attributes: ["notionId"],
       })
@@ -1979,28 +1955,19 @@ export async function clearConnectorCache({
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
   await NotionConnectorBlockCacheEntry.destroy({
     where: {
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
   await NotionConnectorResourcesToCheckCacheEntry.destroy({
     where: {
       connectorId: connector.id,
-      workflowId: {
-        // TODO(@fontanierh): remove `null` case.
-        [Op.or]: [topLevelWorkflowId, null],
-      },
+      workflowId: topLevelWorkflowId,
     },
   });
 }
@@ -2035,10 +2002,7 @@ export async function getDiscoveredResourcesFromCache({
     await NotionConnectorResourcesToCheckCacheEntry.findAll({
       where: {
         connectorId: connector.id,
-        workflowId: {
-          // TODO: remove `null` case.
-          [Op.or]: [null, topLevelWorkflowId],
-        },
+        workflowId: topLevelWorkflowId,
       },
     });
 
