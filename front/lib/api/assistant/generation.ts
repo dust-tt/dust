@@ -17,7 +17,6 @@ import {
   CoreAPI,
   DustProdActionRegistry,
   Err,
-  GPT_4_MODEL_CONFIG,
   isAgentMessageType,
   isContentFragmentType,
   isDustAppRunActionType,
@@ -359,7 +358,7 @@ export async function* runGeneration(
     return;
   }
 
-  const model = c.model;
+  const { model } = c;
 
   if (isLargeModel(model) && !auth.isUpgraded()) {
     yield {
