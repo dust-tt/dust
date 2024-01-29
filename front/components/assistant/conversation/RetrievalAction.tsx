@@ -219,10 +219,14 @@ function documentsSummary(documents: RetrievalDocumentType[]): {
   return summary;
 }
 
+type ConnectorProviderDocumentType =
+  | Exclude<ConnectorProvider, "intercom" | "webcrawler">
+  | "none";
+
 export function providerFromDocument(
   document: RetrievalDocumentType
-): ConnectorProvider | "none" {
-  const providerMap: Record<string, Exclude<ConnectorProvider, "none">> = {
+): ConnectorProviderDocumentType {
+  const providerMap: Record<string, ConnectorProviderDocumentType> = {
     "managed-slack": "slack",
     "managed-notion": "notion",
     "managed-google_drive": "google_drive",
