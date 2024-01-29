@@ -6,7 +6,6 @@ import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 
 export const GPT_4_32K_MODEL_ID = "gpt-4-32k" as const;
 export const GPT_4_MODEL_ID = "gpt-4" as const;
-export const GPT_4_TURBO_MODEL_ID = "gpt-4-1106-preview" as const;
 export const GPT_4_TURBO_PREVIEW_MODEL_ID = "gpt-4-turbo-preview" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo-1106" as const;
 
@@ -30,17 +29,8 @@ export const GPT_4_MODEL_CONFIG = {
 
 export const GPT_4_TURBO_MODEL_CONFIG = {
   providerId: "openai",
-  modelId: GPT_4_TURBO_MODEL_ID,
-  displayName: "GPT 4",
-  contextSize: 128000,
-  recommendedTopK: 32,
-  largeModel: true,
-} as const;
-
-export const GPT_4_TURBO_0125_MODEL_CONFIG = {
-  providerId: "openai",
   modelId: GPT_4_TURBO_PREVIEW_MODEL_ID,
-  displayName: "GPT 4 Turbo",
+  displayName: "GPT 4",
   contextSize: 128000,
   recommendedTopK: 32,
   largeModel: true,
@@ -112,7 +102,6 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_0125_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
