@@ -152,6 +152,7 @@ export async function renderConversationForModel({
       return new Err(new Error(`Error tokenizing model message: ${err}`));
     }
   }
+
   async function tokenSplit(
     text: string,
     model: { providerId: string; modelId: string },
@@ -231,8 +232,12 @@ export async function renderConversationForModel({
       if (contentRes.isErr()) {
         return new Err(contentRes.error);
       }
-      selected.unshift({ ...messages[i], content: contentRes.value });
+      selected.unshift({
+        ...messages[i],
+        content: contentRes.value + truncationMessage,
+      });
       tokensUsed += remainingTokens;
+      break;
     } else {
       break;
     }
