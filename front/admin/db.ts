@@ -45,6 +45,7 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
+import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
 
 async function main() {
@@ -95,6 +96,8 @@ async function main() {
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
+
+  await FeatureFlag.sync({ alter: true });
 
   process.exit(0);
 }
