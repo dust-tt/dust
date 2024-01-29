@@ -327,15 +327,15 @@ const WorkspacePage = ({
   const { submit: onToggleFeature, isSubmitting: isTogglingFeature } =
     useSubmitFunction(async (feature: WhitelistableFeature, value: boolean) => {
       try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/features/${feature}`,
-          {
-            method: value ? "POST" : "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const r = await fetch(`/api/poke/workspaces/${owner.sId}/features`, {
+          method: value ? "POST" : "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: feature,
+          }),
+        });
         if (!r.ok) {
           throw new Error("Failed to disable feature.");
         }

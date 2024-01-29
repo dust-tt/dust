@@ -14,7 +14,7 @@ import useSWR from "swr";
 
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
-import type { FeatureFlagsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
+import type { GetFeatureFlagsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
@@ -393,7 +393,7 @@ export function usePokePlans() {
 }
 
 export function usePokeFeatures({ workspaceId }: { workspaceId: string }) {
-  const featuresFetcher: Fetcher<FeatureFlagsResponseBody> = fetcher;
+  const featuresFetcher: Fetcher<GetFeatureFlagsResponseBody> = fetcher;
 
   const { data, error } = useSWR(
     `/api/poke/workspaces/${workspaceId}/features`,
