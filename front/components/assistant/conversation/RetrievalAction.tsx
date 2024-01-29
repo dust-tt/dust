@@ -16,6 +16,7 @@ import { useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 
+// TODO(2024-01-29 flav) Refactor to use SVG.
 export const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
   notion: "/static/notion_32x32.png",
   slack: "/static/slack_32x32.png",
@@ -217,24 +218,32 @@ function documentsSummary(documents: RetrievalDocumentType[]): {
   return summary;
 }
 
+type ProviderType =
+  | "none"
+  | "slack"
+  | "notion"
+  | "google_drive"
+  | "github"
+  | "confluence";
+
 export function providerFromDocument(
   document: RetrievalDocumentType
-): "none" | "slack" | "notion" | "google_drive" | "github" {
-  let provider: "none" | "slack" | "notion" | "google_drive" | "github" =
-    "none";
-  if (document.dataSourceId.startsWith("managed-slack")) {
-    provider = "slack";
+): ProviderType {
+  const providerMap: Record<string, Exclude<ProviderType, "none">> = {
+    "managed-slack": "slack",
+    "managed-notion": "notion",
+    "managed-google_drive": "google_drive",
+    "managed-github": "github",
+    "managed-confluence": "confluence",
+  };
+
+  for (const [key, value] of Object.entries(providerMap)) {
+    if (document.dataSourceId.startsWith(key)) {
+      return value;
+    }
   }
-  if (document.dataSourceId.startsWith("managed-notion")) {
-    provider = "notion";
-  }
-  if (document.dataSourceId.startsWith("managed-google_drive")) {
-    provider = "google_drive";
-  }
-  if (document.dataSourceId.startsWith("managed-github")) {
-    provider = "github";
-  }
-  return provider;
+
+  return "none";
 }
 
 export function titleFromDocument(document: RetrievalDocumentType): string {
