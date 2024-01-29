@@ -322,7 +322,7 @@ export async function confluenceUpsertPageActivity({
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
-      parents: [makeConfluenceInternalPageId(page.id)],
+      parents: [],
       retries: 3,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
@@ -370,10 +370,9 @@ export async function confluenceUpdatePagesParentIdsActivity(
   for (const page of pages) {
     // Retrieve parents using the internal ID, which aligns with the permissions
     // view rendering and RAG requirements.
-    const parents = [makeConfluenceInternalPageId(page.pageId)];
+
     // TODO:(2023-01-26 flav) We can cache the map used in `getConfluencePageParentIds`.
     const parentIds = await getConfluencePageParentIds(connectorId, page);
-    parents.push(...parentIds);
 
     await updateDocumentParentsField({
       dataSourceConfig: {
@@ -382,7 +381,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
         workspaceAPIKey: connector.workspaceAPIKey,
       },
       documentId: makeConfluencePageId(page.pageId),
-      parents,
+      parents: parentIds,
     });
   }
 
