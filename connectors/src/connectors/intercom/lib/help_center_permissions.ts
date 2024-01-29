@@ -11,6 +11,13 @@ import {
   fetchIntercomHelpCenters,
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
+import {
+  getHelpCenterArticleInternalId,
+  getHelpCenterCollectionIdFromInternalId,
+  getHelpCenterCollectionInternalId,
+  getHelpCenterIdFromInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/intercom/lib/utils";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector } from "@connectors/lib/models";
 import {
@@ -388,7 +395,10 @@ export async function retrieveIntercomHelpCentersPermissions({
       });
       resources = helpCentersFromDb.map((helpCenter) => ({
         provider: connector.type,
-        internalId: `help_center_${helpCenter.helpCenterId}`,
+        internalId: getHelpCenterInternalId(
+          connectorId,
+          helpCenter.helpCenterId
+        ),
         parentInternalId: null,
         type: "database",
         title: helpCenter.name,
@@ -404,7 +414,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       );
       resources = helpCenters.map((helpCenter) => ({
         provider: connector.type,
-        internalId: `help_center_${helpCenter.id}`,
+        internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
         type: "database",
         title: helpCenter.display_name,
@@ -421,15 +431,16 @@ export async function retrieveIntercomHelpCentersPermissions({
     return resources;
   }
 
-  const isParentHelpCenter = parentInternalId.startsWith("help_center_");
-  const isParentCollection = parentInternalId.startsWith("collection_");
-  const helpCenterParentId = isParentHelpCenter
-    ? parentInternalId.replace("help_center_", "")
-    : null;
-  const collectionParentId = isParentCollection
-    ? parentInternalId.replace("collection_", "")
-    : null;
-  const parentId = isParentHelpCenter ? null : collectionParentId;
+  const helpCenterParentId = getHelpCenterIdFromInternalId(
+    connectorId,
+    parentInternalId
+  );
+  const collectionParentId = getHelpCenterCollectionIdFromInternalId(
+    connectorId,
+    parentInternalId
+  );
+  // If parent is a Help Center we retrieve the list of Collections that have parent = null
+  const parentId = helpCenterParentId ? null : collectionParentId;
 
   // If parent is a Help Center we retrieve the list of Collections that have parent = null
   // If isReadPermissionsOnly = true, we retrieve the list of Collections from DB that have permission = "read" & no parent
@@ -446,9 +457,12 @@ export async function retrieveIntercomHelpCentersPermissions({
     if (isReadPermissionsOnly) {
       resources = collectionsInDb.map((collection) => ({
         provider: connector.type,
-        internalId: `collection_${collection.collectionId}`,
+        internalId: getHelpCenterCollectionInternalId(
+          connectorId,
+          collection.collectionId
+        ),
         parentInternalId: collection.parentId
-          ? `collection_${collection.parentId}`
+          ? getHelpCenterCollectionInternalId(connectorId, collection.parentId)
           : null,
         type: "folder",
         title: collection.name,
@@ -470,9 +484,15 @@ export async function retrieveIntercomHelpCentersPermissions({
         );
         return {
           provider: connector.type,
-          internalId: `collection_${collection.id}`,
+          internalId: getHelpCenterCollectionInternalId(
+            connectorId,
+            collection.id
+          ),
           parentInternalId: collection.parent_id
-            ? `collection_${collection.parent_id}`
+            ? getHelpCenterCollectionInternalId(
+                connectorId,
+                collection.parent_id
+              )
             : null,
           type: "folder",
           title: collection.name,
@@ -506,9 +526,15 @@ export async function retrieveIntercomHelpCentersPermissions({
       const collectionResources: ConnectorResource[] = collectionsInDb.map(
         (collection) => ({
           provider: connector.type,
-          internalId: `collection_${collection.collectionId}`,
+          internalId: getHelpCenterCollectionInternalId(
+            connectorId,
+            collection.collectionId
+          ),
           parentInternalId: collection.parentId
-            ? `collection_${collection.parentId}`
+            ? getHelpCenterCollectionInternalId(
+                connectorId,
+                collection.parentId
+              )
             : null,
           type: "folder",
           title: collection.name,
@@ -530,9 +556,12 @@ export async function retrieveIntercomHelpCentersPermissions({
       const articleResources: ConnectorResource[] = articlesInDb.map(
         (article) => ({
           provider: connector.type,
-          internalId: `article_${article.articleId}`,
+          internalId: getHelpCenterArticleInternalId(
+            connectorId,
+            article.articleId
+          ),
           parentInternalId: article.parentId
-            ? `article_${article.parentId}`
+            ? getHelpCenterArticleInternalId(connectorId, article.parentId)
             : null,
           type: "file",
           title: article.title,

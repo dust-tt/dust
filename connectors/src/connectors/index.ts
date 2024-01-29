@@ -48,7 +48,7 @@ import {
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
-import { launchIntercomHelpCentersSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
+import { launchIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import type {
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
@@ -193,7 +193,11 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
-    intercom: launchIntercomHelpCentersSyncWorkflow,
+    intercom: (connectorId: string) => {
+      // TODO(2024-01-23 flav) Remove once prototype is fixed. (thanks Flav!)
+      const connectorIdAsNumber = parseInt(connectorId, 10);
+      return launchIntercomSyncWorkflow(connectorIdAsNumber);
+    },
     webcrawler: (connectorId: string) =>
       launchCrawlWebsiteWorkflow(parseInt(connectorId)),
   };
