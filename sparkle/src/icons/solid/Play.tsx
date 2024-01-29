@@ -9,10 +9,7 @@ const SvgPlay = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path
-      fill="currentColor"
-      d="M19.376 12.416 8.777 19.482A.5.5 0 0 1 8 19.066V4.934a.5.5 0 0 1 .777-.416l10.599 7.066a.5.5 0 0 1 0 .832Z"
-    />
+    <path fill="currentColor" d="M20 12 8 20V4l12 8Z" />
   </svg>
 );
 export default SvgPlay;

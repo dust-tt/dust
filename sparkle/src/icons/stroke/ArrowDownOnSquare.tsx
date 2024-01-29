@@ -11,7 +11,11 @@ const SvgArrowDownOnSquare = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M13 10h4l-5 5-5-5h4V3h2v7Zm-9 9h16v-7h2v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-8h2v7Z"
+      d="M15.364 8.807 13 11.171V3h-2v8.171L8.636 8.807l-1.414 1.415L12 15l4.778-4.778-1.414-1.415Z"
+    />
+    <path
+      fill="currentColor"
+      d="M17 19a1 1 0 0 0 1-1v-5h2v5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-5h2v5a1 1 0 0 0 1 1h10Z"
     />
   </svg>
 );

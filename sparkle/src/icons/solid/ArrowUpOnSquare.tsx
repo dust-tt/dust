@@ -9,10 +9,13 @@ const SvgArrowUpOnSquare = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="currentColor" d="m6 8 6-6 6 6h-4.5v7h-3V8H6Z" />
     <path
       fill="currentColor"
-      d="M20 19H4v-7H2v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-8h-2v7Z"
+      d="M18 18a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-5H4v5a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-5h-2v5Z"
+    />
+    <path
+      fill="currentColor"
+      d="m10.5 8.5-2 2-2-2L12 3l5.5 5.5-2 2-2-2V15h-3V8.5Z"
     />
   </svg>
 );

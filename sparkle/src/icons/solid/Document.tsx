@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgMovingMail = (props: SVGProps<SVGSVGElement>) => (
+const SvgDocument = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -12,10 +12,10 @@ const SvgMovingMail = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M22 3v18H2v-2h18V7.3l-8 7.2-10-9V3h20Z"
+      d="M20 9v13H4V2h9v7h7Z"
       clipRule="evenodd"
     />
-    <path fill="currentColor" d="M8 15v2H0v-2h8ZM5 10v2H0v-2h5Z" />
+    <path fill="currentColor" d="M20 7h-5V2.003L20 7Z" />
   </svg>
 );
-export default SvgMovingMail;
+export default SvgDocument;

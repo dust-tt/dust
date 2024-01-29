@@ -11,7 +11,7 @@ const SvgPencilSquare = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M7.243 17.996H3v-4.242L14.435 2.319a1 1 0 0 1 1.414 0l2.829 2.828a1 1 0 0 1 0 1.414L7.243 17.996Zm-4.243 2h18v2H3v-2Z"
+      d="M3 19.996h18v2H3v-2ZM3 17.89h4.243L19.23 5.748 15 1.5 3 13.647v4.243Z"
     />
   </svg>
 );
