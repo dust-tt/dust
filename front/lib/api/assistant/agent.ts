@@ -20,7 +20,6 @@ import {
   DustProdActionRegistry,
   Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_32K_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
@@ -65,19 +64,19 @@ export async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  let model: { providerId: string; modelId: string } = !auth.isUpgraded()
+  const model: { providerId: string; modelId: string } = !auth.isUpgraded()
     ? {
         providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_32K_MODEL_CONFIG.providerId,
-        modelId: GPT_4_32K_MODEL_CONFIG.modelId,
+        providerId: GPT_4_MODEL_CONFIG.providerId,
+        modelId: GPT_4_MODEL_CONFIG.modelId,
       };
 
-  const contextSize = !auth.isUpgraded()
-    ? GPT_3_5_TURBO_MODEL_CONFIG.contextSize
-    : GPT_4_32K_MODEL_CONFIG.contextSize;
+  const contextSize = auth.isUpgraded()
+    ? GPT_4_MODEL_CONFIG.contextSize
+    : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
@@ -89,19 +88,6 @@ export async function generateActionInputs(
 
   if (modelConversationRes.isErr()) {
     return modelConversationRes;
-  }
-
-  // If we use gpt-4-32k but tokens used is less than GPT_4_CONTEXT_SIZE-MIN_GENERATION_TOKENS then
-  // switch the model back to GPT_4 standard (8k context, cheaper).
-  if (
-    model.modelId === GPT_4_32K_MODEL_CONFIG.modelId &&
-    modelConversationRes.value.tokensUsed <
-      GPT_4_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS
-  ) {
-    model = {
-      providerId: GPT_4_MODEL_CONFIG.providerId,
-      modelId: GPT_4_MODEL_CONFIG.modelId,
-    };
   }
 
   const config = cloneBaseConfig(

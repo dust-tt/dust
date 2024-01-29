@@ -17,8 +17,6 @@ import {
   CoreAPI,
   DustProdActionRegistry,
   Err,
-  GPT_4_32K_MODEL_ID,
-  GPT_4_MODEL_CONFIG,
   isAgentMessageType,
   isContentFragmentType,
   isDustAppRunActionType,
@@ -303,7 +301,7 @@ export async function* runGeneration(
     return;
   }
 
-  let model = c.model;
+  const { model } = c;
 
   if (isLargeModel(model) && !auth.isUpgraded()) {
     yield {
@@ -351,19 +349,6 @@ export async function* runGeneration(
       },
     };
     return;
-  }
-
-  // If model is gpt4-32k but tokens used is less than GPT_4_CONTEXT_SIZE-MIN_GENERATION_TOKENS,
-  // then we override the model to gpt4 standard (8k context, cheaper).
-  if (
-    model.modelId === GPT_4_32K_MODEL_ID &&
-    modelConversationRes.value.tokensUsed <
-      GPT_4_MODEL_CONFIG.contextSize - MIN_GENERATION_TOKENS
-  ) {
-    model = {
-      modelId: GPT_4_MODEL_CONFIG.modelId,
-      providerId: GPT_4_MODEL_CONFIG.providerId,
-    };
   }
 
   const config = cloneBaseConfig(
