@@ -700,14 +700,16 @@ export async function generateConversationTitle(
     providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
     modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
   };
-  const allowedTokenCount = 12288; // for 16k model.
+
+  const MIN_GENERATION_TOKENS = 1024;
+  const contextSize = GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
-    allowedTokenCount,
+    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
   });
 
   if (modelConversationRes.isErr()) {
