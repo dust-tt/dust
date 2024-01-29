@@ -6,7 +6,10 @@ import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
-import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
+import {
+  getConfluencePageParentIds,
+  getSpaceHierarchy,
+} from "@connectors/connectors/confluence/lib/hierarchy";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
@@ -366,12 +369,16 @@ export async function confluenceUpdatePagesParentIdsActivity(
     "Start updating pages parent ids."
   );
 
+  // Utilize an in-memory map to cache page hierarchies, thereby reducing database queries.
+  const cachedHierarchy = await getSpaceHierarchy(connectorId, spaceId);
   for (const page of pages) {
     // Retrieve parents using the internal ID, which aligns with the permissions
     // view rendering and RAG requirements.
-
-    // TODO:(2023-01-26 flav) We can cache the map used in `getConfluencePageParentIds`.
-    const parentIds = await getConfluencePageParentIds(connectorId, page);
+    const parentIds = await getConfluencePageParentIds(
+      connectorId,
+      page,
+      cachedHierarchy
+    );
 
     await updateDocumentParentsField({
       dataSourceConfig: {

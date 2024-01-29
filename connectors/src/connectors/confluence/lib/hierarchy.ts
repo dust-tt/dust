@@ -12,10 +12,7 @@ interface RawConfluencePage {
   spaceId: string;
 }
 
-export async function getConfluencePageParentIds(
-  connectorId: ModelId,
-  page: RawConfluencePage
-) {
+export async function getSpaceHierarchy(connectorId: ModelId, spaceId: string) {
   // Currently opting for a best-effort strategy to reduce database queries,
   // this logic may be enhanced later for important Confluence connections.
   // By fetching all pages within a space, we reconstruct parent-child
@@ -25,7 +22,7 @@ export async function getConfluencePageParentIds(
     attributes: ["pageId", "parentId"],
     where: {
       connectorId,
-      spaceId: page.spaceId,
+      spaceId,
     },
   });
 
@@ -33,6 +30,17 @@ export async function getConfluencePageParentIds(
   const pageIdToParentIdMap = new Map(
     allPages.map((page) => [page.pageId, page.parentId])
   );
+
+  return pageIdToParentIdMap;
+}
+
+export async function getConfluencePageParentIds(
+  connectorId: ModelId,
+  page: RawConfluencePage,
+  cachedHierarchy?: Map<string, string | null>
+) {
+  const pageIdToParentIdMap =
+    cachedHierarchy ?? (await getSpaceHierarchy(connectorId, page.spaceId));
 
   const parentIds = [];
   let currentId = page.pageId;
