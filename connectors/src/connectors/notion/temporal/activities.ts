@@ -971,11 +971,13 @@ export async function cachePage({
   connectorId,
   pageId,
   runTimestamp,
+  topLevelWorkflowId,
   loggerArgs,
 }: {
   connectorId: ModelId;
   pageId: string;
   runTimestamp: number;
+  topLevelWorkflowId: string;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
   skipped: boolean;
@@ -1032,6 +1034,10 @@ export async function cachePage({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
   if (pageInCache) {
@@ -1079,6 +1085,7 @@ export async function cachePage({
     createdTime: notionPage.created_time,
     lastEditedTime: notionPage.last_edited_time,
     url: notionPage.url,
+    workflowId: topLevelWorkflowId,
   });
 
   return {
@@ -1093,6 +1100,7 @@ export async function cacheBlockChildren({
   cursor,
   currentIndexInParent,
   loggerArgs,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   pageId: string;
@@ -1100,6 +1108,7 @@ export async function cacheBlockChildren({
   cursor: string | null;
   currentIndexInParent: number;
   loggerArgs: Record<string, string | number>;
+  topLevelWorkflowId: string;
 }): Promise<{
   nextCursor: string | null;
   blocksWithChildren: string[];
@@ -1182,6 +1191,10 @@ export async function cacheBlockChildren({
         notionPageId: pageId,
         notionBlockId: parsedBlocks.map((b) => b.id),
         connectorId: connector.id,
+        workflowId: {
+          // TODO(@fontanierh): remove `null` case.
+          [Op.or]: [topLevelWorkflowId, null],
+        },
       },
       attributes: ["notionBlockId"],
     });
@@ -1231,6 +1244,7 @@ export async function cacheBlockChildren({
         indexInParent: currentIndexInParent + idx,
         childDatabaseTitle: block.childDatabaseTitle,
         connectorId: connector.id,
+        workflowId: topLevelWorkflowId,
       });
     },
     { concurrency: 4 }
@@ -1248,11 +1262,13 @@ export async function cacheDatabaseChildren({
   connectorId,
   databaseId,
   cursor,
+  topLevelWorkflowId,
   loggerArgs,
 }: {
   connectorId: ModelId;
   databaseId: string;
   cursor: string | null;
+  topLevelWorkflowId: string;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
   nextCursor: string | null;
@@ -1324,6 +1340,10 @@ export async function cacheDatabaseChildren({
     where: {
       notionPageId: resultPage.results.map((r) => r.id),
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
     attributes: ["notionPageId"],
   });
@@ -1359,6 +1379,7 @@ export async function cacheDatabaseChildren({
         createdTime: page.created_time,
         lastEditedTime: page.last_edited_time,
         url: page.url,
+        workflowId: topLevelWorkflowId,
       })
     )
   );
@@ -1504,12 +1525,14 @@ export async function renderAndUpsertPageFromCache({
   loggerArgs,
   runTimestamp,
   isFullSync,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   pageId: string;
   loggerArgs: Record<string, string | number>;
   runTimestamp: number;
   isFullSync: boolean;
+  topLevelWorkflowId: string;
 }) {
   const connector = await Connector.findOne({
     where: {
@@ -1553,6 +1576,10 @@ export async function renderAndUpsertPageFromCache({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
   if (!pageCacheEntry) {
@@ -1566,6 +1593,10 @@ export async function renderAndUpsertPageFromCache({
     where: {
       notionPageId: pageId,
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
 
@@ -1597,6 +1628,10 @@ export async function renderAndUpsertPageFromCache({
     where: {
       parentId: Object.keys(blocksByParentId),
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
   const childDatabases: Record<string, NotionConnectorPageCacheEntry[]> = {};
@@ -1747,6 +1782,7 @@ export async function renderAndUpsertPageFromCache({
         notionId,
         connectorId: connector.id,
         resourceType: parentType,
+        workflowId: topLevelWorkflowId,
       });
     }
   }
@@ -1864,6 +1900,10 @@ export async function renderAndUpsertPageFromCache({
           notionId: childDatabaseIdsToCheck,
           resourceType: "database",
           connectorId: connector.id,
+          workflowId: {
+            // TODO(@fontanierh): remove `null` case.
+            [Op.or]: [topLevelWorkflowId, null],
+          },
         },
         attributes: ["notionId"],
       })
@@ -1876,6 +1916,10 @@ export async function renderAndUpsertPageFromCache({
           notionId: childPageIdsToCheck,
           resourceType: "page",
           connectorId: connector.id,
+          workflowId: {
+            // TODO(@fontanierh): remove `null` case.
+            [Op.or]: [topLevelWorkflowId, null],
+          },
         },
         attributes: ["notionId"],
       })
@@ -1895,6 +1939,7 @@ export async function renderAndUpsertPageFromCache({
         notionId: id,
         resourceType: "database",
         connectorId: connector.id,
+        workflowId: topLevelWorkflowId,
       })
     ),
     ...pageEntriesToCreate.map((id) =>
@@ -1902,12 +1947,19 @@ export async function renderAndUpsertPageFromCache({
         notionId: id,
         resourceType: "page",
         connectorId: connector.id,
+        workflowId: topLevelWorkflowId,
       })
     ),
   ]);
 }
 
-export async function clearConnectorCache(connectorId: ModelId) {
+export async function clearConnectorCache({
+  connectorId,
+  topLevelWorkflowId,
+}: {
+  connectorId: ModelId;
+  topLevelWorkflowId: string;
+}) {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -1927,23 +1979,39 @@ export async function clearConnectorCache(connectorId: ModelId) {
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
   await NotionConnectorBlockCacheEntry.destroy({
     where: {
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
   await NotionConnectorResourcesToCheckCacheEntry.destroy({
     where: {
       connectorId: connector.id,
+      workflowId: {
+        // TODO(@fontanierh): remove `null` case.
+        [Op.or]: [topLevelWorkflowId, null],
+      },
     },
   });
 }
 
-export async function getDiscoveredResourcesFromCache(
-  connectorId: ModelId
-): Promise<{ pageIds: string[]; databaseIds: string[] }> {
+export async function getDiscoveredResourcesFromCache({
+  connectorId,
+  topLevelWorkflowId,
+}: {
+  connectorId: ModelId;
+  topLevelWorkflowId: string;
+}): Promise<{ pageIds: string[]; databaseIds: string[] }> {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -1967,6 +2035,10 @@ export async function getDiscoveredResourcesFromCache(
     await NotionConnectorResourcesToCheckCacheEntry.findAll({
       where: {
         connectorId: connector.id,
+        workflowId: {
+          // TODO: remove `null` case.
+          [Op.or]: [null, topLevelWorkflowId],
+        },
       },
     });
 

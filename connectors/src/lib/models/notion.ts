@@ -273,6 +273,8 @@ export class NotionConnectorPageCacheEntry extends Model<
   declare lastEditedTime: string;
   declare url: string;
 
+  declare workflowId: string | null;
+
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 NotionConnectorPageCacheEntry.init(
@@ -333,14 +335,23 @@ NotionConnectorPageCacheEntry.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    workflowId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
     modelName: "notion_connector_page_cache_entries",
     indexes: [
-      { fields: ["notionPageId", "connectorId"], unique: true },
+      {
+        fields: ["notionPageId", "connectorId", "workflowId"],
+        unique: true,
+        name: "uq_notion_page_id_conn_id_wf_id",
+      },
       { fields: ["connectorId"] },
       { fields: ["parentId"] },
+      { fields: ["workflowId"] },
     ],
   }
 );
@@ -363,6 +374,8 @@ export class NotionConnectorBlockCacheEntry extends Model<
 
   // special case for child DBs
   declare childDatabaseTitle?: string | null;
+
+  declare workflowId: string | null;
 
   declare connectorId: ForeignKey<Connector["id"]>;
 }
@@ -411,19 +424,24 @@ NotionConnectorBlockCacheEntry.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    workflowId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
     modelName: "notion_connector_block_cache_entries",
     indexes: [
       {
-        fields: ["notionBlockId", "connectorId", "notionPageId"],
+        fields: ["notionBlockId", "connectorId", "notionPageId", "workflowId"],
         unique: true,
-        name: "uq_notion_block_id_conn_id_page_id",
+        name: "uq_notion_block_id_conn_id_page_id_wf_id",
       },
       { fields: ["connectorId"] },
       { fields: ["parentBlockId"] },
       { fields: ["notionPageId"] },
+      { fields: ["workflowId"] },
     ],
   }
 );
@@ -439,6 +457,9 @@ export class NotionConnectorResourcesToCheckCacheEntry extends Model<
 
   declare notionId: string;
   declare resourceType: "page" | "database";
+
+  declare workflowId: string | null;
+
   declare connectorId: ForeignKey<Connector["id"]>;
 }
 NotionConnectorResourcesToCheckCacheEntry.init(
@@ -466,17 +487,22 @@ NotionConnectorResourcesToCheckCacheEntry.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    workflowId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelize_conn,
     modelName: "notion_connector_resources_to_check_cache_entries",
     indexes: [
       {
-        fields: ["notionId", "connectorId"],
+        fields: ["notionId", "connectorId", "workflowId"],
         unique: true,
-        name: "uq_notion_to_check_notion_id_conn_id",
+        name: "uq_notion_to_check_notion_id_conn_id_wf_id",
       },
       { fields: ["connectorId"] },
+      { fields: ["workflowId"] },
     ],
   }
 );

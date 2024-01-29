@@ -78,6 +78,8 @@ export async function notionSyncWorkflow({
 }) {
   let iterations = 0;
 
+  const topLevelWorkflowId = workflowInfo().workflowId;
+
   let lastSyncedPeriodTs: number | null = startFromTs
     ? preProcessTimestampForNotion(startFromTs)
     : null;
@@ -94,7 +96,7 @@ export async function notionSyncWorkflow({
     }
 
     // clear the connector cache before each sync
-    await clearConnectorCache(connectorId);
+    await clearConnectorCache({ connectorId, topLevelWorkflowId });
 
     const runTimestamp = Date.now();
 
@@ -145,6 +147,7 @@ export async function notionSyncWorkflow({
           pageIndex,
           isBatchSync: isInitialSync,
           queue: childWorkflowQueue,
+          topLevelWorkflowId,
         })
       );
     } while (cursor);
@@ -157,9 +160,10 @@ export async function notionSyncWorkflow({
     // these are resources (pages/DBs) that we didn't get from the search API but that are child pages/DBs
     // of other pages that we did get from the search API.
     // We upsert those as well.
-    const discoveredResources = await getDiscoveredResourcesFromCache(
-      connectorId
-    );
+    const discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
     await performUpserts({
       connectorId,
       pageIds: discoveredResources.pageIds,
@@ -170,6 +174,7 @@ export async function notionSyncWorkflow({
       isBatchSync: isInitialSync,
       queue: childWorkflowQueue,
       childWorkflowsNameSuffix: "discovered",
+      topLevelWorkflowId,
     });
 
     if (!isGarbageCollectionRun) {
@@ -211,12 +216,14 @@ export async function upsertPageWorkflow({
   runTimestamp,
   isBatchSync,
   pageIndex,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   pageId: string;
   runTimestamp: number;
   isBatchSync: boolean;
   pageIndex: number;
+  topLevelWorkflowId: string;
 }): Promise<{
   skipped: boolean;
 }> {
@@ -230,6 +237,7 @@ export async function upsertPageWorkflow({
     pageId,
     loggerArgs,
     runTimestamp,
+    topLevelWorkflowId,
   });
 
   if (skipped) {
@@ -249,6 +257,7 @@ export async function upsertPageWorkflow({
         cursor,
         currentIndexInParent: blockIndexInPage,
         loggerArgs,
+        topLevelWorkflowId,
       });
     cursor = nextCursor;
     blockIndexInPage += blocksCount;
@@ -261,7 +270,7 @@ export async function upsertPageWorkflow({
         searchAttributes: {
           connectorId: [connectorId],
         },
-        args: [{ connectorId, pageId, blockId: block }],
+        args: [{ connectorId, pageId, blockId: block, topLevelWorkflowId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
@@ -274,7 +283,7 @@ export async function upsertPageWorkflow({
         searchAttributes: {
           connectorId: [connectorId],
         },
-        args: [{ connectorId, databaseId }],
+        args: [{ connectorId, databaseId, topLevelWorkflowId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
@@ -287,6 +296,7 @@ export async function upsertPageWorkflow({
     loggerArgs,
     runTimestamp,
     isFullSync: isBatchSync,
+    topLevelWorkflowId,
   });
 
   return {
@@ -298,10 +308,12 @@ export async function notionProcessBlockChildrenWorkflow({
   connectorId,
   pageId,
   blockId,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   pageId: string;
   blockId: string;
+  topLevelWorkflowId: string;
 }): Promise<void> {
   const loggerArgs = {
     connectorId,
@@ -318,6 +330,7 @@ export async function notionProcessBlockChildrenWorkflow({
         blockId,
         cursor,
         currentIndexInParent: blockIndexInParent,
+        topLevelWorkflowId,
         loggerArgs,
       });
     cursor = nextCursor;
@@ -331,7 +344,7 @@ export async function notionProcessBlockChildrenWorkflow({
         searchAttributes: {
           connectorId: [connectorId],
         },
-        args: [{ connectorId, pageId, blockId: block }],
+        args: [{ connectorId, pageId, blockId: block, topLevelWorkflowId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
@@ -344,7 +357,7 @@ export async function notionProcessBlockChildrenWorkflow({
         searchAttributes: {
           connectorId: [connectorId],
         },
-        args: [{ connectorId, databaseId }],
+        args: [{ connectorId, databaseId, topLevelWorkflowId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
@@ -355,9 +368,11 @@ export async function notionProcessBlockChildrenWorkflow({
 export async function processChildDatabaseWorkflow({
   connectorId,
   databaseId,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   databaseId: string;
+  topLevelWorkflowId: string;
 }): Promise<void> {
   const loggerArgs = {
     connectorId,
@@ -370,6 +385,7 @@ export async function processChildDatabaseWorkflow({
       databaseId,
       cursor,
       loggerArgs,
+      topLevelWorkflowId,
     });
     cursor = nextCursor;
   } while (cursor);
@@ -380,11 +396,13 @@ export async function syncResultPageWorkflow({
   pageIds,
   runTimestamp,
   isBatchSync,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   pageIds: string[];
   runTimestamp: number;
   isBatchSync: boolean;
+  topLevelWorkflowId: string;
 }): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
@@ -400,7 +418,16 @@ export async function syncResultPageWorkflow({
           searchAttributes: {
             connectorId: [connectorId],
           },
-          args: [{ connectorId, pageId, runTimestamp, isBatchSync, pageIndex }],
+          args: [
+            {
+              connectorId,
+              pageId,
+              runTimestamp,
+              isBatchSync,
+              pageIndex,
+              topLevelWorkflowId,
+            },
+          ],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           memo: workflowInfo().memo,
         })
@@ -417,12 +444,14 @@ export async function syncResultPageDatabaseWorkflow({
   runTimestamp,
   isGarbageCollectionRun,
   isBatchSync,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   databaseIds: string[];
   runTimestamp: number;
   isGarbageCollectionRun: boolean;
   isBatchSync: boolean;
+  topLevelWorkflowId: string;
 }): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
@@ -483,6 +512,7 @@ export async function syncResultPageDatabaseWorkflow({
         isBatchSync,
         queue: workflowQueue,
         childWorkflowsNameSuffix: `database-children-${databaseId}`,
+        topLevelWorkflowId,
       });
 
       promises.push(upsertsPromise);
@@ -502,6 +532,7 @@ async function performUpserts({
   isBatchSync,
   queue,
   childWorkflowsNameSuffix = "",
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   pageIds: string[];
@@ -512,6 +543,7 @@ async function performUpserts({
   isBatchSync: boolean;
   queue: PQueue;
   childWorkflowsNameSuffix?: string;
+  topLevelWorkflowId: string;
 }): Promise<void> {
   let pagesToSync: string[] = [];
   let databasesToSync: string[] = [];
@@ -566,6 +598,7 @@ async function performUpserts({
                 runTimestamp,
                 isBatchSync,
                 pageIds: batch,
+                topLevelWorkflowId,
               },
             ],
             searchAttributes: {
@@ -611,6 +644,7 @@ async function performUpserts({
                 isGarbageCollectionRun,
                 isBatchSync,
                 databaseIds: batch,
+                topLevelWorkflowId,
               },
             ],
             searchAttributes: {

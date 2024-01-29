@@ -474,6 +474,9 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
             runTimestamp: new Date().getTime(),
             isBatchSync: false,
             pageIndex: -1,
+            // NOTE: this workflow cache is not automatically cleared.
+            // TODO: clear it.
+            topLevelWorkflowId: "notion-test-upsert-page",
           },
         ],
         taskQueue: QUEUE_NAME,
