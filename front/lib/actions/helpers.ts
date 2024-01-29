@@ -87,15 +87,13 @@ export async function callAction<V extends t.Mixed>({
     // the response is of the right shape, but it's not a success response
     return new Err({
       type: "action_failed",
-      message: `Doc Tracker action failed response: ${JSON.stringify(
-        r.value.status
-      )}`,
+      message: `Action failed response: ${JSON.stringify(r.value.status)}`,
     });
   }
 
   // the response is not of a known shape, so we can't assume anything about it
   return new Err({
     type: "unexpected_action_response",
-    message: "Unexpected Doc Tracker action response.",
+    message: "Unexpected action response.",
   });
 }
