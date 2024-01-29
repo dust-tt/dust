@@ -26,11 +26,7 @@ import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import {
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  GPT_4_TURBO_0125_MODEL_CONFIG,
-  isBuilder,
-} from "@dust-tt/types";
+import { GEMINI_PRO_DEFAULT_MODEL_CONFIG, isBuilder } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -91,7 +87,6 @@ import { classNames } from "@app/lib/utils";
 
 const usedModelConfigs = [
   GPT_4_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_0125_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -244,7 +239,7 @@ export default function AssistantBuilder({
             ...DEFAULT_ASSISTANT_STATE.generationSettings,
             modelSettings: !isUpgraded(plan)
               ? GPT_3_5_TURBO_MODEL_CONFIG
-              : GPT_4_TURBO_0125_MODEL_CONFIG,
+              : GPT_4_TURBO_MODEL_CONFIG,
           },
         }
   );

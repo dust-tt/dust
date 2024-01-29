@@ -12,7 +12,7 @@ import type {
 import type { GlobalAgentStatus } from "@dust-tt/types";
 import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  GPT_4_TURBO_0125_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
 } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
@@ -91,8 +91,8 @@ async function _getHelperGlobalAgent(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_TURBO_0125_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_0125_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       };
   return {
     id: -1,
@@ -170,8 +170,8 @@ async function _getGPT4GlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: GPT_4_TURBO_0125_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_0125_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       },
 
       temperature: 0.7,
@@ -436,8 +436,8 @@ async function _getManagedDataSourceAgent(
             modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
           }
         : {
-            providerId: GPT_4_TURBO_0125_MODEL_CONFIG.providerId,
-            modelId: GPT_4_TURBO_0125_MODEL_CONFIG.modelId,
+            providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+            modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
           },
       temperature: 0.4,
     },
@@ -639,8 +639,8 @@ async function _getDustGlobalAgent(
             modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
           }
         : {
-            providerId: GPT_4_TURBO_0125_MODEL_CONFIG.providerId,
-            modelId: GPT_4_TURBO_0125_MODEL_CONFIG.modelId,
+            providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+            modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
           },
       temperature: 0.4,
     },
