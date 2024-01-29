@@ -8,21 +8,15 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorProvider,
   RetrievalActionType,
   RetrievalDocumentType,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { useState } from "react";
 
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { classNames } from "@app/lib/utils";
-
-// TODO(2024-01-29 flav) Refactor to use SVG.
-export const PROVIDER_LOGO_PATH: { [provider: string]: string } = {
-  notion: "/static/notion_32x32.png",
-  slack: "/static/slack_32x32.png",
-  google_drive: "/static/google_drive_32x32.png",
-  github: "/static/github_black_32x32.png",
-};
 
 export default function RetrievalAction({
   retrievalAction,
@@ -154,11 +148,12 @@ export default function RetrievalAction({
                         {provider === "none" ? (
                           <DocumentTextIcon className="mr-1 inline-block h-4 w-4 text-slate-500" />
                         ) : (
-                          <img
-                            src={
-                              PROVIDER_LOGO_PATH[providerFromDocument(document)]
+                          <Icon
+                            visual={
+                              CONNECTOR_CONFIGURATIONS[provider].logoComponent
                             }
-                            className="mr-1 inline-block h-4 w-4"
+                            size="sm"
+                            className="mr-1 inline-block"
                           />
                         )}
                         {titleFromDocument(document)}
@@ -181,11 +176,17 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
     <div className="flex flex-row items-center">
       <span className="hidden lg:block">{documents.length}&nbsp;results</span>
       {Object.keys(summary).map((k) => {
+        const { provider } = summary[k];
+
         return (
           <div key={k} className="ml-3 flex flex-initial flex-row items-center">
-            <div className={classNames("mr-1 flex h-4 w-4")}>
-              {summary[k].provider !== "none" ? (
-                <img src={PROVIDER_LOGO_PATH[summary[k].provider]}></img>
+            <div className={classNames("mr-1 flex")}>
+              {provider !== "none" ? (
+                <Icon
+                  visual={CONNECTOR_CONFIGURATIONS[provider].logoComponent}
+                  size="sm"
+                  className="mr-1 inline-block"
+                />
               ) : (
                 <DocumentTextIcon className="h-4 w-4 text-slate-500" />
               )}
@@ -199,10 +200,10 @@ function RetrievedDocumentsInfo(documents: RetrievalDocumentType[]) {
 }
 
 function documentsSummary(documents: RetrievalDocumentType[]): {
-  [key: string]: { count: number; provider: string };
+  [key: string]: { count: number; provider: ConnectorProvider | "none" };
 } {
   const summary = {} as {
-    [key: string]: { count: number; provider: string };
+    [key: string]: { count: number; provider: ConnectorProvider | "none" };
   };
   documents.forEach((r: RetrievalDocumentType) => {
     const provider = providerFromDocument(r);
@@ -218,18 +219,14 @@ function documentsSummary(documents: RetrievalDocumentType[]): {
   return summary;
 }
 
-type ProviderType =
-  | "none"
-  | "slack"
-  | "notion"
-  | "google_drive"
-  | "github"
-  | "confluence";
+type ConnectorProviderDocumentType =
+  | Exclude<ConnectorProvider, "intercom" | "webcrawler">
+  | "none";
 
 export function providerFromDocument(
   document: RetrievalDocumentType
-): ProviderType {
-  const providerMap: Record<string, Exclude<ProviderType, "none">> = {
+): ConnectorProviderDocumentType {
+  const providerMap: Record<string, ConnectorProviderDocumentType> = {
     "managed-slack": "slack",
     "managed-notion": "notion",
     "managed-google_drive": "google_drive",
