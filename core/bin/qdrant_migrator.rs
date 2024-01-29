@@ -516,6 +516,12 @@ async fn migrate(
         target_cluster
     ));
 
+    // Reload the ds so that it sees the shadow_write cluster.
+    let ds = match store.load_data_source(&project, &data_source_id).await? {
+        Some(ds) => ds,
+        None => Err(anyhow!("Data source not found"))?,
+    };
+
     // Wait for the target_cluster to be ready.
     loop {
         match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
