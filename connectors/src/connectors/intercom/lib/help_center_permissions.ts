@@ -71,7 +71,7 @@ export async function allowSyncHelpCenter({
       helpCenter = await IntercomHelpCenter.create({
         connectorId: connector.id,
         helpCenterId: helpCenterOnIntercom.id,
-        name: helpCenterOnIntercom.display_name,
+        name: helpCenterOnIntercom.display_name || "Help Center",
         identifier: helpCenterOnIntercom.identifier,
         intercomWorkspaceId: helpCenterOnIntercom.workspace_id,
         permission: "read",
@@ -417,7 +417,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
         type: "database",
-        title: helpCenter.display_name,
+        title: helpCenter.display_name || "Help Center",
         sourceUrl: null,
         expandable: true,
         permission: "none",

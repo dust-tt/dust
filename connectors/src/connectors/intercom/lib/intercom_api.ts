@@ -25,7 +25,7 @@ type IntercomHelpCenterType = {
   updated_at: number;
   identifier: string;
   website_turned_on: boolean;
-  display_name: string;
+  display_name: string | null;
 };
 
 export type IntercomCollectionType = CollectionObject & {

@@ -124,7 +124,7 @@ export async function syncHelpCenterOnlyActivity({
       shouldRemoveHelpCenter = true;
     } else {
       await helpCenterOnDb.update({
-        name: helpCenterOnIntercom.display_name,
+        name: helpCenterOnIntercom.display_name || "Help Center",
         lastUpsertedTs: new Date(currentSyncMs),
       });
     }
