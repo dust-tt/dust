@@ -26,7 +26,10 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
+import {
+  GLOBAL_AGENTS_SID,
+  orderDatasourceByImportance,
+} from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
@@ -59,38 +62,29 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const dataSources = await getDataSources(auth);
-
-  const agentConfigurations = (
-    await getAgentConfigurations({
-      auth,
-      agentsGetView: "admin_internal",
-      variant: "full",
-    })
-  ).filter(
-    (a) =>
-      !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
-  );
-
-  // sort data source so that managed ones (i.e ones with a connector provider) are first
-  dataSources.sort((a, b) => {
-    if (a.connectorProvider && !b.connectorProvider) {
-      return -1;
-    }
-    if (!a.connectorProvider && b.connectorProvider) {
-      return 1;
-    }
-    return 0;
-  });
-
-  const planInvitation = await getPlanInvitation(auth);
+  const [dataSources, agentConfigurations, planInvitation] = await Promise.all([
+    getDataSources(auth),
+    (async () => {
+      return (
+        await getAgentConfigurations({
+          auth,
+          agentsGetView: "admin_internal",
+          variant: "full",
+        })
+      ).filter(
+        (a) =>
+          !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
+      );
+    })(),
+    getPlanInvitation(auth),
+  ]);
 
   return {
     props: {
       owner,
       subscription,
       planInvitation: planInvitation ?? null,
-      dataSources,
+      dataSources: orderDatasourceByImportance(dataSources),
       agentConfigurations: agentConfigurations,
     },
   };
