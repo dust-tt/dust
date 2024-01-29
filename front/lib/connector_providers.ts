@@ -33,7 +33,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations: null,
     logoComponent: ConfluenceLogo,
     isNested: true,
-    dustWorkspaceOnly: true,
   },
   notion: {
     name: "Notion",
