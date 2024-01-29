@@ -2,7 +2,13 @@ import React, { ReactNode } from "react";
 
 import { DocumentText } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
-import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
+import {
+  Confluence,
+  Drive,
+  Github,
+  Notion,
+  Slack,
+} from "@sparkle/logo/platforms";
 
 import {
   Avatar,
@@ -14,7 +20,13 @@ import {
 } from "..";
 
 interface CitationProps {
-  type?: "slack" | "google_drive" | "github" | "notion" | "document";
+  type?:
+    | "confluence"
+    | "slack"
+    | "google_drive"
+    | "github"
+    | "notion"
+    | "document";
   title: string;
   description?: string;
   index?: ReactNode;
@@ -25,11 +37,12 @@ interface CitationProps {
 }
 
 const typeIcons = {
-  slack: Slack,
-  google_drive: Drive,
-  github: Github,
-  notion: Notion,
+  confluence: Confluence,
   document: DocumentText,
+  github: Github,
+  google_drive: Drive,
+  notion: Notion,
+  slack: Slack,
 };
 
 export function Citation({
