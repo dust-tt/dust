@@ -10,6 +10,9 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
+  NotionConnectorBlockCacheEntry,
+  NotionConnectorPageCacheEntry,
+  NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
@@ -306,6 +309,24 @@ export async function cleanupNotionConnector(
       transaction: transaction,
     });
     await NotionConnectorState.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction: transaction,
+    });
+    await NotionConnectorBlockCacheEntry.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction: transaction,
+    });
+    await NotionConnectorPageCacheEntry.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction: transaction,
+    });
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
       where: {
         connectorId: connector.id,
       },
