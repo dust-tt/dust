@@ -1,5 +1,7 @@
 FROM rust:1.70.0 as core
 
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+
 WORKDIR /app
 
 COPY . .

@@ -2,7 +2,7 @@
 # start installing poppler tools for pdf text extraction
 FROM node:18.15.0 as build
 
-RUN apt-get update && apt-get install -y vim
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
 WORKDIR /tmp/
 COPY ./connectors/admin/docker_build/install_poppler_tools.sh ./
