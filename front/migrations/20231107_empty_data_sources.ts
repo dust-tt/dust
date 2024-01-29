@@ -44,7 +44,7 @@ async function main() {
 
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     const [databaseData, databaseMetaData] = (await coreSequelize.query(`
-      SELECT * FROM databases WHERE data_source = ${dsData[0].id} LIMIT 1;
+      SELECT * FROM tables WHERE data_source = ${dsData[0].id} LIMIT 1;
     `)) as [any[], { rowCount?: number }];
 
     if (
