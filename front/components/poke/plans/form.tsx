@@ -195,7 +195,6 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Bot",
   },
-  // TODO(2024-01-10 flav) Add isConfluenceAllowed.
   isConfluenceAllowed: {
     type: "boolean",
     width: "tiny",
