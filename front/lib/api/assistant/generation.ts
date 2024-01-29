@@ -78,6 +78,13 @@ export async function renderConversationForModel({
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
+      if (m.content) {
+        messages.unshift({
+          role: "agent" as const,
+          name: m.configuration.name,
+          content: m.content,
+        });
+      }
       if (m.action) {
         if (isRetrievalActionType(m.action)) {
           if (!retrievalFound) {
@@ -91,13 +98,6 @@ export async function renderConversationForModel({
         } else {
           assertNever(m.action);
         }
-      }
-      if (m.content) {
-        messages.unshift({
-          role: "agent" as const,
-          name: m.configuration.name,
-          content: m.content,
-        });
       }
     } else if (isUserMessageType(m)) {
       // Replace all `:mention[{name}]{.*}` with `@name`.
