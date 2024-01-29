@@ -3,6 +3,7 @@ import type {
   AgentConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
+  WhitelistableFeature,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -15,12 +16,14 @@ import {
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  WHITELISTABLE_FEATURES,
 } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
+import { mutate } from "swr";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -38,7 +41,7 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
-import { usePokePlans } from "@app/lib/swr";
+import { usePokeFeatures, usePokePlans } from "@app/lib/swr";
 
 export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
@@ -46,6 +49,7 @@ export const getServerSideProps: GetServerSideProps<{
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
   agentConfigurations: AgentConfigurationType[];
+  whitelistableFeatures: WhitelistableFeature[];
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
@@ -86,6 +90,8 @@ export const getServerSideProps: GetServerSideProps<{
       planInvitation: planInvitation ?? null,
       dataSources: orderDatasourceByImportance(dataSources),
       agentConfigurations: agentConfigurations,
+      whitelistableFeatures:
+        WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
     },
   };
 };
@@ -96,12 +102,16 @@ const WorkspacePage = ({
   planInvitation,
   dataSources,
   agentConfigurations,
+  whitelistableFeatures,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const { plans } = usePokePlans();
+  const { features: enabledFeatures } = usePokeFeatures({
+    workspaceId: owner.sId,
+  });
 
   const { submit: onUpgrade } = useSubmitFunction(async () => {
     if (!window.confirm("Are you sure you want to upgrade this workspace?")) {
@@ -314,6 +324,36 @@ const WorkspacePage = ({
     }
   );
 
+  const { submit: onToggleFeature, isSubmitting: isTogglingFeature } =
+    useSubmitFunction(async (feature: WhitelistableFeature, value: boolean) => {
+      try {
+        const r = await fetch(`/api/poke/workspaces/${owner.sId}/features`, {
+          method: value ? "POST" : "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: feature,
+          }),
+        });
+        if (!r.ok) {
+          throw new Error("Failed to disable feature.");
+        }
+
+        await mutate(`/api/poke/workspaces/${owner.sId}/features`);
+      } catch (e) {
+        sendNotification({
+          title: "Error",
+          description: `An error occurred while toggling feature "${feature}": ${JSON.stringify(
+            e,
+            null,
+            2
+          )}`,
+          type: "error",
+        });
+      }
+    });
+
   const [hasCopiedInviteLink, setHasCopiedInviteLink] = React.useState(false);
 
   const workspaceHasManagedDataSources = dataSources.some(
@@ -510,6 +550,41 @@ const WorkspacePage = ({
                   </p>
                 </div>
               )}
+          </div>
+
+          <div>
+            <div className="mx-2 w-1/3">
+              <h2 className="text-md mb-4 font-bold">Features:</h2>
+              {whitelistableFeatures.map((f) => (
+                <div
+                  key={`feature_${f}`}
+                  className="border-material-200 my-4 rounded-lg border p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="mb-2 text-lg font-semibold">{f}</h3>
+                    {enabledFeatures.includes(f) ? (
+                      <Button
+                        label="Disable"
+                        variant="secondaryWarning"
+                        onClick={() => {
+                          void onToggleFeature(f, false);
+                        }}
+                        disabled={isTogglingFeature}
+                      />
+                    ) : (
+                      <Button
+                        label="Enable"
+                        variant="secondary"
+                        onClick={() => {
+                          void onToggleFeature(f, true);
+                        }}
+                        disabled={isTogglingFeature}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-row gap-8 pt-4">

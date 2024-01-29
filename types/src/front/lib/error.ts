@@ -55,7 +55,9 @@ export type APIErrorType =
   | "unexpected_response_format"
   // Used by callAction client:
   | "action_failed"
-  | "unexpected_action_response";
+  | "unexpected_action_response"
+  | "feature_flag_not_found"
+  | "feature_flag_already_exists";
 
 export type APIError = {
   type: APIErrorType;
