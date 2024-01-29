@@ -160,9 +160,10 @@ export async function notionSyncWorkflow({
     // these are resources (pages/DBs) that we didn't get from the search API but that are child pages/DBs
     // of other pages that we did get from the search API.
     // We upsert those as well.
-    const discoveredResources = await getDiscoveredResourcesFromCache(
-      connectorId
-    );
+    const discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
     await performUpserts({
       connectorId,
       pageIds: discoveredResources.pageIds,
