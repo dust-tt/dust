@@ -3,6 +3,8 @@ import type { ConnectorType } from "@dust-tt/types";
 import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   assertNever,
+  DEFAULT_FREE_QDRANT_CLUSTER,
+  DEFAULT_PAID_QDRANT_CLUSTER,
   EMBEDDING_CONFIG,
   isConnectorProvider,
 } from "@dust-tt/types";
@@ -271,11 +273,11 @@ async function handler(
           qdrant_config:
             NODE_ENV === "production"
               ? {
-                  cluster: "dedicated-1",
+                  cluster: DEFAULT_PAID_QDRANT_CLUSTER,
                   shadow_write_cluster: null,
                 }
               : {
-                  cluster: "main-0",
+                  cluster: DEFAULT_FREE_QDRANT_CLUSTER,
                   shadow_write_cluster: null,
                 },
         },
