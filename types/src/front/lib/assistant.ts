@@ -4,7 +4,6 @@
 
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 
-export const GPT_4_32K_MODEL_ID = "gpt-4-32k" as const;
 export const GPT_4_MODEL_ID = "gpt-4" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-1106-preview" as const;
 export const GPT_4_TURBO_PREVIEW_MODEL_ID = "gpt-4-turbo-preview" as const;
