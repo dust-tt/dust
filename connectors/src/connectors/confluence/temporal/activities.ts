@@ -7,7 +7,6 @@ import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluen
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
 import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
-import { makeConfluenceInternalPageId } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
