@@ -27,6 +27,7 @@ import {
   isTablesQueryActionType,
   isUserMessageType,
   Ok,
+  safeSubstring,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
@@ -42,6 +43,7 @@ import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
+
 const CANCELLATION_CHECK_INTERVAL = 500;
 
 /**
@@ -151,6 +153,33 @@ export async function renderConversationForModel({
     }
   }
 
+  async function tokenSplit(
+    text: string,
+    model: { providerId: string; modelId: string },
+    splitAt: number
+  ): Promise<Result<string, Error>> {
+    try {
+      const coreAPI = new CoreAPI(logger);
+      const res = await coreAPI.tokenize({
+        text,
+        providerId: model.providerId,
+        modelId: model.modelId,
+      });
+      if (res.isErr()) {
+        return new Err(
+          new Error(`Error tokenizing model message: ${res.error.message}`)
+        );
+      }
+      const remainingText = res.value.tokens
+        .slice(0, splitAt)
+        .map(([, tokenText]) => tokenText)
+        .join("");
+      return new Ok(safeSubstring(remainingText, 0, remainingText.length));
+    } catch (err) {
+      return new Err(new Error(`Error tokenizing model message: ${err}`));
+    }
+  }
+
   const now = Date.now();
 
   // Compute in parallel the token count for each message and the prompt.
@@ -170,10 +199,14 @@ export async function renderConversationForModel({
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations, 64 tokens seems small enough and ample enough.
-  let tokensUsed = promptCountRes.value + 64;
+  const tokensMargin = 64;
+  let tokensUsed = promptCountRes.value + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected = [];
+  const truncationMessage = `... (content truncated)`;
+  const approxTruncMsgTokenCount = truncationMessage.length / 3;
+
   for (let i = messages.length - 1; i >= 0; i--) {
     const r = messagesCountRes[i];
     if (r.isErr()) {
@@ -183,6 +216,30 @@ export async function renderConversationForModel({
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
       selected.unshift(messages[i]);
+    } else if (
+      // when a content fragment has more than the remaining number of tokens, we split it
+      messages[i].role === "content_fragment" &&
+      // allow at least tokensMargin tokens in addition to the truncation message
+      tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
+    ) {
+      const remainingTokens =
+        allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
+      const contentRes = await tokenSplit(
+        messages[i].content,
+        model,
+        remainingTokens
+      );
+      if (contentRes.isErr()) {
+        return new Err(contentRes.error);
+      }
+      selected.unshift({
+        ...messages[i],
+        content: contentRes.value + truncationMessage,
+      });
+      tokensUsed += remainingTokens;
+      break;
+    } else {
+      break;
     }
   }
 
