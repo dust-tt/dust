@@ -6,6 +6,7 @@ import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
+import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
 import {
   makeConfluenceDocumentUrl,
   makeConfluencePageId,
@@ -15,6 +16,7 @@ import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
+  updateDocumentParentsField,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { isNotFoundError } from "@connectors/lib/error";
@@ -318,8 +320,8 @@ export async function confluenceUpsertPageActivity({
       documentId,
       documentUrl,
       loggerArgs,
-      // TODO(2024-01-18 flav) Add parent page internal id.
-      parents: [documentId],
+      // Parent Ids will be computed after all page imports within the space have been completed.
+      parents: [],
       retries: 3,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
@@ -332,6 +334,57 @@ export async function confluenceUpsertPageActivity({
   localLogger.info("Upserting Confluence page in DB.");
 
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
+}
+
+export async function confluenceUpdatePagesParentIdsActivity(
+  connectorId: ModelId,
+  spaceId: string,
+  visitedAtMs: number
+) {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (id: ${connectorId})`);
+  }
+
+  const pages = await ConfluencePage.findAll({
+    attributes: ["id", "pageId", "parentId", "spaceId"],
+    where: {
+      connectorId,
+      spaceId,
+      lastVisitedAt: visitedAtMs,
+      parentId: {
+        [Op.not]: null,
+      },
+    },
+  });
+
+  logger.info(
+    {
+      connectorId,
+      confluencePagesCount: pages.length,
+    },
+    "Start updating pages parent ids."
+  );
+
+  for (const page of pages) {
+    // Retrieve parents using the internal ID, which aligns with the permissions
+    // view rendering and RAG requirements.
+
+    // TODO:(2023-01-26 flav) We can cache the map used in `getConfluencePageParentIds`.
+    const parentIds = await getConfluencePageParentIds(connectorId, page);
+
+    await updateDocumentParentsField({
+      dataSourceConfig: {
+        dataSourceName: connector.dataSourceName,
+        workspaceId: connector.workspaceId,
+        workspaceAPIKey: connector.workspaceAPIKey,
+      },
+      documentId: makeConfluencePageId(page.pageId),
+      parents: parentIds,
+    });
+  }
+
+  logger.info({ connectorId }, "Done updating pages parent ids.");
 }
 
 export async function confluenceRemoveUnvisitedPagesActivity({

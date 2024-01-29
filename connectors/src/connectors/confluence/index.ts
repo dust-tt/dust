@@ -12,10 +12,10 @@ import {
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
+import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
 import {
   getIdFromConfluenceInternalId,
   isConfluenceInternalPageId,
-  makeConfluenceInternalPageId,
   makeConfluenceInternalSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
@@ -472,45 +472,11 @@ export async function retrieveConfluenceResourceParents(
       return new Ok([makeConfluenceInternalSpaceId(currentPage.spaceId)]);
     }
 
-    // Currently opting for a best-effort strategy to reduce database queries,
-    // this logic may be enhanced later for important Confluence connections.
-    // By fetching all pages within a space, we reconstruct parent-child
-    // relationships in-app, minimizing database interactions.
-    // If needed we could move the same approach as Notion and cache the results in Redis.
-    const allPages = await ConfluencePage.findAll({
-      attributes: ["pageId", "parentId"],
-      where: {
-        connectorId,
-        spaceId: currentPage.spaceId,
-      },
-    });
-
-    // Map each pageId to its respective parentId.
-    const pageIdToParentIdMap = new Map(
-      allPages.map((page) => [page.pageId, page.parentId])
+    const parentIds = await getConfluencePageParentIds(
+      connectorId,
+      currentPage
     );
-
-    const parentIds = [];
-    let currentId = currentPage.pageId;
-
-    // Traverse the hierarchy upwards until no further parent IDs are found.
-    while (pageIdToParentIdMap.has(currentId)) {
-      const parentId = pageIdToParentIdMap.get(currentId);
-      if (parentId) {
-        parentIds.push(parentId);
-        // Move up the hierarchy.
-        currentId = parentId;
-      } else {
-        // No more parents, exit the loop.
-        break;
-      }
-    }
-
-    return new Ok([
-      // Add the space id at the beginning.
-      makeConfluenceInternalSpaceId(currentPage.spaceId),
-      ...parentIds.map((p) => makeConfluenceInternalPageId(p)),
-    ]);
+    return new Ok(parentIds);
   }
 
   return new Ok([]);

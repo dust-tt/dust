@@ -22,12 +22,13 @@ import {
 const {
   confluenceGetSpaceNameActivity,
   confluenceListPageIdsInSpaceActivity,
-  confluenceRemoveUnvisitedPagesActivity,
-  fetchConfluenceSpaceIdsForConnectorActivity,
   confluenceRemoveSpaceActivity,
+  confluenceRemoveUnvisitedPagesActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
+  confluenceUpdatePagesParentIdsActivity,
   confluenceUpsertPageActivity,
+  fetchConfluenceSpaceIdsForConnectorActivity,
 
   confluenceGetReportPersonalActionActivity,
   fetchConfluenceUserAccountAndConnectorIdsActivity,
@@ -172,6 +173,12 @@ export async function confluenceSpaceSyncWorkflow(
     lastVisitedAt: visitedAtMs,
     spaceId,
   });
+
+  await confluenceUpdatePagesParentIdsActivity(
+    connectorId,
+    spaceId,
+    visitedAtMs
+  );
 
   return uniquePageIds.size;
 }
