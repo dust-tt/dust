@@ -16,12 +16,15 @@ pub enum QdrantCluster {
     Dedicated0,
     #[serde(rename = "dedicated-1")]
     Dedicated1,
+    #[serde(rename = "dedicated-2")]
+    Dedicated2,
 }
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[
     QdrantCluster::Main0,
     QdrantCluster::Dedicated0,
     QdrantCluster::Dedicated1,
+    QdrantCluster::Dedicated2,
 ];
 
 impl ToString for QdrantCluster {
@@ -30,6 +33,7 @@ impl ToString for QdrantCluster {
             QdrantCluster::Main0 => String::from("main-0"),
             QdrantCluster::Dedicated0 => String::from("dedicated-0"),
             QdrantCluster::Dedicated1 => String::from("dedicated-1"),
+            QdrantCluster::Dedicated2 => String::from("dedicated-2"),
         }
     }
 }
@@ -41,6 +45,7 @@ impl FromStr for QdrantCluster {
             "main-0" => Ok(QdrantCluster::Main0),
             "dedicated-0" => Ok(QdrantCluster::Dedicated0),
             "dedicated-1" => Ok(QdrantCluster::Dedicated1),
+            "dedicated-2" => Ok(QdrantCluster::Dedicated2),
             _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
         }
     }
@@ -51,6 +56,7 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
         QdrantCluster::Main0 => "QDRANT_MAIN_0",
         QdrantCluster::Dedicated0 => "QDRANT_DEDICATED_0",
         QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
+        QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
     }
 }
 
