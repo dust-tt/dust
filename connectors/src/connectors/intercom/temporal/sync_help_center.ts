@@ -214,6 +214,8 @@ export async function _upsertCollection({
     await collectionOnDb.update({
       name: collection.name,
       description: collection.description,
+      parentId: collection.parent_id,
+      url: collection.url,
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
@@ -248,6 +250,12 @@ export async function _upsertCollection({
       article = await matchingArticleOnDb.update({
         title: articleOnIntercom.title,
         url: articleOnIntercom.url,
+        authorId: articleOnIntercom.author_id,
+        parentId: articleOnIntercom.parent_id,
+        parentType:
+          articleOnIntercom.parent_type === "collection" ? "collection" : null,
+        parents: articleOnIntercom.parent_ids,
+        state: articleOnIntercom.state === "published" ? "published" : "draft",
         lastUpsertedTs: new Date(currentSyncMs),
       });
     } else {

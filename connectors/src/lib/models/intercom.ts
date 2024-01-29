@@ -236,7 +236,7 @@ IntercomArticle.init(
     },
     url: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     authorId: {
       type: DataTypes.STRING,
