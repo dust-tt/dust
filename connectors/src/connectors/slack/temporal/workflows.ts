@@ -90,7 +90,10 @@ export async function syncOneChannel(
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
-  await joinChannelAct(connectorId, channelId);
+  const channelJoinSuccess = await joinChannelAct(connectorId, channelId);
+  if (!channelJoinSuccess) {
+    return;
+  }
 
   let messagesCursor: string | undefined = undefined;
   let weeksSynced: Record<number, boolean> = {};

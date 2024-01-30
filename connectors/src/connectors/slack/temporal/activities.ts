@@ -985,6 +985,8 @@ export async function joinChannelAct(connectorId: ModelId, channelId: string) {
     logger.info(`Channel ${channelId} is archived, skipping sync`, {
       channel,
     });
-    return;
+    return false;
   }
+
+  return true;
 }
