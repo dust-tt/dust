@@ -9,15 +9,13 @@ import {
 
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-// The Temporal bundle does not support the use of aliases in import statements.
-import { spaceUpdatesSignal } from "./signals";
+import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
   makeConfluenceRemoveSpacesWorkflowId,
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
-} from "./utils";
+} from "@connectors/connectors/confluence/temporal/utils";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const {
   confluenceGetSpaceNameActivity,
