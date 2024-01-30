@@ -220,7 +220,7 @@ function documentsSummary(documents: RetrievalDocumentType[]): {
 }
 
 type ConnectorProviderDocumentType =
-  | Exclude<ConnectorProvider, "intercom" | "webcrawler">
+  | Exclude<ConnectorProvider, "webcrawler">
   | "none";
 
 export function providerFromDocument(
@@ -232,6 +232,7 @@ export function providerFromDocument(
     "managed-google_drive": "google_drive",
     "managed-github": "github",
     "managed-confluence": "confluence",
+    "managed-intercom": "intercom",
   };
 
   for (const [key, value] of Object.entries(providerMap)) {
