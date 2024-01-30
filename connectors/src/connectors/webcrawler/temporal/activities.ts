@@ -56,7 +56,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     {
       maxRequestsPerCrawl: MAX_PAGES,
       maxConcurrency: CONCURRENCY,
-
+      maxRequestsPerMinute: 300, // 5 requests per second to avoid overloading the target website
       async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
           type: "http_request",
