@@ -980,10 +980,10 @@ export async function joinChannelAct(connectorId: ModelId, channelId: string) {
     throw res.error;
   }
 
-  const { result } = res.value;
+  const { channel, result } = res.value;
   if (result === "is_archived") {
     logger.info(`Channel ${channelId} is archived, skipping sync`, {
-      channel: channelId,
+      channel,
     });
     return;
   }
