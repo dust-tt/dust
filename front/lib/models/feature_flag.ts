@@ -53,6 +53,9 @@ FeatureFlag.init(
         unique: true,
         fields: ["workspaceId", "name"],
       },
+      {
+        fields: ["workspaceId"],
+      },
     ],
   }
 );

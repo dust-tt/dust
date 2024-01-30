@@ -80,9 +80,8 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { isActivatedStructuredDB } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { useFeatures, useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 const usedModelConfigs = [
@@ -208,6 +207,8 @@ export default function AssistantBuilder({
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
+  const { features } = useFeatures(owner);
+  const structuredDataEnabled = features?.includes("structured_data");
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
@@ -969,9 +970,7 @@ export default function AssistantBuilder({
                   ))}
                   <DropdownMenu.SectionHeader label="Advanced actions" />
                   {ADVANCED_ACTION_MODES.filter((key) => {
-                    return (
-                      key !== "TABLES_QUERY" || isActivatedStructuredDB(owner)
-                    );
+                    return key !== "TABLES_QUERY" || structuredDataEnabled;
                   }).map((key) => (
                     <DropdownMenu.Item
                       key={key}

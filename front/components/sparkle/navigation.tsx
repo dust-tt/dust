@@ -18,10 +18,8 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { isAdmin, isBuilder, isUser } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
-import {
-  isActivatedPublicURLs,
-  isDevelopmentOrDustWorkspace,
-} from "@app/lib/development";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { useFeatures } from "@app/lib/swr";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -136,6 +134,9 @@ export const subNavigationBuild = ({
 
   const assistantMenus: SparkleAppLayoutNavigation[] = [];
 
+  const { features } = useFeatures(owner);
+  const crawlerEnabled = features?.includes("crawler");
+
   assistantMenus.push({
     id: "workspace_assistants",
     label: "Manage Assistants",
@@ -175,7 +176,7 @@ export const subNavigationBuild = ({
       subMenu: current === "data_sources_static" ? subMenu : undefined,
     },
   ];
-  if (isActivatedPublicURLs(owner)) {
+  if (crawlerEnabled) {
     dataSourceItems.push({
       id: "data_sources_url",
       label: "Websites",

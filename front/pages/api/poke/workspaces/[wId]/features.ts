@@ -9,7 +9,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetFeatureFlagsResponseBody = {
+export type GetPokeFeaturesResponseBody = {
   features: WhitelistableFeature[];
 };
 
@@ -21,7 +21,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     | CreateOrDeleteFeatureFlagResponseBody
-    | GetFeatureFlagsResponseBody
+    | GetPokeFeaturesResponseBody
     | ReturnedAPIErrorType
   >
 ): Promise<void> {

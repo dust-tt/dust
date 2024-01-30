@@ -4,7 +4,7 @@ import type { BlockType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
-import { isActivatedStructuredDB } from "@app/lib/development";
+import { useFeatures } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 export default function NewBlock({
@@ -22,6 +22,8 @@ export default function NewBlock({
   direction: "up" | "down";
   small: boolean;
 }) {
+  const { features } = useFeatures(owner);
+
   const containsInput =
     spec.filter((block) => block.type == "input").length > 0;
   const blocks: {
@@ -100,7 +102,7 @@ export default function NewBlock({
     },
   ];
 
-  if (isActivatedStructuredDB(owner)) {
+  if (features?.includes("structured_data")) {
     blocks.push(
       {
         type: "database_schema",
