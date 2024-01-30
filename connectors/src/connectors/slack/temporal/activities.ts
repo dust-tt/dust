@@ -990,7 +990,7 @@ export async function attemptChannelJoinActivity(
         channel,
         connectorId,
       },
-      `Channel ${channelId} is archived, skipping sync.`
+      "Channel is archived, skipping sync."
     );
     return false;
   }
