@@ -82,7 +82,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   intercom: {
     name: "Intercom",
     connectorProvider: "intercom",
-    status: "built-dust-only",
+    status: "built-dust-only", // ROLLOUT INTERCOM
     hide: false,
     description:
       "Authorize access to your Intercom Help Center Collections & Articles. Conversations coming soon.",
