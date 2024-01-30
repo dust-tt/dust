@@ -975,9 +975,16 @@ export async function deleteChannelsFromConnectorDb(
 
 export async function joinChannelAct(connectorId: ModelId, channelId: string) {
   const res = await joinChannel(connectorId, channelId);
+
   if (res.isErr()) {
     throw res.error;
   }
 
-  return res.value;
+  const { result } = res.value;
+  if (result === "is_archived") {
+    logger.info(`Channel ${channelId} is archived, skipping sync`, {
+      channel: channelId,
+    });
+    return;
+  }
 }

@@ -9,7 +9,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import mainLogger from "@connectors/logger/logger";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
@@ -29,8 +28,6 @@ const {
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
-
-const logger = mainLogger.child({ provider: "slack" });
 
 /**
  * - Concurrency model:
@@ -93,13 +90,8 @@ export async function syncOneChannel(
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
-  const res = await joinChannelAct(connectorId, channelId);
-  if (res.result === "is_archived") {
-    logger.info(`Channel ${channelId} is archived, skipping sync`, {
-      channel: res.channel,
-    });
-    return;
-  }
+  await joinChannelAct(connectorId, channelId);
+
   let messagesCursor: string | undefined = undefined;
   let weeksSynced: Record<number, boolean> = {};
 
