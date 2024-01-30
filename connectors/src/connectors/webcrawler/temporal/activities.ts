@@ -35,6 +35,39 @@ const CONCURRENCY = 4;
 // timeout for upserting is 5 minutes, + 2mn leeway to crawl on slow websites
 export const REQUEST_HANDLING_TIMEOUT = 420;
 
+export async function testActivitySpawn(
+  id: number,
+  times: number,
+  delay: number
+) {
+  try {
+    for (let i = 0; i < times; i++) {
+      Context.current().heartbeat({
+        type: "http_request",
+      });
+      await Context.current().sleep(0);
+      logger.info(`N${id}: tick test activity ${delay}`);
+      await new Promise((resolve) =>
+        setTimeout(resolve, delay + Math.random() * 100)
+      );
+    }
+  } catch (e) {
+    console.log(`CANCELLED: I'm number ${id}`);
+    throw e;
+  }
+  console.log(`DONE: I'm number ${id} and I'm done`);
+  return "ok";
+}
+
+export async function testActivity(times: number, delay: number) {
+  const promises = [];
+  for (let i = 0; i < 10; i++) {
+    promises.push(testActivitySpawn(i, times, delay));
+  }
+  await Promise.all(promises);
+  return "ok";
+}
+
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {

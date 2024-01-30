@@ -8,7 +8,29 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 
 import { QUEUE_NAME } from "./config";
-import { crawlWebsiteWorkflow, crawlWebsiteWorkflowId } from "./workflows";
+import {
+  crawlWebsiteWorkflow,
+  crawlWebsiteWorkflowId,
+  testWorkflow,
+} from "./workflows";
+
+async function launchTestWorkflow() {
+  const client = await getTemporalClient();
+  const workflowId = `test-workflow-${Date.now()}`;
+  await client.workflow.start(testWorkflow, {
+    args: [],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+  });
+  logger.info(
+    {
+      workflowId,
+    },
+    `Started workflow.`
+  );
+  return new Ok(workflowId);
+}
+launchTestWorkflow();
 
 export async function launchCrawlWebsiteWorkflow(
   connectorId: ModelId
