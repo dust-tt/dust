@@ -11,8 +11,9 @@
     "start:worker": "tsx ./src/start_worker.ts",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "npx tsx src/admin/db.ts",
-    "sql:generate-migration": "drizzle-kit generate:pg",
-    "sql:run-migration": "npx tsx scripts/run_mysql_migrations.ts"
+    "db:generate": "drizzle-kit generate:pg",
+    "db:migrate": "npx tsx scripts/run_mysql_migrations.ts",
+    "db:introspect": "drizzle-kit introspect:pg"
   },
   "dependencies": {
     "@dust-tt/types": "file:../types",
