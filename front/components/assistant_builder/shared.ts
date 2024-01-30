@@ -27,7 +27,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   google_drive: { singular: "folder", plural: "folders" },
   slack: { singular: "channel", plural: "channels" },
   github: { singular: "repository", plural: "repositories" },
-  intercom: { singular: "article", plural: "articles" },
+  intercom: { singular: "element", plural: "elements" },
   webcrawler: { singular: "page", plural: "pages" },
 };
 
