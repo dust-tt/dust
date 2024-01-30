@@ -1,4 +1,5 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
@@ -73,12 +74,12 @@ const Dashboard = (
           {!isSearchResultsLoading && !isSearchResultsError && (
             <ul className="mt-4 space-y-4">
               {searchResults.map((ws) => (
-                <a href={`/poke/${ws.sId}`} key={ws.id}>
+                <Link href={`/poke/${ws.sId}`} key={ws.id}>
                   <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
                     <h2 className="text-xl font-semibold">{ws.name}</h2>
                     <p className="text-sm text-gray-500">sId: {ws.sId}</p>
                   </li>
-                </a>
+                </Link>
               ))}
             </ul>
           )}
@@ -87,12 +88,12 @@ const Dashboard = (
             {!isUpgradedWorkspacesLoading &&
               !isUpgradedWorkspacesError &&
               upgradedWorkspaces.map((ws) => (
-                <a href={`/poke/${ws.sId}`} key={ws.id}>
+                <Link href={`/poke/${ws.sId}`} key={ws.id}>
                   <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
                     <h2 className="text-xl font-semibold">{ws.name}</h2>
                     <p className="text-sm text-gray-500">sId: {ws.sId}</p>
                   </li>
-                </a>
+                </Link>
               ))}
           </ul>
         </>
