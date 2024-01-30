@@ -22,7 +22,7 @@ const {
   saveSuccessSyncActivity,
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
-  joinChannelAct,
+  attemptChannelJoinActivity,
   deleteChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
@@ -90,7 +90,10 @@ export async function syncOneChannel(
   updateSyncStatus: boolean,
   fromTs: number | null
 ) {
-  const channelJoinSuccess = await joinChannelAct(connectorId, channelId);
+  const channelJoinSuccess = await attemptChannelJoinActivity(
+    connectorId,
+    channelId
+  );
   if (!channelJoinSuccess) {
     return;
   }
