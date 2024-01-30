@@ -20,7 +20,7 @@ export class NotionConnectorState extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare useDualWorkflow: boolean;
+  declare useDualWorkflow: CreationOptional<boolean>;
 
   declare lastGarbageCollectionFinishTime?: Date;
 
