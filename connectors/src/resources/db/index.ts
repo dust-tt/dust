@@ -2,8 +2,8 @@ import { eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
-import { dbConfig } from "@connectors/db/config";
-import { connectors } from "@connectors/db/schema/connectors";
+import { dbConfig } from "@connectors/resources/db/config";
+import { connectors } from "@connectors/resources/db/schema/connectors";
 
 import * as schema from "./schema";
 
@@ -11,7 +11,13 @@ const pool = new Pool({
   connectionString: dbConfig.getRequiredDatabaseURI(),
 });
 
-const db = drizzle(pool, { schema });
+export function getDbConnection() {
+  const db = drizzle(pool, { schema });
+
+  return db;
+}
+
+const db = getDbConnection();
 
 // Retrieve the full object.
 const result = await db.select().from(connectors);

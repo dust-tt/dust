@@ -8,7 +8,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import { connectors } from "@connectors/db/schema/connectors";
+import { connectors } from "@connectors/resources/db/schema/connectors";
 
 // /!\ The schema files SHOULD NOT contain any runtime logic besides defining your DB schema.
 
