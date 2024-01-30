@@ -22,7 +22,7 @@ export default function NewBlock({
   direction: "up" | "down";
   small: boolean;
 }) {
-  const { features } = useFeatures({ workspaceId: owner.sId });
+  const { features } = useFeatures(owner);
 
   const containsInput =
     spec.filter((block) => block.type == "input").length > 0;

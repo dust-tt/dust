@@ -207,7 +207,7 @@ export default function AssistantBuilder({
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-  const { features } = useFeatures({ workspaceId: owner.sId });
+  const { features } = useFeatures(owner);
   const structuredDataEnabled = features?.includes("structured_data");
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(

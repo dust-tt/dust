@@ -408,11 +408,11 @@ export function usePokeFeatures({ workspaceId }: { workspaceId: string }) {
   };
 }
 
-export function useFeatures({ workspaceId }: { workspaceId: string }) {
+export function useFeatures(owner: WorkspaceType) {
   const featuresFetcher: Fetcher<GetFeaturesResponseBody> = fetcher;
 
   const { data, error } = useSWR(
-    `/api/w/${workspaceId}/features`,
+    `/api/w/${owner.sId}/features`,
     featuresFetcher
   );
 

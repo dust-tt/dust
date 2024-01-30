@@ -134,7 +134,7 @@ export const subNavigationBuild = ({
 
   const assistantMenus: SparkleAppLayoutNavigation[] = [];
 
-  const { features } = useFeatures({ workspaceId: owner.sId });
+  const { features } = useFeatures(owner);
   const crawlerEnabled = features?.includes("crawler");
 
   assistantMenus.push({
