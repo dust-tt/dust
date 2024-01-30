@@ -51,6 +51,8 @@ export const CitationsExample = () => (
         href="https://www.google.com"
         description="Write a 120 character description of the citation here to be displayed in the citation list."
       />
+    </div>
+    <div className="s-flex s-gap-2">
       <Citation
         title="Title"
         type="google_drive"
@@ -58,6 +60,14 @@ export const CitationsExample = () => (
         href="https://www.google.com"
         description="Write a 120 character description of the citation here to be displayed in the citation list."
         isBlinking={true}
+      />
+      <Citation
+        title="Awesome article"
+        type="intercom"
+        index="3"
+        href="https://www.google.com"
+        description="Write a 120 character description of the citation here to be displayed in the citation list."
+        isBlinking={false}
       />
     </div>
   </div>
