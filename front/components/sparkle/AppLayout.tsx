@@ -227,7 +227,6 @@ export default function AppLayout({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    console.log("LOADED");
     setLoaded(true);
   }, []);
 
