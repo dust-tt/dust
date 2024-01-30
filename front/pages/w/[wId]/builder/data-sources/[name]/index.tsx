@@ -38,12 +38,12 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
+import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { tableKey } from "@app/lib/client/tables_query";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { isActivatedStructuredDB } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments, useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -79,6 +79,7 @@ export const getServerSideProps: GetServerSideProps<{
   };
   githubAppUrl: string;
   gaTrackingId: string;
+  structuredDataEnabled: boolean;
 }> = async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
@@ -96,9 +97,12 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string, {
-    includeEditedBy: true,
-  });
+  const [dataSource, structuredDataEnabled] = await Promise.all([
+    getDataSource(auth, context.params?.name as string, {
+      includeEditedBy: true,
+    }),
+    isFeatureEnabled(owner, "structured_data"),
+  ]);
 
   if (!dataSource) {
     return {
@@ -144,6 +148,7 @@ export const getServerSideProps: GetServerSideProps<{
       },
       githubAppUrl: GITHUB_APP_URL,
       gaTrackingId: GA_TRACKING_ID,
+      structuredDataEnabled,
     },
   };
 };
@@ -153,11 +158,13 @@ function StandardDataSourceView({
   plan,
   readOnly,
   dataSource,
+  structuredDataEnabled,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
+  structuredDataEnabled: boolean;
 }) {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState("Documents");
@@ -178,15 +185,13 @@ function StandardDataSourceView({
     }
   }, [router]);
 
-  const isActivatedSDB = isActivatedStructuredDB(owner);
-
   return (
     <div className="pt-6">
       <Page.Vertical gap="xl" align="stretch">
         <Page.SectionHeader
           title={dataSource.name}
           description={
-            isActivatedSDB
+            structuredDataEnabled
               ? "Use this page to view and upload documents and tables to your Folder."
               : "Use this page to view and upload documents to your Folder."
           }
@@ -206,7 +211,7 @@ function StandardDataSourceView({
           }
         />
 
-        {isActivatedSDB && (
+        {structuredDataEnabled && (
           <Tab
             tabs={[
               {
@@ -1007,6 +1012,7 @@ export default function DataSourceView({
   nangoConfig,
   githubAppUrl,
   gaTrackingId,
+  structuredDataEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -1059,7 +1065,13 @@ export default function DataSourceView({
         />
       ) : (
         <StandardDataSourceView
-          {...{ owner, plan, readOnly: readOnly || standardView, dataSource }}
+          {...{
+            owner,
+            plan,
+            readOnly: readOnly || standardView,
+            dataSource,
+            structuredDataEnabled,
+          }}
         />
       )}
     </AppLayout>
