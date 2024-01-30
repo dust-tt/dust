@@ -1,5 +1,6 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "@connectors/connectors/confluence/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
@@ -23,6 +24,15 @@ export async function runConfluenceWorker() {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 
