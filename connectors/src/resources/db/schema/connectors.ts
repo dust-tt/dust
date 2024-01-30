@@ -11,74 +11,46 @@ import {
 export const connectors = pgTable(
   "connectors",
   {
-    id: serial("id").primaryKey(),
-
+    id: serial("id").primaryKey().notNull(),
     createdAt: timestamp("createdAt", {
-      mode: "date",
       withTimezone: true,
-    })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updatedAt", {
-      mode: "date",
-      withTimezone: true,
-    })
-      .defaultNow()
-      .notNull(),
-
-    type: varchar("type", {
-      enum: [
-        "confluence",
-        "github",
-        "google_drive",
-        "intercom",
-        "notion",
-        "slack",
-        "webcrawler",
-      ],
-      length: 256,
+      mode: "string",
     }).notNull(),
-
-    connectionId: varchar("connectionId", { length: 256 }).notNull(),
-
-    workspaceAPIKey: varchar("workspaceAPIKey", { length: 256 }).notNull(),
-    workspaceId: varchar("workspaceId", { length: 256 }).notNull(),
-    dataSourceName: varchar("dataSourceName", { length: 256 }).notNull(),
-
-    lastSyncStatus: varchar("lastSyncStatus", {
-      enum: ["succeeded", "failed"],
-      length: 256,
-    }),
-
-    errorType: varchar("errorType", { length: 256 }),
-    lastSyncStartTime: timestamp("lastSyncStartTime", {
-      mode: "date",
+    updatedAt: timestamp("updatedAt", {
       withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    type: varchar("type", { length: 255 }).notNull(),
+    connectionId: varchar("connectionId", { length: 255 }).notNull(),
+    workspaceApiKey: varchar("workspaceAPIKey", { length: 255 }).notNull(),
+    workspaceId: varchar("workspaceId", { length: 255 }).notNull(),
+    dataSourceName: varchar("dataSourceName", { length: 255 }).notNull(),
+    lastSyncStatus: varchar("lastSyncStatus", { length: 255 }),
+    errorType: varchar("errorType", { length: 255 }),
+    lastSyncStartTime: timestamp("lastSyncStartTime", {
+      withTimezone: true,
+      mode: "string",
     }),
     lastSyncFinishTime: timestamp("lastSyncFinishTime", {
-      mode: "date",
       withTimezone: true,
+      mode: "string",
     }),
     lastSyncSuccessfulTime: timestamp("lastSyncSuccessfulTime", {
-      mode: "date",
       withTimezone: true,
+      mode: "string",
     }),
     firstSuccessfulSyncTime: timestamp("firstSuccessfulSyncTime", {
-      mode: "date",
       withTimezone: true,
+      mode: "string",
     }),
-    firstSyncProgress: varchar("firstSyncProgress"),
-    lastGCTime: varchar("lastGCTime"),
+    firstSyncProgress: varchar("firstSyncProgress", { length: 255 }),
+    lastGcTime: timestamp("lastGCTime", { withTimezone: true, mode: "string" }),
   },
   (table) => {
     return {
-      nameIdx: uniqueIndex("connectors_workspace_id_data_source_name").on(
-        table.workspaceId,
-        table.dataSourceName
-      ),
+      workspaceIdDataSourceName: uniqueIndex(
+        "connectors_workspace_id_data_source_name"
+      ).on(table.workspaceId, table.dataSourceName),
     };
   }
 );
-
-export type Connector = typeof connectors.$inferSelect; // return type when queried
-export type NewConnector = typeof connectors.$inferInsert; // insert type

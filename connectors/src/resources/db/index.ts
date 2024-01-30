@@ -1,9 +1,7 @@
-import { eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
 import { dbConfig } from "@connectors/resources/db/config";
-import { connectors } from "@connectors/resources/db/schema/connectors";
 
 import * as schema from "./schema";
 
@@ -16,24 +14,3 @@ export function getDbConnection() {
 
   return db;
 }
-
-const db = getDbConnection();
-
-// Retrieve the full object.
-const result = await db.select().from(connectors);
-
-// Retrieve only the selected field.
-const partialResult = await db
-  .select({ createdAt: connectors.createdAt })
-  .from(connectors)
-  .where(
-    or(eq(connectors.id, 42), eq(connectors.dataSourceName, "managed-notion"))
-  );
-
-// Fetch ConfluenceConfiguration with the connector.
-const confluenceConfigurationWithConnector =
-  await db.query.confluenceConfigurations.findMany({
-    with: {
-      connectors: true,
-    },
-  });

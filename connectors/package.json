@@ -13,7 +13,8 @@
     "initdb": "npx tsx src/admin/db.ts",
     "db:generate": "drizzle-kit generate:pg",
     "db:migrate": "npx tsx scripts/run_mysql_migrations.ts",
-    "db:introspect": "drizzle-kit introspect:pg"
+    "db:introspect": "drizzle-kit introspect:pg",
+    "db:push-schema": "if [ \"$NODE_ENV\" = \"development\" ]; then drizzle-kit push:pg; else echo 'Skipping schema push in non-development environment'; fi"
   },
   "dependencies": {
     "@dust-tt/types": "file:../types",
