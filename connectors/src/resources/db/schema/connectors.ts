@@ -54,3 +54,6 @@ export const connectors = pgTable(
     };
   }
 );
+
+export type Connector = typeof connectors.$inferSelect; // Return type when queried.
+export type NewConnector = typeof connectors.$inferInsert; // Insert type.

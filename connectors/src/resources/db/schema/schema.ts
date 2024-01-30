@@ -361,37 +361,6 @@ export const githubIssues = pgTable(
   }
 );
 
-export const githubConnectorStates = pgTable(
-  "github_connector_states",
-  {
-    id: serial("id").primaryKey().notNull(),
-    createdAt: timestamp("createdAt", {
-      withTimezone: true,
-      mode: "string",
-    }).notNull(),
-    updatedAt: timestamp("updatedAt", {
-      withTimezone: true,
-      mode: "string",
-    }).notNull(),
-    webhooksEnabledAt: timestamp("webhooksEnabledAt", {
-      withTimezone: true,
-      mode: "string",
-    }),
-    connectorId: integer("connectorId").references(() => connectors.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-    codeSyncEnabled: boolean("codeSyncEnabled").default(false).notNull(),
-  },
-  (table) => {
-    return {
-      connectorId: uniqueIndex("github_connector_states_connector_id").on(
-        table.connectorId
-      ),
-    };
-  }
-);
-
 export const githubDiscussions = pgTable(
   "github_discussions",
   {

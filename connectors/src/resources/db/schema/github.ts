@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgTable,
@@ -49,6 +50,10 @@ export const githubCodeRepositories = pgTable(
   }
 );
 
+export type GitHubCodeRepository = typeof githubCodeRepositories.$inferSelect; // Return type when queried.
+export type NewGitHubCodeRepository =
+  typeof githubCodeRepositories.$inferInsert; // Insert type.
+
 export const githubCodeFiles = pgTable(
   "github_code_files",
   {
@@ -91,3 +96,40 @@ export const githubCodeFiles = pgTable(
     };
   }
 );
+
+export type GitHubCodeFile = typeof githubCodeRepositories.$inferSelect; // Return type when queried.
+export type NewGitHubCodeFile = typeof githubCodeRepositories.$inferInsert; // Insert type.
+
+export const githubConnectorStates = pgTable(
+  "github_connector_states",
+  {
+    id: serial("id").primaryKey().notNull(),
+    createdAt: timestamp("createdAt", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    updatedAt: timestamp("updatedAt", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    webhooksEnabledAt: timestamp("webhooksEnabledAt", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    connectorId: integer("connectorId").references(() => connectors.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    codeSyncEnabled: boolean("codeSyncEnabled").default(false).notNull(),
+  },
+  (table) => {
+    return {
+      connectorId: uniqueIndex("github_connector_states_connector_id").on(
+        table.connectorId
+      ),
+    };
+  }
+);
+
+export type GitHubConnectorFile = typeof githubConnectorStates.$inferSelect; // Return type when queried.
+export type NewGitHubConnectorFile = typeof githubConnectorStates.$inferInsert; // Insert type.
