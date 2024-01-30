@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
-import React, { Fragment, useContext, useState } from "react";
+import React, { Fragment, useContext, useEffect, useState } from "react";
 
 import type {
   SidebarNavigation,
@@ -224,6 +224,12 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(true);
+  }, []);
+
   return (
     <>
       <Head>
@@ -332,14 +338,16 @@ export default function AppLayout({
                         </button>
                       </div>
                     </Transition.Child>
-                    <NavigationBar
-                      subscription={subscription}
-                      owner={owner}
-                      subNavigation={subNavigation}
-                      topNavigationCurrent={topNavigationCurrent}
-                    >
-                      {navChildren && navChildren}
-                    </NavigationBar>
+                    {loaded && (
+                      <NavigationBar
+                        subscription={subscription}
+                        owner={owner}
+                        subNavigation={subNavigation}
+                        topNavigationCurrent={topNavigationCurrent}
+                      >
+                        {navChildren && navChildren}
+                      </NavigationBar>
+                    )}
                   </Dialog.Panel>
                 </Transition.Child>
               </div>
@@ -349,14 +357,16 @@ export default function AppLayout({
 
         {!hideSidebar && (
           <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-            <NavigationBar
-              owner={owner}
-              subscription={subscription}
-              subNavigation={subNavigation}
-              topNavigationCurrent={topNavigationCurrent}
-            >
-              {navChildren && navChildren}
-            </NavigationBar>
+            {loaded && (
+              <NavigationBar
+                owner={owner}
+                subscription={subscription}
+                subNavigation={subNavigation}
+                topNavigationCurrent={topNavigationCurrent}
+              >
+                {loaded && navChildren && navChildren}
+              </NavigationBar>
+            )}
           </div>
         )}
 
@@ -390,7 +400,7 @@ export default function AppLayout({
           >
             <div className="grow">
               <div className="mx-auto h-full grow px-6">
-                {titleChildren && titleChildren}
+                {loaded && titleChildren && titleChildren}
               </div>
             </div>
           </div>
@@ -427,7 +437,7 @@ export default function AppLayout({
                 isWideMode ? "w-full" : "max-w-4xl px-6"
               )}
             >
-              {children}
+              {loaded && children}
             </div>
           </main>
         </div>
