@@ -2,10 +2,13 @@ import type { ModelId } from "@dust-tt/types";
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";
+import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/temporal/activities";
 
 const { crawlWebsiteByConnectorId } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
-  heartbeatTimeout: "600 seconds",
+  // for each page crawl, there are heartbeats, but a page crawl can last at max
+  // REQUEST_HANDLING_TIMEOUT seconds
+  heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT} seconds`,
 });
 
 export async function crawlWebsiteWorkflow(

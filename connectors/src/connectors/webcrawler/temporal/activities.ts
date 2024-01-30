@@ -32,6 +32,9 @@ const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
 const CONCURRENCY = 4;
 
+// timeout for upserting is 5 minutes, + 2mn leeway to crawl on slow websites
+export const REQUEST_HANDLING_TIMEOUT = 420;
+
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -57,6 +60,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxRequestsPerCrawl: MAX_PAGES,
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 300, // 5 requests per second to avoid overloading the target website
+      requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
       async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
           type: "http_request",
