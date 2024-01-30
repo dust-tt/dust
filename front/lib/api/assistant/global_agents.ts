@@ -26,6 +26,7 @@ import { DustAPI } from "@dust-tt/types";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 
@@ -552,6 +553,29 @@ async function _getNotionGlobalAgent(
   });
 }
 
+async function _getIntercomGlobalAgent(
+  auth: Authenticator,
+  {
+    settings,
+    dataSources,
+  }: {
+    settings: GlobalAgentSettings | null;
+    dataSources: DataSourceType[];
+  }
+): Promise<AgentConfigurationType | null> {
+  return _getManagedDataSourceAgent(auth, {
+    settings,
+    connectorProvider: "intercom",
+    agentId: GLOBAL_AGENTS_SID.INTERCOM,
+    name: "intercom",
+    description: "An assistant with context on your Intercom Help Center data.",
+    pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
+    prompt:
+      "Assist the user based on the retrieved data from their Intercom Workspace.",
+    dataSources,
+  });
+}
+
 async function _getDustGlobalAgent(
   auth: Authenticator,
   {
@@ -745,6 +769,12 @@ export async function getGlobalAgent(
         dataSources: preFetchedDataSources,
       });
       break;
+    case GLOBAL_AGENTS_SID.INTERCOM:
+      agentConfiguration = await _getIntercomGlobalAgent(auth, {
+        settings,
+        dataSources: preFetchedDataSources,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = await _getDustGlobalAgent(auth, { settings });
       break;
@@ -789,11 +819,18 @@ export async function getGlobalAgents(
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
-  const agentCandidates = await Promise.all(
+  let agentCandidates = await Promise.all(
     Object.values(agentIds ?? GLOBAL_AGENTS_SID).map((sId) =>
       getGlobalAgent(auth, sId, preFetchedDataSources)
     )
   );
+
+  // ROLLOUT INTERCOM
+  if (!isDevelopmentOrDustWorkspace(owner)) {
+    agentCandidates = agentCandidates?.filter(
+      (agent) => agent?.sId !== GLOBAL_AGENTS_SID.INTERCOM
+    );
+  }
 
   const globalAgents: AgentConfigurationType[] = [];
 
