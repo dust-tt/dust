@@ -12,7 +12,13 @@ const SvgDust = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M12 7a5 5 0 0 0-5-5H2v10h4.998A2.5 2.5 0 0 0 7 17H2v5h5a2.5 2.5 0 0 0 0-5h5v5h5v-5h5v-5h-5a5 5 0 0 0 5-5V2H12v5Zm-5 3a3 3 0 0 0 0-6v6Zm7-3a3 3 0 1 0 6 0h-6Zm-2 0a5 5 0 0 0 5 5H7a5 5 0 0 0 5-5Z"
+      d="M7 2a5 5 0 0 1 0 10h15v5h-5v5h-5v-5H7a2.5 2.5 0 0 1-.002-5H2V2h5Zm3 5a3 3 0 0 1-3 3H4V4h3a3 3 0 0 1 3 3Zm-3 7a.5.5 0 0 0 0 1h7v6h1v-6h5v-1H7Z"
+      clipRule="evenodd"
+    />
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M7 17a2.5 2.5 0 0 1 0 5H2v-5h5Zm-3 2h3a.5.5 0 0 1 0 1H4v-1ZM17 12a5 5 0 0 0 5-5V2H12v5a5 5 0 0 0 5 5Zm-3-5a3 3 0 1 0 6 0V4h-6v3Z"
       clipRule="evenodd"
     />
   </svg>
