@@ -93,9 +93,9 @@ export async function notionSyncWorkflow({
   });
 
   if (!isGarbageCollectionRun && garbageCollectionMode === "always") {
-    // If this is a "perpetual garbage collection" workflow but we have never
-    // completed a full sync yet, we'll just wait for the initial sync to complete
-    // and check every 5 minutes if we're good to start garbage collecting.
+    // If this is a "perpetual garbage collection" workflow but we cannot garbage collect (eg, we have never completed
+    // a full sync, or there is a full resync in progress), we wait until we can garbage collect (and check every 5 minute).
+
     await sleep(60_000 * 5); // 5 minutes
     await continueAsNew<typeof notionSyncWorkflow>({
       connectorId,

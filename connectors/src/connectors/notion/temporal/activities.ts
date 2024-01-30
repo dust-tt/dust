@@ -539,6 +539,15 @@ export async function shouldGarbageCollect({
     return false;
   }
 
+  if (
+    notionConnectorState.fullResyncStartTime &&
+    connector.lastSyncFinishTime &&
+    notionConnectorState.fullResyncStartTime > connector.lastSyncFinishTime
+  ) {
+    // If we are currently doing a full resync, we should not garbage collect
+    return false;
+  }
+
   if (garbageCollectionMode === "never") {
     return false;
   }
