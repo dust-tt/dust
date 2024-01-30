@@ -1,0 +1,215 @@
+{
+  "id": "77781f3c-414b-4cc4-9235-88e078f76dd1",
+  "prevId": "da1e5cd1-bcf8-4755-ad1a-f8d17f42bd7c",
+  "version": "5",
+  "dialect": "pg",
+  "tables": {
+    "confluence": {
+      "name": "confluence",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "cloudId": {
+          "name": "cloudId",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userAccountId": {
+          "name": "userAccountId",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connectorId": {
+          "name": "connectorId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "confluence_configurations_connector_id": {
+          "name": "confluence_configurations_connector_id",
+          "columns": [
+            "connectorId"
+          ],
+          "isUnique": true
+        },
+        "confluence_configurations_user_account_id": {
+          "name": "confluence_configurations_user_account_id",
+          "columns": [
+            "userAccountId"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "confluence_connectorId_connectors_id_fk": {
+          "name": "confluence_connectorId_connectors_id_fk",
+          "tableFrom": "confluence",
+          "tableTo": "connectors",
+          "columnsFrom": [
+            "connectorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "connectors": {
+      "name": "connectors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connectionId": {
+          "name": "connectionId",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspaceAPIKey": {
+          "name": "workspaceAPIKey",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workspaceId": {
+          "name": "workspaceId",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dataSourceName": {
+          "name": "dataSourceName",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastSyncStatus": {
+          "name": "lastSyncStatus",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "errorType": {
+          "name": "errorType",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastSyncStartTime": {
+          "name": "lastSyncStartTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastSyncFinishTime": {
+          "name": "lastSyncFinishTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastSyncSuccessfulTime": {
+          "name": "lastSyncSuccessfulTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firstSuccessfulSyncTime": {
+          "name": "firstSuccessfulSyncTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firstSyncProgress": {
+          "name": "firstSyncProgress",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastGCTime": {
+          "name": "lastGCTime",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "connectors_workspace_id_data_source_name": {
+          "name": "connectors_workspace_id_data_source_name",
+          "columns": [
+            "workspaceId",
+            "dataSourceName"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
