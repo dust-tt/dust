@@ -14,7 +14,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   {
     name: string;
     connectorProvider: ConnectorProvider;
-    status: "preview" | "built-dust-only" | "built";
+    status: "preview" | "built";
     hide: boolean;
     logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
     description: string;
@@ -82,7 +82,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   intercom: {
     name: "Intercom",
     connectorProvider: "intercom",
-    status: "built-dust-only", // ROLLOUT INTERCOM
+    status: "preview", // ROLLOUT intercom_connection
     hide: false,
     description:
       "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",

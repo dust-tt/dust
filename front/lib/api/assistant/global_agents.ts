@@ -24,10 +24,10 @@ import {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
+import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 
@@ -866,8 +866,7 @@ export async function getGlobalAgents(
     )
   );
 
-  // Rollout Intercom.
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  if (!owner.flags.includes("intercom_connection")) {
     agentCandidates = agentCandidates?.filter(
       (agent) => agent?.sId !== GLOBAL_AGENTS_SID.INTERCOM
     );

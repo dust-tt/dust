@@ -32,8 +32,8 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
+import { useFeatures } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -55,7 +55,7 @@ type DataSourceIntegration = {
   connector: ConnectorType | null;
   fetchConnectorError: boolean;
   fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built-dust-only" | "built";
+  status: "preview" | "built";
   connectorProvider: ConnectorProvider;
   description: string;
   limitations: string | null;
@@ -477,6 +477,9 @@ export default function DataSourcesView({
 
   const router = useRouter();
 
+  const { features } = useFeatures(owner);
+  const isIntercomEnabled = features?.includes("intercom_connection");
+
   return (
     <AppLayout
       subscription={subscription}
@@ -520,8 +523,7 @@ export default function DataSourcesView({
             .map((ds) => {
               const isBuilt =
                 ds.status === "built" ||
-                (ds.status === "built-dust-only" &&
-                  isDevelopmentOrDustWorkspace(owner));
+                (ds.connectorProvider === "intercom" && isIntercomEnabled);
               return (
                 <ContextItem
                   key={
