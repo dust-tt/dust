@@ -1,4 +1,4 @@
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { getDbConnection } from "@connectors/resources/db";
 import type { NewConnector } from "@connectors/resources/db/schema";
