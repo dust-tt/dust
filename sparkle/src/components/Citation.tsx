@@ -6,6 +6,7 @@ import {
   Confluence,
   Drive,
   Github,
+  Intercom,
   Notion,
   Slack,
 } from "@sparkle/logo/platforms";
@@ -26,6 +27,7 @@ interface CitationProps {
     | "google_drive"
     | "github"
     | "notion"
+    | "intercom"
     | "document";
   title: string;
   description?: string;
@@ -41,6 +43,7 @@ const typeIcons = {
   document: DocumentText,
   github: Github,
   google_drive: Drive,
+  intercom: Intercom,
   notion: Notion,
   slack: Slack,
 };
