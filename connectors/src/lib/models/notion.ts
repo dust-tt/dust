@@ -20,6 +20,8 @@ export class NotionConnectorState extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare useDualWorkflow: CreationOptional<boolean>;
+
   declare lastGarbageCollectionFinishTime?: Date;
 
   declare connectorId: ForeignKey<Connector["id"]>;
@@ -40,6 +42,11 @@ NotionConnectorState.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    useDualWorkflow: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     lastGarbageCollectionFinishTime: {
       type: DataTypes.DATE,

@@ -38,6 +38,7 @@ import type {
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/connectors/notion/lib/types";
+import type { GarbageCollectionMode } from "@connectors/connectors/notion/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -506,14 +507,13 @@ export async function getNotionAccessToken(
   return notionAccessToken;
 }
 
-export async function shouldGarbageCollect(
-  connectorId: ModelId
-): Promise<boolean> {
-  if (!isDuringGarbageCollectStartWindow()) {
-    // Never garbage collect if we are not in the start window
-    return false;
-  }
-
+export async function shouldGarbageCollect({
+  connectorId,
+  garbageCollectionMode,
+}: {
+  connectorId: ModelId;
+  garbageCollectionMode: GarbageCollectionMode;
+}): Promise<boolean> {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -536,6 +536,19 @@ export async function shouldGarbageCollect(
   // If we have never finished a full sync, we should not garbage collect
   const firstSuccessfulSyncTime = connector.firstSuccessfulSyncTime;
   if (!firstSuccessfulSyncTime) {
+    return false;
+  }
+
+  if (garbageCollectionMode === "never") {
+    return false;
+  }
+
+  if (garbageCollectionMode === "always") {
+    return true;
+  }
+
+  if (!isDuringGarbageCollectStartWindow()) {
+    // Never garbage collect if we are not in the start window
     return false;
   }
 

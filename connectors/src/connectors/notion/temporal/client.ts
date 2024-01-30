@@ -6,10 +6,12 @@ import type {
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
+import type { GarbageCollectionMode } from "@connectors/connectors/notion/temporal/utils";
 import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";
 import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
+import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
@@ -28,6 +30,25 @@ export async function launchNotionSyncWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error(
+      `NotionConnectorState not found. ConnectorId: ${connectorId}`
+    );
+  }
+
+  const useDualWorkflow = notionConnectorState.useDualWorkflow;
+
+  if (useDualWorkflow && forceResync) {
+    throw new Error(
+      "Force resync not implemented for dual workflow enabled workspaces."
+    );
+  }
+
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
@@ -41,7 +62,14 @@ export async function launchNotionSyncWorkflow(
   }
 
   await client.workflow.start(notionSyncWorkflow, {
-    args: [{ connectorId, startFromTs, forceResync }],
+    args: [
+      {
+        connectorId,
+        startFromTs,
+        forceResync,
+        garbageCollectionMode: useDualWorkflow ? "never" : "auto",
+      },
+    ],
     taskQueue: QUEUE_NAME,
     workflowId: getWorkflowId(dataSourceConfig),
     searchAttributes: {
@@ -57,6 +85,58 @@ export async function launchNotionSyncWorkflow(
     { workspaceId: dataSourceConfig.workspaceId },
     "launchNotionSyncWorkflow: Started Notion sync workflow."
   );
+
+  if (useDualWorkflow) {
+    await launchNotionGarbageCollectorWorkflow(connectorId);
+  }
+}
+
+export async function launchNotionGarbageCollectorWorkflow(
+  connectorId: ModelId
+) {
+  const client = await getTemporalClient();
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const workflow = await getNotionWorkflow(dataSourceConfig, "always");
+
+  if (workflow && workflow.executionDescription.status.name === "RUNNING") {
+    logger.warn(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+      },
+      "launchNotionGarbageCollectorWorkflow: Notion garbage collector workflow already running."
+    );
+    return;
+  }
+
+  await client.workflow.start(notionSyncWorkflow, {
+    args: [
+      {
+        connectorId,
+        startFromTs: null,
+        forceResync: false,
+        garbageCollectionMode: "always",
+      },
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId: getWorkflowId(dataSourceConfig, "always"),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    memo: {
+      connectorId: connectorId,
+      doNotCancelOnTokenRevoked: true,
+    },
+  });
+
+  logger.info(
+    { workspaceId: dataSourceConfig.workspaceId },
+    "launchNotionGarbageCollectorWorkflow: Started Notion garbage collector workflow."
+  );
 }
 
 export async function stopNotionSyncWorkflow(
@@ -66,6 +146,18 @@ export async function stopNotionSyncWorkflow(
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
+
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error(
+      `NotionConnectorState not found. ConnectorId: ${connectorId}`
+    );
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
@@ -102,10 +194,60 @@ export async function stopNotionSyncWorkflow(
     { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
     "Terminated Notion sync workflow."
   );
+
+  if (notionConnectorState.useDualWorkflow) {
+    await stopNotionGarbageCollectorWorkflow(connectorId);
+  }
+}
+
+async function stopNotionGarbageCollectorWorkflow(
+  connectorId: string
+): Promise<void> {
+  const connector = await Connector.findByPk(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const workflow = await getNotionWorkflow(dataSourceConfig, "always");
+
+  if (!workflow) {
+    logger.warn(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+      },
+      "stopNotionGarbageCollectorWorkflow: Notion garbage collector workflow not found."
+    );
+    return;
+  }
+
+  const { executionDescription: existingWorkflowExecution, handle } = workflow;
+
+  if (existingWorkflowExecution.status.name !== "RUNNING") {
+    logger.warn(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+      },
+      "stopNotionGarbageCollectorWorkflow: Notion garbage collector workflow is not running."
+    );
+    return;
+  }
+
+  logger.info(
+    { workspaceId: dataSourceConfig.workspaceId },
+    "Terminating existing Notion garbage collector workflow."
+  );
+
+  await handle.terminate();
+
+  logger.info(
+    { workspaceId: dataSourceConfig.workspaceId, provider: "notion" },
+    "Terminated Notion garbage collector workflow."
+  );
 }
 
 export async function getNotionWorkflow(
-  dataSourceInfo: DataSourceInfo
+  dataSourceInfo: DataSourceInfo,
+  gargbageCollectionMode: GarbageCollectionMode = "auto"
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
@@ -113,7 +255,9 @@ export async function getNotionWorkflow(
   const client = await getTemporalClient();
 
   const handle: WorkflowHandle<typeof notionSyncWorkflow> =
-    client.workflow.getHandle(getWorkflowId(dataSourceInfo));
+    client.workflow.getHandle(
+      getWorkflowId(dataSourceInfo, gargbageCollectionMode)
+    );
   try {
     return { executionDescription: await handle.describe(), handle };
   } catch (e) {

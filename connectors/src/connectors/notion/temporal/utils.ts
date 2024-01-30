@@ -3,10 +3,19 @@ import type { ModelId } from "@dust-tt/types";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 // Changes made here should be reflected in the production environment checks.
-export function getWorkflowId(dataSourceInfo: DataSourceInfo) {
-  return `workflow-notion-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
+export function getWorkflowId(
+  dataSourceInfo: DataSourceInfo,
+  gargbageCollectionMode: GarbageCollectionMode = "auto"
+) {
+  let wfName = "workflow-notion";
+  if (gargbageCollectionMode === "always") {
+    wfName += "-garbage-collector";
+  }
+  return `${wfName}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
 }
 
 export function getWorkflowIdV2(connectorId: ModelId) {
   return `notion-${connectorId}`;
 }
+
+export type GarbageCollectionMode = "always" | "auto" | "never";

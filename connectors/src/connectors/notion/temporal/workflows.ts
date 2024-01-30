@@ -12,8 +12,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-
-import { getWorkflowIdV2 } from "./utils";
+import type { GarbageCollectionMode } from "@connectors/connectors/notion/temporal/utils";
 
 const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
@@ -71,10 +70,12 @@ export async function notionSyncWorkflow({
   connectorId,
   startFromTs,
   forceResync,
+  garbageCollectionMode,
 }: {
   connectorId: ModelId;
   startFromTs: number | null;
   forceResync: boolean;
+  garbageCollectionMode: GarbageCollectionMode;
 }) {
   let iterations = 0;
 
@@ -86,7 +87,24 @@ export async function notionSyncWorkflow({
 
   setHandler(getLastSyncPeriodTsQuery, () => lastSyncedPeriodTs);
 
-  const isGarbageCollectionRun = await shouldGarbageCollect(connectorId);
+  const isGarbageCollectionRun = await shouldGarbageCollect({
+    connectorId,
+    garbageCollectionMode,
+  });
+
+  if (!isGarbageCollectionRun && garbageCollectionMode === "always") {
+    // If this is a "perpetual garbage collection" workflow but we have never
+    // completed a full sync yet, we'll just wait for the initial sync to complete
+    // and check every 5 minutes if we're good to start garbage collecting.
+    await sleep(60_000 * 5); // 5 minutes
+    await continueAsNew<typeof notionSyncWorkflow>({
+      connectorId,
+      startFromTs: lastSyncedPeriodTs,
+      garbageCollectionMode,
+      forceResync: false,
+    });
+    return;
+  }
 
   const isInitialSync = !lastSyncedPeriodTs;
 
@@ -206,6 +224,7 @@ export async function notionSyncWorkflow({
   await continueAsNew<typeof notionSyncWorkflow>({
     connectorId,
     startFromTs: lastSyncedPeriodTs,
+    garbageCollectionMode,
     forceResync: false,
   });
 }
@@ -264,9 +283,7 @@ export async function upsertPageWorkflow({
 
     for (const block of blocksWithChildren) {
       await executeChild(notionProcessBlockChildrenWorkflow, {
-        workflowId: `${getWorkflowIdV2(
-          connectorId
-        )}-page-${pageId}-block-${block}-children`,
+        workflowId: `${topLevelWorkflowId}-page-${pageId}-block-${block}-children`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -277,9 +294,7 @@ export async function upsertPageWorkflow({
     }
     for (const databaseId of childDatabases) {
       await executeChild(processChildDatabaseWorkflow, {
-        workflowId: `${getWorkflowIdV2(
-          connectorId
-        )}-page-${pageId}-child-database-${databaseId}`,
+        workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -338,9 +353,7 @@ export async function notionProcessBlockChildrenWorkflow({
 
     for (const block of blocksWithChildren) {
       await executeChild(notionProcessBlockChildrenWorkflow, {
-        workflowId: `${getWorkflowIdV2(
-          connectorId
-        )}-page-${pageId}-block-${block}-children`,
+        workflowId: `${topLevelWorkflowId}-page-${pageId}-block-${block}-children`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -351,9 +364,7 @@ export async function notionProcessBlockChildrenWorkflow({
     }
     for (const databaseId of childDatabases) {
       await executeChild(processChildDatabaseWorkflow, {
-        workflowId: `${getWorkflowIdV2(
-          connectorId
-        )}-page-${pageId}-child-database-${databaseId}`,
+        workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -414,7 +425,7 @@ export async function syncResultPageWorkflow({
     promises.push(
       upsertQueue.add(() =>
         executeChild(upsertPageWorkflow, {
-          workflowId: `${getWorkflowIdV2(connectorId)}-upsert-page-${pageId}`,
+          workflowId: `${topLevelWorkflowId}-upsert-page-${pageId}`,
           searchAttributes: {
             connectorId: [connectorId],
           },
@@ -578,9 +589,7 @@ async function performUpserts({
     ) {
       const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      let workflowId = `${getWorkflowIdV2(
-        connectorId
-      )}-result-page-${pageIndex}-pages-${batchIndex}`;
+      let workflowId = `${topLevelWorkflowId}-result-page-${pageIndex}-pages-${batchIndex}`;
       if (isGarbageCollectionRun) {
         workflowId += "-gc";
       }
@@ -623,9 +632,7 @@ async function performUpserts({
         i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
       );
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      let workflowId = `${getWorkflowIdV2(
-        connectorId
-      )}-result-page-${pageIndex}-databases-${batchIndex}`;
+      let workflowId = `${topLevelWorkflowId}-result-page-${pageIndex}-databases-${batchIndex}`;
       if (isGarbageCollectionRun) {
         workflowId += "-gc";
       }
