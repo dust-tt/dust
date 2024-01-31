@@ -15,7 +15,6 @@ import {
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/utils";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const {
   confluenceGetSpaceNameActivity,
@@ -38,15 +37,11 @@ const {
 });
 
 export async function confluenceSyncWorkflow({
-  connectionId,
   connectorId,
-  dataSourceConfig,
   spaceIdsToBrowse,
   forceUpsert = false,
 }: {
-  connectionId: string;
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   spaceIdsToBrowse?: string[];
   forceUpsert: boolean;
 }) {
@@ -89,9 +84,7 @@ export async function confluenceSyncWorkflow({
         searchAttributes: parentSearchAttributes,
         args: [
           {
-            connectionId,
             connectorId,
-            dataSourceConfig,
             isBatchSync: true,
             spaceId,
             forceUpsert,
@@ -109,9 +102,7 @@ export async function confluenceSyncWorkflow({
 }
 
 interface ConfluenceSpaceSyncWorkflowInput {
-  connectionId: string;
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   spaceId: string;
   forceUpsert: boolean;

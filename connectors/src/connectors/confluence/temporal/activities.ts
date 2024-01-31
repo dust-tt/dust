@@ -53,13 +53,51 @@ async function getConfluenceAccessToken(connectionId: string) {
   return connection.credentials.access_token;
 }
 
+async function fetchConfluenceConnector(connectorId: ModelId) {
+  const connector = await Connector.findOne({
+    where: {
+      type: "confluence",
+      id: connectorId,
+    },
+  });
+  if (!connector) {
+    throw new Error("Connector not found.");
+  }
+
+  return connector;
+}
+
 async function getConfluenceClient(config: {
   cloudId?: string;
-  connectionId: string;
-}) {
-  const accessToken = await getConfluenceAccessToken(config.connectionId);
+  connectorId: ModelId;
+}): Promise<ConfluenceClient>;
+async function getConfluenceClient(
+  config: { cloudId?: string },
+  connector: Connector
+): Promise<ConfluenceClient>;
+async function getConfluenceClient(
+  config: {
+    cloudId?: string;
+    connectorId?: ModelId;
+  },
+  connector?: Connector
+) {
+  const { cloudId, connectorId } = config;
 
-  return new ConfluenceClient(accessToken, { cloudId: config.cloudId });
+  // Ensure connector is fetched if not directly provided.
+  const effectiveConnector =
+    connector ??
+    (connectorId ? await fetchConfluenceConnector(connectorId) : undefined);
+
+  if (!effectiveConnector) {
+    throw new Error("A valid connector or connectorId must be provided.");
+  }
+
+  const accessToken = await getConfluenceAccessToken(
+    effectiveConnector.connectionId
+  );
+
+  return new ConfluenceClient(accessToken, { cloudId });
 }
 
 export async function getSpaceIdsToSyncActivity(connectorId: ModelId) {
@@ -91,16 +129,8 @@ export async function fetchConfluenceConfigurationActivity(
 }
 
 export async function confluenceSaveStartSyncActivity(connectorId: ModelId) {
-  const connector = await Connector.findOne({
-    where: {
-      type: "confluence",
-      id: connectorId,
-    },
-  });
+  const connector = await fetchConfluenceConnector(connectorId);
 
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
   const res = await syncStarted(connector.id);
   if (res.isErr()) {
     throw res.error;
@@ -108,15 +138,7 @@ export async function confluenceSaveStartSyncActivity(connectorId: ModelId) {
 }
 
 export async function confluenceSaveSuccessSyncActivity(connectorId: ModelId) {
-  const connector = await Connector.findOne({
-    where: {
-      type: "confluence",
-      id: connectorId,
-    },
-  });
-  if (!connector) {
-    throw new Error("Could not find connector");
-  }
+  const connector = await fetchConfluenceConnector(connectorId);
 
   const res = await syncSucceeded(connector.id);
   if (res.isErr()) {
@@ -126,11 +148,11 @@ export async function confluenceSaveSuccessSyncActivity(connectorId: ModelId) {
 
 export async function confluenceGetSpaceNameActivity({
   confluenceCloudId,
-  connectionId,
+  connectorId,
   spaceId,
 }: {
   confluenceCloudId: string;
-  connectionId: string;
+  connectorId: ModelId;
   spaceId: string;
 }) {
   const localLogger = logger.child({
@@ -139,7 +161,7 @@ export async function confluenceGetSpaceNameActivity({
 
   const client = await getConfluenceClient({
     cloudId: confluenceCloudId,
-    connectionId: connectionId,
+    connectorId,
   });
 
   try {
@@ -159,12 +181,12 @@ export async function confluenceGetSpaceNameActivity({
 
 export async function confluenceListPageIdsInSpaceActivity({
   confluenceCloudId,
-  connectionId,
+  connectorId,
   pageCursor,
   spaceId,
 }: {
   confluenceCloudId: string;
-  connectionId: string;
+  connectorId: ModelId;
   pageCursor: string;
   spaceId: string;
 }) {
@@ -175,7 +197,7 @@ export async function confluenceListPageIdsInSpaceActivity({
 
   const client = await getConfluenceClient({
     cloudId: confluenceCloudId,
-    connectionId: connectionId,
+    connectorId,
   });
 
   localLogger.info("Fetching Confluence pages in space.");
@@ -209,9 +231,7 @@ async function upsertConfluencePageInDb(
 }
 
 interface ConfluenceUpsertPageActivityInput {
-  connectionId: string;
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   pageId: string;
   spaceId: string;
@@ -221,9 +241,7 @@ interface ConfluenceUpsertPageActivityInput {
 }
 
 export async function confluenceUpsertPageActivity({
-  connectionId,
   connectorId,
-  dataSourceConfig,
   isBatchSync,
   pageId,
   spaceId,
@@ -231,6 +249,9 @@ export async function confluenceUpsertPageActivity({
   forceUpsert,
   visitedAtMs,
 }: ConfluenceUpsertPageActivityInput) {
+  const connector = await fetchConfluenceConnector(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const loggerArgs = {
     connectorId,
     dataSourceName: dataSourceConfig.dataSourceName,
@@ -239,18 +260,6 @@ export async function confluenceUpsertPageActivity({
     workspaceId: dataSourceConfig.workspaceId,
   };
   const localLogger = logger.child(loggerArgs);
-
-  const connector = await Connector.findOne({
-    where: {
-      connectionId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-  });
-
-  if (!connector) {
-    throw new Error(`Connector not found (connectionId: ${connectionId})`);
-  }
 
   const isPageSkipped = await isConfluencePageSkipped(connectorId, pageId);
   if (isPageSkipped) {
@@ -262,10 +271,12 @@ export async function confluenceUpsertPageActivity({
     connectorId
   );
 
-  const client = await getConfluenceClient({
-    cloudId: confluenceConfig?.cloudId,
-    connectionId,
-  });
+  const client = await getConfluenceClient(
+    {
+      cloudId: confluenceConfig?.cloudId,
+    },
+    connector
+  );
 
   localLogger.info("Upserting Confluence page.");
 
@@ -344,10 +355,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
   spaceId: string,
   visitedAtMs: number
 ) {
-  const connector = await Connector.findByPk(connectorId);
-  if (!connector) {
-    throw new Error(`Connector not found (id: ${connectorId})`);
-  }
+  const connector = await fetchConfluenceConnector(connectorId);
 
   const pages = await ConfluencePage.findAll({
     attributes: ["id", "pageId", "parentId", "spaceId"],
@@ -403,14 +411,7 @@ export async function confluenceRemoveUnvisitedPagesActivity({
   lastVisitedAt: number;
   spaceId: string;
 }) {
-  const connector = await Connector.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
-  if (!connector) {
-    throw new Error(`Connector not found (id: ${connectorId})`);
-  }
+  const connector = await fetchConfluenceConnector(connectorId);
 
   const unvisitedPages = await ConfluencePage.findAll({
     attributes: ["pageId"],
@@ -472,14 +473,7 @@ export async function confluenceRemoveSpaceActivity(
     connectorId,
   });
 
-  const connector = await Connector.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
-  if (!connector) {
-    throw new Error(`Connector not found (id: ${connectorId})`);
-  }
+  const connector = await fetchConfluenceConnector(connectorId);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -535,15 +529,7 @@ export async function confluenceGetReportPersonalActionActivity(
 ) {
   const { connectorId, userAccountId } = params;
 
-  const connector = await Connector.findOne({
-    attributes: ["connectionId"],
-    where: {
-      id: connectorId,
-    },
-  });
-  if (!connector) {
-    throw new Error(`Connector not found (connectorId: ${connectorId})`);
-  }
+  const connector = await fetchConfluenceConnector(connectorId);
 
   // We look for the oldest updated data.
   const oldestPageSync = await ConfluencePage.findOne({
@@ -554,9 +540,7 @@ export async function confluenceGetReportPersonalActionActivity(
   });
 
   if (oldestPageSync) {
-    const client = await getConfluenceClient({
-      connectionId: connector.connectionId,
-    });
+    const client = await getConfluenceClient({}, connector);
 
     const result = await client.reportAccount({
       accountId: userAccountId,

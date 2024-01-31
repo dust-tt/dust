@@ -19,7 +19,6 @@ import {
   confluenceRemoveSpacesWorkflow,
   confluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -36,7 +35,6 @@ export async function launchConfluenceSyncWorkflow(
   }
 
   const client = await getTemporalClient();
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const signalArgs: SpaceUpdatesSignal[] = spaceIds.map((sId) => ({
     action: "added",
@@ -51,8 +49,6 @@ export async function launchConfluenceSyncWorkflow(
       args: [
         {
           connectorId: connector.id,
-          dataSourceConfig,
-          connectionId: connector.connectionId,
           forceUpsert,
         },
       ],
