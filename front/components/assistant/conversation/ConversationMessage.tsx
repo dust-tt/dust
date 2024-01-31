@@ -63,7 +63,7 @@ export function EmojiSelector({
                 reaction.users.find((u) => u.userId === user.id) !==
                   undefined) ||
               false;
-            await handleEmoji({
+            handleEmoji({
               emoji: emojiData.id,
               isToRemove: hasReacted,
             });
