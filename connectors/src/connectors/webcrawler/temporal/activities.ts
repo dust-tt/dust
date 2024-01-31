@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
+import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
@@ -11,6 +12,7 @@ import {
   isTopFolder,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
+import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   MAX_DOCUMENT_TXT_LEN,
@@ -27,14 +29,10 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { isCancellation } from "@temporalio/workflow";
 
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
 const CONCURRENCY = 4;
-
-// timeout for upserting is 5 minutes, + 2mn leeway to crawl on slow websites
-export const REQUEST_HANDLING_TIMEOUT = 420;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await Connector.findByPk(connectorId);
@@ -69,12 +67,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
         try {
           // block allowing activity cancellation by temporal (timeout, or signal)
-          Context.current().sleep(1);
+          await Context.current().sleep(1);
         } catch (e) {
           if (isCancellation(e)) {
             // abort crawling
-            crawler.autoscaledPool?.abort();
-            crawler.teardown();
+            await crawler.autoscaledPool?.abort();
+            await crawler.teardown();
             // leave without rethrowing, to avoid retries by the crawler
             // (the cancellation already throws at the activity & workflow level)
             return;
