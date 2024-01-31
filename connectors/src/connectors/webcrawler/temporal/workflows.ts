@@ -1,5 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
-import { CancellationScope, proxyActivities } from "@temporalio/workflow";
+import {
+  ActivityCancellationType,
+  CancellationScope,
+  proxyActivities,
+} from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";
 
@@ -11,7 +15,13 @@ const { crawlWebsiteByConnectorId } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   // for each page crawl, there are heartbeats, but a page crawl can last at max
   // REQUEST_HANDLING_TIMEOUT seconds
-  heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT} seconds`,
+  heartbeatTimeout: "1 seconds", // `${REQUEST_HANDLING_TIMEOUT} seconds`,
+  cancellationType: ActivityCancellationType.TRY_CANCEL,
+  retry: {
+    initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,
+    maximumInterval: "3600 seconds",
+    maximumAttempts: 20,
+  },
 });
 
 export async function crawlWebsiteWorkflow(
