@@ -1,6 +1,5 @@
-import type { CredentialsType } from "@dust-tt/types";
+import type { CredentialsType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   credentialsFromProviders,
   dustManagedCredentials,
@@ -77,7 +76,7 @@ const poll = async ({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostRunResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<PostRunResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

@@ -1,5 +1,4 @@
-import type { AgentMessageType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { AgentMessageType, WithAPIErrorReponse } from "@dust-tt/types";
 import { isAgentMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -20,7 +19,7 @@ export const PostRetryRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{ message: AgentMessageType } | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<{ message: AgentMessageType }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

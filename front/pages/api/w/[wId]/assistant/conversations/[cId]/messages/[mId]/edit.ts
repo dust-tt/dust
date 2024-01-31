@@ -1,5 +1,4 @@
-import type { UserMessageType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
 import { isUserMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -26,7 +25,7 @@ export const PostEditRequestBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{ message: UserMessageType } | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<{ message: UserMessageType }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

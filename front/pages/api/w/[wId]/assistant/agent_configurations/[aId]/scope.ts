@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,7 +12,7 @@ import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assist
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType | void>
+  res: NextApiResponse<WithAPIErrorReponse<void>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,5 +1,4 @@
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -12,7 +11,7 @@ export type DowngradeWorkspaceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DowngradeWorkspaceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<DowngradeWorkspaceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(

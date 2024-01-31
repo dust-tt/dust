@@ -3,8 +3,8 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   UserMessageType,
+  WithAPIErrorReponse,
 } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { InternalPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -32,10 +32,9 @@ export type PostConversationsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetConversationsResponseBody
-    | PostConversationsResponseBody
-    | ReturnedAPIErrorType
-    | void
+    WithAPIErrorReponse<
+      GetConversationsResponseBody | PostConversationsResponseBody | void
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -22,7 +22,7 @@ export const PatchLinkedSlackChannelsRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    PatchLinkedSlackChannelsResponseBody | ReturnedAPIErrorType | void
+    WithAPIErrorReponse<PatchLinkedSlackChannelsResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

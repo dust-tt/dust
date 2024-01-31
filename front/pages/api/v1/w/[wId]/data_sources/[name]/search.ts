@@ -1,6 +1,5 @@
-import type { DocumentType } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { CredentialsType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   credentialsFromProviders,
   dustManagedCredentials,
@@ -52,7 +51,7 @@ type DatasourceSearchResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DatasourceSearchResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<DatasourceSearchResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

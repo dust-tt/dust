@@ -1,5 +1,7 @@
-import type { AgentConfigurationType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -23,10 +25,11 @@ export type DeleteAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetAgentConfigurationResponseBody
-    | DeleteAgentConfigurationResponseBody
-    | ReturnedAPIErrorType
-    | void
+    WithAPIErrorReponse<
+      | GetAgentConfigurationResponseBody
+      | DeleteAgentConfigurationResponseBody
+      | void
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

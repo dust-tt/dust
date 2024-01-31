@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,7 +14,7 @@ export type SetConfigResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SetConfigResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<SetConfigResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(

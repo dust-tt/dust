@@ -89,8 +89,8 @@ export type APIErrorWithStatusCode = {
   status_code: number;
 };
 
-export type ReturnedAPIErrorType = {
+export type APIErrorResponse = {
   error: APIError;
 };
 
-export type WithAPIErrorReponse<T> = T | ReturnedAPIErrorType;
+export type WithAPIErrorReponse<T> = T | APIErrorResponse;

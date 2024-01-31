@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
@@ -90,7 +90,7 @@ async function findWorkspaceWithWhitelistedDomain(session: any) {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<void>>
 ): Promise<void> {
   const session = await getServerSession(req, res, authOptions);
   if (!session) {

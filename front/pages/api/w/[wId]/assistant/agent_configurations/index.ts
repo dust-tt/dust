@@ -4,8 +4,8 @@ import type {
   AgentGenerationConfigurationType,
   LightAgentConfigurationType,
   Result,
+  WithAPIErrorReponse,
 } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -38,10 +38,11 @@ export type PostAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetAgentConfigurationsResponseBody
-    | PostAgentConfigurationResponseBody
-    | ReturnedAPIErrorType
-    | void
+    WithAPIErrorReponse<
+      | GetAgentConfigurationsResponseBody
+      | PostAgentConfigurationResponseBody
+      | void
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

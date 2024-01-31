@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,7 +18,7 @@ const PatchGlobalAgentSettingsRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    PatchGlobalAgentSettingResponseBody | ReturnedAPIErrorType | void
+    WithAPIErrorReponse<PatchGlobalAgentSettingResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

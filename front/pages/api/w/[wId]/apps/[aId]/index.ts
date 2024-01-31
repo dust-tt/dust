@@ -1,5 +1,4 @@
-import type { AppType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { AppType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
@@ -13,7 +12,7 @@ export type GetOrPostAppResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetOrPostAppResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<GetOrPostAppResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

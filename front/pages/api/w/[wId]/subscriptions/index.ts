@@ -1,5 +1,4 @@
-import type { PlanType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { PlanType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -17,7 +16,7 @@ export type PostSubscriptionResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostSubscriptionResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<PostSubscriptionResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

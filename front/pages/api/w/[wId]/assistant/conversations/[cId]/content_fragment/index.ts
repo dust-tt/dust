@@ -1,5 +1,4 @@
-import type { ContentFragmentType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { ContentFragmentType, WithAPIErrorReponse } from "@dust-tt/types";
 import { InternalPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
@@ -20,7 +19,7 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    { contentFragment: ContentFragmentType } | ReturnedAPIErrorType
+    WithAPIErrorReponse<{ contentFragment: ContentFragmentType }>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

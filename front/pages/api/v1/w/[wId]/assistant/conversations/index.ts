@@ -2,8 +2,8 @@ import type {
   ContentFragmentType,
   ConversationType,
   UserMessageType,
+  WithAPIErrorReponse,
 } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -26,7 +26,7 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostConversationsResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<PostConversationsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

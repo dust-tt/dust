@@ -1,5 +1,4 @@
-import type { UserMessageType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
 import { PublicPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -16,7 +15,7 @@ export type PostMessagesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{ message: UserMessageType } | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<{ message: UserMessageType }>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

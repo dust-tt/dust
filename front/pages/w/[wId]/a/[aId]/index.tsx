@@ -6,16 +6,18 @@ import {
   SparklesIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import type { CoreAPIError, UserType, WorkspaceType } from "@dust-tt/types";
 import type {
+  APIErrorResponse,
   AppType,
   BlockRunConfig,
+  BlockType,
+  CoreAPIError,
   SpecificationBlockType,
   SpecificationType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { BlockType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
@@ -285,7 +287,7 @@ export default function AppView({
       ]);
 
       if (!runRes.ok) {
-        const r: ReturnedAPIErrorType = await runRes.json();
+        const r: APIErrorResponse = await runRes.json();
         setRunError(r.error.run_error as CoreAPIError);
       } else {
         setRunError(null);
