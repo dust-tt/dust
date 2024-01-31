@@ -232,7 +232,6 @@ async function upsertConfluencePageInDb(
 
 interface ConfluenceUpsertPageActivityInput {
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;
   pageId: string;
   spaceId: string;
@@ -243,7 +242,6 @@ interface ConfluenceUpsertPageActivityInput {
 
 export async function confluenceUpsertPageActivity({
   connectorId,
-  dataSourceConfig,
   isBatchSync,
   pageId,
   spaceId,
@@ -251,6 +249,9 @@ export async function confluenceUpsertPageActivity({
   forceUpsert,
   visitedAtMs,
 }: ConfluenceUpsertPageActivityInput) {
+  const connector = await fetchConfluenceConnector(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const loggerArgs = {
     connectorId,
     dataSourceName: dataSourceConfig.dataSourceName,
@@ -259,8 +260,6 @@ export async function confluenceUpsertPageActivity({
     workspaceId: dataSourceConfig.workspaceId,
   };
   const localLogger = logger.child(loggerArgs);
-
-  const connector = await fetchConfluenceConnector(connectorId);
 
   const isPageSkipped = await isConfluencePageSkipped(connectorId, pageId);
   if (isPageSkipped) {
