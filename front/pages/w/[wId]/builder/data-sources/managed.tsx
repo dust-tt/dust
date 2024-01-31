@@ -34,7 +34,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
-import { useFeatures } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -481,8 +480,6 @@ export default function DataSourcesView({
 
   const router = useRouter();
 
-  const { features } = useFeatures(owner);
-
   return (
     <AppLayout
       subscription={subscription}
@@ -528,7 +525,7 @@ export default function DataSourcesView({
                 ds.status === "built" ||
                 (ds.status === "rolling_out" &&
                   ds.rollingOutFlag &&
-                  features?.includes(ds.rollingOutFlag));
+                  owner.flags.includes(ds.rollingOutFlag));
               return (
                 <ContextItem
                   key={

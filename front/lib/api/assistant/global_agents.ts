@@ -24,7 +24,6 @@ import {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
-import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -855,29 +854,31 @@ export async function getGlobalAgents(
   if (dsRes.isErr()) {
     throw new Error("Failed to retrieve data sources.");
   }
-
   const preFetchedDataSources = dsRes.value;
 
-  // For now we retrieve them all
-  // We will store them in the database later to allow admin enable them or not
-  let agentCandidates = await Promise.all(
-    Object.values(agentIds ?? GLOBAL_AGENTS_SID).map((sId) =>
-      getGlobalAgent(auth, sId, preFetchedDataSources)
-    )
-  );
+  let agentsIdsToFetch = Object.values(agentIds ?? GLOBAL_AGENTS_SID);
 
+  // Intercom flag.
   if (!owner.flags.includes("intercom_connection")) {
-    agentCandidates = agentCandidates?.filter(
-      (agent) => agent?.sId !== GLOBAL_AGENTS_SID.INTERCOM
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (agentId) => agentId !== GLOBAL_AGENTS_SID.INTERCOM
     );
   }
 
   // Mistral-next flag.
   if (!owner.flags.includes("mistral_next")) {
-    agentCandidates = agentCandidates?.filter(
-      (agent) => agent?.sId !== GLOBAL_AGENTS_SID.MISTRAL_NEXT
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (agentId) => agentId !== GLOBAL_AGENTS_SID.MISTRAL_NEXT
     );
   }
+
+  // For now we retrieve them all
+  // We will store them in the database later to allow admin enable them or not
+  const agentCandidates = await Promise.all(
+    agentsIdsToFetch.map((sId) =>
+      getGlobalAgent(auth, sId, preFetchedDataSources)
+    )
+  );
 
   const globalAgents: AgentConfigurationType[] = [];
 
