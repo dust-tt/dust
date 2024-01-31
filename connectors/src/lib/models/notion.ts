@@ -21,6 +21,7 @@ export class NotionConnectorState extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare useDualWorkflow: CreationOptional<boolean>;
+  declare fullResyncStartTime?: CreationOptional<Date>;
 
   declare lastGarbageCollectionFinishTime?: Date;
 
@@ -47,6 +48,10 @@ NotionConnectorState.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    fullResyncStartTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     lastGarbageCollectionFinishTime: {
       type: DataTypes.DATE,

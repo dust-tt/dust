@@ -251,6 +251,17 @@ export async function fullResyncNotionConnector(
     return new Err(new Error("Connector not found"));
   }
 
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId,
+    },
+  });
+
+  if (!notionConnectorState) {
+    logger.error({ connectorId }, "Notion connector state not found.");
+    return new Err(new Error("Connector state not found"));
+  }
+
   try {
     await stopNotionConnector(connector.id.toString());
   } catch (e) {
@@ -266,6 +277,9 @@ export async function fullResyncNotionConnector(
 
     return new Err(e as Error);
   }
+
+  notionConnectorState.fullResyncStartTime = new Date();
+  await notionConnectorState.save();
 
   try {
     await launchNotionSyncWorkflow(

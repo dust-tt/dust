@@ -43,12 +43,6 @@ export async function launchNotionSyncWorkflow(
 
   const useDualWorkflow = notionConnectorState.useDualWorkflow;
 
-  if (useDualWorkflow && forceResync) {
-    throw new Error(
-      "Force resync not implemented for dual workflow enabled workspaces."
-    );
-  }
-
   const workflow = await getNotionWorkflow(dataSourceConfig);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
