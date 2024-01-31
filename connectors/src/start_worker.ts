@@ -1,3 +1,5 @@
+import { setupGlobalErrorHandler } from "@dust-tt/types";
+
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 
@@ -8,6 +10,8 @@ import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
+
+setupGlobalErrorHandler(logger);
 
 runConfluenceWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running confluence worker")
