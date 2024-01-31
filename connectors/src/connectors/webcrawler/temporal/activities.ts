@@ -65,11 +65,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           type: "http_request",
         });
 
+        // try-catch allowing activity cancellation by temporal (timeout, or signal)
         try {
-          // block allowing activity cancellation by temporal (timeout, or signal)
           await Context.current().sleep(1);
         } catch (e) {
           if (isCancellation(e)) {
+            logger.error("The activity was canceled. Aborting crawl.");
             // abort crawling
             await crawler.autoscaledPool?.abort();
             await crawler.teardown();
@@ -77,7 +78,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             // (the cancellation already throws at the activity & workflow level)
             return;
           }
+          throw e;
         }
+
         await enqueueLinks({
           userData: {
             depth: request.userData.depth ? request.userData.depth + 1 : 1,
@@ -208,6 +211,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   await crawler.run([webCrawlerConfig.url]);
 
   await crawler.teardown();
+
+  // checks for cancellation and throws if it's the case
+  await Context.current().sleep(1);
 
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
