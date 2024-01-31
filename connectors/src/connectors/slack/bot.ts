@@ -53,7 +53,7 @@ class SlackExternalUserError extends Error {}
  */
 const MAX_SLACK_MESSAGE_LENGTH = 3000;
 
-const WHITELISTED_BOT_NAME = ["Beaver"];
+const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
 
 export async function botAnswerMessageWithErrorHandling(
   message: string,
