@@ -12,7 +12,6 @@ import {
   isTopFolder,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
-import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   MAX_DOCUMENT_TXT_LEN,
@@ -29,6 +28,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/temporal/workflows";
 
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;

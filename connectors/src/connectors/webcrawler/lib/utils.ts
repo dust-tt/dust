@@ -1,9 +1,6 @@
 import type { ConnectorResourceType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 
-// timeout for upserting is 5 minutes, + 2mn leeway to crawl on slow websites
-export const REQUEST_HANDLING_TIMEOUT = 420;
-
 // Generate a stable id for a given url and ressource type
 // That way we don't have to send URL as documentId to the front API.
 export function stableIdForUrl({
