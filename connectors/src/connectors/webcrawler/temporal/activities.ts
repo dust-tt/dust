@@ -27,6 +27,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { isCancellation } from "@temporalio/workflow";
 
 const MAX_DEPTH = 5;
 const MAX_PAGES = 512;
@@ -65,6 +66,20 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         Context.current().heartbeat({
           type: "http_request",
         });
+
+        try {
+          // block allowing activity cancellation by temporal (timeout, or signal)
+          Context.current().sleep(1);
+        } catch (e) {
+          if (isCancellation(e)) {
+            // abort crawling
+            crawler.autoscaledPool?.abort();
+            crawler.teardown();
+            // leave without rethrowing, to avoid retries by the crawler
+            // (the cancellation already throws at the activity & workflow level)
+            return;
+          }
+        }
         await enqueueLinks({
           userData: {
             depth: request.userData.depth ? request.userData.depth + 1 : 1,
