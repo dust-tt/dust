@@ -1,3 +1,5 @@
+import { setupGlobalErrorHandler } from "@dust-tt/types";
+
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 
@@ -9,13 +11,7 @@ import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
-process.on("unhandledRejection", (reason, promise) => {
-  logger.error({ promise, reason, panic: true }, "Unhandled Rejection");
-});
-
-process.on("uncaughtException", (error) => {
-  logger.error({ error, panic: true }, "Uncaught Exception");
-});
+setupGlobalErrorHandler(logger);
 
 runConfluenceWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running confluence worker")

@@ -1,3 +1,4 @@
+import { setupGlobalErrorHandler } from "@dust-tt/types";
 import bodyParser from "body-parser";
 import express from "express";
 
@@ -28,14 +29,7 @@ import {
 } from "./api/connector_config";
 
 export function startServer(port: number) {
-  process.on("unhandledRejection", (reason, promise) => {
-    logger.error({ promise, reason }, "Unhandled Rejection");
-  });
-
-  process.on("uncaughtException", (error) => {
-    logger.error({ error }, "Uncaught Exception");
-  });
-
+  setupGlobalErrorHandler(logger);
   const app = express();
 
   // for health check -- doesn't go through auth middleware
