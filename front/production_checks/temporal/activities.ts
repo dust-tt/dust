@@ -6,7 +6,7 @@ import { checkNotionActiveWorkflows } from "@app/production_checks/checks/check_
 import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
 import { nangoConnectionIdCleanupSlack } from "@app/production_checks/checks/nango_connection_id_cleanup_slack";
 import { scrubDeletedCoreDocumentVersionsCheck } from "@app/production_checks/checks/scrub_deleted_core_document_versions";
-import { Check } from "@app/production_checks/types/check";
+import type { Check } from "@app/production_checks/types/check";
 
 export async function runAllChecksActivity() {
   const checks: Check[] = [

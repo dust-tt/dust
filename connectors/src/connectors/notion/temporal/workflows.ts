@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, NotionGarbageCollectionMode } from "@dust-tt/types";
 import {
   continueAsNew,
   defineQuery,
@@ -12,7 +12,6 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import type { GarbageCollectionMode } from "@connectors/connectors/notion/temporal/utils";
 
 const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
@@ -75,7 +74,7 @@ export async function notionSyncWorkflow({
   connectorId: ModelId;
   startFromTs: number | null;
   forceResync: boolean;
-  garbageCollectionMode: GarbageCollectionMode;
+  garbageCollectionMode: NotionGarbageCollectionMode;
 }) {
   let iterations = 0;
 

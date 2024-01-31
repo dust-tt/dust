@@ -1,4 +1,8 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  ModelId,
+  NotionGarbageCollectionMode,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import { Context } from "@temporalio/activity";
@@ -39,7 +43,6 @@ import type {
   PageObjectProperties,
   ParsedNotionBlock,
 } from "@connectors/connectors/notion/lib/types";
-import type { GarbageCollectionMode } from "@connectors/connectors/notion/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -513,7 +516,7 @@ export async function shouldGarbageCollect({
   garbageCollectionMode,
 }: {
   connectorId: ModelId;
-  garbageCollectionMode: GarbageCollectionMode;
+  garbageCollectionMode: NotionGarbageCollectionMode;
 }): Promise<boolean> {
   const connector = await Connector.findOne({
     where: {

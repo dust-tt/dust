@@ -1,3 +1,4 @@
+import { getNotionWorkflowId } from "@dust-tt/types";
 import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
@@ -9,13 +10,6 @@ interface NotionConnector {
   id: number;
   dataSourceName: string;
   workspaceId: string;
-}
-
-export function getWorkflowId(dataSourceInfo: {
-  workspaceId: string;
-  dataSourceName: string;
-}) {
-  return `workflow-notion-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
 }
 
 async function listAllNotionConnectors() {
@@ -31,26 +25,31 @@ async function listAllNotionConnectors() {
   return notionConnectors;
 }
 
-async function isTemporalWorkflowRunning(
+async function areTemporalWorkflowsRunning(
   client: Client,
   notionConnector: NotionConnector
 ) {
   try {
-    const handle: WorkflowHandle = client.workflow.getHandle(
-      getWorkflowId(notionConnector)
+    const incrementalSyncHandle: WorkflowHandle = client.workflow.getHandle(
+      getNotionWorkflowId(notionConnector, "never")
+    );
+    const garbageCollectorHandle: WorkflowHandle = client.workflow.getHandle(
+      getNotionWorkflowId(notionConnector, "always")
     );
 
-    const description = await handle.describe();
-    const { status } = description;
+    const descriptions = await Promise.all([
+      incrementalSyncHandle.describe(),
+      garbageCollectorHandle.describe(),
+    ]);
 
-    return status.name === "RUNNING";
+    return descriptions.every(({ status: { name } }) => name === "RUNNING");
   } catch (err) {
     return false;
   }
 }
 
 export const checkNotionActiveWorkflows: CheckFunction = async (
-  checkName,
+  _checkName,
   logger,
   reportSuccess,
   reportFailure,
@@ -66,7 +65,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   for (const notionConnector of notionConnectors) {
     heartbeat();
 
-    const isActive = await isTemporalWorkflowRunning(client, notionConnector);
+    const isActive = await areTemporalWorkflowsRunning(client, notionConnector);
     if (!isActive) {
       missingActiveWorkflows.push({
         connectorId: notionConnector.id,

@@ -1,4 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, NotionGarbageCollectionMode } from "@dust-tt/types";
+import { getNotionWorkflowId } from "@dust-tt/types";
 import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
@@ -6,8 +7,6 @@ import type {
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
-import type { GarbageCollectionMode } from "@connectors/connectors/notion/temporal/utils";
-import { getWorkflowId } from "@connectors/connectors/notion/temporal/utils";
 import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
@@ -65,7 +64,7 @@ export async function launchNotionSyncWorkflow(
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getWorkflowId(dataSourceConfig),
+    workflowId: getNotionWorkflowId(dataSourceConfig),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -117,7 +116,7 @@ export async function launchNotionGarbageCollectorWorkflow(
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getWorkflowId(dataSourceConfig, "always"),
+    workflowId: getNotionWorkflowId(dataSourceConfig, "always"),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -241,7 +240,7 @@ async function stopNotionGarbageCollectorWorkflow(
 
 export async function getNotionWorkflow(
   dataSourceInfo: DataSourceInfo,
-  gargbageCollectionMode: GarbageCollectionMode = "auto"
+  gargbageCollectionMode: NotionGarbageCollectionMode = "auto"
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
@@ -250,7 +249,7 @@ export async function getNotionWorkflow(
 
   const handle: WorkflowHandle<typeof notionSyncWorkflow> =
     client.workflow.getHandle(
-      getWorkflowId(dataSourceInfo, gargbageCollectionMode)
+      getNotionWorkflowId(dataSourceInfo, gargbageCollectionMode)
     );
   try {
     return { executionDescription: await handle.describe(), handle };
