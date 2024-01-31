@@ -73,3 +73,20 @@ export async function pageHasReadRestrictions(
 
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
+
+export async function getActivityPageIds(
+  client: ConfluenceClient,
+  parentPageId: string,
+  pageCursor?: string
+) {
+  const { pages: childPages, nextPageCursor } = await client.getChildPages(
+    parentPageId,
+    pageCursor
+  );
+
+  const childPageIds = childPages
+    .filter((p) => p.status === "current")
+    .map((p) => p.id);
+
+  return { childPageIds, nextPageCursor };
+}

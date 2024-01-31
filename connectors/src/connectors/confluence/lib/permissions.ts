@@ -191,6 +191,7 @@ export async function retrieveHierarchyForParent(
 ) {
   const { id: connectorId } = connector;
 
+  console.log(">> parentInternalId:", parentInternalId);
   if (parentInternalId) {
     if (isConfluenceInternalSpaceId(parentInternalId)) {
       const resources = await getSynchronizedSpaces(

@@ -31,6 +31,14 @@ const ConfluenceListSpacesCodec = t.type({
   results: t.array(ConfluenceSpaceCodec),
 });
 
+const ConfluencePaginatedResults = <C extends t.Mixed>(codec: C) =>
+  t.type({
+    results: t.array(codec),
+    _links: t.partial({
+      next: t.string,
+    }),
+  });
+
 const ConfluencePageCodec = t.intersection([
   t.type({
     createdAt: t.string,
@@ -63,11 +71,12 @@ export type ConfluencePageWithBodyType = t.TypeOf<
   typeof ConfluencePageWithBodyCodec
 >;
 
-const ConfluenceListPagesCodec = t.type({
-  results: t.array(ConfluencePageCodec),
-  _links: t.partial({
-    next: t.string,
-  }),
+const ConfluenceChildPagesCodec = t.type({
+  id: t.string,
+  status: t.string,
+  title: t.string,
+  spaceId: t.string,
+  childPosition: t.number,
 });
 
 const ConfluenceUserProfileCodec = t.intersection([
@@ -145,7 +154,6 @@ export class ConfluenceClient {
   }
 
   private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
-    console.log(">> authToken:", this.authToken);
     const response = await fetch(`${this.apiUrl}${endpoint}`, {
       headers: {
         Authorization: `Bearer ${this.authToken}`,
@@ -224,6 +232,30 @@ export class ConfluenceClient {
     };
   }
 
+  async getChildPages(parentPageId: string, pageCursor?: string) {
+    const params = new URLSearchParams({
+      sort: "id",
+      limit: "100",
+    });
+
+    if (pageCursor) {
+      params.append("cursor", pageCursor);
+    }
+
+    const pages = await this.request(
+      `${
+        this.restApiBaseUrl
+      }/pages/${parentPageId}/children?${params.toString()}`,
+      ConfluencePaginatedResults(ConfluenceChildPagesCodec)
+    );
+    const nextPageCursor = extractCursorFromLinks(pages._links);
+
+    return {
+      pages: pages.results,
+      nextPageCursor,
+    };
+  }
+
   async getGlobalSpaces() {
     return (
       await this.request(
@@ -240,11 +272,16 @@ export class ConfluenceClient {
     );
   }
 
-  async getPagesInSpace(spaceId: string, pageCursor?: string) {
+  async getPagesInSpace(
+    spaceId: string,
+    depth: "all" | "root" = "all",
+    pageCursor?: string
+  ) {
     const params = new URLSearchParams({
+      depth,
+      limit: "25",
       sort: "id",
       status: "current",
-      limit: "25",
     });
 
     if (pageCursor) {
@@ -253,7 +290,7 @@ export class ConfluenceClient {
 
     const pages = await this.request(
       `${this.restApiBaseUrl}/spaces/${spaceId}/pages?${params.toString()}`,
-      ConfluenceListPagesCodec
+      ConfluencePaginatedResults(ConfluencePageCodec)
     );
     const nextPageCursor = extractCursorFromLinks(pages._links);
 
@@ -279,8 +316,6 @@ export class ConfluenceClient {
       `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
       ConfluenceReadOperationRestrictionsCodec
     );
-
-    console.log(">> Read restrictions:", JSON.stringify(res, null, 2));
 
     return res;
   }

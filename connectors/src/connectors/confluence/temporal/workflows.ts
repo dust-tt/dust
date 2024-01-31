@@ -14,17 +14,20 @@ import {
   makeConfluenceRemoveSpacesWorkflowId,
   makeConfluenceRemoveSpaceWorkflowIdFromParentId,
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
+  makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/utils";
 
 const {
   confluenceGetSpaceNameActivity,
-  confluenceListPageIdsInSpaceActivity,
+  confluenceGetTopLevelPageIdsActivity,
   confluenceRemoveSpaceActivity,
   confluenceRemoveUnvisitedPagesActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
   confluenceUpdatePagesParentIdsActivity,
-  confluenceUpsertPageActivity,
+  confluenceCheckAndUpsertPageActivity,
+  confluenceGetActiveChildPageIdsActivity,
+  confluenceGetRootPageIdActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
 
   confluenceGetReportPersonalActionActivity,
@@ -108,18 +111,26 @@ interface ConfluenceSpaceSyncWorkflowInput {
   forceUpsert: boolean;
 }
 
+// Confluence Space Structure:
+// - A single root page defining the space's entry point.
+// - Top level pages directly nested under the root page.
+// Each top-level page can have a hierarchy of any depth.
+// The sync workflow employs DFS, initiating a separate workflow
+// for each top-level page. Refer to `confluenceSyncTopLevelChildPagesWorkflow`
+// for implementation details.
 export async function confluenceSpaceSyncWorkflow(
   params: ConfluenceSpaceSyncWorkflowInput
 ) {
-  const uniquePageIds = new Set<string>();
+  const { connectorId, spaceId } = params;
+
+  const uniqueTopLevelPageIds = new Set<string>();
   const visitedAtMs = new Date().getTime();
 
-  const { connectorId, spaceId } = params;
+  const wInfo = workflowInfo();
 
   const confluenceConfig = await fetchConfluenceConfigurationActivity(
     params.connectorId
   );
-
   const { cloudId: confluenceCloudId } = confluenceConfig;
 
   const spaceName = await confluenceGetSpaceNameActivity({
@@ -128,32 +139,66 @@ export async function confluenceSpaceSyncWorkflow(
   });
   // If the space does not exist, launch a workflow to remove the space.
   if (spaceName === null) {
-    const wInfo = workflowInfo();
     return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
   }
 
-  // Retrieve and loop through all pages for a given space.
+  // Get the root level page for the space.
+  const rootPageId = await confluenceGetRootPageIdActivity({
+    connectorId,
+    confluenceCloudId,
+    spaceId,
+  });
+  if (!rootPageId) {
+    return;
+  }
+
+  // Upsert the root page.
+  const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
+    ...params,
+    spaceName,
+    pageId: rootPageId,
+    visitedAtMs,
+  });
+  if (!successfullyUpsert) {
+    return;
+  }
+
+  // Fetch all top-level pages within a specified space. Top-level pages
+  // refer to those directly nested under the space's root page.
   let nextPageCursor: string | null = "";
   do {
-    const { pageIds, nextPageCursor: nextCursor } =
-      await confluenceListPageIdsInSpaceActivity({
-        ...params,
+    const { topLevelPageIds, nextPageCursor: nextCursor } =
+      await confluenceGetTopLevelPageIdsActivity({
+        connectorId,
         confluenceCloudId,
-        pageCursor: nextPageCursor,
+        spaceId,
+        rootPageId,
       });
 
     nextPageCursor = nextCursor; // Prepare for the next iteration.
 
-    pageIds.forEach((id) => uniquePageIds.add(id));
+    topLevelPageIds.forEach((id) => uniqueTopLevelPageIds.add(id));
   } while (nextPageCursor !== null);
 
-  for (const pageId of uniquePageIds) {
-    // TODO(2024-01-18 flav) Consider doing some parallel execution.
-    await confluenceUpsertPageActivity({
-      ...params,
-      spaceName,
-      pageId,
-      visitedAtMs,
+  const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
+  for (const pageId of uniqueTopLevelPageIds) {
+    // Start a new workflow to import the child pages.
+    await executeChild(confluenceSyncTopLevelChildPagesWorkflow, {
+      workflowId: makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
+        workflowId,
+        pageId
+      ),
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          ...params,
+          spaceName,
+          confluenceCloudId,
+          visitedAtMs,
+          topLevelPageId: pageId,
+        },
+      ],
+      memo,
     });
   }
 
@@ -168,8 +213,62 @@ export async function confluenceSpaceSyncWorkflow(
     spaceId,
     visitedAtMs
   );
+}
 
-  return uniquePageIds.size;
+interface confluenceSyncTopLevelChildPagesWorkflowInput {
+  confluenceCloudId: string;
+  connectorId: ModelId;
+  forceUpsert: boolean;
+  isBatchSync: boolean;
+  spaceId: string;
+  spaceName: string;
+  topLevelPageId: string;
+  visitedAtMs: number;
+}
+
+// This Workflow implements a DFS algorithm to synchronize all pages not
+// subject to restrictions. It stops importing child pages
+// if a parent page is restricted.
+// Page restriction checks are performed by `confluenceCheckAndUpsertPageActivity`;
+// where false denotes restriction. Children of unrestricted pages are
+// stacked for subsequent import.
+export async function confluenceSyncTopLevelChildPagesWorkflow(
+  params: confluenceSyncTopLevelChildPagesWorkflowInput
+) {
+  const { spaceName, topLevelPageId, visitedAtMs } = params;
+  const stack = [topLevelPageId];
+
+  while (stack.length > 0) {
+    const currentPageId = stack.pop();
+    if (!currentPageId) {
+      throw new Error("No more pages to parse.");
+    }
+
+    const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
+      ...params,
+      spaceName,
+      pageId: currentPageId,
+      visitedAtMs,
+    });
+    if (!successfullyUpsert) {
+      continue;
+    }
+
+    // Fetch child pages of the current top level page.
+    let nextPageCursor: string | null = "";
+    do {
+      const { childPageIds, nextPageCursor: nextCursor } =
+        await confluenceGetActiveChildPageIdsActivity({
+          ...params,
+          parentPageId: currentPageId,
+          pageCursor: nextPageCursor,
+        });
+
+      nextPageCursor = nextCursor; // Prepare for the next iteration.
+
+      stack.push(...childPageIds);
+    } while (nextPageCursor !== null);
+  }
 }
 
 async function startConfluenceRemoveSpaceWorkflow(

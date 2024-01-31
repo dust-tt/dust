@@ -3,7 +3,10 @@ import { Op } from "sequelize";
 import TurndownService from "turndown";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
-import { pageHasReadRestrictions } from "@connectors/connectors/confluence/lib/confluence_api";
+import {
+  getActivityPageIds,
+  pageHasReadRestrictions,
+} from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
@@ -180,40 +183,6 @@ export async function confluenceGetSpaceNameActivity({
   }
 }
 
-export async function confluenceListPageIdsInSpaceActivity({
-  confluenceCloudId,
-  connectorId,
-  pageCursor,
-  spaceId,
-}: {
-  confluenceCloudId: string;
-  connectorId: ModelId;
-  pageCursor: string;
-  spaceId: string;
-}) {
-  const localLogger = logger.child({
-    spaceId,
-    pageCursor,
-  });
-
-  const client = await getConfluenceClient({
-    cloudId: confluenceCloudId,
-    connectorId,
-  });
-
-  localLogger.info("Fetching Confluence pages in space.");
-
-  const { pages, nextPageCursor } = await client.getPagesInSpace(
-    spaceId,
-    pageCursor
-  );
-
-  return {
-    pageIds: pages.map((p) => p.id),
-    nextPageCursor,
-  };
-}
-
 async function upsertConfluencePageInDb(
   connectorId: ModelId,
   page: ConfluencePageWithBodyType,
@@ -231,7 +200,7 @@ async function upsertConfluencePageInDb(
   });
 }
 
-interface ConfluenceUpsertPageActivityInput {
+interface ConfluenceCheckAndUpsertPageActivityInput {
   connectorId: ModelId;
   isBatchSync: boolean;
   pageId: string;
@@ -241,7 +210,7 @@ interface ConfluenceUpsertPageActivityInput {
   visitedAtMs: number;
 }
 
-export async function confluenceUpsertPageActivity({
+export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
   isBatchSync,
   pageId,
@@ -249,7 +218,7 @@ export async function confluenceUpsertPageActivity({
   spaceName,
   forceUpsert,
   visitedAtMs,
-}: ConfluenceUpsertPageActivityInput) {
+}: ConfluenceCheckAndUpsertPageActivityInput) {
   const connector = await fetchConfluenceConnector(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -265,7 +234,7 @@ export async function confluenceUpsertPageActivity({
   const isPageSkipped = await isConfluencePageSkipped(connectorId, pageId);
   if (isPageSkipped) {
     logger.info("Confluence page skipped.");
-    return;
+    return true;
   }
 
   const confluenceConfig = await fetchConfluenceConfigurationActivity(
@@ -283,12 +252,10 @@ export async function confluenceUpsertPageActivity({
 
   const page = await client.getPageById(pageId);
   const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
-  // If the page has restrictions we sill index it so it does not break our parents logic.
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");
-    return upsertConfluencePageInDb(connectorId, page, visitedAtMs);
+    return false;
   }
-  // We still need to save the page.
 
   const pageAlreadyInDb = await ConfluencePage.findOne({
     attributes: ["version"],
@@ -297,16 +264,13 @@ export async function confluenceUpsertPageActivity({
       pageId,
     },
   });
-  // TODO(2024-01-30 flav) We should check if the parent id has changed.
-  // If yes, then we should update the page.
-  // Should already work.
-  // Check the logic with the parents visitedAt.
   const isSameVersion =
     pageAlreadyInDb && pageAlreadyInDb.version === page.version.number;
   // Only index in DB if the page does not exist or we want to upsert.
   if (isSameVersion && !forceUpsert) {
     // Simply record that we visited the page.
-    return upsertConfluencePageInDb(connectorId, page, visitedAtMs);
+    await upsertConfluencePageInDb(connectorId, page, visitedAtMs);
+    return true;
   }
 
   const markdown = turndownService.turndown(page.body.storage.value);
@@ -360,6 +324,108 @@ export async function confluenceUpsertPageActivity({
   localLogger.info("Upserting Confluence page in DB.");
 
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
+
+  return true;
+}
+
+export async function confluenceGetActiveChildPageIdsActivity({
+  connectorId,
+  parentPageId,
+  confluenceCloudId,
+  pageCursor,
+  spaceId,
+}: {
+  connectorId: ModelId;
+  parentPageId: string;
+  confluenceCloudId: string;
+  pageCursor: string;
+  spaceId: string;
+}) {
+  const localLogger = logger.child({
+    connectorId,
+    pageCursor,
+    parentPageId,
+    spaceId,
+  });
+
+  const client = await getConfluenceClient({
+    cloudId: confluenceCloudId,
+    connectorId,
+  });
+
+  localLogger.info("Fetching Confluence child pages in space.");
+
+  return getActivityPageIds(client, parentPageId, pageCursor);
+}
+
+export async function confluenceGetRootPageIdActivity({
+  connectorId,
+  confluenceCloudId,
+  spaceId,
+}: {
+  connectorId: ModelId;
+  confluenceCloudId: string;
+  spaceId: string;
+}) {
+  const localLogger = logger.child({
+    connectorId,
+    spaceId,
+  });
+
+  const client = await getConfluenceClient({
+    cloudId: confluenceCloudId,
+    connectorId,
+  });
+
+  localLogger.info("Fetching Confluence root page in space.");
+
+  const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
+  const [rootPage] = rootPages;
+
+  if (!rootPage) {
+    return undefined;
+  }
+
+  if (rootPages.length > 1) {
+    throw new Error("Confluence workflow only support one root page.");
+  }
+
+  return rootPage.id;
+}
+
+export async function confluenceGetTopLevelPageIdsActivity({
+  connectorId,
+  confluenceCloudId,
+  spaceId,
+  rootPageId,
+}: {
+  connectorId: ModelId;
+  confluenceCloudId: string;
+  spaceId: string;
+  rootPageId: string;
+}) {
+  const localLogger = logger.child({
+    connectorId,
+    spaceId,
+  });
+
+  const client = await getConfluenceClient({
+    cloudId: confluenceCloudId,
+    connectorId,
+  });
+
+  localLogger.info("Fetching Confluence top-level page in space.");
+
+  const { childPageIds, nextPageCursor } = await getActivityPageIds(
+    client,
+    rootPageId
+  );
+
+  localLogger.info("Found Confluence top-level pages in space.", {
+    topLevelPagesCount: childPageIds.length,
+  });
+
+  return { topLevelPageIds: childPageIds, nextPageCursor };
 }
 
 export async function confluenceUpdatePagesParentIdsActivity(
