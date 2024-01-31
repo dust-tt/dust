@@ -498,7 +498,7 @@ export async function confluenceRemoveUnvisitedPagesActivity({
       connectorId,
       spaceId,
       lastVisitedAt: {
-        [Op.ne]: new Date(lastVisitedAt),
+        [Op.ne]: lastVisitedAt,
       },
     },
   });
