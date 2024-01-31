@@ -22,7 +22,7 @@ import type {
 } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
-import { isRetrievalActionType } from "@dust-tt/types";
+import { assertNever, isRetrievalActionType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -81,11 +81,8 @@ export function AgentMessage({
         return false;
       case "created":
         return true;
-
       default:
-        ((status: never) => {
-          throw new Error(`Unknown status: ${status}`);
-        })(streamedAgentMessage.status);
+        assertNever(streamedAgentMessage.status);
     }
   })();
 
