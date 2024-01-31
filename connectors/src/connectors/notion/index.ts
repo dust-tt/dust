@@ -70,6 +70,7 @@ export async function createNotionConnector(
       const connectorState = await NotionConnectorState.create(
         {
           connectorId: connector.id,
+          useDualWorkflow: true,
         },
         { transaction }
       );
