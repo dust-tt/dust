@@ -1,5 +1,4 @@
-import type { MessageReactionType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { MessageReactionType, WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -20,9 +19,9 @@ export const MessageReactionRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | { reactions: MessageReactionType[] }
-    | { success: boolean }
-    | ReturnedAPIErrorType
+    WithAPIErrorReponse<
+      { reactions: MessageReactionType[] } | { success: boolean }
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

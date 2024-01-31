@@ -1,5 +1,4 @@
-import type { ExtractedEventType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { ExtractedEventType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getExtractedEvent, updateExtractedEvent } from "@app/lib/api/extract";
@@ -15,7 +14,7 @@ export type GetExtractedEventsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetExtractedEventResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<GetExtractedEventResponseBody>>
 ) {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

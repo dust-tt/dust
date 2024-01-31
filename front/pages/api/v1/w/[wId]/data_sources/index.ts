@@ -1,5 +1,4 @@
-import type { DataSourceType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -12,7 +11,7 @@ export type GetDataSourcesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetDataSourcesResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<GetDataSourcesResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

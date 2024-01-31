@@ -1,5 +1,4 @@
-import type { CoreAPITokenType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { CoreAPITokenType, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -25,9 +24,7 @@ type PostDatasourceTokenizeResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    PostDatasourceTokenizeResponseBody | ReturnedAPIErrorType
-  >
+  res: NextApiResponse<WithAPIErrorReponse<PostDatasourceTokenizeResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

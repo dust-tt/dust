@@ -1,5 +1,4 @@
-import type { RunType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { RunType, WithAPIErrorReponse } from "@dust-tt/types";
 import { credentialsFromProviders } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -23,7 +22,7 @@ export type PostRunsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    GetRunsResponseBody | PostRunsResponseBody | ReturnedAPIErrorType
+    WithAPIErrorReponse<GetRunsResponseBody | PostRunsResponseBody>
   >
 ) {
   const session = await getSession(req, res);

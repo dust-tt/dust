@@ -1,5 +1,4 @@
-import type { DataSourceType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import {
   DEFAULT_FREE_QDRANT_CLUSTER,
   DEFAULT_PAID_QDRANT_CLUSTER,
@@ -28,9 +27,7 @@ export type PostDataSourceResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetDataSourcesResponseBody
-    | PostDataSourceResponseBody
-    | ReturnedAPIErrorType
+    WithAPIErrorReponse<GetDataSourcesResponseBody | PostDataSourceResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

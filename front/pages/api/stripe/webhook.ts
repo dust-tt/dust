@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
@@ -49,7 +49,7 @@ export const config = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<GetResponseBody>>
 ): Promise<void> {
   const stripe = new Stripe(STRIPE_SECRET_KEY, {
     apiVersion: "2023-10-16",
@@ -547,7 +547,7 @@ async function handler(
 
 function _returnStripeApiError(
   req: NextApiRequest,
-  res: NextApiResponse<GetResponseBody | ReturnedAPIErrorType>,
+  res: NextApiResponse<WithAPIErrorReponse<GetResponseBody>>,
   event: string,
   message: string
 ) {

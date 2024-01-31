@@ -1,7 +1,4 @@
-import type {
-  ReturnedAPIErrorType,
-  WhitelistableFeature,
-} from "@dust-tt/types";
+import type { WhitelistableFeature, WithAPIErrorReponse } from "@dust-tt/types";
 import { isWhitelistableFeature } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -20,9 +17,9 @@ export type CreateOrDeleteFeatureFlagResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | CreateOrDeleteFeatureFlagResponseBody
-    | GetPokeFeaturesResponseBody
-    | ReturnedAPIErrorType
+    WithAPIErrorReponse<
+      CreateOrDeleteFeatureFlagResponseBody | GetPokeFeaturesResponseBody
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

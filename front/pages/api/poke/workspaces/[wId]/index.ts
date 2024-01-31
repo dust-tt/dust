@@ -1,5 +1,4 @@
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -25,9 +24,9 @@ export type DeleteWorkspaceResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | SegmentWorkspaceResponseBody
-    | DeleteWorkspaceResponseBody
-    | ReturnedAPIErrorType
+    WithAPIErrorReponse<
+      SegmentWorkspaceResponseBody | DeleteWorkspaceResponseBody
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

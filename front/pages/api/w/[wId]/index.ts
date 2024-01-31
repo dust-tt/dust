@@ -1,5 +1,4 @@
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -27,7 +26,7 @@ const PostWorkspaceRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostWorkspaceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<PostWorkspaceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

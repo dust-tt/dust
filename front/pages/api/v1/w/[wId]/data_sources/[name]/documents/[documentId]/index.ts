@@ -1,6 +1,9 @@
-import type { CoreAPILightDocument, DataSourceType } from "@dust-tt/types";
-import type { DocumentType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type {
+  CoreAPILightDocument,
+  DataSourceType,
+  DocumentType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import {
   PostDataSourceDocumentRequestBodySchema,
   sectionFullText,
@@ -50,10 +53,11 @@ export type UpsertDocumentResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetDocumentResponseBody
-    | DeleteDocumentResponseBody
-    | UpsertDocumentResponseBody
-    | ReturnedAPIErrorType
+    WithAPIErrorReponse<
+      | GetDocumentResponseBody
+      | DeleteDocumentResponseBody
+      | UpsertDocumentResponseBody
+    >
   >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);

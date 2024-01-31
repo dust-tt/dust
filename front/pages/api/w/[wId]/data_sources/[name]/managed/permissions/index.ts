@@ -1,5 +1,8 @@
-import type { ConnectorPermission, ConnectorResource } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ConnectorResource,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { assertNever, ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -36,9 +39,10 @@ export type SetDataSourcePermissionsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    | GetDataSourcePermissionsResponseBody
-    | ReturnedAPIErrorType
-    | SetDataSourcePermissionsResponseBody
+    WithAPIErrorReponse<
+      | GetDataSourcePermissionsResponseBody
+      | SetDataSourcePermissionsResponseBody
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);

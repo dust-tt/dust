@@ -1,5 +1,4 @@
-import type { ConversationType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { ConversationType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -8,9 +7,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    { conversation: ConversationType } | ReturnedAPIErrorType
-  >
+  res: NextApiResponse<WithAPIErrorReponse<{ conversation: ConversationType }>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

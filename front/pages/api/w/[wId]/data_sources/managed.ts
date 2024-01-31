@@ -1,6 +1,5 @@
-import type { DataSourceType } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
 import {
   assertNever,
   DEFAULT_FREE_QDRANT_CLUSTER,
@@ -48,7 +47,7 @@ export type PostManagedDataSourceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostManagedDataSourceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<PostManagedDataSourceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

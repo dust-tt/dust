@@ -1,4 +1,4 @@
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { deleteDataSource } from "@app/lib/api/data_sources";
@@ -11,7 +11,7 @@ export type DeleteDataSourceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<DeleteDataSourceResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<DeleteDataSourceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(

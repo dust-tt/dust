@@ -1,5 +1,4 @@
-import type { AppType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { AppType, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -17,7 +16,7 @@ export type PostAppResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostAppResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<PostAppResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

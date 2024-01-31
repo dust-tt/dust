@@ -1,5 +1,4 @@
-import type { EventSchemaType } from "@dust-tt/types";
-import type { ReturnedAPIErrorType } from "@dust-tt/types";
+import type { EventSchemaType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getEventSchema, updateEventSchema } from "@app/lib/api/extract";
@@ -12,7 +11,7 @@ export type GetEventSchemaResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetEventSchemaResponseBody | ReturnedAPIErrorType>
+  res: NextApiResponse<WithAPIErrorReponse<GetEventSchemaResponseBody>>
 ) {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
