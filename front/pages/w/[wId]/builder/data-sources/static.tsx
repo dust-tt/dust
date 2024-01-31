@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -20,17 +20,18 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
   dataSources: DataSourceType[];
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -62,7 +63,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function DataSourcesView({
   owner,

@@ -18,7 +18,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -42,10 +42,11 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -53,7 +54,7 @@ export const getServerSideProps: GetServerSideProps<{
   url: string;
   app: AppType;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -90,7 +91,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 

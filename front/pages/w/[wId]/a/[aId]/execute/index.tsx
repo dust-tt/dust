@@ -14,7 +14,7 @@ import {
   ExclamationCircleIcon,
   PlayCircleIcon,
 } from "@heroicons/react/20/solid";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -42,6 +42,7 @@ import {
 } from "@app/lib/datasets";
 import { useSavedRunStatus } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -56,7 +57,7 @@ type Event = {
   };
 };
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
@@ -64,7 +65,7 @@ export const getServerSideProps: GetServerSideProps<{
   inputDataset: DatasetType | null;
   readOnly: boolean;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -120,7 +121,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 function getTraceFromEvents(data: unknown): TraceType[] {
   const events = Array.isArray(data) ? data : [data];

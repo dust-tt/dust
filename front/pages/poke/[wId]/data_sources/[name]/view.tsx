@@ -1,17 +1,18 @@
 import { Input, Page } from "@dust-tt/sparkle";
 import type { CoreAPIDocument } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   document: CoreAPIDocument;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
@@ -56,7 +57,7 @@ export const getServerSideProps: GetServerSideProps<{
       document: document.value.document,
     },
   };
-};
+});
 
 export default function DataSourceUpsert({
   document,

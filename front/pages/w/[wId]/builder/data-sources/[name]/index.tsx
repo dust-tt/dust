@@ -25,7 +25,7 @@ import type { APIError } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
@@ -48,6 +48,7 @@ import { githubAuth } from "@app/lib/github_auth";
 import { useConnectorBotEnabled, useDocuments, useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const {
   GA_TRACKING_ID = "",
@@ -60,7 +61,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
 } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -80,7 +81,7 @@ export const getServerSideProps: GetServerSideProps<{
   githubAppUrl: string;
   gaTrackingId: string;
   structuredDataEnabled: boolean;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -151,7 +152,7 @@ export const getServerSideProps: GetServerSideProps<{
       structuredDataEnabled,
     },
   };
-};
+});
 
 function StandardDataSourceView({
   owner,

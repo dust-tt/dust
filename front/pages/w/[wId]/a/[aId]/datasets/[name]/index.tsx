@@ -5,7 +5,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
@@ -20,10 +20,11 @@ import { getApp } from "@app/lib/api/app";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -31,7 +32,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataset: DatasetType;
   schema: DatasetSchema | null;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -83,7 +84,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function ViewDatasetView({
   owner,

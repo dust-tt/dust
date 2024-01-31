@@ -1,4 +1,4 @@
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
@@ -30,10 +30,11 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -41,7 +42,7 @@ export const getServerSideProps: GetServerSideProps<{
   dataSource: DataSourceType;
   loadDocumentId: string | null;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -79,7 +80,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function DatasourceUpsert({
   owner,

@@ -1,12 +1,13 @@
 import { GoogleLogo, Logo } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
 import { A, H1, P, Strong } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -34,13 +35,13 @@ type OnboardingType =
   | "domain_invite_link"
   | "domain_conversation_link";
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   onboardingType: OnboardingType;
   workspace: WorkspaceType;
   signUpCallbackUrl: string;
   gaTrackingId: string;
   baseUrl: string;
-}> = async (context) => {
+}>(async (context) => {
   const wId = context.query.wId as string;
   if (!wId) {
     return {
@@ -100,7 +101,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function Join({
   onboardingType,

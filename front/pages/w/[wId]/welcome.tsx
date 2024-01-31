@@ -1,6 +1,6 @@
 import { Button, Input, RadioButton } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
@@ -8,13 +8,14 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 const ADMIN_YOUTUBE_ID = "f9n4mqBX2aw";
 const MEMBER_YOUTUBE_ID = null; // We don't have the video yet.
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
@@ -23,7 +24,7 @@ export const getServerSideProps: GetServerSideProps<{
   conversationId: string | null;
   gaTrackingId: string;
   baseUrl: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -64,7 +65,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function Welcome({
   user,

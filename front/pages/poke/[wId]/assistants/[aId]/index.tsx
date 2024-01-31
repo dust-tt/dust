@@ -5,15 +5,16 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   agentConfigurations: AgentConfigurationType[];
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
@@ -44,7 +45,7 @@ export const getServerSideProps: GetServerSideProps<{
       agentConfigurations,
     },
   };
-};
+});
 
 const DataSourcePage = ({
   agentConfigurations,

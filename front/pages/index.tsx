@@ -16,7 +16,7 @@ import {
   OpenaiWhiteLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -51,12 +51,13 @@ import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
 import { getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
 
@@ -81,7 +82,7 @@ export const getServerSideProps: GetServerSideProps<{
   return {
     props: { gaTrackingId: GA_TRACKING_ID },
   };
-};
+});
 
 export default function Home({
   gaTrackingId,

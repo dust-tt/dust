@@ -19,7 +19,7 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
@@ -36,6 +36,7 @@ import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const {
   GA_TRACKING_ID = "",
@@ -69,7 +70,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "intercom",
 ];
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -86,7 +87,7 @@ export const getServerSideProps: GetServerSideProps<{
     intercomConnectorId: string;
   };
   githubAppUrl: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -240,7 +241,7 @@ export const getServerSideProps: GetServerSideProps<{
       githubAppUrl: GITHUB_APP_URL,
     },
   };
-};
+});
 
 function ConfirmationModal({
   dataSource,

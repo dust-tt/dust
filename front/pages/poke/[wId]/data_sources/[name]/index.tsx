@@ -12,7 +12,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -25,10 +25,11 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;
@@ -39,7 +40,7 @@ export const getServerSideProps: GetServerSideProps<{
     githubCodeSyncEnabled: boolean;
   };
   temporalWorkspace: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
@@ -150,7 +151,7 @@ export const getServerSideProps: GetServerSideProps<{
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
     },
   };
-};
+});
 
 const DataSourcePage = ({
   owner,

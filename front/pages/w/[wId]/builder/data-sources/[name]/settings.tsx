@@ -1,9 +1,12 @@
 import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { APIError } from "@dust-tt/types";
+import type {
+  APIError,
+  DataSourceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -14,16 +17,17 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -54,7 +58,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function DataSourceSettings({
   owner,

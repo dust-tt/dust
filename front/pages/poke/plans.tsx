@@ -8,7 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -24,23 +24,24 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { usePokePlans } from "@app/lib/swr";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps: GetServerSideProps<object> = async (
-  context
-) => {
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+export const getServerSideProps = withGetServerSidePropsLogging<object>(
+  async (context) => {
+    const session = await getSession(context.req, context.res);
+    const auth = await Authenticator.fromSuperUserSession(session, null);
 
-  if (!auth.isDustSuperUser()) {
+    if (!auth.isDustSuperUser()) {
+      return {
+        notFound: true,
+      };
+    }
+
     return {
-      notFound: true,
+      props: {},
     };
   }
-
-  return {
-    props: {},
-  };
-};
+);
 
 const PlansPage = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>

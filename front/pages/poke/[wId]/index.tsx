@@ -19,7 +19,7 @@ import {
   WHITELISTABLE_FEATURES,
 } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
@@ -42,15 +42,16 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokeFeatures, usePokePlans } from "@app/lib/swr";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
@@ -94,7 +95,7 @@ export const getServerSideProps: GetServerSideProps<{
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
     },
   };
-};
+});
 
 const WorkspacePage = ({
   owner,

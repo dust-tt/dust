@@ -15,7 +15,7 @@ import type { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Fragment, useState } from "react";
@@ -28,15 +28,17 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useExtractedEvents } from "@app/lib/swr";
 import { classNames, objectToMarkdown } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
-export const getServerSideProps: GetServerSideProps<{
+
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   schema: EventSchemaType;
   readOnly: boolean;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -70,7 +72,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function AppExtractEventsReadData({
   owner,

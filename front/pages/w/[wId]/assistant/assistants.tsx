@@ -24,7 +24,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useContext, useState } from "react";
 
@@ -40,6 +40,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -47,12 +48,12 @@ const { GA_TRACKING_ID = "" } = process.env;
 const PERSONAL_ASSISTANTS_VIEWS = ["personal", "workspace"] as const;
 export type PersonalAssitsantsView = (typeof PERSONAL_ASSISTANTS_VIEWS)[number];
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   view: PersonalAssitsantsView;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
 
   const auth = await Authenticator.fromSession(
@@ -82,7 +83,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function PersonalAssistants({
   owner,
