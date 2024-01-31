@@ -59,3 +59,17 @@ export async function listConfluenceSpaces(
 
   return client.getGlobalSpaces();
 }
+
+export async function pageHasReadRestrictions(
+  client: ConfluenceClient,
+  pageId: string
+) {
+  const pageReadRestrictions = await client.getPageReadRestrictions(pageId);
+
+  const hasGroupReadPermissions =
+    pageReadRestrictions.restrictions.group.results.length > 0;
+  const hasUserReadPermissions =
+    pageReadRestrictions.restrictions.user.results.length > 0;
+
+  return hasGroupReadPermissions || hasUserReadPermissions;
+}

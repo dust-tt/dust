@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import TurndownService from "turndown";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
+import { pageHasReadRestrictions } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { isConfluencePageSkipped } from "@connectors/connectors/confluence/lib/confluence_page";
@@ -281,6 +282,13 @@ export async function confluenceUpsertPageActivity({
   localLogger.info("Upserting Confluence page.");
 
   const page = await client.getPageById(pageId);
+  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  // If the page has restrictions we sill index it so it does not break our parents logic.
+  if (hasReadRestrictions) {
+    localLogger.info("Skipping restricted Confluence page.");
+    return upsertConfluencePageInDb(connectorId, page, visitedAtMs);
+  }
+  // We still need to save the page.
 
   const pageAlreadyInDb = await ConfluencePage.findOne({
     attributes: ["version"],
@@ -289,6 +297,10 @@ export async function confluenceUpsertPageActivity({
       pageId,
     },
   });
+  // TODO(2024-01-30 flav) We should check if the parent id has changed.
+  // If yes, then we should update the page.
+  // Should already work.
+  // Check the logic with the parents visitedAt.
   const isSameVersion =
     pageAlreadyInDb && pageAlreadyInDb.version === page.version.number;
   // Only index in DB if the page does not exist or we want to upsert.

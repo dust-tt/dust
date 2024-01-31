@@ -86,6 +86,42 @@ const ConfluenceReportAccounts = t.type({
   ),
 });
 
+const ConfluenceRestrictionsPaginatedResultsCodec = <C extends t.Mixed>(
+  codec: C
+) =>
+  t.type({
+    results: t.array(codec),
+    start: t.number,
+    limit: t.number,
+    size: t.number,
+  });
+
+const ConfluenceUserRestrictionCodec = t.type({
+  type: t.union([
+    t.literal("known"),
+    t.literal("unknown"),
+    t.literal("anonymous"),
+    t.literal("user"),
+  ]),
+});
+const ConfluenceGroupRestrictionCodec = t.type({
+  type: t.literal("group"),
+});
+
+const RestrictionsCodec = t.type({
+  user: ConfluenceRestrictionsPaginatedResultsCodec(
+    ConfluenceUserRestrictionCodec
+  ),
+  group: ConfluenceRestrictionsPaginatedResultsCodec(
+    ConfluenceGroupRestrictionCodec
+  ),
+});
+
+const ConfluenceReadOperationRestrictionsCodec = t.type({
+  operation: t.literal("read"),
+  restrictions: RestrictionsCodec,
+});
+
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
     return null;
@@ -98,15 +134,18 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
+  private readonly legacyRestApiBaseUrl: string;
 
   constructor(
     private readonly authToken: string,
     { cloudId }: { cloudId?: string } = {}
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
+    this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
   }
 
   private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
+    console.log(">> authToken:", this.authToken);
     const response = await fetch(`${this.apiUrl}${endpoint}`, {
       headers: {
         Authorization: `Bearer ${this.authToken}`,
@@ -233,6 +272,17 @@ export class ConfluenceClient {
       `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
       ConfluencePageWithBodyCodec
     );
+  }
+
+  async getPageReadRestrictions(pageId: string) {
+    const res = await this.request(
+      `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
+      ConfluenceReadOperationRestrictionsCodec
+    );
+
+    console.log(">> Read restrictions:", JSON.stringify(res, null, 2));
+
+    return res;
   }
 
   async getUserAccount() {
