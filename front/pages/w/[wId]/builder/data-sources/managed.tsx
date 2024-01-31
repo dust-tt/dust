@@ -13,6 +13,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -55,7 +56,8 @@ type DataSourceIntegration = {
   connector: ConnectorType | null;
   fetchConnectorError: boolean;
   fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built";
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag: WhitelistableFeature | null;
   connectorProvider: ConnectorProvider;
   description: string;
   limitations: string | null;
@@ -166,6 +168,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       name: integration.name,
       connectorProvider: integration.connectorProvider,
       status: integration.status,
+      rollingOutFlag: integration.rollingOutFlag || null,
       description: integration.description,
       limitations: integration.limitations,
       dataSourceName: mc.dataSourceName,
@@ -209,6 +212,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
         name: integration.name,
         connectorProvider: integration.connectorProvider,
         status: integration.status,
+        rollingOutFlag: integration.rollingOutFlag || null,
         description: integration.description,
         limitations: integration.limitations,
         dataSourceName: null,
@@ -478,7 +482,6 @@ export default function DataSourcesView({
   const router = useRouter();
 
   const { features } = useFeatures(owner);
-  const isIntercomEnabled = features?.includes("intercom_connection");
 
   return (
     <AppLayout
@@ -523,7 +526,9 @@ export default function DataSourcesView({
             .map((ds) => {
               const isBuilt =
                 ds.status === "built" ||
-                (ds.connectorProvider === "intercom" && isIntercomEnabled);
+                (ds.status === "rolling_out" &&
+                  ds.rollingOutFlag &&
+                  features?.includes(ds.rollingOutFlag));
               return (
                 <ContextItem
                   key={
