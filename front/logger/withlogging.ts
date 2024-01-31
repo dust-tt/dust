@@ -10,7 +10,13 @@ import logger from "./logger";
 
 export const statsDClient = new StatsD();
 
-export const withLogging = (handler: any, streaming = false) => {
+export function withLogging<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorReponse<T>>
+  ) => Promise<void>,
+  streaming = false
+) {
   return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
     const ddtraceSpan = tracer.scope().active();
     if (ddtraceSpan) {
@@ -75,7 +81,7 @@ export const withLogging = (handler: any, streaming = false) => {
       "Processed request"
     );
   };
-};
+}
 
 export function apiError<T>(
   req: NextApiRequest,
