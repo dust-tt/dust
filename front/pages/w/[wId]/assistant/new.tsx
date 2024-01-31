@@ -40,6 +40,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
+import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -50,6 +51,7 @@ export const getServerSideProps: GetServerSideProps<{
   owner: WorkspaceType;
   gaTrackingId: string;
 }> = async (context) => {
+  logger.info({ panic: true }, "hello rico blanco");
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
