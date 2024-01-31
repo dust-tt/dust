@@ -312,12 +312,10 @@ export class ConfluenceClient {
   }
 
   async getPageReadRestrictions(pageId: string) {
-    const res = await this.request(
+    return this.request(
       `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
       ConfluenceReadOperationRestrictionsCodec
     );
-
-    return res;
   }
 
   async getUserAccount() {

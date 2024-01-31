@@ -4,7 +4,7 @@ import TurndownService from "turndown";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
-  getActivityPageIds,
+  getActiveChildPageIds,
   pageHasReadRestrictions,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
@@ -355,7 +355,7 @@ export async function confluenceGetActiveChildPageIdsActivity({
 
   localLogger.info("Fetching Confluence child pages in space.");
 
-  return getActivityPageIds(client, parentPageId, pageCursor);
+  return getActiveChildPageIds(client, parentPageId, pageCursor);
 }
 
 export async function confluenceGetRootPageIdActivity({
@@ -406,6 +406,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
 }) {
   const localLogger = logger.child({
     connectorId,
+    rootPageId,
     spaceId,
   });
 
@@ -416,7 +417,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
 
   localLogger.info("Fetching Confluence top-level page in space.");
 
-  const { childPageIds, nextPageCursor } = await getActivityPageIds(
+  const { childPageIds, nextPageCursor } = await getActiveChildPageIds(
     client,
     rootPageId
   );

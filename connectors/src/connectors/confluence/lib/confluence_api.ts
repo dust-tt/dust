@@ -74,7 +74,7 @@ export async function pageHasReadRestrictions(
   return hasGroupReadPermissions || hasUserReadPermissions;
 }
 
-export async function getActivityPageIds(
+export async function getActiveChildPageIds(
   client: ConfluenceClient,
   parentPageId: string,
   pageCursor?: string
