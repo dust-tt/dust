@@ -27,7 +27,10 @@ async function main() {
         console.log(
           `Creating NotionConnectorState for connector ${connector.id}...`
         );
-        await NotionConnectorState.create({ connectorId: connector.id });
+        await NotionConnectorState.create({
+          connectorId: connector.id,
+          useDualWorkflow: true,
+        });
       }
     }
   }
