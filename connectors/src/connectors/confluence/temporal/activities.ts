@@ -381,13 +381,16 @@ export async function confluenceGetRootPageIdActivity({
 
   const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
   const [rootPage] = rootPages;
-
   if (!rootPage) {
     return undefined;
   }
 
+  // TODO(2024-01-31 flav) Find a better way to deal with spaces
+  // that have many root pages.
   if (rootPages.length > 1) {
-    throw new Error("Confluence workflow only support one root page.");
+    logger.error("Found Confluence space with many root pages.", {
+      rootPagesCount: rootPages.length,
+    });
   }
 
   return rootPage.id;
