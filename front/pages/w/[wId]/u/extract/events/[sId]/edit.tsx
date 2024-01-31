@@ -3,7 +3,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { EventSchemaType, ExtractedEventType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -12,16 +12,18 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getEventSchema, getExtractedEvent } from "@app/lib/api/extract";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
-export const getServerSideProps: GetServerSideProps<{
+
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   event: ExtractedEventType;
   schema: EventSchemaType;
   readOnly: boolean;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -68,7 +70,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function AppExtractEventsCreate({
   owner,

@@ -1,4 +1,4 @@
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
@@ -6,23 +6,24 @@ import React, { useState } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { usePokeWorkspaces } from "@app/lib/swr";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps: GetServerSideProps<object> = async (
-  context
-) => {
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+export const getServerSideProps = withGetServerSidePropsLogging<object>(
+  async (context) => {
+    const session = await getSession(context.req, context.res);
+    const auth = await Authenticator.fromSuperUserSession(session, null);
 
-  if (!auth.isDustSuperUser()) {
+    if (!auth.isDustSuperUser()) {
+      return {
+        notFound: true,
+      };
+    }
+
     return {
-      notFound: true,
+      props: {},
     };
   }
-
-  return {
-    props: {},
-  };
-};
+);
 
 const Dashboard = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>

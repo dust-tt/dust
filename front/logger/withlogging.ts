@@ -4,19 +4,47 @@ import type {
 } from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
-import type { NextApiRequest, NextApiResponse } from "next";
+import type {
+  GetServerSideProps,
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+  PreviewData,
+} from "next";
+import type { ParsedUrlQuery } from "querystring";
 
 import logger from "./logger";
 
 export const statsDClient = new StatsD();
 
-export const withLogging = (handler: any, streaming = false) => {
-  return async (req: NextApiRequest, res: NextApiResponse): Promise<void> => {
+export function withLogging<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorReponse<T>>
+  ) => Promise<void>,
+  streaming = false
+) {
+  return async (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorReponse<T>>
+  ): Promise<void> => {
     const ddtraceSpan = tracer.scope().active();
     if (ddtraceSpan) {
       ddtraceSpan.setTag("streaming", streaming);
     }
     const now = new Date();
+
+    let route = req.url;
+    if (route) {
+      route = route.split("?")[0];
+      for (const key in req.query) {
+        const value = req.query[key];
+        if (typeof value === "string") {
+          route = route.replaceAll(value, `[${key}]`);
+        }
+      }
+    }
+
     try {
       await handler(req, res);
     } catch (err) {
@@ -25,6 +53,7 @@ export const withLogging = (handler: any, streaming = false) => {
         {
           method: req.method,
           url: req.url,
+          route,
           durationMs: elapsed,
           error: err,
           // @ts-expect-error best effort to get err.stack if it exists
@@ -35,7 +64,7 @@ export const withLogging = (handler: any, streaming = false) => {
 
       const tags = [
         `method:${req.method}`,
-        // `url:${req.url}`,
+        `route:${route}`,
         `status_code:500`,
         `error_type:unhandled_internal_server_error`,
       ];
@@ -56,8 +85,7 @@ export const withLogging = (handler: any, streaming = false) => {
 
     const tags = [
       `method:${req.method}`,
-      // Removed due to high cardinality
-      // `url:${req.url}`,
+      `route:${route}`,
       streaming ? `streaming:true` : `streaming:false`,
       `status_code:${res.statusCode}`,
     ];
@@ -69,13 +97,14 @@ export const withLogging = (handler: any, streaming = false) => {
       {
         method: req.method,
         url: req.url,
+        route,
         statusCode: res.statusCode,
         durationMs: elapsed,
       },
       "Processed request"
     );
   };
-};
+}
 
 export function apiError<T>(
   req: NextApiRequest,
@@ -107,4 +136,80 @@ export function apiError<T>(
     error: apiError.api_error,
   });
   return;
+}
+
+export function withGetServerSidePropsLogging<T extends { [key: string]: any }>(
+  getServerSideProps: GetServerSideProps<T>
+): GetServerSideProps<T> {
+  return async (
+    context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
+  ) => {
+    const now = new Date();
+
+    let route = context.resolvedUrl.split("?")[0];
+    for (const key in context.params) {
+      const value = context.params[key];
+      if (typeof value === "string") {
+        route = route.replaceAll(value, `[${key}]`);
+      }
+    }
+
+    try {
+      const res = await getServerSideProps(context);
+
+      const elapsed = new Date().getTime() - now.getTime();
+
+      let returnType = "props";
+      if ("notFound" in res) {
+        returnType = "not_found";
+      }
+      if ("redirect" in res) {
+        returnType = "redirect";
+      }
+
+      const tags = [`returnType:${returnType}`, `route:${route}`];
+
+      statsDClient.increment("get_server_side_props.count", 1, tags);
+      statsDClient.distribution(
+        "get_server_side_props.duration.distribution",
+        elapsed,
+        tags
+      );
+
+      logger.info(
+        {
+          returnType,
+          url: context.resolvedUrl,
+          route,
+          durationMs: elapsed,
+        },
+        "Processed getServerSideProps"
+      );
+
+      return res;
+    } catch (err) {
+      const elapsed = new Date().getTime() - now.getTime();
+
+      logger.error(
+        {
+          returnType: "error",
+          durationMs: elapsed,
+          url: context.resolvedUrl,
+          route,
+          error: err,
+          // @ts-expect-error best effort to get err.stack if it exists
+          error_stack: err?.stack,
+        },
+        "Unhandled getServerSideProps Error"
+      );
+
+      statsDClient.increment(
+        "get_server_side_props_unhandled_errors.count",
+        1,
+        [`route:${route}`]
+      );
+
+      throw err;
+    }
+  };
 }

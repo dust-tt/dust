@@ -4,18 +4,19 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   members: UserTypeWithWorkspaces[];
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
@@ -38,7 +39,7 @@ export const getServerSideProps: GetServerSideProps<{
       members,
     },
   };
-};
+});
 
 const MembershipsPage = ({
   owner,

@@ -1,7 +1,7 @@
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
@@ -18,18 +18,19 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useConversation } from "@app/lib/swr";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
   baseUrl: string;
   conversationId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -59,7 +60,7 @@ export const getServerSideProps: GetServerSideProps<{
       conversationId: context.params?.cId as string,
     },
   };
-};
+});
 
 export default function AssistantConversation({
   user,

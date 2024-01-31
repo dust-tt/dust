@@ -8,7 +8,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -20,6 +20,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -30,7 +31,7 @@ const GALLERY_FLOWS = [
 ] as const;
 export type GalleryFlow = (typeof GALLERY_FLOWS)[number];
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType;
   owner: WorkspaceType;
   plan: PlanType | null;
@@ -38,7 +39,7 @@ export const getServerSideProps: GetServerSideProps<{
   agentsGetView: AgentsGetViewType;
   flow: GalleryFlow;
   gaTrackingId: string;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -77,7 +78,7 @@ export const getServerSideProps: GetServerSideProps<{
       gaTrackingId: GA_TRACKING_ID,
     },
   };
-};
+});
 
 export default function AssistantsGallery({
   user,

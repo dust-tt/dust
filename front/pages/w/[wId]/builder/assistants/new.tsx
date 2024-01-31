@@ -11,7 +11,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
@@ -26,10 +26,11 @@ import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -44,7 +45,7 @@ export const getServerSideProps: GetServerSideProps<{
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   agentConfiguration: AgentConfigurationType | null;
   flow: BuilderFlow;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -116,7 +117,7 @@ export const getServerSideProps: GetServerSideProps<{
       flow,
     },
   };
-};
+});
 
 export default function CreateAssistant({
   owner,

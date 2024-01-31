@@ -23,7 +23,7 @@ import type {
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -36,19 +36,20 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 const CLOSING_ANIMATION_DURATION = 200;
 
-export const getServerSideProps: GetServerSideProps<{
+export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
   workspaceVerifiedDomain: WorkspaceDomain | null;
-}> = async (context) => {
+}>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
     session,
@@ -76,7 +77,7 @@ export const getServerSideProps: GetServerSideProps<{
       workspaceVerifiedDomain,
     },
   };
-};
+});
 
 export default function WorkspaceAdmin({
   user,
