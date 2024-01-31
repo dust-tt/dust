@@ -38,13 +38,11 @@ const {
 });
 
 export async function confluenceSyncWorkflow({
-  connectionId,
   connectorId,
   dataSourceConfig,
   spaceIdsToBrowse,
   forceUpsert = false,
 }: {
-  connectionId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   spaceIdsToBrowse?: string[];
@@ -89,7 +87,6 @@ export async function confluenceSyncWorkflow({
         searchAttributes: parentSearchAttributes,
         args: [
           {
-            connectionId,
             connectorId,
             dataSourceConfig,
             isBatchSync: true,
@@ -109,7 +106,6 @@ export async function confluenceSyncWorkflow({
 }
 
 interface ConfluenceSpaceSyncWorkflowInput {
-  connectionId: string;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   isBatchSync: boolean;

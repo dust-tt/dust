@@ -52,7 +52,6 @@ export async function launchConfluenceSyncWorkflow(
         {
           connectorId: connector.id,
           dataSourceConfig,
-          connectionId: connector.connectionId,
           forceUpsert,
         },
       ],
