@@ -31,6 +31,14 @@ const ConfluenceListSpacesCodec = t.type({
   results: t.array(ConfluenceSpaceCodec),
 });
 
+const ConfluencePaginatedResults = <C extends t.Mixed>(codec: C) =>
+  t.type({
+    results: t.array(codec),
+    _links: t.partial({
+      next: t.string,
+    }),
+  });
+
 const ConfluencePageCodec = t.intersection([
   t.type({
     createdAt: t.string,
@@ -63,11 +71,12 @@ export type ConfluencePageWithBodyType = t.TypeOf<
   typeof ConfluencePageWithBodyCodec
 >;
 
-const ConfluenceListPagesCodec = t.type({
-  results: t.array(ConfluencePageCodec),
-  _links: t.partial({
-    next: t.string,
-  }),
+const ConfluenceChildPagesCodec = t.type({
+  id: t.string,
+  status: t.string,
+  title: t.string,
+  spaceId: t.string,
+  childPosition: t.number,
 });
 
 const ConfluenceUserProfileCodec = t.intersection([
@@ -86,6 +95,42 @@ const ConfluenceReportAccounts = t.type({
   ),
 });
 
+const ConfluenceRestrictionsPaginatedResultsCodec = <C extends t.Mixed>(
+  codec: C
+) =>
+  t.type({
+    results: t.array(codec),
+    start: t.number,
+    limit: t.number,
+    size: t.number,
+  });
+
+const ConfluenceUserRestrictionCodec = t.type({
+  type: t.union([
+    t.literal("known"),
+    t.literal("unknown"),
+    t.literal("anonymous"),
+    t.literal("user"),
+  ]),
+});
+const ConfluenceGroupRestrictionCodec = t.type({
+  type: t.literal("group"),
+});
+
+const RestrictionsCodec = t.type({
+  user: ConfluenceRestrictionsPaginatedResultsCodec(
+    ConfluenceUserRestrictionCodec
+  ),
+  group: ConfluenceRestrictionsPaginatedResultsCodec(
+    ConfluenceGroupRestrictionCodec
+  ),
+});
+
+const ConfluenceReadOperationRestrictionsCodec = t.type({
+  operation: t.literal("read"),
+  restrictions: RestrictionsCodec,
+});
+
 function extractCursorFromLinks(links: { next?: string }): string | null {
   if (!links.next) {
     return null;
@@ -98,12 +143,14 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
+  private readonly legacyRestApiBaseUrl: string;
 
   constructor(
     private readonly authToken: string,
     { cloudId }: { cloudId?: string } = {}
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
+    this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
   }
 
   private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
@@ -185,6 +232,30 @@ export class ConfluenceClient {
     };
   }
 
+  async getChildPages(parentPageId: string, pageCursor?: string) {
+    const params = new URLSearchParams({
+      sort: "id",
+      limit: "100",
+    });
+
+    if (pageCursor) {
+      params.append("cursor", pageCursor);
+    }
+
+    const pages = await this.request(
+      `${
+        this.restApiBaseUrl
+      }/pages/${parentPageId}/children?${params.toString()}`,
+      ConfluencePaginatedResults(ConfluenceChildPagesCodec)
+    );
+    const nextPageCursor = extractCursorFromLinks(pages._links);
+
+    return {
+      pages: pages.results,
+      nextPageCursor,
+    };
+  }
+
   async getGlobalSpaces() {
     return (
       await this.request(
@@ -201,11 +272,16 @@ export class ConfluenceClient {
     );
   }
 
-  async getPagesInSpace(spaceId: string, pageCursor?: string) {
+  async getPagesInSpace(
+    spaceId: string,
+    depth: "all" | "root" = "all",
+    pageCursor?: string
+  ) {
     const params = new URLSearchParams({
+      depth,
+      limit: "25",
       sort: "id",
       status: "current",
-      limit: "25",
     });
 
     if (pageCursor) {
@@ -214,7 +290,7 @@ export class ConfluenceClient {
 
     const pages = await this.request(
       `${this.restApiBaseUrl}/spaces/${spaceId}/pages?${params.toString()}`,
-      ConfluenceListPagesCodec
+      ConfluencePaginatedResults(ConfluencePageCodec)
     );
     const nextPageCursor = extractCursorFromLinks(pages._links);
 
@@ -232,6 +308,13 @@ export class ConfluenceClient {
     return this.request(
       `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
       ConfluencePageWithBodyCodec
+    );
+  }
+
+  async getPageReadRestrictions(pageId: string) {
+    return this.request(
+      `${this.legacyRestApiBaseUrl}/content/${pageId}/restriction/byOperation/read`,
+      ConfluenceReadOperationRestrictionsCodec
     );
   }
 
