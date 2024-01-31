@@ -388,7 +388,9 @@ export async function confluenceGetRootPageIdActivity({
   // TODO(2024-01-31 flav) Find a better way to deal with spaces
   // that have many root pages.
   if (rootPages.length > 1) {
-    logger.error("Found Confluence space with many root pages.");
+    logger.error("Found Confluence space with many root pages.", {
+      rootPagesCount: rootPages.length,
+    });
   }
 
   return rootPage.id;
