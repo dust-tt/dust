@@ -1,5 +1,6 @@
 export * from "./connectors/api";
 export * from "./connectors/api_handlers/create_connector";
+export * from "./connectors/notion";
 export * from "./core/data_source";
 export * from "./front/api_handlers/internal/agent_configuration";
 export * from "./front/api_handlers/internal/assistant";
