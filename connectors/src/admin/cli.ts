@@ -527,6 +527,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           {
             connectorId,
             databaseId: args.databaseId,
+            forceResync: !!args.forceResync,
           },
         ],
         taskQueue: QUEUE_NAME,
