@@ -17,12 +17,15 @@ import type {
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
+  LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import { assertNever, isRetrievalActionType } from "@dust-tt/types";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
@@ -294,6 +297,24 @@ export function AgentMessage({
     }
   }, [agentMessageToRender.action]);
 
+  function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
+    const router = useRouter();
+    const href = {
+      pathname: router.pathname,
+      query: { ...router.query, assistantDetails: assistant.sId },
+    };
+
+    return (
+      <Link
+        href={href}
+        shallow
+        className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+      >
+        {assistant.name}
+      </Link>
+    );
+  }
+
   return (
     <ConversationMessage
       owner={owner}
@@ -306,6 +327,11 @@ export function AgentMessage({
       avatarBusy={agentMessageToRender.status === "created"}
       reactions={reactions}
       enableEmojis={true}
+      renderName={() => (
+        <div className="text-sm font-medium">
+          {AssitantDetailViewLink(agentMessageToRender.configuration)}
+        </div>
+      )}
     >
       <div ref={messageRef}>
         {renderMessage(agentMessageToRender, references, shouldStream)}
