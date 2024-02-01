@@ -10,15 +10,16 @@ import {
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
+import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/lib/assistant";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
-import { useState } from "react";
 
 type ConfirmationModalDataType = {
   title: string;
   text: string;
   confirmText: string;
+  usageText?: string;
   variant: "primary" | "primaryWarning";
 };
 
@@ -54,7 +55,7 @@ export function TeamSharingSection({
     agentConfigurationId,
   });
 
-  const usageParagraph = assistantName
+  const usageText = assistantName
     ? assistantUsageMessage({
         assistantName,
         usage: agentUsage.agentUsage,
@@ -104,39 +105,44 @@ export function TeamSharingSection({
       text: "Only I can view and edit.",
       confirmationModalData: {
         title: "Moving to Personal Assistants",
-        text: `${usageParagraph}\n\nMoving the assistant to your Personal Assistants will make the assistant unaccessible to other members of the workspace.`,
+        text: `Moving the assistant to your Personal Assistants will make the assistant unaccessible to other members of the workspace.`,
         confirmText: "Move to Personal",
         variant: "primaryWarning",
+        usageText,
       },
     },
   };
   // special case if changing setting from company to shared
   const companyToSharedModalData: ConfirmationModalDataType = {
     title: "Moving to Shared Assistants",
-    text: `${usageParagraph}\n\nMoving ${
+    text: `Moving ${
       assistantName || "the assistant"
     } to Shared Assistants will make the assistant editable by all members of the workspace and the assistant will not be activated by default anymore.`,
     confirmText: "Move to Shared",
     variant: "primary",
+    usageText,
   };
   return (
     <div className="flex flex-col gap-3">
       <div className="text-lg font-bold text-element-900">Sharing</div>
       <div>
-        <ScopeChangeModal
-          show={requestNewScope !== null}
-          confirmationModalData={
-            requestNewScope
-              ? requestNewScope === "published" && initialScope === "workspace"
-                ? companyToSharedModalData
-                : scopeInfo[requestNewScope].confirmationModalData
-              : { title: "", text: "", confirmText: "", variant: "primary" }
-          }
-          onClose={() => setModalNewScope(null)}
-          setSharingScope={() =>
-            requestNewScope && setNewScope(requestNewScope)
-          }
-        />
+        {requestNewScope && (
+          <ScopeChangeModal
+            show={requestNewScope !== null}
+            confirmationModalData={
+              requestNewScope
+                ? requestNewScope === "published" &&
+                  initialScope === "workspace"
+                  ? companyToSharedModalData
+                  : scopeInfo[requestNewScope].confirmationModalData
+                : { title: "", text: "", confirmText: "", variant: "primary" }
+            }
+            onClose={() => setModalNewScope(null)}
+            setSharingScope={() =>
+              requestNewScope && setNewScope(requestNewScope)
+            }
+          />
+        )}
         <DropdownMenu>
           <DropdownMenu.Button>
             <div className="group flex cursor-pointer items-center gap-2">
@@ -175,16 +181,17 @@ export function TeamSharingSection({
                       // assistant is the user changing the scope
                       ((entryScope === "private" || entryScope === "company") &&
                         assistantInMyList &&
-                        agentUsage &&
-                        agentUsage.agentUsage?.userCount &&
-                        agentUsage.agentUsage.userCount === 1)
+                        (!agentUsage.agentUsage ||
+                          agentUsage.agentUsage.userCount <= 1))
                     ) {
+                      console.log("no modal");
                       setNewScope(
                         entryScope as Exclude<AgentConfigurationScope, "global">
                       );
                       return;
                     }
                     // in all other cases, show modal
+                    console.log("show modal");
                     setModalNewScope(
                       entryScope as Exclude<AgentConfigurationScope, "global">
                     );
@@ -199,7 +206,7 @@ export function TeamSharingSection({
         {agentUsage &&
         agentUsage.agentUsage?.userCount &&
         agentUsage.agentUsage.userCount > 1
-          ? usageParagraph
+          ? usageText
           : null}
       </div>
     </div>
@@ -230,7 +237,10 @@ function ScopeChangeModal({
       }}
     >
       <div>
-        <div className="pb-2">{confirmationModalData.text}</div>
+        <div className="pb-2">
+          <span className="font-bold">{confirmationModalData.usageText}</span>
+          {" " + confirmationModalData.text}
+        </div>
         <div className="font-bold">Are you sure you want to proceed ?</div>
       </div>
     </Dialog>

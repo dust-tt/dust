@@ -7,9 +7,9 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { assistantUsageMessage } from "@app/lib/assistant";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
-import { assistantUsageMessage } from "@app/lib/assistant";
 
 export function DeleteAssistantDialog({
   owner,
