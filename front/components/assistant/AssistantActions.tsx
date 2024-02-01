@@ -7,7 +7,8 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useAgentConfiguration } from "@app/lib/swr";
+import { assistantUsageMessage } from "@app/lib/assistant";
+import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 export function DeleteAssistantDialog({
@@ -26,13 +27,22 @@ export function DeleteAssistantDialog({
   isPrivateAssistant?: boolean;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+  });
+  const agentUsage = useAgentUsage({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+  });
   return (
     <Dialog
       isOpen={show}
-      title={`Deleting assistant`}
+      title={`Deleting the assistant`}
       onCancel={onClose}
-      validateLabel={isPrivateAssistant ? "Delete" : "Delete for Everyone"}
+      validateLabel={
+        isPrivateAssistant ? "Delete the assistant" : "Delete for everyone"
+      }
       validateVariant="primaryWarning"
       onValidate={async () => {
         try {
@@ -68,13 +78,25 @@ export function DeleteAssistantDialog({
       }}
     >
       <div className="flex flex-col gap-2">
-        <div className="font-bold">Are you sure you want to delete?</div>
-
         <div>
-          {isPrivateAssistant
-            ? "This will delete your personal assistant permanently."
-            : "This will be permanent and delete the assistant for everyone."}
+          {isPrivateAssistant ? (
+            "Deleting the assistant will be permanent."
+          ) : (
+            <div>
+              <span className="font-bold">
+                {agentUsage &&
+                  assistantUsageMessage({
+                    usage: agentUsage.agentUsage,
+                    isError: agentUsage.isAgentUsageError,
+                    isLoading: agentUsage.isAgentUsageLoading,
+                    assistantName: agentConfiguration?.name ?? "",
+                  })}
+              </span>{" "}
+              This will permanently delete the assistant for everyone.
+            </div>
+          )}
         </div>
+        <div className="font-bold">Are you sure you want to proceed?</div>
       </div>
     </Dialog>
   );

@@ -106,17 +106,19 @@ export function AssistantDetails({
     );
 
   const UsageSection = ({
+    assistantName,
     usage,
     isLoading,
     isError,
   }: {
+    assistantName: string;
     usage: AgentUsageType | null;
     isLoading: boolean;
     isError: boolean;
   }) => (
     <div className="flex flex-col gap-2">
       <div className="text-lg font-bold text-element-800">Usage</div>
-      {assistantUsageMessage({ usage, isLoading, isError })}
+      {assistantUsageMessage({ assistantName, usage, isLoading, isError })}
     </div>
   );
 
@@ -166,6 +168,7 @@ export function AssistantDetails({
         <DescriptionSection />
         <InstructionsSection />
         <UsageSection
+          assistantName={assistant.name}
           usage={agentUsage.agentUsage}
           isLoading={agentUsage.isAgentUsageLoading}
           isError={agentUsage.isAgentUsageError}

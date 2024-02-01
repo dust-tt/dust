@@ -105,10 +105,12 @@ export function compareAgentsForSort(
 }
 
 export function assistantUsageMessage({
+  assistantName,
   usage,
   isLoading,
   isError,
 }: {
+  assistantName: string;
   usage: AgentUsageType | null;
   isLoading: boolean;
   isError: boolean;
@@ -118,7 +120,7 @@ export function assistantUsageMessage({
   } else if (isLoading) {
     return "Loading usage data...";
   } else if (usage) {
-    return `This assistant has been used by ${usage.userCount} ${
+    return `@${assistantName} has been used by ${usage.userCount} ${
       usage.userCount > 1 ? "people" : "person"
     } in ${usage.messageCount} message${
       usage.messageCount > 1 ? "s" : ""

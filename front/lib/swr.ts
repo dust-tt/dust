@@ -537,14 +537,16 @@ export function useAgentConfiguration({
   agentConfigurationId,
 }: {
   workspaceId: string;
-  agentConfigurationId: string;
+  agentConfigurationId: string | null;
 }) {
   const agentConfigurationFetcher: Fetcher<{
     agentConfiguration: AgentConfigurationType;
   }> = fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}`,
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}`
+      : null,
     agentConfigurationFetcher
   );
 
