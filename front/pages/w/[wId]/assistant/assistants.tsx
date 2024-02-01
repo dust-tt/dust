@@ -38,10 +38,10 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -139,31 +139,13 @@ export default function PersonalAssistants({
     agentConfiguration: LightAgentConfigurationType,
     listStatus: AgentUserListStatus
   ) => {
-    const body: PostAgentListStatusRequestBody = {
-      agentId: agentConfiguration.sId,
+    const { errorMessage, success } = await performAgentUserListStatusUpdate({
       listStatus,
-    };
+      owner,
+      agentConfigurationSId: agentConfiguration.sId,
+    });
 
-    const res = await fetch(
-      `/api/w/${owner.sId}/members/me/agent_list_status`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!res.ok) {
-      const data = await res.json();
-      sendNotification({
-        title: `Error ${
-          listStatus === "in-list" ? "adding" : "removing"
-        } Assistant`,
-        description: data.error.message,
-        type: "error",
-      });
-    } else {
+    if (success) {
       sendNotification({
         title: `Assistant ${
           listStatus === "in-list" ? "added to" : "removed from"
@@ -171,6 +153,14 @@ export default function PersonalAssistants({
         type: "success",
       });
       await mutateAgentConfigurations();
+    } else {
+      sendNotification({
+        title: `Error ${
+          listStatus === "in-list" ? "adding" : "removing"
+        } Assistant`,
+        description: errorMessage,
+        type: "error",
+      });
     }
   };
 
