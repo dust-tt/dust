@@ -227,7 +227,7 @@ export async function notionSyncWorkflow({
   });
 }
 
-export async function upsertPageWorkflow({
+export async function upsertPageChildWorkflow({
   connectorId,
   pageId,
   runTimestamp,
@@ -280,7 +280,7 @@ export async function upsertPageWorkflow({
     blockIndexInPage += blocksCount;
 
     for (const block of blocksWithChildren) {
-      await executeChild(notionProcessBlockChildrenWorkflow, {
+      await executeChild(notionProcessBlockChildrenChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-block-${block}-children`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -291,7 +291,7 @@ export async function upsertPageWorkflow({
       });
     }
     for (const databaseId of childDatabases) {
-      await executeChild(processChildDatabaseWorkflow, {
+      await executeChild(processChildDatabaseChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -317,7 +317,7 @@ export async function upsertPageWorkflow({
   };
 }
 
-export async function notionProcessBlockChildrenWorkflow({
+export async function notionProcessBlockChildrenChildWorkflow({
   connectorId,
   pageId,
   blockId,
@@ -350,7 +350,7 @@ export async function notionProcessBlockChildrenWorkflow({
     blockIndexInParent += blocksCount;
 
     for (const block of blocksWithChildren) {
-      await executeChild(notionProcessBlockChildrenWorkflow, {
+      await executeChild(notionProcessBlockChildrenChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-block-${block}-children`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -361,7 +361,7 @@ export async function notionProcessBlockChildrenWorkflow({
       });
     }
     for (const databaseId of childDatabases) {
-      await executeChild(processChildDatabaseWorkflow, {
+      await executeChild(processChildDatabaseChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -374,7 +374,7 @@ export async function notionProcessBlockChildrenWorkflow({
   } while (cursor);
 }
 
-export async function processChildDatabaseWorkflow({
+export async function processChildDatabaseChildWorkflow({
   connectorId,
   databaseId,
   topLevelWorkflowId,
@@ -402,7 +402,7 @@ export async function processChildDatabaseWorkflow({
   } while (cursor);
 }
 
-export async function syncResultPageWorkflow({
+export async function syncResultPageChildWorkflow({
   connectorId,
   pageIds,
   runTimestamp,
@@ -424,7 +424,7 @@ export async function syncResultPageWorkflow({
   for (const [pageIndex, pageId] of pageIds.entries()) {
     promises.push(
       upsertQueue.add(() =>
-        executeChild(upsertPageWorkflow, {
+        executeChild(upsertPageChildWorkflow, {
           workflowId: `${topLevelWorkflowId}-upsert-page-${pageId}`,
           searchAttributes: {
             connectorId: [connectorId],
@@ -449,7 +449,7 @@ export async function syncResultPageWorkflow({
   await Promise.all(promises);
 }
 
-export async function syncResultPageDatabaseWorkflow({
+export async function syncResultPageDatabaseChildWorkflow({
   connectorId,
   databaseIds,
   runTimestamp,
@@ -604,7 +604,7 @@ async function performUpserts({
 
       promises.push(
         queue.add(() =>
-          executeChild(syncResultPageWorkflow, {
+          executeChild(syncResultPageChildWorkflow, {
             workflowId,
             args: [
               {
@@ -647,7 +647,7 @@ async function performUpserts({
 
       promises.push(
         queue.add(() =>
-          executeChild(syncResultPageDatabaseWorkflow, {
+          executeChild(syncResultPageDatabaseChildWorkflow, {
             workflowId,
             args: [
               {
