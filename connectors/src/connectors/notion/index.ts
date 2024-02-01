@@ -164,6 +164,24 @@ export async function updateNotionConnector(
         "Error deleting old Nango connection"
       );
     });
+
+    const dataSourceConfig = dataSourceConfigFromConnector(c);
+    try {
+      await launchNotionSyncWorkflow(c.id);
+    } catch (e) {
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
+          error: e,
+        },
+        "Error launching notion sync workflow post update."
+      );
+      return new Err({
+        type: "connector_update_error",
+        message: "Error restarting sync workflow after updating connector",
+      });
+    }
   }
 
   return new Ok(c.id.toString());
