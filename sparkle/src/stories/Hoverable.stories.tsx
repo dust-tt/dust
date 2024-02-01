@@ -19,7 +19,7 @@ export const HoverableExample = () => {
             alert("Clicked!");
           }}
         >
-          Coucou
+          You can hover me.
         </Hoverable>
       </div>
     </div>
