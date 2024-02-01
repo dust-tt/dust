@@ -48,6 +48,7 @@ export * from "./shared/cache";
 export * from "./shared/model_id";
 export * from "./shared/nango_errors";
 export * from "./shared/rate_limiter";
+export * from "./shared/user_operation";
 export * from "./shared/utils/assert_never";
 export * from "./shared/utils/global_error_handler";
 export * from "./shared/utils/hashing";
