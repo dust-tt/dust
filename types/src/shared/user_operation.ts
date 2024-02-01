@@ -11,7 +11,8 @@ export async function sendUserOperationMessage({
     process.env;
 
   if (!SLACK_USER_OPERATION_BOT_TOKEN || !SLACK_USER_OPERATION_CHANNEL_ID) {
-    console.log(
+    logger.info(
+      {},
       "SLACK_USER_OPERATION_BOT_TOKEN or SLACK_USER_OPERATION_CHANNEL_ID is not set"
     );
     return;
