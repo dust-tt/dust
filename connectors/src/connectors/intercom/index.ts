@@ -7,6 +7,11 @@ import type {
 import { Op } from "sequelize";
 
 import {
+  allowSyncTeam,
+  retrieveIntercomConversationsPermissions,
+  revokeSyncTeam,
+} from "@connectors/connectors/intercom/lib/conversation_permissions";
+import {
   allowSyncCollection,
   allowSyncHelpCenter,
   retrieveIntercomHelpCentersPermissions,
@@ -24,6 +29,8 @@ import {
   getHelpCenterCollectionInternalId,
   getHelpCenterIdFromInternalId,
   getHelpCenterInternalId,
+  getTeamIdFromInternalId,
+  getTeamInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomSyncWorkflow,
@@ -36,6 +43,7 @@ import {
   IntercomArticle,
   IntercomCollection,
   IntercomHelpCenter,
+  IntercomTeam,
 } from "@connectors/lib/models/intercom";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok } from "@connectors/lib/result";
@@ -176,6 +184,12 @@ export async function cleanupIntercomConnector(
         },
         transaction: transaction,
       }),
+      IntercomTeam.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction: transaction,
+      }),
     ]);
 
     const nangoRes = await nangoDeleteConnection(
@@ -245,11 +259,17 @@ export async function retrieveIntercomConnectorPermissions({
   }
 
   try {
-    const resources = await retrieveIntercomHelpCentersPermissions({
+    const helpCenterResources = await retrieveIntercomHelpCentersPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
     });
+    const convosResources = await retrieveIntercomConversationsPermissions({
+      connectorId,
+      parentInternalId,
+      filterPermission,
+    });
+    const resources = [...helpCenterResources, ...convosResources];
     return new Ok(resources);
   } catch (e) {
     return new Err(e as Error);
@@ -285,6 +305,8 @@ export async function setIntercomConnectorPermissions(
 
   const intercomClient = await getIntercomClient(connector.connectionId);
   const toBeSignaledHelpCenterIds = new Set<string>();
+  const toBeSignaledTeamIds = new Set<string>();
+
   try {
     for (const [id, permission] of Object.entries(permissions)) {
       if (permission !== "none" && permission !== "read") {
@@ -300,13 +322,13 @@ export async function setIntercomConnectorPermissions(
         connectorId,
         id
       );
+      const teamId = getTeamIdFromInternalId(connectorId, id);
 
       if (helpCenterId) {
         toBeSignaledHelpCenterIds.add(helpCenterId);
         if (permission === "none") {
           await revokeSyncHelpCenter({
             connector,
-            intercomClient,
             helpCenterId,
           });
         }
@@ -338,6 +360,26 @@ export async function setIntercomConnectorPermissions(
             toBeSignaledHelpCenterIds.add(newCollection.helpCenterId);
           }
         }
+      } else if (teamId) {
+        if (permission === "none") {
+          const revokedTeam = await revokeSyncTeam({
+            connector,
+            teamId,
+          });
+          if (revokedTeam) {
+            toBeSignaledTeamIds.add(revokedTeam.teamId);
+          }
+        }
+        if (permission === "read") {
+          const newTeam = await allowSyncTeam({
+            connector,
+            intercomClient,
+            teamId,
+          });
+          if (newTeam) {
+            toBeSignaledTeamIds.add(newTeam.teamId);
+          }
+        }
       }
     }
 
@@ -367,29 +409,56 @@ export async function retrieveIntercomResourcesTitles(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<Record<string, string | null>, Error>> {
-  const [helpCenters, collections, articles] = await Promise.all([
+  const helpCenterIds: string[] = [];
+  const collectionIds: string[] = [];
+  const articleIds: string[] = [];
+  const teamIds: string[] = [];
+
+  internalIds.forEach((internalId) => {
+    let objectId = getHelpCenterIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      helpCenterIds.push(objectId);
+      return;
+    }
+    objectId = getHelpCenterCollectionIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      collectionIds.push(objectId);
+      return;
+    }
+    objectId = getHelpCenterArticleIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      articleIds.push(objectId);
+      return;
+    }
+    objectId = getTeamIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      teamIds.push(objectId);
+    }
+  });
+
+  const [helpCenters, collections, articles, teams] = await Promise.all([
     IntercomHelpCenter.findAll({
       where: {
         connectorId: connectorId,
-        helpCenterId: {
-          [Op.in]: internalIds,
-        },
+        helpCenterId: { [Op.in]: helpCenterIds },
       },
     }),
     IntercomCollection.findAll({
       where: {
         connectorId: connectorId,
-        collectionId: {
-          [Op.in]: internalIds,
-        },
+        collectionId: { [Op.in]: collectionIds },
       },
     }),
     IntercomArticle.findAll({
       where: {
         connectorId: connectorId,
-        articleId: {
-          [Op.in]: internalIds,
-        },
+        articleId: { [Op.in]: articleIds },
+      },
+    }),
+    IntercomTeam.findAll({
+      where: {
+        connectorId: connectorId,
+        teamId: { [Op.in]: teamIds },
       },
     }),
   ]);
@@ -416,6 +485,10 @@ export async function retrieveIntercomResourcesTitles(
     );
     titles[articleInternalId] = article.title;
   }
+  for (const team of teams) {
+    const teamInternalId = getTeamInternalId(connectorId, team.teamId);
+    titles[teamInternalId] = team.name;
+  }
 
   return new Ok(titles);
 }
@@ -424,8 +497,13 @@ export async function retrieveIntercomObjectsParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
+  // No parent for Help Center & Team
   const helpCenterId = getHelpCenterIdFromInternalId(connectorId, internalId);
   if (helpCenterId) {
+    return new Ok([]);
+  }
+  const teamId = getTeamIdFromInternalId(connectorId, internalId);
+  if (teamId) {
     return new Ok([]);
   }
 
