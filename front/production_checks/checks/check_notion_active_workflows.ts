@@ -16,7 +16,7 @@ async function listAllNotionConnectors() {
   const connectorsReplica = getConnectorReplicaDbConnection();
 
   const notionConnectors: NotionConnector[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId" FROM connectors WHERE "type" = 'notion'`,
+    `SELECT id, "dataSourceName", "workspaceId" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
     }
