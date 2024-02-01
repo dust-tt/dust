@@ -71,13 +71,17 @@ export type ConfluencePageWithBodyType = t.TypeOf<
   typeof ConfluencePageWithBodyCodec
 >;
 
-const ConfluenceChildPagesCodec = t.type({
-  id: t.string,
-  status: t.string,
-  title: t.string,
-  spaceId: t.string,
-  childPosition: t.number,
-});
+const ConfluenceChildPagesCodec = t.intersection([
+  t.type({
+    id: t.string,
+    status: t.string,
+    title: t.string,
+    spaceId: t.string,
+  }),
+  t.partial({
+    childPosition: t.number,
+  }),
+]);
 
 const ConfluenceUserProfileCodec = t.intersection([
   t.type({
