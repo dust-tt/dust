@@ -1,4 +1,4 @@
-import React from "react";
+import React, { SyntheticEvent } from "react";
 import { ReactNode } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
@@ -6,7 +6,7 @@ import { classNames } from "@sparkle/lib/utils";
 interface HoverableProps {
   children: ReactNode;
   className: string;
-  onClick: () => void;
+  onClick: (e: SyntheticEvent) => void;
 }
 
 export function Hoverable({ children, className, onClick }: HoverableProps) {
