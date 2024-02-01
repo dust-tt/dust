@@ -93,7 +93,7 @@ export function TeamSharingSection({
       text: "Activated by default for all members of the workspace.",
       confirmationModalData: {
         title: "Moving to Company Assistants",
-        text: "Moving the assistant to Company Assistants will make the assistant editable only by Admins and Builders and add it the “My Assistants” list of all the workspace.",
+        text: "Moving the assistant to Company Assistants will make the assistant editable only by Admins and Builders and add it to every member's “My Assistants” list.",
         confirmText: "Move to Company",
         variant: "primary",
       },
@@ -122,6 +122,7 @@ export function TeamSharingSection({
     variant: "primary",
     usageText,
   };
+
   return (
     <div className="flex flex-col gap-3">
       <div className="text-lg font-bold text-element-900">Sharing</div>
@@ -184,14 +185,12 @@ export function TeamSharingSection({
                         (!agentUsage.agentUsage ||
                           agentUsage.agentUsage.userCount <= 1))
                     ) {
-                      console.log("no modal");
                       setNewScope(
                         entryScope as Exclude<AgentConfigurationScope, "global">
                       );
                       return;
                     }
                     // in all other cases, show modal
-                    console.log("show modal");
                     setModalNewScope(
                       entryScope as Exclude<AgentConfigurationScope, "global">
                     );
