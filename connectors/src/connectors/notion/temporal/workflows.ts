@@ -168,6 +168,7 @@ export async function notionSyncWorkflow({
           isBatchSync: isInitialSync,
           queue: childWorkflowQueue,
           topLevelWorkflowId,
+          forceResync,
         })
       );
     } while (cursor);
@@ -195,6 +196,7 @@ export async function notionSyncWorkflow({
       queue: childWorkflowQueue,
       childWorkflowsNameSuffix: "discovered",
       topLevelWorkflowId,
+      forceResync,
     });
 
     if (!isGarbageCollectionRun) {
@@ -268,9 +270,11 @@ export async function upsertPageWorkflow({
 export async function upsertDatabaseWorkflow({
   connectorId,
   databaseId,
+  forceResync = false,
 }: {
   connectorId: ModelId;
   databaseId: string;
+  forceResync?: boolean;
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
   const queue = new PQueue({
@@ -300,6 +304,7 @@ export async function upsertDatabaseWorkflow({
     isGarbageCollectionRun: false,
     isBatchSync: false,
     queue,
+    forceResync,
   });
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
@@ -538,6 +543,7 @@ export async function syncResultPageDatabaseChildWorkflow({
   isGarbageCollectionRun,
   isBatchSync,
   topLevelWorkflowId,
+  forceResync,
 }: {
   connectorId: ModelId;
   databaseIds: string[];
@@ -545,6 +551,7 @@ export async function syncResultPageDatabaseChildWorkflow({
   isGarbageCollectionRun: boolean;
   isBatchSync: boolean;
   topLevelWorkflowId: string;
+  forceResync: boolean;
 }): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
@@ -588,6 +595,7 @@ export async function syncResultPageDatabaseChildWorkflow({
         isGarbageCollectionRun,
         isBatchSync,
         queue: workflowQueue,
+        forceResync,
       })
     );
   }
@@ -603,6 +611,7 @@ async function upsertDatabase({
   isGarbageCollectionRun,
   isBatchSync,
   queue,
+  forceResync,
 }: {
   connectorId: ModelId;
   databaseId: string;
@@ -611,6 +620,7 @@ async function upsertDatabase({
   isGarbageCollectionRun: boolean;
   isBatchSync: boolean;
   queue: PQueue;
+  forceResync: boolean;
 }) {
   let cursor: string | null = null;
   let pageIndex = 0;
@@ -627,9 +637,10 @@ async function upsertDatabase({
         ...loggerArgs,
         pageIndex,
       },
-      // This will prevent syncing pages that are already up to date, unless
-      // this is the first run for this database or a garbage collection run.
-      returnUpToDatePageIdsForExistingDatabase: isGarbageCollectionRun,
+      // This prevents syncing pages that are already up to date, unless
+      // this is the first run for this database, a garbage collection run or a force resync.
+      returnUpToDatePageIdsForExistingDatabase:
+        isGarbageCollectionRun || forceResync,
       runTimestamp,
       topLevelWorkflowId,
       // We don't store pages in cache here, we only want to return the pageIds
@@ -650,6 +661,7 @@ async function upsertDatabase({
       queue,
       childWorkflowsNameSuffix: `database-children-${databaseId}`,
       topLevelWorkflowId,
+      forceResync,
     });
 
     promises.push(upsertsPromise);
@@ -669,6 +681,7 @@ async function performUpserts({
   queue,
   childWorkflowsNameSuffix = "",
   topLevelWorkflowId,
+  forceResync,
 }: {
   connectorId: ModelId;
   pageIds: string[];
@@ -680,6 +693,7 @@ async function performUpserts({
   queue: PQueue;
   childWorkflowsNameSuffix?: string;
   topLevelWorkflowId: string;
+  forceResync: boolean;
 }): Promise<void> {
   let pagesToSync: string[] = [];
   let databasesToSync: string[] = [];
@@ -777,6 +791,7 @@ async function performUpserts({
                 isBatchSync,
                 databaseIds: batch,
                 topLevelWorkflowId,
+                forceResync,
               },
             ],
             searchAttributes: {
