@@ -186,7 +186,9 @@ export class NotionDatabase extends Model<
   declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
 
-  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
+  declare structuredDataEnabled: CreationOptional<boolean>;
+
+  declare connectorId: ForeignKey<Connector["id"]> | null;
 }
 NotionDatabase.init(
   {
@@ -244,6 +246,11 @@ NotionDatabase.init(
     notionUrl: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    structuredDataEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

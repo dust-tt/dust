@@ -2310,3 +2310,67 @@ async function renderPageSection({
 function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
 }
+
+export async function upsertDatabaseStructuredDataFromCache({
+  databaseId,
+  connectorId,
+  topLevelWorkflowId,
+  loggerArgs,
+}: {
+  databaseId: string;
+  connectorId: number;
+  topLevelWorkflowId: string;
+  loggerArgs: Record<string, string | number>;
+}): Promise<void> {
+  const connector = await Connector.findOne({
+    where: {
+      type: "notion",
+      id: connectorId,
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    ...loggerArgs,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+    databaseId,
+  });
+
+  const dbModel = await NotionDatabase.findOne({
+    where: {
+      connectorId,
+      notionDatabaseId: databaseId,
+    },
+  });
+
+  if (!dbModel?.structuredDataEnabled) {
+    localLogger.info("Structured data not enabled for database (skipping).");
+    return;
+  }
+
+  const pageCacheEntries = await NotionConnectorPageCacheEntry.findAll({
+    where: {
+      parentId: databaseId,
+      connectorId,
+      workflowId: topLevelWorkflowId,
+    },
+  });
+
+  const csv = await renderChildDatabaseFromPages({
+    databaseTitle: null,
+    pagesProperties: pageCacheEntries.map(
+      (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
+    ),
+    cellSeparator: ",",
+    rowBoundary: "",
+  });
+
+  localLogger.info(
+    { csvLength: csv.length, databaseTitle: dbModel.title },
+    "Should upsert structured data to Data Source (not implemented)."
+  );
+}

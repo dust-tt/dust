@@ -32,6 +32,7 @@ const {
   renderAndUpsertPageFromCache,
   clearWorkflowCache,
   getDiscoveredResourcesFromCache,
+  upsertDatabaseStructuredDataFromCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
