@@ -35,10 +35,10 @@ import ReactMarkdown from "react-markdown";
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { assistantUsageMessage } from "@app/lib/assistant";
+import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { useAgentConfigurations } from "@app/lib/swr";
-import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
@@ -287,31 +287,12 @@ function ButtonsSection({
   const updateAgentUserListStatus = async (listStatus: AgentUserListStatus) => {
     setIsAddingOrRemoving(true);
 
-    const body: PostAgentListStatusRequestBody = {
-      agentId: agentConfiguration.sId,
+    const { errorMessage, success } = await performAgentUserListStatusUpdate({
       listStatus,
-    };
-
-    const res = await fetch(
-      `/api/w/${owner.sId}/members/me/agent_list_status`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!res.ok) {
-      const data = await res.json();
-      sendNotification({
-        title: `Error ${
-          listStatus === "in-list" ? "adding" : "removing"
-        } Assistant`,
-        description: data.error.message,
-        type: "error",
-      });
-    } else {
+      owner,
+      agentConfigurationSId: agentConfiguration.sId,
+    });
+    if (success) {
       sendNotification({
         title: `Assistant ${
           listStatus === "in-list"
@@ -321,6 +302,14 @@ function ButtonsSection({
         type: "success",
       });
       onUpdate();
+    } else {
+      sendNotification({
+        title: `Error ${
+          listStatus === "in-list" ? "adding" : "removing"
+        } Assistant`,
+        description: errorMessage,
+        type: "error",
+      });
     }
 
     setIsAddingOrRemoving(false);
