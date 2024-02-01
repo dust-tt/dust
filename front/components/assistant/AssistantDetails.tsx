@@ -168,7 +168,7 @@ export function AssistantDetails({
         <DescriptionSection />
         <InstructionsSection />
         <UsageSection
-          assistantName={assistant.name}
+          assistantName={effectiveAssistant.name}
           usage={agentUsage.agentUsage}
           isLoading={agentUsage.isAgentUsageLoading}
           isError={agentUsage.isAgentUsageError}
