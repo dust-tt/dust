@@ -64,6 +64,10 @@ function preProcessTimestampForNotion(ts: number) {
   return Math.floor(ts / SYNC_PERIOD_DURATION_MS) * SYNC_PERIOD_DURATION_MS;
 }
 
+// This is the main top-level workflow that continuously runs for each notion connector.
+// Each connector has 2 instances of this workflow running in parallel:
+// - one that handles the "incremental" live sync (garbageCollectionMode = "never")
+// - one that continuously runs garbage collection (garbageCollectionMode = "always")
 export async function notionSyncWorkflow({
   connectorId,
   startFromTs,
@@ -226,6 +230,43 @@ export async function notionSyncWorkflow({
     forceResync: false,
   });
 }
+
+// Top level workflow to be used by the CLI or by Poké in order to force-refresh a given Notion page.
+export async function upsertPageWorkflow({
+  connectorId,
+  pageId,
+}: {
+  connectorId: ModelId;
+  pageId: string;
+}) {
+  const topLevelWorkflowId = workflowInfo().workflowId;
+  const runTimestamp = Date.now();
+  await clearConnectorCache({ connectorId, topLevelWorkflowId });
+  const { skipped } = await executeChild(upsertPageChildWorkflow, {
+    workflowId: `${topLevelWorkflowId}-upsert-page-${pageId}`,
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    args: [
+      {
+        connectorId,
+        pageId,
+        runTimestamp,
+        isBatchSync: false,
+        pageIndex: 0,
+        topLevelWorkflowId,
+      },
+    ],
+    parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+    memo: workflowInfo().memo,
+  });
+  await clearConnectorCache({ connectorId, topLevelWorkflowId });
+  return { skipped };
+}
+
+/*
+ ** AFTER THIS POINT, ALL WORKFLOWS ARE CHILD WORKFLOWS AND SHOULD ONLY BE CALLED BY A TOP-LEVEL WORKFLOW DEFINED ABOVE.
+ */
 
 export async function upsertPageChildWorkflow({
   connectorId,
