@@ -60,6 +60,7 @@ export function AssistantDetails({
   owner,
   show,
 }: AssistantDetailsProps) {
+  // TODO(2024-02-01 flav) Remove `assistant` once all the call sites have been refactored.
   const assistantId = assistantSId ?? assistant.sId;
 
   const agentUsage = useAgentUsage({
