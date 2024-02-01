@@ -132,7 +132,7 @@ export function RemoveAssistantFromListDialog({
             agentConfigurationSId: agentConfiguration.sId,
           });
 
-        if (!success) {
+        if (success) {
           sendNotification({
             title: `Assistant removed from your list`,
             type: "success",
