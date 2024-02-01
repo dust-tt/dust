@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
+import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
 import { Op } from "sequelize";
 
@@ -21,7 +22,6 @@ import {
 } from "@connectors/connectors/notion/lib/garbage_collect";
 import {
   getBlockParentMemoized,
-  getDatabaseChildPages,
   getPageOrBlockParent,
   getPagesAndDatabasesEditedSince,
   getParsedDatabase,
@@ -79,16 +79,31 @@ export async function fetchDatabaseChildPages({
   databaseId,
   cursor,
   loggerArgs,
-  excludeUpToDatePages,
+  returnUpToDatePageIdsForExistingDatabase,
   runTimestamp,
+  storeInCache,
+  topLevelWorkflowId,
 }: {
   connectorId: ModelId;
   databaseId: string;
   cursor: string | null;
   loggerArgs: Record<string, string | number>;
-  excludeUpToDatePages: boolean;
-  runTimestamp: number;
-}): Promise<{
+  storeInCache: boolean;
+  topLevelWorkflowId: string;
+} & (
+  | {
+      // If returnUpToDatePageIdsForExistingDatabase is true, we will return all pageIds in the database.
+      // In this case, we do not care about the runTimestamp.
+      returnUpToDatePageIdsForExistingDatabase: true;
+      runTimestamp?: undefined | number;
+    }
+  | {
+      // If returnUpToDatePageIdsForExistingDatabase is false, we will return only the pageIds that have been
+      // updated since their lastSeenTs, unless this is the first run we see this database.
+      returnUpToDatePageIdsForExistingDatabase: false;
+      runTimestamp: number;
+    }
+)): Promise<{
   pageIds: string[];
   nextCursor: string | null;
 }> {
@@ -120,11 +135,6 @@ export async function fetchDatabaseChildPages({
     };
   }
 
-  const isDbFirstSync =
-    !notionDbModel ||
-    !notionDbModel.firstSeenTs ||
-    notionDbModel.firstSeenTs.getTime() === runTimestamp;
-
   const accessToken = await getNotionAccessToken(connector.connectionId);
 
   const localLoggerArgs = {
@@ -137,8 +147,8 @@ export async function fetchDatabaseChildPages({
 
   let res;
   try {
-    res = await getDatabaseChildPages({
-      notionAccessToken: accessToken,
+    res = await retrieveDatabaseChildrenResultPage({
+      accessToken,
       databaseId,
       loggerArgs: localLoggerArgs,
       cursor,
@@ -174,9 +184,40 @@ export async function fetchDatabaseChildPages({
     throw e;
   }
 
-  const { pages, nextCursor } = res;
+  if (!res) {
+    return {
+      pageIds: [],
+      nextCursor: null,
+    };
+  }
 
-  if (!excludeUpToDatePages || isDbFirstSync) {
+  const { results, next_cursor: nextCursor } = res;
+
+  const pages: PageObjectResponse[] = [];
+  for (const r of results) {
+    if (isFullPage(r)) {
+      pages.push(r);
+    }
+  }
+
+  if (storeInCache) {
+    await cacheDatabaseChildPages({
+      connectorId,
+      topLevelWorkflowId,
+      loggerArgs: localLoggerArgs,
+      pages,
+      databaseId,
+    });
+  }
+
+  if (
+    returnUpToDatePageIdsForExistingDatabase ||
+    // If the database is new (either we never seen it before, or the first time we saw it was
+    // during this run), we return all the pages.
+    !notionDbModel ||
+    !notionDbModel.firstSeenTs ||
+    notionDbModel.firstSeenTs.getTime() === runTimestamp
+  ) {
     return {
       pageIds: pages.map((p) => p.id),
       nextCursor,
@@ -201,9 +242,9 @@ export async function fetchDatabaseChildPages({
     lastSeenTsByPageId.set(page.notionPageId, page.lastSeenTs.getTime());
   }
   const filteredPageIds = pages
-    .filter(({ id, lastEditedTs }) => {
+    .filter(({ id, last_edited_time }) => {
       const ts = lastSeenTsByPageId.get(id);
-      return !ts || ts < lastEditedTs;
+      return !ts || ts < new Date(last_edited_time).getTime();
     })
     .map((p) => p.id);
 
@@ -1236,22 +1277,19 @@ export async function cacheBlockChildren({
   };
 }
 
-export async function cacheDatabaseChildren({
+async function cacheDatabaseChildPages({
   connectorId,
-  databaseId,
-  cursor,
   topLevelWorkflowId,
   loggerArgs,
+  pages,
+  databaseId,
 }: {
   connectorId: ModelId;
-  databaseId: string;
-  cursor: string | null;
   topLevelWorkflowId: string;
   loggerArgs: Record<string, string | number>;
-}): Promise<{
-  nextCursor: string | null;
-  childrenCount: number;
-}> {
+  pages: PageObjectResponse[];
+  databaseId: string;
+}): Promise<void> {
   const connector = await Connector.findOne({
     where: {
       type: "notion",
@@ -1261,11 +1299,9 @@ export async function cacheDatabaseChildren({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const accessToken = await getNotionAccessToken(connector.connectionId);
 
   const localLogger = logger.child({
     ...loggerArgs,
-    databaseId,
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
   });
@@ -1282,41 +1318,13 @@ export async function cacheDatabaseChildren({
       { skipReason: notionDatabaseModel.skipReason },
       "Skipping database with skip reason"
     );
-    return {
-      nextCursor: null,
-      childrenCount: 0,
-    };
-  }
-
-  localLogger.info(
-    "notionDatabaseChildrenResultPageActivity: Retrieving result page from Notion API."
-  );
-  const resultPage = await retrieveDatabaseChildrenResultPage({
-    accessToken,
-    databaseId,
-    cursor,
-    loggerArgs,
-  });
-
-  if (!resultPage) {
-    localLogger.info("Skipping result page not found.");
-    return {
-      nextCursor: null,
-      childrenCount: 0,
-    };
-  }
-
-  let pages = [];
-  for (const p of resultPage.results) {
-    if (isFullPage(p)) {
-      pages.push(p);
-    }
+    return;
   }
 
   // exclude pages that are already in the cache
   const existingPages = await NotionConnectorPageCacheEntry.findAll({
     where: {
-      notionPageId: resultPage.results.map((r) => r.id),
+      notionPageId: pages.map((p) => p.id),
       connectorId: connector.id,
       workflowId: topLevelWorkflowId,
     },
@@ -1358,11 +1366,6 @@ export async function cacheDatabaseChildren({
       })
     )
   );
-
-  return {
-    childrenCount: pages.length,
-    nextCursor: resultPage.next_cursor,
-  };
 }
 
 async function resolveResourceParent({
@@ -1609,7 +1612,7 @@ export async function renderAndUpsertPageFromCache({
   }
   const renderedChildDatabases: Record<string, string> = {};
   for (const [databaseId, pages] of Object.entries(childDatabases)) {
-    renderedChildDatabases[databaseId] = renderChildDatabaseFromPages({
+    renderedChildDatabases[databaseId] = await renderChildDatabaseFromPages({
       databaseTitle: childDatabaseTitleById[databaseId] ?? null,
       pagesProperties: pages.map(
         (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
