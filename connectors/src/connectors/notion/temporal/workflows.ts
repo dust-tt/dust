@@ -29,7 +29,6 @@ const {
   fetchDatabaseChildPages,
   cachePage,
   cacheBlockChildren,
-  cacheDatabaseChildren,
   renderAndUpsertPageFromCache,
   clearConnectorCache,
   getDiscoveredResourcesFromCache,
@@ -390,12 +389,14 @@ export async function processChildDatabaseWorkflow({
 
   let cursor: string | null = null;
   do {
-    const { nextCursor } = await cacheDatabaseChildren({
+    const { nextCursor } = await fetchDatabaseChildPages({
       connectorId,
       databaseId,
       cursor,
       loggerArgs,
       topLevelWorkflowId,
+      storeInCache: true,
+      returnUpToDatePageIdsForExistingDatabase: true,
     });
     cursor = nextCursor;
   } while (cursor);
@@ -507,15 +508,20 @@ export async function syncResultPageDatabaseWorkflow({
         },
         // This will prevent syncing pages that are already up to date, unless
         // this is the first run for this database or a garbage collection run.
-        excludeUpToDatePages: !isGarbageCollectionRun,
+        returnUpToDatePageIdsForExistingDatabase: isGarbageCollectionRun,
         runTimestamp,
+        topLevelWorkflowId,
+        // We don't store pages in cache here, we only want to return the pageIds
+        // that need to be synced.
+        storeInCache: false,
       });
       cursor = nextCursor;
       pageIndex += 1;
       const upsertsPromise = performUpserts({
         connectorId,
         pageIds,
-        databaseIds: [], // we don't upsert any databases in this workflow
+        // we don't upsert any databases in this workflow
+        databaseIds: [],
         isGarbageCollectionRun,
         runTimestamp,
         pageIndex,
