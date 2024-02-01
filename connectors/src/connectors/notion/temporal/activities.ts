@@ -441,7 +441,7 @@ export async function getPagesAndDatabasesToSync({
   };
 }
 
-export async function upsertDatabase(
+export async function upsertDatabaseInConnectorsDb(
   connectorId: ModelId,
   databaseId: string,
   runTimestamp: number,
@@ -1916,7 +1916,7 @@ export async function renderAndUpsertPageFromCache({
   ]);
 }
 
-export async function clearConnectorCache({
+export async function clearWorkflowCache({
   connectorId,
   topLevelWorkflowId,
 }: {
