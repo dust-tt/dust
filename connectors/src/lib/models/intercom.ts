@@ -342,8 +342,6 @@ IntercomTeam.init(
         unique: true,
         name: "intercom_connector_team_idx",
       },
-      { fields: ["connectorId"] },
-      { fields: ["teamId"] },
     ],
     modelName: "intercom_teams",
   }
