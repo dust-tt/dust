@@ -95,6 +95,7 @@
   },
   "devDependencies": {
     "@google-cloud/storage": "^6.11.0",
+    "@qdrant/qdrant-js": "^1.7.0",
     "@types/formidable": "^3.4.3",
     "@types/fs-extra": "^11.0.1",
     "@types/jest": "^29.5.0",
