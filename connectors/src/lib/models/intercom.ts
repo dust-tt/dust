@@ -282,3 +282,68 @@ IntercomArticle.init(
   }
 );
 Connector.hasMany(IntercomArticle);
+
+export class IntercomTeam extends Model<
+  InferAttributes<IntercomTeam>,
+  InferCreationAttributes<IntercomTeam>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare teamId: string;
+  declare name: string;
+
+  declare lastUpsertedTs?: Date;
+  declare permission: "read" | "none";
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+
+IntercomTeam.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    teamId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    lastUpsertedTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    permission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      {
+        fields: ["connectorId", "teamId"],
+        unique: true,
+        name: "intercom_connector_team_idx",
+      },
+    ],
+    modelName: "intercom_teams",
+  }
+);
+Connector.hasMany(IntercomTeam);

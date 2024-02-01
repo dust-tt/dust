@@ -25,6 +25,7 @@ import {
   IntercomArticle,
   IntercomCollection,
   IntercomHelpCenter,
+  IntercomTeam,
 } from "@connectors/lib/models/intercom";
 import {
   NotionConnectorBlockCacheEntry,
@@ -76,6 +77,7 @@ async function main(): Promise<void> {
   await IntercomHelpCenter.sync({ alter: true });
   await IntercomCollection.sync({ alter: true });
   await IntercomArticle.sync({ alter: true });
+  await IntercomTeam.sync({ alter: true });
   await WebCrawlerConfiguration.sync({ alter: true });
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
