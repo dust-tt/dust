@@ -5,6 +5,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -74,6 +75,8 @@ export default function AssistantConversation({
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
+  const [isAssistantDetailOpen, setIsAssistantDetailOpen] = useState(false);
+  const [detailViewContent, setDetailViewContent] = useState("");
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -89,6 +92,39 @@ export default function AssistantConversation({
       window.removeEventListener("keydown", handleNewConvoShortcut);
     };
   }, [owner.sId, router]);
+
+  const handleCloseModal = () => {
+    const currentPathname = router.pathname;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { assistantDetails, ...restQuery } = router.query;
+    void router.push(
+      { pathname: currentPathname, query: restQuery },
+      undefined,
+      {
+        shallow: true,
+      }
+    );
+  };
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const assistantSId = router.query.assistantDetails ?? [];
+      if (assistantSId && typeof assistantSId === "string") {
+        setIsAssistantDetailOpen(true);
+        setDetailViewContent(assistantSId);
+      } else {
+        setIsAssistantDetailOpen(false);
+      }
+    };
+
+    // Initial check in case the component mounts with the query already set.
+    handleRouteChange();
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.query, router.events]);
 
   const { conversation } = useConversation({
     conversationId,
@@ -156,6 +192,14 @@ export default function AssistantConversation({
           <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
         }
       >
+        <AssistantDetails
+          owner={owner}
+          assistantSId={detailViewContent}
+          show={isAssistantDetailOpen}
+          onClose={handleCloseModal}
+          // TODO(2024-02-01 flav) Remove flow from AssistantDetails.
+          flow="personal"
+        />
         <Conversation
           owner={owner}
           user={user}

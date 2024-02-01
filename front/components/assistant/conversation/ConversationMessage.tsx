@@ -79,6 +79,12 @@ export function EmojiSelector({
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
  */
+
+ConversationMessage.defaultProps = {
+  avatarBusy: false,
+  enableEmojis: true,
+};
+
 export function ConversationMessage({
   owner,
   user,
@@ -89,9 +95,9 @@ export function ConversationMessage({
   pictureUrl,
   buttons,
   reactions,
-  avatarBusy = false,
-  // avatarBackgroundColor,
-  enableEmojis = true,
+  avatarBusy,
+  enableEmojis,
+  renderName,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -108,8 +114,8 @@ export function ConversationMessage({
   }[];
   reactions: MessageReactionType[];
   avatarBusy?: boolean;
-  avatarBackgroundColor?: string;
   enableEmojis: boolean;
+  renderName: (name: string | null) => React.ReactNode;
 }) {
   const [emojiData, setEmojiData] = useState<EmojiMartData | null>(null);
 
@@ -189,7 +195,7 @@ export function ConversationMessage({
                 className=""
               />
             </div>
-            <div className="text-sm font-medium">{name}</div>
+            {renderName(name)}
           </div>
           <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
             {children}
@@ -263,7 +269,6 @@ export function ConversationMessage({
     </>
   );
 }
-
 interface ButtonEmojiProps {
   variant?: "selected" | "unselected";
   count?: string;
