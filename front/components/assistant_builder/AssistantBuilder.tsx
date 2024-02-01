@@ -878,7 +878,7 @@ export default function AssistantBuilder({
 
           <div className="flex flex-col gap-6 text-sm text-element-700">
             <div className="text-2xl font-bold text-element-900">
-              Action & Data Sources
+              Action & Data sources
             </div>
             {configurableDataSources.length === 0 &&
               Object.keys(builderState.dataSourceConfigurations).length ===
