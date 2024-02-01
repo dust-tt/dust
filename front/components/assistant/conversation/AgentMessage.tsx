@@ -7,11 +7,6 @@ import {
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Icon,
-  ListAddIcon,
-  ListRemoveIcon,
-  MoreIcon,
-  PencilSquareIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
