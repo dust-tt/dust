@@ -6,6 +6,7 @@ import {
   DEFAULT_PAID_QDRANT_CLUSTER,
   EMBEDDING_CONFIG,
   isConnectorProvider,
+  sendUserOperationMessage,
 } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
@@ -382,6 +383,16 @@ async function handler(
           },
         });
       }
+      void sendUserOperationMessage({
+        logger,
+        message: `${
+          auth.user()?.email || "unknown user"
+        } created Data Source \`${dataSource.name}\`  for workspace \`${
+          owner.name
+        }\` sId: \`${owner.sId}\` connectorId: \`${
+          connectorsRes.value.id
+        }\` provider: \`${provider}\``,
+      });
 
       dataSource = await dataSource.update({
         connectorId: connectorsRes.value.id,

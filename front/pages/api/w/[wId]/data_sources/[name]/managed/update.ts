@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
+import { ConnectorsAPI, sendUserOperationMessage } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -102,6 +102,15 @@ async function handler(
         params: {
           connectionId,
         },
+      });
+
+      void sendUserOperationMessage({
+        logger: logger,
+        message: `${
+          auth.user()?.email || "unknown user"
+        } updated the data source \`${dataSource.name}\`  for workspace \`${
+          owner.name
+        }\` sId: \`${owner.sId}\` connectorId: \`${dataSource.connectorId}\``,
       });
 
       if (updateRes.isErr()) {
