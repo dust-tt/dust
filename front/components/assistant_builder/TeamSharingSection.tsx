@@ -112,6 +112,7 @@ export function TeamSharingSection({
       },
     },
   };
+
   // special case if changing setting from company to shared
   const companyToSharedModalData: ConfirmationModalDataType = {
     title: "Moving to Shared Assistants",
@@ -123,6 +124,20 @@ export function TeamSharingSection({
     usageText,
   };
 
+  let confirmationModalData: ConfirmationModalDataType = {
+    title: "",
+    text: "",
+    confirmText: "",
+    variant: "primary",
+  };
+
+  if (requestNewScope) {
+    confirmationModalData =
+      requestNewScope === "published" && initialScope === "workspace"
+        ? companyToSharedModalData
+        : scopeInfo[requestNewScope].confirmationModalData;
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="text-lg font-bold text-element-900">Sharing</div>
@@ -130,14 +145,7 @@ export function TeamSharingSection({
         {requestNewScope && (
           <ScopeChangeModal
             show={requestNewScope !== null}
-            confirmationModalData={
-              requestNewScope
-                ? requestNewScope === "published" &&
-                  initialScope === "workspace"
-                  ? companyToSharedModalData
-                  : scopeInfo[requestNewScope].confirmationModalData
-                : { title: "", text: "", confirmText: "", variant: "primary" }
-            }
+            confirmationModalData={confirmationModalData}
             onClose={() => setModalNewScope(null)}
             setSharingScope={() =>
               requestNewScope && setNewScope(requestNewScope)
