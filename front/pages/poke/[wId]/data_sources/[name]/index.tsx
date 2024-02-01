@@ -3,6 +3,8 @@ import {
   ContextItem,
   DocumentTextIcon,
   EyeIcon,
+  Icon,
+  InformationCircleIcon,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -23,7 +25,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
-import { timeAgoFrom } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
@@ -62,7 +64,9 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
-  const dataSource = await getDataSource(auth, dataSourceName);
+  const dataSource = await getDataSource(auth, dataSourceName, {
+    includeEditedBy: true,
+  });
   if (!dataSource) {
     return {
       notFound: true,
@@ -277,6 +281,16 @@ const DataSourcePage = ({
         <div className="px-8 py-8"></div>
         <Page.Vertical align="stretch">
           <Page.SectionHeader title={`${dataSource.name}`} />
+
+          {dataSource.editedByUser && dataSource.editedByUser.editedAt && (
+            <div className="flex items-center gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+              <Icon visual={InformationCircleIcon} />
+              The last modification to the connection was made by{" "}
+              {dataSource.editedByUser.fullName} on{" "}
+              {formatTimestampToFriendlyDate(dataSource.editedByUser.editedAt)}.
+            </div>
+          )}
+
           <div className="text-sm font-bold text-action-500">
             <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
           </div>
