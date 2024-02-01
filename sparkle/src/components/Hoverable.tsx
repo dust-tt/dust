@@ -9,6 +9,10 @@ interface HoverableProps {
   onClick: (e: SyntheticEvent) => void;
 }
 
+Hoverable.defaultProps = {
+  className: "",
+};
+
 export function Hoverable({ children, className, onClick }: HoverableProps) {
   return (
     <span
