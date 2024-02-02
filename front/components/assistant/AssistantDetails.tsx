@@ -39,6 +39,8 @@ import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { useAgentConfigurations } from "@app/lib/swr";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import { SharingDropdown } from "@app/components/assistant_builder/TeamSharingSection";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
@@ -78,14 +80,28 @@ export function AssistantDetails({
   }
 
   const DescriptionSection = () => (
-    <div className="flex flex-col gap-4 sm:flex-row">
-      <Avatar
-        visual={
-          <img src={effectiveAssistant.pictureUrl} alt="Assistant avatar" />
-        }
-        size="md"
-      />
-      <div>{effectiveAssistant.description}</div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Avatar
+          visual={
+            <img src={effectiveAssistant.pictureUrl} alt="Assistant avatar" />
+          }
+          size="lg"
+        />
+        <div className="flex flex-col gap-1">
+          <div className="text-lg font-bold text-element-900">{`@${effectiveAssistant.name}`}</div>
+          <SharingDropdown
+            owner={owner}
+            agentConfigurationId={effectiveAssistant.sId}
+            initialScope={effectiveAssistant.scope}
+            newScope={effectiveAssistant.scope}
+            setNewScope={() => console.log("scope setting todo")}
+          />
+        </div>
+      </div>
+      <div className="text-sm text-element-900">
+        {effectiveAssistant.description}
+      </div>
     </div>
   );
 
@@ -145,20 +161,12 @@ export function AssistantDetails({
   return (
     <Modal
       isOpen={show}
-      title={`@${effectiveAssistant.name}`}
+      title="About this Assistant"
       onClose={onClose}
       hasChanged={false}
       variant="side-sm"
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
-        <ButtonsSection
-          owner={owner}
-          agentConfiguration={effectiveAssistant}
-          detailsModalClose={onClose}
-          onUpdate={mutateAgentConfigurations}
-          onClose={onClose}
-          flow={flow}
-        />
         <DescriptionSection />
         <InstructionsSection />
         <UsageSection
