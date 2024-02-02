@@ -7,6 +7,7 @@ import {
   ServerIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationScope,
   AgentConfigurationType,
   ConnectorProvider,
   CoreAPITable,
@@ -21,10 +22,12 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -42,19 +45,54 @@ export function AssistantDetails({
   owner,
   show,
 }: AssistantDetailsProps) {
+  const sendNotification = useContext(SendNotificationsContext);
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: assistantId,
-  });
+  const { agentConfiguration, mutateAgentConfiguration } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId,
+    });
+  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
+
+  if (!agentConfiguration) {
+    throw new Error("Unexpected: Agent configuration not found");
+  }
 
   const effectiveAssistant = assistant ?? agentConfiguration;
   if (!effectiveAssistant) {
     return <></>;
   }
+  const updateScope = async (
+    scope: Exclude<AgentConfigurationScope, "global">
+  ) => {
+    setIsUpdatingScope(true);
+
+    const { success, errorMessage } = await updateAgentScope({
+      scope,
+      owner,
+      agentConfigurationId: agentConfiguration.sId,
+    });
+
+    if (success) {
+      sendNotification({
+        title: `Assistant sharing updated.`,
+        type: "success",
+      });
+
+      await mutateAgentConfiguration();
+    } else {
+      sendNotification({
+        title: `Error updating assistant sharing.`,
+        description: errorMessage,
+        type: "error",
+      });
+    }
+
+    setIsUpdatingScope(false);
+  };
 
   const usageSentence =
     agentUsage.agentUsage &&
@@ -82,7 +120,8 @@ export function AssistantDetails({
             agentConfigurationId={effectiveAssistant.sId}
             initialScope={effectiveAssistant.scope}
             newScope={effectiveAssistant.scope}
-            setNewScope={() => console.log("TODO")}
+            disabled={isUpdatingScope}
+            setNewScope={(scope) => updateScope(scope)}
           />
         </div>
       </div>

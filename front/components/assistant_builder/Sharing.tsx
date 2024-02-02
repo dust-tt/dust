@@ -140,12 +140,14 @@ export function SharingSection({
 export function SharingDropdown({
   owner,
   agentConfigurationId,
+  disabled,
   initialScope,
   newScope,
   setNewScope,
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
+  disabled?: boolean;
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
@@ -201,6 +203,7 @@ export function SharingDropdown({
   }
 
   const allowedToChange =
+    !disabled &&
     // never change global assistant
     initialScope !== "global" &&
     // only builders can change company assistants
