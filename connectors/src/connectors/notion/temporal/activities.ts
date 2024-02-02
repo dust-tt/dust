@@ -64,6 +64,7 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -637,7 +638,6 @@ export async function garbageCollectorMarkAsSeen({
   connectorId,
   pageIds,
   databaseIds,
-  runTimestamp,
 }: {
   connectorId: ModelId;
   pageIds: string[];
@@ -659,15 +659,10 @@ export async function garbageCollectorMarkAsSeen({
     workspaceId: connector.workspaceId,
   });
 
-  await NotionPage.update(
-    { lastSeenTs: new Date(runTimestamp) },
-    { where: { notionPageId: pageIds, connectorId: connector.id } }
-  );
-
-  await NotionDatabase.update(
-    { lastSeenTs: new Date(runTimestamp) },
-    { where: { notionDatabaseId: databaseIds, connectorId: connector.id } }
-  );
+  const redisCli = await redisClient();
+  const redisKey = redisGarbageCollectorKey(connector.id);
+  await redisCli.sAdd(`${redisKey}-pages`, pageIds);
+  await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
 
   const existingPageIds = new Set(
     (
@@ -755,23 +750,27 @@ export async function garbageCollect({
   }
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
+  const redisCli = await redisClient();
+  const redisKey = redisGarbageCollectorKey(connector.id);
+
+  const pageIdsSeenInRun = new Set(
+    await redisCli.sMembers(`${redisKey}-pages`)
+  );
+  const databaseIdsSeenInRun = new Set(
+    await redisCli.sMembers(`${redisKey}-databases`)
+  );
+
   const pagesToCheck = await NotionPage.findAll({
     where: {
       connectorId: connector.id,
-      // Only look at pages that have not been seen during the garbage collect run.
-      lastSeenTs: {
-        [Op.lt]: new Date(runTimestamp),
-      },
     },
+    attributes: ["notionPageId", "lastSeenTs", "skipReason"],
   });
   const databasesToCheck = await NotionDatabase.findAll({
     where: {
       connectorId: connector.id,
-      // Only look at database that have not been seen during the garbage collect run.
-      lastSeenTs: {
-        [Op.lt]: new Date(runTimestamp),
-      },
     },
+    attributes: ["notionDatabaseId", "lastSeenTs", "skipReason"],
   });
 
   localLogger.info(
@@ -786,11 +785,15 @@ export async function garbageCollect({
     | { type: "page"; resource: NotionPage }
     | { type: "database"; resource: NotionDatabase }
   > = [
-    ...pagesToCheck.map((page) => ({ type: "page" as const, resource: page })),
-    ...databasesToCheck.map((db) => ({
-      type: "database" as const,
-      resource: db,
-    })),
+    ...pagesToCheck
+      .filter((page) => !pageIdsSeenInRun.has(page.notionPageId))
+      .map((page) => ({ type: "page" as const, resource: page })),
+    ...databasesToCheck
+      .filter((db) => !databaseIdsSeenInRun.has(db.notionDatabaseId))
+      .map((db) => ({
+        type: "database" as const,
+        resource: db,
+      })),
   ];
 
   // First handle resources that we have seen the longest time ago. If the garbage collection times out
@@ -895,7 +898,7 @@ export async function garbageCollect({
     }
 
     if (resourceIsAccessible) {
-      // Mark the resource as seen.
+      // Mark the resource as seen, so it is lower priority if we run into it again in a future GC run.
       x.resource.lastSeenTs = new Date(runTimestamp);
       await x.resource.save();
       if (x.type === "page") {
@@ -930,6 +933,8 @@ export async function garbageCollect({
     await x.resource.destroy();
   }
 
+  await redisCli.del(`${redisKey}-pages`);
+  await redisCli.del(`${redisKey}-databases`);
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
@@ -2192,4 +2197,8 @@ async function renderPageSection({
     renderedPageSection.sections.push(await renderBlockSection(block, 0));
   }
   return renderedPageSection;
+}
+
+function redisGarbageCollectorKey(connectorId: ModelId): string {
+  return `notion-garbage-collector-${connectorId}`;
 }
