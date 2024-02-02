@@ -24,6 +24,7 @@ import {
 import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
@@ -107,7 +108,7 @@ export function AssistantDetails({
           }
           size="lg"
         />
-        <div className="flex flex-col gap-1">
+        <div className="flex grow flex-col gap-1">
           <div className="text-lg font-bold text-element-900">{`@${agentConfiguration.name}`}</div>
           <SharingDropdown
             owner={owner}
@@ -116,6 +117,13 @@ export function AssistantDetails({
             newScope={agentConfiguration.scope}
             disabled={isUpdatingScope}
             setNewScope={(scope) => updateScope(scope)}
+          />
+        </div>
+        <div className="pr-1">
+          <AssistantEditionMenu
+            agentConfigurationId={agentConfiguration.sId}
+            owner={owner}
+            variant="button"
           />
         </div>
       </div>
@@ -180,7 +188,7 @@ export function AssistantDetails({
   return (
     <Modal
       isOpen={show}
-      title="About this Assistant"
+      title=""
       onClose={onClose}
       hasChanged={false}
       variant="side-sm"
