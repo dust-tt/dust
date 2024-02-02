@@ -80,6 +80,11 @@ export function AssistantDetails({
     return <></>;
   }
 
+  const usageSentence =
+    agentUsage.agentUsage &&
+    `${agentUsage.agentUsage.messageCount} message(s) over the last ${
+      agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
+    } days`;
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -103,10 +108,8 @@ export function AssistantDetails({
       <div className="text-sm text-element-900">
         {effectiveAssistant.description}
       </div>
-      {effectiveAssistant.scope === "global" && agentUsage.agentUsage && (
-        <div>{`${agentUsage.agentUsage.messageCount} message(s) over the last ${
-          agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
-        } days`}</div>
+      {effectiveAssistant.scope === "global" && usageSentence && (
+        <div>{usageSentence}</div>
       )}
       {(effectiveAssistant.scope === "workspace" ||
         effectiveAssistant.scope === "published") && (
@@ -114,14 +117,7 @@ export function AssistantDetails({
           <div>
             <span className="font-bold">By: </span> Authors here
           </div>
-          <div>
-            {assistantUsageMessage({
-              assistantName: effectiveAssistant.name,
-              usage: agentUsage.agentUsage,
-              isLoading: agentUsage.isAgentUsageLoading,
-              isError: agentUsage.isAgentUsageError,
-            })}
-          </div>
+          <div>{"" + usageSentence}</div>
         </div>
       )}
       <Page.Separator />
