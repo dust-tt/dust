@@ -120,9 +120,12 @@ export function AssistantDetails({
       {(effectiveAssistant.scope === "workspace" ||
         effectiveAssistant.scope === "published") && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div>
-            <span className="font-bold">By: </span> Authors here
-          </div>
+          {effectiveAssistant.lastAuthors && (
+            <div>
+              <span className="font-bold">By: </span>{" "}
+              {effectiveAssistant.lastAuthors.join(", ")}
+            </div>
+          )}
           <div>{editedSentence + ", " + usageSentence}</div>
         </div>
       )}
