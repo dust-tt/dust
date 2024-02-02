@@ -31,7 +31,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
-  const members = await getMembers({ auth });
+  const members = await getMembers(auth);
 
   return {
     props: {

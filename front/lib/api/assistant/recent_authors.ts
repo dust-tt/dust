@@ -158,8 +158,7 @@ export async function getAgentRecentAuthors({
     // Populate from the database and store in Redis if the entry is not already present.
     recentAuthorIds = await populateAuthorIdsFromDb({ agentId, workspaceId });
   }
-  const authors = await getMembers({
-    auth,
+  const authors = await getMembers(auth, {
     userIds: recentAuthorIds.map((id) => parseInt(id, 10)),
   });
   // Consider moving this logic to the FE if we need to fetch members in different places.

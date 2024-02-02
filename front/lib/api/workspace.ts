@@ -104,15 +104,16 @@ export async function setInternalWorkspaceSegmentation(
  * @param role RoleType optional filter on role
  * @returns UserType[] members of the workspace
  */
-export async function getMembers({
-  auth,
-  role,
-  userIds,
-}: {
-  auth: Authenticator;
-  role?: RoleType;
-  userIds?: ModelId[];
-}): Promise<UserTypeWithWorkspaces[]> {
+export async function getMembers(
+  auth: Authenticator,
+  {
+    role,
+    userIds,
+  }: {
+    role?: RoleType;
+    userIds?: ModelId[];
+  } = {}
+): Promise<UserTypeWithWorkspaces[]> {
   const owner = auth.workspace();
   if (!owner) {
     return [];
