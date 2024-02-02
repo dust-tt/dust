@@ -660,9 +660,13 @@ export async function garbageCollectorMarkAsSeen({
   });
 
   const redisCli = await redisClient();
-  const redisKey = redisGarbageCollectorKey(connector.id);
-  await redisCli.sAdd(`${redisKey}-pages`, pageIds);
-  await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
+  try {
+    const redisKey = redisGarbageCollectorKey(connector.id);
+    await redisCli.sAdd(`${redisKey}-pages`, pageIds);
+    await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
+  } finally {
+    await redisCli.quit();
+  }
 
   const existingPageIds = new Set(
     (
@@ -750,15 +754,23 @@ export async function garbageCollect({
   }
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
-  const redisCli = await redisClient();
   const redisKey = redisGarbageCollectorKey(connector.id);
 
-  const pageIdsSeenInRun = new Set(
-    await redisCli.sMembers(`${redisKey}-pages`)
-  );
-  const databaseIdsSeenInRun = new Set(
-    await redisCli.sMembers(`${redisKey}-databases`)
-  );
+  const { pageIdsSeenInRun, databaseIdsSeenInRun } = await (async () => {
+    const redisCli = await redisClient();
+    try {
+      const pageIdsSeenInRun = new Set(
+        await redisCli.sMembers(`${redisKey}-pages`)
+      );
+      const databaseIdsSeenInRun = new Set(
+        await redisCli.sMembers(`${redisKey}-databases`)
+      );
+
+      return { pageIdsSeenInRun, databaseIdsSeenInRun };
+    } finally {
+      await redisCli.quit();
+    }
+  })();
 
   const pagesToCheck = await NotionPage.findAll({
     where: {
@@ -933,8 +945,14 @@ export async function garbageCollect({
     await x.resource.destroy();
   }
 
-  await redisCli.del(`${redisKey}-pages`);
-  await redisCli.del(`${redisKey}-databases`);
+  const redisCli = await redisClient();
+  try {
+    await redisCli.del(`${redisKey}-pages`);
+    await redisCli.del(`${redisKey}-databases`);
+  } finally {
+    await redisCli.quit();
+  }
+
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
