@@ -103,7 +103,11 @@ export function AssistantDetails({
       <div className="text-sm text-element-900">
         {effectiveAssistant.description}
       </div>
-      {effectiveAssistant.scope === "global" && <div></div>}
+      {effectiveAssistant.scope === "global" && agentUsage.agentUsage && (
+        <div>{`${agentUsage.agentUsage.messageCount} message(s) over the last ${
+          agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
+        } days`}</div>
+      )}
       {(effectiveAssistant.scope === "workspace" ||
         effectiveAssistant.scope === "published") && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
