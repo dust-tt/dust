@@ -41,7 +41,7 @@ async function getActiveMembersCount(connector: Connector): Promise<number> {
     { useLocalInDev: true }
   );
 
-  const membersRes = await dustAPI.getAllMembersInWorkspace();
+  const membersRes = await dustAPI.getActiveMembersCountInWorkspace();
   if (membersRes.isErr()) {
     logger.error("Error getting all members in workspace.", {
       error: membersRes.error,
@@ -50,10 +50,10 @@ async function getActiveMembersCount(connector: Connector): Promise<number> {
     throw new Error("Error getting all members in workspace.");
   }
 
-  return membersRes.value.length;
+  return membersRes.value;
 }
 
-function makeSlackRateLimiterForConnectoreKey(connectorId: ModelId): string {
+function makeSlackRateLimiterForConnectorKey(connectorId: ModelId): string {
   return `slack-rate-limiter-connector-${connectorId}`;
 }
 
@@ -62,7 +62,7 @@ export const getActiveMembersCountMemoized = cacheWithRedis(
   (connector: Connector) => {
     return `active-members-connector-${connector.id}`;
   },
-  // Caches data for 15 minutes to limit frequent fetches.
+  // Caches data for 15 minutes to limit frequent API calls.
   // Note: Updates (e.g., new seats added by an admin) may take up to 15 minutes to be reflected.
   15 * 10 * 1000
 );
@@ -116,11 +116,13 @@ export async function notifyIfUserRateLimited(
     slackMessageTs,
   }: { slackUserId: string; slackChannel: string; slackMessageTs: string }
 ): Promise<boolean> {
-  const maxAllowed = 1;
-  await getActiveMembersCountMemoized(connector);
-  const connectorRateLimiterKey = makeSlackRateLimiterForConnectoreKey(
+  const maxAllowed = await getActiveMembersCountMemoized(connector);
+  const connectorRateLimiterKey = makeSlackRateLimiterForConnectorKey(
     connector.id
   );
+
+  // Enforces a rate limit equal to the number of active workspace members.
+  // The rate limit applies over a 24-hour sliding window period.
   const rateLimiterOptions = {
     key: connectorRateLimiterKey,
     windowSizeInSeconds: 86400, // 24 hours.

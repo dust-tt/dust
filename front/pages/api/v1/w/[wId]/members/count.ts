@@ -1,21 +1,17 @@
-import type {
-  DataSourceType,
-  UserTypeWithWorkspaces,
-  WithAPIErrorReponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembers } from "@app/lib/api/workspace";
+import { getMembersCount } from "@app/lib/api/workspace";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetMembersResponseBody = {
-  members: UserTypeWithWorkspaces[];
+export type GetMembersCountResponseBody = {
+  membersCount: number;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetMembersResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<GetMembersCountResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -37,11 +33,15 @@ async function handler(
     });
   }
 
+  const { activeOnly } = req.query;
+
   switch (req.method) {
     case "GET":
-      const members = await getMembers(auth);
+      const membersCount = await getMembersCount(auth, {
+        activeOnly: Boolean(activeOnly),
+      });
 
-      res.status(200).json({ members });
+      res.status(200).json({ membersCount });
       return;
 
     default:

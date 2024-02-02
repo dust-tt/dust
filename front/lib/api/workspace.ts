@@ -7,6 +7,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -153,6 +154,33 @@ export async function getMembers(
       workspaces: [{ ...owner, role }],
     };
   });
+}
+
+export async function getMembersCount(
+  auth: Authenticator,
+  { activeOnly }: { activeOnly?: boolean } = {}
+): Promise<number> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return 0;
+  }
+
+  const whereClause = activeOnly
+    ? {
+        role: {
+          [Op.ne]: "revoked",
+        },
+      }
+    : {};
+
+  const membershipsCount = await Membership.count({
+    where: {
+      workspaceId: owner.id,
+      ...whereClause,
+    },
+  });
+
+  return membershipsCount;
 }
 
 /**

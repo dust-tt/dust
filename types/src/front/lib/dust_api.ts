@@ -729,8 +729,8 @@ export class DustAPI {
     return new Ok(r.value.tokens);
   }
 
-  async getAllMembersInWorkspace() {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members`;
+  async getActiveMembersCountInWorkspace() {
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/count?activeOnly=true`;
 
     const res = await fetch(endpoint, {
       method: "GET",
@@ -740,12 +740,13 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ members: unknown[] }> =
+    const r: DustAPIResponse<{ membersCount: number }> =
       await this._resultFromResponse(res);
     if (r.isErr()) {
       return r;
     }
-    return new Ok(r.value.members);
+
+    return new Ok(r.value.membersCount);
   }
 
   private async _resultFromResponse<T>(
