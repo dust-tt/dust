@@ -391,12 +391,13 @@ export async function retrieveGoogleDriveConnectorPermissions({
             dustDocumentId: null,
             lastUpdatedAt: fd.updatedAtMs || null,
             expandable:
-              (await GoogleDriveFiles.count({
+              (await GoogleDriveFiles.findOne({
+                attributes: ["id"],
                 where: {
                   connectorId: connectorId,
                   parentId: f.folderId,
                 },
-              })) > 0,
+              })) !== null,
             permission: "read",
           };
         },
@@ -441,12 +442,13 @@ export async function retrieveGoogleDriveConnectorPermissions({
             lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
             sourceUrl: null,
             expandable:
-              (await GoogleDriveFiles.count({
+              (await GoogleDriveFiles.findOne({
+                attributes: ["id"],
                 where: {
                   connectorId: connectorId,
                   parentId: f.driveFileId,
                 },
-              })) > 0,
+              })) !== null,
             permission: "read",
           };
         },

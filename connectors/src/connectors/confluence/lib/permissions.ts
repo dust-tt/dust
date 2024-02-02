@@ -83,14 +83,15 @@ function createConnectorResourceFromPage(
 }
 
 async function checkPageHasChildren(connectorId: ModelId, pageId: string) {
-  const childrenPagesCount = await ConfluencePage.count({
+  const childrenPage = await ConfluencePage.findOne({
+    attributes: ["id"],
     where: {
       connectorId,
       parentId: pageId,
     },
   });
 
-  return childrenPagesCount > 0;
+  return childrenPage != null;
 }
 
 async function getSynchronizedSpaces(
