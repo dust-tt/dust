@@ -46,7 +46,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const members = await getMembers(auth);
+      const members = await getMembers({ auth });
 
       res.status(200).json({ members });
       return;

@@ -130,7 +130,7 @@ async function handler(
       }
 
       if (withAuthors === "true") {
-        const members = await getMembers(auth);
+        const members = await getMembers({ auth });
 
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
