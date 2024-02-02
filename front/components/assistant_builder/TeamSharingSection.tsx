@@ -3,6 +3,7 @@ import {
   Chip,
   Dialog,
   DropdownMenu,
+  DustIcon,
   IconButton,
   LockIcon,
   PlanetIcon,
@@ -24,13 +25,13 @@ type ConfirmationModalDataType = {
 };
 
 const SCOPE_INFO: Record<
-  Exclude<AgentConfigurationScope, "global">,
+  AgentConfigurationScope,
   {
     label: string;
     color: string;
     icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
     text: string;
-    confirmationModalData: ConfirmationModalDataType;
+    confirmationModalData: ConfirmationModalDataType | null;
   }
 > = {
   published: {
@@ -69,6 +70,13 @@ const SCOPE_INFO: Record<
       variant: "primaryWarning",
       showUsage: true,
     },
+  },
+  global: {
+    label: "Default Assistant",
+    color: "slate",
+    icon: DustIcon,
+    text: "Default assistant provided by Dust.",
+    confirmationModalData: null,
   },
 };
 
@@ -138,8 +146,8 @@ export function SharingDropdown({
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
-  initialScope: Exclude<AgentConfigurationScope, "global">;
-  newScope: Exclude<AgentConfigurationScope, "global">;
+  initialScope: AgentConfigurationScope;
+  newScope: AgentConfigurationScope;
   setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
 }) {
   const { agentConfiguration } = useAgentConfiguration({
@@ -178,7 +186,7 @@ export function SharingDropdown({
     showUsage: true,
   };
 
-  let confirmationModalData: ConfirmationModalDataType = {
+  let confirmationModalData: ConfirmationModalDataType | null = {
     title: "",
     text: "",
     confirmText: "",
@@ -192,9 +200,15 @@ export function SharingDropdown({
         : SCOPE_INFO[requestNewScope].confirmationModalData;
   }
 
+  const allowedToChange =
+    // never change global assistant
+    initialScope !== "global" &&
+    // only builders can change company assistants
+    (isBuilder(owner) || initialScope !== "workspace");
+
   return (
     <div>
-      {requestNewScope && (
+      {requestNewScope && confirmationModalData && (
         <ScopeChangeModal
           show={requestNewScope !== null}
           confirmationModalData={confirmationModalData}
@@ -206,25 +220,33 @@ export function SharingDropdown({
         />
       )}
       <DropdownMenu>
-        <DropdownMenu.Button>
+        <DropdownMenu.Button disabled={!allowedToChange}>
           <div className="group flex cursor-pointer items-center gap-2">
             <Chip
               label={SCOPE_INFO[newScope].label}
-              color={SCOPE_INFO[newScope].color as "pink" | "amber" | "sky"}
+              color={
+                SCOPE_INFO[newScope].color as "pink" | "amber" | "sky" | "slate"
+              }
               icon={SCOPE_INFO[newScope].icon}
+              className="cursor-default"
             />
-            <IconButton
-              icon={ChevronDownIcon}
-              size="xs"
-              variant="secondary"
-              className="group-hover:text-action-400"
-            />
+            {allowedToChange && (
+              <IconButton
+                icon={ChevronDownIcon}
+                size="xs"
+                variant="secondary"
+                className="group-hover:text-action-400"
+              />
+            )}
           </div>
         </DropdownMenu.Button>
         <DropdownMenu.Items origin="topRight" width={200}>
           {Object.entries(SCOPE_INFO)
             .filter(
-              ([entryScope]) => isBuilder(owner) || entryScope !== "workspace"
+              // can't change to those scopes
+              ([entryScope]) =>
+                entryScope !== "global" &&
+                (isBuilder(owner) || entryScope !== "workspace")
             )
             .map(([entryScope, entryData]) => (
               <DropdownMenu.Item
