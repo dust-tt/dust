@@ -193,7 +193,7 @@ export async function stopNotionSyncWorkflow(
   }
 }
 
-async function stopNotionGarbageCollectorWorkflow(
+export async function stopNotionGarbageCollectorWorkflow(
   connectorId: string
 ): Promise<void> {
   const connector = await Connector.findByPk(connectorId);
