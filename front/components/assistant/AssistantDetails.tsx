@@ -57,12 +57,8 @@ export function AssistantDetails({
     });
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
-  if (!agentConfiguration) {
-    throw new Error("Unexpected: Agent configuration not found");
-  }
-
-  const effectiveAssistant = assistant ?? agentConfiguration;
-  if (!effectiveAssistant) {
+  const effectiveAssistant = agentConfiguration;
+  if (!effectiveAssistant || !agentConfiguration) {
     return <></>;
   }
   const updateScope = async (
