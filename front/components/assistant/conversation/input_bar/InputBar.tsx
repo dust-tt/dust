@@ -83,18 +83,10 @@ export function AssistantInputBar({
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, selectedAssistant } = useContext(InputBarContext);
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
     if (animate && !isAnimating) {
       setIsAnimating(true);
-      timeoutId = setTimeout(() => setIsAnimating(false), 1500);
+      setTimeout(() => setIsAnimating(false), 1500);
     }
-
-    // Cleanup function to clear the timeout
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
   }, [animate, isAnimating]);
 
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
@@ -236,9 +228,7 @@ export function AssistantInputBar({
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
               "border-struture-200 border-t bg-white/80 shadow-[0_0_36px_-15px_rgba(0,0,0,0.3)] backdrop-blur focus-within:border-structure-300 sm:rounded-3xl sm:border-2 sm:border-element-500 sm:shadow-[0_12px_36px_-15px_rgba(0,0,0,0.3)] sm:focus-within:border-element-600",
               "transition-all duration-300",
-              isAnimating
-                ? "animate-shake border-action-500 focus-within:border-action-800"
-                : ""
+              isAnimating ? "animate-shake" : ""
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
