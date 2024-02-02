@@ -23,7 +23,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const isSystemKey = keyRes.value.isSystem;
+  if (!owner || !isSystemKey) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
