@@ -13,7 +13,6 @@ import type {
   CoreAPITable,
   DataSourceConfiguration,
   DustAppRunConfigurationType,
-  LightAgentConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
