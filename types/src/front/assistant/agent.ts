@@ -152,21 +152,3 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
   // performed (potentially NoOp eg autoSkip above).
   action: AgentActionConfigurationType | null;
 };
-
-export function isGlobalAgentConfiguration(
-  agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
-) {
-  return agentConfiguration.scope === "global";
-}
-
-export function isAgentConfigurationInWorkspace(
-  agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
-) {
-  return agentConfiguration.scope === "workspace";
-}
-
-export function isAgentConfigurationPublished(
-  agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
-) {
-  return agentConfiguration.scope === "published";
-}

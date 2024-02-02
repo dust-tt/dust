@@ -12,7 +12,6 @@ import {
   isAgentConfigurationInWorkspace,
   isAgentConfigurationPublished,
   isBuilder,
-  isGlobalAgentConfiguration,
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -45,13 +44,12 @@ export function AssistantEditionMenu({
     return <></>;
   }
 
-  if (isGlobalAgentConfiguration(agentConfiguration)) {
+  if (agentConfiguration.scope === "global") {
     return <></>;
   }
 
-  const isAgentInWorkspace =
-    isAgentConfigurationInWorkspace(agentConfiguration);
-  const isAgentPublished = isAgentConfigurationPublished(agentConfiguration);
+  const isAgentInWorkspace = agentConfiguration.scope === "workspace";
+  const isAgentPublished = agentConfiguration.scope === "published";
 
   const isInList = agentConfiguration.userListStatus === "in-list";
 
