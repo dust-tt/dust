@@ -8,7 +8,7 @@ import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { assistantUsageMessage } from "@app/lib/assistant";
-import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
+import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 export function DeleteAssistantDialog({
@@ -125,12 +125,11 @@ export function RemoveAssistantFromListDialog({
       validateLabel="Remove"
       validateVariant="primaryWarning"
       onValidate={async () => {
-        const { errorMessage, success } =
-          await performAgentUserListStatusUpdate({
-            listStatus: "not-in-list",
-            owner,
-            agentConfigurationSId: agentConfiguration.sId,
-          });
+        const { errorMessage, success } = await updateAgentUserListStatus({
+          listStatus: "not-in-list",
+          owner,
+          agentConfigurationSId: agentConfiguration.sId,
+        });
 
         if (success) {
           sendNotification({

@@ -2,22 +2,22 @@ import type { AgentUserListStatus, WorkspaceType } from "@dust-tt/types";
 
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
-interface PerformAgentUserListStatusUpdateParams {
+interface UpdateAgentUserListStatusParams {
   listStatus: AgentUserListStatus;
   owner: WorkspaceType;
   agentConfigurationSId: string;
 }
 
-interface PerformAgentUserListStatusUpdateResult {
+interface UpdateAgentUserListStatusResult {
   success: boolean;
   errorMessage?: string;
 }
 
-export async function performAgentUserListStatusUpdate({
+export async function updateAgentUserListStatus({
   listStatus,
   owner,
   agentConfigurationSId,
-}: PerformAgentUserListStatusUpdateParams): Promise<PerformAgentUserListStatusUpdateResult> {
+}: UpdateAgentUserListStatusParams): Promise<UpdateAgentUserListStatusResult> {
   const body: PostAgentListStatusRequestBody = {
     agentId: agentConfigurationSId,
     listStatus,

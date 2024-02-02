@@ -35,7 +35,7 @@ import ReactMarkdown from "react-markdown";
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { assistantUsageMessage } from "@app/lib/assistant";
-import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
+import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -284,10 +284,10 @@ function ButtonsSection({
   const [isAddingOrRemoving, setIsAddingOrRemoving] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
-  const updateAgentUserListStatus = async (listStatus: AgentUserListStatus) => {
+  const updateAgentUserList = async (listStatus: AgentUserListStatus) => {
     setIsAddingOrRemoving(true);
 
-    const { errorMessage, success } = await performAgentUserListStatusUpdate({
+    const { errorMessage, success } = await updateAgentUserListStatus({
       listStatus,
       owner,
       agentConfigurationSId: agentConfiguration.sId,
@@ -343,7 +343,7 @@ function ButtonsSection({
             size="xs"
             hasMagnifying={false}
             onClick={async () => {
-              await updateAgentUserListStatus("not-in-list");
+              await updateAgentUserList("not-in-list");
             }}
           />
         ) : (
@@ -355,7 +355,7 @@ function ButtonsSection({
             size="xs"
             hasMagnifying={false}
             onClick={async () => {
-              await updateAgentUserListStatus("in-list");
+              await updateAgentUserList("in-list");
             }}
           />
         ))}

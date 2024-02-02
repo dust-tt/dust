@@ -17,7 +17,7 @@ import {
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
+import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration } from "@app/lib/swr";
 
 interface AssistantEditionMenuProps {
@@ -58,7 +58,7 @@ export function AssistantEditionMenu({
   const updateAgentUserList = async (listStatus: AgentUserListStatus) => {
     setIsUpdatingList(true);
 
-    const { success, errorMessage } = await performAgentUserListStatusUpdate({
+    const { success, errorMessage } = await updateAgentUserListStatus({
       listStatus,
       owner,
       agentConfigurationSId: agentConfiguration.sId,

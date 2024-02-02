@@ -38,7 +38,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
+import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -135,11 +135,11 @@ export default function PersonalAssistants({
 
   const sendNotification = useContext(SendNotificationsContext);
 
-  const updateAgentUserListStatus = async (
+  const updateAgentUserList = async (
     agentConfiguration: LightAgentConfigurationType,
     listStatus: AgentUserListStatus
   ) => {
-    const { errorMessage, success } = await performAgentUserListStatusUpdate({
+    const { errorMessage, success } = await updateAgentUserListStatus({
       listStatus,
       owner,
       agentConfigurationSId: agentConfiguration.sId,
@@ -346,7 +346,7 @@ export default function PersonalAssistants({
                               <SliderToggle
                                 size="xs"
                                 onClick={async () => {
-                                  await updateAgentUserListStatus(
+                                  await updateAgentUserList(
                                     agent,
                                     agent.userListStatus === "in-list"
                                       ? "not-in-list"
