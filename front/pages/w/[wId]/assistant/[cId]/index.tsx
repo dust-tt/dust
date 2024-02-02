@@ -194,7 +194,7 @@ export default function AssistantConversation({
       >
         <AssistantDetails
           owner={owner}
-          assistantSId={detailViewContent}
+          assistantId={detailViewContent}
           show={isAssistantDetailOpen}
           onClose={handleCloseModal}
           // TODO(2024-02-01 flav) Remove flow from AssistantDetails.
