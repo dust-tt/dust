@@ -5,6 +5,7 @@ import {
   CloudArrowDownIcon,
   CommandLineIcon,
   Modal,
+  Page,
   PlusIcon,
   ServerIcon,
   TrashIcon,
@@ -102,6 +103,24 @@ export function AssistantDetails({
       <div className="text-sm text-element-900">
         {effectiveAssistant.description}
       </div>
+      {effectiveAssistant.scope === "global" && <div></div>}
+      {(effectiveAssistant.scope === "workspace" ||
+        effectiveAssistant.scope === "published") && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div>
+            <span className="font-bold">By: </span> Authors here
+          </div>
+          <div>
+            {assistantUsageMessage({
+              assistantName: effectiveAssistant.name,
+              usage: agentUsage.agentUsage,
+              isLoading: agentUsage.isAgentUsageLoading,
+              isError: agentUsage.isAgentUsageError,
+            })}
+          </div>
+        </div>
+      )}
+      <Page.Separator />
     </div>
   );
 
@@ -114,23 +133,6 @@ export function AssistantDetails({
     ) : (
       "This assistant has no instructions."
     );
-
-  const UsageSection = ({
-    assistantName,
-    usage,
-    isLoading,
-    isError,
-  }: {
-    assistantName: string;
-    usage: AgentUsageType | null;
-    isLoading: boolean;
-    isError: boolean;
-  }) => (
-    <div className="flex flex-col gap-2">
-      <div className="text-lg font-bold text-element-800">Usage</div>
-      {assistantUsageMessage({ assistantName, usage, isLoading, isError })}
-    </div>
-  );
 
   const ActionSection = ({
     action,
@@ -169,12 +171,6 @@ export function AssistantDetails({
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <DescriptionSection />
         <InstructionsSection />
-        <UsageSection
-          assistantName={effectiveAssistant.name}
-          usage={agentUsage.agentUsage}
-          isLoading={agentUsage.isAgentUsageLoading}
-          isError={agentUsage.isAgentUsageError}
-        />
         <ActionSection action={agentConfiguration?.action || null} />
       </div>
     </Modal>
