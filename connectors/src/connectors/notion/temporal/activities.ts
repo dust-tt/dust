@@ -662,8 +662,12 @@ export async function garbageCollectorMarkAsSeen({
   const redisCli = await redisClient();
   try {
     const redisKey = redisGarbageCollectorKey(connector.id);
-    await redisCli.sAdd(`${redisKey}-pages`, pageIds);
-    await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
+    if (pageIds.length > 0) {
+      await redisCli.sAdd(`${redisKey}-pages`, pageIds);
+    }
+    if (databaseIds.length > 0) {
+      await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
+    }
   } finally {
     await redisCli.quit();
   }
