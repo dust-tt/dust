@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
+import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
@@ -105,35 +106,30 @@ async function populateAuthorIdsFromDb({
 }
 
 function renderAuthors(
-  authorIds: readonly string[],
-  members: UserType[],
+  authors: UserType[],
   currentUserId?: number
 ): readonly string[] {
   return (
-    authorIds
-      .map((id) => parseInt(id, 10))
-      .map((authorId) => {
+    authors
+      .map((author) => {
         // If authorId is the current requester, return "Me".
-        if (authorId === currentUserId) {
+        if (author.id === currentUserId) {
           return "Me";
         }
-        return members.find((m) => m.id === authorId)?.fullName ?? null;
+        return author.fullName;
       })
       // Filter out `null` authors.
       .filter((name): name is string => name !== null)
   );
 }
 
-export async function getAgentRecentAuthors(
-  {
-    agent,
-    auth,
-  }: {
-    agent: LightAgentConfigurationType;
-    auth: Authenticator;
-  },
-  members: UserType[]
-): Promise<AgentRecentAuthors> {
+export async function getAgentRecentAuthors({
+  agent,
+  auth,
+}: {
+  agent: LightAgentConfigurationType;
+  auth: Authenticator;
+}): Promise<AgentRecentAuthors> {
   const { sId: agentId, versionAuthorId } = agent;
 
   const owner = auth.workspace();
@@ -162,9 +158,11 @@ export async function getAgentRecentAuthors(
     // Populate from the database and store in Redis if the entry is not already present.
     recentAuthorIds = await populateAuthorIdsFromDb({ agentId, workspaceId });
   }
-
+  const authors = await getMembers(auth, {
+    userIds: recentAuthorIds.map((id) => parseInt(id, 10)),
+  });
   // Consider moving this logic to the FE if we need to fetch members in different places.
-  return renderAuthors(recentAuthorIds, members, currentUserId);
+  return renderAuthors(authors, currentUserId);
 }
 
 export async function agentConfigurationWasUpdatedBy({
