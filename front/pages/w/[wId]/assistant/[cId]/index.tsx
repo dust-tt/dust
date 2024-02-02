@@ -197,8 +197,6 @@ export default function AssistantConversation({
           assistantId={detailViewContent}
           show={isAssistantDetailOpen}
           onClose={handleCloseModal}
-          // TODO(2024-02-01 flav) Remove flow from AssistantDetails.
-          flow="personal"
         />
         <Conversation
           owner={owner}

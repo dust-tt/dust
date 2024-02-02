@@ -1,19 +1,13 @@
 import {
   Avatar,
-  Button,
-  ClipboardIcon,
   CloudArrowDownIcon,
   CommandLineIcon,
   Modal,
   Page,
-  PlusIcon,
   ServerIcon,
-  TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
-  AgentUserListStatus,
   ConnectorProvider,
   CoreAPITable,
   DataSourceConfiguration,
@@ -23,39 +17,27 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  isBuilder,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
-import Link from "next/link";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { assistantUsageMessage } from "@app/lib/assistant";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
-import { useAgentConfigurations } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
-
-type AssistantDetailsFlow = "personal" | "workspace";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   show: boolean;
   onClose: () => void;
-  flow: AssistantDetailsFlow;
   assistantId: string;
 };
 
 export function AssistantDetails({
   assistantId,
-  flow,
   onClose,
   owner,
   show,
@@ -69,13 +51,7 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
-  const { mutateAgentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    includes: ["authors"],
-  });
-
-  const effectiveAssistant = agentConfiguration;
+  const effectiveAssistant = assistant ?? agentConfiguration;
   if (!effectiveAssistant) {
     return <></>;
   }
@@ -106,7 +82,7 @@ export function AssistantDetails({
             agentConfigurationId={effectiveAssistant.sId}
             initialScope={effectiveAssistant.scope}
             newScope={effectiveAssistant.scope}
-            setNewScope={(scope) => {}}
+            setNewScope={() => console.log("TODO")}
           />
         </div>
       </div>
@@ -258,138 +234,6 @@ function DustAppSection({
         <div>{app ? app.name : ""}</div>
       </div>
     </div>
-  );
-}
-
-function ButtonsSection({
-  owner,
-  agentConfiguration,
-  detailsModalClose,
-  onUpdate,
-  onClose,
-  flow,
-}: {
-  owner: WorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
-  detailsModalClose: () => void;
-  onUpdate: () => void;
-  onClose: () => void;
-  flow: AssistantDetailsFlow;
-}) {
-  const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
-
-  const canDelete =
-    (agentConfiguration.scope === "workspace" && isBuilder(owner)) ||
-    ["published", "private"].includes(agentConfiguration.scope);
-
-  const canAddRemoveList =
-    ["published", "workspace"].includes(agentConfiguration.scope) &&
-    flow !== "workspace";
-
-  const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
-  const [isAddingOrRemoving, setIsAddingOrRemoving] = useState<boolean>(false);
-  const sendNotification = useContext(SendNotificationsContext);
-
-  const updateAgentUserList = async (listStatus: AgentUserListStatus) => {
-    setIsAddingOrRemoving(true);
-
-    const { errorMessage, success } = await updateAgentUserListStatus({
-      listStatus,
-      owner,
-      agentConfigurationId: agentConfiguration.sId,
-    });
-    if (success) {
-      sendNotification({
-        title: `Assistant ${
-          listStatus === "in-list"
-            ? "added to your list"
-            : "removed from your list"
-        }`,
-        type: "success",
-      });
-      onUpdate();
-    } else {
-      sendNotification({
-        title: `Error ${
-          listStatus === "in-list" ? "adding" : "removing"
-        } Assistant`,
-        description: errorMessage,
-        type: "error",
-      });
-    }
-
-    setIsAddingOrRemoving(false);
-    onClose();
-  };
-  return (
-    <Button.List className="flex items-center justify-end gap-1">
-      {flow === "personal" && (
-        <Link
-          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
-        >
-          <Button
-            label={isDuplicating ? "Duplicating..." : "Duplicate"}
-            disabled={isDuplicating}
-            variant="tertiary"
-            icon={ClipboardIcon}
-            size="xs"
-            onClick={async () => {
-              setIsDuplicating(true);
-            }}
-          />
-        </Link>
-      )}
-      {canAddRemoveList &&
-        (agentConfiguration.userListStatus === "in-list" ? (
-          <Button
-            label={isAddingOrRemoving ? "Removing..." : "Remove from my list"}
-            disabled={isAddingOrRemoving}
-            variant="tertiary"
-            icon={XMarkIcon}
-            size="xs"
-            hasMagnifying={false}
-            onClick={async () => {
-              await updateAgentUserList("not-in-list");
-            }}
-          />
-        ) : (
-          <Button
-            label={isAddingOrRemoving ? "Adding..." : "Add to my list"}
-            disabled={isAddingOrRemoving}
-            variant="tertiary"
-            icon={PlusIcon}
-            size="xs"
-            hasMagnifying={false}
-            onClick={async () => {
-              await updateAgentUserList("in-list");
-            }}
-          />
-        ))}
-
-      {canDelete && (
-        <>
-          <DeleteAssistantDialog
-            owner={owner}
-            agentConfigurationId={agentConfiguration.sId}
-            show={showDeletionModal}
-            onClose={() => setShowDeletionModal(false)}
-            onDelete={() => {
-              detailsModalClose();
-              onUpdate();
-            }}
-          />
-          <Button
-            label={"Delete"}
-            icon={TrashIcon}
-            variant="secondaryWarning"
-            size="xs"
-            disabled={!isBuilder(owner)}
-            onClick={() => setShowDeletionModal(true)}
-            hasMagnifying={false}
-          />
-        </>
-      )}
-    </Button.List>
   );
 }
 
