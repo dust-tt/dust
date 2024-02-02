@@ -64,6 +64,7 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -637,7 +638,6 @@ export async function garbageCollectorMarkAsSeen({
   connectorId,
   pageIds,
   databaseIds,
-  runTimestamp,
 }: {
   connectorId: ModelId;
   pageIds: string[];
@@ -659,15 +659,14 @@ export async function garbageCollectorMarkAsSeen({
     workspaceId: connector.workspaceId,
   });
 
-  await NotionPage.update(
-    { lastSeenTs: new Date(runTimestamp) },
-    { where: { notionPageId: pageIds, connectorId: connector.id } }
-  );
-
-  await NotionDatabase.update(
-    { lastSeenTs: new Date(runTimestamp) },
-    { where: { notionDatabaseId: databaseIds, connectorId: connector.id } }
-  );
+  const redisCli = await redisClient();
+  try {
+    const redisKey = redisGarbageCollectorKey(connector.id);
+    await redisCli.sAdd(`${redisKey}-pages`, pageIds);
+    await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
+  } finally {
+    await redisCli.quit();
+  }
 
   const existingPageIds = new Set(
     (
@@ -755,50 +754,9 @@ export async function garbageCollect({
   }
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
-  const pagesToCheck = await NotionPage.findAll({
-    where: {
-      connectorId: connector.id,
-      // Only look at pages that have not been seen during the garbage collect run.
-      lastSeenTs: {
-        [Op.lt]: new Date(runTimestamp),
-      },
-    },
-  });
-  const databasesToCheck = await NotionDatabase.findAll({
-    where: {
-      connectorId: connector.id,
-      // Only look at database that have not been seen during the garbage collect run.
-      lastSeenTs: {
-        [Op.lt]: new Date(runTimestamp),
-      },
-    },
-  });
-
-  localLogger.info(
-    {
-      pagesToDeleteCount: pagesToCheck.length,
-      databasesToDeleteCount: databasesToCheck.length,
-    },
-    "Found pages and databases to delete."
+  const resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
+    connector.id
   );
-
-  const resourcesToCheck: Array<
-    | { type: "page"; resource: NotionPage }
-    | { type: "database"; resource: NotionDatabase }
-  > = [
-    ...pagesToCheck.map((page) => ({ type: "page" as const, resource: page })),
-    ...databasesToCheck.map((db) => ({
-      type: "database" as const,
-      resource: db,
-    })),
-  ];
-
-  // First handle resources that we have seen the longest time ago. If the garbage collection times out
-  // that means we've cleaned-up the oldest resources first and will have a chance to continue at
-  // next garbage collection.
-  resourcesToCheck.sort((a, b) => {
-    return a.resource.lastSeenTs.getTime() - b.resource.lastSeenTs.getTime();
-  });
 
   const NOTION_UNHEALTHY_ERROR_CODES = [
     "internal_server_error",
@@ -818,11 +776,9 @@ export async function garbageCollect({
 
   for (const [i, x] of resourcesToCheck.entries()) {
     const iterationLogger = localLogger.child({
-      pageId: x.type === "page" ? x.resource.notionPageId : undefined,
-      databaseId:
-        x.type === "database" ? x.resource.notionDatabaseId : undefined,
-      pagesToCheckCount: pagesToCheck.length,
-      databasesToCheckCount: databasesToCheck.length,
+      pageId: x.resourceType === "page" ? x.resourceId : undefined,
+      databaseId: x.resourceType === "database" ? x.resourceId : undefined,
+      resourcesToCheckCount: resourcesToCheck.length,
       index: i,
       deletedPagesCount,
       deletedDatabasesCount,
@@ -837,21 +793,21 @@ export async function garbageCollect({
       break;
     }
 
-    if (x.resource.skipReason) {
-      if (x.type === "page") {
+    if (x.skipReason) {
+      if (x.resourceType === "page") {
         iterationLogger.info(
-          { skipReason: x.resource.skipReason },
+          { skipReason: x.skipReason },
           "Page is marked as skipped, not deleting."
         );
         skippedPagesCount++;
-      } else if (x.type === "database") {
+      } else if (x.resourceType === "database") {
         iterationLogger.info(
-          { skipReason: x.resource.skipReason },
+          { skipReason: x.skipReason },
           "Database is marked as skipped, not deleting."
         );
         skippedDatabasesCount++;
       } else {
-        assertNever(x);
+        assertNever(x.resourceType);
       }
       continue;
     }
@@ -860,10 +816,8 @@ export async function garbageCollect({
     try {
       resourceIsAccessible = await isAccessibleAndUnarchived(
         notionAccessToken,
-        x.type === "page"
-          ? x.resource.notionPageId
-          : x.resource.notionDatabaseId,
-        x.type,
+        x.resourceId,
+        x.resourceType,
         iterationLogger
       );
     } catch (e) {
@@ -895,23 +849,43 @@ export async function garbageCollect({
     }
 
     if (resourceIsAccessible) {
-      // Mark the resource as seen.
-      x.resource.lastSeenTs = new Date(runTimestamp);
-      await x.resource.save();
-      if (x.type === "page") {
+      // Mark the resource as seen, so it is lower priority if we run into it again in a future GC run.
+      if (x.resourceType === "page") {
+        await NotionPage.update(
+          {
+            lastSeenTs: new Date(runTimestamp),
+          },
+          {
+            where: {
+              connectorId: connector.id,
+              notionPageId: x.resourceId,
+            },
+          }
+        );
         iterationLogger.info("Page is still accessible, not deleting.");
         stillAccessiblePagesCount++;
-      } else if (x.type === "database") {
+      } else if (x.resourceType === "database") {
+        await NotionDatabase.update(
+          {
+            lastSeenTs: new Date(runTimestamp),
+          },
+          {
+            where: {
+              connectorId: connector.id,
+              notionDatabaseId: x.resourceId,
+            },
+          }
+        );
         iterationLogger.info("Database is still accessible, not deleting.");
         stillAccessibleDatabasesCount++;
       } else {
-        assertNever(x);
+        assertNever(x.resourceType);
       }
 
       continue;
     }
 
-    if (x.type === "page") {
+    if (x.resourceType === "page") {
       iterationLogger.info("Deleting page.");
       await deleteFromDataSource(
         {
@@ -919,20 +893,155 @@ export async function garbageCollect({
           workspaceId: connector.workspaceId,
           workspaceAPIKey: connector.workspaceAPIKey,
         },
-        `notion-${x.resource.notionPageId}`
+        `notion-${x.resourceId}`
       );
       deletedPagesCount++;
+      await NotionPage.destroy({
+        where: {
+          connectorId: connector.id,
+          notionPageId: x.resourceId,
+        },
+      });
     } else {
       iterationLogger.info("Deleting database.");
       deletedDatabasesCount++;
+      await NotionDatabase.destroy({
+        where: {
+          connectorId: connector.id,
+          notionDatabaseId: x.resourceId,
+        },
+      });
     }
+  }
 
-    await x.resource.destroy();
+  const redisKey = redisGarbageCollectorKey(connector.id);
+  const redisCli = await redisClient();
+  try {
+    await redisCli.del(`${redisKey}-pages`);
+    await redisCli.del(`${redisKey}-databases`);
+  } finally {
+    await redisCli.quit();
   }
 
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
+}
+
+async function findResourcesNotSeenInGarbageCollectionRun(
+  connectorId: ModelId
+): Promise<
+  Array<{
+    lastSeenTs: Date;
+    resourceType: "page" | "database";
+    resourceId: string;
+    skipReason: string | null;
+  }>
+> {
+  const redisKey = redisGarbageCollectorKey(connectorId);
+
+  const { pageIdsSeenInRun, databaseIdsSeenInRun } = await (async () => {
+    const redisCli = await redisClient();
+    try {
+      const pageIdsSeenInRun = new Set(
+        await redisCli.sMembers(`${redisKey}-pages`)
+      );
+      const databaseIdsSeenInRun = new Set(
+        await redisCli.sMembers(`${redisKey}-databases`)
+      );
+
+      return { pageIdsSeenInRun, databaseIdsSeenInRun };
+    } finally {
+      await redisCli.quit();
+    }
+  })();
+
+  const pageSize = 500;
+
+  let offset = 0;
+  const pagesNotSeenInGarbageCollectionRun: Array<{
+    lastSeenTs: Date;
+    resourceType: "page";
+    resourceId: string;
+    skipReason: string | null;
+  }> = [];
+  for (;;) {
+    const pages = (
+      await NotionPage.findAll({
+        where: {
+          connectorId,
+          lastSeenTs: {
+            [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          },
+        },
+        attributes: ["lastSeenTs", "notionPageId", "skipReason"],
+        limit: pageSize,
+        offset,
+      })
+    )
+      .filter((p) => !pageIdsSeenInRun.has(p.notionPageId))
+      .map((p) => ({
+        lastSeenTs: p.lastSeenTs,
+        resourceType: "page" as const,
+        resourceId: p.notionPageId,
+        skipReason: p.skipReason || null,
+      }));
+
+    if (pages.length === 0) {
+      break;
+    }
+
+    pagesNotSeenInGarbageCollectionRun.push(...pages);
+    offset += pageSize;
+  }
+
+  offset = 0;
+  const databasesNotSeenInGarbageCollectionRun: Array<{
+    lastSeenTs: Date;
+    resourceType: "database";
+    resourceId: string;
+    skipReason: string | null;
+  }> = [];
+  for (;;) {
+    const databases = (
+      await NotionDatabase.findAll({
+        where: {
+          connectorId,
+          lastSeenTs: {
+            [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          },
+        },
+        attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
+        limit: pageSize,
+        offset,
+      })
+    )
+      .filter((p) => !databaseIdsSeenInRun.has(p.notionDatabaseId))
+      .map((p) => ({
+        lastSeenTs: p.lastSeenTs,
+        resourceType: "database" as const,
+        resourceId: p.notionDatabaseId,
+        skipReason: p.skipReason || null,
+      }));
+
+    if (databases.length === 0) {
+      break;
+    }
+
+    databasesNotSeenInGarbageCollectionRun.push(...databases);
+    offset += pageSize;
+  }
+
+  const allResourcesNotSeenInGarbageCollectionRun = [
+    ...pagesNotSeenInGarbageCollectionRun,
+    ...databasesNotSeenInGarbageCollectionRun,
+  ];
+
+  allResourcesNotSeenInGarbageCollectionRun.sort(
+    (a, b) => a.lastSeenTs.getTime() - b.lastSeenTs.getTime()
+  );
+
+  return allResourcesNotSeenInGarbageCollectionRun;
 }
 
 export async function updateParentsFields(
@@ -2192,4 +2301,8 @@ async function renderPageSection({
     renderedPageSection.sections.push(await renderBlockSection(block, 0));
   }
   return renderedPageSection;
+}
+
+function redisGarbageCollectorKey(connectorId: ModelId): string {
+  return `notion-garbage-collector-${connectorId}`;
 }
