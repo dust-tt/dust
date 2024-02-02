@@ -112,7 +112,6 @@ export async function revokeSyncHelpCenter({
   helpCenterId,
 }: {
   connector: Connector;
-  intercomClient: IntercomClient;
   helpCenterId: string;
 }): Promise<IntercomHelpCenter | null> {
   const helpCenter = await IntercomHelpCenter.findOne({
