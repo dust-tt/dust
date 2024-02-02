@@ -1,4 +1,3 @@
-// @ts-expect-error voluntarily not imported
 import { QdrantClient } from "@qdrant/js-client-rest";
 
 const { QDRANT_API_KEY, QDRANT_URL, DELETE = "" } = process.env;
@@ -35,13 +34,11 @@ async function run() {
       | string
       | Record<string, unknown> = 0;
     while (offset !== null && offset !== undefined) {
-      // @ts-expect-error normal, qdrant-js-client-rest not imported
       const res = await client.scroll(c.name, {
         limit: 1024,
         offset,
       });
 
-      // @ts-expect-error normal, qdrant-js-client-rest not imported
       res.points.forEach((p) => {
         if (p.payload) {
           const chunkHash = p.payload["chunk_hash"] as string;

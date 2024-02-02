@@ -109,7 +109,7 @@ const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
 );
 
 const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
-  GENERIC: "No action",
+  GENERIC: "Reply only",
   RETRIEVAL_SEARCH: "Search in data sources",
   RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
   DUST_APP_RUN: "Run a Dust app",
@@ -820,7 +820,8 @@ export default function AssistantBuilder({
           <TeamSharingSection
             owner={owner}
             agentConfigurationId={agentConfigurationId}
-            scope={builderState.scope}
+            initialScope={initialBuilderState?.scope ?? defaultScope}
+            newScope={builderState.scope}
             setNewScope={(
               scope: Exclude<AgentConfigurationScope, "global">
             ) => {
@@ -877,7 +878,9 @@ export default function AssistantBuilder({
           </div>
 
           <div className="flex flex-col gap-6 text-sm text-element-700">
-            <div className="text-2xl font-bold text-element-900">Action</div>
+            <div className="text-2xl font-bold text-element-900">
+              Action & Data sources
+            </div>
             {configurableDataSources.length === 0 &&
               Object.keys(builderState.dataSourceConfigurations).length ===
                 0 && (
@@ -937,7 +940,7 @@ export default function AssistantBuilder({
               )}
             <div>
               Choose the action the assistant will perform and take into account
-              before answering:
+              before replying:
             </div>
             <div className="flex flex-row items-center space-x-2">
               <div className="text-sm font-semibold text-element-900">

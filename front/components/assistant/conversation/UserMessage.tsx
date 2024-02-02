@@ -38,6 +38,7 @@ export function UserMessage({
       name={message.context.fullName}
       reactions={reactions}
       enableEmojis={true}
+      renderName={(name) => <div className="text-sm font-medium">{name}</div>}
     >
       <div className="flex flex-col gap-4">
         <div>

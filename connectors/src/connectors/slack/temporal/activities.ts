@@ -973,7 +973,10 @@ export async function deleteChannelsFromConnectorDb(
   );
 }
 
-export async function joinChannelAct(connectorId: ModelId, channelId: string) {
+export async function attemptChannelJoinActivity(
+  connectorId: ModelId,
+  channelId: string
+) {
   const res = await joinChannel(connectorId, channelId);
 
   if (res.isErr()) {
@@ -982,9 +985,13 @@ export async function joinChannelAct(connectorId: ModelId, channelId: string) {
 
   const { channel, result } = res.value;
   if (result === "is_archived") {
-    logger.info(`Channel ${channelId} is archived, skipping sync`, {
-      channel,
-    });
+    logger.info(
+      {
+        channel,
+        connectorId,
+      },
+      "Channel is archived, skipping sync."
+    );
     return false;
   }
 

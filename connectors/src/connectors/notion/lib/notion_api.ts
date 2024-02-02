@@ -13,10 +13,10 @@ import type {
   GetPageResponse,
   ListBlockChildrenResponse,
   PageObjectResponse,
-  QueryDatabaseResponse,
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
 import type {
@@ -209,90 +209,6 @@ export async function getPagesAndDatabasesEditedSince(
     })),
     nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
   };
-}
-
-export async function getDatabaseChildPages({
-  notionAccessToken,
-  databaseId,
-  loggerArgs,
-  cursor,
-  retry = { retries: 3, backoffFactor: 2 },
-}: {
-  notionAccessToken: string;
-  databaseId: string;
-  loggerArgs: Record<string, string | number>;
-  cursor: string | null;
-  retry?: { retries: number; backoffFactor: number };
-}): Promise<{
-  pages: { id: string; lastEditedTs: number }[];
-  nextCursor: string | null;
-}> {
-  const localLogger = logger.child(loggerArgs);
-
-  const notionClient = new Client({
-    auth: notionAccessToken,
-    logger: notionClientLogger,
-  });
-  let resultsPage: QueryDatabaseResponse | null = null;
-  const pages: Record<string, number> = {};
-
-  const tries = 0;
-  while (tries < retry.retries) {
-    const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
-    tryLogger.info("Fetching result page from Notion API.");
-    try {
-      resultsPage = await notionClient.databases.query({
-        database_id: databaseId,
-        start_cursor: cursor || undefined,
-      });
-      for (const r of resultsPage.results) {
-        if (isFullPage(r)) {
-          const lastEditedTime = new Date(r.last_edited_time).getTime();
-          pages[r.id] = lastEditedTime;
-        }
-      }
-
-      tryLogger.info(
-        { count: resultsPage.results.length },
-        "Received result page from Notion API."
-      );
-
-      return {
-        pages: Object.entries(pages).map(([id, lastEditedTs]) => ({
-          id,
-          lastEditedTs,
-        })),
-        nextCursor: resultsPage.has_more ? resultsPage.next_cursor : null,
-      };
-    } catch (e) {
-      if (
-        NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(
-          (e as { code: string }).code
-        ) ||
-        // This happens if the database is a "linked" database - we can't query those so
-        // it's not useful to retry.
-        (e as { code: string }).code === "validation_error"
-      ) {
-        tryLogger.info("Database not accessible.");
-        return {
-          pages: [],
-          nextCursor: null,
-        };
-      }
-      tryLogger.error(
-        { error: e },
-        "Error fetching result page from Notion API."
-      );
-      if (tries >= retry.retries) {
-        throw e;
-      }
-      const sleepTime = 500 * retry.backoffFactor ** tries;
-      tryLogger.info({ sleepTime }, "Sleeping before retrying.");
-      await new Promise((resolve) => setTimeout(resolve, sleepTime));
-    }
-  }
-
-  throw new Error("Unreachable.");
 }
 
 const NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES = [
@@ -823,7 +739,8 @@ export async function retrieveDatabaseChildrenResultPage({
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      (e.code === "object_not_found" || e.code === "validation_error")
+      (NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        e.code === "validation_error")
     ) {
       localLogger.info(
         {
@@ -841,37 +758,66 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
-export function renderChildDatabaseFromPages({
+export async function renderChildDatabaseFromPages({
   databaseTitle,
   pagesProperties,
+  rowBoundary = "||",
+  cellSeparator = " | ",
 }: {
   databaseTitle: string | null;
   pagesProperties: PageObjectProperties[];
+  rowBoundary?: string;
+  cellSeparator?: string;
 }) {
-  const rows: string[] = databaseTitle ? [databaseTitle] : [];
-  let header: string[] | null = null;
-  for (const pageProperties of pagesProperties) {
-    if (!header) {
-      header = Object.entries(pageProperties).map(([key]) => key);
-      rows.push(`||${header.join(" | ")}||`);
-    }
-
-    const properties: Record<string, string> = Object.entries(pageProperties)
-      .map(([key, value]) => ({
-        key,
-        id: value.id,
-        type: value.type,
-        text: parsePropertyText(value),
-      }))
-      .reduce(
-        (acc, property) =>
-          Object.assign(acc, { [property.key]: property.text }),
-        {}
-      );
-
-    rows.push(`||${header.map((k) => properties[k]).join(" | ")}||`);
+  if (!pagesProperties.length || !pagesProperties[0]) {
+    return "";
   }
-  return rows.join("\n");
+
+  const header = Object.entries(pagesProperties[0]).map(([key]) => key);
+  const rows = pagesProperties.map((pageProperties) =>
+    header.map((k) => {
+      const property = pageProperties[k];
+      if (!property) {
+        return "";
+      }
+      return parsePropertyText(property);
+    })
+  );
+
+  const content = rows.map((r) =>
+    header.reduce(
+      (acc, k, i) => ({ ...acc, [k]: r[i] ?? "" }),
+      {} as Record<string, string>
+    )
+  );
+
+  let csv = await new Promise<string>((resolve, reject) => {
+    stringify(
+      content,
+      { header: true, delimiter: cellSeparator },
+      (err, output) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(output);
+        }
+      }
+    );
+  });
+
+  if (rowBoundary) {
+    csv = csv
+      .split("\n")
+      .filter((row) => row.length)
+      .map((row) => `${rowBoundary}${row}${rowBoundary}`)
+      .join("\n");
+  }
+
+  if (databaseTitle) {
+    csv = `${databaseTitle}\n${csv}`;
+  }
+
+  return csv;
 }
 
 export async function getUserName(

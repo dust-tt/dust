@@ -2,7 +2,6 @@
 time*st*amp was written time*t*amp This migration creates a new field for every
 point, correctly named time*st*amp and with the value of the existing time*t*amp
 field*/
-// @ts-expect-error voluntarily not imported
 import { QdrantClient } from "@qdrant/js-client-rest";
 
 // if reusing, set env vars to those values, don't hardcode the values in the code
@@ -43,7 +42,6 @@ async function migrateCollection(
     });
 
     // update the points
-    // @ts-expect-error normal
     const updatePromises = points.map(async (point) => {
       const payload = { timestamp: point.payload?.timetamp };
       await client.setPayload(collectionName, { payload, points: [point.id] });

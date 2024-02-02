@@ -131,17 +131,19 @@ export default function TablesQueryAction({
                 setIsOutputExpanded(!isOutputExpanded);
               }}
             >
-              <Chip color="purple">
-                {query ? query : "No query generated"}
-                {(noQuery || results) && (
-                  <Icon
-                    visual={
-                      isOutputExpanded ? ChevronDownIcon : ChevronRightIcon
-                    }
-                    size="xs"
-                  />
-                )}
-              </Chip>
+              <Tooltip label={query ? query : "No query generated"}>
+                <Chip color="purple">
+                  {query ? trimText(query) : "No query generated"}
+                  {(noQuery || results) && (
+                    <Icon
+                      visual={
+                        isOutputExpanded ? ChevronDownIcon : ChevronRightIcon
+                      }
+                      size="xs"
+                    />
+                  )}
+                </Chip>
+              </Tooltip>
             </div>
           </div>
           {isOutputExpanded && (

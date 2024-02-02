@@ -17,7 +17,7 @@ const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
 });
 
-const { upsertDatabase, updateParentsFields } = proxyActivities<
+const { upsertDatabaseInConnectorsDb, updateParentsFields } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "60 minute",
@@ -29,9 +29,8 @@ const {
   fetchDatabaseChildPages,
   cachePage,
   cacheBlockChildren,
-  cacheDatabaseChildren,
   renderAndUpsertPageFromCache,
-  clearConnectorCache,
+  clearWorkflowCache,
   getDiscoveredResourcesFromCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
@@ -65,6 +64,10 @@ function preProcessTimestampForNotion(ts: number) {
   return Math.floor(ts / SYNC_PERIOD_DURATION_MS) * SYNC_PERIOD_DURATION_MS;
 }
 
+// This is the main top-level workflow that continuously runs for each notion connector.
+// Each connector has 2 instances of this workflow running in parallel:
+// - one that handles the "incremental" live sync (garbageCollectionMode = "never")
+// - one that continuously runs garbage collection (garbageCollectionMode = "always")
 export async function notionSyncWorkflow({
   connectorId,
   startFromTs,
@@ -113,7 +116,7 @@ export async function notionSyncWorkflow({
     }
 
     // clear the connector cache before each sync
-    await clearConnectorCache({ connectorId, topLevelWorkflowId });
+    await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 
     const runTimestamp = Date.now();
 
@@ -165,6 +168,7 @@ export async function notionSyncWorkflow({
           isBatchSync: isInitialSync,
           queue: childWorkflowQueue,
           topLevelWorkflowId,
+          forceResync,
         })
       );
     } while (cursor);
@@ -192,6 +196,7 @@ export async function notionSyncWorkflow({
       queue: childWorkflowQueue,
       childWorkflowsNameSuffix: "discovered",
       topLevelWorkflowId,
+      forceResync,
     });
 
     if (!isGarbageCollectionRun) {
@@ -228,7 +233,88 @@ export async function notionSyncWorkflow({
   });
 }
 
+// Top level workflow to be used by the CLI or by Poké in order to force-refresh a given Notion page.
 export async function upsertPageWorkflow({
+  connectorId,
+  pageId,
+}: {
+  connectorId: ModelId;
+  pageId: string;
+}) {
+  const topLevelWorkflowId = workflowInfo().workflowId;
+  const runTimestamp = Date.now();
+  await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+  const { skipped } = await executeChild(upsertPageChildWorkflow, {
+    workflowId: `${topLevelWorkflowId}-upsert-page-${pageId}`,
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    args: [
+      {
+        connectorId,
+        pageId,
+        runTimestamp,
+        isBatchSync: false,
+        pageIndex: 0,
+        topLevelWorkflowId,
+      },
+    ],
+    parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+    memo: workflowInfo().memo,
+  });
+  await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+  return { skipped };
+}
+
+// Top level workflow to be used by the CLI or by Poké in order to force-refresh a given Notion database.
+export async function upsertDatabaseWorkflow({
+  connectorId,
+  databaseId,
+  forceResync = false,
+}: {
+  connectorId: ModelId;
+  databaseId: string;
+  forceResync?: boolean;
+}) {
+  const topLevelWorkflowId = workflowInfo().workflowId;
+  const queue = new PQueue({
+    concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
+  });
+  const runTimestamp = Date.now();
+
+  const loggerArgs = {
+    connectorId,
+    databaseId,
+  };
+
+  await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+  await upsertDatabaseInConnectorsDb(
+    connectorId,
+    databaseId,
+    Date.now(),
+    loggerArgs
+  );
+
+  await upsertDatabase({
+    connectorId,
+    databaseId,
+    runTimestamp,
+    topLevelWorkflowId,
+    isGarbageCollectionRun: false,
+    isBatchSync: false,
+    queue,
+    forceResync,
+  });
+
+  await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+}
+
+/*
+ ** AFTER THIS POINT, ALL WORKFLOWS ARE CHILD WORKFLOWS AND SHOULD ONLY BE CALLED BY A TOP-LEVEL WORKFLOW DEFINED ABOVE.
+ */
+
+export async function upsertPageChildWorkflow({
   connectorId,
   pageId,
   runTimestamp,
@@ -281,7 +367,7 @@ export async function upsertPageWorkflow({
     blockIndexInPage += blocksCount;
 
     for (const block of blocksWithChildren) {
-      await executeChild(notionProcessBlockChildrenWorkflow, {
+      await executeChild(notionProcessBlockChildrenChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-block-${block}-children`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -292,7 +378,7 @@ export async function upsertPageWorkflow({
       });
     }
     for (const databaseId of childDatabases) {
-      await executeChild(processChildDatabaseWorkflow, {
+      await executeChild(processChildDatabaseChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -318,7 +404,7 @@ export async function upsertPageWorkflow({
   };
 }
 
-export async function notionProcessBlockChildrenWorkflow({
+export async function notionProcessBlockChildrenChildWorkflow({
   connectorId,
   pageId,
   blockId,
@@ -351,7 +437,7 @@ export async function notionProcessBlockChildrenWorkflow({
     blockIndexInParent += blocksCount;
 
     for (const block of blocksWithChildren) {
-      await executeChild(notionProcessBlockChildrenWorkflow, {
+      await executeChild(notionProcessBlockChildrenChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-block-${block}-children`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -362,7 +448,7 @@ export async function notionProcessBlockChildrenWorkflow({
       });
     }
     for (const databaseId of childDatabases) {
-      await executeChild(processChildDatabaseWorkflow, {
+      await executeChild(processChildDatabaseChildWorkflow, {
         workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
         searchAttributes: {
           connectorId: [connectorId],
@@ -375,7 +461,7 @@ export async function notionProcessBlockChildrenWorkflow({
   } while (cursor);
 }
 
-export async function processChildDatabaseWorkflow({
+export async function processChildDatabaseChildWorkflow({
   connectorId,
   databaseId,
   topLevelWorkflowId,
@@ -390,18 +476,20 @@ export async function processChildDatabaseWorkflow({
 
   let cursor: string | null = null;
   do {
-    const { nextCursor } = await cacheDatabaseChildren({
+    const { nextCursor } = await fetchDatabaseChildPages({
       connectorId,
       databaseId,
       cursor,
       loggerArgs,
       topLevelWorkflowId,
+      storeInCache: true,
+      returnUpToDatePageIdsForExistingDatabase: true,
     });
     cursor = nextCursor;
   } while (cursor);
 }
 
-export async function syncResultPageWorkflow({
+export async function syncResultPageChildWorkflow({
   connectorId,
   pageIds,
   runTimestamp,
@@ -423,7 +511,7 @@ export async function syncResultPageWorkflow({
   for (const [pageIndex, pageId] of pageIds.entries()) {
     promises.push(
       upsertQueue.add(() =>
-        executeChild(upsertPageWorkflow, {
+        executeChild(upsertPageChildWorkflow, {
           workflowId: `${topLevelWorkflowId}-upsert-page-${pageId}`,
           searchAttributes: {
             connectorId: [connectorId],
@@ -448,13 +536,14 @@ export async function syncResultPageWorkflow({
   await Promise.all(promises);
 }
 
-export async function syncResultPageDatabaseWorkflow({
+export async function syncResultPageDatabaseChildWorkflow({
   connectorId,
   databaseIds,
   runTimestamp,
   isGarbageCollectionRun,
   isBatchSync,
   topLevelWorkflowId,
+  forceResync,
 }: {
   connectorId: ModelId;
   databaseIds: string[];
@@ -462,6 +551,7 @@ export async function syncResultPageDatabaseWorkflow({
   isGarbageCollectionRun: boolean;
   isBatchSync: boolean;
   topLevelWorkflowId: string;
+  forceResync: boolean;
 }): Promise<void> {
   const upsertQueue = new PQueue({
     concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
@@ -470,7 +560,7 @@ export async function syncResultPageDatabaseWorkflow({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
   });
 
-  let promises: Promise<void>[] = [];
+  let promises: Promise<void | void[]>[] = [];
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {
@@ -480,7 +570,12 @@ export async function syncResultPageDatabaseWorkflow({
 
     promises.push(
       upsertQueue.add(() =>
-        upsertDatabase(connectorId, databaseId, runTimestamp, loggerArgs)
+        upsertDatabaseInConnectorsDb(
+          connectorId,
+          databaseId,
+          runTimestamp,
+          loggerArgs
+        )
       )
     );
   }
@@ -491,45 +586,88 @@ export async function syncResultPageDatabaseWorkflow({
   promises = [];
 
   for (const databaseId of databaseIds) {
-    let cursor: string | null = null;
-    let pageIndex = 0;
-    const loggerArgs = {
-      connectorId,
-    };
-    do {
-      const { pageIds, nextCursor } = await fetchDatabaseChildPages({
+    promises.push(
+      upsertDatabase({
         connectorId,
         databaseId,
-        cursor,
-        loggerArgs: {
-          ...loggerArgs,
-          pageIndex,
-        },
-        // This will prevent syncing pages that are already up to date, unless
-        // this is the first run for this database or a garbage collection run.
-        excludeUpToDatePages: !isGarbageCollectionRun,
         runTimestamp,
-      });
-      cursor = nextCursor;
-      pageIndex += 1;
-      const upsertsPromise = performUpserts({
-        connectorId,
-        pageIds,
-        databaseIds: [], // we don't upsert any databases in this workflow
+        topLevelWorkflowId,
         isGarbageCollectionRun,
-        runTimestamp,
-        pageIndex,
         isBatchSync,
         queue: workflowQueue,
-        childWorkflowsNameSuffix: `database-children-${databaseId}`,
-        topLevelWorkflowId,
-      });
-
-      promises.push(upsertsPromise);
-    } while (cursor);
+        forceResync,
+      })
+    );
   }
 
   await Promise.all(promises);
+}
+
+async function upsertDatabase({
+  connectorId,
+  databaseId,
+  runTimestamp,
+  topLevelWorkflowId,
+  isGarbageCollectionRun,
+  isBatchSync,
+  queue,
+  forceResync,
+}: {
+  connectorId: ModelId;
+  databaseId: string;
+  runTimestamp: number;
+  topLevelWorkflowId: string;
+  isGarbageCollectionRun: boolean;
+  isBatchSync: boolean;
+  queue: PQueue;
+  forceResync: boolean;
+}) {
+  let cursor: string | null = null;
+  let pageIndex = 0;
+  const loggerArgs = {
+    connectorId,
+  };
+  const promises = [];
+  do {
+    const { pageIds, nextCursor } = await fetchDatabaseChildPages({
+      connectorId,
+      databaseId,
+      cursor,
+      loggerArgs: {
+        ...loggerArgs,
+        pageIndex,
+      },
+      // This prevents syncing pages that are already up to date, unless
+      // this is the first run for this database, a garbage collection run or a force resync.
+      returnUpToDatePageIdsForExistingDatabase:
+        isGarbageCollectionRun || forceResync,
+      runTimestamp,
+      topLevelWorkflowId,
+      // We don't store pages in cache here, we only want to return the pageIds
+      // that need to be synced.
+      storeInCache: false,
+    });
+    cursor = nextCursor;
+    pageIndex += 1;
+    const upsertsPromise = performUpserts({
+      connectorId,
+      pageIds,
+      // we don't upsert any databases in this workflow
+      databaseIds: [],
+      isGarbageCollectionRun,
+      runTimestamp,
+      pageIndex,
+      isBatchSync,
+      queue,
+      childWorkflowsNameSuffix: `database-children-${databaseId}`,
+      topLevelWorkflowId,
+      forceResync,
+    });
+
+    promises.push(upsertsPromise);
+  } while (cursor);
+
+  return Promise.all(promises);
 }
 
 async function performUpserts({
@@ -543,6 +681,7 @@ async function performUpserts({
   queue,
   childWorkflowsNameSuffix = "",
   topLevelWorkflowId,
+  forceResync,
 }: {
   connectorId: ModelId;
   pageIds: string[];
@@ -554,6 +693,7 @@ async function performUpserts({
   queue: PQueue;
   childWorkflowsNameSuffix?: string;
   topLevelWorkflowId: string;
+  forceResync: boolean;
 }): Promise<void> {
   let pagesToSync: string[] = [];
   let databasesToSync: string[] = [];
@@ -598,7 +738,7 @@ async function performUpserts({
 
       promises.push(
         queue.add(() =>
-          executeChild(syncResultPageWorkflow, {
+          executeChild(syncResultPageChildWorkflow, {
             workflowId,
             args: [
               {
@@ -641,7 +781,7 @@ async function performUpserts({
 
       promises.push(
         queue.add(() =>
-          executeChild(syncResultPageDatabaseWorkflow, {
+          executeChild(syncResultPageDatabaseChildWorkflow, {
             workflowId,
             args: [
               {
@@ -651,6 +791,7 @@ async function performUpserts({
                 isBatchSync,
                 databaseIds: batch,
                 topLevelWorkflowId,
+                forceResync,
               },
             ],
             searchAttributes: {

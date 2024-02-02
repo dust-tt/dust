@@ -14,7 +14,9 @@ const safeColorsArray = [
 ];
 
 const safeColorlist = safeColorsArray.flatMap((color) => [
+  `s-bg-${color}-50`,
   `s-bg-${color}-100`,
+  `s-border-${color}-100`,
   `s-border-${color}-200`,
   `s-text-${color}-800`,
   `s-text-${color}-900`,

@@ -26,7 +26,10 @@ import {
 } from "@connectors/connectors/google_drive/temporal/client";
 import { searchNotionPagesForQuery } from "@connectors/connectors/notion/lib/cli";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
-import { upsertPageWorkflow } from "@connectors/connectors/notion/temporal/workflows";
+import {
+  upsertDatabaseWorkflow,
+  upsertPageWorkflow,
+} from "@connectors/connectors/notion/temporal/workflows";
 import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
@@ -466,21 +469,16 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info("Upserting page", { pageId: args.pageId });
       const connectorId = connector.id;
       const client = await getTemporalClient();
-      await client.workflow.start(upsertPageWorkflow, {
+
+      const wf = await client.workflow.start(upsertPageWorkflow, {
         args: [
           {
             connectorId,
             pageId: args.pageId,
-            runTimestamp: new Date().getTime(),
-            isBatchSync: false,
-            pageIndex: -1,
-            // NOTE: this workflow cache is not automatically cleared.
-            // TODO: clear it.
-            topLevelWorkflowId: "notion-test-upsert-page",
           },
         ],
         taskQueue: QUEUE_NAME,
-        workflowId: `notion-test-upsert-page-${args.pageId}-connector-${connectorId}`,
+        workflowId: `notion-force-sync-upsert-page-${args.pageId}-connector-${connectorId}`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -488,6 +486,69 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           connectorId: connectorId,
         },
       });
+
+      const wfId = wf.workflowId;
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (!temporalNamespace) {
+        console.log(`Started temporal workflow with id: ${wfId}`);
+      } else {
+        console.log(
+          `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+        );
+      }
+      break;
+    }
+
+    case "upsert-database": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.databaseId) {
+        throw new Error("Missing --databaseId argument");
+      }
+      const connector = await Connector.findOne({
+        where: {
+          type: "notion",
+          workspaceId: args.wId,
+          dataSourceName: "managed-notion",
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+        );
+      }
+      logger.info("Upserting database", { databaseId: args.databaseId });
+      const connectorId = connector.id;
+      const client = await getTemporalClient();
+
+      const wf = await client.workflow.start(upsertDatabaseWorkflow, {
+        args: [
+          {
+            connectorId,
+            databaseId: args.databaseId,
+            forceResync: !!args.forceResync,
+          },
+        ],
+        taskQueue: QUEUE_NAME,
+        workflowId: `notion-force-sync-upsert-database-${args.databaseId}-connector-${connectorId}`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId: connectorId,
+        },
+      });
+
+      const wfId = wf.workflowId;
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (!temporalNamespace) {
+        console.log(`Started temporal workflow with id: ${wfId}`);
+      } else {
+        console.log(
+          `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+        );
+      }
       break;
     }
 

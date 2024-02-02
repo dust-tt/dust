@@ -42,60 +42,83 @@ import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/memb
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
-export function AssistantDetails({
-  owner,
-  assistant,
-  show,
-  onClose,
-  flow,
-}: {
+type AssistantDetailsProps = {
   owner: WorkspaceType;
-  assistant: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
   flow: AssistantDetailsFlow;
-}) {
+} & (
+  | { assistantSId: string; assistant?: never }
+  | { assistant: LightAgentConfigurationType; assistantSId?: never }
+);
+
+export function AssistantDetails({
+  assistant,
+  assistantSId,
+  flow,
+  onClose,
+  owner,
+  show,
+}: AssistantDetailsProps) {
+  // TODO(2024-02-01 flav) Remove `assistant` once all the call sites have been refactored.
+  const assistantId = assistantSId ?? assistant.sId;
+
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
-    agentConfigurationId: assistant.sId,
+    agentConfigurationId: assistantId,
   });
-  const detailedConfig = useAgentConfiguration({
+  const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
-    agentConfigurationId: assistant.sId,
+    agentConfigurationId: assistantId,
   });
+
+  const { mutateAgentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    includes: ["authors"],
+  });
+
+  const effectiveAssistant = assistant ?? agentConfiguration;
+  if (!effectiveAssistant) {
+    return <></>;
+  }
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-4 sm:flex-row">
       <Avatar
-        visual={<img src={assistant.pictureUrl} alt="Assistant avatar" />}
+        visual={
+          <img src={effectiveAssistant.pictureUrl} alt="Assistant avatar" />
+        }
         size="md"
       />
-      <div>{assistant.description}</div>
+      <div>{effectiveAssistant.description}</div>
     </div>
   );
 
   const InstructionsSection = () =>
-    assistant.generation?.prompt ? (
+    effectiveAssistant.generation?.prompt ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown>{assistant.generation.prompt}</ReactMarkdown>
+        <ReactMarkdown>{effectiveAssistant.generation.prompt}</ReactMarkdown>
       </div>
     ) : (
       "This assistant has no instructions."
     );
 
   const UsageSection = ({
+    assistantName,
     usage,
     isLoading,
     isError,
   }: {
+    assistantName: string;
     usage: AgentUsageType | null;
     isLoading: boolean;
     isError: boolean;
   }) => (
     <div className="flex flex-col gap-2">
       <div className="text-lg font-bold text-element-800">Usage</div>
-      {assistantUsageMessage({ usage, isLoading, isError })}
+      {assistantUsageMessage({ assistantName, usage, isLoading, isError })}
     </div>
   );
 
@@ -125,16 +148,10 @@ export function AssistantDetails({
       ) : null
     ) : null;
 
-  const { mutateAgentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    includes: ["authors"],
-  });
-
   return (
     <Modal
       isOpen={show}
-      title={`@${assistant.name}`}
+      title={`@${effectiveAssistant.name}`}
       onClose={onClose}
       hasChanged={false}
       variant="side-sm"
@@ -142,7 +159,7 @@ export function AssistantDetails({
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <ButtonsSection
           owner={owner}
-          agentConfiguration={assistant}
+          agentConfiguration={effectiveAssistant}
           detailsModalClose={onClose}
           onUpdate={mutateAgentConfigurations}
           onClose={onClose}
@@ -151,13 +168,12 @@ export function AssistantDetails({
         <DescriptionSection />
         <InstructionsSection />
         <UsageSection
+          assistantName={effectiveAssistant.name}
           usage={agentUsage.agentUsage}
           isLoading={agentUsage.isAgentUsageLoading}
           isError={agentUsage.isAgentUsageError}
         />
-        <ActionSection
-          action={detailedConfig.agentConfiguration?.action || null}
-        />
+        <ActionSection action={agentConfiguration?.action || null} />
       </div>
     </Modal>
   );
