@@ -29,7 +29,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
-import { AssistantQuickEditionMenu } from "@app/components/assistant/conversation/AssistantQuickEditionMenu";
+import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
@@ -337,7 +337,7 @@ export function AgentMessage({
             <div className="text-sm font-medium">
               {AssitantDetailViewLink(agentConfiguration)}
             </div>
-            <AssistantQuickEditionMenu
+            <AssistantEditionMenu
               agentConfigurationSId={agentConfiguration.sId}
               owner={owner}
             />

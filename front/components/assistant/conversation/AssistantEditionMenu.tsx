@@ -20,18 +20,18 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { performAgentUserListStatusUpdate } from "@app/lib/client/dust_api";
 import { useAgentConfiguration } from "@app/lib/swr";
 
-interface AssistantQuickEditionMenuProps {
+interface AssistantEditionMenuProps {
   agentConfigurationSId: string;
   owner: WorkspaceType;
 }
 
-export function AssistantQuickEditionMenu({
+export function AssistantEditionMenu({
   // The `agentConfiguration` cannot be used directly as it isn't dynamically
   // updated upon user list mutations. This limitation stems from its
   // propagation method from <ConversationMessage>.
   agentConfigurationSId,
   owner,
-}: AssistantQuickEditionMenuProps) {
+}: AssistantEditionMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
