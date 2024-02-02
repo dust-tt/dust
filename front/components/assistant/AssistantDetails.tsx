@@ -42,6 +42,7 @@ import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { useAgentConfigurations } from "@app/lib/swr";
 import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 import { SharingDropdown } from "@app/components/assistant_builder/TeamSharingSection";
+import { timeAgoFrom } from "@app/lib/utils";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
@@ -85,6 +86,11 @@ export function AssistantDetails({
     `${agentUsage.agentUsage.messageCount} message(s) over the last ${
       agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
     } days`;
+  const editedSentence =
+    effectiveAssistant.versionCreatedAt &&
+    `Last edited ${timeAgoFrom(
+      Date.parse(effectiveAssistant.versionCreatedAt)
+    )} ago`;
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -117,7 +123,7 @@ export function AssistantDetails({
           <div>
             <span className="font-bold">By: </span> Authors here
           </div>
-          <div>{"" + usageSentence}</div>
+          <div>{editedSentence + ", " + usageSentence}</div>
         </div>
       )}
       <Page.Separator />
