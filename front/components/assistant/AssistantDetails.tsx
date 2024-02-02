@@ -13,7 +13,6 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
-  AgentUsageType,
   AgentUserListStatus,
   ConnectorProvider,
   CoreAPITable,
@@ -34,15 +33,15 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
+import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { assistantUsageMessage } from "@app/lib/assistant";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { useAgentConfigurations } from "@app/lib/swr";
-import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
-import { SharingDropdown } from "@app/components/assistant_builder/TeamSharingSection";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 type AssistantDetailsFlow = "personal" | "workspace";
 
@@ -107,7 +106,7 @@ export function AssistantDetails({
             agentConfigurationId={effectiveAssistant.sId}
             initialScope={effectiveAssistant.scope}
             newScope={effectiveAssistant.scope}
-            setNewScope={() => console.log("scope setting todo")}
+            setNewScope={(scope) => {}}
           />
         </div>
       </div>

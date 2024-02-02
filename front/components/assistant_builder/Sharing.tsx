@@ -80,7 +80,7 @@ const SCOPE_INFO: Record<
   },
 };
 
-export function TeamSharingSection({
+export function SharingSection({
   owner,
   agentConfigurationId,
   initialScope,

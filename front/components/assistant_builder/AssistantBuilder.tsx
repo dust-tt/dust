@@ -57,8 +57,8 @@ import {
   SPIRIT_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
+import { SharingSection } from "@app/components/assistant_builder/Sharing";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
-import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
 import type {
   ActionMode,
   AssistantBuilderDataSourceConfiguration,
@@ -817,7 +817,7 @@ export default function AssistantBuilder({
               </div>
             </div>
           </div>
-          <TeamSharingSection
+          <SharingSection
             owner={owner}
             agentConfigurationId={agentConfigurationId}
             initialScope={initialBuilderState?.scope ?? defaultScope}
