@@ -11,7 +11,7 @@ import type {
   AgentGenerationSuccessEvent,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import { sectionFullText } from "@dust-tt/types";
+import { RateLimitError, sectionFullText } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
@@ -24,6 +24,7 @@ import {
   isUserAllowedToUseChatbot,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import { notifyIfUserRateLimited } from "@connectors/connectors/slack/lib/workspace_rate_limit";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import {
@@ -62,7 +63,7 @@ export async function botAnswerMessageWithErrorHandling(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null
-): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
@@ -80,6 +81,17 @@ export async function botAnswerMessageWithErrorHandling(
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
+
+  const isRateLimited = await notifyIfUserRateLimited(connector, {
+    slackUserId,
+    slackChannel,
+    slackMessageTs,
+  });
+  if (isRateLimited) {
+    return new Ok(undefined);
+  }
+
+  // Apply rate limit here!
   try {
     const res = await botAnswerMessage(
       message,
@@ -157,7 +169,7 @@ async function botAnswerMessage(
   slackThreadTs: string | null,
   connector: Connector,
   slackConfig: SlackConfiguration
-): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({

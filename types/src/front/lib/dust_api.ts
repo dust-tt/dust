@@ -729,6 +729,25 @@ export class DustAPI {
     return new Ok(r.value.tokens);
   }
 
+  async getAllMembersInWorkspace() {
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members`;
+
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+    });
+
+    const r: DustAPIResponse<{ members: unknown[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.members);
+  }
+
   private async _resultFromResponse<T>(
     response: Response
   ): Promise<DustAPIResponse<T>> {
