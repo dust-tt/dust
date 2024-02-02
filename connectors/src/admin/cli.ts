@@ -25,6 +25,7 @@ import {
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
 import { searchNotionPagesForQuery } from "@connectors/connectors/notion/lib/cli";
+import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
   upsertDatabaseWorkflow,
@@ -569,6 +570,26 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       console.table(pages);
 
       break;
+    }
+
+    case "stop-all-garbage-collectors": {
+      const connectors = await Connector.findAll({
+        where: {
+          type: "notion",
+        },
+      });
+      logger.info(
+        { connectorsCount: connectors.length },
+        "Stopping all notion garbage collectors"
+      );
+      for (const connector of connectors) {
+        logger.info(
+          { connectorId: connector.id },
+          "Stopping notion garbage collector"
+        );
+        await stopNotionGarbageCollectorWorkflow(connector.id.toString());
+      }
+      return;
     }
 
     default:
