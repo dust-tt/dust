@@ -29,6 +29,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
+import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
@@ -316,27 +317,33 @@ export function AgentMessage({
     );
   }
 
+  const { configuration: agentConfiguration } = agentMessageToRender;
+
   return (
     <ConversationMessage
       owner={owner}
       user={user}
       conversationId={conversationId}
       messageId={agentMessageToRender.sId}
-      pictureUrl={agentMessageToRender.configuration.pictureUrl}
-      name={`@${agentMessageToRender.configuration.name}`}
+      pictureUrl={agentConfiguration.pictureUrl}
+      name={`@${agentConfiguration.name}`}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       reactions={reactions}
       enableEmojis={true}
       renderName={() => {
         return isDevelopmentOrDustWorkspace(owner) ? (
-          <div className="text-sm font-medium">
-            {AssitantDetailViewLink(agentMessageToRender.configuration)}
+          <div className="flex flex-row gap-2">
+            <div className="text-sm font-medium">
+              {AssitantDetailViewLink(agentConfiguration)}
+            </div>
+            <AssistantEditionMenu
+              agentConfigurationId={agentConfiguration.sId}
+              owner={owner}
+            />
           </div>
         ) : (
-          <div className="text-sm font-medium">
-            {agentMessageToRender.configuration.name}
-          </div>
+          <div className="text-sm font-medium">{agentConfiguration.name}</div>
         );
       }}
     >
