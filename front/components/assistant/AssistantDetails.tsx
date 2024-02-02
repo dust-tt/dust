@@ -56,8 +56,7 @@ export function AssistantDetails({
     });
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
-  const effectiveAssistant = agentConfiguration;
-  if (!effectiveAssistant || !agentConfiguration) {
+  if (!agentConfiguration) {
     return <></>;
   }
   const updateScope = async (
@@ -95,44 +94,44 @@ export function AssistantDetails({
       agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
     } days`;
   const editedSentence =
-    effectiveAssistant.versionCreatedAt &&
+    agentConfiguration.versionCreatedAt &&
     `Last edited ${timeAgoFrom(
-      Date.parse(effectiveAssistant.versionCreatedAt)
+      Date.parse(agentConfiguration.versionCreatedAt)
     )} ago`;
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
           visual={
-            <img src={effectiveAssistant.pictureUrl} alt="Assistant avatar" />
+            <img src={agentConfiguration.pictureUrl} alt="Assistant avatar" />
           }
           size="lg"
         />
         <div className="flex flex-col gap-1">
-          <div className="text-lg font-bold text-element-900">{`@${effectiveAssistant.name}`}</div>
+          <div className="text-lg font-bold text-element-900">{`@${agentConfiguration.name}`}</div>
           <SharingDropdown
             owner={owner}
-            agentConfigurationId={effectiveAssistant.sId}
-            initialScope={effectiveAssistant.scope}
-            newScope={effectiveAssistant.scope}
+            agentConfigurationId={agentConfiguration.sId}
+            initialScope={agentConfiguration.scope}
+            newScope={agentConfiguration.scope}
             disabled={isUpdatingScope}
             setNewScope={(scope) => updateScope(scope)}
           />
         </div>
       </div>
       <div className="text-sm text-element-900">
-        {effectiveAssistant.description}
+        {agentConfiguration.description}
       </div>
-      {effectiveAssistant.scope === "global" && usageSentence && (
+      {agentConfiguration.scope === "global" && usageSentence && (
         <div>{usageSentence}</div>
       )}
-      {(effectiveAssistant.scope === "workspace" ||
-        effectiveAssistant.scope === "published") && (
+      {(agentConfiguration.scope === "workspace" ||
+        agentConfiguration.scope === "published") && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {effectiveAssistant.lastAuthors && (
+          {agentConfiguration.lastAuthors && (
             <div>
               <span className="font-bold">By: </span>{" "}
-              {effectiveAssistant.lastAuthors.join(", ")}
+              {agentConfiguration.lastAuthors.join(", ")}
             </div>
           )}
           <div>{editedSentence + ", " + usageSentence}</div>
@@ -143,10 +142,10 @@ export function AssistantDetails({
   );
 
   const InstructionsSection = () =>
-    effectiveAssistant.generation?.prompt ? (
+    agentConfiguration.generation?.prompt ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown>{effectiveAssistant.generation.prompt}</ReactMarkdown>
+        <ReactMarkdown>{agentConfiguration.generation.prompt}</ReactMarkdown>
       </div>
     ) : (
       "This assistant has no instructions."
