@@ -4,6 +4,9 @@ export { SparkleContext };
 import { Div3D, Hover3D } from "./components/Hover3D";
 export { Div3D, Hover3D };
 
+import { Hoverable } from "./components/Hoverable";
+export { Hoverable };
+
 import { Button } from "./components/Button";
 export { Button };
 
