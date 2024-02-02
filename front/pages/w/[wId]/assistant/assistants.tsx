@@ -142,7 +142,7 @@ export default function PersonalAssistants({
     const { errorMessage, success } = await updateAgentUserListStatus({
       listStatus,
       owner,
-      agentConfigurationSId: agentConfiguration.sId,
+      agentConfigurationId: agentConfiguration.sId,
     });
 
     if (success) {

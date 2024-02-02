@@ -128,7 +128,7 @@ export function RemoveAssistantFromListDialog({
         const { errorMessage, success } = await updateAgentUserListStatus({
           listStatus: "not-in-list",
           owner,
-          agentConfigurationSId: agentConfiguration.sId,
+          agentConfigurationId: agentConfiguration.sId,
         });
 
         if (success) {

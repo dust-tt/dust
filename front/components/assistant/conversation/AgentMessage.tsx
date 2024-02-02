@@ -338,7 +338,7 @@ export function AgentMessage({
               {AssitantDetailViewLink(agentConfiguration)}
             </div>
             <AssistantEditionMenu
-              agentConfigurationSId={agentConfiguration.sId}
+              agentConfigurationId={agentConfiguration.sId}
               owner={owner}
             />
           </div>

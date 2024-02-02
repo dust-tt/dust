@@ -8,11 +8,7 @@ import {
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import type { AgentUserListStatus, WorkspaceType } from "@dust-tt/types";
-import {
-  isAgentConfigurationInWorkspace,
-  isAgentConfigurationPublished,
-  isBuilder,
-} from "@dust-tt/types";
+import { isBuilder } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -20,7 +16,7 @@ import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration } from "@app/lib/swr";
 
 interface AssistantEditionMenuProps {
-  agentConfigurationSId: string;
+  agentConfigurationId: string;
   owner: WorkspaceType;
 }
 
@@ -28,7 +24,7 @@ export function AssistantEditionMenu({
   // The `agentConfiguration` cannot be used directly as it isn't dynamically
   // updated upon user list mutations. This limitation stems from its
   // propagation method from <ConversationMessage>.
-  agentConfigurationSId,
+  agentConfigurationId,
   owner,
 }: AssistantEditionMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
@@ -37,7 +33,7 @@ export function AssistantEditionMenu({
   const { agentConfiguration, mutateAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,
-      agentConfigurationId: agentConfigurationSId,
+      agentConfigurationId,
     });
 
   if (!agentConfiguration) {
@@ -59,7 +55,7 @@ export function AssistantEditionMenu({
     const { success, errorMessage } = await updateAgentUserListStatus({
       listStatus,
       owner,
-      agentConfigurationSId: agentConfiguration.sId,
+      agentConfigurationId: agentConfiguration.sId,
     });
 
     if (success) {

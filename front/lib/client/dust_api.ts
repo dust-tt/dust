@@ -5,7 +5,7 @@ import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/memb
 interface UpdateAgentUserListStatusParams {
   listStatus: AgentUserListStatus;
   owner: WorkspaceType;
-  agentConfigurationSId: string;
+  agentConfigurationId: string;
 }
 
 interface UpdateAgentUserListStatusResult {
@@ -16,10 +16,10 @@ interface UpdateAgentUserListStatusResult {
 export async function updateAgentUserListStatus({
   listStatus,
   owner,
-  agentConfigurationSId,
+  agentConfigurationId,
 }: UpdateAgentUserListStatusParams): Promise<UpdateAgentUserListStatusResult> {
   const body: PostAgentListStatusRequestBody = {
-    agentId: agentConfigurationSId,
+    agentId: agentConfigurationId,
     listStatus,
   };
 
