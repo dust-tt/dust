@@ -13,7 +13,7 @@
     "initdb": "npx tsx admin/db.ts"
   },
   "dependencies": {
-    "@dust-tt/sparkle": "^0.2.82",
+    "@dust-tt/sparkle": "^0.2.83",
     "@dust-tt/types": "file:../types",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
