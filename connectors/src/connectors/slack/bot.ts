@@ -11,7 +11,7 @@ import type {
   AgentGenerationSuccessEvent,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import { RateLimitError, sectionFullText } from "@dust-tt/types";
+import { sectionFullText } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
@@ -91,7 +91,6 @@ export async function botAnswerMessageWithErrorHandling(
     return new Ok(undefined);
   }
 
-  // Apply rate limit here!
   try {
     const res = await botAnswerMessage(
       message,

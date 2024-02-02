@@ -1,11 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import {
-  cacheWithRedis,
-  DustAPI,
-  Err,
-  Ok,
-  RateLimitError,
-} from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis, DustAPI } from "@dust-tt/types";
 
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -41,16 +35,16 @@ async function getActiveMembersCount(connector: Connector): Promise<number> {
     { useLocalInDev: true }
   );
 
-  const membersRes = await dustAPI.getActiveMembersCountInWorkspace();
-  if (membersRes.isErr()) {
+  const activeMembersRes = await dustAPI.getActiveMembersCountInWorkspace();
+  if (activeMembersRes.isErr()) {
     logger.error("Error getting all members in workspace.", {
-      error: membersRes.error,
+      error: activeMembersRes.error,
     });
 
     throw new Error("Error getting all members in workspace.");
   }
 
-  return membersRes.value;
+  return activeMembersRes.value;
 }
 
 function makeSlackRateLimiterForConnectorKey(connectorId: ModelId): string {
