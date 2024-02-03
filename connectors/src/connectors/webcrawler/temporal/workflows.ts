@@ -15,7 +15,7 @@ const { crawlWebsiteByConnectorId } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   // for each page crawl, there are heartbeats, but a page crawl can last at max
   // REQUEST_HANDLING_TIMEOUT seconds
-  heartbeatTimeout: "1 seconds", // `${REQUEST_HANDLING_TIMEOUT} seconds`,
+  heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT} seconds`,
   cancellationType: ActivityCancellationType.TRY_CANCEL,
   retry: {
     initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,
