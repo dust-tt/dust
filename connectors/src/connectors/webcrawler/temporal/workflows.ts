@@ -20,7 +20,6 @@ const { crawlWebsiteByConnectorId } = proxyActivities<typeof activities>({
   retry: {
     initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,
     maximumInterval: "3600 seconds",
-    maximumAttempts: 20,
   },
 });
 
