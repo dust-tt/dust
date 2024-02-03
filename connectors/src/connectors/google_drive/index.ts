@@ -65,7 +65,7 @@ export async function createGoogleDriveConnector(
         const driveClient = await getDriveClient(nangoConnectionId);
 
         // Sanity checks to confirm we have sufficient permissions
-        Promise.all([
+        await Promise.all([
           driveClient.about.get({ fields: "*" }),
           driveClient.files.get({ fileId: "root" }),
           driveClient.drives.list({
