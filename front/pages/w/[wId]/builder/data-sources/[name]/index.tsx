@@ -567,6 +567,7 @@ function SlackBotEnableView({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
+
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
@@ -888,10 +889,9 @@ function ManagedDataSourceView({
                 case "github":
                 case "notion":
                 case "intercom":
-                  return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
+                  return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
                   return `Manage Website`;
-
                 default:
                   assertNever(connectorProvider);
               }
