@@ -28,6 +28,7 @@ import type {
   ConnectorConfigGetter,
   ConnectorPermissionRetriever,
 } from "../interface";
+import { getGithubCodeOrDirectoryParentIds } from "./lib/hierarchy";
 
 type GithubInstallationId = string;
 
@@ -583,5 +584,39 @@ export async function setGithubConfig(
     default: {
       return new Err(new Error(`Invalid config key ${configKey}`));
     }
+  }
+}
+
+export async function retrieveGithubResourceParents(
+  connectorId: ModelId,
+  internalId: string
+): Promise<Result<string[], Error>> {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  if (internalId.startsWith(`github-code-`)) {
+    const repoId = parseInt(internalId.split("-")[2] || "", 10);
+    if (internalId.split("-").length > 3) {
+      const parents = await getGithubCodeOrDirectoryParentIds(
+        connector.id,
+        internalId,
+        repoId
+      );
+      return new Ok(parents);
+    } else {
+      return new Ok([`${repoId}`]);
+    }
+  } else {
+    const repoId = parseInt(internalId.split("-")[0] || "", 10);
+    if (internalId.endsWith("-issues") || internalId.endsWith("-discussions")) {
+      return new Ok([`${repoId}`]);
+    }
+    return new Ok([]);
   }
 }

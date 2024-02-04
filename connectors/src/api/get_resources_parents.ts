@@ -6,6 +6,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { RETRIEVE_RESOURCE_PARENTS_BY_TYPE } from "@connectors/connectors";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -59,10 +60,10 @@ const _getResourcesParents = async (
   const { resourceInternalIds } = bodyValidation.right;
 
   const parentsGetter = RETRIEVE_RESOURCE_PARENTS_BY_TYPE[connector.type];
-  const parentsResults = await Promise.all(
-    resourceInternalIds.map((resourceInternalId) =>
-      parentsGetter(connector.id, resourceInternalId)
-    )
+  const parentsResults = await concurrentExecutor(
+    resourceInternalIds,
+    (resourceInternalId) => parentsGetter(connector.id, resourceInternalId),
+    { concurrency: 4 }
   );
   const resources: { internalId: string; parents: string[] }[] = [];
 
