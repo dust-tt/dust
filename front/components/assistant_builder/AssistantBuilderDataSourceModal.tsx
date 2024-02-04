@@ -155,7 +155,7 @@ function PickDataSource({
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header
-          title="Select Data Sources in:"
+          title="Select Data Sources in"
           icon={CloudArrowLeftRightIcon}
         />
         <Searchbar
@@ -326,6 +326,7 @@ function DataSourceResourceSelector({
     </Transition>
   );
 }
+
 function getDisplayNameForDataSource(ds: DataSourceType) {
   if (ds.connectorProvider) {
     switch (ds.connectorProvider) {
@@ -336,7 +337,6 @@ function getDisplayNameForDataSource(ds: DataSourceType) {
       case "intercom":
       case "notion":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-        break;
       case "webcrawler":
         return ds.name;
       default:
