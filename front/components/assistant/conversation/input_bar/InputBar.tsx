@@ -107,13 +107,6 @@ export function AssistantInputBar({
     };
   }, []);
 
-  useEffect(() => {
-    if (animate && !isAnimating) {
-      setIsAnimating(true);
-      setTimeout(() => setIsAnimating(false), 1500);
-    }
-  }, [animate, isAnimating]);
-
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
