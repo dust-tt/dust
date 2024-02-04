@@ -490,6 +490,10 @@ async function handler(
           }
           break;
         case "customer.subscription.deleted":
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received customer.subscription.deleted event."
+          );
           stripeSubscription = event.data.object as Stripe.Subscription;
           // Occurs when the subscription is canceled by the user or by us.
           if (stripeSubscription.status === "canceled") {
