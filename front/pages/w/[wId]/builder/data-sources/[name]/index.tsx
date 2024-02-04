@@ -710,7 +710,7 @@ function GithubCodeEnableView({
       >
         <ContextItem.Description>
           <div className="text-element-700">
-            The code of your GitHub repositories is synced with Dust every 8h.
+            Your GitHub repositories code is synced with Dust every 8h.
           </div>
         </ContextItem.Description>
       </ContextItem>
