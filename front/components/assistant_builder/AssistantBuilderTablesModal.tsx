@@ -14,11 +14,11 @@ import * as React from "react";
 import { useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
+import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useTables } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
-import { orderDatasourceByImportance } from "@app/lib/assistant";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 
 export default function AssistantBuilderTablesModal({
   isOpen,
