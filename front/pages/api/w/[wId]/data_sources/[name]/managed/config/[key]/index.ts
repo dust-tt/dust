@@ -73,7 +73,7 @@ async function handler(
   }
   const connectorsAPI = new ConnectorsAPI(logger);
 
-  const configKey = req.query.configKey;
+  const configKey = req.query.key;
   if (!configKey || typeof configKey !== "string") {
     return apiError(req, res, {
       status_code: 400,
