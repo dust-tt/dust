@@ -5,7 +5,12 @@ import {
   getReposPage,
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
+import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
+import type {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GithubCodeDirectory,
@@ -23,12 +28,6 @@ import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
-
-import type {
-  ConnectorConfigGetter,
-  ConnectorPermissionRetriever,
-} from "../interface";
-import { getGithubCodeOrDirectoryParentIds } from "./lib/hierarchy";
 
 type GithubInstallationId = string;
 
