@@ -4,6 +4,7 @@ import {
   Item,
   Modal,
   Page,
+  Searchbar,
   ServerIcon,
 } from "@dust-tt/sparkle";
 import type { CoreAPITable, DataSourceType } from "@dust-tt/types";
@@ -13,8 +14,11 @@ import * as React from "react";
 import { useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
+import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useTables } from "@app/lib/swr";
+import { subFilter } from "@app/lib/utils";
 
 export default function AssistantBuilderTablesModal({
   isOpen,
@@ -99,40 +103,36 @@ function PickDataSource({
   dataSources: DataSourceType[];
   onPick: (dataSource: DataSourceType) => void;
 }) {
+  const [query, setQuery] = useState<string>("");
+
+  const filtered = dataSources.filter((ds) => {
+    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
+  });
+
   return (
     <Transition show={true} className="mx-auto max-w-6xl">
       <Page>
-        <Page.Header
-          title="Select a Table in your Data sources"
-          icon={ServerIcon}
+        <Page.Header title="Select a Table in" icon={ServerIcon} />
+        <Searchbar
+          name="search"
+          onChange={setQuery}
+          value={query}
+          placeholder="Search..."
         />
-
-        {dataSources
-          .sort(
-            (a, b) =>
-              (b.connectorProvider ? 1 : 0) - (a.connectorProvider ? 1 : 0)
-          )
-          .map((ds) => {
-            return (
-              <Item.Navigation
-                label={
-                  ds.connectorProvider
-                    ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name
-                    : ds.name
-                }
-                icon={
-                  ds.connectorProvider
-                    ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                        .logoComponent
-                    : CloudArrowDownIcon
-                }
-                key={ds.id}
-                onClick={() => {
-                  onPick(ds);
-                }}
-              />
-            );
-          })}
+        {orderDatasourceByImportance(filtered).map((ds) => (
+          <Item.Navigation
+            label={getDisplayNameForDataSource(ds)}
+            icon={
+              ds.connectorProvider
+                ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+                : CloudArrowDownIcon
+            }
+            key={ds.id}
+            onClick={() => {
+              onPick(ds);
+            }}
+          />
+        ))}
       </Page>
     </Transition>
   );
@@ -167,10 +167,7 @@ const PickTable = ({
   return (
     <Transition show={true} className="mx-auto max-w-6xl">
       <Page>
-        <Page.Header
-          title="Select a Table in your Data Sources"
-          icon={ServerIcon}
-        />
+        <Page.Header title="Select a Table" icon={ServerIcon} />
 
         {isAllSelected && (
           <div className="flex h-full w-full flex-col">
