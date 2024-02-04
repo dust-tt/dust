@@ -612,7 +612,7 @@ function SlackBotEnableView({
                   setShowNoSlackBotPopup(true);
                 else await handleSetBotEnabled(!botEnabled);
               }}
-              selected={botEnabled || false}
+              selected={botEnabled}
               disabled={readOnly || !isAdmin || loading}
             />
             <Popup
@@ -702,7 +702,7 @@ function GithubCodeEnableView({
               onClick={async () => {
                 await handleSetCodeSyncEnabled(!codeSyncEnabled);
               }}
-              selected={codeSyncEnabled || false}
+              selected={codeSyncEnabled}
               disabled={readOnly || !isAdmin || loading}
             />
           </div>
