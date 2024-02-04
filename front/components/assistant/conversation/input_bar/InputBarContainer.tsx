@@ -22,7 +22,6 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
-
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
