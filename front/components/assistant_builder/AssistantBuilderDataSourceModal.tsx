@@ -277,11 +277,11 @@ function DataSourceResourceSelector({
           <div className="flex flex-row gap-32">
             <div className="flex-1">
               <div className="flex gap-4 pb-8 text-lg font-semibold text-element-900">
-                Select all:{" "}
+                Select all
                 <SliderToggle
                   selected={isSelectAll}
                   onClick={toggleSelectAll}
-                  size="sm"
+                  size="xs"
                 />
               </div>
               <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
