@@ -10,18 +10,18 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export const PostBotEnabledRequestBodySchema = t.type({
-  botEnabled: t.boolean,
+export const PostManagedDataSourceConfigRequestBodySchema = t.type({
+  configValue: t.string,
 });
 
-export type GetOrPostBotEnabledResponseBody = {
-  botEnabled: boolean;
+export type GetOrPostManagedDataSourceConfigResponseBody = {
+  configValue: string;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetOrPostBotEnabledResponseBody | void>
+    WithAPIErrorReponse<GetOrPostManagedDataSourceConfigResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -73,27 +73,49 @@ async function handler(
   }
   const connectorsAPI = new ConnectorsAPI(logger);
 
+  const configKey = req.query.key;
+  if (!configKey || typeof configKey !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid config key: ${configKey}`,
+      },
+    });
+  }
+
+  // We only allow setting and retrieving `botEnabled` (slack) and `codeSyncEnabled` (github). This
+  // is mainly to prevent users from enabling other configs that are not released (e.g. google_drive
+  // `pdfEnabled`).
+  if (!["botEnabled", "codeSyncEnabled"].includes(configKey)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid config key: ${configKey}`,
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
-      const botEnabledRes = await connectorsAPI.getConnectorConfig(
+      const configRes = await connectorsAPI.getConnectorConfig(
         dataSource.connectorId,
-        "botEnabled"
+        configKey
       );
 
-      if (botEnabledRes.isErr()) {
+      if (configRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "data_source_error",
-            message: `Failed to retrieve bot enablement settings.`,
-            connectors_error: botEnabledRes.error,
+            message: `Failed to retrieve config for data source.`,
+            connectors_error: configRes.error,
           },
         });
       }
 
-      res
-        .status(200)
-        .json({ botEnabled: botEnabledRes.value.configValue === "true" });
+      res.status(200).json({ configValue: configRes.value.configValue });
       return;
 
     case "POST":
@@ -103,12 +125,13 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that are `admins` for the current workspace can edit the (bot) permissions of a data source.",
+              "Only the users that are `admins` for the current workspace can edit the configuration of a data source.",
           },
         });
       }
 
-      const bodyValidation = PostBotEnabledRequestBodySchema.decode(req.body);
+      const bodyValidation =
+        PostManagedDataSourceConfigRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -120,24 +143,24 @@ async function handler(
         });
       }
 
-      const setBotEnabledRes = await connectorsAPI.setConnectorConfig(
+      const setConfigRes = await connectorsAPI.setConnectorConfig(
         dataSource.connectorId,
-        "botEnabled",
-        bodyValidation.right.botEnabled ? "true" : "false"
+        configKey,
+        bodyValidation.right.configValue
       );
 
-      if (setBotEnabledRes.isErr()) {
+      if (setConfigRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "data_source_error",
-            message: "Failed to edit the (bot) permissions of the data source.",
-            connectors_error: setBotEnabledRes.error,
+            message: "Failed to edit the configuration of the data source.",
+            connectors_error: setConfigRes.error,
           },
         });
       }
 
-      res.status(200).json(setBotEnabledRes.value);
+      res.status(200).json({ configValue: bodyValidation.right.configValue });
       return;
 
     default:

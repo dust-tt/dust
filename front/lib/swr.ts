@@ -27,7 +27,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
-import type { GetOrPostBotEnabledResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/bot_enabled";
+import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import type { GetFeaturesResponseBody } from "@app/pages/api/w/[wId]/features";
@@ -302,24 +302,27 @@ export function useConnectorPermissions({
   };
 }
 
-export function useConnectorBotEnabled({
+export function useConnectorConfig({
   owner,
   dataSource,
+  configKey,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
+  configKey: string;
 }) {
-  const botEnabledFetcher: Fetcher<GetOrPostBotEnabledResponseBody> = fetcher;
+  const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
+    fetcher;
 
-  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/bot_enabled`;
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/${configKey}`;
 
-  const { data, error, mutate } = useSWR(url, botEnabledFetcher);
+  const { data, error, mutate } = useSWR(url, configFetcher);
 
   return {
-    botEnabled: data ? data.botEnabled : null,
+    configValue: data ? data.configValue : null,
     isResourcesLoading: !error && !data,
     isResourcesError: error,
-    mutateBotEnabled: mutate,
+    mutateConfig: mutate,
   };
 }
 
