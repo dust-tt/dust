@@ -127,6 +127,10 @@ export function AgentMessage({
     const event = eventPayload.data;
     switch (event.type) {
       case "agent_action_success":
+        setStreamedAgentMessage((m) => {
+          return { ...m, action: event.action, content: "" };
+        });
+        break;
       case "retrieval_params":
       case "dust_app_run_params":
       case "dust_app_run_block":
@@ -393,22 +397,30 @@ export function AgentMessage({
     return (
       <>
         {agentMessage.action && <AgentAction action={agentMessage.action} />}
-        {agentMessage.content && agentMessage.content !== "" && (
+        {agentMessage.content !== null && (
           <div>
-            <RenderMessageMarkdown
-              content={agentMessage.content}
-              blinkingCursor={streaming}
-              citationsContext={{
-                references,
-                updateActiveReferences,
-                setHoveredReference: setLastHoveredReference,
-              }}
-            />
-            {activeReferences.length > 0 && (
-              <Citations
-                activeReferences={activeReferences}
-                lastHoveredReference={lastHoveredReference}
-              />
+            {agentMessage.content === "" ? (
+              <div className="blinking-cursor">
+                <span></span>
+              </div>
+            ) : (
+              <>
+                <RenderMessageMarkdown
+                  content={agentMessage.content}
+                  blinkingCursor={streaming}
+                  citationsContext={{
+                    references,
+                    updateActiveReferences,
+                    setHoveredReference: setLastHoveredReference,
+                  }}
+                />
+                {activeReferences.length > 0 && (
+                  <Citations
+                    activeReferences={activeReferences}
+                    lastHoveredReference={lastHoveredReference}
+                  />
+                )}
+              </>
             )}
           </div>
         )}
