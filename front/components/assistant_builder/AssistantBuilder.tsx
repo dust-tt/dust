@@ -41,7 +41,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
@@ -201,6 +201,8 @@ export default function AssistantBuilder({
   defaultIsEdited,
 }: AssistantBuilderProps) {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
+
   const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"

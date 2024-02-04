@@ -3,7 +3,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
@@ -51,6 +51,8 @@ export function AssistantInputBar({
   stickyMentions?: AgentMention[];
   additionalAgentConfigurations?: LightAgentConfigurationType[];
 }) {
+  const { mutate } = useSWRConfig();
+
   const [contentFragmentBody, setContentFragmentBody] = useState<
     string | undefined
   >(undefined);

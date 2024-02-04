@@ -23,7 +23,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -106,6 +106,8 @@ const WorkspacePage = ({
   whitelistableFeatures,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
+
   const sendNotification = useContext(SendNotificationsContext);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
 

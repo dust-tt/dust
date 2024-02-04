@@ -7,7 +7,7 @@ import Picker from "@emoji-mart/react";
 import type { ComponentType, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import React from "react";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
@@ -117,6 +117,8 @@ export function ConversationMessage({
   enableEmojis: boolean;
   renderName: (name: string | null) => React.ReactNode;
 }) {
+  const { mutate } = useSWRConfig();
+
   const [emojiData, setEmojiData] = useState<EmojiMartData | null>(null);
 
   useEffect(() => {
