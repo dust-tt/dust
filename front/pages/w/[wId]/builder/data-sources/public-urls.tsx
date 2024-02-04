@@ -103,6 +103,7 @@ export default function DataSourcesView({
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_url",
+        crawlerEnabled: true,
       })}
     >
       <Page.Vertical gap="xl" align="stretch">

@@ -27,7 +27,7 @@ import { getApps } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
-import { useKeys, useProviders } from "@app/lib/swr";
+import { useFeatures, useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
@@ -460,6 +460,7 @@ export default function Developers({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const { features } = useFeatures(owner);
 
   return (
     <AppLayout
@@ -467,7 +468,11 @@ export default function Developers({
       owner={owner}
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="assistants"
-      subNavigation={subNavigationBuild({ owner, current: "developers" })}
+      subNavigation={subNavigationBuild({
+        owner,
+        current: "developers",
+        crawlerEnabled: features?.includes("crawler"),
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
