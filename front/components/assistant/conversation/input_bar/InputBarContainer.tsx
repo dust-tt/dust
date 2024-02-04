@@ -19,9 +19,9 @@ import useAssistantSuggestions from "@app/components/assistant/conversation/inpu
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
-import { InputBarContext } from "./InputBar";
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];

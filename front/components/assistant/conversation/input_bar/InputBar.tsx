@@ -2,20 +2,13 @@ import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
-import {
-  createContext,
-  Fragment,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -324,11 +317,3 @@ export function FixedAssistantInputBar({
     </div>
   );
 }
-
-export const InputBarContext = createContext<{
-  animate: boolean;
-  selectedAssistant: AgentMention | null;
-}>({
-  animate: false,
-  selectedAssistant: null,
-});
