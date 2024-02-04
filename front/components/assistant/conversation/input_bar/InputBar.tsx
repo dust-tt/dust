@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { mutate } from "swr";
@@ -82,6 +83,35 @@ export function AssistantInputBar({
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, selectedAssistant } = useContext(InputBarContext);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (animate && !isAnimating) {
+      setIsAnimating(true);
+
+      // Clear any existing timeout to ensure animations do not overlap.
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+
+      // Set timeout to set setIsAnimating to false after the duration.
+      animationTimeoutRef.current = setTimeout(() => {
+        setIsAnimating(false);
+        // Reset the ref after the timeout clears.
+        animationTimeoutRef.current = null;
+      }, 700);
+    }
+  }, [animate, isAnimating]);
+
+  // Cleanup timeout on component unmount.
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (animate && !isAnimating) {
       setIsAnimating(true);
