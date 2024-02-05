@@ -40,7 +40,6 @@ import {
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -336,7 +335,7 @@ export function AgentMessage({
       reactions={reactions}
       enableEmojis={true}
       renderName={() => {
-        return isDevelopmentOrDustWorkspace(owner) ? (
+        return (
           <div className="flex flex-row gap-2">
             <div className="text-sm font-medium">
               {AssitantDetailViewLink(agentConfiguration)}
@@ -346,8 +345,6 @@ export function AgentMessage({
               owner={owner}
             />
           </div>
-        ) : (
-          <div className="text-sm font-medium">{agentConfiguration.name}</div>
         );
       }}
     >
