@@ -23,7 +23,7 @@ export const config = {
   },
 };
 
-const CreateTableFromCsvSchema = t.intersection([
+export const CreateTableFromCsvSchema = t.intersection([
   t.type({
     name: t.string,
     description: t.string,
@@ -39,7 +39,7 @@ export type UpsertTableFromCsvRequestBody = t.TypeOf<
   typeof CreateTableFromCsvSchema
 >;
 
-type RowValue =
+export type RowValue =
   | number
   | boolean
   | string
@@ -218,7 +218,7 @@ async function handler(
 
 export default withLogging(handler);
 
-async function rowsFromCsv(
+export async function rowsFromCsv(
   csv: string
 ): Promise<Result<CoreAPIRow[], APIError>> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,

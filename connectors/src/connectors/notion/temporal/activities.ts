@@ -51,6 +51,7 @@ import {
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
+  upsertStructuredData,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -2369,8 +2370,18 @@ export async function upsertDatabaseStructuredDataFromCache({
     rowBoundary: "",
   });
 
-  localLogger.info(
-    { csvLength: csv.length, databaseTitle: dbModel.title },
-    "Should upsert structured data to Data Source (not implemented)."
-  );
+  const tableId = `notion-${databaseId}`;
+  const tableName = dbModel.title ?? `Untitled Database (${databaseId})`;
+  const tableDescription = `Structured data from Notion database${
+    tableName ?? ""
+  }`;
+
+  await upsertStructuredData({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    tableId,
+    tableName,
+    tableDescription,
+    tableCsv: csv,
+    loggerArgs,
+  });
 }
