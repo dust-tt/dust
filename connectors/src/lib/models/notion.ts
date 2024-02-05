@@ -151,7 +151,7 @@ NotionPage.init(
     indexes: [
       { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId"] },
-      { fields: ["lastSeenTs"] },
+      { fields: ["connectorId", "lastSeenTs"] },
       { fields: ["parentId"] },
       { fields: ["lastCreatedOrMovedRunTs"] },
       {
