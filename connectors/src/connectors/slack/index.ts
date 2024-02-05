@@ -1,4 +1,5 @@
 import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import { awaitLaterWrapper } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -568,35 +569,37 @@ export async function setSlackConnectorPermissions(
     }
 
     promises.push(
-      q.add(async () => {
-        if (!channel) {
-          return;
-        }
-        const oldPermission = channel.permission;
-        if (oldPermission === permission) {
-          return;
-        }
-        await channel.update({
-          permission: permission,
-        });
-
-        if (
-          !["read", "read_write"].includes(oldPermission) &&
-          ["read", "read_write"].includes(permission)
-        ) {
-          // handle read permission enabled
-          slackChannelsToSync.push(channel.slackChannelId);
-          const joinChannelRes = await joinChannel(
-            connectorId,
-            channel.slackChannelId
-          );
-          if (joinChannelRes.isErr()) {
-            throw new Error(
-              `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
-            );
+      awaitLaterWrapper(() =>
+        q.add(async () => {
+          if (!channel) {
+            return;
           }
-        }
-      })
+          const oldPermission = channel.permission;
+          if (oldPermission === permission) {
+            return;
+          }
+          await channel.update({
+            permission: permission,
+          });
+
+          if (
+            !["read", "read_write"].includes(oldPermission) &&
+            ["read", "read_write"].includes(permission)
+          ) {
+            // handle read permission enabled
+            slackChannelsToSync.push(channel.slackChannelId);
+            const joinChannelRes = await joinChannel(
+              connectorId,
+              channel.slackChannelId
+            );
+            if (joinChannelRes.isErr()) {
+              throw new Error(
+                `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
+              );
+            }
+          }
+        })
+      )()
     );
   }
 
