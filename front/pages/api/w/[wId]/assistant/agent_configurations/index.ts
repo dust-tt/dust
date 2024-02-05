@@ -222,8 +222,6 @@ async function handler(
 
 export default withLogging(handler);
 
-async function listAgentConfigurations(req, res) {}
-
 /**
  * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided,
  * it will create a new version of the agent configuration with the same
