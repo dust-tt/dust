@@ -1,12 +1,13 @@
 import {
   AnthropicWhiteLogo,
   Button,
+  ChevronRightIcon,
   Div3D,
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
   Hover3D,
-  LoginIcon,
+  Icon,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
   LogoHorizontalWhiteLogo,
@@ -34,6 +35,7 @@ import {
   H1,
   H2,
   H3,
+  H4,
   P,
   ReactiveIcon,
   Strong,
@@ -47,12 +49,10 @@ import SimpleSlider from "@app/components/home/carousel";
 import {
   NavigationMenu,
   NavigationMenuContent,
-  NavigationMenuIndicator,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-  NavigationMenuViewport,
 } from "@app/components/home/NavigationMenu";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
@@ -94,6 +94,186 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     props: { gaTrackingId: GA_TRACKING_ID },
   };
 });
+
+const solutions: { title: string; href: string }[] = [
+  {
+    title: "Knowledge Management",
+    href: "",
+  },
+  {
+    title: "Customer Support",
+    href: "",
+  },
+  {
+    title: "Sales teams",
+    href: "",
+  },
+  {
+    title: "Engineering",
+    href: "",
+  },
+  {
+    title: "Data & Analaytics",
+    href: "",
+  },
+  {
+    title: "People Operations",
+    href: "",
+  },
+  {
+    title: "HR & Recruiting",
+    href: "",
+  },
+  {
+    title: "Product",
+    href: "",
+  },
+  {
+    title: "Finance",
+    href: "",
+  },
+  {
+    title: "IT & Security",
+    href: "",
+  },
+];
+
+const devs: { title: string; href: string }[] = [
+  {
+    title: "Dust for engineers",
+    href: "",
+  },
+  {
+    title: "Building Dust apps",
+    href: "",
+  },
+  {
+    href: "https://docs.dust.tt",
+    title: "Platform Doc",
+  },
+  {
+    title: "Github Repo",
+    href: "",
+  },
+];
+
+export function NavigationMenuDemo() {
+  return (
+    <NavigationMenu>
+      <NavigationMenuList>
+        <NavigationMenuItem>
+          <NavigationMenuLink>
+            <A variant="tertiary" href="#sectionProduct" className="pr-2">
+              Product
+            </A>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
+              <H4 className="col-span-2 text-emerald-400">Dust for…</H4>
+              {solutions.map((solutions) => (
+                <ListItem
+                  key={solutions.title}
+                  title={solutions.title}
+                  href={solutions.href}
+                />
+              ))}
+            </ul>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>Developpers</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
+              <H4 className="col-span-2 text-amber-400">Build with Dust</H4>
+              {devs.map((devs) => (
+                <ListItem
+                  key={devs.title}
+                  title={devs.title}
+                  href={devs.href}
+                />
+              ))}
+            </ul>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuLink>
+            <A variant="tertiary" href="#sectionPricing" className="pr-2">
+              Pricing
+            </A>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>More</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <div className="grid gap-4 p-6 pb-8 lg:w-[580px] lg:grid-cols-3">
+              <H4 className="col-span-3 text-pink-400">All about Dust</H4>
+
+              <ul className="flex flex-col gap-4">
+                <Strong>Careers</Strong>
+                <ListItem
+                  href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/"
+                  title="Jobs"
+                />
+                <ListItem
+                  href="https://www.linkedin.com/company/dust-tt/"
+                  title="LinkedIn"
+                />
+              </ul>
+              <ul className="flex flex-col gap-4">
+                <Strong>About</Strong>
+                <ListItem href="https://blog.dust.tt/" title="Blog" />
+                <ListItem href="https://x.com/dust4ai" title="@dust4ai" />
+                <ListItem href="https://github.com/dust-tt" title="GitHub" />
+              </ul>
+              <ul className="flex flex-col gap-4">
+                <Strong>Legal</Strong>
+                <ListItem
+                  href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084"
+                  title="Privacy Policy"
+                />
+                <ListItem href="/terms" title="Terms of Use" />
+                <ListItem
+                  href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1"
+                  title="Legal Notice"
+                />
+                <ListItem
+                  href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec"
+                  title="Cookie Notice"
+                />
+              </ul>
+            </div>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+      </NavigationMenuList>
+    </NavigationMenu>
+  );
+}
+
+const ListItem = React.forwardRef<
+  React.ElementRef<"a">,
+  React.ComponentPropsWithoutRef<"a">
+>(({ className, title, ...props }, ref) => {
+  return (
+    <li>
+      <NavigationMenuLink asChild>
+        <a
+          ref={ref}
+          className={classNames(className ? className : "")}
+          {...props}
+        >
+          <div className="flex items-center gap-1.5 text-slate-50">
+            <Icon visual={ChevronRightIcon} size="md" />
+            <A variant="tertiary">{title}</A>
+          </div>
+        </a>
+      </NavigationMenuLink>
+    </li>
+  );
+});
+ListItem.displayName = "ListItem";
 
 export default function Home({
   gaTrackingId,
@@ -155,8 +335,8 @@ export default function Home({
       />
       <Header />
       <ScrollingHeader showItemY={logoY}>
-        <div className="flex h-full w-full items-center gap-10 px-4">
-          <div className="invisibleFirst hidden h-[24px] w-[96px] opacity-0 transition-all duration-500 ease-out md:block">
+        <div className="flex h-full w-full items-center gap-10 px-6">
+          <div className="h-[24px] w-[96px]">
             <Hover3D className="relative h-[24px] w-[96px]">
               <Div3D depth={0} className="h-[24px] w-[96px]">
                 <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
@@ -166,29 +346,7 @@ export default function Home({
               </Div3D>
             </Hover3D>
           </div>
-          <div className="invisibleFirst hidden flex-row justify-start gap-6 opacity-0 transition-all duration-500 ease-out lg:flex">
-            <P size="xs">
-              <A variant="tertiary" href="#sectionProduct">
-                Product
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary" href="#sectionPricing">
-                Pricing
-              </A>
-            </P>
-          </div>
-          <NavigationMenu>
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Item One</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <NavigationMenuLink>Link</NavigationMenuLink>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
-
+          <NavigationMenuDemo />
           <div className="flex-grow" />
           <Button
             variant="tertiary"
@@ -236,7 +394,7 @@ export default function Home({
                 "2xl:col-span-8 2xl:col-start-3"
               )}
             >
-              <div ref={logoRef}>
+              {/* <div ref={logoRef}>
                 <Hover3D className="relative h-[36px] w-[144px] md:h-[48px] md:w-[192px]">
                   <Div3D
                     depth={0}
@@ -248,7 +406,7 @@ export default function Home({
                     <LogoHorizontalColorLogoLayer2 className="h-[36px] w-[144px] md:h-[48px] md:w-[192px]" />
                   </Div3D>
                 </Hover3D>
-              </div>
+              </div> */}
               <div className="flex flex-col gap-12">
                 <H1 className="text-slate-100">
                   <span className="text-red-400">
@@ -841,7 +999,6 @@ export default function Home({
           </Grid>
         </div>
 
-        <Footer />
         <CookieBanner
           className="fixed bottom-4 right-4"
           show={showCookieBanner}
@@ -943,137 +1100,6 @@ const Header = () => {
 
       <link rel="stylesheet" href="https://use.typekit.net/lzv1deb.css"></link>
     </Head>
-  );
-};
-
-const Footer = () => {
-  return (
-    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-slate-800 bg-slate-900 py-16">
-      <div className="w-full md:mx-12">
-        <Grid>
-          <div
-            className={classNames(
-              "opacity-70",
-              "col-span-12",
-              "md:col-span-3",
-              "xl:col-start-2"
-            )}
-          >
-            <LogoHorizontalWhiteLogo className="h-6 w-24" />
-          </div>
-
-          <div
-            className={classNames(
-              "flex flex-col gap-3",
-              "col-span-6",
-              "sm:col-span-3",
-              "md:col-start-1",
-              "xl:col-span-2 xl:col-start-4 "
-            )}
-          >
-            <P>
-              <Strong>Careers</Strong>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/">
-                  Jobs
-                </Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://www.linkedin.com/company/dust-tt/">
-                  LinkedIn
-                </Link>
-              </A>
-            </P>
-          </div>
-          <div
-            className={classNames(
-              "flex flex-col gap-3",
-              "col-span-6",
-              "sm:col-span-3",
-              "xl:col-span-2"
-            )}
-          >
-            <P>
-              <Strong>About</Strong>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://blog.dust.tt/">Blog</Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://x.com/dust4ai">@dust4ai</Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://github.com/dust-tt">GitHub</Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://docs.dust.tt">Developer Platform Docs</Link>
-              </A>
-            </P>
-          </div>
-          <div
-            className={classNames(
-              "flex flex-col gap-3",
-              "col-span-6",
-              "sm:col-span-3",
-              "xl:col-span-2"
-            )}
-          >
-            <P>
-              <Strong>Privacy</Strong>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084">
-                  Website Privacy Policy
-                </Link>
-              </A>
-            </P>
-          </div>
-          <div
-            className={classNames(
-              "flex flex-col gap-3",
-              "col-span-6",
-              "sm:col-span-3",
-              "xl:col-span-2"
-            )}
-          >
-            <P>
-              <Strong>Legal</Strong>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1">
-                  Legal Notice
-                </Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="/terms">Website Terms of Use</Link>
-              </A>
-            </P>
-            <P size="xs">
-              <A variant="tertiary">
-                <Link href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec">
-                  Cookie Notice
-                </Link>
-              </A>
-            </P>
-          </div>
-        </Grid>
-      </div>
-    </div>
   );
 };
 
