@@ -13,7 +13,9 @@ type GetTableRowsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetTableRowsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<GetTableRowsResponseBody | { success: true }>
+  >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -75,46 +77,78 @@ async function handler(
     });
   }
 
+  const coreAPI = new CoreAPI(logger);
+  const rowRes = await coreAPI.getTableRow({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceName: dataSource.name,
+    tableId,
+    rowId,
+  });
+
+  if (rowRes.isErr()) {
+    logger.error(
+      {
+        dataSourceName: dataSource.name,
+        workspaceId: owner.id,
+        tableId: tableId,
+        rowId: rowId,
+        error: rowRes.error,
+      },
+      "Failed to get row."
+    );
+
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to get row.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
-      const coreAPI = new CoreAPI(logger);
-      const rowRes = await coreAPI.getTableRow({
+      const { row } = rowRes.value;
+      return res.status(200).json({ row });
+
+    case "DELETE":
+      const deleteRes = await coreAPI.deleteTableRow({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         tableId,
         rowId,
       });
 
-      if (rowRes.isErr()) {
+      if (deleteRes.isErr()) {
         logger.error(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
             tableId: tableId,
             rowId: rowId,
-            error: rowRes.error,
+            error: deleteRes.error,
           },
-          "Failed to get row."
+          "Failed to delete row."
         );
 
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get row.",
+            message: "Failed to delete row.",
           },
         });
       }
 
-      const { row } = rowRes.value;
-      return res.status(200).json({ row });
+      return res.status(200).json({ success: true });
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or DELETE is expected.",
         },
       });
   }

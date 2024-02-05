@@ -48,6 +48,8 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
+  deleteTable,
+  deleteTableRow,
   MAX_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   renderPrefixSection,
@@ -891,27 +893,44 @@ export async function garbageCollect({
 
       continue;
     }
-
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     if (x.resourceType === "page") {
       iterationLogger.info("Deleting page.");
-      await deleteFromDataSource(
-        {
-          dataSourceName: connector.dataSourceName,
-          workspaceId: connector.workspaceId,
-          workspaceAPIKey: connector.workspaceAPIKey,
-        },
-        `notion-${x.resourceId}`
-      );
+      await deleteFromDataSource(dataSourceConfig, `notion-${x.resourceId}`);
       deletedPagesCount++;
-      await NotionPage.destroy({
+      const notionPage = await NotionPage.findOne({
         where: {
           connectorId: connector.id,
           notionPageId: x.resourceId,
         },
       });
+      if (notionPage?.parentType === "database" && notionPage.parentId) {
+        const parentDatabase = await NotionDatabase.findOne({
+          where: {
+            connectorId: connector.id,
+            notionDatabaseId: notionPage.parentId,
+          },
+        });
+        if (parentDatabase?.structuredDataEnabled) {
+          const tableId = `notion-${parentDatabase.notionDatabaseId}`;
+          const rowId = `notion-${notionPage.notionPageId}`;
+          await deleteTableRow({ dataSourceConfig, tableId, rowId });
+        }
+      }
+      await notionPage?.destroy();
     } else {
       iterationLogger.info("Deleting database.");
       deletedDatabasesCount++;
+      const notionDatabase = await NotionDatabase.findOne({
+        where: {
+          connectorId: connector.id,
+          notionDatabaseId: x.resourceId,
+        },
+      });
+      if (notionDatabase?.structuredDataEnabled) {
+        const tableId = `notion-${notionDatabase.notionDatabaseId}`;
+        await deleteTable({ dataSourceConfig, tableId });
+      }
       await NotionDatabase.destroy({
         where: {
           connectorId: connector.id,

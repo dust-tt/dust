@@ -644,3 +644,184 @@ export async function upsertTableRow({
     throw new Error(`Error uploading to dust: ${dustRequestResult}`);
   }
 }
+
+export async function deleteTableRow({
+  dataSourceConfig,
+  tableId,
+  rowId,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  rowId: string;
+  loggerArgs?: Record<string, string | number>;
+}) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    tableId,
+    rowId,
+  });
+  const statsDTags = [
+    `data_source_name:${dataSourceConfig.dataSourceName}`,
+    `workspace_id:${dataSourceConfig.workspaceId}`,
+  ];
+
+  localLogger.info("Attempting to delete structured data from Dust.");
+  statsDClient.increment(
+    "data_source_structured_data_deletes_attempt.count",
+    1,
+    statsDTags
+  );
+
+  const now = new Date();
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}/rows/${rowId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+  } catch (e) {
+    const elapsed = new Date().getTime() - now.getTime();
+    statsDClient.increment(
+      "data_source_structured_data_deletes_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_structured_data_deletes_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.error(
+      { error: e },
+      "Error deleting structured data from Dust."
+    );
+    throw e;
+  }
+
+  const elapsed = new Date().getTime() - now.getTime();
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    statsDClient.increment(
+      "data_source_structured_data_deletes_success.count",
+      1,
+      statsDTags
+    );
+
+    localLogger.info("Successfully deleted structured data from Dust.");
+  } else {
+    statsDClient.increment(
+      "data_source_structured_data_deletes_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_structured_data_deletes_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        elapsed,
+      },
+      "Error deleting structured data from Dust."
+    );
+    throw new Error(`Error deleting from dust: ${dustRequestResult}`);
+  }
+}
+
+export async function deleteTable({
+  dataSourceConfig,
+  tableId,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  loggerArgs?: Record<string, string | number>;
+}) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    tableId,
+  });
+  const statsDTags = [
+    `data_source_name:${dataSourceConfig.dataSourceName}`,
+    `workspace_id:${dataSourceConfig.workspaceId}`,
+  ];
+
+  localLogger.info("Attempting to delete structured data from Dust.");
+  statsDClient.increment(
+    "data_source_structured_data_deletes_attempt.count",
+    1,
+    statsDTags
+  );
+
+  const now = new Date();
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+  } catch (e) {
+    const elapsed = new Date().getTime() - now.getTime();
+    statsDClient.increment(
+      "data_source_structured_data_deletes_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_structured_data_deletes_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.error(
+      { error: e },
+      "Error deleting structured data from Dust."
+    );
+    throw e;
+  }
+
+  const elapsed = new Date().getTime() - now.getTime();
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    statsDClient.increment(
+      "data_source_structured_data_deletes_success.count",
+      1,
+      statsDTags
+    );
+
+    localLogger.info("Successfully deleted structured data from Dust.");
+  } else {
+    statsDClient.increment(
+      "data_source_structured_data_deletes_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_structured_data_deletes_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        elapsed,
+      },
+      "Error deleting structured data from Dust."
+    );
+    throw new Error(`Error deleting from dust: ${dustRequestResult}`);
+  }
+}
