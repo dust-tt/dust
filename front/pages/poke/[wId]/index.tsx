@@ -490,6 +490,7 @@ const WorkspacePage = ({
                           onClick={onDowngrade}
                           disabled={
                             !isUpgraded(subscription.plan) ||
+                            subscription.stripeSubscriptionId !== null ||
                             workspaceHasManagedDataSources
                           }
                         />
