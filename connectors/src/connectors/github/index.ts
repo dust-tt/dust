@@ -5,7 +5,12 @@ import {
   getReposPage,
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
+import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
+import type {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "@connectors/connectors/interface";
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   GithubCodeDirectory,
@@ -23,11 +28,6 @@ import type {
   ConnectorPermission,
   ConnectorResource,
 } from "@connectors/types/resources";
-
-import type {
-  ConnectorConfigGetter,
-  ConnectorPermissionRetriever,
-} from "../interface";
 
 type GithubInstallationId = string;
 
@@ -583,5 +583,39 @@ export async function setGithubConfig(
     default: {
       return new Err(new Error(`Invalid config key ${configKey}`));
     }
+  }
+}
+
+export async function retrieveGithubResourceParents(
+  connectorId: ModelId,
+  internalId: string
+): Promise<Result<string[], Error>> {
+  const connector = await Connector.findOne({
+    where: { id: connectorId },
+  });
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  if (internalId.startsWith(`github-code-`)) {
+    const repoId = parseInt(internalId.split("-")[2] || "", 10);
+    if (internalId.split("-").length > 3) {
+      const parents = await getGithubCodeOrDirectoryParentIds(
+        connector.id,
+        internalId,
+        repoId
+      );
+      return new Ok(parents);
+    } else {
+      return new Ok([`${repoId}`]);
+    }
+  } else {
+    const repoId = parseInt(internalId.split("-")[0] || "", 10);
+    if (internalId.endsWith("-issues") || internalId.endsWith("-discussions")) {
+      return new Ok([`${repoId}`]);
+    }
+    return new Ok([]);
   }
 }

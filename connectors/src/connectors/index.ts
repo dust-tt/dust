@@ -20,6 +20,7 @@ import {
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
   retrieveGithubReposTitles,
+  retrieveGithubResourceParents,
   setGithubConfig,
   stopGithubConnector,
   updateGithubConnector,
@@ -261,7 +262,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   notion: retrieveNotionResourceParents,
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
-  github: async () => new Ok([]), // Github is flat,
+  github: retrieveGithubResourceParents,
   intercom: retrieveIntercomObjectsParents,
   webcrawler: retrieveWebCrawlerObjectsParents,
 };
