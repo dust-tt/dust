@@ -176,7 +176,7 @@ GoogleDriveFiles.init(
     modelName: "google_drive_files",
     indexes: [
       { fields: ["connectorId", "driveFileId"], unique: true },
-      { fields: ["connectorId", "parentId"] },
+      { fields: ["connectorId", "parentId"], concurrently: true },
     ],
   }
 );
