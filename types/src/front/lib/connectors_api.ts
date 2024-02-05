@@ -10,7 +10,15 @@ const {
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
-export type ConnectorErrorType = "oauth_token_revoked";
+const CONNECTORS_ERROR_TYPES = [
+  "oauth_token_revoked",
+  "third_party_internal_error",
+] as const;
+
+export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
+export function isConnectorError(val: string): val is ConnectorErrorType {
+  return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
+}
 
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
   "confluence",

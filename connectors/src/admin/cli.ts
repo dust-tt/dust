@@ -1,3 +1,4 @@
+import { isConnectorError } from "@dust-tt/types";
 import parseArgs from "minimist";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -127,6 +128,18 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
       await throwOnError(
         SYNC_CONNECTOR_BY_TYPE[provider](connector.id.toString(), fromTs)
       );
+      return;
+    }
+
+    case "set-error": {
+      if (!args.error) {
+        throw new Error("Missing --error argument");
+      }
+      if (!isConnectorError(args.error)) {
+        throw new Error(`Invalid error: ${args.error}`);
+      }
+      connector.errorType = args.error;
+      await connector.save();
       return;
     }
 
