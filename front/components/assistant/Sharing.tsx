@@ -44,9 +44,9 @@ export const SCOPE_INFO: Record<
     icon: UserGroupIcon,
     text: "Anyone in the workspace can view and edit.",
     confirmationModalData: {
-      title: "Sharing an assistant",
-      text: "Once shared, the assistant will be visible and editable by members of your workspace.",
-      confirmText: "Share the assistant",
+      title: "Moving to Shared Assistants",
+      text: "The assistant is editable and viewable by all workspace members.",
+      confirmText: "Move to Shared",
       variant: "primary",
     },
   },
@@ -57,7 +57,7 @@ export const SCOPE_INFO: Record<
     text: "Activated by default for all members of the workspace.",
     confirmationModalData: {
       title: "Moving to Company Assistants",
-      text: "Moving the assistant to Company Assistants will make the assistant editable only by Admins and Builders and add it to every member's “My Assistants” list.",
+      text: "The assistant automatically appears in every member's 'My Assistants' list. It's editable by Admins and Builders only.",
       confirmText: "Move to Company",
       variant: "primary",
     },
@@ -69,7 +69,7 @@ export const SCOPE_INFO: Record<
     text: "Only I can view and edit.",
     confirmationModalData: {
       title: "Moving to Personal Assistants",
-      text: `Moving the assistant to your Personal Assistants will make the assistant unaccessible to other members of the workspace.`,
+      text: `The assistant is only editable, viewable and usable by you.`,
       confirmText: "Move to Personal",
       variant: "primaryWarning",
       showUsage: true,
@@ -181,9 +181,9 @@ export function SharingDropdown({
   // special case if changing setting from company to shared
   const companyToSharedModalData: ConfirmationModalDataType = {
     title: "Moving to Shared Assistants",
-    text: `Moving ${
-      assistantName || "the assistant"
-    } to Shared Assistants will make the assistant editable by all members of the workspace and the assistant will not be activated by default anymore.`,
+    text: `${
+      assistantName || "Assistant"
+    } will be editable by all members; it won't automatically appear in workspace member's 'My Assistants' list.`,
     confirmText: "Move to Shared",
     variant: "primary",
     showUsage: true,
