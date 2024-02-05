@@ -249,7 +249,7 @@ async function batchRenderUserMessages(messages: Message[]) {
             lastName: user.lastName,
             fullName:
               user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-            image: null,
+            image: user.imageUrl,
             workspaces: [],
           }
         : null,
