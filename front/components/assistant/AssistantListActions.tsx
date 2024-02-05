@@ -13,50 +13,37 @@ import type {
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { updateAgentList } from "@app/lib/client/dust_api";
-
-type AssistantPreviewFlowType = "personal" | "workspace";
+import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
+import { classNames } from "@app/lib/utils";
 
 interface AssistantListActions {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isParentHovered: boolean;
-  flow: AssistantPreviewFlowType;
 }
 
 export default function AssistantListActions({
   agentConfiguration,
   isParentHovered,
   owner,
-  flow,
 }: AssistantListActions) {
   const { scope } = agentConfiguration;
+
+  const sendNotification = useContext(SendNotificationsContext);
+
+  // Use the function to set the initial state.
+  const [isAdded, setIsAdded] = useState(
+    () => agentConfiguration.userListStatus === "in-list"
+  );
+
   const isGlobal = scope === "global";
 
   if (isGlobal) {
     return null; // Return null if isGlobal, since no actions are rendered in this case.
   }
 
-  const [isHovered, setIsHovered] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
-
-  // Function to determine if the assistant is added based on the flow and configuration.
-  const determineIfAdded = (
-    agentConfiguration: LightAgentConfigurationType,
-    currentFlow: AssistantPreviewFlowType
-  ) => {
-    return currentFlow === "personal"
-      ? agentConfiguration.userListStatus === "in-list"
-      : agentConfiguration.scope === "workspace";
-  };
-
-  // Use the function to set the initial state.
-  const [isAdded, setIsAdded] = useState(() =>
-    determineIfAdded(agentConfiguration, flow)
-  );
-
   const updateList = async (listStatus: AgentUserListStatus) => {
-    const { success, errorMessage } = await updateAgentList({
+    const { success, errorMessage } = await updateAgentUserListStatus({
       owner,
       agentConfigurationId: agentConfiguration.sId,
       listStatus,
@@ -78,12 +65,15 @@ export default function AssistantListActions({
   };
 
   return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {!isHovered && isAdded && <Chip label="In my list" icon={ListIcon} />}
-      {isHovered && isAdded && (
+    <div className="group">
+      {isAdded && (
+        <Chip
+          label="In my list"
+          icon={ListIcon}
+          className={isAdded ? "group-hover:hidden" : "hidden"}
+        />
+      )}
+      <div className={classNames("hidden", isAdded ? "group-hover:block" : "")}>
         <Button
           label={"Remove from my list"}
           size="xs"
@@ -95,8 +85,10 @@ export default function AssistantListActions({
             return updateList("not-in-list");
           }}
         />
-      )}
-      {isParentHovered && !isAdded && (
+      </div>
+      <div
+        className={isParentHovered && !isAdded ? "group-hover:block" : "hidden"}
+      >
         <Button
           label={"Add to my list"}
           size="xs"
@@ -108,7 +100,7 @@ export default function AssistantListActions({
             return updateList("in-list");
           }}
         />
-      )}
+      </div>
     </div>
   );
 }

@@ -42,7 +42,7 @@ export function GalleryAssistantPreviewContainer({
     agentConfiguration;
 
   const isGlobal = scope === "global";
-  const isWorkspace = flow === "workspace";
+  const isPersonalFlow = flow === "personal";
   const hasAccessToLargeModels = isUpgraded(plan);
   const eligibleForTesting =
     hasAccessToLargeModels || !isLargeModel(generation?.model);
@@ -60,12 +60,11 @@ export function GalleryAssistantPreviewContainer({
         return (
           <div className="s-flex s-gap-2">
             <SharingChip scope={scope} />
-            {!isWorkspace && (
+            {isPersonalFlow && (
               <AssistantListActions
                 agentConfiguration={agentConfiguration}
                 isParentHovered={isParentHovered}
                 owner={owner}
-                flow={flow}
               />
             )}
           </div>
