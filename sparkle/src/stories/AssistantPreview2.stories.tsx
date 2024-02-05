@@ -96,9 +96,7 @@ export const AssistantPreviewExample = () => (
       />
       <AssistantPreview2
         title={"hiringExpert"}
-        description={
-          "Draft me a job description following company script for this job."
-        }
+        description={"Draft me a job description."}
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
         subtitle={"Stanislas Polu"}
         variant={"item"}
