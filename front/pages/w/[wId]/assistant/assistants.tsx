@@ -179,9 +179,9 @@ export default function PersonalAssistants({
           owner={owner}
           assistantId={showDetails.sId}
           show={showDetails !== null}
-          onClose={() => {
+          onClose={({ shouldMutateAgentConfigurations }) => {
             setShowDetails(null);
-            void mutateAgentConfigurations();
+            shouldMutateAgentConfigurations && void mutateAgentConfigurations();
           }}
         />
       )}

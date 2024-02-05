@@ -124,7 +124,6 @@ export function AssistantEditionMenu({
   })();
   return (
     <>
-      {" "}
       {canDelete && showDeletionModal && (
         <DeleteAssistantDialog
           owner={owner}

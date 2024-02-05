@@ -35,7 +35,11 @@ import { timeAgoFrom } from "@app/lib/utils";
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   show: boolean;
-  onClose: () => void;
+  onClose: ({
+    shouldMutateAgentConfigurations,
+  }: {
+    shouldMutateAgentConfigurations: boolean;
+  }) => void | (() => void);
   assistantId: string;
 };
 
@@ -125,8 +129,8 @@ export function AssistantDetails({
             owner={owner}
             variant="button"
             onAgentDeletion={() => {
-              onClose();
               void mutateAgentConfiguration();
+              onClose({ shouldMutateAgentConfigurations: true });
             }}
           />
         </div>
@@ -193,7 +197,7 @@ export function AssistantDetails({
     <Modal
       isOpen={show}
       title=""
-      onClose={onClose}
+      onClose={() => onClose({ shouldMutateAgentConfigurations: false })}
       hasChanged={false}
       variant="side-sm"
     >
