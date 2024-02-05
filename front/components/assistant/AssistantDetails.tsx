@@ -133,8 +133,8 @@ export function AssistantDetails({
             variant="button"
             tryButton={showTryButtonInMenu}
             onAgentDeletion={() => {
-              onClose();
               void mutateAgentConfiguration();
+              onClose({ shouldMutateAgentConfigurations: true });
             }}
           />
         </div>
