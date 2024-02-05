@@ -69,9 +69,13 @@ function renderVariantContent(
   }
 }
 
-const ItemVariantContent = (props: ItemVariantAssistantPreviewProps) => {
-  const { actions, description, title, pictureUrl, subtitle } = props;
-
+const ItemVariantContent = ({
+  actions,
+  description,
+  title,
+  pictureUrl,
+  subtitle,
+}: ItemVariantAssistantPreviewProps) => {
   return (
     <>
       <div className="s-flex s-gap-2">
@@ -115,9 +119,12 @@ const ItemVariantContent = (props: ItemVariantAssistantPreviewProps) => {
   );
 };
 
-const ListVariantContent = (props: ListVariantAssistantPreviewProps) => {
-  const { description, title, pictureUrl, subtitle } = props;
-
+const ListVariantContent = ({
+  description,
+  title,
+  pictureUrl,
+  subtitle,
+}: ListVariantAssistantPreviewProps) => {
   return (
     <div className="s-flex s-gap-2">
       <Avatar
@@ -158,19 +165,15 @@ const ListVariantContent = (props: ListVariantAssistantPreviewProps) => {
   );
 };
 
-const GalleryVariantContent = (
-  props: GalleryVariantAssistantPreviewProps & { isHovered: boolean }
-) => {
-  const {
-    renderActions,
-    description,
-    onPlayClick,
-    title,
-    pictureUrl,
-    subtitle,
-    isHovered,
-  } = props;
-
+const GalleryVariantContent = ({
+  renderActions,
+  description,
+  onPlayClick,
+  title,
+  pictureUrl,
+  subtitle,
+  isHovered,
+}: GalleryVariantAssistantPreviewProps & { isHovered: boolean }) => {
   return (
     <div className="s-flex s-gap-2">
       <Avatar
