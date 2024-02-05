@@ -276,6 +276,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const connectors = await Connector.findAll({
         where: {
           type: "notion",
+          errorType: null,
         },
       });
       for (const connector of connectors) {
