@@ -160,6 +160,7 @@ export const AssistantPreviewExample = () => (
         }
         variant="gallery"
         onClick={() => console.log("clicked")}
+        onPlayClick={() => console.log("play")}
         renderActions={(isHovered) => {
           return (
             <div className="s-flex s-gap-2">

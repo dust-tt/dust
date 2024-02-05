@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { SyntheticEvent, useState } from "react";
 
 import { Button, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
@@ -27,6 +27,7 @@ type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
 type GalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "gallery";
   renderActions?: (isHovered: boolean) => React.ReactNode;
+  onPlayClick?: (e: SyntheticEvent) => void;
 };
 
 type AssistantPreviewProps =
@@ -68,9 +69,13 @@ function renderVariantContent(
   }
 }
 
-const ItemVariantContent = (props: ItemVariantAssistantPreviewProps) => {
-  const { actions, description, title, pictureUrl, subtitle } = props;
-
+const ItemVariantContent = ({
+  actions,
+  description,
+  title,
+  pictureUrl,
+  subtitle,
+}: ItemVariantAssistantPreviewProps) => {
   return (
     <>
       <div className="s-flex s-gap-2">
@@ -114,9 +119,12 @@ const ItemVariantContent = (props: ItemVariantAssistantPreviewProps) => {
   );
 };
 
-const ListVariantContent = (props: ListVariantAssistantPreviewProps) => {
-  const { description, title, pictureUrl, subtitle } = props;
-
+const ListVariantContent = ({
+  description,
+  title,
+  pictureUrl,
+  subtitle,
+}: ListVariantAssistantPreviewProps) => {
   return (
     <div className="s-flex s-gap-2">
       <Avatar
@@ -157,12 +165,15 @@ const ListVariantContent = (props: ListVariantAssistantPreviewProps) => {
   );
 };
 
-const GalleryVariantContent = (
-  props: GalleryVariantAssistantPreviewProps & { isHovered: boolean }
-) => {
-  const { renderActions, description, title, pictureUrl, subtitle, isHovered } =
-    props;
-
+const GalleryVariantContent = ({
+  renderActions,
+  description,
+  onPlayClick,
+  title,
+  pictureUrl,
+  subtitle,
+  isHovered,
+}: GalleryVariantAssistantPreviewProps & { isHovered: boolean }) => {
   return (
     <div className="s-flex s-gap-2">
       <Avatar
@@ -189,13 +200,14 @@ const GalleryVariantContent = (
               By: {subtitle}
             </div>
           </div>
-          {isHovered && (
+          {isHovered && onPlayClick && (
             <Button
               variant="primary"
               size="sm"
               label="Try"
               labelVisible={false}
               icon={PlayIcon}
+              onClick={onPlayClick}
             />
           )}
         </div>
