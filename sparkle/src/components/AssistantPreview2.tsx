@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 
-import {
-  Button,
-  ChatBubbleBottomCenterTextIcon,
-  PlayIcon,
-} from "@sparkle/_index";
+import { Button, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -21,6 +17,7 @@ interface BaseAssistantPreviewProps {
 
 type ItemVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "item";
+  actions: React.ReactNode;
 };
 
 type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
@@ -72,7 +69,7 @@ function renderVariantContent(
 }
 
 const ItemVariantContent = (props: ItemVariantAssistantPreviewProps) => {
-  const { description, title, pictureUrl, subtitle } = props;
+  const { actions, description, title, pictureUrl, subtitle } = props;
 
   return (
     <>
@@ -112,14 +109,7 @@ const ItemVariantContent = (props: ItemVariantAssistantPreviewProps) => {
       >
         {description}
       </div>
-      <div className="s-flex s-justify-end s-pt-1">
-        <Button
-          icon={ChatBubbleBottomCenterTextIcon}
-          label="Chat"
-          variant="tertiary"
-          size="xs"
-        />
-      </div>
+      {actions}
     </>
   );
 };

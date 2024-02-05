@@ -4,6 +4,7 @@ import React from "react";
 import {
   AssistantPreview2,
   Button,
+  ChatBubbleBottomCenterTextIcon,
   Chip,
   ListAddIcon,
 } from "../index_with_tw_base";
@@ -26,6 +27,16 @@ export const AssistantPreviewExample = () => (
         pictureUrl={"https://dust.tt/static/systemavatar/gpt4_avatar_full.png"}
         subtitle={"Stanislas Polu, Pauline Pham"}
         variant={"item"}
+        actions={
+          <div className="s-flex s-justify-end s-pt-1">
+            <Button
+              icon={ChatBubbleBottomCenterTextIcon}
+              label="Chat"
+              variant="tertiary"
+              size="xs"
+            />
+          </div>
+        }
       />
       <AssistantPreview2
         title={"hiringExpert"}
@@ -36,6 +47,16 @@ export const AssistantPreviewExample = () => (
         subtitle={"Stanislas Polu"}
         variant={"item"}
         onClick={() => console.log("clicked")}
+        actions={
+          <div className="s-flex s-justify-end s-pt-1">
+            <Button
+              icon={ChatBubbleBottomCenterTextIcon}
+              label="Chat"
+              variant="tertiary"
+              size="xs"
+            />
+          </div>
+        }
       />
       <AssistantPreview2
         title={"legalcapone"}
@@ -44,6 +65,16 @@ export const AssistantPreviewExample = () => (
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Green_2.jpg"}
         subtitle={"Stanislas Polu, Pauline Pham, Henry Fontanier"}
         variant={"item"}
+        actions={
+          <div className="s-flex s-justify-end s-pt-1">
+            <Button
+              icon={ChatBubbleBottomCenterTextIcon}
+              label="Chat"
+              variant="tertiary"
+              size="xs"
+            />
+          </div>
+        }
       />
       <AssistantPreview2
         title={"SQLGod"}
@@ -52,6 +83,16 @@ export const AssistantPreviewExample = () => (
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"}
         subtitle={"Pauline Pham, Henry Fontanier"}
         variant={"item"}
+        actions={
+          <div className="s-flex s-justify-end s-pt-1">
+            <Button
+              icon={ChatBubbleBottomCenterTextIcon}
+              label="Chat"
+              variant="tertiary"
+              size="xs"
+            />
+          </div>
+        }
       />
       <AssistantPreview2
         title={"hiringExpert"}
@@ -62,6 +103,16 @@ export const AssistantPreviewExample = () => (
         subtitle={"Stanislas Polu"}
         variant={"item"}
         onClick={() => console.log("clicked")}
+        actions={
+          <div className="s-flex s-justify-end s-pt-1">
+            <Button
+              icon={ChatBubbleBottomCenterTextIcon}
+              label="Chat"
+              variant="tertiary"
+              size="xs"
+            />
+          </div>
+        }
       />
     </div>
     <h2>List</h2>
