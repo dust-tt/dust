@@ -96,7 +96,7 @@ export function AssistantEditionMenu({
           <Button
             key="show_details"
             icon={MoreIcon}
-            label={"Actions"}
+            label="Actions"
             labelVisible={false}
             disabledTooltip
             size="xs"

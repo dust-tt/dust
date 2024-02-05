@@ -78,7 +78,9 @@ export const SCOPE_INFO: Record<
     text: "Default assistant provided by Dust.",
     confirmationModalData: null,
   },
-};
+} as const;
+
+type NonGlobalScope = Exclude<AgentConfigurationScope, "global">;
 
 export function SharingSection({
   owner,
@@ -89,9 +91,9 @@ export function SharingSection({
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
-  initialScope: Exclude<AgentConfigurationScope, "global">;
-  newScope: Exclude<AgentConfigurationScope, "global">;
-  setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
+  initialScope: NonGlobalScope;
+  newScope: NonGlobalScope;
+  setNewScope: (scope: NonGlobalScope) => void;
 }) {
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
@@ -150,16 +152,15 @@ export function SharingDropdown({
   disabled?: boolean;
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
-  setNewScope: (scope: Exclude<AgentConfigurationScope, "global">) => void;
+  setNewScope: (scope: NonGlobalScope) => void;
 }) {
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId,
   });
-  const [requestNewScope, setModalNewScope] = useState<Exclude<
-    AgentConfigurationScope,
-    "global"
-  > | null>(null);
+  const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
+    null
+  );
 
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
@@ -263,17 +264,13 @@ export function SharingDropdown({
                     ((entryScope === "private" || entryScope === "company") &&
                       assistantInMyList &&
                       (!agentUsage.agentUsage ||
-                        agentUsage.agentUsage.userCount <= 1))
+                        agentUsage.agentUsage.userCount === 1))
                   ) {
-                    setNewScope(
-                      entryScope as Exclude<AgentConfigurationScope, "global">
-                    );
+                    setNewScope(entryScope as NonGlobalScope);
                     return;
                   }
                   // in all other cases, show modal
-                  setModalNewScope(
-                    entryScope as Exclude<AgentConfigurationScope, "global">
-                  );
+                  setModalNewScope(entryScope as NonGlobalScope);
                 }}
               />
             ))}
