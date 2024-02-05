@@ -27,7 +27,7 @@ export function ConversationParticipants({
           userParticipantsMap.set(key, {
             username: m.context.username,
             fullName: m.context.fullName,
-            pictureUrl: m.context.profilePictureUrl,
+            pictureUrl: m.user?.image || m.context.profilePictureUrl,
           });
         }
       } else if (m.type === "agent_message") {
