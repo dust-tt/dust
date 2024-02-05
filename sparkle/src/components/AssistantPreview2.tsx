@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { SyntheticEvent, useState } from "react";
 
 import { Button, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
@@ -27,6 +27,7 @@ type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
 type GalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "gallery";
   renderActions?: (isHovered: boolean) => React.ReactNode;
+  onPlayClick?: (e: SyntheticEvent) => void;
 };
 
 type AssistantPreviewProps =
@@ -160,8 +161,15 @@ const ListVariantContent = (props: ListVariantAssistantPreviewProps) => {
 const GalleryVariantContent = (
   props: GalleryVariantAssistantPreviewProps & { isHovered: boolean }
 ) => {
-  const { renderActions, description, title, pictureUrl, subtitle, isHovered } =
-    props;
+  const {
+    renderActions,
+    description,
+    onPlayClick,
+    title,
+    pictureUrl,
+    subtitle,
+    isHovered,
+  } = props;
 
   return (
     <div className="s-flex s-gap-2">
@@ -189,13 +197,14 @@ const GalleryVariantContent = (
               By: {subtitle}
             </div>
           </div>
-          {isHovered && (
+          {isHovered && onPlayClick && (
             <Button
               variant="primary"
               size="sm"
               label="Try"
               labelVisible={false}
               icon={PlayIcon}
+              onClick={onPlayClick}
             />
           )}
         </div>
