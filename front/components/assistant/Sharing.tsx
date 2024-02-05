@@ -183,7 +183,7 @@ export function SharingDropdown({
     title: "Moving to Shared Assistants",
     text: `${
       assistantName || "Assistant"
-    } will be it editable by all members; it won't automatically appear in every member's 'My Assistants' list anymore.`,
+    } will be editable by all members; it won't automatically appear in workspace member's 'My Assistants' list.`,
     confirmText: "Move to Shared",
     variant: "primary",
     showUsage: true,
