@@ -8,8 +8,8 @@ import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { assistantUsageMessage } from "@app/lib/assistant";
+import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
-import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
 
 export function DeleteAssistantDialog({
   owner,
@@ -125,34 +125,24 @@ export function RemoveAssistantFromListDialog({
       validateLabel="Remove"
       validateVariant="primaryWarning"
       onValidate={async () => {
-        const body: PostAgentListStatusRequestBody = {
-          agentId: agentConfiguration.sId,
+        const { errorMessage, success } = await updateAgentUserListStatus({
           listStatus: "not-in-list",
-        };
+          owner,
+          agentConfigurationId: agentConfiguration.sId,
+        });
 
-        const res = await fetch(
-          `/api/w/${owner.sId}/members/me/agent_list_status`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
-        if (!res.ok) {
-          const data = await res.json();
-          sendNotification({
-            title: `Error removing Assistant`,
-            description: data.error.message,
-            type: "error",
-          });
-        } else {
+        if (success) {
           sendNotification({
             title: `Assistant removed from your list`,
             type: "success",
           });
           onRemove();
+        } else {
+          sendNotification({
+            title: `Error removing Assistant`,
+            description: errorMessage,
+            type: "error",
+          });
         }
 
         onClose();

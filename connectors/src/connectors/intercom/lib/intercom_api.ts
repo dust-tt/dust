@@ -1,4 +1,8 @@
-import type { ArticleObject, CollectionObject } from "intercom-client";
+import type {
+  ArticleObject,
+  CollectionObject,
+  TeamObject,
+} from "intercom-client";
 import { Client } from "intercom-client";
 
 import { HTTPError } from "@connectors/lib/error";
@@ -270,4 +274,27 @@ export async function fetchIntercomArticle(
     }
     throw error;
   }
+}
+
+/**
+ * Return the list of Teams.
+ */
+export async function fetchIntercomTeams(
+  intercomClient: Client
+): Promise<TeamObject[]> {
+  const teamsResponse = await intercomClient.teams.list();
+  return teamsResponse.teams ?? [];
+}
+
+/**
+ * Return the detail of a Team.
+ */
+export async function fetchIntercomTeam(
+  intercomClient: Client,
+  teamId: string
+): Promise<TeamObject | null> {
+  const teamsResponse = await intercomClient.teams.find({
+    id: teamId,
+  });
+  return teamsResponse ?? null;
 }
