@@ -627,7 +627,7 @@ export async function validateAccessToken(notionAccessToken: string) {
   return true;
 }
 
-function parsePropertyText(
+export function parsePropertyText(
   property: PageObjectProperties[PropertyKeys]
 ): string | null {
   switch (property.type) {

@@ -29,6 +29,7 @@ import {
   isAccessibleAndUnarchived,
   parsePageBlock,
   parsePageProperties,
+  parsePropertyText,
   renderDatabaseFromPages,
   retrieveBlockChildrenResultPage,
   retrieveDatabaseChildrenResultPage,
@@ -51,7 +52,8 @@ import {
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
-  upsertStructuredData,
+  upsertTableFromCsv,
+  upsertTableRow,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -1675,6 +1677,34 @@ export async function renderAndUpsertPageFromCache({
     throw new Error("Could not find page in cache");
   }
 
+  if (notionPageInDb?.parentType === "database" && notionPageInDb.parentId) {
+    const parentDb = await NotionDatabase.findOne({
+      where: {
+        connectorId: connector.id,
+        notionDatabaseId: notionPageInDb.parentId,
+      },
+    });
+
+    if (parentDb?.structuredDataEnabled) {
+      const tableId = `notion-${parentDb.notionDatabaseId}`;
+      const rowId = `notion-${pageId}`;
+      const row: Record<string, string | null> = {};
+      for (const [key, value] of Object.entries(
+        JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
+      )) {
+        row[key] = parsePropertyText(value);
+      }
+
+      await upsertTableRow({
+        dataSourceConfig: dsConfig,
+        tableId,
+        rowId,
+        row,
+        loggerArgs,
+      });
+    }
+  }
+
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
   );
@@ -2394,7 +2424,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     tableName ?? ""
   }`;
 
-  await upsertStructuredData({
+  await upsertTableFromCsv({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
     tableId,
     tableName,
