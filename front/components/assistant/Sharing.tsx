@@ -9,7 +9,11 @@ import {
   PlanetIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
@@ -119,7 +123,7 @@ export function SharingSection({
       <div className="text-lg font-bold text-element-900">Sharing</div>
       <SharingDropdown
         owner={owner}
-        agentConfigurationId={agentConfigurationId}
+        agentConfiguration={agentConfiguration}
         initialScope={initialScope}
         newScope={newScope}
         setNewScope={setNewScope}
@@ -141,30 +145,26 @@ export function SharingSection({
  */
 export function SharingDropdown({
   owner,
-  agentConfigurationId,
+  agentConfiguration,
   disabled,
   initialScope,
   newScope,
   setNewScope,
 }: {
   owner: WorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfiguration: AgentConfigurationType | null;
   disabled?: boolean;
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;
   setNewScope: (scope: NonGlobalScope) => void;
 }) {
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId,
-  });
   const [requestNewScope, setModalNewScope] = useState<NonGlobalScope | null>(
     null
   );
 
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
-    agentConfigurationId,
+    agentConfigurationId: agentConfiguration?.sId || null,
   });
   const assistantInMyList = agentConfiguration?.userListStatus === "in-list";
   const assistantName = agentConfiguration?.name;
@@ -255,7 +255,7 @@ export function SharingDropdown({
                   // no need for modal in the following cases
                   if (
                     // assistant is being created
-                    !agentConfigurationId ||
+                    !agentConfiguration ||
                     // selection unchanged
                     entryScope === newScope ||
                     // selection back to initial state

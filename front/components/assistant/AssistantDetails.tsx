@@ -112,7 +112,7 @@ export function AssistantDetails({
           <div className="text-lg font-bold text-element-900">{`@${agentConfiguration.name}`}</div>
           <SharingDropdown
             owner={owner}
-            agentConfigurationId={agentConfiguration.sId}
+            agentConfiguration={agentConfiguration}
             initialScope={agentConfiguration.scope}
             newScope={agentConfiguration.scope}
             disabled={isUpdatingScope}
