@@ -99,7 +99,7 @@ export function AssistantEditionMenu({
             label="Actions"
             labelVisible={false}
             disabledTooltip
-            size="xs"
+            size="sm"
             variant="tertiary"
           />
         );

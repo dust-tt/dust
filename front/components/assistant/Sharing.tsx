@@ -230,7 +230,7 @@ export function SharingDropdown({
             {allowedToChange && (
               <IconButton
                 icon={ChevronDownIcon}
-                size="xs"
+                size="sm"
                 variant="secondary"
                 className="group-hover:text-action-400"
               />

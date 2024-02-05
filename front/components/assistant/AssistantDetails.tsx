@@ -135,7 +135,7 @@ export function AssistantDetails({
       )}
       {(agentConfiguration.scope === "workspace" ||
         agentConfiguration.scope === "published") && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
           {agentConfiguration.lastAuthors && (
             <div>
               <span className="font-bold">By: </span>{" "}
