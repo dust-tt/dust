@@ -44,6 +44,7 @@ import ReactTextareaAutosize from "react-textarea-autosize";
 import { mutate } from "swr";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
+import { SharingSection } from "@app/components/assistant/Sharing";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
@@ -57,7 +58,6 @@ import {
   SPIRIT_AVATARS_BASE_PATH,
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
-import { SharingSection } from "@app/components/assistant_builder/Sharing";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import type {
   ActionMode,

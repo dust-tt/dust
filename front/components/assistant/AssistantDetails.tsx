@@ -25,7 +25,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
-import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
+import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";

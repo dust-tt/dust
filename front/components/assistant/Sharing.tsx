@@ -24,11 +24,11 @@ type ConfirmationModalDataType = {
   variant: "primary" | "primaryWarning";
 };
 
-const SCOPE_INFO: Record<
+export const SCOPE_INFO: Record<
   AgentConfigurationScope,
   {
     label: string;
-    color: string;
+    color: "pink" | "amber" | "sky" | "slate";
     icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
     text: string;
     confirmationModalData: ConfirmationModalDataType | null;
@@ -225,14 +225,7 @@ export function SharingDropdown({
       <DropdownMenu>
         <DropdownMenu.Button disabled={!allowedToChange}>
           <div className="group flex cursor-pointer items-center gap-2">
-            <Chip
-              label={SCOPE_INFO[newScope].label}
-              color={
-                SCOPE_INFO[newScope].color as "pink" | "amber" | "sky" | "slate"
-              }
-              icon={SCOPE_INFO[newScope].icon}
-              className="cursor-default"
-            />
+            <SharingChip scope={newScope} />
             {allowedToChange && (
               <IconButton
                 icon={ChevronDownIcon}
@@ -287,6 +280,17 @@ export function SharingDropdown({
         </DropdownMenu.Items>
       </DropdownMenu>
     </div>
+  );
+}
+
+export function SharingChip({ scope }: { scope: AgentConfigurationScope }) {
+  return (
+    <Chip
+      label={SCOPE_INFO[scope].label}
+      color={SCOPE_INFO[scope].color}
+      icon={SCOPE_INFO[scope].icon}
+      className="cursor-default"
+    />
   );
 }
 
