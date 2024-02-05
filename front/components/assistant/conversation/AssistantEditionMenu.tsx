@@ -101,6 +101,7 @@ export function AssistantEditionMenu({
             disabledTooltip
             size="sm"
             variant="tertiary"
+            hasMagnifying={false}
           />
         );
       case "plain":

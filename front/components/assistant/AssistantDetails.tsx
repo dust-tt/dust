@@ -119,7 +119,7 @@ export function AssistantDetails({
             setNewScope={(scope) => updateScope(scope)}
           />
         </div>
-        <div className="pr-1">
+        <div>
           <AssistantEditionMenu
             agentConfigurationId={agentConfiguration.sId}
             owner={owner}
@@ -131,7 +131,7 @@ export function AssistantDetails({
         {agentConfiguration.description}
       </div>
       {agentConfiguration.scope === "global" && usageSentence && (
-        <div>{usageSentence}</div>
+        <div className="text-xs">{usageSentence}</div>
       )}
       {(agentConfiguration.scope === "workspace" ||
         agentConfiguration.scope === "published") && (
