@@ -20,6 +20,7 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { useFeatures } from "@app/lib/swr";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -92,6 +93,8 @@ export default function DataSourcesView({
     }
   });
 
+  const { features } = useFeatures(owner);
+
   return (
     <AppLayout
       subscription={subscription}
@@ -101,6 +104,7 @@ export default function DataSourcesView({
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",
+        crawlerEnabled: features?.includes("crawler"),
       })}
     >
       <Page.Vertical gap="xl" align="stretch">

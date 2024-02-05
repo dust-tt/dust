@@ -11,6 +11,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
+import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -75,7 +76,13 @@ async function handler(
   switch (req.method) {
     case "GET":
       return res.status(200).json({
-        agentConfiguration: assistant,
+        agentConfiguration: {
+          ...assistant,
+          lastAuthors: await getAgentRecentAuthors({
+            agent: assistant,
+            auth,
+          }),
+        },
       });
 
     case "PATCH":

@@ -23,7 +23,6 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -130,8 +129,6 @@ async function handler(
       }
 
       if (withAuthors === "true") {
-        const members = await getMembers(auth);
-
         agentConfigurations = await Promise.all(
           agentConfigurations.map(
             async (
@@ -139,13 +136,10 @@ async function handler(
             ): Promise<LightAgentConfigurationType> => {
               return {
                 ...agentConfiguration,
-                lastAuthors: await getAgentRecentAuthors(
-                  {
-                    agent: agentConfiguration,
-                    auth,
-                  },
-                  members
-                ),
+                lastAuthors: await getAgentRecentAuthors({
+                  agent: agentConfiguration,
+                  auth,
+                }),
               };
             }
           )

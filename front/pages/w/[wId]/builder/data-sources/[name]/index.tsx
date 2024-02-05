@@ -3,6 +3,7 @@ import {
   Cog6ToothIcon,
   ContextItem,
   DocumentTextIcon,
+  GithubLogo,
   ListCheckIcon,
   LockIcon,
   Page,
@@ -45,7 +46,7 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
-import { useConnectorBotEnabled, useDocuments, useTables } from "@app/lib/swr";
+import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -558,29 +559,32 @@ function SlackBotEnableView({
   dataSource: DataSourceType;
   plan: PlanType;
 }) {
-  const { botEnabled, mutateBotEnabled } = useConnectorBotEnabled({
-    owner: owner,
+  const { configValue, mutateConfig } = useConnectorConfig({
+    owner,
     dataSource,
+    configKey: "botEnabled",
   });
+  const botEnabled = configValue === "true";
 
   const sendNotification = useContext(SendNotificationsContext);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
+
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/bot_enabled`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/botEnabled`,
       {
         headers: {
           "Content-Type": "application/json",
         },
         method: "POST",
-        body: JSON.stringify({ botEnabled }),
+        body: JSON.stringify({ configValue: botEnabled.toString() }),
       }
     );
     if (res.ok) {
-      await mutateBotEnabled();
+      await mutateConfig();
       setLoading(false);
     } else {
       setLoading(false);
@@ -608,7 +612,7 @@ function SlackBotEnableView({
                   setShowNoSlackBotPopup(true);
                 else await handleSetBotEnabled(!botEnabled);
               }}
-              selected={botEnabled || false}
+              selected={botEnabled}
               disabled={readOnly || !isAdmin || loading}
             />
             <Popup
@@ -631,6 +635,82 @@ function SlackBotEnableView({
           <div className="text-element-700">
             You can ask questions to your assistants directly from Slack by
             mentioning @Dust.
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+    </ContextItem.List>
+  );
+}
+
+function GithubCodeEnableView({
+  owner,
+  readOnly,
+  isAdmin,
+  dataSource,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+}) {
+  const { configValue, mutateConfig } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: "codeSyncEnabled",
+  });
+  const codeSyncEnabled = configValue === "true";
+
+  const sendNotification = useContext(SendNotificationsContext);
+  const [loading, setLoading] = useState(false);
+
+  const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
+    setLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/codeSyncEnabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ configValue: codeSyncEnabled.toString() }),
+      }
+    );
+    if (res.ok) {
+      await mutateConfig();
+      setLoading(false);
+    } else {
+      setLoading(false);
+      const err = (await res.json()) as { error: APIError };
+      sendNotification({
+        type: "error",
+        title: "Failed to enable GitHub code sync",
+        description: err.error.message,
+      });
+    }
+    return true;
+  };
+
+  return (
+    <ContextItem.List>
+      <ContextItem
+        title="Code Synchronization"
+        visual={<ContextItem.Visual visual={GithubLogo} />}
+        action={
+          <div className="relative">
+            <SliderToggle
+              size="xs"
+              onClick={async () => {
+                await handleSetCodeSyncEnabled(!codeSyncEnabled);
+              }}
+              selected={codeSyncEnabled}
+              disabled={readOnly || !isAdmin || loading}
+            />
+          </div>
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-element-700">
+            Your GitHub repositories code is synced with Dust every 8h.
           </div>
         </ContextItem.Description>
       </ContextItem>
@@ -888,10 +968,9 @@ function ManagedDataSourceView({
                 case "github":
                 case "notion":
                 case "intercom":
-                  return `Manage Dust access to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
+                  return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
                   return `Manage Website`;
-
                 default:
                   assertNever(connectorProvider);
               }
@@ -975,6 +1054,11 @@ function ManagedDataSourceView({
             {connectorProvider === "slack" && (
               <SlackBotEnableView
                 {...{ owner, readOnly, isAdmin, dataSource, plan }}
+              />
+            )}
+            {connectorProvider === "github" && (
+              <GithubCodeEnableView
+                {...{ owner, readOnly, isAdmin, dataSource }}
               />
             )}
           </>

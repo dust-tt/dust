@@ -12,13 +12,14 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
-import React, { useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
 export interface InputBarContainerProps {
@@ -61,6 +62,15 @@ const InputBarContainer = ({
     onEnterKeyDown,
     resetEditorContainerSize,
   });
+
+  // When input bar animation is requested it means the new button was clicked (removing focus from
+  // the input bar), we grab it back.
+  const { animate } = useContext(InputBarContext);
+  useEffect(() => {
+    if (animate) {
+      editorService.focusEnd();
+    }
+  }, [animate, editorService]);
 
   useHandleMentions(
     editorService,

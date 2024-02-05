@@ -251,7 +251,9 @@ async function warnPostDeletion(
   switch (dataSourceProvider) {
     case "github":
       // get admin emails
-      const adminEmails = (await getMembers(auth, "admin")).map((u) => u.email);
+      const adminEmails = (await getMembers(auth, { role: "admin" })).map(
+        (u) => u.email
+      );
       // send email to admins
       for (const email of adminEmails) await sendGithubDeletionEmail(email);
       break;

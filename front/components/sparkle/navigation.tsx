@@ -19,7 +19,6 @@ import { isAdmin, isBuilder, isUser } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import { useFeatures } from "@app/lib/swr";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -124,18 +123,17 @@ export const subNavigationBuild = ({
   current,
   subMenuLabel,
   subMenu,
+  crawlerEnabled,
 }: {
   owner: WorkspaceType;
   current: SubNavigationAssistantsId;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
+  crawlerEnabled?: boolean;
 }) => {
   const nav: SidebarNavigation[] = [];
 
   const assistantMenus: SparkleAppLayoutNavigation[] = [];
-
-  const { features } = useFeatures(owner);
-  const crawlerEnabled = features?.includes("crawler");
 
   assistantMenus.push({
     id: "workspace_assistants",

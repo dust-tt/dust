@@ -27,10 +27,8 @@ import { useContext, useEffect, useState } from "react";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import {
-  FixedAssistantInputBar,
-  InputBarContext,
-} from "@app/components/assistant/conversation/input_bar/InputBar";
+import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -188,12 +186,11 @@ export default function AssistantNew({
           {showDetails && (
             <AssistantDetails
               owner={owner}
-              assistant={showDetails}
+              assistantId={showDetails.sId}
               show={showDetails !== null}
               onClose={() => {
                 setShowDetails(null);
               }}
-              flow="personal"
             />
           )}
           {!conversation ? (

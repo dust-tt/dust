@@ -401,7 +401,7 @@ async function handler(
               "Couldn't get owner or subscription from `auth`."
             );
           }
-          const adminEmails = (await getMembers(auth, "admin")).map(
+          const adminEmails = (await getMembers(auth, { role: "admin" })).map(
             (u) => u.email
           );
           const customerEmail = invoice.customer_email;
@@ -464,7 +464,7 @@ async function handler(
             );
 
             // then email admins
-            const adminEmails = (await getMembers(auth, "admin")).map(
+            const adminEmails = (await getMembers(auth, { role: "admin" })).map(
               (u) => u.email
             );
             if (adminEmails.length === 0) {
@@ -490,6 +490,10 @@ async function handler(
           }
           break;
         case "customer.subscription.deleted":
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received customer.subscription.deleted event."
+          );
           stripeSubscription = event.data.object as Stripe.Subscription;
           // Occurs when the subscription is canceled by the user or by us.
           if (stripeSubscription.status === "canceled") {
@@ -675,7 +679,9 @@ async function checkStaticDatasourcesSize(auth: Authenticator) {
     }
     await sendOpsDowngradeTooMuchDataEmail(workspace.sId, datasourcesTooBig);
     // for all admins
-    const adminEmails = (await getMembers(auth, "admin")).map((u) => u.email);
+    const adminEmails = (await getMembers(auth, { role: "admin" })).map(
+      (u) => u.email
+    );
     for (const adminEmail of adminEmails)
       await sendAdminDowngradeTooMuchDataEmail(adminEmail, datasourcesTooBig);
   }

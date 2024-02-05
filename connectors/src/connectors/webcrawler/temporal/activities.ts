@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
+import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration } from "crawlee";
 import turndown from "turndown";
 
@@ -11,6 +12,7 @@ import {
   isTopFolder,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
+import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   MAX_DOCUMENT_TXT_LEN,
@@ -56,11 +58,29 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     {
       maxRequestsPerCrawl: MAX_PAGES,
       maxConcurrency: CONCURRENCY,
-
+      maxRequestsPerMinute: 60, // 5 requests per second to avoid overloading the target website
+      requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
       async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
           type: "http_request",
         });
+
+        // try-catch allowing activity cancellation by temporal (timeout, or signal)
+        try {
+          await Context.current().sleep(1);
+        } catch (e) {
+          if (isCancellation(e)) {
+            logger.error("The activity was canceled. Aborting crawl.");
+            // abort crawling
+            await crawler.autoscaledPool?.abort();
+            await crawler.teardown();
+            // leave without rethrowing, to avoid retries by the crawler
+            // (the cancellation already throws at the activity & workflow level)
+            return;
+          }
+          throw e;
+        }
+
         await enqueueLinks({
           userData: {
             depth: request.userData.depth ? request.userData.depth + 1 : 1,
@@ -191,6 +211,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   await crawler.run([webCrawlerConfig.url]);
 
   await crawler.teardown();
+
+  // checks for cancellation and throws if it's the case
+  await Context.current().sleep(1);
 
   if (pageCount > 0) {
     await syncSucceeded(connector.id);

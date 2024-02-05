@@ -177,12 +177,11 @@ export default function PersonalAssistants({
       {showDetails && (
         <AssistantDetails
           owner={owner}
-          assistant={showDetails}
+          assistantId={showDetails.sId}
           show={showDetails !== null}
           onClose={() => {
             setShowDetails(null);
           }}
-          flow="personal"
         />
       )}
 

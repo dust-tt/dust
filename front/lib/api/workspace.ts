@@ -106,15 +106,30 @@ export async function setInternalWorkspaceSegmentation(
  */
 export async function getMembers(
   auth: Authenticator,
-  role?: RoleType
+  {
+    role,
+    userIds,
+  }: {
+    role?: RoleType;
+    userIds?: ModelId[];
+  } = {}
 ): Promise<UserTypeWithWorkspaces[]> {
   const owner = auth.workspace();
   if (!owner) {
     return [];
   }
-  const whereClause = role
-    ? { workspaceId: owner.id, role }
+
+  const whereClause: {
+    workspaceId: ModelId;
+    userId?: ModelId[];
+    role?: RoleType;
+  } = userIds
+    ? { workspaceId: owner.id, userId: userIds }
     : { workspaceId: owner.id };
+  if (role) {
+    whereClause.role = role;
+  }
+
   const memberships = await Membership.findAll({
     where: whereClause,
   });

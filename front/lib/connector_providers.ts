@@ -73,9 +73,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     hide: false,
     description:
-      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexation is coming soon.",
+      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexation can be controlled on-demand.",
     limitations:
-      "Dust only gathers data from issues, discussions and top-level pull requests (but not in-code comments in pull requests, nor the actual source code or other Github data).",
+      "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
     logoComponent: GithubLogo,
     isNested: true,
   },
