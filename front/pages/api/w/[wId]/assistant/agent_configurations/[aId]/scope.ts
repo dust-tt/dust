@@ -10,6 +10,18 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
+export const PostAgentScopeRequestBodySchema = t.type({
+  scope: t.union([
+    t.literal("workspace"),
+    t.literal("published"),
+    t.literal("private"),
+  ]),
+});
+
+export type PostAgentScopeRequestBody = t.TypeOf<
+  typeof PostAgentScopeRequestBodySchema
+>;
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<void>>
@@ -56,15 +68,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = t
-        .type({
-          scope: t.union([
-            t.literal("workspace"),
-            t.literal("published"),
-            t.literal("private"),
-          ]),
-        })
-        .decode(req.body);
+      const bodyValidation = PostAgentScopeRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {

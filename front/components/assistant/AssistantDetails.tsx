@@ -1,120 +1,163 @@
 import {
   Avatar,
-  Button,
-  ClipboardIcon,
   CloudArrowDownIcon,
   CommandLineIcon,
   Modal,
-  PlusIcon,
+  Page,
   ServerIcon,
-  TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationScope,
   AgentConfigurationType,
-  AgentUsageType,
-  AgentUserListStatus,
   ConnectorProvider,
   CoreAPITable,
   DataSourceConfiguration,
   DustAppRunConfigurationType,
-  LightAgentConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  isBuilder,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
-import Link from "next/link";
 import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
+import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
+import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { assistantUsageMessage } from "@app/lib/assistant";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
+import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
-import { useAgentConfigurations } from "@app/lib/swr";
-
-type AssistantDetailsFlow = "personal" | "workspace";
+import { timeAgoFrom } from "@app/lib/utils";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   show: boolean;
   onClose: () => void;
-  flow: AssistantDetailsFlow;
   assistantId: string;
 };
 
 export function AssistantDetails({
   assistantId,
-  flow,
   onClose,
   owner,
   show,
 }: AssistantDetailsProps) {
+  const sendNotification = useContext(SendNotificationsContext);
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: assistantId,
-  });
+  const { agentConfiguration, mutateAgentConfiguration } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: assistantId,
+    });
+  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
-  const { mutateAgentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    includes: ["authors"],
-  });
-
-  const effectiveAssistant = agentConfiguration;
-  if (!effectiveAssistant) {
+  if (!agentConfiguration) {
     return <></>;
   }
+  const updateScope = async (
+    scope: Exclude<AgentConfigurationScope, "global">
+  ) => {
+    setIsUpdatingScope(true);
 
+    const { success, errorMessage } = await updateAgentScope({
+      scope,
+      owner,
+      agentConfigurationId: agentConfiguration.sId,
+    });
+
+    if (success) {
+      sendNotification({
+        title: `Assistant sharing updated.`,
+        type: "success",
+      });
+
+      await mutateAgentConfiguration();
+    } else {
+      sendNotification({
+        title: `Error updating assistant sharing.`,
+        description: errorMessage,
+        type: "error",
+      });
+    }
+
+    setIsUpdatingScope(false);
+  };
+
+  const usageSentence =
+    agentUsage.agentUsage &&
+    `${agentUsage.agentUsage.messageCount} message(s) over the last ${
+      agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
+    } days`;
+  const editedSentence =
+    agentConfiguration.versionCreatedAt &&
+    `Last edited ${timeAgoFrom(
+      Date.parse(agentConfiguration.versionCreatedAt)
+    )} ago`;
   const DescriptionSection = () => (
-    <div className="flex flex-col gap-4 sm:flex-row">
-      <Avatar
-        visual={
-          <img src={effectiveAssistant.pictureUrl} alt="Assistant avatar" />
-        }
-        size="md"
-      />
-      <div>{effectiveAssistant.description}</div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Avatar
+          visual={
+            <img src={agentConfiguration.pictureUrl} alt="Assistant avatar" />
+          }
+          size="lg"
+        />
+        <div className="flex grow flex-col gap-1">
+          <div className="text-lg font-bold text-element-900">{`@${agentConfiguration.name}`}</div>
+          <SharingDropdown
+            owner={owner}
+            agentConfiguration={agentConfiguration}
+            initialScope={agentConfiguration.scope}
+            newScope={agentConfiguration.scope}
+            disabled={isUpdatingScope}
+            setNewScope={(scope) => updateScope(scope)}
+          />
+        </div>
+        <div className="pr-1">
+          <AssistantEditionMenu
+            agentConfigurationId={agentConfiguration.sId}
+            owner={owner}
+            variant="button"
+          />
+        </div>
+      </div>
+      <div className="text-sm text-element-900">
+        {agentConfiguration.description}
+      </div>
+      {agentConfiguration.scope === "global" && usageSentence && (
+        <div>{usageSentence}</div>
+      )}
+      {(agentConfiguration.scope === "workspace" ||
+        agentConfiguration.scope === "published") && (
+        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+          {agentConfiguration.lastAuthors && (
+            <div>
+              <span className="font-bold">By: </span>{" "}
+              {agentConfiguration.lastAuthors.join(", ")}
+            </div>
+          )}
+          <div>{editedSentence + ", " + usageSentence}</div>
+        </div>
+      )}
+      <Page.Separator />
     </div>
   );
 
   const InstructionsSection = () =>
-    effectiveAssistant.generation?.prompt ? (
+    agentConfiguration.generation?.prompt ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown>{effectiveAssistant.generation.prompt}</ReactMarkdown>
+        <ReactMarkdown>{agentConfiguration.generation.prompt}</ReactMarkdown>
       </div>
     ) : (
       "This assistant has no instructions."
     );
-
-  const UsageSection = ({
-    assistantName,
-    usage,
-    isLoading,
-    isError,
-  }: {
-    assistantName: string;
-    usage: AgentUsageType | null;
-    isLoading: boolean;
-    isError: boolean;
-  }) => (
-    <div className="flex flex-col gap-2">
-      <div className="text-lg font-bold text-element-800">Usage</div>
-      {assistantUsageMessage({ assistantName, usage, isLoading, isError })}
-    </div>
-  );
 
   const ActionSection = ({
     action,
@@ -145,28 +188,14 @@ export function AssistantDetails({
   return (
     <Modal
       isOpen={show}
-      title={`@${effectiveAssistant.name}`}
+      title=""
       onClose={onClose}
       hasChanged={false}
       variant="side-sm"
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
-        <ButtonsSection
-          owner={owner}
-          agentConfiguration={effectiveAssistant}
-          detailsModalClose={onClose}
-          onUpdate={mutateAgentConfigurations}
-          onClose={onClose}
-          flow={flow}
-        />
         <DescriptionSection />
         <InstructionsSection />
-        <UsageSection
-          assistantName={effectiveAssistant.name}
-          usage={agentUsage.agentUsage}
-          isLoading={agentUsage.isAgentUsageLoading}
-          isError={agentUsage.isAgentUsageError}
-        />
         <ActionSection action={agentConfiguration?.action || null} />
       </div>
     </Modal>
@@ -246,138 +275,6 @@ function DustAppSection({
         <div>{app ? app.name : ""}</div>
       </div>
     </div>
-  );
-}
-
-function ButtonsSection({
-  owner,
-  agentConfiguration,
-  detailsModalClose,
-  onUpdate,
-  onClose,
-  flow,
-}: {
-  owner: WorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
-  detailsModalClose: () => void;
-  onUpdate: () => void;
-  onClose: () => void;
-  flow: AssistantDetailsFlow;
-}) {
-  const [showDeletionModal, setShowDeletionModal] = useState<boolean>(false);
-
-  const canDelete =
-    (agentConfiguration.scope === "workspace" && isBuilder(owner)) ||
-    ["published", "private"].includes(agentConfiguration.scope);
-
-  const canAddRemoveList =
-    ["published", "workspace"].includes(agentConfiguration.scope) &&
-    flow !== "workspace";
-
-  const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
-  const [isAddingOrRemoving, setIsAddingOrRemoving] = useState<boolean>(false);
-  const sendNotification = useContext(SendNotificationsContext);
-
-  const updateAgentUserList = async (listStatus: AgentUserListStatus) => {
-    setIsAddingOrRemoving(true);
-
-    const { errorMessage, success } = await updateAgentUserListStatus({
-      listStatus,
-      owner,
-      agentConfigurationId: agentConfiguration.sId,
-    });
-    if (success) {
-      sendNotification({
-        title: `Assistant ${
-          listStatus === "in-list"
-            ? "added to your list"
-            : "removed from your list"
-        }`,
-        type: "success",
-      });
-      onUpdate();
-    } else {
-      sendNotification({
-        title: `Error ${
-          listStatus === "in-list" ? "adding" : "removing"
-        } Assistant`,
-        description: errorMessage,
-        type: "error",
-      });
-    }
-
-    setIsAddingOrRemoving(false);
-    onClose();
-  };
-  return (
-    <Button.List className="flex items-center justify-end gap-1">
-      {flow === "personal" && (
-        <Link
-          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
-        >
-          <Button
-            label={isDuplicating ? "Duplicating..." : "Duplicate"}
-            disabled={isDuplicating}
-            variant="tertiary"
-            icon={ClipboardIcon}
-            size="xs"
-            onClick={async () => {
-              setIsDuplicating(true);
-            }}
-          />
-        </Link>
-      )}
-      {canAddRemoveList &&
-        (agentConfiguration.userListStatus === "in-list" ? (
-          <Button
-            label={isAddingOrRemoving ? "Removing..." : "Remove from my list"}
-            disabled={isAddingOrRemoving}
-            variant="tertiary"
-            icon={XMarkIcon}
-            size="xs"
-            hasMagnifying={false}
-            onClick={async () => {
-              await updateAgentUserList("not-in-list");
-            }}
-          />
-        ) : (
-          <Button
-            label={isAddingOrRemoving ? "Adding..." : "Add to my list"}
-            disabled={isAddingOrRemoving}
-            variant="tertiary"
-            icon={PlusIcon}
-            size="xs"
-            hasMagnifying={false}
-            onClick={async () => {
-              await updateAgentUserList("in-list");
-            }}
-          />
-        ))}
-
-      {canDelete && (
-        <>
-          <DeleteAssistantDialog
-            owner={owner}
-            agentConfigurationId={agentConfiguration.sId}
-            show={showDeletionModal}
-            onClose={() => setShowDeletionModal(false)}
-            onDelete={() => {
-              detailsModalClose();
-              onUpdate();
-            }}
-          />
-          <Button
-            label={"Delete"}
-            icon={TrashIcon}
-            variant="secondaryWarning"
-            size="xs"
-            disabled={!isBuilder(owner)}
-            onClick={() => setShowDeletionModal(true)}
-            hasMagnifying={false}
-          />
-        </>
-      )}
-    </Button.List>
   );
 }
 

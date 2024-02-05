@@ -212,7 +212,6 @@ export default function AssistantsGallery({
           onClose={() => {
             setShowDetails(null);
           }}
-          flow={flow === "workspace_add" ? "workspace" : "personal"}
         />
       )}
       {testModalAssistant && (

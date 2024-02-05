@@ -191,7 +191,6 @@ export default function AssistantNew({
               onClose={() => {
                 setShowDetails(null);
               }}
-              flow="personal"
             />
           )}
           {!conversation ? (

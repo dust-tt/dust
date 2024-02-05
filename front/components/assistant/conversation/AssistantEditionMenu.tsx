@@ -1,4 +1,5 @@
 import {
+  Button,
   ClipboardIcon,
   DropdownMenu,
   Icon,
@@ -8,7 +9,7 @@ import {
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
 import type { AgentUserListStatus, WorkspaceType } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
+import { assertNever, isBuilder } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -18,7 +19,12 @@ import { useAgentConfiguration } from "@app/lib/swr";
 interface AssistantEditionMenuProps {
   agentConfigurationId: string;
   owner: WorkspaceType;
+  variant: "button" | "plain";
 }
+
+AssistantEditionMenu.defaultProps = {
+  variant: "plain",
+};
 
 export function AssistantEditionMenu({
   // The `agentConfiguration` cannot be used directly as it isn't dynamically
@@ -26,6 +32,7 @@ export function AssistantEditionMenu({
   // propagation method from <ConversationMessage>.
   agentConfigurationId,
   owner,
+  variant,
 }: AssistantEditionMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
@@ -82,13 +89,31 @@ export function AssistantEditionMenu({
     setIsUpdatingList(false);
   };
 
+  const dropdownButton = (() => {
+    switch (variant) {
+      case "button":
+        return (
+          <Button
+            key="show_details"
+            icon={MoreIcon}
+            label="Actions"
+            labelVisible={false}
+            disabledTooltip
+            size="sm"
+            variant="tertiary"
+          />
+        );
+      case "plain":
+        return <Icon visual={MoreIcon} />;
+      default:
+        assertNever(variant);
+    }
+  })();
   return (
     <DropdownMenu className="text-element-700">
-      <DropdownMenu.Button>
-        <Icon visual={MoreIcon} />
-      </DropdownMenu.Button>
+      <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
       <DropdownMenu.Items width={220}>
-        <DropdownMenu.SectionHeader label="Edition" />
+        {isAgentPublished && <DropdownMenu.SectionHeader label="Edition" />}
         {/* Should use the router to have a better navigation experience */}
         {isBuilder(owner) && (
           <DropdownMenu.Item

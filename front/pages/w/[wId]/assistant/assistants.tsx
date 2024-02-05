@@ -182,7 +182,6 @@ export default function PersonalAssistants({
           onClose={() => {
             setShowDetails(null);
           }}
-          flow="personal"
         />
       )}
 

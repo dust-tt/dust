@@ -52,7 +52,6 @@ export function AssistantPicker({
           onClose={() => {
             setShowDetails(null);
           }}
-          flow="personal"
         />
       )}
 

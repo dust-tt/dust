@@ -44,6 +44,7 @@ import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
+import { SharingSection } from "@app/components/assistant/Sharing";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
@@ -58,7 +59,6 @@ import {
   TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
-import { TeamSharingSection } from "@app/components/assistant_builder/TeamSharingSection";
 import type {
   ActionMode,
   AssistantBuilderDataSourceConfiguration,
@@ -819,7 +819,7 @@ export default function AssistantBuilder({
               </div>
             </div>
           </div>
-          <TeamSharingSection
+          <SharingSection
             owner={owner}
             agentConfigurationId={agentConfigurationId}
             initialScope={initialBuilderState?.scope ?? defaultScope}
