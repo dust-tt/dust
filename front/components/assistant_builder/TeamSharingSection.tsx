@@ -105,7 +105,7 @@ export function TeamSharingSection({
       text: "Only I can view and edit.",
       confirmationModalData: {
         title: "Moving to Personal Assistants",
-        text: `The assistant is only editable, viewable and usable to you.`,
+        text: `The assistant is only editable, viewable and usable by you.`,
         confirmText: "Move to Personal",
         variant: "primaryWarning",
         usageText,
@@ -118,7 +118,7 @@ export function TeamSharingSection({
     title: "Moving to Shared Assistants",
     text: `Moving ${
       assistantName || "the assistant"
-    } will make it editable by all members and automatically appears in every member's 'My Assistants' list anymore.`,
+    } will make it editable by all members; it won't automatically appear in every member's 'My Assistants' list anymore.`,
     confirmText: "Move to Shared",
     variant: "primary",
     usageText,
