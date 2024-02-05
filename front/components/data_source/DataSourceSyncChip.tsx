@@ -49,7 +49,7 @@ export default function ConnectorSyncingChip({
   } else if (!connector.lastSyncSuccessfulTime) {
     return (
       <Chip color="amber" isBusy>
-        {connector.errorType} Synchronizing
+        Synchronizing
         {connector?.firstSyncProgress
           ? ` (${connector?.firstSyncProgress})`
           : null}
