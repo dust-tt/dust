@@ -181,7 +181,7 @@ export default function PersonalAssistants({
           show={showDetails !== null}
           onClose={({ shouldMutateAgentConfigurations }) => {
             setShowDetails(null);
-            void mutateAgentConfigurations();
+            shouldMutateAgentConfigurations && void mutateAgentConfigurations();
           }}
         />
       )}

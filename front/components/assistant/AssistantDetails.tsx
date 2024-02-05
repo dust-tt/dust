@@ -129,8 +129,8 @@ export function AssistantDetails({
             owner={owner}
             variant="button"
             onAgentDeletion={() => {
-              onClose();
               void mutateAgentConfiguration();
+              onClose({ shouldMutateAgentConfigurations: true });
             }}
           />
         </div>
