@@ -36,10 +36,8 @@ export default function AssistantListActions({
     () => agentConfiguration.userListStatus === "in-list"
   );
 
-  const isGlobal = scope === "global";
-
-  if (isGlobal) {
-    return null; // Return null if isGlobal, since no actions are rendered in this case.
+  if (scope !== "published") {
+    return null;
   }
 
   const updateList = async (listStatus: AgentUserListStatus) => {
