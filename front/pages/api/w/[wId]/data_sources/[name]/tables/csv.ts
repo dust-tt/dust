@@ -388,7 +388,18 @@ export async function rowsFromCsv(
       return acc;
     }, {} as Record<string, RowValue>);
 
-    rows.push({ row_id: i.toString(), value: record });
+    const rowId = record["__dust_id"] ?? i.toString();
+
+    if (typeof rowId !== "string") {
+      return new Err({
+        type: "invalid_request_error",
+        message: `Invalid row id: ${rowId}.`,
+      });
+    }
+
+    delete record["__dust_id"];
+
+    rows.push({ row_id: rowId, value: record });
   }
 
   return new Ok(rows);

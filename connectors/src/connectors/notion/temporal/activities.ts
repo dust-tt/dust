@@ -29,7 +29,7 @@ import {
   isAccessibleAndUnarchived,
   parsePageBlock,
   parsePageProperties,
-  renderChildDatabaseFromPages,
+  renderDatabaseFromPages,
   retrieveBlockChildrenResultPage,
   retrieveDatabaseChildrenResultPage,
   retrievePage,
@@ -1726,7 +1726,7 @@ export async function renderAndUpsertPageFromCache({
   }
   const renderedChildDatabases: Record<string, string> = {};
   for (const [databaseId, pages] of Object.entries(childDatabases)) {
-    renderedChildDatabases[databaseId] = await renderChildDatabaseFromPages({
+    renderedChildDatabases[databaseId] = await renderDatabaseFromPages({
       databaseTitle: childDatabaseTitleById[databaseId] ?? null,
       pagesProperties: pages.map(
         (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
@@ -2312,6 +2312,23 @@ function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
 }
 
+export async function databaseHasStructuredDataEnabled({
+  databaseId,
+  connectorId,
+}: {
+  databaseId: string;
+  connectorId: ModelId;
+}): Promise<boolean> {
+  const dbModel = await NotionDatabase.findOne({
+    where: {
+      connectorId,
+      notionDatabaseId: databaseId,
+    },
+  });
+
+  return !!dbModel?.structuredDataEnabled;
+}
+
 export async function upsertDatabaseStructuredDataFromCache({
   databaseId,
   connectorId,
@@ -2361,11 +2378,12 @@ export async function upsertDatabaseStructuredDataFromCache({
     },
   });
 
-  const csv = await renderChildDatabaseFromPages({
+  const csv = await renderDatabaseFromPages({
     databaseTitle: null,
     pagesProperties: pageCacheEntries.map(
       (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
     ),
+    dustIdColumn: pageCacheEntries.map((p) => `notion-${p.notionPageId}`),
     cellSeparator: ",",
     rowBoundary: "",
   });

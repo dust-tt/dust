@@ -758,14 +758,16 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
-export async function renderChildDatabaseFromPages({
+export async function renderDatabaseFromPages({
   databaseTitle,
   pagesProperties,
+  dustIdColumn,
   rowBoundary = "||",
   cellSeparator = " | ",
 }: {
   databaseTitle: string | null;
   pagesProperties: PageObjectProperties[];
+  dustIdColumn?: string[];
   rowBoundary?: string;
   cellSeparator?: string;
 }) {
@@ -773,9 +775,21 @@ export async function renderChildDatabaseFromPages({
     return "";
   }
 
-  const header = Object.entries(pagesProperties[0]).map(([key]) => key);
-  const rows = pagesProperties.map((pageProperties) =>
+  if (dustIdColumn && dustIdColumn.length !== pagesProperties.length) {
+    throw new Error(
+      "The dustIdColumn should have the same length as the pagesProperties."
+    );
+  }
+
+  let header = Object.entries(pagesProperties[0]).map(([key]) => key);
+  if (dustIdColumn) {
+    header = ["__dust_id", ...header];
+  }
+  const rows = pagesProperties.map((pageProperties, pageIndex) =>
     header.map((k) => {
+      if (k === "__dust_id" && dustIdColumn) {
+        return dustIdColumn[pageIndex];
+      }
       const property = pageProperties[k];
       if (!property) {
         return "";

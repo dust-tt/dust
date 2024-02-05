@@ -645,8 +645,6 @@ async function upsertDatabase({
         isGarbageCollectionRun || forceResync,
       runTimestamp,
       topLevelWorkflowId,
-      // We don't store pages in cache here, we only want to return the pageIds
-      // that need to be synced.
       storeInCache: true,
     });
     cursor = nextCursor;
