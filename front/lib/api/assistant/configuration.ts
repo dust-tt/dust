@@ -31,6 +31,7 @@ import {
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
+import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -51,6 +52,12 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
+
+const sortStrategies = {
+  alphabetical: (a: AgentConfigurationType, b: AgentConfigurationType) =>
+    a.name.localeCompare(b.name),
+  priority: compareAgentsForSort,
+} as const;
 
 /**
  * Get an agent configuration
@@ -73,11 +80,15 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   agentsGetView,
   agentPrefix,
   variant,
+  limit,
+  sort,
 }: {
   auth: Authenticator;
   agentsGetView: AgentsGetViewType;
   agentPrefix?: string;
   variant: V;
+  limit?: number;
+  sort?: keyof typeof sortStrategies;
 }): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
@@ -107,7 +118,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     !auth.isAdmin()
   ) {
     throw new Error(
-      "superuser view is for dust superusers or internal admin auths only."
+      "Superuser view is for dust superusers or internal admin auths only."
     );
   }
   if (agentsGetView === "list" && !user) {
@@ -146,23 +157,28 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     }
   })();
 
-  let globalAgentsPromise = getGlobalAgents(auth, globalAgentIdsToFetch).then(
-    (globals) =>
-      globals.filter(
-        (a) =>
-          !agentPrefix ||
-          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
-      )
+  const applySortAndLimit = (results: AgentConfigurationType[]) => {
+    const sortStrategy = sort && sortStrategies[sort];
+
+    const sortedResults = sortStrategy ? results.sort(sortStrategy) : results;
+
+    return limit ? sortedResults.slice(0, limit) : sortedResults;
+  };
+
+  const allGlobalAgents = await getGlobalAgents(auth, globalAgentIdsToFetch);
+  const matchingGlobalAgents = allGlobalAgents.filter(
+    (a) =>
+      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
   if (agentsGetView === "global") {
     // Only global agents in global view.`
-    return globalAgentsPromise;
+    return applySortAndLimit(matchingGlobalAgents);
   }
 
   // If not in global view, filter out global agents that are not active.
-  globalAgentsPromise = globalAgentsPromise.then((globals) =>
-    globals.filter((a) => a.status === "active")
+  const activeMatchingGlobalAgents = matchingGlobalAgents.filter(
+    (a) => a.status === "active"
   );
 
   const baseAgentsSequelizeQuery = {
@@ -171,6 +187,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
       status: "active",
       ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
     },
+    limit,
   };
 
   const agentConfigurations: AgentConfiguration[] = await (() => {
@@ -535,9 +552,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     });
   }
 
-  return globalAgentsPromise.then((globalAgents) => [
+  return applySortAndLimit([
     ...agentConfigurationTypes,
-    ...globalAgents,
+    ...activeMatchingGlobalAgents,
   ]);
 }
 

@@ -1,7 +1,10 @@
 import * as t from "io-ts";
 
+import { createRangeCodec } from "../../../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../../assistant/actions/retrieval";
 import { isSupportedModel, SupportedModel } from "../../lib/assistant";
+
+const LimitCodec = createRangeCodec(0, 100);
 
 // Get schema for the url query parameters: a view parameter with all the types
 // of AgentGetViewType
@@ -18,6 +21,12 @@ export const GetAgentConfigurationsQuerySchema = t.type({
   conversationId: t.union([t.string, t.undefined]),
   withUsage: t.union([t.literal("true"), t.literal("false"), t.undefined]),
   withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+  limit: t.union([LimitCodec, t.undefined]),
+  sort: t.union([
+    t.literal("priority"),
+    t.literal("alphabetical"),
+    t.undefined,
+  ]),
 });
 
 export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
