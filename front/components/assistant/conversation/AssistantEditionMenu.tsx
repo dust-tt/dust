@@ -7,6 +7,7 @@ import {
   ListRemoveIcon,
   MoreIcon,
   PencilSquareIcon,
+  PlayIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -18,15 +19,17 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration } from "@app/lib/swr";
+import { useAgentConfiguration, useUser } from "@app/lib/swr";
 
 interface AssistantEditionMenuProps {
   agentConfigurationId: string;
   owner: WorkspaceType;
   variant: "button" | "plain";
   onAgentDeletion?: () => void;
+  tryButton?: boolean;
 }
 
 AssistantEditionMenu.defaultProps = {
@@ -41,10 +44,12 @@ export function AssistantEditionMenu({
   owner,
   variant,
   onAgentDeletion,
+  tryButton,
 }: AssistantEditionMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
-
+  const { user } = useUser();
+  const [showTryAssistantModal, setShowTryAssistantModal] = useState(false);
   const { agentConfiguration, mutateAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -54,7 +59,7 @@ export function AssistantEditionMenu({
   const [showDeletionModal, setShowDeletionModal] =
     useState<LightAgentConfigurationType | null>(null);
 
-  if (!agentConfiguration) {
+  if (!agentConfiguration || !user) {
     return <></>;
   }
 
@@ -100,6 +105,7 @@ export function AssistantEditionMenu({
 
     setIsUpdatingList(false);
   };
+  const showEditionHeader = isAgentPublished || tryButton;
 
   const dropdownButton = (() => {
     switch (variant) {
@@ -134,10 +140,26 @@ export function AssistantEditionMenu({
           isPrivateAssistant={showDeletionModal.scope === "private"}
         />
       )}
+      {tryButton && showTryAssistantModal && (
+        <TryAssistantModal
+          owner={owner}
+          user={user}
+          assistant={agentConfiguration}
+          onClose={() => setShowTryAssistantModal(false)}
+        />
+      )}
+
       <DropdownMenu className="text-element-700">
         <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
         <DropdownMenu.Items width={220}>
-          {isAgentPublished && <DropdownMenu.SectionHeader label="Edition" />}
+          {tryButton && (
+            <DropdownMenu.Item
+              label="Try"
+              onClick={() => setShowTryAssistantModal(true)}
+              icon={PlayIcon}
+            />
+          )}
+          {showEditionHeader && <DropdownMenu.SectionHeader label="Edition" />}
           {/* Should use the router to have a better navigation experience */}
           {isBuilder(owner) && (
             <DropdownMenu.Item
