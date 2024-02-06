@@ -55,7 +55,7 @@ export default function AssistantListActions({
         title: `Assistant sharing updated.`,
         type: "success",
       });
-      onAssistantListUpdate?.();
+      onAssistantListUpdate && onAssistantListUpdate();
     } else {
       sendNotification({
         title: `Error updating assistant sharing.`,

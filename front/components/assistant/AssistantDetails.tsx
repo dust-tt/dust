@@ -55,11 +55,13 @@ export function AssistantDetails({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
-  const { agentConfiguration, mutateAgentConfiguration } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: assistantId,
-    });
+  const {
+    agentConfiguration,
+    mutateAgentConfiguration: mutateCurrentAgentConfiguration,
+  } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistantId,
+  });
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
   if (!agentConfiguration) {
@@ -82,7 +84,7 @@ export function AssistantDetails({
         type: "success",
       });
 
-      await mutateAgentConfiguration();
+      await mutateCurrentAgentConfiguration();
     } else {
       sendNotification({
         title: `Error updating assistant sharing.`,
@@ -137,7 +139,7 @@ export function AssistantDetails({
             variant="button"
             tryButton
             onAgentDeletion={() => {
-              void mutateAgentConfiguration();
+              void mutateCurrentAgentConfiguration();
               void mutateAgentConfigurations?.();
             }}
           />
