@@ -1,4 +1,13 @@
-import { Button, DropdownMenu, Page, Searchbar, Tab } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  DustIcon,
+  Page,
+  PlanetIcon,
+  Searchbar,
+  Tab,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
@@ -158,19 +167,22 @@ export default function AssistantsGallery({
       current: agentsGetView === "all",
     },
     {
+      label: "Shared Assistants",
+      href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
+      current: agentsGetView === "published",
+      icon: UserGroupIcon,
+    },
+    {
       label: "Company",
       href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
       current: agentsGetView === "workspace",
-    },
-    {
-      label: "Shared",
-      href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
-      current: agentsGetView === "published",
+      icon: PlanetIcon,
     },
     {
       label: "Default",
       href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
       current: agentsGetView === "global",
+      icon: DustIcon,
     },
   ];
 
@@ -183,9 +195,7 @@ export default function AssistantsGallery({
       topNavigationCurrent="conversations"
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title={`${
-            flow === "workspace_add" ? "Workspace " : ""
-          }Assistant Gallery`}
+          title="Assistant Gallery"
           onClose={async () => {
             switch (flow) {
               case "conversation_add":
@@ -223,19 +233,19 @@ export default function AssistantsGallery({
           onClose={() => setTestModalAssistant(null)}
         />
       )}
-      <div className="pb-16">
-        <Page.Vertical gap="xl" align="stretch">
-          <Tab tabs={tabs} />
-          <div className="flex flex-row space-x-4">
-            <div className="flex-grow">
-              <Searchbar
-                name="search"
-                placeholder="Assistant name"
-                value={assistantSearch}
-                onChange={(s) => {
-                  setAssistantSearch(s);
-                }}
-              />
+      <div className="pb-16 pt-6">
+        <Page.Vertical gap="md" align="stretch">
+          <Searchbar
+            name="search"
+            placeholder="Assistant name"
+            value={assistantSearch}
+            onChange={(s) => {
+              setAssistantSearch(s);
+            }}
+          />
+          <div className="flex flex-row space-x-4 overflow-x-auto scrollbar-hide">
+            <div className="shrink-0 grow">
+              <Tab tabs={tabs} />
             </div>
             <div className="shrink-0">
               <DropdownMenu>
@@ -267,7 +277,7 @@ export default function AssistantsGallery({
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {agentsToDisplay.map((a) => (
                 <GalleryAssistantPreviewContainer
                   key={a.sId}
@@ -280,7 +290,6 @@ export default function AssistantsGallery({
                   onUpdate={() => {
                     void mutateAgentConfigurations();
                   }}
-                  flow={flow === "workspace_add" ? "workspace" : "personal"}
                   setTestModalAssistant={setTestModalAssistant}
                 />
               ))}
