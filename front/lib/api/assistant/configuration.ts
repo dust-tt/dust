@@ -283,7 +283,7 @@ async function fetchAgentConfigurationsForView(
   }
 }
 
-async function fetchWorkspaceAgentConfigurations(
+async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
   owner: WorkspaceType,
   {
@@ -648,7 +648,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
       agentPrefix,
       agentsGetView,
     }),
-    fetchWorkspaceAgentConfigurations(auth, owner, {
+    fetchWorkspaceAgentConfigurationsForView(auth, owner, {
       agentPrefix,
       agentsGetView,
       limit,
