@@ -69,7 +69,7 @@ impl WorkerState {
                 Err(e) => {
                     error!(
                         error = %e,
-                        "Failed to send heartbeat."
+                        "Failed to send heartbeat"
                     );
                 }
             }
@@ -312,10 +312,7 @@ fn main() {
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {
-                error!(
-                    error = %e,
-                    "Server error."
-                );
+                error!(error = %e, "Server error");
             }
             info!("[GRACEFUL] Server stopped");
             tx2.send(()).ok();
@@ -335,11 +332,11 @@ fn main() {
         // Tell core to stop sending requests.
         info!("[GRACEFUL] Sending shutdown request to core...");
         match state.shutdown().await {
-            Ok(_) => info!("[GRACEFUL] Shutdown request sent."),
+            Ok(_) => info!("[GRACEFUL] Shutdown request sent"),
             Err(e) => {
                 error!(
                     error = %e,
-                    "Failed to send shutdown request."
+                    "Failed to send shutdown request"
                 );
             }
         }
