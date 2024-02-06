@@ -612,7 +612,7 @@ export default function AssistantBuilder({
     return newAgentConfiguration;
   };
 
-  const onAssistantCancel = async () => {
+  const onClose = async () => {
     if (flow === "workspace_assistants")
       await router.push(`/w/${owner.sId}/builder/assistants`);
     else await router.push(`/w/${owner.sId}/assistant/assistants`);
@@ -620,22 +620,20 @@ export default function AssistantBuilder({
 
   const onAssistantSave = async () => {
     setIsSavingOrDeleting(true);
-    submitForm()
-      .then(async () => {
-        if (flow === "workspace_assistants")
-          await router.push(`/w/${owner.sId}/builder/assistants`);
-        else await router.push(`/w/${owner.sId}/assistant/assistants`);
-        setIsSavingOrDeleting(false);
-      })
-      .catch((e) => {
-        console.error(e);
-        sendNotification({
-          title: "Error saving Assistant",
-          description: `Please try again. If the error persists, reach out to team@dust.tt (error ${e.message})`,
-          type: "error",
-        });
-        setIsSavingOrDeleting(false);
+    try {
+      await submitForm();
+      setIsSavingOrDeleting(false);
+      await onClose();
+    } catch (e) {
+      setIsSavingOrDeleting(false);
+      sendNotification({
+        title: "Error saving Assistant",
+        description: `Please try again. If the error persists, reach out to team@dust.tt (error ${
+          (e as Error).message
+        })`,
+        type: "error",
       });
+    }
   };
 
   return (
@@ -730,16 +728,12 @@ export default function AssistantBuilder({
           !edited ? (
             <AppLayoutSimpleCloseTitle
               title="Create an assistant"
-              onClose={async () => {
-                if (flow === "workspace_assistants")
-                  await router.push(`/w/${owner.sId}/builder/assistants`);
-                else await router.push(`/w/${owner.sId}/assistant/assistants`);
-              }}
+              onClose={onClose}
             />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
               title="Edit an Assistant"
-              onCancel={onAssistantCancel}
+              onCancel={onClose}
               onSave={submitEnabled ? onAssistantSave : undefined}
               isSaving={isSavingOrDeleting}
             />
@@ -1227,7 +1221,7 @@ export default function AssistantBuilder({
                 onClose={() => setShowDeletionModal(false)}
                 onDelete={async () => {
                   setShowDeletionModal(false);
-                  await router.push(`/w/${owner.sId}/builder/assistants`);
+                  await onClose();
                 }}
               />
               <Button
@@ -1247,7 +1241,7 @@ export default function AssistantBuilder({
                 size="md"
                 variant="tertiary"
                 label="Cancel"
-                onClick={onAssistantCancel}
+                onClick={onClose}
               />
               <Button
                 size="md"
