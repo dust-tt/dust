@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
@@ -37,7 +38,7 @@ export async function launchGithubFullSyncWorkflow({
   connectorId,
   syncCodeOnly,
 }: {
-  connectorId: string;
+  connectorId: ModelId;
   syncCodeOnly: boolean;
 }) {
   const client = await getTemporalClient();
@@ -68,7 +69,7 @@ export async function launchGithubFullSyncWorkflow({
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     memo: {
       connectorId: connectorId,
@@ -76,7 +77,7 @@ export async function launchGithubFullSyncWorkflow({
   });
 }
 
-export async function getGithubFullSyncWorkflow(connectorId: string): Promise<{
+export async function getGithubFullSyncWorkflow(connectorId: ModelId): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {

@@ -24,7 +24,7 @@ import {
 const logger = mainLogger.child({ provider: "slack" });
 
 export async function launchSlackSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null,
   channelsToSync: string[] | null = null
 ) {
@@ -33,7 +33,7 @@ export async function launchSlackSyncWorkflow(
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
   if (channelsToSync === null) {
-    channelsToSync = (await getChannelsToSync(parseInt(connectorId)))
+    channelsToSync = (await getChannelsToSync(connectorId))
       .map((c) => c.id)
       .flatMap((c) => (c ? [c] : []));
   }
@@ -45,14 +45,14 @@ export async function launchSlackSyncWorkflow(
     dataSourceName: connector.dataSourceName,
   };
 
-  const workflowId = workspaceFullSyncWorkflowId(parseInt(connectorId), fromTs);
+  const workflowId = workspaceFullSyncWorkflowId(connectorId, fromTs);
   try {
     await client.workflow.signalWithStart(workspaceFullSync, {
-      args: [parseInt(connectorId), fromTs],
+      args: [connectorId, fromTs],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
-        connectorId: [parseInt(connectorId)],
+        connectorId: [connectorId],
       },
       signal: syncChannelSignal,
       signalArgs: [{ channelIds: channelsToSync ? channelsToSync : [] }],

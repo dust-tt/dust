@@ -26,12 +26,19 @@ import { isScheduleAlreadyRunning } from "@connectors/types/errors";
 
 export async function launchConfluenceSyncWorkflow(
   connectorId: ModelId,
+  fromTs: number | null,
   spaceIds: string[] = [],
   forceUpsert = false
 ): Promise<Result<string, Error>> {
+  if (fromTs) {
+    throw new Error("[Confluence] Workflow does not support fromTs.");
+  }
+
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
-    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+    throw new Error(
+      `[Confluence] Connector not found. ConnectorId: ${connectorId}`
+    );
   }
 
   const client = await getTemporalClient();
@@ -77,7 +84,9 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
 ): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
-    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+    throw new Error(
+      `[Confluence] Connector not found. ConnectorId: ${connectorId}`
+    );
   }
 
   const client = await getTemporalClient();
@@ -121,7 +130,7 @@ export async function stopConfluenceSyncWorkflow(
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     throw new Error(
-      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
+      `[Confluence] Connector not found. ConnectorId: ${connectorId}`
     );
   }
 

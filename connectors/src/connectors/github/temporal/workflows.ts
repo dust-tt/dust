@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -57,7 +58,7 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 3;
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
   githubInstallationId: string,
-  connectorId: string,
+  connectorId: ModelId,
   // Used to re-trigger a code-only full-sync after code syncing is enabled/disabled.
   syncCodeOnly: boolean
 ) {
@@ -93,7 +94,7 @@ export async function githubFullSyncWorkflow(
           executeChild(githubRepoSyncWorkflow, {
             workflowId: childWorkflowId,
             searchAttributes: {
-              connectorId: [parseInt(connectorId)],
+              connectorId: [connectorId],
             },
             args: [
               dataSourceConfig,

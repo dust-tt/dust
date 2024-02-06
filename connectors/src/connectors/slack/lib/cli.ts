@@ -17,7 +17,5 @@ export async function maybeLaunchSlackSyncWorkflowForChannelId(
     throw new Error(`Slack channel ${slackChannelId} does not exist in DB.`);
   }
 
-  return launchSlackSyncWorkflow(connectorId.toString(), null, [
-    slackChannelId,
-  ]);
+  return launchSlackSyncWorkflow(connectorId, null, [slackChannelId]);
 }

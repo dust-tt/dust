@@ -126,7 +126,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
         fromTs = parseInt(args.fromTs as string, 10);
       }
       await throwOnError(
-        SYNC_CONNECTOR_BY_TYPE[provider](connector.id.toString(), fromTs)
+        SYNC_CONNECTOR_BY_TYPE[provider](connector.id, fromTs)
       );
       return;
     }
@@ -257,7 +257,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
 
       // full-resync, code sync only.
       await launchGithubFullSyncWorkflow({
-        connectorId: connector.id.toString(),
+        connectorId: connector.id,
         syncCodeOnly: true,
       });
 
@@ -965,10 +965,7 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
 
       for (const connector of connectors) {
         await throwOnError(
-          SYNC_CONNECTOR_BY_TYPE[connector.type](
-            connector.id.toString(),
-            fromTs
-          )
+          SYNC_CONNECTOR_BY_TYPE[connector.type](connector.id, fromTs)
         );
         console.log(
           `Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`

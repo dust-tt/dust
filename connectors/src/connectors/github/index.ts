@@ -66,7 +66,7 @@ export async function createGithubConnector(
       return connector;
     });
     await launchGithubFullSyncWorkflow({
-      connectorId: connector.id.toString(),
+      connectorId: connector.id,
       syncCodeOnly: false,
     });
     return new Ok(connector.id.toString());
@@ -186,7 +186,7 @@ export async function resumeGithubConnector(
     });
 
     await launchGithubFullSyncWorkflow({
-      connectorId: connector.id.toString(),
+      connectorId: connector.id,
       syncCodeOnly: false,
     });
 
@@ -197,7 +197,7 @@ export async function resumeGithubConnector(
 }
 
 export async function fullResyncGithubConnector(
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null
 ): Promise<Result<string, Error>> {
   if (fromTs) {
@@ -208,10 +208,10 @@ export async function fullResyncGithubConnector(
 
   try {
     await launchGithubFullSyncWorkflow({
-      connectorId: connectorId,
+      connectorId,
       syncCodeOnly: false,
     });
-    return new Ok(connectorId);
+    return new Ok(connectorId.toString());
   } catch (err) {
     return new Err(err as Error);
   }
@@ -573,7 +573,7 @@ export async function setGithubConfig(
       // launch full-resync workflow, code sync only (to be launched on enable and disable to sync
       // or properly clean up the code).
       await launchGithubFullSyncWorkflow({
-        connectorId: connector.id.toString(),
+        connectorId: connector.id,
         syncCodeOnly: true,
       });
 
