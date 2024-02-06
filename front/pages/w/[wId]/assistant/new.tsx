@@ -253,7 +253,7 @@ export default function AssistantNew({
                           </>
                         )}
                         <div
-                          className={`grid grid-cols-2 gap-4 py-2 ${
+                          className={`grid grid-cols-2 items-start gap-4 py-2 ${
                             isBuilder ? "" : "sm:grid-cols-4"
                           }`}
                         >
