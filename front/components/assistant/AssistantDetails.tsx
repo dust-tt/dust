@@ -23,7 +23,9 @@ import {
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import type { KeyedMutator } from "swr";
 
+import AssistantListActions from "@app/components/assistant/AssistantListActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -31,21 +33,20 @@ import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   show: boolean;
-  onClose: ({
-    shouldMutateAgentConfigurations,
-  }: {
-    shouldMutateAgentConfigurations: boolean;
-  }) => void | (() => void);
+  onClose: () => void;
+  mutateAgentConfigurations?: KeyedMutator<GetAgentConfigurationsResponseBody>;
   assistantId: string;
 };
 
 export function AssistantDetails({
   assistantId,
   onClose,
+  mutateAgentConfigurations,
   owner,
   show,
 }: AssistantDetailsProps) {
@@ -54,11 +55,13 @@ export function AssistantDetails({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
-  const { agentConfiguration, mutateAgentConfiguration } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: assistantId,
-    });
+  const {
+    agentConfiguration,
+    mutateAgentConfiguration: mutateCurrentAgentConfiguration,
+  } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: assistantId,
+  });
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
   if (!agentConfiguration) {
@@ -81,7 +84,7 @@ export function AssistantDetails({
         type: "success",
       });
 
-      await mutateAgentConfiguration();
+      await mutateCurrentAgentConfiguration();
     } else {
       sendNotification({
         title: `Error updating assistant sharing.`,
@@ -93,9 +96,6 @@ export function AssistantDetails({
     setIsUpdatingScope(false);
   };
 
-  const showTryButtonInMenu =
-    agentConfiguration.scope === "published" &&
-    agentConfiguration.userListStatus === "not-in-list";
   const usageSentence =
     agentUsage.agentUsage &&
     `${agentUsage.agentUsage.messageCount} message(s) over the last ${
@@ -125,16 +125,22 @@ export function AssistantDetails({
             disabled={isUpdatingScope}
             setNewScope={(scope) => updateScope(scope)}
           />
+          <AssistantListActions
+            agentConfiguration={agentConfiguration}
+            owner={owner}
+            isParentHovered={true}
+            onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
+          />
         </div>
         <div>
           <AssistantEditionMenu
             agentConfigurationId={agentConfiguration.sId}
             owner={owner}
             variant="button"
-            tryButton={showTryButtonInMenu}
+            tryButton
             onAgentDeletion={() => {
-              void mutateAgentConfiguration();
-              onClose({ shouldMutateAgentConfigurations: true });
+              void mutateCurrentAgentConfiguration();
+              void mutateAgentConfigurations?.();
             }}
           />
         </div>
@@ -201,7 +207,7 @@ export function AssistantDetails({
     <Modal
       isOpen={show}
       title=""
-      onClose={() => onClose({ shouldMutateAgentConfigurations: false })}
+      onClose={() => onClose()}
       hasChanged={false}
       variant="side-sm"
     >

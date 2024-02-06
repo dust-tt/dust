@@ -30,10 +30,12 @@ interface AssistantEditionMenuProps {
   variant: "button" | "plain";
   onAgentDeletion?: () => void;
   tryButton?: boolean;
+  showAddRemoveToList: boolean;
 }
 
 AssistantEditionMenu.defaultProps = {
   variant: "plain",
+  showAddRemoveToList: false,
 };
 
 export function AssistantEditionMenu({
@@ -44,6 +46,7 @@ export function AssistantEditionMenu({
   owner,
   variant,
   onAgentDeletion,
+  showAddRemoveToList,
   tryButton,
 }: AssistantEditionMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
@@ -105,7 +108,7 @@ export function AssistantEditionMenu({
 
     setIsUpdatingList(false);
   };
-  const showEditionHeader = isAgentPublished || tryButton;
+  const showEditionHeader = showAddRemoveToList || tryButton;
 
   const dropdownButton = (() => {
     switch (variant) {
@@ -188,7 +191,7 @@ export function AssistantEditionMenu({
             />
           )}
 
-          {isAgentPublished && (
+          {isAgentPublished && showAddRemoveToList && (
             <>
               <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
               <DropdownMenu.Item
