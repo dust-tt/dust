@@ -57,7 +57,8 @@ export type APIErrorType =
   | "action_failed"
   | "unexpected_action_response"
   | "feature_flag_not_found"
-  | "feature_flag_already_exists";
+  | "feature_flag_already_exists"
+  | "table_not_found";
 
 export type APIError = {
   type: APIErrorType;

@@ -1,10 +1,10 @@
 import type { CoreAPITable, WithAPIErrorReponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { assertNever, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { deleteTable } from "@app/lib/api/tables";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -81,10 +81,9 @@ async function handler(
     });
   }
 
-  const coreAPI = new CoreAPI(logger);
-
   switch (req.method) {
     case "GET":
+      const coreAPI = new CoreAPI(logger);
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
@@ -113,35 +112,35 @@ async function handler(
       return res.status(200).json({ table });
 
     case "DELETE":
-      // Delete any AgentTableConfigurationTable that references this table
-      await AgentTablesQueryConfigurationTable.destroy({
-        where: {
-          dataSourceWorkspaceId: owner.sId,
-          dataSourceId: dataSource.name,
-          tableId,
-        },
-      });
-      const deleteRes = await coreAPI.deleteTable({
+      const delRes = await deleteTable({
+        owner,
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         tableId,
       });
-      if (deleteRes.isErr()) {
-        logger.error(
-          {
-            dataSourcename: dataSource.name,
-            workspaceId: owner.id,
-            error: deleteRes.error,
-          },
-          "Failed to delete table."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to delete table.",
-          },
-        });
+
+      if (delRes.isErr()) {
+        switch (delRes.error.type) {
+          case "not_found_error":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: delRes.error.notFoundError.type,
+                message: delRes.error.notFoundError.message,
+              },
+            });
+          case "invalid_request_error":
+          case "internal_server_error":
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to delete table.",
+              },
+            });
+          default:
+            assertNever(delRes.error);
+        }
       }
 
       res.status(200).end();
