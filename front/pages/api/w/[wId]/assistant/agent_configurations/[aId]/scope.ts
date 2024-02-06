@@ -106,17 +106,7 @@ async function handler(
           });
         }
 
-        if (assistant.scope === "workspace" && !auth.isBuilder()) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "app_auth_error",
-              message: "Only builders can modify workspace assistants.",
-            },
-          });
-        }
-
-        // ensure the assistant is not in the list of the user otherwise
+        // ensure the assistant is in the list of the user otherwise
         // switching it back to private will make it disappear
         const setRes = await setAgentUserListStatus({
           auth,

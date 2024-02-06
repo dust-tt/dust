@@ -683,10 +683,9 @@ export async function createAgentConfiguration(
         }
         const sId = agentConfigurationId || generateModelSId();
 
-        // If creating a new private or published agent, it should be in the user's list, so it
-        // appears in their 'assistants' page (at creation for assistants created published, or at
-        // publication once a private assistant gets published).
-        if (["private", "published"].includes(scope) && !agentConfigurationId) {
+        // If creating a new agent, we include it in the user's list by default.
+        // This is so it doesn't disappear from their list on scope change
+        if (!agentConfigurationId) {
           listStatusOverride = "in-list";
           await AgentUserRelation.create(
             {
