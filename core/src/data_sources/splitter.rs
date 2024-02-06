@@ -11,6 +11,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::{cmp, str::FromStr};
 use tokio::try_join;
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct TokenizedText {
@@ -492,11 +493,11 @@ impl Splitter for BaseV0Splitter {
         let tokenized_section =
             TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
 
-        utils::info(&format!(
-            "Splitter: tokenized_section_tree_size={} duration={}",
-            tokenized_section.size(),
-            utils::now() - now
-        ));
+        info!(
+            tokenized_section_tree_size = tokenized_section.size(),
+            duration = utils::now() - now,
+            "Splitter tokenized section"
+        );
 
         now = utils::now();
 
@@ -509,11 +510,11 @@ impl Splitter for BaseV0Splitter {
             .map(|t| t.text)
             .collect();
 
-        utils::info(&format!(
-            "Splitter: chunks_count={} duration={}",
-            chunks.len(),
-            utils::now() - now
-        ));
+        info!(
+            chunks_count = chunks.len(),
+            duration = utils::now() - now,
+            "Splitter generated chunks"
+        );
 
         Ok(chunks)
     }

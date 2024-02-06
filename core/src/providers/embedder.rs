@@ -1,10 +1,10 @@
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
-use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EmbedderVector {
@@ -83,27 +83,27 @@ impl EmbedderRequest {
                 )
             },
             |err_msg, sleep, attempts| {
-                utils::info(&format!(
-                    "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    attempts,
-                    sleep.as_millis(),
-                    err_msg,
-                ));
+                info!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    attempts = attempts,
+                    sleep = sleep.as_millis(),
+                    err_msg = err_msg,
+                    "Retry querying"
+                );
             },
         )
         .await;
 
         match out {
             Ok(c) => {
-                utils::done(&format!(
-                    "Success querying `{}:{}`: chunk_count={} total_text_length={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    self.text.len(),
-                    self.text.iter().fold(0, |acc, s| acc + s.len()),
-                ));
+                info!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    chunk_count = self.text.len(),
+                    total_text_length = self.text.iter().fold(0, |acc, s| acc + s.len()),
+                    "Success querying"
+                );
                 Ok(c)
             }
             Err(e) => Err(anyhow!(

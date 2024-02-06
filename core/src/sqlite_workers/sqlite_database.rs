@@ -11,6 +11,7 @@ use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection, InterruptHandle};
 use tokio::{task, time::timeout};
+use tracing::info;
 
 #[derive(Clone)]
 pub struct SqliteDatabase {
@@ -116,10 +117,10 @@ impl SqliteDatabase {
                 .map(|value| QueryResult { value })
                 .collect::<Vec<_>>();
 
-            utils::done(&format!(
-                "DSSTRUCTSTAT - WORKER Finished executing user query: duration={}ms",
-                utils::now() - time_query_start
-            ));
+            info!(
+                duration = utils::now() - time_query_start,
+                "DSSTRUCTSTAT - WORKER Finished executing user query"
+            );
 
             Ok(result_rows)
         });
@@ -155,11 +156,10 @@ async fn create_in_memory_sqlite_db(
         }
     }))
     .await?;
-
-    utils::done(&format!(
-        "DSSTRUCTSTAT - WORKER Finished retrieving rows: duration={}ms",
-        utils::now() - time_get_rows_start
-    ));
+    info!(
+        duration = utils::now() - time_get_rows_start,
+        "DSSTRUCTSTAT - WORKER Finished retrieving rows"
+    );
 
     // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
     task::spawn_blocking(move || {
@@ -178,19 +178,20 @@ async fn create_in_memory_sqlite_db(
             })
             .collect::<Vec<_>>()
             .join("\n");
-        utils::done(&format!(
-            "DSSTRUCTSTAT - WORKER Finished generating create table SQL: duration={}ms",
-            utils::now() - generate_create_table_sql_start
-        ));
+
+        info!(
+            duration = utils::now() - generate_create_table_sql_start,
+            "DSSTRUCTSTAT - WORKER Finished generating create table SQL"
+        );
 
         let conn = Connection::open_in_memory()?;
 
         let create_tables_execute_start = utils::now();
         conn.execute_batch(&create_tables_sql)?;
-        utils::done(&format!(
-            "DSSTRUCTSTAT - WORKER Finished creating tables: duration={}ms",
-            utils::now() - create_tables_execute_start
-        ));
+        info!(
+            duration = utils::now() - create_tables_execute_start,
+            "DSSTRUCTSTAT - WORKER Finished creating tables"
+        );
 
         let insert_execute_start = utils::now();
         tables_with_rows
@@ -222,10 +223,10 @@ async fn create_in_memory_sqlite_db(
                     .collect::<Result<Vec<_>>>()
             })
             .collect::<Result<Vec<_>>>()?;
-        utils::done(&format!(
-            "DSSTRUCTSTAT - WORKER Finished inserting rows: duration={}ms",
-            utils::now() - insert_execute_start
-        ));
+        info!(
+            duration = utils::now() - insert_execute_start,
+            "DSSTRUCTSTAT - WORKER Finished inserting rows"
+        );
 
         Result::<_>::Ok(conn)
     })
