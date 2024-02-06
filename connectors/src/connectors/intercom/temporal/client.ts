@@ -17,8 +17,13 @@ function getIntercomSyncWorkflowId(connectorId: ModelId) {
 
 export async function launchIntercomSyncWorkflow(
   connectorId: ModelId,
+  fromTs: number | null,
   helpCenterIds: string[] = []
 ): Promise<Result<string, Error>> {
+  if (fromTs) {
+    throw new Error("[Intercom] Workflow does not support fromTs.");
+  }
+
   const client = await getTemporalClient();
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {

@@ -258,7 +258,7 @@ export async function resumeNotionConnector(
 }
 
 export async function fullResyncNotionConnector(
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null
 ) {
   const connector = await Connector.findOne({

@@ -197,7 +197,7 @@ export async function resumeGithubConnector(
 }
 
 export async function fullResyncGithubConnector(
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null
 ): Promise<Result<string, Error>> {
   if (fromTs) {
@@ -208,7 +208,7 @@ export async function fullResyncGithubConnector(
 
   try {
     await launchGithubFullSyncWorkflow({
-      connectorId: connectorId,
+      connectorId,
       syncCodeOnly: false,
     });
     return new Ok(connectorId);

@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
 import parseArgs from "minimist";
 import readline from "readline";
 
@@ -44,7 +44,7 @@ const main = async () => {
 
   const connectorIdsWithCount = queryRes[0] as {
     c: number;
-    connectorId: string;
+    connectorId: ModelId;
   }[];
 
   const filter = (c: number) => {

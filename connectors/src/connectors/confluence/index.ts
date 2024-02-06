@@ -98,7 +98,10 @@ export async function createConfluenceConnector(
       return connector;
     });
 
-    const workflowStarted = await launchConfluenceSyncWorkflow(connector.id);
+    const workflowStarted = await launchConfluenceSyncWorkflow(
+      connector.id,
+      null
+    );
     if (workflowStarted.isErr()) {
       return new Err(workflowStarted.error);
     }
@@ -222,7 +225,7 @@ export async function resumeConfluenceConnector(
       return new Err(new Error("Confluence configuration not found"));
     }
 
-    await launchConfluenceSyncWorkflow(connector.id);
+    await launchConfluenceSyncWorkflow(connector.id, null);
 
     return new Ok(connector.id.toString());
   } catch (err) {
@@ -332,23 +335,6 @@ export async function retrieveConfluenceConnectorPermissions({
   }
 }
 
-async function startWorkflowIfNecessary(
-  spaceIds: string[],
-  workflowLauncher: (
-    connectorId: ModelId,
-    spaceIds: string[]
-  ) => Promise<Result<string, Error>>,
-  connectorId: ModelId
-): Promise<Result<void, Error>> {
-  if (spaceIds.length > 0) {
-    const workflowStarted = await workflowLauncher(connectorId, spaceIds);
-    if (workflowStarted.isErr()) {
-      return new Err(workflowStarted.error);
-    }
-  }
-  return new Ok(undefined);
-}
-
 export async function setConfluenceConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
@@ -400,22 +386,25 @@ export async function setConfluenceConnectorPermissions(
     }
   }
 
-  const addedSpacesResult = await startWorkflowIfNecessary(
-    addedSpaceIds,
-    launchConfluenceSyncWorkflow,
-    connectorId
-  );
-  if (addedSpacesResult.isErr()) {
-    return new Err(addedSpacesResult.error);
+  if (addedSpaceIds.length > 0) {
+    const addedSpacesResult = await launchConfluenceSyncWorkflow(
+      connectorId,
+      null,
+      addedSpaceIds
+    );
+    if (addedSpacesResult.isErr()) {
+      return new Err(addedSpacesResult.error);
+    }
   }
 
-  const removedSpacesResult = await startWorkflowIfNecessary(
-    removedSpaceIds,
-    launchConfluenceRemoveSpacesSyncWorkflow,
-    connectorId
-  );
-  if (removedSpacesResult.isErr()) {
-    return new Err(removedSpacesResult.error);
+  if (removedSpaceIds.length > 0) {
+    const removedSpacesResult = await launchConfluenceRemoveSpacesSyncWorkflow(
+      connectorId,
+      removedSpaceIds
+    );
+    if (removedSpacesResult.isErr()) {
+      return new Err(removedSpacesResult.error);
+    }
   }
 
   return new Ok(undefined);

@@ -185,22 +185,13 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
-    confluence: (connectorId: string) => {
-      // TODO(2024-01-23 flav) Remove once prototype is fixed.
-      const connectorIdAsNumber = parseInt(connectorId, 10);
-      return launchConfluenceSyncWorkflow(connectorIdAsNumber);
-    },
+    confluence: launchConfluenceSyncWorkflow,
     slack: launchSlackSyncWorkflow,
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
-    intercom: (connectorId: string) => {
-      // TODO(2024-01-23 flav) Remove once prototype is fixed. (thanks Flav!)
-      const connectorIdAsNumber = parseInt(connectorId, 10);
-      return launchIntercomSyncWorkflow(connectorIdAsNumber);
-    },
-    webcrawler: (connectorId: string) =>
-      launchCrawlWebsiteWorkflow(parseInt(connectorId)),
+    intercom: launchIntercomSyncWorkflow,
+    webcrawler: launchCrawlWebsiteWorkflow,
   };
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<

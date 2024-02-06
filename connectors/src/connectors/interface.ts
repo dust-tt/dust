@@ -39,7 +39,7 @@ export type ConnectorResumer = (
 ) => Promise<Result<string, Error>>;
 
 export type SyncConnector = (
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null
 ) => Promise<Result<string, Error>>;
 

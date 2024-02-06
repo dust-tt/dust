@@ -603,7 +603,7 @@ export async function setSlackConnectorPermissions(
   try {
     await Promise.all(promises);
     const workflowRes = await launchSlackSyncWorkflow(
-      connectorId.toString(),
+      connectorId,
       null,
       slackChannelsToSync
     );

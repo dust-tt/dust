@@ -602,7 +602,7 @@ export async function setGoogleDriveConnectorPermissions(
   }
 
   if (shouldFullSync) {
-    await launchGoogleDriveFullSyncWorkflow(connectorId.toString(), null);
+    await launchGoogleDriveFullSyncWorkflow(connectorId, null);
   }
 
   return new Ok(undefined);
@@ -700,7 +700,7 @@ export async function setGoogleDriveConfig(
         pdfEnabled: configValue === "true",
       });
       const workflowRes = await launchGoogleDriveFullSyncWorkflow(
-        connectorId.toString(),
+        connectorId,
         null
       );
       if (workflowRes.isErr()) {
