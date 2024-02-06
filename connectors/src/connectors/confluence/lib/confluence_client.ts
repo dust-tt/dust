@@ -261,9 +261,16 @@ export class ConfluenceClient {
   }
 
   async getGlobalSpaces() {
+    const params = new URLSearchParams({
+      limit: "250",
+      type: "global",
+      sort: "name",
+      status: "current",
+    });
+
     return (
       await this.request(
-        `${this.restApiBaseUrl}/spaces?status=current&type=global&sort=name`,
+        `${this.restApiBaseUrl}/spaces?${params.toString()}`,
         ConfluenceListSpacesCodec
       )
     ).results;
