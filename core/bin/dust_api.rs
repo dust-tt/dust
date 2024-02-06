@@ -10,6 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     app,
     blocks::block::BlockType,
@@ -26,7 +27,7 @@ use dust::{
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::postgres,
     stores::store,
-    utils::{self, error_response, APIError, APIResponse},
+    utils::{error_response, APIError, APIResponse},
 };
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
@@ -41,7 +42,8 @@ use tokio::{
 };
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
-use tracing::Level;
+use tracing::{error, info, Level};
+use tracing_subscriber::prelude::*;
 
 /// API State
 
@@ -84,10 +86,10 @@ impl APIState {
         loop {
             let pending_runs = {
                 let manager = self.run_manager.lock();
-                utils::info(&format!(
-                    "[GRACEFUL] {} stop_loop pending runs",
-                    manager.pending_runs.len()
-                ));
+                info!(
+                    pending_runs = manager.pending_runs.len(),
+                    "[GRACEFUL] stop_loop pending runs",
+                );
                 manager.pending_runs.len()
             };
             if pending_runs == 0 {
@@ -120,15 +122,15 @@ impl APIState {
                     let now = std::time::Instant::now();
                     match app.0.run(app.1, store, qdrant_clients, None).await {
                         Ok(()) => {
-                            utils::done(&format!(
-                                "Run finished: run=`{}` app_version=`{}` elapsed=`{} ms`",
-                                app.0.run_ref().unwrap().run_id(),
-                                app.0.hash(),
-                                now.elapsed().as_millis(),
-                            ));
+                            info!(
+                                run = app.0.run_ref().unwrap().run_id(),
+                                app_version = app.0.hash(),
+                                elapsed = now.elapsed().as_millis(),
+                                "Run finished"
+                            );
                         }
                         Err(e) => {
-                            utils::error(&format!("Run error: {}", e));
+                            error!(error = %e, "Run error");
                         }
                     }
                     {
@@ -143,7 +145,7 @@ impl APIState {
             tokio::time::sleep(std::time::Duration::from_millis(4)).await;
             if loop_count % 1024 == 0 {
                 let manager = self.run_manager.lock();
-                utils::info(&format!("{} pending runs", manager.pending_runs.len()));
+                info!(pending_runs = manager.pending_runs.len(), "Pending runs");
             }
             // Roughly every 4 minutes, cleanup dead SQLite workers if any.
             if loop_count % 65536 == 0 {
@@ -154,7 +156,7 @@ impl APIState {
                         .await
                     {
                         Err(e) => {
-                            utils::error(&format!("Failed to cleanup SQLite workers: {}", e));
+                            error!(error = %e, "Failed to cleanup SQLite workers");
                         }
                         Ok(_) => (),
                     }
@@ -685,13 +687,10 @@ async fn run_helper(
             ))?
         }
 
-        utils::info(
-            format!(
-                "Retrieved {} records from latest data version for `{}`.",
-                d.as_ref().unwrap().len(),
-                payload.dataset_id.as_ref().unwrap(),
-            )
-            .as_str(),
+        info!(
+            dataset_id = payload.dataset_id.as_ref().unwrap(),
+            records = d.as_ref().unwrap().len(),
+            "Retrieved latest version of dataset"
         );
     }
 
@@ -705,8 +704,7 @@ async fn run_helper(
             ))?,
             Ok(d) => Some(d),
         };
-
-        utils::info(format!("Received {} inputs.", d.as_ref().unwrap().len(),).as_str());
+        info!(records = d.as_ref().unwrap().len(), "Received inputs");
     }
 
     // Only register the specification if it was not passed by hash.
@@ -821,15 +819,15 @@ async fn runs_create_stream(
                     .await
                 {
                     Ok(()) => {
-                        utils::done(&format!(
-                            "Run finished: run=`{}` app_version=`{}` elapsed=`{} ms`",
-                            app.run_ref().unwrap().run_id(),
-                            app.hash(),
-                            now.elapsed().as_millis(),
-                        ));
+                        info!(
+                            run = app.run_ref().unwrap().run_id(),
+                            app_version = app.hash(),
+                            elapsed = now.elapsed().as_millis(),
+                            "Run finished"
+                        );
                     }
                     Err(e) => {
-                        utils::error(&format!("Run error: {}", e));
+                        error!(error = %e, "Run error");
                     }
                 }
             });
@@ -857,7 +855,7 @@ async fn runs_create_stream(
             match Event::default().json_data(v) {
                 Ok(event) => yield Ok(event),
                 Err(e) => {
-                    utils::error(&format!("Failed to create SSE event: {}", e));
+                    error!(error = %e, "Failed to create SSE event");
                 }
             };
         }
@@ -867,7 +865,7 @@ async fn runs_create_stream(
         })) {
             Ok(event) => yield Ok(event),
             Err(e) => {
-                utils::error(&format!("Failed to create SSE event: {}", e));
+                error!(error = %e, "Failed to create SSE event");
             }
         };
     };
@@ -2353,10 +2351,9 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::fmt()
-            .with_target(false)
-            .compact()
-            .with_ansi(false)
+        tracing_subscriber::registry()
+            .with(DatadogFormattingLayer)
+            .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
@@ -2548,30 +2545,30 @@ fn main() {
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {
-                utils::error(&format!("server error: {}", e));
+                error!(error = %e, "Server error");
             }
-            utils::info("[GRACEFUL] Server stopped");
+            info!("[GRACEFUL] Server stopped");
             tx2.send(()).ok();
         });
 
-        utils::info(&format!("Current PID: {}", std::process::id()));
+        info!(pid = std::process::id() as u64, "API server started");
 
         let mut stream = signal(SignalKind::terminate()).unwrap();
         stream.recv().await;
 
         // Gracefully shut down the server
-        utils::info("[GRACEFUL] SIGTERM received, stopping server...");
+        info!("[GRACEFUL] SIGTERM received, stopping server...");
         tx1.send(()).ok();
 
         // Wait for the server to shutdown
-        utils::info("[GRACEFUL] Awaiting server shutdown...");
+        info!("[GRACEFUL] Awaiting server shutdown...");
         rx2.await.ok();
 
         // Wait for the run loop to finish.
-        utils::info("[GRACEFUL] Awaiting stop loop...");
+        info!("[GRACEFUL] Awaiting stop loop...");
         state.stop_loop().await;
 
-        utils::info("[GRACEFUL] Exiting!");
+        info!("[GRACEFUL] Exiting!");
 
         // sleep for 1 second to allow the logger to flush
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -2582,7 +2579,7 @@ fn main() {
     match r {
         Ok(_) => (),
         Err(e) => {
-            utils::error(&format!("Error: {:?}", e));
+            error!(error = %e, "API Server error");
             std::process::exit(1);
         }
     }

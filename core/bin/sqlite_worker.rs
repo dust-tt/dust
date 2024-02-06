@@ -5,11 +5,12 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     databases::database::Table,
     databases_store::{self, store::DatabasesStore},
     sqlite_workers::sqlite_database::SqliteDatabase,
-    utils::{self, error_response, APIResponse},
+    utils::{error_response, APIResponse},
 };
 use hyper::{Body, Client, Request, StatusCode};
 use serde::Deserialize;
@@ -25,7 +26,8 @@ use std::{
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
 use tower_http::trace::{self, TraceLayer};
-use tracing::Level;
+use tracing::{error, info, Level};
+use tracing_subscriber::prelude::*;
 
 // Duration after which a database is considered inactive and can be removed from the registry.
 const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 60); // 5 minutes
@@ -64,7 +66,12 @@ impl WorkerState {
 
             match self.heartbeat().await {
                 Ok(_) => (),
-                Err(e) => utils::error(&format!("Failed to send heartbeat: {:?}", e)),
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        "Failed to send heartbeat"
+                    );
+                }
             }
 
             self.cleanup_inactive_databases().await;
@@ -256,10 +263,9 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::fmt()
-            .with_target(false)
-            .compact()
-            .with_ansi(false)
+        tracing_subscriber::registry()
+            .with(DatadogFormattingLayer)
+            .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
         let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
@@ -306,39 +312,47 @@ fn main() {
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {
-                utils::error(&format!("server error: {}", e));
+                error!(error = %e, "Server error");
             }
-            utils::info("[GRACEFUL] Server stopped");
+            info!("[GRACEFUL] Server stopped");
             tx2.send(()).ok();
         });
 
-        utils::info(&format!("Current PID: {}", std::process::id()));
+        info!(
+            pid = std::process::id() as u64,
+            "SQLITE WORKER server started"
+        );
 
         let mut stream = signal(SignalKind::terminate()).unwrap();
         stream.recv().await;
 
         // Gracefully shut down the server.
-        utils::info("[GRACEFUL] SIGTERM received.");
+        info!("[GRACEFUL] SIGTERM received");
 
         // Tell core to stop sending requests.
-        utils::info("[GRACEFUL] Sending shutdown request to core...");
+        info!("[GRACEFUL] Sending shutdown request to core...");
         match state.shutdown().await {
-            Ok(_) => utils::info("[GRACEFUL] Shutdown request sent."),
-            Err(e) => utils::error(&format!("Failed to send shutdown request: {:?}", e)),
+            Ok(_) => info!("[GRACEFUL] Shutdown request sent"),
+            Err(e) => {
+                error!(
+                    error = %e,
+                    "Failed to send shutdown request"
+                );
+            }
         }
 
-        utils::info("[GRACEFUL] Shutting down server...");
+        info!("[GRACEFUL] Shutting down server...");
         tx1.send(()).ok();
 
         // Wait for the server to shutdown
-        utils::info("[GRACEFUL] Awaiting server shutdown...");
+        info!("[GRACEFUL] Awaiting server shutdown...");
         rx2.await.ok();
 
         // Wait for the SQLite queries to finish.
-        utils::info("[GRACEFUL] Awaiting database queries to finish...");
+        info!("[GRACEFUL] Awaiting database queries to finish...");
         state.await_pending_queries().await;
 
-        utils::info("[GRACEFUL] Exiting in 1 second...");
+        info!("[GRACEFUL] Exiting in 1 second...");
 
         // sleep for 1 second to allow the logger to flush
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -349,7 +363,7 @@ fn main() {
     match r {
         Ok(_) => (),
         Err(e) => {
-            utils::error(&format!("Error: {:?}", e));
+            error!(error = %e, "SQLITE WORKER Server error");
             std::process::exit(1);
         }
     }

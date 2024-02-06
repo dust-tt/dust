@@ -29,6 +29,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::try_join;
 use tokio_stream::{self as stream};
+use tracing::{error, info};
 use uuid::Uuid;
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
@@ -110,11 +111,13 @@ impl SearchFilter {
                         None => (),
                     }
 
-                    utils::info(&format!(
-                        "Postprocessed `parents.in`: data_source_id={} \
-                         is_in={:?} is_in_map={:?} postprocessed_is_in={:?}",
-                        data_source_id, &parents.is_in, &parents.is_in_map, is_in,
-                    ));
+                    info!(
+                        data_source_id = data_source_id,
+                        is_in = ?parents.is_in,
+                        is_in_map = ?parents.is_in_map,
+                        postprocessed_is_in = ?is_in,
+                        "Postprocessed `parents.in`"
+                    );
 
                     Some(ParentsFilter {
                         is_in,
@@ -316,7 +319,8 @@ fn target_document_tokens_offsets(
     chunks_to_grow: usize,
     total_chunks_count: usize,
 ) -> HashMap<usize, usize> {
-    // Note: we could increment num_addable when we don't get enough chunks on a given chunks to cram more chunks
+    // Note: we could increment num_addable when we don't get enough chunks on a given chunks to
+    // cram more chunks.
     if total_chunks_count == 0 {
         return HashMap::new();
     }
@@ -533,19 +537,19 @@ impl DataSource {
         )
         .await?;
 
-        utils::done(&format!(
-            "Created GCP bucket for data_source `{}`",
-            self.data_source_id
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            "Created GCP bucket for data_source"
+        );
 
         // Qdrant create collection and indexes.
         self.create_qdrant_collection(credentials, qdrant_client.clone())
             .await?;
 
-        utils::done(&format!(
-            "Created Qdrant collection and indexes for data_source `{}`",
-            self.data_source_id
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            "Created Qdrant collection and indexes for data_source"
+        );
 
         Ok(())
     }
@@ -641,19 +645,19 @@ impl DataSource {
                     .await
                 {
                     Ok(_) => {
-                        utils::done(&format!(
-                            "[SHADOW_WRITE_SUCCESS] Update payload: cluster={:?} collection={}",
-                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            self.qdrant_collection(),
-                        ));
+                        info!(
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = self.qdrant_collection(),
+                            "[SHADOW_WRITE_SUCCESS] Update payload"
+                        );
                     }
                     Err(e) => {
-                        utils::error(&format!(
-                            "[SHADOW_WRITE_FAIL] Update payload: cluster={:?} collection={} error={}",
-                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            self.qdrant_collection(),
-                            e
-                        ));
+                        error!(
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = self.qdrant_collection(),
+                            error = %e,
+                            "[SHADOW_WRITE_FAIL] Update payload"
+                        );
                     }
                 }
             }
@@ -688,15 +692,17 @@ impl DataSource {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
 
         let full_text = text.full_text();
-        // disallow preserve_system_tags=true if tags contains a string starting with the system tag prefix
-        // prevents having duplicate system tags or have users accidentally add system tags (from UI/API)
+        // Disallow preserve_system_tags=true if tags contains a string starting with the system
+        // tag prefix prevents having duplicate system tags or have users accidentally add system
+        // tags (from UI/API).
         if preserve_system_tags
             && tags
                 .iter()
                 .any(|tag| tag.starts_with(DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX))
         {
             Err(anyhow!(
-                "preserve_system_tags=true is not allowed if `tags` contains a string starting with \"{}\"",
+                "preserve_system_tags=true is not allowed if \
+                 `tags` contains a string starting with \"{}\"",
                 DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX
             ))?;
         }
@@ -798,13 +804,13 @@ impl DataSource {
             ),
         )?;
 
-        utils::done(&format!(
-            "Created document blob: data_source_id={} document_id={} duration={}ms blob_url={}",
-            self.data_source_id,
-            document_id,
-            utils::now() - now,
-            format!("gs://{}/{}", bucket, content_path)
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_id = document_id,
+            duration = utils::now() - now,
+            blob_url = format!("gs://{}/{}", bucket, content_path),
+            "Created document blob"
+        );
 
         // Commented for future debug use
         // match document_id {
@@ -817,12 +823,12 @@ impl DataSource {
         //             "application/json",
         //         )
         //         .await?;
-        //         utils::done(&format!(
-        //             "Uploaded buggy document: data_source_id={} document_id={} debug_blob_url={}",
-        //             self.data_source_id,
-        //             document_id,
-        //             format!("gs://{}/{}", bucket, debug_path)
-        //         ));
+        //         info!(
+        //             data_source_id = self.data_source_id(),
+        //             document_id = document_id,
+        //             debug_blob_url = format!("gs://{}/{}", bucket, debug_path),
+        //             "Uploaded buggy document"
+        //         );
         //         panic!("BUGGY document `{}`", document_id);
         //     }
         //     _ => (),
@@ -861,13 +867,13 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
 
-        utils::done(&format!(
-            "Splitted document: data_source_id={} document_id={} split_counts={} duration={}ms",
-            self.data_source_id,
-            document_id,
-            splits.len(),
-            utils::now() - now
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_id = document_id,
+            split_counts = splits.len(),
+            duration = utils::now() - now,
+            "Splitted document"
+        );
 
         let now = utils::now();
         let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
@@ -933,13 +939,13 @@ impl DataSource {
             }
         }
 
-        utils::done(&format!(
-            "Finished retrieving cache from QDrant: data_source_id={} document_id={} chunk_count={} duration={}ms",
-            self.data_source_id,
-            document_id,
-            embeddings.len(),
-            utils::now() - now
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_id = document_id,
+            chunk_count = embeddings.len(),
+            duration = utils::now() - now,
+            "Finished retrieving cache from Qdrant"
+        );
 
         let now = utils::now();
 
@@ -973,13 +979,13 @@ impl DataSource {
             }
         }
 
-        utils::done(&format!(
-            "Finished embedding chunks: data_source_id={} document_id={} chunk_count={} duration={}ms",
-            self.data_source_id,
-            document_id,
-            splits_to_embbed.len(),
-            utils::now() - now
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_id = document_id,
+            chunk_count = splits_to_embbed.len(),
+            duration = utils::now() - now,
+            "Finished embedding chunks"
+        );
 
         // Final ordered results with (offset, string, vector). `splits_with_hash` is the original
         // list of splits, including all chunks. We go retrieve in embeddings their vector which
@@ -1041,19 +1047,19 @@ impl DataSource {
                     .await
                 {
                     Ok(_) => {
-                        utils::done(&format!(
-                            "[SHADOW_WRITE_SUCCESS] Delete points: cluster={:?} collection={}",
-                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            self.qdrant_collection(),
-                        ));
+                        info!(
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = self.qdrant_collection(),
+                            "[SHADOW_WRITE_SUCCESS] Delete points"
+                        );
                     }
                     Err(e) => {
-                        utils::error(&format!(
-                            "[SHADOW_WRITE_FAIL] Delete points: cluster={:?} collection={} error={}",
-                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            self.qdrant_collection(),
-                            e
-                        ));
+                        error!(
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = self.qdrant_collection(),
+                            error = %e,
+                            "[SHADOW_WRITE_FAIL] Delete points"
+                        );
                     }
                 }
             }
@@ -1064,12 +1070,12 @@ impl DataSource {
             .delete_points(self.qdrant_collection(), &filter, None)
             .await?;
 
-        utils::done(&format!(
-            "Deleted previous document in Qdrant: data_source_id={} document_id={} duration={}ms",
-            self.data_source_id,
-            document_id,
-            utils::now() - now
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_id = document_id,
+            duration = utils::now() - now,
+            "Deleted previous document in Qdrant"
+        );
 
         // Insert new chunks (vector search db).
         let points = document
@@ -1133,19 +1139,19 @@ impl DataSource {
                             .await
                         {
                             Ok(_) => {
-                                utils::done(&format!(
-                                    "[SHADOW_WRITE_SUCCESS] Upsert points: cluster={:?} collection={}",
-                                    qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                                    self.qdrant_collection(),
-                                ));
+                                info!(
+                                    cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                                    collection = self.qdrant_collection(),
+                                    "[SHADOW_WRITE_SUCCESS] Upsert points"
+                                )
                             }
                             Err(e) => {
-                                utils::error(&format!(
-                                    "[SHADOW_WRITE_FAIL] Upsert points: cluster={:?} collection={} error={}",
-                                    qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                                    self.qdrant_collection(),
-                                    e
-                                ));
+                                error!(
+                                    cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                                    collection = self.qdrant_collection(),
+                                    error = %e,
+                                    "[SHADOW_WRITE_FAIL] Upsert points"
+                                );
                             }
                         }
                     }
@@ -1156,18 +1162,21 @@ impl DataSource {
                     .upsert_points(self.qdrant_collection(), chunk, None)
                     .await?;
 
-                utils::done(&format!(
-                    "Success upserting chunk in qdrant: points_count={} duration={}ms",
-                    chunk_len,
-                    utils::now() - now
-                ));
+                info!(
+                    points_count = chunk_len,
+                    duration = utils::now() - now,
+                    "Success upserting chunk in Qdrant"
+                );
             }
         }
 
-        utils::done(&format!(
-            "Inserted vectors in Qdrant: data_source_id={} document_id={} points_count={} duration={}ms",
-            self.data_source_id, document_id, points_len, utils::now() - start
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_id = document_id,
+            points_count = points_len,
+            duration = utils::now() - start,
+            "Inserted vectors in Qdrant"
+        );
 
         // Upsert document (SQL)
         store
@@ -1225,10 +1234,10 @@ impl DataSource {
                 let chunks = self
                     .retrieve_chunks_without_query(store, &qdrant_client, top_k, &filter)
                     .await?;
-                utils::done(&format!(
-                    "DSSTAT Finished retrieving chunks without query: duration={}ms",
-                    utils::now() - time_embedding_start,
-                ));
+                info!(
+                    duration = utils::now() - time_embedding_start,
+                    "DSSTAT Finished retrieving chunks without query"
+                );
                 chunks
             }
             Some(q) => {
@@ -1241,10 +1250,10 @@ impl DataSource {
                 let v = r.execute(credentials).await?;
                 assert!(v.len() == 1);
 
-                utils::done(&format!(
-                    "DSSTAT Finished embedding query: duration={}ms",
-                    utils::now() - time_embedding_start,
-                ));
+                info!(
+                    duration = utils::now() - time_embedding_start,
+                    "DSSTAT Finished embedding query"
+                );
 
                 // Construct the filters for the search query if specified.
                 let f = build_qdrant_filter(&filter);
@@ -1266,12 +1275,12 @@ impl DataSource {
                     })
                     .await?;
 
-                utils::done(&format!(
-                    "DSSTAT Finished searching Qdrant documents: collection_name={}, duration={}ms, results_count={}",
-                    self.qdrant_collection(),
-                    utils::now() - time_search_start,
-                    results.result.len(),
-                ));
+                info!(
+                    collection_name = self.qdrant_collection(),
+                    duration = utils::now() - time_search_start,
+                    results_count = results.result.len(),
+                    "DSSTAT Finished searching Qdrant documents"
+                );
 
                 let time_chunk_start = utils::now();
                 let chunks = parse_points_into_chunks(
@@ -1284,12 +1293,12 @@ impl DataSource {
                         .collect()),
                 )?;
 
-                utils::done(&format!(
-                    "DSSTAT Finished chunking documents: collection_name={}, duration={}ms, chunk_length={}",
-                    self.qdrant_collection(),
-                    utils::now() - time_chunk_start,
-                    chunks.len(),
-                ));
+                info!(
+                    collection_name = self.qdrant_collection(),
+                    duration = utils::now() - time_chunk_start,
+                    chunk_length = chunks.len(),
+                    "DSSTAT Finished chunking documents"
+                );
 
                 chunks
             }
@@ -1354,12 +1363,12 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
-        utils::done(&format!(
-            "DSSTAT Finished fetching documents from the store: collection_name={}, duration={}ms, document_len={}",
-            self.qdrant_collection(),
-            utils::now() - time_store_start,
-            documents.len(),
-        ));
+        info!(
+            collection_name = self.qdrant_collection(),
+            duration = utils::now() - time_store_start,
+            document_len = documents.len(),
+            "DSSTAT Finished fetching documents from the store"
+        );
 
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
@@ -1449,7 +1458,10 @@ impl DataSource {
                             let results_expand = match qdrant_client.scroll(&search_points).await {
                                 Ok(r) => r.result,
                                 Err(e) => {
-                                    utils::error(&format!("Qdrant scroll error: {}", e));
+                                    error!(
+                                        error = %e,
+                                        "Qdrant scroll error"
+                                    );
                                     Err(anyhow!("Qdrant scroll error: {}", e))?
                                 }
                             };
@@ -1545,12 +1557,12 @@ impl DataSource {
                 .collect::<Vec<_>>(),
         };
 
-        utils::done(&format!(
-            "DSSTAT Finished scrolling documents: collection_name={}, duration={}ms, results_count={}",
-            self.qdrant_collection(),
-            utils::now() - time_qdrant_scroll_start,
-            documents.len(),
-        ));
+        info!(
+            collection_name = self.qdrant_collection(),
+            duration = utils::now() - time_qdrant_scroll_start,
+            results_count = documents.len(),
+            "DSSTAT Finished scrolling documents"
+        );
 
         if !query.is_none() {
             // Sort the documents by the score of the first chunk (guaranteed ordered).
@@ -1572,13 +1584,13 @@ impl DataSource {
             });
         }
 
-        utils::done(&format!(
-            "Searched data source: data_source_id={} document_count={} chunk_count={} duration={}ms",
-            self.data_source_id,
-            documents.len(),
-            documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
-            utils::now() - time_embedding_start,
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            document_count = documents.len(),
+            chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
+            duration = utils::now() - time_embedding_start,
+            "Searched data source"
+        );
 
         Ok(documents)
     }
@@ -1604,8 +1616,8 @@ impl DataSource {
             )
             .await?;
 
-        let qdrant_batch_size: usize = 8; // number of `document_ids` to query at once in QDrant
-        let qdrant_page_size: u32 = 128; // number of points to fetch per page in QDrant
+        let qdrant_batch_size: usize = 8; // number of `document_ids` to query at once in Qdrant
+        let qdrant_page_size: u32 = 128; // number of points to fetch per page in Qdrant
         let qdrant_max_pages: usize = 16_000; // stop iteration if we can't get all the points in a batch after iterating this many pages
 
         let mut chunks: Vec<(String, Chunk)> = vec![];
@@ -1642,7 +1654,7 @@ impl DataSource {
 
             // we must scroll through all result pages of a batch, because we want to
             // to sort by reverse-chron timestamp and then by chunk_offset
-            // and QDrant doesn't support any kind of sorting
+            // and Qdrant doesn't support any kind of sorting
             let mut page_count = 0;
             loop {
                 let mut r = qdrant_client
@@ -1806,19 +1818,19 @@ impl DataSource {
                     .await
                 {
                     Ok(_) => {
-                        utils::done(&format!(
-                            "[SHADOW_WRITE_SUCCESS] Delete points: cluster={:?} collection={}",
-                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            self.qdrant_collection(),
-                        ));
+                        info!(
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = self.qdrant_collection(),
+                            "[SHADOW_WRITE_SUCCESS] Delete points"
+                        );
                     }
                     Err(e) => {
-                        utils::error(&format!(
-                            "[SHADOW_WRITE_FAIL] Delete points: cluster={:?} collection={} error={}",
-                            qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            self.qdrant_collection(),
-                            e
-                        ));
+                        error!(
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = self.qdrant_collection(),
+                            error = %e,
+                            "[SHADOW_WRITE_FAIL] Delete points"
+                        );
                     }
                 }
             }
@@ -1860,10 +1872,10 @@ impl DataSource {
             .delete_collection(self.qdrant_collection())
             .await?;
 
-        utils::done(&format!(
-            "Deleted QDrant collection: data_source_id={}",
-            self.data_source_id,
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            "Deleted Qdrant collection"
+        );
 
         // Delete tables (concurrently).
         let (tables, total) = store
@@ -1876,20 +1888,21 @@ impl DataSource {
         )
         .await?;
 
-        utils::done(&format!(
-            "Deleted tables: data_source_id={} table_count={}",
-            self.data_source_id, total,
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            table_count = total,
+            "Deleted tables"
+        );
 
         // Delete data source and documents (SQL).
         store
             .delete_data_source(&self.project, &self.data_source_id)
             .await?;
 
-        utils::done(&format!(
-            "Deleted data source records: data_source_id={}",
-            self.data_source_id,
-        ));
+        info!(
+            data_source_id = self.data_source_id(),
+            "Deleted data source records"
+        );
 
         Ok(())
     }
