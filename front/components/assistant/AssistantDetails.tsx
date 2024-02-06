@@ -94,9 +94,6 @@ export function AssistantDetails({
     setIsUpdatingScope(false);
   };
 
-  const showTryButtonInMenu =
-    agentConfiguration.scope === "published" &&
-    agentConfiguration.userListStatus === "not-in-list";
   const usageSentence =
     agentUsage.agentUsage &&
     `${agentUsage.agentUsage.messageCount} message(s) over the last ${
@@ -138,7 +135,7 @@ export function AssistantDetails({
             agentConfigurationId={agentConfiguration.sId}
             owner={owner}
             variant="button"
-            tryButton={showTryButtonInMenu}
+            tryButton
             onAgentDeletion={() => {
               void mutateAgentConfiguration();
               void mutateAgentConfigurations?.();
