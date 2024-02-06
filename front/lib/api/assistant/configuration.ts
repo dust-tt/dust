@@ -64,7 +64,7 @@ interface SortStrategyType {
 
 const sortStrategies: Record<"alphabetical" | "priority", SortStrategyType> = {
   alphabetical: {
-    dbOrder: [["name", "ASC"]],
+    dbOrder: [["name", "ASC"]] as const,
     compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
       a.name.localeCompare(b.name),
   },
