@@ -23,7 +23,7 @@ import {
   isTimeFrame,
   Ok,
 } from "@dust-tt/types";
-import type { FindOptions, Order, Transaction } from "sequelize";
+import type { Order, Transaction } from "sequelize";
 import { Op, UniqueConstraintError } from "sequelize";
 
 import {
@@ -199,9 +199,9 @@ async function fetchAgentConfigurationsForView(
     ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
   };
 
-  const baseAgentsSequelizeQuery: FindOptions = {
+  const baseAgentsSequelizeQuery = {
     limit,
-    order: sortStrategy?.dbOrder,
+    order: sortStrategy ? sortStrategy.dbOrder : undefined,
   };
 
   const scopeConditions = (scopes: string[]) => ({
