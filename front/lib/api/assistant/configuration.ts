@@ -608,15 +608,6 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 }): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
-  // {agentId: string} view: get a specific agent configuration.
-  // list view: specific to a user. Get all agents that are in the user's list (either they created it and it is private, or via AgentUserRelation).
-  // {conversationId: string} view: specific to a conversation. Get all agents that are in the user's list + workspace/published agents in the current conversation.
-  // all view: workspace + published agents (not private ones), eg. for agent gallery
-  // workspace view: only workspace agents (not published ones)
-  // published view: only published agents (not workspace ones)
-  // global view: only global agents (not workspace or published ones)
-  // admin_internal view: all agents, including private ones => this is only for internal use (eg poke). Requires superuser or admin auth.
-
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");

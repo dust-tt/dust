@@ -89,13 +89,15 @@ export type AgentConfigurationScope =
 export type AgentUserListStatus = "in-list" | "not-in-list";
 
 /**
- * Agents can be retrieved according to different 'views':
- * - list: all agents in the user's list
- * - conversation: all agents in the user's list + agents in the current conversation (requries a
- *   conversation sId)
- * - all: workspace + published agents (not private ones), eg. for agent gallery
- * - admin_internal: all agents, including private ones => CAREFUL, this is only for internal use.
- * Global agents enabled for the workspace are always returned with all the views.
+ * Defines strategies for fetching agent configurations based on various 'views':
+ * - {agentId: string}: Retrieves a single agent by its ID.
+ * - {conversationId: string}: Targets agents relevant to a specific conversation, including user-listed agents and workspace/published agents.
+ * - 'list': User-centric view, fetches agents in the user's list, including both privately created and those added via AgentUserRelation.
+ * - 'all': Combines workspace and published agents, excluding private agents. Typically used in agent galleries.
+ * - 'workspace': Limits to agents within the workspace, excluding published agents.
+ * - 'published': Fetches only published agents, excluding those associated with a workspace.
+ * - 'global': Retrieves global agents, excluding workspace and published agents.
+ * - 'admin_internal': Grants access to all agents, including private ones. Intended strictly for internal use with necessary superuser or admin authorization.
  */
 export type AgentsGetViewType =
   | { agentId: string; allVersions?: boolean }
