@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -113,6 +114,14 @@ async function handler(
       return res.status(200).json({ table });
 
     case "DELETE":
+      // Delete any AgentTableConfigurationTable that references this table
+      await AgentTablesQueryConfigurationTable.destroy({
+        where: {
+          dataSourceWorkspaceId: owner.sId,
+          dataSourceId: dataSource.name,
+          tableId,
+        },
+      });
       const deleteRes = await coreAPI.deleteTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
