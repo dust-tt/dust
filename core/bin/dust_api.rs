@@ -42,8 +42,7 @@ use tokio::{
 };
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
-use tracing::Level;
-use tracing::{error, info};
+use tracing::{error, info, Level};
 use tracing_subscriber::prelude::*;
 
 /// API State

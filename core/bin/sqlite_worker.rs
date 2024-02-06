@@ -5,6 +5,7 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     databases::database::Table,
     databases_store::{self, store::DatabasesStore},
@@ -26,6 +27,7 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
+use tracing_subscriber::prelude::*;
 
 // Duration after which a database is considered inactive and can be removed from the registry.
 const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 60); // 5 minutes
@@ -261,10 +263,9 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::fmt()
-            .with_target(false)
-            .compact()
-            .with_ansi(false)
+        tracing_subscriber::registry()
+            .with(DatadogFormattingLayer)
+            .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
         let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
