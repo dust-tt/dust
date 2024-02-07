@@ -42,7 +42,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   webcrawler: undefined,
 };
 
-function PermissionTreeChildren({
+export function PermissionTreeChildren({
   owner,
   dataSource,
   parentId,
@@ -52,7 +52,7 @@ function PermissionTreeChildren({
   parentIsSelected,
   showExpand,
   displaySource,
-  useConnectorPermissionsOverride,
+  useConnectorPermissionsHook,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -69,16 +69,15 @@ function PermissionTreeChildren({
   parentIsSelected?: boolean;
   showExpand?: boolean;
   displaySource: (documentId: string) => void;
-  useConnectorPermissionsOverride?: typeof useConnectorPermissions;
+  useConnectorPermissionsHook: typeof useConnectorPermissions;
 }) {
-  const { resources, isResourcesLoading, isResourcesError } = (
-    useConnectorPermissionsOverride ?? useConnectorPermissions
-  )({
-    owner,
-    dataSource,
-    parentId,
-    filterPermission: permissionFilter || null,
-  });
+  const { resources, isResourcesLoading, isResourcesError } =
+    useConnectorPermissionsHook({
+      owner,
+      dataSource,
+      parentId,
+      filterPermission: permissionFilter || null,
+    });
   const [localStateByInternalId, setLocalStateByInternalId] = useState<
     Record<string, boolean>
   >({});
@@ -200,9 +199,7 @@ function PermissionTreeChildren({
                   ["read", "read_write"].includes(r.permission)
                 }
                 displaySource={displaySource}
-                useConnectorPermissionsOverride={
-                  useConnectorPermissionsOverride
-                }
+                useConnectorPermissionsHook={useConnectorPermissionsHook}
               />
             )}
           </Tree.Item>
@@ -219,8 +216,6 @@ export function PermissionTree({
   canUpdatePermissions,
   onPermissionUpdate,
   showExpand,
-  displaySourceOverride,
-  useConnectorPermissionsOverride,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -234,8 +229,6 @@ export function PermissionTree({
     permission: ConnectorPermission;
   }) => void;
   showExpand?: boolean;
-  displaySourceOverride?: (documentId: string) => void;
-  useConnectorPermissionsOverride?: typeof useConnectorPermissions;
 }) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -264,13 +257,10 @@ export function PermissionTree({
           onPermissionUpdate={onPermissionUpdate}
           showExpand={showExpand}
           parentIsSelected={false}
-          displaySource={
-            displaySourceOverride ??
-            ((documentId: string) => {
-              setDocumentToDisplay(documentId);
-            })
-          }
-          useConnectorPermissionsOverride={useConnectorPermissionsOverride}
+          displaySource={(documentId: string) => {
+            setDocumentToDisplay(documentId);
+          }}
+          useConnectorPermissionsHook={useConnectorPermissions}
         />
       </div>
     </>

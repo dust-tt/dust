@@ -19,13 +19,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { useDocuments, usePokeConnectorPermissions } from "@app/lib/swr";
+import { useDocuments } from "@app/lib/swr";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -485,11 +485,10 @@ const DataSourcePage = ({
                 ) : null}
               </>
             ) : (
-              <PermissionTree
+              <PokePermissionTree
                 owner={owner}
                 dataSource={dataSource}
-                displaySourceOverride={onDisplayDocumentSource}
-                useConnectorPermissionsOverride={usePokeConnectorPermissions}
+                displaySource={onDisplayDocumentSource}
               />
             )}
           </div>
