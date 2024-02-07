@@ -302,6 +302,39 @@ export function useConnectorPermissions({
   };
 }
 
+export function usePokeConnectorPermissions({
+  owner,
+  dataSource,
+  parentId,
+  filterPermission,
+  disabled,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  parentId: string | null;
+  filterPermission: ConnectorPermission | null;
+  disabled?: boolean;
+}) {
+  const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
+    fetcher;
+
+  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?`;
+  if (parentId) {
+    url += `&parentId=${parentId}`;
+  }
+  if (filterPermission) {
+    url += `&filterPermission=${filterPermission}`;
+  }
+
+  const { data, error } = useSWR(disabled ? null : url, permissionsFetcher);
+
+  return {
+    resources: data ? data.resources : [],
+    isResourcesLoading: !error && !data,
+    isResourcesError: error,
+  };
+}
+
 export function useConnectorConfig({
   owner,
   dataSource,

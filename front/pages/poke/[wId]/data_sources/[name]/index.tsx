@@ -25,7 +25,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { useDocuments } from "@app/lib/swr";
+import { useDocuments, usePokeConnectorPermissions } from "@app/lib/swr";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -489,6 +489,7 @@ const DataSourcePage = ({
                 owner={owner}
                 dataSource={dataSource}
                 displaySourceOverride={onDisplayDocumentSource}
+                useConnectorPermissionsOverride={usePokeConnectorPermissions}
               />
             )}
           </div>

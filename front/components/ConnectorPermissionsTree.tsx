@@ -52,6 +52,7 @@ function PermissionTreeChildren({
   parentIsSelected,
   showExpand,
   displaySource,
+  useConnectorPermissionsOverride,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -68,14 +69,16 @@ function PermissionTreeChildren({
   parentIsSelected?: boolean;
   showExpand?: boolean;
   displaySource: (documentId: string) => void;
+  useConnectorPermissionsOverride?: typeof useConnectorPermissions;
 }) {
-  const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions({
-      owner,
-      dataSource,
-      parentId,
-      filterPermission: permissionFilter || null,
-    });
+  const { resources, isResourcesLoading, isResourcesError } = (
+    useConnectorPermissionsOverride ?? useConnectorPermissions
+  )({
+    owner,
+    dataSource,
+    parentId,
+    filterPermission: permissionFilter || null,
+  });
   const [localStateByInternalId, setLocalStateByInternalId] = useState<
     Record<string, boolean>
   >({});
@@ -197,6 +200,9 @@ function PermissionTreeChildren({
                   ["read", "read_write"].includes(r.permission)
                 }
                 displaySource={displaySource}
+                useConnectorPermissionsOverride={
+                  useConnectorPermissionsOverride
+                }
               />
             )}
           </Tree.Item>
@@ -214,6 +220,7 @@ export function PermissionTree({
   onPermissionUpdate,
   showExpand,
   displaySourceOverride,
+  useConnectorPermissionsOverride,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -228,6 +235,7 @@ export function PermissionTree({
   }) => void;
   showExpand?: boolean;
   displaySourceOverride?: (documentId: string) => void;
+  useConnectorPermissionsOverride?: typeof useConnectorPermissions;
 }) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -262,6 +270,7 @@ export function PermissionTree({
               setDocumentToDisplay(documentId);
             })
           }
+          useConnectorPermissionsOverride={useConnectorPermissionsOverride}
         />
       </div>
     </>
