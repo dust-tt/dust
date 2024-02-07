@@ -64,12 +64,15 @@ export default function MyAssistants({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const { agentConfigurations, mutateAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-      includes: ["authors"],
-    });
+  const {
+    agentConfigurations,
+    mutateAgentConfigurations,
+    isAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    includes: ["authors"],
+  });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDetails, setShowDetails] =
@@ -139,9 +142,10 @@ export default function MyAssistants({
             />
           </Link>
         </Button.List>
-        {searchFilteredAssistants.length === 0 && (
-          <div>No assistant found matching the search.</div>
-        )}
+        {searchFilteredAssistants.length === 0 &&
+          !isAgentConfigurationsLoading && (
+            <div>No assistant found matching the search.</div>
+          )}
         {["private", "published", "workspace", "global"].map((scope) => (
           <ScopeSection
             key={scope}
