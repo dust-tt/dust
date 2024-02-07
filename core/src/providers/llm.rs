@@ -2,7 +2,6 @@ use crate::project::Project;
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use crate::stores::store::Store;
-use crate::utils;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -11,6 +10,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::info;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -243,39 +243,38 @@ impl LLMRequest {
                 )
             },
             |err_msg, sleep, attempts| {
-                utils::info(&format!(
-                    "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    attempts,
-                    sleep.as_millis(),
-                    err_msg,
-                ));
+                info!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    attempts = attempts,
+                    sleep = sleep.as_millis(),
+                    err_msg = err_msg,
+                    "Retry querying"
+                );
             },
         )
         .await;
 
         match out {
             Ok(c) => {
-                utils::done(&format!(
-                    "Success querying `{}:{}`: \
-                     prompt_length={} max_tokens={} temperature={} \
-                     prompt_tokens={} completion_tokens={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    self.prompt.len(),
-                    self.max_tokens.unwrap_or(0),
-                    self.temperature,
-                    match c.prompt.logprobs.as_ref() {
+                info!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    prompt_length = self.prompt.len(),
+                    max_tokens = self.max_tokens.unwrap_or(0),
+                    temperature = self.temperature,
+                    prompt_tokens = match c.prompt.logprobs.as_ref() {
                         None => 0,
                         Some(logprobs) => logprobs.len(),
                     },
-                    c.completions
+                    completion_tokens = c
+                        .completions
                         .iter()
                         .map(|c| c.logprobs.as_ref().unwrap().len().to_string())
                         .collect::<Vec<_>>()
                         .join(","),
-                ));
+                    "Success querying"
+                );
                 Ok(c)
             }
             Err(e) => Err(anyhow!(
@@ -433,28 +432,27 @@ impl LLMChatRequest {
                 )
             },
             |err_msg, sleep, attempts| {
-                utils::info(&format!(
-                    "Retry querying `{}:{}`: attempts={} sleep={}ms err_msg={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    attempts,
-                    sleep.as_millis(),
-                    err_msg,
-                ));
+                info!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    attempts = attempts,
+                    sleep = sleep.as_millis(),
+                    err_msg = err_msg,
+                    "Retry querying"
+                );
             },
         )
         .await;
 
         match out {
             Ok(c) => {
-                utils::done(&format!(
-                    "Success querying `{}:{}`: messages_count={} temperature={} \
-                     completion_message_length={}",
-                    self.provider_id.to_string(),
-                    self.model_id,
-                    self.messages.len(),
-                    self.temperature,
-                    c.completions
+                info!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    messages_count = self.messages.len(),
+                    temperature = self.temperature,
+                    completion_message_length = c
+                        .completions
                         .iter()
                         .map(|c| c
                             .content
@@ -464,7 +462,8 @@ impl LLMChatRequest {
                             .to_string())
                         .collect::<Vec<_>>()
                         .join(","),
-                ));
+                    "Success querying",
+                );
                 Ok(c)
             }
             Err(e) => Err(anyhow!(

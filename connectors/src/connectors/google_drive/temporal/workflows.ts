@@ -104,7 +104,7 @@ export async function googleDriveFullSync(
   console.log("googleDriveFullSync done for connectorId", connectorId);
 }
 
-export function googleDriveFullSyncWorkflowId(connectorId: string) {
+export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-fullSync-${connectorId}`;
 }
 

@@ -25,7 +25,7 @@ import {
 const logger = mainLogger.child({ provider: "google" });
 
 export async function launchGoogleDriveFullSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   fromTs: number | null
 ): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
@@ -40,7 +40,6 @@ export async function launchGoogleDriveFullSyncWorkflow(
   }
 
   const client = await getTemporalClient();
-  const connectorIdModelId = parseInt(connectorId, 10) as ModelId;
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -56,11 +55,11 @@ export async function launchGoogleDriveFullSyncWorkflow(
       }
     }
     await client.workflow.start(googleDriveFullSync, {
-      args: [connectorIdModelId, dataSourceConfig],
+      args: [connectorId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
-        connectorId: [parseInt(connectorId)],
+        connectorId: [connectorId],
       },
       memo: {
         connectorId: connectorId,

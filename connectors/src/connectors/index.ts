@@ -20,6 +20,7 @@ import {
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
   retrieveGithubReposTitles,
+  retrieveGithubResourceParents,
   setGithubConfig,
   stopGithubConnector,
   updateGithubConnector,
@@ -184,22 +185,13 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
 
 export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
-    confluence: (connectorId: string) => {
-      // TODO(2024-01-23 flav) Remove once prototype is fixed.
-      const connectorIdAsNumber = parseInt(connectorId, 10);
-      return launchConfluenceSyncWorkflow(connectorIdAsNumber);
-    },
+    confluence: launchConfluenceSyncWorkflow,
     slack: launchSlackSyncWorkflow,
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
-    intercom: (connectorId: string) => {
-      // TODO(2024-01-23 flav) Remove once prototype is fixed. (thanks Flav!)
-      const connectorIdAsNumber = parseInt(connectorId, 10);
-      return launchIntercomSyncWorkflow(connectorIdAsNumber);
-    },
-    webcrawler: (connectorId: string) =>
-      launchCrawlWebsiteWorkflow(parseInt(connectorId)),
+    intercom: launchIntercomSyncWorkflow,
+    webcrawler: launchCrawlWebsiteWorkflow,
   };
 
 export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
@@ -261,7 +253,7 @@ export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   notion: retrieveNotionResourceParents,
   google_drive: retrieveGoogleDriveObjectsParents,
   slack: async () => new Ok([]), // Slack is flat
-  github: async () => new Ok([]), // Github is flat,
+  github: retrieveGithubResourceParents,
   intercom: retrieveIntercomObjectsParents,
   webcrawler: retrieveWebCrawlerObjectsParents,
 };

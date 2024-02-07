@@ -16,6 +16,7 @@ import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "google" } = process.env;
 import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
@@ -257,8 +258,7 @@ export async function syncFiles(
     pageSize: 200,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
-    fields:
-      "nextPageToken, files(id, name, parents, mimeType, createdTime, lastModifyingUser, modifiedTime, trashed, webViewLink)",
+    fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
   });
@@ -338,6 +338,18 @@ async function syncOneFile(
         title: file.name,
       },
       `Google Drive document skipped with skip reason ${fileInDb.skipReason}`
+    );
+    return false;
+  }
+  if (!file.capabilities.canDownload) {
+    logger.info(
+      {
+        documentId,
+        connectorId,
+        fileId: file.id,
+        title: file.name,
+      },
+      `Google Drive document skipped because it cannot be downloaded`
     );
     return false;
   }
@@ -1161,7 +1173,7 @@ export async function getGoogleDriveObject(
     const res = await drive.files.get({
       fileId: driveObjectId,
       supportsAllDrives: true,
-      fields: "*",
+      fields: FILE_ATTRIBUTES_TO_FETCH.join(","),
     });
     if (res.status !== 200) {
       throw new Error(
@@ -1183,7 +1195,13 @@ export async function driveObjectToDustType(
   file: drive_v3.Schema$File,
   authCredentials: OAuth2Client
 ): Promise<GoogleDriveObjectType> {
-  if (!file.name || !file.mimeType || !file.createdTime) {
+  if (
+    !file.name ||
+    !file.mimeType ||
+    !file.createdTime ||
+    !file.capabilities ||
+    file.capabilities.canDownload === undefined
+  ) {
     throw new Error("Invalid file. File is: " + JSON.stringify(file));
   }
   const drive = await getDriveClient(authCredentials);
@@ -1205,6 +1223,9 @@ export async function driveObjectToDustType(
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),
       trashed: false,
+      capabilities: {
+        canDownload: false,
+      },
     };
   } else {
     return {
@@ -1221,6 +1242,9 @@ export async function driveObjectToDustType(
       lastEditor: file.lastModifyingUser
         ? { displayName: file.lastModifyingUser.displayName as string }
         : undefined,
+      capabilities: {
+        canDownload: file.capabilities.canDownload,
+      },
     };
   }
 }
@@ -1275,8 +1299,7 @@ export async function folderHasChildren(
     pageSize: 1,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
-    fields:
-      "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+    fields: "nextPageToken, files(id)",
     q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder'`,
   });
   if (!res.data.files) {

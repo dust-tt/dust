@@ -208,7 +208,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     })
   );
 
-  await crawler.run([webCrawlerConfig.url]);
+  let url = webCrawlerConfig.url;
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `http://${url}`;
+  }
+  await crawler.run([url]);
 
   await crawler.teardown();
 

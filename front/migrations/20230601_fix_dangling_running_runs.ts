@@ -8,7 +8,7 @@ async function main() {
   });
   console.log("Retrieving core runs");
   const data = await core_sequelize.query(
-    "SELECT id, run_id, created, status_json FROM runs"
+    `SELECT id, run_id, created, status_json FROM runs WHERE status_json LIKE '{"run":"running%'`
   );
   const coreRuns = data[0];
   console.log(`Retrieved ${coreRuns.length}`);

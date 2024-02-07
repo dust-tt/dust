@@ -72,7 +72,6 @@ pub fn now() -> u64 {
         .as_millis() as u64
 }
 
-// TODO(spolu): maybe make async eventually
 pub fn info(msg: &str) {
     println!("{} {}", "[i]", msg);
 }

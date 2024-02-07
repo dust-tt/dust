@@ -73,7 +73,7 @@ export async function createIntercomConnector(
       dataSourceName: dataSourceConfig.dataSourceName,
     });
 
-    await launchIntercomSyncWorkflow(connector.id);
+    await launchIntercomSyncWorkflow(connector.id, null);
     return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "[Intercom] Error creating connector.");
@@ -230,7 +230,7 @@ export async function resumeIntercomConnector(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   try {
-    await launchIntercomSyncWorkflow(connector.id);
+    await launchIntercomSyncWorkflow(connector.id, null);
   } catch (e) {
     logger.error(
       {
@@ -274,23 +274,6 @@ export async function retrieveIntercomConnectorPermissions({
   } catch (e) {
     return new Err(e as Error);
   }
-}
-
-async function startWorkflowIfNecessary(
-  helpCenterIds: string[],
-  workflowLauncher: (
-    connectorId: ModelId,
-    helpCenterIds: string[]
-  ) => Promise<Result<string, Error>>,
-  connectorId: ModelId
-): Promise<Result<void, Error>> {
-  if (helpCenterIds.length > 0) {
-    const workflowStarted = await workflowLauncher(connectorId, helpCenterIds);
-    if (workflowStarted.isErr()) {
-      return new Err(workflowStarted.error);
-    }
-  }
-  return new Ok(undefined);
 }
 
 export async function setIntercomConnectorPermissions(
@@ -383,13 +366,15 @@ export async function setIntercomConnectorPermissions(
       }
     }
 
-    const sendSignalToWorkflowResult = await startWorkflowIfNecessary(
-      [...toBeSignaledHelpCenterIds],
-      launchIntercomSyncWorkflow,
-      connectorId
-    );
-    if (sendSignalToWorkflowResult.isErr()) {
-      return new Err(sendSignalToWorkflowResult.error);
+    if (toBeSignaledHelpCenterIds.size > 0) {
+      const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow(
+        connectorId,
+        null,
+        [...toBeSignaledHelpCenterIds]
+      );
+      if (sendSignalToWorkflowResult.isErr()) {
+        return new Err(sendSignalToWorkflowResult.error);
+      }
     }
 
     return new Ok(undefined);

@@ -33,7 +33,7 @@ const _syncConnectorAPIHandler = async (
     return;
   }
   const launchRes = await SYNC_CONNECTOR_BY_TYPE[connector.type](
-    connector.id.toString(),
+    connector.id,
     null
   );
   if (launchRes.isErr()) {

@@ -212,6 +212,7 @@ export default function AssistantsGallery({
           onClose={() => {
             setShowDetails(null);
           }}
+          mutateAgentConfigurations={mutateAgentConfigurations}
         />
       )}
       {testModalAssistant && (

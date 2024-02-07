@@ -338,13 +338,20 @@ async function handler(
               },
             });
           }
+          let cleanUrl = url.trim();
+          if (
+            !cleanUrl.startsWith("http://") &&
+            !cleanUrl.startsWith("https://")
+          ) {
+            cleanUrl = `http://${cleanUrl}`;
+          }
           connectorsRes = await connectorsAPI.createConnector(
             provider,
             owner.sId,
             systemAPIKeyRes.value.secret,
             dataSourceName,
             {
-              url,
+              url: cleanUrl,
             }
           );
           break;

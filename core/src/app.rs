@@ -17,6 +17,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::{self as stream};
+use tracing::{error, info};
 
 /// An App is a collection of versioned Blocks.
 ///
@@ -312,11 +313,11 @@ impl App {
         let project = self.project.as_ref().unwrap().clone();
         let run_id = self.run.as_ref().unwrap().run_id().to_string();
 
-        utils::info(&format!(
-            "Starting run: project_id=`{}` run=`{}`",
-            project.project_id(),
-            &run_id,
-        ));
+        info!(
+            project_id = project.project_id(),
+            run_id = run_id.as_str(),
+            "Starting run"
+        );
 
         // Send an event for the initial run status.
         match event_sender.as_ref() {
@@ -725,16 +726,13 @@ impl App {
                 )
                 .await?;
 
-            utils::info(
-                format!(
-                    "Execution block `{} {}`: successes={} errors={} duration={}ms",
-                    block.block_type().to_string(),
-                    name,
-                    success,
-                    errors.len(),
-                    utils::now() - time_block_start,
-                )
-                .as_str(),
+            info!(
+                block_type = block.block_type().to_string(),
+                block_name = name.as_str(),
+                successes = success,
+                errors = errors.len(),
+                duration = utils::now() - time_block_start,
+                "Execution block"
             );
 
             // Update the run_status for next iteration, finalize block_status, write to DB
@@ -773,12 +771,12 @@ impl App {
 
             // If errors were encountered, interrupt execution.
             if errors.len() > 0 {
-                errors.iter().for_each(|e| utils::error(e.as_str()));
-                utils::done(&format!(
-                    "Run stored: run=`{}` app_version=`{}`",
-                    &run_id,
-                    self.run.as_ref().unwrap().app_hash(),
-                ));
+                errors.iter().for_each(|e| error!(error = e, "Run error"));
+                info!(
+                    run = run_id.as_str(),
+                    app_version = self.run.as_ref().unwrap().app_hash(),
+                    "Run stored"
+                );
 
                 // Send an event for the run status update.
                 match event_sender.as_ref() {
@@ -978,11 +976,11 @@ impl App {
             .as_ref()
             .update_run_status(&project, &run_id, self.run.as_ref().unwrap().status())
             .await?;
-        utils::done(&format!(
-            "Run stored: run=`{}` app_version=`{}`",
-            &run_id,
-            self.hash(),
-        ));
+        info!(
+            run = run_id.as_str(),
+            app_version = self.hash(),
+            "Run stored"
+        );
 
         // Send an event for the run status update.
         match event_sender.as_ref() {

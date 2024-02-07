@@ -11,6 +11,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::prelude::*;
+use tracing::info;
 use url::{Host, Url};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -204,18 +205,22 @@ impl HttpRequest {
 
         match response {
             Some(response) => {
-                utils::done(&format!(
-                    "Retrieved cached HTTPRequest cached: method={} url={} hash={}",
-                    self.method, self.url, self.hash,
-                ));
+                info!(
+                    method = self.method.as_str(),
+                    url = self.url.as_str(),
+                    hash = self.hash.as_str(),
+                    "Retrieved cached HTTPRequest"
+                );
                 Ok(response)
             }
             None => {
                 let response = self.execute().await?;
-                utils::done(&format!(
-                    "Performed fresh HTTPRequest: method={} url={} hash={}",
-                    self.method, self.url, self.hash,
-                ));
+                info!(
+                    method = self.method.as_str(),
+                    url = self.url.as_str(),
+                    hash = self.hash.as_str(),
+                    "Performed fresh HTTPRequest"
+                );
                 store.http_cache_store(&project, self, &response).await?;
                 Ok(response)
             }

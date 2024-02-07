@@ -11,6 +11,7 @@ use futures::future::try_join_all;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::info;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -53,22 +54,22 @@ pub async fn query_database(
         ))?,
     };
 
-    utils::done(&format!(
-        "DSSTRUCTSTAT Finished executing user query on worker: duration={}ms",
-        utils::now() - time_query_start
-    ));
+    info!(
+        duration = utils::now() - time_query_start,
+        "DSSTRUCTSTAT Finished executing user query on worker"
+    );
 
     let infer_result_schema_start = utils::now();
     let table_schema = TableSchema::from_rows(&result_rows)?;
-    utils::done(&format!(
-        "DSSTRUCTSTAT Finished inferring schema: duration={}ms",
-        utils::now() - infer_result_schema_start
-    ));
 
-    utils::done(&format!(
-        "DSSTRUCTSTAT Finished query database: duration={}ms",
-        utils::now() - time_query_start
-    ));
+    info!(
+        duration = utils::now() - infer_result_schema_start,
+        "DSSTRUCTSTAT Finished inferring schema"
+    );
+    info!(
+        duration = utils::now() - time_query_start,
+        "DSSTRUCTSTAT Finished query database"
+    );
 
     Ok((result_rows, table_schema))
 }

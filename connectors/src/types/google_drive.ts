@@ -10,6 +10,9 @@ export type GoogleDriveObjectType = {
   lastEditor?: {
     displayName: string;
   };
+  capabilities: {
+    canDownload: boolean;
+  };
 };
 export type GoogleDriveFolderType = {
   id: string;
@@ -21,3 +24,17 @@ export type GoogleDriveFolderType = {
 export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
   selected: boolean;
 };
+
+export const FILE_ATTRIBUTES_TO_FETCH = [
+  "id",
+  "name",
+  "parents",
+  "mimeType",
+  "createdTime",
+  "lastModifyingUser",
+  "modifiedTime",
+  "trashed",
+  "webViewLink",
+  "capabilities",
+  "driveId",
+] as const;

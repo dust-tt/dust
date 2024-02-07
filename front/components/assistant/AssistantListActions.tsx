@@ -20,12 +20,14 @@ interface AssistantListActions {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isParentHovered: boolean;
+  onAssistantListUpdate?: () => void;
 }
 
 export default function AssistantListActions({
   agentConfiguration,
   isParentHovered,
   owner,
+  onAssistantListUpdate,
 }: AssistantListActions) {
   const { scope } = agentConfiguration;
 
@@ -53,6 +55,7 @@ export default function AssistantListActions({
         title: `Assistant sharing updated.`,
         type: "success",
       });
+      onAssistantListUpdate && onAssistantListUpdate();
     } else {
       sendNotification({
         title: `Error updating assistant sharing.`,

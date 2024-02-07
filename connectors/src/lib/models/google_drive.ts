@@ -174,7 +174,10 @@ GoogleDriveFiles.init(
   {
     sequelize: sequelize_conn,
     modelName: "google_drive_files",
-    indexes: [{ fields: ["connectorId", "driveFileId"], unique: true }],
+    indexes: [
+      { fields: ["connectorId", "driveFileId"], unique: true },
+      { fields: ["connectorId", "parentId"], concurrently: true },
+    ],
   }
 );
 Connector.hasOne(GoogleDriveFiles);

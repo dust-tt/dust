@@ -45,6 +45,7 @@ import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
@@ -515,8 +516,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
             pageSize: 200,
             includeItemsFromAllDrives: true,
             supportsAllDrives: true,
-            fields:
-              "nextPageToken, files(id, name, parents, mimeType, createdTime, modifiedTime, trashed, webViewLink)",
+            fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(
+              ", "
+            )})`,
             q: `'${parentInternalId}' in parents and mimeType='application/vnd.google-apps.folder'`,
             pageToken: nextPageToken,
           });
@@ -602,7 +604,7 @@ export async function setGoogleDriveConnectorPermissions(
   }
 
   if (shouldFullSync) {
-    await launchGoogleDriveFullSyncWorkflow(connectorId.toString(), null);
+    await launchGoogleDriveFullSyncWorkflow(connectorId, null);
   }
 
   return new Ok(undefined);
@@ -700,7 +702,7 @@ export async function setGoogleDriveConfig(
         pdfEnabled: configValue === "true",
       });
       const workflowRes = await launchGoogleDriveFullSyncWorkflow(
-        connectorId.toString(),
+        connectorId,
         null
       );
       if (workflowRes.isErr()) {
