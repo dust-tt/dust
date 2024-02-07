@@ -343,6 +343,7 @@ export function AgentMessage({
             <AssistantEditionMenu
               agentConfigurationId={agentConfiguration.sId}
               owner={owner}
+              showAddRemoveToList
             />
           </div>
         );
