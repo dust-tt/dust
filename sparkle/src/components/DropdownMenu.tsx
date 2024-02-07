@@ -70,7 +70,7 @@ export interface DropdownMenuProps {
         close,
       }: {
         close: () => void;
-      }) => ReactElement<any, string | JSXElementConstructor<any>>);
+      }) => ReactElement<unknown, string | JSXElementConstructor<unknown>>);
 }
 
 export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
