@@ -5,18 +5,13 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
-  DropdownMenu,
   Page,
-  PencilSquareIcon,
   PlusIcon,
   Popup,
-  RobotIcon,
   RobotSharedIcon,
   Searchbar,
   SliderToggle,
   Tab,
-  TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, SubscriptionType } from "@dust-tt/types";
 import type {
@@ -29,10 +24,8 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
-import {
-  DeleteAssistantDialog,
-  RemoveAssistantFromWorkspaceDialog,
-} from "@app/components/assistant/AssistantActions";
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
@@ -44,9 +37,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations, useFeatures } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import { SCOPE_INFO } from "@app/components/assistant/Sharing";
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import def from "ajv/dist/vocabularies/discriminator";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

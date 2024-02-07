@@ -29,12 +29,12 @@ import AssistantListActions from "@app/components/assistant/AssistantListActions
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { assistantUsageMessage } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import { assistantUsageMessage } from "@app/lib/assistant";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
