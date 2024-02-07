@@ -1,26 +1,44 @@
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type {
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { compareAgentsForSort } from "@app/lib/assistant";
+import { useAgentConfigurations } from "@app/lib/swr";
 
-const useAssistantSuggestions = (
+function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
-) => {
-  // `useMemo` will ensure that suggestions is only recalculated when `agentConfigurations` changes.
-  const suggestions = useMemo(() => {
-    const activeAgents = agentConfigurations.filter(
-      (a) => a.status === "active"
-    );
-    activeAgents.sort(compareAgentsForSort);
-
-    return activeAgents.map((agent) => ({
+) {
+  return agentConfigurations
+    .filter((a) => a.status === "active")
+    .sort(compareAgentsForSort)
+    .map((agent) => ({
       id: agent.sId,
       label: agent.name,
       pictureUrl: agent.pictureUrl,
     }));
-  }, [agentConfigurations]);
+}
 
-  return suggestions;
+const useAssistantSuggestions = (
+  inListAgentConfigurations: LightAgentConfigurationType[],
+  owner: WorkspaceType
+) => {
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "all",
+  });
+
+  // `useMemo` will ensure that suggestions is only recalculated
+  // when `inListAgentConfigurations` or `agentConfigurations` changes.
+  const allSuggestions = useMemo(() => {
+    const suggestions = makeEditorSuggestions(inListAgentConfigurations);
+    const fallbackSuggestions = makeEditorSuggestions(agentConfigurations);
+
+    return { suggestions, fallbackSuggestions };
+  }, [agentConfigurations, inListAgentConfigurations]);
+
+  return allSuggestions;
 };
 
 export default useAssistantSuggestions;
