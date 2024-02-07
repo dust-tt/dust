@@ -34,6 +34,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { assistantUsageMessage } from "@app/lib/assistant";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -98,11 +99,13 @@ export function AssistantDetails({
     setIsUpdatingScope(false);
   };
 
-  const usageSentence =
-    agentUsage.agentUsage &&
-    `${agentUsage.agentUsage.messageCount} message(s) over the last ${
-      agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
-    } days`;
+  const usageSentence = assistantUsageMessage({
+    assistantName: agentConfiguration.name,
+    usage: agentUsage.agentUsage,
+    isLoading: agentUsage.isAgentUsageLoading,
+    isError: agentUsage.isAgentUsageError,
+    shortVersion: true,
+  });
   const editedSentence =
     agentConfiguration.versionCreatedAt &&
     `Last edited ${timeAgoFrom(
