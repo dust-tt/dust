@@ -149,7 +149,7 @@ export default function AssistantsGallery({
       current: agentsGetView === "all",
     },
     {
-      label: "Shared Assistants",
+      label: "Shared",
       href: `/w/${owner.sId}/assistant/gallery?view=published`,
       current: agentsGetView === "published",
       icon: UserGroupIcon,
