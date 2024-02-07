@@ -188,21 +188,19 @@ export async function updateConfluenceConnector(
 }
 
 export async function stopConfluenceConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
-  // TODO(2024-01-23 flav) Change the prototype to take a ModelId.
-  const connectorIdAsNumber = parseInt(connectorId, 10);
-  const res = await stopConfluenceSyncWorkflow(connectorIdAsNumber);
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const res = await stopConfluenceSyncWorkflow(connectorId);
   if (res.isErr()) {
     return res;
   }
 
-  return new Ok(connectorId.toString());
+  return new Ok(undefined);
 }
 
 export async function resumeConfluenceConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   try {
     const connector = await Connector.findOne({
       where: {
@@ -227,15 +225,15 @@ export async function resumeConfluenceConnector(
 
     await launchConfluenceSyncWorkflow(connector.id, null);
 
-    return new Ok(connector.id.toString());
+    return new Ok(undefined);
   } catch (err) {
     return new Err(err as Error);
   }
 }
 
 export async function cleanupConfluenceConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findOne({
     where: { type: "confluence", id: connectorId },
   });

@@ -186,19 +186,19 @@ export async function retrieveWebcrawlerConnectorPermissions({
 }
 
 export async function stopWebcrawlerConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
-  const res = await stopCrawlWebsiteWorkflow(parseInt(connectorId));
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const res = await stopCrawlWebsiteWorkflow(connectorId);
   if (res.isErr()) {
     return res;
   }
 
-  return new Ok(connectorId);
+  return new Ok(undefined);
 }
 
 export async function cleanupWebcrawlerConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     await WebCrawlerPage.destroy({
       where: {

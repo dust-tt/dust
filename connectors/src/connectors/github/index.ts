@@ -116,8 +116,8 @@ export async function updateGithubConnector(
 }
 
 export async function stopGithubConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   try {
     const connector = await Connector.findOne({
       where: {
@@ -147,15 +147,15 @@ export async function stopGithubConnector(
       webhooksEnabledAt: null,
     });
 
-    return new Ok(connector.id.toString());
+    return new Ok(undefined);
   } catch (err) {
     return new Err(err as Error);
   }
 }
 
 export async function resumeGithubConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   try {
     const connector = await Connector.findOne({
       where: {
@@ -190,7 +190,7 @@ export async function resumeGithubConnector(
       syncCodeOnly: false,
     });
 
-    return new Ok(connector.id.toString());
+    return new Ok(undefined);
   } catch (err) {
     return new Err(err as Error);
   }
@@ -218,8 +218,8 @@ export async function fullResyncGithubConnector(
 }
 
 export async function cleanupGithubConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     try {
       const connector = await Connector.findOne({

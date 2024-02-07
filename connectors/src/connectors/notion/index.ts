@@ -188,14 +188,14 @@ export async function updateNotionConnector(
 }
 
 export async function stopNotionConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
 
   if (!connector) {
     logger.error(
       {
-        connectorId: connectorId,
+        connectorId,
       },
       "Notion connector not found."
     );
@@ -204,7 +204,7 @@ export async function stopNotionConnector(
   }
 
   try {
-    await stopNotionSyncWorkflow(connector.id.toString());
+    await stopNotionSyncWorkflow(connector.id);
   } catch (e) {
     logger.error(
       {
@@ -217,12 +217,12 @@ export async function stopNotionConnector(
     return new Err(e as Error);
   }
 
-  return new Ok(connector.id.toString());
+  return new Ok(undefined);
 }
 
 export async function resumeNotionConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
 
   if (!connector) {
@@ -254,7 +254,7 @@ export async function resumeNotionConnector(
     );
   }
 
-  return new Ok(connector.id.toString());
+  return new Ok(undefined);
 }
 
 export async function fullResyncNotionConnector(
@@ -282,7 +282,7 @@ export async function fullResyncNotionConnector(
   }
 
   try {
-    await stopNotionConnector(connector.id.toString());
+    await stopNotionConnector(connector.id);
   } catch (e) {
     logger.error(
       {
@@ -322,8 +322,8 @@ export async function fullResyncNotionConnector(
 }
 
 export async function cleanupNotionConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     const connector = await Connector.findOne({
       where: { type: "notion", id: connectorId },

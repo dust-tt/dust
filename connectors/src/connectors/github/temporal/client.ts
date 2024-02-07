@@ -139,7 +139,7 @@ export async function launchGithubReposSyncWorkflow(
 }
 
 export async function launchGithubCodeSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   repoLogin: string,
   repoName: string,
   repoId: number
@@ -158,7 +158,7 @@ export async function launchGithubCodeSyncWorkflow(
     taskQueue: QUEUE_NAME,
     workflowId: getCodeSyncWorkflowId(dataSourceConfig, repoId),
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     signal: newWebhookSignal,
     signalArgs: undefined,

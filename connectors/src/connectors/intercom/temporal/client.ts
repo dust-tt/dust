@@ -64,7 +64,7 @@ export async function launchIntercomSyncWorkflow(
 }
 
 export async function stopIntercomSyncWorkflow(
-  connectorId: string
+  connectorId: ModelId
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const connector = await Connector.findByPk(connectorId);
@@ -74,8 +74,7 @@ export async function stopIntercomSyncWorkflow(
     );
   }
 
-  const connectorIdAsNumber = parseInt(connectorId, 10);
-  const workflowId = getIntercomSyncWorkflowId(connectorIdAsNumber);
+  const workflowId = getIntercomSyncWorkflowId(connectorId);
 
   try {
     const handle: WorkflowHandle<typeof intercomSyncWorkflow> =

@@ -150,8 +150,8 @@ export async function updateIntercomConnector(
 }
 
 export async function cleanupIntercomConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   if (!NANGO_INTERCOM_CONNECTOR_ID) {
     throw new Error("INTERCOM_NANGO_CONNECTOR_ID not set");
   }
@@ -209,19 +209,19 @@ export async function cleanupIntercomConnector(
 }
 
 export async function stopIntercomConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const res = await stopIntercomSyncWorkflow(connectorId);
   if (res.isErr()) {
     return res;
   }
 
-  return new Ok(connectorId);
+  return new Ok(undefined);
 }
 
 export async function resumeIntercomConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
@@ -242,7 +242,7 @@ export async function resumeIntercomConnector(
     );
   }
 
-  return new Ok(connector.id.toString());
+  return new Ok(undefined);
 }
 
 export async function retrieveIntercomConnectorPermissions({

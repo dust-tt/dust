@@ -133,7 +133,7 @@ export async function launchNotionGarbageCollectorWorkflow(
 }
 
 export async function stopNotionSyncWorkflow(
-  connectorId: string
+  connectorId: ModelId
 ): Promise<void> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -194,7 +194,7 @@ export async function stopNotionSyncWorkflow(
 }
 
 export async function stopNotionGarbageCollectorWorkflow(
-  connectorId: string
+  connectorId: ModelId
 ): Promise<void> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {

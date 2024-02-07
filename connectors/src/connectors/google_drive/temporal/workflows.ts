@@ -188,7 +188,7 @@ export async function googleDriveIncrementalSync(
   }
 }
 
-export function googleDriveIncrementalSyncWorkflowId(connectorId: string) {
+export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-IncrementalSync-${connectorId}`;
 }
 

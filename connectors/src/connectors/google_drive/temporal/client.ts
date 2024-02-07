@@ -87,7 +87,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
 }
 
 export async function launchGoogleDriveIncrementalSyncWorkflow(
-  connectorId: string
+  connectorId: ModelId
 ): Promise<Result<string, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
@@ -104,18 +104,16 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
     return new Err(new RateLimitError("Rate limit exceeded"));
   }
   const client = await getTemporalClient();
-  const connectorIdModelId = parseInt(connectorId, 10) as ModelId;
-
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
   try {
     await client.workflow.signalWithStart(googleDriveIncrementalSync, {
-      args: [connectorIdModelId, dataSourceConfig],
+      args: [connectorId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
-        connectorId: [parseInt(connectorId)],
+        connectorId: [connectorId],
       },
       signal: newWebhookSignal,
       signalArgs: undefined,

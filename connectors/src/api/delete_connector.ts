@@ -38,7 +38,7 @@ const _deleteConnectorAPIHandler = async (
 
   const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
 
-  const stopRes = await connectorStopper(connector.id.toString());
+  const stopRes = await connectorStopper(connector.id);
 
   if (stopRes.isErr()) {
     return apiError(req, res, {
@@ -61,7 +61,7 @@ const _deleteConnectorAPIHandler = async (
   }
 
   const connectorDeleter = DELETE_CONNECTOR_BY_TYPE[connector.type];
-  const cleanRes = await connectorDeleter(connector.id.toString(), force);
+  const cleanRes = await connectorDeleter(connector.id, force);
   if (cleanRes.isErr()) {
     return apiError(req, res, {
       status_code: 500,

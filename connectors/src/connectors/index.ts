@@ -1,4 +1,4 @@
-import type { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider, ModelId } from "@dust-tt/types";
 
 import {
   cleanupConfluenceConnector,
@@ -134,20 +134,18 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   ConnectorStopper
 > = {
   confluence: stopConfluenceConnector,
-  slack: async (connectorId: string) => {
+  slack: async (connectorId: ModelId) => {
     logger.info({ connectorId }, `Stopping Slack connector is a no-op.`);
-    return new Ok(connectorId);
+    return new Ok(undefined);
   },
   github: stopGithubConnector,
   notion: stopNotionConnector,
-  google_drive: async (connectorId: string) => {
+  google_drive: async (connectorId: ModelId) => {
     logger.info({ connectorId }, `Stopping Google Drive connector is a no-op.`);
-    return new Ok(connectorId);
+    return new Ok(undefined);
   },
   intercom: stopIntercomConnector,
-  webcrawler: async (connectorId: string) => {
-    return stopWebcrawlerConnector(connectorId);
-  },
+  webcrawler: stopWebcrawlerConnector,
 };
 
 export const DELETE_CONNECTOR_BY_TYPE: Record<
@@ -168,18 +166,18 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorResumer
 > = {
   confluence: resumeConfluenceConnector,
-  slack: async (connectorId: string) => {
+  slack: async (connectorId: ModelId) => {
     logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
-    return new Ok(connectorId);
+    return new Ok(undefined);
   },
   notion: resumeNotionConnector,
   github: resumeGithubConnector,
-  google_drive: async (connectorId: string) => {
+  google_drive: async (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
   intercom: resumeIntercomConnector,
-  webcrawler: () => {
-    throw new Error("Not implemented");
+  webcrawler: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
   },
 };
 

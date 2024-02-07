@@ -102,22 +102,18 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
 
   switch (command) {
     case "stop": {
-      await throwOnError(
-        STOP_CONNECTOR_BY_TYPE[provider](connector.id.toString())
-      );
+      await throwOnError(STOP_CONNECTOR_BY_TYPE[provider](connector.id));
       return;
     }
     case "delete": {
       await throwOnError(
-        DELETE_CONNECTOR_BY_TYPE[provider](connector.id.toString(), true)
+        DELETE_CONNECTOR_BY_TYPE[provider](connector.id, true)
       );
       await terminateAllWorkflowsForConnectorId(connector.id);
       return;
     }
     case "resume": {
-      await throwOnError(
-        RESUME_CONNECTOR_BY_TYPE[provider](connector.id.toString())
-      );
+      await throwOnError(RESUME_CONNECTOR_BY_TYPE[provider](connector.id));
       return;
     }
     case "full-resync": {
@@ -144,12 +140,8 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     case "restart": {
-      await throwOnError(
-        STOP_CONNECTOR_BY_TYPE[provider](connector.id.toString())
-      );
-      await throwOnError(
-        RESUME_CONNECTOR_BY_TYPE[provider](connector.id.toString())
-      );
+      await throwOnError(STOP_CONNECTOR_BY_TYPE[provider](connector.id));
+      await throwOnError(RESUME_CONNECTOR_BY_TYPE[provider](connector.id));
       return;
     }
     default:
@@ -201,7 +193,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
       const repoId = data.id;
 
       await launchGithubCodeSyncWorkflow(
-        connector.id.toString(),
+        connector.id,
         args.owner,
         args.repo,
         repoId
@@ -283,10 +275,10 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         promises.push(
           queue.add(async () => {
             await throwOnError(
-              STOP_CONNECTOR_BY_TYPE[connector.type](connector.id.toString())
+              STOP_CONNECTOR_BY_TYPE[connector.type](connector.id)
             );
             await throwOnError(
-              RESUME_CONNECTOR_BY_TYPE[connector.type](connector.id.toString())
+              RESUME_CONNECTOR_BY_TYPE[connector.type](connector.id)
             );
           })
         );
@@ -601,7 +593,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           { connectorId: connector.id },
           "Stopping notion garbage collector"
         );
-        await stopNotionGarbageCollectorWorkflow(connector.id.toString());
+        await stopNotionGarbageCollectorWorkflow(connector.id);
       }
       return;
     }
@@ -689,7 +681,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
       await throwOnError(
-        launchGoogleDriveIncrementalSyncWorkflow(connector.id.toString())
+        launchGoogleDriveIncrementalSyncWorkflow(connector.id)
       );
       return;
     }

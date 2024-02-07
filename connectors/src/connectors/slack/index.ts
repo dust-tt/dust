@@ -289,8 +289,8 @@ export async function uninstallSlack(nangoConnectionId: string) {
 }
 
 export async function cleanupSlackConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     const connector = await Connector.findByPk(connectorId, {
       transaction: transaction,

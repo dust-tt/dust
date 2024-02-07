@@ -28,7 +28,7 @@ const _resumeConnectorAPIHandler = async (
     }
     const connectorResumer = RESUME_CONNECTOR_BY_TYPE[connector.type];
 
-    const resumeRes = await connectorResumer(connector.id.toString());
+    const resumeRes = await connectorResumer(connector.id);
 
     if (resumeRes.isErr()) {
       return apiError(req, res, {
@@ -40,9 +40,7 @@ const _resumeConnectorAPIHandler = async (
       });
     }
 
-    return res.status(200).json({
-      connectorId: resumeRes.value,
-    });
+    return res.sendStatus(204);
   } catch (e) {
     logger.error(errorFromAny(e), "Failed to resume the connector");
     return apiError(req, res, {
