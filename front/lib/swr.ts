@@ -9,6 +9,7 @@ import type {
   RunRunType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
@@ -62,7 +63,7 @@ export function useDatasets(owner: WorkspaceType, app: AppType) {
   );
 
   return {
-    datasets: data ? data.datasets : [],
+    datasets: useMemo(() => (data ? data.datasets : []), [data]),
     isDatasetsLoading: !error && !data,
     isDatasetsError: !!error,
   };
@@ -77,7 +78,7 @@ export function useProviders(owner: WorkspaceType) {
   );
 
   return {
-    providers: data ? data.providers : [],
+    providers: useMemo(() => (data ? data.providers : []), [data]),
     isProvidersLoading: !error && !data,
     isProvidersError: error,
   };
@@ -133,7 +134,7 @@ export function useKeys(owner: WorkspaceType) {
   const { data, error } = useSWR(`/api/w/${owner.sId}/keys`, keysFetcher);
 
   return {
-    keys: data ? data.keys : [],
+    keys: useMemo(() => (data ? data.keys : []), [data]),
     isKeysLoading: !error && !data,
     isKeysError: error,
   };
@@ -155,7 +156,7 @@ export function useRuns(
   const { data, error } = useSWR(url, runsFetcher);
 
   return {
-    runs: data ? data.runs : [],
+    runs: useMemo(() => (data ? data.runs : []), [data]),
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,
@@ -180,7 +181,7 @@ export function useDocuments(
   );
 
   return {
-    documents: data ? data.documents : [],
+    documents: useMemo(() => (data ? data.documents : []), [data]),
     total: data ? data.total : 0,
     isDocumentsLoading: !error && !data,
     isDocumentsError: error,
@@ -195,7 +196,7 @@ export function useDataSources(owner: WorkspaceType) {
   );
 
   return {
-    dataSources: data ? data.dataSources : [],
+    dataSources: useMemo(() => (data ? data.dataSources : []), [data]),
     isDataSourcesLoading: !error && !data,
     isDataSourcesError: error,
     mutateDataSources: mutate,
@@ -207,7 +208,7 @@ export function useMembers(owner: WorkspaceType) {
   const { data, error } = useSWR(`/api/w/${owner.sId}/members`, membersFetcher);
 
   return {
-    members: data ? data.members : [],
+    members: useMemo(() => (data ? data.members : []), [data]),
     isMembersLoading: !error && !data,
     isMembersError: error,
   };
@@ -222,7 +223,7 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
   );
 
   return {
-    invitations: data ? data.invitations : [],
+    invitations: useMemo(() => (data ? data.invitations : []), [data]),
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
   };
@@ -263,7 +264,7 @@ export function useEventSchemas(owner: WorkspaceType) {
   );
 
   return {
-    schemas: data ? data.schemas : [],
+    schemas: useMemo(() => (data ? data.schemas : []), [data]),
     isSchemasLoading: !error && !data,
     isSchemasError: error,
   };
@@ -296,7 +297,7 @@ export function useConnectorPermissions({
   const { data, error } = useSWR(disabled ? null : url, permissionsFetcher);
 
   return {
-    resources: data ? data.resources : [],
+    resources: useMemo(() => (data ? data.resources : []), [data]),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -375,7 +376,7 @@ export function useExtractedEvents({
   );
 
   return {
-    events: data ? data.events : [],
+    events: useMemo(() => (data ? data.events : []), [data]),
     isEventsLoading: !error && !data,
     isEventsError: error,
   };
@@ -411,7 +412,7 @@ export function usePokeWorkspaces({
   );
 
   return {
-    workspaces: data ? data.workspaces : [],
+    workspaces: useMemo(() => (data ? data.workspaces : []), [data]),
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
   };
@@ -423,7 +424,7 @@ export function usePokePlans() {
   const { data, error } = useSWR("/api/poke/plans", plansFetcher);
 
   return {
-    plans: data ? data.plans : [],
+    plans: useMemo(() => (data ? data.plans : []), [data]),
     isPlansLoading: !error && !data,
     isPlansError: error,
   };
@@ -438,7 +439,7 @@ export function usePokeFeatures({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    features: data ? data.features : [],
+    features: useMemo(() => (data ? data.features : []), [data]),
     isFeaturesLoading: !error && !data,
     isFeaturesError: error,
   };
@@ -453,7 +454,7 @@ export function useFeatures(owner: WorkspaceType) {
   );
 
   return {
-    features: data ? data.features : [],
+    features: useMemo(() => (data ? data.features : []), [data]),
     isFeaturesLoading: !error && !data,
     isFeaturesError: error,
   };
@@ -492,7 +493,7 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    conversations: data ? data.conversations : [],
+    conversations: useMemo(() => (data ? data.conversations : []), [data]),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -516,7 +517,7 @@ export function useConversationReactions({
   );
 
   return {
-    reactions: data ? data.reactions : [],
+    reactions: useMemo(() => (data ? data.reactions : []), [data]),
     isReactionsLoading: !error && !data,
     isReactionsError: error,
     mutateReactions: mutate,
@@ -574,7 +575,10 @@ export function useAgentConfigurations({
   );
 
   return {
-    agentConfigurations: data ? data.agentConfigurations : [],
+    agentConfigurations: useMemo(
+      () => (data ? data.agentConfigurations : []),
+      [data]
+    ),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
@@ -648,7 +652,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: data ? data.slackChannels : [],
+    slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
     mutateSlackChannels: mutate,
@@ -672,7 +676,7 @@ export function useTables({
   );
 
   return {
-    tables: data ? data.tables : [],
+    tables: useMemo(() => (data ? data.tables : []), [data]),
     isTablesLoading: !error && !data,
     isTablesError: error,
     mutateTables: mutate,
