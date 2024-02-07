@@ -186,6 +186,9 @@ export default function AssistantsGallery({
     },
   ];
 
+  // Headless UI does not inherently handle Portal-based rendering,
+  // leading to dropdown menus being hidden by parent divs with overflow settings.
+  // Adapts layout for smaller screens.
   const SearchOrderDropdown = (
     <div className="shrink-0">
       <DropdownMenu>
