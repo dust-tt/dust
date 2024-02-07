@@ -88,7 +88,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             depth: request.userData.depth ? request.userData.depth + 1 : 1,
           },
           transformRequestFunction: (req) => {
-            if (webCrawlerConfig.crawlMode === "childs") {
+            if (webCrawlerConfig.crawlMode === "child") {
               // We only want to crawl children of the original url
               if (
                 !new URL(req.url).pathname.startsWith(
