@@ -94,11 +94,11 @@ export default function AssistantNew({
     null
   );
 
+  // No limit on global assistants call as they include both active and inactive.
   const globalAgentConfigurations = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "global",
     includes: ["authors"],
-    limit: 2,
     sort: "priority",
   }).agentConfigurations;
 
