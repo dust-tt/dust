@@ -1,4 +1,5 @@
 import {
+  AssistantPreview2,
   Avatar,
   BookOpenIcon,
   Button,
@@ -272,6 +273,23 @@ function AgentViewForScope({
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
 }) {
   const router = useRouter();
+  if (tabScope === "published") {
+    return (
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {agents.map((a) => (
+          <AssistantPreview2
+            key={a.sId}
+            title={a.name}
+            pictureUrl={a.pictureUrl}
+            subtitle={a.lastAuthors?.join(", ") ?? ""}
+            description={a.description}
+            variant="list"
+            onClick={() => setShowDetails(a)}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <ContextItem.List>
@@ -323,7 +341,8 @@ function AgentViewForScope({
           label="Manage"
           size="sm"
           disabled={!isBuilder(owner)}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             void router.push(`/w/${owner.sId}/builder/assistants/dust`);
           }}
         />
