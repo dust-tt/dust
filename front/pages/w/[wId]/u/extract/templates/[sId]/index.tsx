@@ -303,6 +303,7 @@ const EventDataSourceLogo = ({ event }: { event: ExtractedEventType }) => {
       {event.documentSourceUrl && providerLogo ? (
         <div className="flex items-center space-x-2">
           <a
+            rel="noopener noreferrer"
             href={event.documentSourceUrl}
             target="_blank"
             className="block h-5 w-5"

@@ -141,6 +141,7 @@ export default function RetrievalAction({
                   return (
                     <li key={i}>
                       <a
+                        rel="noopener noreferrer"
                         href={linkFromDocument(document)}
                         className="front-bold flex flex-row items-center text-xs text-element-800"
                         target="_blank"
