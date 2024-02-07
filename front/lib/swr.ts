@@ -54,10 +54,11 @@ export const fetcher = async (...args: Parameters<typeof fetch>) =>
     return res.json();
   });
 
-// Generic useMemo hook for data memoization
+// Generic useMemo hook for data memoization.
+// /!\ Never returns an empty array without using this memoization.
 function useGenericMemo<T>(data: T | undefined, dependencies: any[]) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => data ?? [], dependencies);
+  return useMemo(() => data ?? ([] as T), dependencies);
 }
 
 export function useDatasets(owner: WorkspaceType, app: AppType) {
