@@ -136,9 +136,12 @@ export class CoreAPI {
   }: {
     projectId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(`${CORE_API}/projects/${projectId}`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}`,
+      {
+        method: "DELETE",
+      }
+    );
 
     return this._resultFromResponse(response);
   }
@@ -148,12 +151,15 @@ export class CoreAPI {
   }: {
     projectId: string;
   }): Promise<CoreAPIResponse<GetDatasetsResponse>> {
-    const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}/datasets`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     return this._resultFromResponse(response);
   }
@@ -168,7 +174,11 @@ export class CoreAPI {
     datasetHash: string;
   }): Promise<CoreAPIResponse<GetDatasetResponse>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/datasets/${datasetName}/${datasetHash}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/datasets/${encodeURIComponent(datasetName)}/${encodeURIComponent(
+        datasetHash
+      )}`,
       {
         method: "GET",
         headers: {
@@ -190,16 +200,19 @@ export class CoreAPI {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any[];
   }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
-    const response = await fetch(`${CORE_API}/projects/${projectId}/datasets`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        dataset_id: datasetId,
-        data,
-      }),
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}/datasets`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset_id: datasetId,
+          data,
+        }),
+      }
+    );
 
     return this._resultFromResponse(response);
   }
@@ -209,9 +222,12 @@ export class CoreAPI {
   }: {
     projectId: string;
   }): Promise<CoreAPIResponse<{ project: Project }>> {
-    const response = await fetch(`${CORE_API}/projects/${projectId}/clone`, {
-      method: "POST",
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}/clone`,
+      {
+        method: "POST",
+      }
+    );
 
     return this._resultFromResponse(response);
   }
@@ -227,22 +243,25 @@ export class CoreAPI {
     config,
     credentials,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    const response = await fetch(`${CORE_API}/projects/${projectId}/runs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Dust-Workspace-Id": runAsWorkspaceId,
-      },
-      body: JSON.stringify({
-        run_type: runType,
-        specification: specification,
-        specification_hash: specificationHash,
-        dataset_id: datasetId,
-        inputs: inputs,
-        config: config,
-        credentials: credentials,
-      }),
-    });
+    const response = await fetch(
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Dust-Workspace-Id": runAsWorkspaceId,
+        },
+        body: JSON.stringify({
+          run_type: runType,
+          specification: specification,
+          specification_hash: specificationHash,
+          dataset_id: datasetId,
+          inputs: inputs,
+          config: config,
+          credentials: credentials,
+        }),
+      }
+    );
 
     return this._resultFromResponse(response);
   }
@@ -357,7 +376,9 @@ export class CoreAPI {
     runId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/runs/${encodeURIComponent(runId)}`,
       {
         method: "DELETE",
       }
@@ -374,7 +395,7 @@ export class CoreAPI {
     dustRunIds: string[];
   }): Promise<CoreAPIResponse<{ runs: { [key: string]: CoreAPIRun } }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/batch`,
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs/batch`,
       {
         method: "POST",
         headers: {
@@ -397,7 +418,9 @@ export class CoreAPI {
     runId: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/runs/${encodeURIComponent(runId)}`,
       {
         method: "GET",
       }
@@ -414,7 +437,9 @@ export class CoreAPI {
     runId: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}/status`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/runs/${encodeURIComponent(runId)}/status`,
       {
         method: "GET",
       }
@@ -433,7 +458,9 @@ export class CoreAPI {
     CoreAPIResponse<{ specification: { created: number; data: string } }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/specifications/${specificationHash}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/specifications/${encodeURIComponent(specificationHash)}`,
       {
         method: "GET",
       }
@@ -454,7 +481,11 @@ export class CoreAPI {
     blockName: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/runs/${runId}/blocks/${blockType}/${blockName}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/runs/${encodeURIComponent(runId)}/blocks/${encodeURIComponent(
+        blockType
+      )}/${encodeURIComponent(blockName)}`,
       {
         method: "GET",
       }
@@ -475,7 +506,7 @@ export class CoreAPI {
     credentials: CredentialsType;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources`,
+      `${CORE_API}/projects/${encodeURIComponent(projectId)}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -500,7 +531,9 @@ export class CoreAPI {
     dataSourceId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceId)}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -519,7 +552,9 @@ export class CoreAPI {
     dataSourceName: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceName)}`,
       {
         method: "DELETE",
       }
@@ -554,7 +589,9 @@ export class CoreAPI {
     }
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/search`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceName)}/search`,
       {
         method: "POST",
         headers: {
@@ -593,7 +630,11 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents?limit=${limit}&offset=${offset}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       }
@@ -619,9 +660,11 @@ export class CoreAPI {
   > {
     const qs = versionHash ? `?version_hash=${versionHash}` : "";
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        documentId
-      )}${qs}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(documentId)}${qs}`,
       {
         method: "GET",
       }
@@ -662,7 +705,11 @@ export class CoreAPI {
     }
 
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(
         documentId
       )}/versions?${params.toString()}`,
       {
@@ -706,7 +753,9 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents`,
+      `${CORE_API}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents`,
       {
         method: "POST",
         headers: {
@@ -746,9 +795,11 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        documentId
-      )}/tags`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(documentId)}/tags`,
       {
         method: "PATCH",
         headers: {
@@ -780,9 +831,11 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        documentId
-      )}/parents`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(documentId)}/parents`,
       {
         method: "PATCH",
         headers: {
@@ -807,9 +860,11 @@ export class CoreAPI {
     documentId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/documents/${encodeURIComponent(
-        documentId
-      )}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/documents/${encodeURIComponent(documentId)}`,
       {
         method: "DELETE",
       }
@@ -854,7 +909,9 @@ export class CoreAPI {
     dataSourceName: string;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tokenize`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceName)}/tokenize`,
       {
         method: "POST",
         headers: {
@@ -880,7 +937,9 @@ export class CoreAPI {
     description: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceName)}/tables`,
       {
         method: "POST",
         headers: {
@@ -907,7 +966,11 @@ export class CoreAPI {
     tableId: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}`,
       {
         method: "GET",
       }
@@ -928,7 +991,9 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceName)}/tables`,
       {
         method: "GET",
       }
@@ -947,7 +1012,11 @@ export class CoreAPI {
     tableId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}`,
       {
         method: "DELETE",
       }
@@ -970,7 +1039,11 @@ export class CoreAPI {
     truncate?: boolean;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}/rows`,
       {
         method: "POST",
         headers: {
@@ -998,7 +1071,13 @@ export class CoreAPI {
     rowId: string;
   }): Promise<CoreAPIResponse<{ row: CoreAPIRow }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows/${rowId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(
+        rowId
+      )}`,
       {
         method: "GET",
       }
@@ -1028,7 +1107,13 @@ export class CoreAPI {
     }>
   > {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows?limit=${limit}&offset=${offset}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(
+        tableId
+      )}/rows?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       }
