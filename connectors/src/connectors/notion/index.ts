@@ -282,7 +282,7 @@ export async function fullResyncNotionConnector(
   }
 
   try {
-    await stopNotionConnector(connector.id.toString());
+    await stopNotionConnector(connector.id);
   } catch (e) {
     logger.error(
       {
