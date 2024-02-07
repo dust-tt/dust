@@ -54,13 +54,6 @@ export const fetcher = async (...args: Parameters<typeof fetch>) =>
     return res.json();
   });
 
-// Generic useMemo hook for data memoization.
-// /!\ Never returns an empty array without using this memoization.
-function useGenericMemo<T>(data: T | undefined, dependencies: any[]) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => data ?? ([] as T), dependencies);
-}
-
 export function useDatasets(owner: WorkspaceType, app: AppType) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
@@ -70,7 +63,7 @@ export function useDatasets(owner: WorkspaceType, app: AppType) {
   );
 
   return {
-    datasets: useGenericMemo(data ? data.datasets : [], [data]),
+    datasets: useMemo(() => (data ? data.datasets : []), [data]),
     isDatasetsLoading: !error && !data,
     isDatasetsError: !!error,
   };
@@ -85,7 +78,7 @@ export function useProviders(owner: WorkspaceType) {
   );
 
   return {
-    providers: useGenericMemo(data ? data.providers : [], [data]),
+    providers: useMemo(() => (data ? data.providers : []), [data]),
     isProvidersLoading: !error && !data,
     isProvidersError: error,
   };
@@ -141,7 +134,7 @@ export function useKeys(owner: WorkspaceType) {
   const { data, error } = useSWR(`/api/w/${owner.sId}/keys`, keysFetcher);
 
   return {
-    keys: useGenericMemo(data ? data.keys : [], [data]),
+    keys: useMemo(() => (data ? data.keys : []), [data]),
     isKeysLoading: !error && !data,
     isKeysError: error,
   };
@@ -163,7 +156,7 @@ export function useRuns(
   const { data, error } = useSWR(url, runsFetcher);
 
   return {
-    runs: useGenericMemo(data ? data.runs : [], [data]),
+    runs: useMemo(() => (data ? data.runs : []), [data]),
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,
@@ -188,7 +181,7 @@ export function useDocuments(
   );
 
   return {
-    documents: useGenericMemo(data ? data.documents : [], [data]),
+    documents: useMemo(() => (data ? data.documents : []), [data]),
     total: data ? data.total : 0,
     isDocumentsLoading: !error && !data,
     isDocumentsError: error,
@@ -203,7 +196,7 @@ export function useDataSources(owner: WorkspaceType) {
   );
 
   return {
-    dataSources: useGenericMemo(data ? data.dataSources : [], [data]),
+    dataSources: useMemo(() => (data ? data.dataSources : []), [data]),
     isDataSourcesLoading: !error && !data,
     isDataSourcesError: error,
     mutateDataSources: mutate,
@@ -215,7 +208,7 @@ export function useMembers(owner: WorkspaceType) {
   const { data, error } = useSWR(`/api/w/${owner.sId}/members`, membersFetcher);
 
   return {
-    members: useGenericMemo(data ? data.members : [], [data]),
+    members: useMemo(() => (data ? data.members : []), [data]),
     isMembersLoading: !error && !data,
     isMembersError: error,
   };
@@ -230,7 +223,7 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
   );
 
   return {
-    invitations: useGenericMemo(data ? data.invitations : [], [data]),
+    invitations: useMemo(() => (data ? data.invitations : []), [data]),
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
   };
@@ -271,7 +264,7 @@ export function useEventSchemas(owner: WorkspaceType) {
   );
 
   return {
-    schemas: useGenericMemo(data ? data.schemas : [], [data]),
+    schemas: useMemo(() => (data ? data.schemas : []), [data]),
     isSchemasLoading: !error && !data,
     isSchemasError: error,
   };
@@ -304,7 +297,7 @@ export function useConnectorPermissions({
   const { data, error } = useSWR(disabled ? null : url, permissionsFetcher);
 
   return {
-    resources: useGenericMemo(data ? data.resources : [], [data]),
+    resources: useMemo(() => (data ? data.resources : []), [data]),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -350,7 +343,7 @@ export function useExtractedEvents({
   );
 
   return {
-    events: useGenericMemo(data ? data.events : [], [data]),
+    events: useMemo(() => (data ? data.events : []), [data]),
     isEventsLoading: !error && !data,
     isEventsError: error,
   };
@@ -386,7 +379,7 @@ export function usePokeWorkspaces({
   );
 
   return {
-    workspaces: useGenericMemo(data ? data.workspaces : [], [data]),
+    workspaces: useMemo(() => (data ? data.workspaces : []), [data]),
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
   };
@@ -398,7 +391,7 @@ export function usePokePlans() {
   const { data, error } = useSWR("/api/poke/plans", plansFetcher);
 
   return {
-    plans: useGenericMemo(data ? data.plans : [], [data]),
+    plans: useMemo(() => (data ? data.plans : []), [data]),
     isPlansLoading: !error && !data,
     isPlansError: error,
   };
@@ -413,7 +406,7 @@ export function usePokeFeatures({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    features: useGenericMemo(data ? data.features : [], [data]),
+    features: useMemo(() => (data ? data.features : []), [data]),
     isFeaturesLoading: !error && !data,
     isFeaturesError: error,
   };
@@ -428,7 +421,7 @@ export function useFeatures(owner: WorkspaceType) {
   );
 
   return {
-    features: useGenericMemo(data ? data.features : [], [data]),
+    features: useMemo(() => (data ? data.features : []), [data]),
     isFeaturesLoading: !error && !data,
     isFeaturesError: error,
   };
@@ -467,7 +460,7 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    conversations: useGenericMemo(data ? data.conversations : [], [data]),
+    conversations: useMemo(() => (data ? data.conversations : []), [data]),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -491,7 +484,7 @@ export function useConversationReactions({
   );
 
   return {
-    reactions: useGenericMemo(data ? data.reactions : [], [data]),
+    reactions: useMemo(() => (data ? data.reactions : []), [data]),
     isReactionsLoading: !error && !data,
     isReactionsError: error,
     mutateReactions: mutate,
@@ -549,9 +542,10 @@ export function useAgentConfigurations({
   );
 
   return {
-    agentConfigurations: useGenericMemo(data ? data.agentConfigurations : [], [
-      data,
-    ]),
+    agentConfigurations: useMemo(
+      () => (data ? data.agentConfigurations : []),
+      [data]
+    ),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
@@ -625,7 +619,7 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: useGenericMemo(data ? data.slackChannels : [], [data]),
+    slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
     mutateSlackChannels: mutate,
@@ -649,7 +643,7 @@ export function useTables({
   );
 
   return {
-    tables: useGenericMemo(data ? data.tables : [], [data]),
+    tables: useMemo(() => (data ? data.tables : []), [data]),
     isTablesLoading: !error && !data,
     isTablesError: error,
     mutateTables: mutate,
