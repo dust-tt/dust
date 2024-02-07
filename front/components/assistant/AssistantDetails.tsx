@@ -83,7 +83,9 @@ export function AssistantDetails({
         title: `Assistant sharing updated.`,
         type: "success",
       });
-
+      if (mutateAgentConfigurations) {
+        await mutateAgentConfigurations();
+      }
       await mutateCurrentAgentConfiguration();
     } else {
       sendNotification({
