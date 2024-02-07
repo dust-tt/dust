@@ -374,7 +374,7 @@ function WorkspaceMetricsModal({
           </span>
           <span className="font-semibold text-element-700">
             {analytics.weeklyActiveUsers.count} (
-            {analytics.weeklyActiveUsers.growth >= 0 ? "+" : "-"}
+            {analytics.weeklyActiveUsers.growth >= 0 ? "+" : ""}
             {analytics.weeklyActiveUsers.growth}% WoW)
           </span>
         </div>
@@ -384,7 +384,7 @@ function WorkspaceMetricsModal({
           </span>
           <span className="font-semibold text-element-700">
             {analytics.monthlyActiveUsers.count} (
-            {analytics.monthlyActiveUsers.growth >= 0 ? "+" : "-"}
+            {analytics.monthlyActiveUsers.growth >= 0 ? "+" : ""}
             {analytics.monthlyActiveUsers.growth}% MoM)
           </span>
         </div>
@@ -394,7 +394,7 @@ function WorkspaceMetricsModal({
           </span>
           <span className="font-semibold text-element-700">
             {analytics.averageWeeklyDailyActiveUsers.count} (
-            {analytics.averageWeeklyDailyActiveUsers.growth >= 0 ? "+" : "-"}
+            {analytics.averageWeeklyDailyActiveUsers.growth >= 0 ? "+" : ""}
             {analytics.averageWeeklyDailyActiveUsers.growth}% WoW)
           </span>
         </div>
