@@ -44,104 +44,114 @@ export function AssistantPicker({
 
   return (
     <DropdownMenu>
-      {showDetails && (
-        <AssistantDetails
-          owner={owner}
-          assistantId={showDetails.sId}
-          show={showDetails !== null}
-          onClose={() => {
-            setShowDetails(null);
-          }}
-        />
-      )}
+      {({ close }) => (
+        <>
+          {showDetails && (
+            <AssistantDetails
+              owner={owner}
+              assistantId={showDetails.sId}
+              show={showDetails !== null}
+              onClose={() => {
+                setShowDetails(null);
+              }}
+            />
+          )}
 
-      <div onClick={() => setSearchText("")} className="flex">
-        {pickerButton ? (
-          <DropdownMenu.Button size={size}>{pickerButton}</DropdownMenu.Button>
-        ) : (
-          <DropdownMenu.Button
-            icon={RobotIcon}
-            size={size}
-            tooltip="Pick an assistant"
-            tooltipPosition="above"
-          />
-        )}
-      </div>
-      <DropdownMenu.Items
-        origin="auto"
-        width={280}
-        topBar={
-          <>
-            {assistants.length > 7 && (
-              <div className="flex flex-grow flex-row border-b border-structure-50 p-2">
-                <Searchbar
-                  placeholder="Search"
-                  name="input"
-                  size="xs"
-                  value={searchText}
-                  onChange={setSearchText}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchedAssistants.length > 0) {
-                      onItemClick(searchedAssistants[0]);
-                      setSearchText("");
-                    }
+          <div onClick={() => setSearchText("")} className="flex">
+            {pickerButton ? (
+              <DropdownMenu.Button size={size}>
+                {pickerButton}
+              </DropdownMenu.Button>
+            ) : (
+              <DropdownMenu.Button
+                icon={RobotIcon}
+                size={size}
+                tooltip="Pick an assistant"
+                tooltipPosition="above"
+              />
+            )}
+          </div>
+          <DropdownMenu.Items
+            origin="auto"
+            width={280}
+            topBar={
+              <>
+                {assistants.length > 7 && (
+                  <div className="flex flex-grow flex-row border-b border-structure-50 p-2">
+                    <Searchbar
+                      placeholder="Search"
+                      name="input"
+                      size="xs"
+                      value={searchText}
+                      onChange={setSearchText}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          searchedAssistants.length > 0
+                        ) {
+                          onItemClick(searchedAssistants[0]);
+                          setSearchText("");
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            }
+            bottomBar={
+              <div className="flex border-t border-structure-50 p-2">
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                >
+                  <Button
+                    label="Create"
+                    size="xs"
+                    variant="primary"
+                    icon={PlusIcon}
+                    className="mr-2"
+                  />
+                </Link>
+                <div className="s-flex-grow" />
+                <Link href={`/w/${owner.sId}/assistant/assistants`}>
+                  <Button
+                    label="My Assistants"
+                    size="xs"
+                    variant="tertiary"
+                    icon={ListIcon}
+                  />
+                </Link>
+              </div>
+            }
+          >
+            {searchedAssistants.map((c) => (
+              <div
+                key={`assistant-picker-container-${c.sId}`}
+                className="flex flex-row items-center justify-between pr-2"
+              >
+                <Item.Avatar
+                  key={`assistant-picker-${c.sId}`}
+                  label={"@" + c.name}
+                  visual={c.pictureUrl}
+                  hasAction={false}
+                  onClick={() => {
+                    onItemClick(c);
+                    setSearchText("");
                   }}
                 />
+                <IconButton
+                  icon={MoreIcon}
+                  onClick={() => {
+                    close();
+                    setShowDetails(c);
+                  }}
+                  variant="tertiary"
+                  size="sm"
+                />
               </div>
-            )}
-          </>
-        }
-        bottomBar={
-          <div className="flex border-t border-structure-50 p-2">
-            <Link
-              href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-            >
-              <Button
-                label="Create"
-                size="xs"
-                variant="primary"
-                icon={PlusIcon}
-                className="mr-2"
-              />
-            </Link>
-            <div className="s-flex-grow" />
-            <Link href={`/w/${owner.sId}/assistant/assistants`}>
-              <Button
-                label="My Assistants"
-                size="xs"
-                variant="tertiary"
-                icon={ListIcon}
-              />
-            </Link>
-          </div>
-        }
-      >
-        {searchedAssistants.map((c) => (
-          <div
-            key={`assistant-picker-container-${c.sId}`}
-            className="flex flex-row items-center justify-between pr-2"
-          >
-            <Item.Avatar
-              key={`assistant-picker-${c.sId}`}
-              label={"@" + c.name}
-              visual={c.pictureUrl}
-              hasAction={false}
-              onClick={() => {
-                onItemClick(c);
-                setSearchText("");
-              }}
-            />
-            <IconButton
-              icon={MoreIcon}
-              onClick={() => {
-                setShowDetails(c);
-              }}
-              variant="tertiary"
-              size="sm"
-            />
-          </div>
-        ))}
-      </DropdownMenu.Items>
+            ))}
+          </DropdownMenu.Items>
+        </>
+      )}
     </DropdownMenu>
   );
 }
