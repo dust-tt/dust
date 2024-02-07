@@ -2,7 +2,9 @@ import { Menu, Transition } from "@headlessui/react";
 import React, {
   ComponentType,
   Fragment,
+  JSXElementConstructor,
   MutableRefObject,
+  ReactElement,
   useContext,
   useEffect,
   useRef,
@@ -62,7 +64,13 @@ const chevronClasses = {
 
 export interface DropdownMenuProps {
   className?: string;
-  children: React.ReactNode;
+  children:
+    | React.ReactNode
+    | (({
+        close,
+      }: {
+        close: () => void;
+      }) => ReactElement<unknown, string | JSXElementConstructor<unknown>>);
 }
 
 export function DropdownMenu({ children, className = "" }: DropdownMenuProps) {
