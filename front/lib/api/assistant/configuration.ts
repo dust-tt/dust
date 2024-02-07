@@ -13,6 +13,7 @@ import type {
   RetrievalQuery,
   RetrievalTimeframe,
   SupportedModel,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -22,7 +23,7 @@ import {
   isTimeFrame,
   Ok,
 } from "@dust-tt/types";
-import type { Transaction } from "sequelize";
+import type { Order, Transaction } from "sequelize";
 import { Op, UniqueConstraintError } from "sequelize";
 
 import {
@@ -31,6 +32,7 @@ import {
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
+import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { front_sequelize } from "@app/lib/databases";
 import {
@@ -52,6 +54,28 @@ import {
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
+type SortStrategyType = "alphabetical" | "priority";
+
+interface SortStrategy {
+  dbOrder: Order | undefined;
+  compareFunction: (
+    a: AgentConfigurationType,
+    b: AgentConfigurationType
+  ) => number;
+}
+
+const sortStrategies: Record<SortStrategyType, SortStrategy> = {
+  alphabetical: {
+    dbOrder: [["name", "ASC"]],
+    compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
+      a.name.localeCompare(b.name),
+  },
+  priority: {
+    dbOrder: [["name", "ASC"]],
+    compareFunction: compareAgentsForSort,
+  },
+};
+
 /**
  * Get an agent configuration
  *
@@ -68,194 +92,223 @@ export async function getAgentConfiguration(
   return res[0] || null;
 }
 
-export async function getAgentConfigurations<V extends "light" | "full">({
-  auth,
-  agentsGetView,
-  agentPrefix,
-  variant,
-}: {
-  auth: Authenticator;
-  agentsGetView: AgentsGetViewType;
-  agentPrefix?: string;
-  variant: V;
-}): Promise<
-  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
-> {
-  // {agentId: string} view: get a specific agent configuration.
-  // list view: specific to a user. Get all agents that are in the user's list (either they created it and it is private, or via AgentUserRelation).
-  // {conversationId: string} view: specific to a conversation. Get all agents that are in the user's list + workspace/published agents in the current conversation.
-  // all view: workspace + published agents (not private ones), eg. for agent gallery
-  // workspace view: only workspace agents (not published ones)
-  // published view: only published agents (not workspace ones)
-  // global view: only global agents (not workspace or published ones)
-  // admin_internal view: all agents, including private ones => this is only for internal use (eg poke). Requires superuser or admin auth.
+function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
+  return (results: AgentConfigurationType[]) => {
+    const sortStrategy = sort && sortStrategies[sort];
 
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  const plan = auth.plan();
-  if (!plan) {
-    throw new Error("Unexpected `auth` without `plan`.");
-  }
+    const sortedResults = sortStrategy
+      ? results.sort(sortStrategy.compareFunction)
+      : results;
 
-  const user = auth.user();
+    return limit ? sortedResults.slice(0, limit) : sortedResults;
+  };
+}
 
-  if (
-    agentsGetView === "admin_internal" &&
-    !auth.isDustSuperUser() &&
-    !auth.isAdmin()
-  ) {
-    throw new Error(
-      "superuser view is for dust superusers or internal admin auths only."
-    );
-  }
-  if (agentsGetView === "list" && !user) {
-    throw new Error("List view is specific to a user.");
-  }
+// Global agent configurations.
 
-  const globalAgentIdsToFetch: string[] | undefined = (() => {
-    switch (agentsGetView) {
-      case "workspace":
-      case "published":
-        // No global agents in workspace & published view.
-        return [];
-      case "global":
-      case "list":
-      case "all":
-      case "admin_internal":
-        // All global agents in global, list, all, admin_internal views.
+function determineGlobalAgentIdsToFetch(
+  agentsGetView: AgentsGetViewType
+): string[] | undefined {
+  switch (agentsGetView) {
+    case "workspace":
+    case "published":
+      // No global agents in workspace & published view.
+      return [];
+    case "global":
+    case "list":
+    case "all":
+    case "admin_internal":
+      // All global agents in global, list, all, admin_internal views.
+      return undefined;
+    default:
+      if (
+        typeof agentsGetView === "object" &&
+        "conversationId" in agentsGetView
+      ) {
+        // All global agents in conversation view.
         return undefined;
-      default:
-        if (
-          typeof agentsGetView === "object" &&
-          "conversationId" in agentsGetView
-        ) {
-          // All global agents in conversation view.
-          return undefined;
+      }
+      if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
+        if (isGlobalAgentId(agentsGetView.agentId)) {
+          // In agentId view, only get the global agent with the provided id if it is a global agent.
+          return [agentsGetView.agentId];
         }
-        if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
-          if (isGlobalAgentId(agentsGetView.agentId)) {
-            // In agentId view, only get the global agent with the provided id if it is a global agent.
-            return [agentsGetView.agentId];
-          }
-          // In agentId view, don't get any global agents if it is not a global agent.
-          return [];
-        }
-        assertNever(agentsGetView);
-    }
-  })();
+        // In agentId view, don't get any global agents if it is not a global agent.
+        return [];
+      }
+      assertNever(agentsGetView);
+  }
+}
 
-  let globalAgentsPromise = getGlobalAgents(auth, globalAgentIdsToFetch).then(
-    (globals) =>
-      globals.filter(
-        (a) =>
-          !agentPrefix ||
-          a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
-      )
+async function fetchGlobalAgentConfigurationForView(
+  auth: Authenticator,
+  {
+    agentPrefix,
+    agentsGetView,
+  }: {
+    agentPrefix?: string;
+    agentsGetView: AgentsGetViewType;
+  }
+) {
+  const globalAgentIdsToFetch = determineGlobalAgentIdsToFetch(agentsGetView);
+  const allGlobalAgents = await getGlobalAgents(auth, globalAgentIdsToFetch);
+  const matchingGlobalAgents = allGlobalAgents.filter(
+    (a) =>
+      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
   if (agentsGetView === "global") {
     // Only global agents in global view.`
-    return globalAgentsPromise;
+    return matchingGlobalAgents;
   }
 
   // If not in global view, filter out global agents that are not active.
-  globalAgentsPromise = globalAgentsPromise.then((globals) =>
-    globals.filter((a) => a.status === "active")
-  );
+  return matchingGlobalAgents.filter((a) => a.status === "active");
+}
 
-  const baseAgentsSequelizeQuery = {
-    where: {
-      workspaceId: owner.id,
-      status: "active",
-      ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-    },
+// Workspace agent configurations.
+
+function byId<T extends { id: number }>(list: T[]): Record<string, T> {
+  return list.reduce((acc, item) => {
+    acc[item.id] = item;
+    return acc;
+  }, {} as Record<number, T>);
+}
+
+async function fetchAgentConfigurationsForView(
+  auth: Authenticator,
+  {
+    agentPrefix,
+    agentsGetView,
+    limit,
+    owner,
+    sort,
+  }: {
+    agentPrefix?: string;
+    agentsGetView: Exclude<AgentsGetViewType, "global">;
+    limit?: number;
+    owner: WorkspaceType;
+    sort?: SortStrategyType;
+  }
+): Promise<AgentConfiguration[]> {
+  const sortStrategy = sort && sortStrategies[sort];
+
+  const baseWhereConditions = {
+    workspaceId: owner.id,
+    status: "active",
+    ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
   };
 
-  const agentConfigurations: AgentConfiguration[] = await (() => {
-    switch (agentsGetView) {
-      case "admin_internal":
+  const baseAgentsSequelizeQuery = {
+    limit,
+    order: sortStrategy?.dbOrder,
+  };
+
+  const baseConditionsAndScopesIn = (scopes: string[]) => ({
+    ...baseWhereConditions,
+    scope: { [Op.in]: scopes },
+  });
+
+  switch (agentsGetView) {
+    case "admin_internal":
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: baseWhereConditions,
+      });
+
+    case "all":
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: baseConditionsAndScopesIn(["workspace", "published"]),
+      });
+
+    case "workspace":
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: baseConditionsAndScopesIn(["workspace"]),
+      });
+
+    case "published":
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: baseConditionsAndScopesIn(["published"]),
+      });
+
+    case "list":
+      const user = auth.user();
+
+      return AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: {
+          ...baseWhereConditions,
+          [Op.or]: [
+            { scope: { [Op.in]: ["workspace", "published"] } },
+            { authorId: user?.id },
+          ],
+        },
+      });
+
+    default:
+      if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
+        if (isGlobalAgentId(agentsGetView.agentId)) {
+          return Promise.resolve([]);
+        }
         return AgentConfiguration.findAll({
-          ...baseAgentsSequelizeQuery,
-        });
-      case "all":
-        return AgentConfiguration.findAll({
-          ...baseAgentsSequelizeQuery,
           where: {
-            ...baseAgentsSequelizeQuery.where,
-            scope: { [Op.in]: ["workspace", "published"] },
+            workspaceId: owner.id,
+            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
+            sId: agentsGetView.agentId,
           },
+          order: [["version", "DESC"]],
+          ...(agentsGetView.allVersions ? {} : { limit: 1 }),
         });
-      case "workspace":
+      } else if (
+        typeof agentsGetView === "object" &&
+        "conversationId" in agentsGetView
+      ) {
+        const user = auth.user();
+
         return AgentConfiguration.findAll({
           ...baseAgentsSequelizeQuery,
           where: {
-            ...baseAgentsSequelizeQuery.where,
-            scope: { [Op.in]: ["workspace"] },
-          },
-        });
-      case "published":
-        return AgentConfiguration.findAll({
-          ...baseAgentsSequelizeQuery,
-          where: {
-            ...baseAgentsSequelizeQuery.where,
-            scope: { [Op.in]: ["published"] },
-          },
-        });
-      case "list":
-        return AgentConfiguration.findAll({
-          ...baseAgentsSequelizeQuery,
-          where: {
-            ...baseAgentsSequelizeQuery.where,
+            ...baseWhereConditions,
             [Op.or]: [
               { scope: { [Op.in]: ["workspace", "published"] } },
               { authorId: user?.id },
             ],
           },
         });
-      default:
-        if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
-          if (isGlobalAgentId(agentsGetView.agentId)) {
-            return Promise.resolve([]);
-          }
-          return AgentConfiguration.findAll({
-            where: {
-              workspaceId: owner.id,
-              ...(agentPrefix
-                ? { name: { [Op.iLike]: `${agentPrefix}%` } }
-                : {}),
-              sId: agentsGetView.agentId,
-            },
-            order: [["version", "DESC"]],
-            ...(agentsGetView.allVersions ? {} : { limit: 1 }),
-          });
-        }
-        if (
-          typeof agentsGetView === "object" &&
-          "conversationId" in agentsGetView
-        ) {
-          return AgentConfiguration.findAll({
-            ...baseAgentsSequelizeQuery,
-            where: {
-              ...baseAgentsSequelizeQuery.where,
-              [Op.or]: [
-                { scope: { [Op.in]: ["workspace", "published"] } },
-                { authorId: user?.id },
-              ],
-            },
-          });
-        }
-        assertNever(agentsGetView);
-    }
-  })();
-
-  function byId<T extends { id: number }>(list: T[]): Record<string, T> {
-    return list.reduce((acc, item) => {
-      acc[item.id] = item;
-      return acc;
-    }, {} as Record<number, T>);
+      }
+      assertNever(agentsGetView);
   }
+}
+
+async function fetchWorkspaceAgentConfigurationsForView(
+  auth: Authenticator,
+  owner: WorkspaceType,
+  {
+    agentPrefix,
+    agentsGetView,
+    limit,
+    sort,
+    variant,
+  }: {
+    agentPrefix?: string;
+    agentsGetView: Exclude<AgentsGetViewType, "global">;
+    limit?: number;
+    sort?: SortStrategyType;
+    variant: "light" | "full";
+  }
+) {
+  const user = auth.user();
+
+  const agentConfigurations = await fetchAgentConfigurationsForView(auth, {
+    agentPrefix,
+    agentsGetView,
+    limit,
+    owner,
+    sort,
+  });
 
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
@@ -535,10 +588,76 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     });
   }
 
-  return globalAgentsPromise.then((globalAgents) => [
-    ...agentConfigurationTypes,
-    ...globalAgents,
+  return agentConfigurationTypes;
+}
+
+export async function getAgentConfigurations<V extends "light" | "full">({
+  auth,
+  agentsGetView,
+  agentPrefix,
+  variant,
+  limit,
+  sort,
+}: {
+  auth: Authenticator;
+  agentsGetView: AgentsGetViewType;
+  agentPrefix?: string;
+  variant: V;
+  limit?: number;
+  sort?: SortStrategyType;
+}): Promise<
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
+> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  const plan = auth.plan();
+  if (!plan) {
+    throw new Error("Unexpected `auth` without `plan`.");
+  }
+
+  const user = auth.user();
+
+  if (
+    agentsGetView === "admin_internal" &&
+    !auth.isDustSuperUser() &&
+    !auth.isAdmin()
+  ) {
+    throw new Error(
+      "Superuser view is for dust superusers or internal admin auths only."
+    );
+  }
+  if (agentsGetView === "list" && !user) {
+    throw new Error("List view is specific to a user.");
+  }
+
+  const applySortAndLimit = makeApplySortAndLimit(sort, limit);
+
+  if (agentsGetView === "global") {
+    const allGlobalAgents = await fetchGlobalAgentConfigurationForView(auth, {
+      agentPrefix,
+      agentsGetView,
+    });
+
+    return applySortAndLimit(allGlobalAgents);
+  }
+
+  const allAgentConfigurations = await Promise.all([
+    fetchGlobalAgentConfigurationForView(auth, {
+      agentPrefix,
+      agentsGetView,
+    }),
+    fetchWorkspaceAgentConfigurationsForView(auth, owner, {
+      agentPrefix,
+      agentsGetView,
+      limit,
+      sort,
+      variant,
+    }),
   ]);
+
+  return applySortAndLimit(allAgentConfigurations.flat());
 }
 
 async function getConversationMentions(
