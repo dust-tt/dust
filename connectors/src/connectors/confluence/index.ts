@@ -232,8 +232,8 @@ export async function resumeConfluenceConnector(
 }
 
 export async function cleanupConfluenceConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findOne({
     where: { type: "confluence", id: connectorId },
   });

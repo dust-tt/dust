@@ -150,8 +150,8 @@ export async function updateIntercomConnector(
 }
 
 export async function cleanupIntercomConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   if (!NANGO_INTERCOM_CONNECTOR_ID) {
     throw new Error("INTERCOM_NANGO_CONNECTOR_ID not set");
   }

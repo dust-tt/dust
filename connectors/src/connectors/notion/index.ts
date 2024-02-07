@@ -322,8 +322,8 @@ export async function fullResyncNotionConnector(
 }
 
 export async function cleanupNotionConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     const connector = await Connector.findOne({
       where: { type: "notion", id: connectorId },

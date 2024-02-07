@@ -218,8 +218,8 @@ export async function fullResyncGithubConnector(
 }
 
 export async function cleanupGithubConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     try {
       const connector = await Connector.findOne({

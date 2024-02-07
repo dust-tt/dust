@@ -240,9 +240,9 @@ export async function updateGoogleDriveConnector(
 }
 
 export async function cleanupGoogleDriveConnector(
-  connectorId: string,
+  connectorId: ModelId,
   force = false
-): Promise<Result<void, Error>> {
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     const connector = await Connector.findByPk(connectorId, {
       transaction: transaction,

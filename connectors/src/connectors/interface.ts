@@ -30,7 +30,7 @@ export type ConnectorStopper = (
 
 // Should cleanup any state/resources associated with the connector
 export type ConnectorCleaner = (
-  connectorId: string,
+  connectorId: ModelId,
   force: boolean
 ) => Promise<Result<void, Error>>;
 

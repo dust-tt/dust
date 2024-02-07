@@ -197,8 +197,8 @@ export async function stopWebcrawlerConnector(
 }
 
 export async function cleanupWebcrawlerConnector(
-  connectorId: string
-): Promise<Result<void, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   return sequelize_conn.transaction(async (transaction) => {
     await WebCrawlerPage.destroy({
       where: {
