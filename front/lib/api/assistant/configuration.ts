@@ -54,7 +54,9 @@ import {
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
-interface SortStrategyType {
+type SortStrategyType = "alphabetical" | "priority";
+
+interface SortStrategy {
   dbOrder: Order | undefined;
   compareFunction: (
     a: AgentConfigurationType,
@@ -62,19 +64,17 @@ interface SortStrategyType {
   ) => number;
 }
 
-const sortStrategies: Record<"alphabetical" | "priority", SortStrategyType> = {
+const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
     dbOrder: [["name", "ASC"]],
     compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
       a.name.localeCompare(b.name),
   },
   priority: {
-    dbOrder: undefined,
+    dbOrder: [["name", "ASC"]],
     compareFunction: compareAgentsForSort,
   },
 };
-
-type SortStrategy = keyof typeof sortStrategies;
 
 /**
  * Get an agent configuration
@@ -92,7 +92,7 @@ export async function getAgentConfiguration(
   return res[0] || null;
 }
 
-function makeApplySortAndLimit(sort?: SortStrategy, limit?: number) {
+function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   return (results: AgentConfigurationType[]) => {
     const sortStrategy = sort && sortStrategies[sort];
 
@@ -188,7 +188,7 @@ async function fetchAgentConfigurationsForView(
     agentsGetView: Exclude<AgentsGetViewType, "global">;
     limit?: number;
     owner: WorkspaceType;
-    sort?: SortStrategy;
+    sort?: SortStrategyType;
   }
 ): Promise<AgentConfiguration[]> {
   const sortStrategy = sort && sortStrategies[sort];
@@ -201,10 +201,10 @@ async function fetchAgentConfigurationsForView(
 
   const baseAgentsSequelizeQuery = {
     limit,
-    order: sortStrategy ? sortStrategy.dbOrder : undefined,
+    order: sortStrategy?.dbOrder,
   };
 
-  const scopeConditions = (scopes: string[]) => ({
+  const baseConditionsAndScopesIn = (scopes: string[]) => ({
     ...baseWhereConditions,
     scope: { [Op.in]: scopes },
   });
@@ -219,19 +219,19 @@ async function fetchAgentConfigurationsForView(
     case "all":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: scopeConditions(["workspace", "published"]),
+        where: baseConditionsAndScopesIn(["workspace", "published"]),
       });
 
     case "workspace":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: scopeConditions(["workspace"]),
+        where: baseConditionsAndScopesIn(["workspace"]),
       });
 
     case "published":
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
-        where: scopeConditions(["published"]),
+        where: baseConditionsAndScopesIn(["published"]),
       });
 
     case "list":
@@ -296,7 +296,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
     limit?: number;
-    sort?: SortStrategy;
+    sort?: SortStrategyType;
     variant: "light" | "full";
   }
 ) {
@@ -604,7 +604,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   agentPrefix?: string;
   variant: V;
   limit?: number;
-  sort?: SortStrategy;
+  sort?: SortStrategyType;
 }): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
