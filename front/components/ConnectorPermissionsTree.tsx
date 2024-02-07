@@ -51,7 +51,7 @@ function PermissionTreeChildren({
   onPermissionUpdate,
   parentIsSelected,
   showExpand,
-  showDocumentModal,
+  displaySource,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -67,7 +67,7 @@ function PermissionTreeChildren({
   }) => void;
   parentIsSelected?: boolean;
   showExpand?: boolean;
-  showDocumentModal: (documentId: string) => void;
+  displaySource: (documentId: string) => void;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -172,7 +172,7 @@ function PermissionTreeChildren({
                   icon={BracesIcon}
                   onClick={() => {
                     if (r.dustDocumentId) {
-                      showDocumentModal(r.dustDocumentId);
+                      displaySource(r.dustDocumentId);
                     }
                   }}
                   className={classNames(
@@ -196,7 +196,7 @@ function PermissionTreeChildren({
                   (parentIsSelected || localStateByInternalId[r.internalId]) ??
                   ["read", "read_write"].includes(r.permission)
                 }
-                showDocumentModal={showDocumentModal}
+                displaySource={displaySource}
               />
             )}
           </Tree.Item>
@@ -213,6 +213,7 @@ export function PermissionTree({
   canUpdatePermissions,
   onPermissionUpdate,
   showExpand,
+  displaySourceOverride,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -226,6 +227,7 @@ export function PermissionTree({
     permission: ConnectorPermission;
   }) => void;
   showExpand?: boolean;
+  displaySourceOverride?: (documentId: string) => void;
 }) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -254,9 +256,12 @@ export function PermissionTree({
           onPermissionUpdate={onPermissionUpdate}
           showExpand={showExpand}
           parentIsSelected={false}
-          showDocumentModal={(documentId: string) => {
-            setDocumentToDisplay(documentId);
-          }}
+          displaySource={
+            displaySourceOverride ??
+            ((documentId: string) => {
+              setDocumentToDisplay(documentId);
+            })
+          }
         />
       </div>
     </>
