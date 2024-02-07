@@ -209,7 +209,9 @@ export default function WorkspaceAssistants({
                 />
               </Link>
               {workspaceAgents.length > 0 && (
-                <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+                >
                   <Button variant="primary" icon={PlusIcon} label="New" />
                 </Link>
               )}
