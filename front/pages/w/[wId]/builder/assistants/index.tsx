@@ -55,7 +55,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isUser() || !subscription) {
+  if (!owner || !auth.isBuilder() || !subscription) {
     return {
       notFound: true,
     };
