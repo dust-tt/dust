@@ -157,12 +157,15 @@ async function fetchGlobalAgentConfigurationForView(
       !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
-  if (agentsGetView === "global") {
-    // Only global agents in global view.`
+  if (
+    agentsGetView === "global" ||
+    (typeof agentsGetView === "object" && "agentId" in agentsGetView)
+  ) {
+    // All global agents in global and agent views.
     return matchingGlobalAgents;
   }
 
-  // If not in global view, filter out global agents that are not active.
+  // If not in global or agent view, filter out global agents that are not active.
   return matchingGlobalAgents.filter((a) => a.status === "active");
 }
 
