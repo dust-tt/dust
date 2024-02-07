@@ -112,7 +112,7 @@ export default function MyAssistants({
         <Searchbar
           name="search"
           size="md"
-          placeholder="Assistant Name"
+          placeholder="Search (Name)"
           value={assistantSearch}
           onChange={(s) => {
             setAssistantSearch(s);
@@ -182,11 +182,7 @@ function ScopeSection({
         <ContextItem
           key={agent.sId}
           title={`@${agent.name}`}
-          subElement={
-            <span className="text-xs text-element-700">
-              Authors would be here
-            </span>
-          }
+          subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
           visual={<Avatar visual={<img src={agent.pictureUrl} />} size="md" />}
           onClick={onAssistantClick(agent)}
           hasSeparator={false}
