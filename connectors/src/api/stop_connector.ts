@@ -28,7 +28,7 @@ const _stopConnectorAPIHandler = async (
     }
     const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
 
-    const stopRes = await connectorStopper(connector.id.toString());
+    const stopRes = await connectorStopper(connector.id);
 
     if (stopRes.isErr()) {
       return apiError(req, res, {
@@ -40,9 +40,7 @@ const _stopConnectorAPIHandler = async (
       });
     }
 
-    return res.status(200).json({
-      connectorId: stopRes.value,
-    });
+    return res.sendStatus(204);
   } catch (e) {
     logger.error(errorFromAny(e), "Failed to stop the connector");
     return apiError(req, res, {

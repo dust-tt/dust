@@ -209,14 +209,14 @@ export async function cleanupIntercomConnector(
 }
 
 export async function stopIntercomConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const res = await stopIntercomSyncWorkflow(connectorId);
   if (res.isErr()) {
     return res;
   }
 
-  return new Ok(connectorId);
+  return new Ok(undefined);
 }
 
 export async function resumeIntercomConnector(

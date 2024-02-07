@@ -116,8 +116,8 @@ export async function updateGithubConnector(
 }
 
 export async function stopGithubConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   try {
     const connector = await Connector.findOne({
       where: {
@@ -147,7 +147,7 @@ export async function stopGithubConnector(
       webhooksEnabledAt: null,
     });
 
-    return new Ok(connector.id.toString());
+    return new Ok(undefined);
   } catch (err) {
     return new Err(err as Error);
   }

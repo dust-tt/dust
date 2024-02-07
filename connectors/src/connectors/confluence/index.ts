@@ -188,16 +188,14 @@ export async function updateConfluenceConnector(
 }
 
 export async function stopConfluenceConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
-  // TODO(2024-01-23 flav) Change the prototype to take a ModelId.
-  const connectorIdAsNumber = parseInt(connectorId, 10);
-  const res = await stopConfluenceSyncWorkflow(connectorIdAsNumber);
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const res = await stopConfluenceSyncWorkflow(connectorId);
   if (res.isErr()) {
     return res;
   }
 
-  return new Ok(connectorId.toString());
+  return new Ok(undefined);
 }
 
 export async function resumeConfluenceConnector(

@@ -25,8 +25,8 @@ export type ConnectorUpdater = (
 ) => Promise<Result<string, ConnectorsAPIError>>;
 
 export type ConnectorStopper = (
-  connectorId: string
-) => Promise<Result<string, Error>>;
+  connectorId: ModelId
+) => Promise<Result<undefined, Error>>;
 
 // Should cleanup any state/resources associated with the connector
 export type ConnectorCleaner = (
