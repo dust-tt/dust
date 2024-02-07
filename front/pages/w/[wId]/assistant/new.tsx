@@ -203,9 +203,7 @@ export default function AssistantNew({
                       <div className="flex w-full flex-row justify-between">
                         <Page.SectionHeader title={greeting} />
                         {!isBuilder && (
-                          <Link
-                            href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
-                          >
+                          <Link href={`/w/${owner.sId}/assistant/gallery`}>
                             <Button
                               variant="primary"
                               icon={BookOpenIcon}
@@ -223,9 +221,7 @@ export default function AssistantNew({
                             <div className="text-base font-bold text-element-800">
                               Assistants
                             </div>
-                            <Link
-                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
-                            >
+                            <Link href={`/w/${owner.sId}/assistant/gallery`}>
                               <Button
                                 variant="secondary"
                                 icon={BookOpenIcon}

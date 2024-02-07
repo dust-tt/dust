@@ -201,9 +201,7 @@ export default function WorkspaceAssistants({
               </div>
             </div>
             <Button.List>
-              <Link
-                href={`/w/${owner.sId}/assistant/gallery?flow=workspace_add`}
-              >
+              <Link href={`/w/${owner.sId}/assistant/gallery`}>
                 <Button
                   variant="primary"
                   icon={BookOpenIcon}
@@ -211,9 +209,7 @@ export default function WorkspaceAssistants({
                 />
               </Link>
               {workspaceAgents.length > 0 && (
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
-                >
+                <Link href={`/w/${owner.sId}/builder/assistants/new`}>
                   <Button variant="primary" icon={PlusIcon} label="New" />
                 </Link>
               )}

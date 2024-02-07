@@ -33,20 +33,12 @@ import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-const GALLERY_FLOWS = [
-  "workspace_add",
-  "conversation_add",
-  "personal_add",
-] as const;
-export type GalleryFlow = (typeof GALLERY_FLOWS)[number];
-
 export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType;
   owner: WorkspaceType;
   plan: PlanType | null;
   subscription: SubscriptionType;
   agentsGetView: AgentsGetViewType;
-  flow: GalleryFlow;
   gaTrackingId: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -68,14 +60,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
   const agentsGetView = (context.query.view || "all") as AgentsGetViewType;
 
-  let flow: GalleryFlow = "conversation_add";
-  if (
-    context.query.flow &&
-    GALLERY_FLOWS.includes(context.query.flow as GalleryFlow)
-  ) {
-    flow = context.query.flow as GalleryFlow;
-  }
-
   return {
     props: {
       user,
@@ -83,7 +67,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       plan,
       subscription,
       agentsGetView,
-      flow,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -95,7 +78,6 @@ export default function AssistantsGallery({
   plan,
   subscription,
   agentsGetView,
-  flow,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -163,24 +145,24 @@ export default function AssistantsGallery({
   const tabs = [
     {
       label: "All",
-      href: `/w/${owner.sId}/assistant/gallery?view=all&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=all`,
       current: agentsGetView === "all",
     },
     {
       label: "Shared Assistants",
-      href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=published`,
       current: agentsGetView === "published",
       icon: UserGroupIcon,
     },
     {
       label: "Company",
-      href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=workspace`,
       current: agentsGetView === "workspace",
       icon: PlanetIcon,
     },
     {
       label: "Default",
-      href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=global`,
       current: agentsGetView === "global",
       icon: DustIcon,
     },
@@ -230,21 +212,7 @@ export default function AssistantsGallery({
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Assistant Gallery"
-          onClose={async () => {
-            switch (flow) {
-              case "conversation_add":
-                await router.push(`/w/${owner.sId}/assistant/new`);
-                break;
-              case "personal_add":
-                await router.push(`/w/${owner.sId}/assistant/assistants`);
-                break;
-              case "workspace_add":
-                await router.push(`/w/${owner.sId}/builder/assistants`);
-                break;
-              default:
-                assertNever(flow);
-            }
-          }}
+          onClose={() => router.back()}
         />
       }
     >
