@@ -186,6 +186,37 @@ export default function AssistantsGallery({
     },
   ];
 
+  const SearchOrderDropdown = (
+    <div className="shrink-0">
+      <DropdownMenu>
+        <DropdownMenu.Button>
+          <Button
+            type="select"
+            labelVisible={true}
+            label={`Order by: ${orderBy}`}
+            variant="tertiary"
+            hasMagnifying={false}
+            size="sm"
+          />
+        </DropdownMenu.Button>
+        <DropdownMenu.Items origin="bottomRight">
+          <DropdownMenu.Item
+            key="name"
+            label="Name"
+            onClick={() => setOrderBy("name")}
+          />
+          <DropdownMenu.Item
+            key="usage"
+            label="Usage"
+            onClick={() => {
+              setOrderBy("usage");
+            }}
+          />
+        </DropdownMenu.Items>
+      </DropdownMenu>
+    </div>
+  );
+
   return (
     <AppLayout
       subscription={subscription}
@@ -235,46 +266,22 @@ export default function AssistantsGallery({
       )}
       <div className="pb-16 pt-6">
         <Page.Vertical gap="md" align="stretch">
-          <Searchbar
-            name="search"
-            placeholder="Assistant name"
-            value={assistantSearch}
-            onChange={(s) => {
-              setAssistantSearch(s);
-            }}
-          />
+          <div className="flex flex-row gap-2">
+            <Searchbar
+              name="search"
+              placeholder="Search (Name)"
+              value={assistantSearch}
+              onChange={(s) => {
+                setAssistantSearch(s);
+              }}
+            />
+            <div className="block md:hidden">{SearchOrderDropdown}</div>
+          </div>
           <div className="flex flex-row space-x-4 overflow-x-auto scrollbar-hide">
             <div className="shrink-0 grow">
               <Tab tabs={tabs} />
             </div>
-            <div className="shrink-0">
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    type="select"
-                    labelVisible={true}
-                    label={`Order by: ${orderBy}`}
-                    variant="tertiary"
-                    hasMagnifying={false}
-                    size="sm"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="bottomRight">
-                  <DropdownMenu.Item
-                    key="name"
-                    label="Name"
-                    onClick={() => setOrderBy("name")}
-                  />
-                  <DropdownMenu.Item
-                    key="usage"
-                    label="Usage"
-                    onClick={() => {
-                      setOrderBy("usage");
-                    }}
-                  />
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
+            <div className="hidden md:block">{SearchOrderDropdown}</div>
           </div>
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
