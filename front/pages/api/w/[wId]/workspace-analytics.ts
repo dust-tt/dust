@@ -148,9 +148,9 @@ async function getAnalytics(
       )
       SELECT
         "last_7_days_active_users",
-        "wow_growth_pct",
+        ROUND(wow_growth_pct, 2) AS "wow_growth_pct",
         "last_30_days_active_users",
-        "mom_growth_pct"
+        ROUND(mom_growth_pct, 2) AS "mom_growth_pct"
       FROM growth_calculations;
       `,
         {
@@ -194,7 +194,7 @@ async function getAnalytics(
         )
         SELECT
           ROUND(COALESCE(current_avg_dau, 0), 2) AS last_7_days_average_daily_active_users,
-          COALESCE(wow_growth_pct, 0) AS wow_growth_pct
+          ROUND(COALESCE(wow_growth_pct, 0), 2) AS wow_growth_pct
         FROM wow_growth;
       `,
         {
