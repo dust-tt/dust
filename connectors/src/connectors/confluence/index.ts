@@ -199,8 +199,8 @@ export async function stopConfluenceConnector(
 }
 
 export async function resumeConfluenceConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   try {
     const connector = await Connector.findOne({
       where: {
@@ -225,7 +225,7 @@ export async function resumeConfluenceConnector(
 
     await launchConfluenceSyncWorkflow(connector.id, null);
 
-    return new Ok(connector.id.toString());
+    return new Ok(undefined);
   } catch (err) {
     return new Err(err as Error);
   }

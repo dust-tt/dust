@@ -221,8 +221,8 @@ export async function stopNotionConnector(
 }
 
 export async function resumeNotionConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
 
   if (!connector) {
@@ -254,7 +254,7 @@ export async function resumeNotionConnector(
     );
   }
 
-  return new Ok(connector.id.toString());
+  return new Ok(undefined);
 }
 
 export async function fullResyncNotionConnector(

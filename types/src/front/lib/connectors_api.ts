@@ -135,11 +135,11 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async pauseConnector(
+  async stopConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
     const res = await fetch(
-      `${CONNECTORS_API}/connectors/pause/${connectorId}`,
+      `${CONNECTORS_API}/connectors/stop/${connectorId}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),

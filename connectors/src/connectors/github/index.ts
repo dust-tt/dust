@@ -154,8 +154,8 @@ export async function stopGithubConnector(
 }
 
 export async function resumeGithubConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   try {
     const connector = await Connector.findOne({
       where: {
@@ -190,7 +190,7 @@ export async function resumeGithubConnector(
       syncCodeOnly: false,
     });
 
-    return new Ok(connector.id.toString());
+    return new Ok(undefined);
   } catch (err) {
     return new Err(err as Error);
   }

@@ -166,18 +166,18 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   ConnectorResumer
 > = {
   confluence: resumeConfluenceConnector,
-  slack: async (connectorId: string) => {
+  slack: async (connectorId: ModelId) => {
     logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
-    return new Ok(connectorId);
+    return new Ok(undefined);
   },
   notion: resumeNotionConnector,
   github: resumeGithubConnector,
-  google_drive: async (connectorId: string) => {
+  google_drive: async (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
   intercom: resumeIntercomConnector,
-  webcrawler: () => {
-    throw new Error("Not implemented");
+  webcrawler: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
   },
 };
 

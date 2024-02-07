@@ -32,11 +32,11 @@ export type ConnectorStopper = (
 export type ConnectorCleaner = (
   connectorId: ModelId,
   force: boolean
-) => Promise<Result<void, Error>>;
+) => Promise<Result<undefined, Error>>;
 
 export type ConnectorResumer = (
-  connectorId: string
-) => Promise<Result<string, Error>>;
+  connectorId: ModelId
+) => Promise<Result<undefined, Error>>;
 
 export type SyncConnector = (
   connectorId: ModelId,

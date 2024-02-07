@@ -220,8 +220,8 @@ export async function stopIntercomConnector(
 }
 
 export async function resumeIntercomConnector(
-  connectorId: string
-): Promise<Result<string, Error>> {
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
   const connector = await Connector.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
@@ -242,7 +242,7 @@ export async function resumeIntercomConnector(
     );
   }
 
-  return new Ok(connector.id.toString());
+  return new Ok(undefined);
 }
 
 export async function retrieveIntercomConnectorPermissions({
