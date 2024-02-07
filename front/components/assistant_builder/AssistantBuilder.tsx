@@ -1217,7 +1217,7 @@ export default function AssistantBuilder({
                 agentConfigurationId={agentConfigurationId}
                 show={showDeletionModal}
                 onClose={() => setShowDeletionModal(false)}
-                onDelete={async () => {
+                onDelete={() => {
                   setShowDeletionModal(false);
                   onClose();
                 }}
