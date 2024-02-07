@@ -28,7 +28,7 @@ function isGoogleSession(session: any) {
   return session.provider.provider === "google";
 }
 
-async function createWorkspace(session: any) {
+export async function createWorkspace(session: any) {
   const [, emailDomain] = session.user.email.split("@");
 
   // Use domain only when email is verified on Google Workspace and non-disposable.
@@ -239,7 +239,7 @@ async function handler(
     // will be added to the workspace they were invited to (either by email or by domain) below.
     if (!workspaceInvite && !membershipInvite && !autoJoinWorkspaceWithDomain) {
       const workspace = await createWorkspace(session);
-      await _createAndLogMembership({
+      await createAndLogMembership({
         workspace,
         userId: user.id,
         role: "admin",
@@ -267,7 +267,7 @@ async function handler(
     });
 
     if (!m) {
-      m = await _createAndLogMembership({
+      m = await createAndLogMembership({
         workspace: selectedWorkspaceInvite,
         userId: user.id,
         role: "user",
@@ -317,7 +317,7 @@ async function handler(
     }
 
     if (!m) {
-      m = await _createAndLogMembership({
+      m = await createAndLogMembership({
         workspace: targetWorkspace,
         userId: user.id,
         role: "user",
@@ -342,14 +342,8 @@ async function handler(
   const u = await getUserFromSession(session);
 
   if (!u || u.workspaces.length === 0) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          "Could not find user or workspace for user, contact us at team@dust.tt for assistance.",
-      },
-    });
+    res.redirect(`/no-workspace`);
+    return;
   }
 
   if (targetWorkspace) {
@@ -372,7 +366,7 @@ async function handler(
   return;
 }
 
-async function _createAndLogMembership({
+export async function createAndLogMembership({
   userId,
   workspace,
   role,
