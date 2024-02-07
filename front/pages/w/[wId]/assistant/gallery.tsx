@@ -1,4 +1,13 @@
-import { Button, DropdownMenu, Page, Searchbar, Tab } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  DustIcon,
+  Page,
+  PlanetIcon,
+  Searchbar,
+  Tab,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
@@ -24,20 +33,12 @@ import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-const GALLERY_FLOWS = [
-  "workspace_add",
-  "conversation_add",
-  "personal_add",
-] as const;
-export type GalleryFlow = (typeof GALLERY_FLOWS)[number];
-
 export const getServerSideProps = withGetServerSidePropsLogging<{
   user: UserType;
   owner: WorkspaceType;
   plan: PlanType | null;
   subscription: SubscriptionType;
   agentsGetView: AgentsGetViewType;
-  flow: GalleryFlow;
   gaTrackingId: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -59,14 +60,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
   const agentsGetView = (context.query.view || "all") as AgentsGetViewType;
 
-  let flow: GalleryFlow = "conversation_add";
-  if (
-    context.query.flow &&
-    GALLERY_FLOWS.includes(context.query.flow as GalleryFlow)
-  ) {
-    flow = context.query.flow as GalleryFlow;
-  }
-
   return {
     props: {
       user,
@@ -74,7 +67,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       plan,
       subscription,
       agentsGetView,
-      flow,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -86,7 +78,6 @@ export default function AssistantsGallery({
   plan,
   subscription,
   agentsGetView,
-  flow,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -154,25 +145,62 @@ export default function AssistantsGallery({
   const tabs = [
     {
       label: "All",
-      href: `/w/${owner.sId}/assistant/gallery?view=all&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=all`,
       current: agentsGetView === "all",
     },
     {
-      label: "Company",
-      href: `/w/${owner.sId}/assistant/gallery?view=workspace&flow=` + flow,
-      current: agentsGetView === "workspace",
+      label: "Shared Assistants",
+      href: `/w/${owner.sId}/assistant/gallery?view=published`,
+      current: agentsGetView === "published",
+      icon: UserGroupIcon,
     },
     {
-      label: "Shared",
-      href: `/w/${owner.sId}/assistant/gallery?view=published&flow=` + flow,
-      current: agentsGetView === "published",
+      label: "Company",
+      href: `/w/${owner.sId}/assistant/gallery?view=workspace`,
+      current: agentsGetView === "workspace",
+      icon: PlanetIcon,
     },
     {
       label: "Default",
-      href: `/w/${owner.sId}/assistant/gallery?view=global&flow=` + flow,
+      href: `/w/${owner.sId}/assistant/gallery?view=global`,
       current: agentsGetView === "global",
+      icon: DustIcon,
     },
   ];
+
+  // Headless UI does not inherently handle Portal-based rendering,
+  // leading to dropdown menus being hidden by parent divs with overflow settings.
+  // Adapts layout for smaller screens.
+  const SearchOrderDropdown = (
+    <div className="shrink-0">
+      <DropdownMenu>
+        <DropdownMenu.Button>
+          <Button
+            type="select"
+            labelVisible={true}
+            label={`Order by: ${orderBy}`}
+            variant="tertiary"
+            hasMagnifying={false}
+            size="sm"
+          />
+        </DropdownMenu.Button>
+        <DropdownMenu.Items origin="topLeft">
+          <DropdownMenu.Item
+            key="name"
+            label="Name"
+            onClick={() => setOrderBy("name")}
+          />
+          <DropdownMenu.Item
+            key="usage"
+            label="Usage"
+            onClick={() => {
+              setOrderBy("usage");
+            }}
+          />
+        </DropdownMenu.Items>
+      </DropdownMenu>
+    </div>
+  );
 
   return (
     <AppLayout
@@ -183,24 +211,8 @@ export default function AssistantsGallery({
       topNavigationCurrent="conversations"
       titleChildren={
         <AppLayoutSimpleCloseTitle
-          title={`${
-            flow === "workspace_add" ? "Workspace " : ""
-          }Assistant Gallery`}
-          onClose={async () => {
-            switch (flow) {
-              case "conversation_add":
-                await router.push(`/w/${owner.sId}/assistant/new`);
-                break;
-              case "personal_add":
-                await router.push(`/w/${owner.sId}/assistant/assistants`);
-                break;
-              case "workspace_add":
-                await router.push(`/w/${owner.sId}/builder/assistants`);
-                break;
-              default:
-                assertNever(flow);
-            }
-          }}
+          title="Assistant Gallery"
+          onClose={() => router.back()}
         />
       }
     >
@@ -223,51 +235,27 @@ export default function AssistantsGallery({
           onClose={() => setTestModalAssistant(null)}
         />
       )}
-      <div className="pb-16">
-        <Page.Vertical gap="xl" align="stretch">
-          <Tab tabs={tabs} />
+      <div className="pb-16 pt-6">
+        <Page.Vertical gap="md" align="stretch">
+          <div className="flex flex-row gap-2">
+            <Searchbar
+              name="search"
+              placeholder="Search (Name)"
+              value={assistantSearch}
+              onChange={(s) => {
+                setAssistantSearch(s);
+              }}
+            />
+            <div className="block md:hidden">{SearchOrderDropdown}</div>
+          </div>
           <div className="flex flex-row space-x-4">
-            <div className="flex-grow">
-              <Searchbar
-                name="search"
-                placeholder="Assistant name"
-                value={assistantSearch}
-                onChange={(s) => {
-                  setAssistantSearch(s);
-                }}
-              />
+            <div className="grow overflow-x-auto scrollbar-hide">
+              <Tab tabs={tabs} />
             </div>
-            <div className="shrink-0">
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    type="select"
-                    labelVisible={true}
-                    label={`Order by: ${orderBy}`}
-                    variant="tertiary"
-                    hasMagnifying={false}
-                    size="sm"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="bottomRight">
-                  <DropdownMenu.Item
-                    key="name"
-                    label="Name"
-                    onClick={() => setOrderBy("name")}
-                  />
-                  <DropdownMenu.Item
-                    key="usage"
-                    label="Usage"
-                    onClick={() => {
-                      setOrderBy("usage");
-                    }}
-                  />
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
+            <div className="hidden md:block">{SearchOrderDropdown}</div>
           </div>
           <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {agentsToDisplay.map((a) => (
                 <GalleryAssistantPreviewContainer
                   key={a.sId}
@@ -280,7 +268,6 @@ export default function AssistantsGallery({
                   onUpdate={() => {
                     void mutateAgentConfigurations();
                   }}
-                  flow={flow === "workspace_add" ? "workspace" : "personal"}
                   setTestModalAssistant={setTestModalAssistant}
                 />
               ))}

@@ -11,11 +11,8 @@ import { SharingChip } from "@app/components/assistant/Sharing";
 import { isLargeModel } from "@app/lib/assistant";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 
-type AssistantPreviewFlow = "personal" | "workspace";
-
 interface GalleryAssistantPreviewContainerProps {
   agentConfiguration: LightAgentConfigurationType;
-  flow: AssistantPreviewFlow;
   onShowDetails: () => void;
   onUpdate: () => void;
   owner: WorkspaceType;
@@ -27,7 +24,6 @@ interface GalleryAssistantPreviewContainerProps {
 
 export function GalleryAssistantPreviewContainer({
   agentConfiguration,
-  flow,
   onShowDetails,
   owner,
   plan,
@@ -42,7 +38,6 @@ export function GalleryAssistantPreviewContainer({
     agentConfiguration;
 
   const isGlobal = scope === "global";
-  const isPersonalFlow = flow === "personal";
   const hasAccessToLargeModels = isUpgraded(plan);
   const eligibleForTesting =
     hasAccessToLargeModels || !isLargeModel(generation?.model);
@@ -60,13 +55,11 @@ export function GalleryAssistantPreviewContainer({
         return (
           <div className="s-flex s-gap-2">
             <SharingChip scope={scope} />
-            {isPersonalFlow && (
-              <AssistantListActions
-                agentConfiguration={agentConfiguration}
-                isParentHovered={isParentHovered}
-                owner={owner}
-              />
-            )}
+            <AssistantListActions
+              agentConfiguration={agentConfiguration}
+              isParentHovered={isParentHovered}
+              owner={owner}
+            />
           </div>
         );
       }}
