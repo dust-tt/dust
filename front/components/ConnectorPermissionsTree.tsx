@@ -42,7 +42,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   webcrawler: undefined,
 };
 
-function PermissionTreeChildren({
+export function PermissionTreeChildren({
   owner,
   dataSource,
   parentId,
@@ -51,7 +51,8 @@ function PermissionTreeChildren({
   onPermissionUpdate,
   parentIsSelected,
   showExpand,
-  showDocumentModal,
+  displayDocumentSource,
+  useConnectorPermissionsHook,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -67,10 +68,11 @@ function PermissionTreeChildren({
   }) => void;
   parentIsSelected?: boolean;
   showExpand?: boolean;
-  showDocumentModal: (documentId: string) => void;
+  displayDocumentSource: (documentId: string) => void;
+  useConnectorPermissionsHook: typeof useConnectorPermissions;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions({
+    useConnectorPermissionsHook({
       owner,
       dataSource,
       parentId,
@@ -172,7 +174,7 @@ function PermissionTreeChildren({
                   icon={BracesIcon}
                   onClick={() => {
                     if (r.dustDocumentId) {
-                      showDocumentModal(r.dustDocumentId);
+                      displayDocumentSource(r.dustDocumentId);
                     }
                   }}
                   className={classNames(
@@ -196,7 +198,8 @@ function PermissionTreeChildren({
                   (parentIsSelected || localStateByInternalId[r.internalId]) ??
                   ["read", "read_write"].includes(r.permission)
                 }
-                showDocumentModal={showDocumentModal}
+                displayDocumentSource={displayDocumentSource}
+                useConnectorPermissionsHook={useConnectorPermissionsHook}
               />
             )}
           </Tree.Item>
@@ -254,9 +257,10 @@ export function PermissionTree({
           onPermissionUpdate={onPermissionUpdate}
           showExpand={showExpand}
           parentIsSelected={false}
-          showDocumentModal={(documentId: string) => {
+          displayDocumentSource={(documentId: string) => {
             setDocumentToDisplay(documentId);
           }}
+          useConnectorPermissionsHook={useConnectorPermissions}
         />
       </div>
     </>

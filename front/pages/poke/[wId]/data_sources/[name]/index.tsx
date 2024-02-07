@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -274,6 +275,17 @@ const DataSourcePage = ({
     }
   });
 
+  const onDisplayDocumentSource = (documentId: string) => {
+    window.confirm(
+      "Are you sure you want to access this sensible user data? (Access will be logged)"
+    );
+    void router.push(
+      `/poke/${owner.sId}/data_sources/${
+        dataSource.name
+      }/view?documentId=${encodeURIComponent(documentId)}`
+    );
+  };
+
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
@@ -382,99 +394,103 @@ const DataSourcePage = ({
           </div>
 
           <div className="mt-4 flex flex-row">
-            <div className="flex flex-1">
-              <div className="flex flex-col">
-                <div className="flex flex-row">
-                  <div className="flex flex-initial gap-x-2">
-                    <Button
-                      variant="tertiary"
-                      disabled={offset < limit}
-                      onClick={() => {
-                        if (offset >= limit) {
-                          setOffset(offset - limit);
-                        } else {
-                          setOffset(0);
-                        }
-                      }}
-                      label="Previous"
-                    />
-                    <Button
-                      variant="tertiary"
-                      label="Next"
-                      disabled={offset + limit >= total}
-                      onClick={() => {
-                        if (offset + limit < total) {
-                          setOffset(offset + limit);
-                        }
-                      }}
-                    />
+            {!dataSource.connectorId && (
+              <div className="flex flex-1">
+                <div className="flex flex-col">
+                  <div className="flex flex-row">
+                    <div className="flex flex-initial gap-x-2">
+                      <Button
+                        variant="tertiary"
+                        disabled={offset < limit}
+                        onClick={() => {
+                          if (offset >= limit) {
+                            setOffset(offset - limit);
+                          } else {
+                            setOffset(0);
+                          }
+                        }}
+                        label="Previous"
+                      />
+                      <Button
+                        variant="tertiary"
+                        label="Next"
+                        disabled={offset + limit >= total}
+                        onClick={() => {
+                          if (offset + limit < total) {
+                            setOffset(offset + limit);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                    {total > 0 && (
+                      <span>
+                        Showing documents {offset + 1} - {last} of {total}{" "}
+                        documents
+                      </span>
+                    )}
                   </div>
                 </div>
-
-                <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                  {total > 0 && (
-                    <span>
-                      Showing documents {offset + 1} - {last} of {total}{" "}
-                      documents
-                    </span>
-                  )}
-                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="pb-8 pt-2">
-            <ContextItem.List>
-              {documents.map((d) => (
-                <ContextItem
-                  key={d.document_id}
-                  title={displayNameByDocId[d.document_id]}
-                  visual={
-                    <ContextItem.Visual
-                      visual={({ className }) =>
-                        DocumentTextIcon({
-                          className: className + " text-element-600",
-                        })
+            {!dataSource.connectorId ? (
+              <>
+                {" "}
+                <ContextItem.List>
+                  {documents.map((d) => (
+                    <ContextItem
+                      key={d.document_id}
+                      title={displayNameByDocId[d.document_id]}
+                      visual={
+                        <ContextItem.Visual
+                          visual={({ className }) =>
+                            DocumentTextIcon({
+                              className: className + " text-element-600",
+                            })
+                          }
+                        />
                       }
-                    />
-                  }
-                  action={
-                    <Button.List>
-                      <Button
-                        variant="secondary"
-                        icon={EyeIcon}
-                        onClick={() => {
-                          window.confirm(
-                            "Are you sure you want to access this sensible user data? (Access will be logged)"
-                          );
-                          void router.push(
-                            `/poke/${owner.sId}/data_sources/${
-                              dataSource.name
-                            }/view?documentId=${encodeURIComponent(
-                              d.document_id
-                            )}`
-                          );
-                        }}
-                        label="View"
-                        labelVisible={false}
-                      />
-                    </Button.List>
-                  }
-                >
-                  <ContextItem.Description>
-                    <div className="pt-2 text-sm text-element-700">
-                      {Math.floor(d.text_size / 1024)} kb,{" "}
-                      {timeAgoFrom(d.timestamp)} ago
-                    </div>
-                  </ContextItem.Description>
-                </ContextItem>
-              ))}
-            </ContextItem.List>
-            {documents.length == 0 ? (
-              <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                <p>Empty</p>
-              </div>
-            ) : null}
+                      action={
+                        <Button.List>
+                          <Button
+                            variant="secondary"
+                            icon={EyeIcon}
+                            onClick={() =>
+                              onDisplayDocumentSource(d.document_id)
+                            }
+                            label="View"
+                            labelVisible={false}
+                          />
+                        </Button.List>
+                      }
+                    >
+                      <ContextItem.Description>
+                        <div className="pt-2 text-sm text-element-700">
+                          {Math.floor(d.text_size / 1024)} kb,{" "}
+                          {timeAgoFrom(d.timestamp)} ago
+                        </div>
+                      </ContextItem.Description>
+                    </ContextItem>
+                  ))}
+                </ContextItem.List>
+                {documents.length == 0 ? (
+                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                    <p>Empty</p>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <PokePermissionTree
+                owner={owner}
+                dataSource={dataSource}
+                displayDocumentSource={onDisplayDocumentSource}
+              />
+            )}
           </div>
         </Page.Vertical>
       </div>

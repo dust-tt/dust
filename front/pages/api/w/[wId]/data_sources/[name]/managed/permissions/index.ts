@@ -1,6 +1,7 @@
 import type {
   ConnectorPermission,
   ConnectorResource,
+  DataSourceType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import { assertNever, ConnectorsAPI } from "@dust-tt/types";
@@ -95,90 +96,17 @@ async function handler(
     });
   }
 
-  const connectorsAPI = new ConnectorsAPI(logger);
-
   switch (req.method) {
     case "GET":
-      let parentId: string | undefined = undefined;
-      if (req.query.parentId && typeof req.query.parentId === "string") {
-        parentId = req.query.parentId;
-      }
-
-      let filterPermission: ConnectorPermission | undefined = undefined;
-      if (
-        req.query.filterPermission &&
-        typeof req.query.filterPermission === "string"
-      ) {
-        switch (req.query.filterPermission) {
-          case "read":
-            filterPermission = "read";
-            break;
-          case "write":
-            filterPermission = "write";
-            break;
-        }
-      }
-
-      switch (filterPermission) {
-        case "read":
-          // We let users get the read  permissions of a connector
-          // `read` is used for data source selection when creating personal assitsants
-          break;
-        case "write":
-          // We let builders get the write permissions of a connector.
-          // `write` is used for selection of default slack channel in the workspace assistant
-          // builder.
-          if (!auth.isBuilder()) {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "data_source_auth_error",
-                message:
-                  "Only builders of the current workspace can view 'write' permissions of a data source.",
-              },
-            });
-          }
-          break;
-        case undefined:
-          // Only admins can browse "all" the resources of a connector.
-          if (!auth.isAdmin()) {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "data_source_auth_error",
-                message:
-                  "Only admins of the current workspace can view all permissions of a data source.",
-              },
-            });
-          }
-          break;
-        default:
-          assertNever(filterPermission);
-      }
-
-      const permissionsRes = await connectorsAPI.getConnectorPermissions({
-        connectorId: dataSource.connectorId,
-        parentId,
-        filterPermission,
-      });
-      if (permissionsRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `An error occurred while retrieving the data source permissions.`,
-          },
-        });
-      }
-
-      const permissions = permissionsRes.value.resources;
-
-      res.status(200).json({
-        resources: permissions,
-      });
-      return;
-
+      return getManagedDataSourcePermissionsHandler(
+        auth,
+        // To make typescript happy.
+        { ...dataSource, connectorId: dataSource.connectorId },
+        req,
+        res
+      );
     case "POST":
+      const connectorsAPI = new ConnectorsAPI(logger);
       if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
@@ -251,6 +179,95 @@ async function handler(
         },
       });
   }
+}
+
+export async function getManagedDataSourcePermissionsHandler(
+  auth: Authenticator,
+  dataSource: DataSourceType & { connectorId: string },
+  req: NextApiRequest,
+  res: NextApiResponse<
+    WithAPIErrorReponse<GetDataSourcePermissionsResponseBody>
+  >
+) {
+  let parentId: string | undefined = undefined;
+  if (req.query.parentId && typeof req.query.parentId === "string") {
+    parentId = req.query.parentId;
+  }
+
+  let filterPermission: ConnectorPermission | undefined = undefined;
+  if (
+    req.query.filterPermission &&
+    typeof req.query.filterPermission === "string"
+  ) {
+    switch (req.query.filterPermission) {
+      case "read":
+        filterPermission = "read";
+        break;
+      case "write":
+        filterPermission = "write";
+        break;
+    }
+  }
+
+  switch (filterPermission) {
+    case "read":
+      // We let users get the read  permissions of a connector
+      // `read` is used for data source selection when creating personal assitsants
+      break;
+    case "write":
+      // We let builders get the write permissions of a connector.
+      // `write` is used for selection of default slack channel in the workspace assistant
+      // builder.
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only builders of the current workspace can view 'write' permissions of a data source.",
+          },
+        });
+      }
+      break;
+    case undefined:
+      // Only admins can browse "all" the resources of a connector.
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only admins of the current workspace can view all permissions of a data source.",
+          },
+        });
+      }
+      break;
+    default:
+      assertNever(filterPermission);
+  }
+
+  const connectorsAPI = new ConnectorsAPI(logger);
+  const permissionsRes = await connectorsAPI.getConnectorPermissions({
+    connectorId: dataSource.connectorId,
+    parentId,
+    filterPermission,
+  });
+  if (permissionsRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `An error occurred while retrieving the data source permissions.`,
+      },
+    });
+  }
+
+  const permissions = permissionsRes.value.resources;
+
+  res.status(200).json({
+    resources: permissions,
+  });
+  return;
 }
 
 export default withLogging(handler);
