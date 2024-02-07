@@ -16,3 +16,16 @@ export function ioTsEnum<EnumType>(
     t.identity
   );
 }
+
+export interface BrandedRange {
+  readonly Range: unique symbol;
+}
+
+// Defines a function to generate a branded codec for validating numbers within a specific range.
+export function createRangeCodec(min: number, max: number) {
+  return t.brand(
+    t.number,
+    (n): n is t.Branded<number, BrandedRange> => n >= min && n <= max,
+    "Range"
+  );
+}

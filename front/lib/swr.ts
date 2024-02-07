@@ -494,10 +494,14 @@ export function useAgentConfigurations({
   workspaceId,
   agentsGetView,
   includes = [],
+  limit,
+  sort,
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType;
   includes?: ("authors" | "usage")[];
+  limit?: number;
+  sort?: "alphabetical" | "priority";
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -518,6 +522,15 @@ export function useAgentConfigurations({
     if (includes.includes("authors")) {
       params.append("withAuthors", "true");
     }
+
+    if (limit) {
+      params.append("limit", limit.toString());
+    }
+
+    if (sort) {
+      params.append("sort", sort);
+    }
+
     return params.toString();
   }
 

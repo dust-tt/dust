@@ -72,9 +72,13 @@ async function handler(
         });
       }
       // extract the view from the query parameters
-      const queryValidation = GetAgentConfigurationsQuerySchema.decode(
-        req.query
-      );
+      const queryValidation = GetAgentConfigurationsQuerySchema.decode({
+        ...req.query,
+        limit:
+          typeof req.query.limit === "string"
+            ? parseInt(req.query.limit, 10)
+            : undefined,
+      });
       if (isLeft(queryValidation)) {
         const pathError = reporter.formatValidationErrors(queryValidation.left);
         return apiError(req, res, {
@@ -86,7 +90,7 @@ async function handler(
         });
       }
 
-      const { view, conversationId, withUsage, withAuthors } =
+      const { view, conversationId, limit, withUsage, withAuthors, sort } =
         queryValidation.right;
       const viewParam = view
         ? view
@@ -106,6 +110,8 @@ async function handler(
         auth,
         agentsGetView: viewParam,
         variant: "light",
+        limit,
+        sort,
       });
       if (withUsage === "true") {
         agentConfigurations = await safeRedisClient(async (redis) => {
