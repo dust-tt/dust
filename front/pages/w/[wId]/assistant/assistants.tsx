@@ -144,7 +144,10 @@ export default function MyAssistants({
         </Button.List>
         {searchFilteredAssistants.length === 0 &&
           !isAgentConfigurationsLoading && (
-            <div>No assistant found matching the search.</div>
+            <ContextItem
+              title="No assistant found matching the search."
+              visual={undefined}
+            />
           )}
         {["private", "published", "workspace", "global"].map((scope) => (
           <ScopeSection
@@ -173,25 +176,28 @@ function ScopeSection({
     return null;
   }
   return (
-    <ContextItem.List>
-      <ContextItem.SectionHeader
-        title={SCOPE_INFO[scope].label + "s"}
-        description={SCOPE_INFO[scope].text}
-      />
-      {filteredList.map((agent) => (
-        <ContextItem
-          key={agent.sId}
-          title={`@${agent.name}`}
-          subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
-          visual={<Avatar visual={<img src={agent.pictureUrl} />} size="md" />}
-          onClick={onAssistantClick(agent)}
-          hasSeparator={false}
-        >
-          <ContextItem.Description>
-            <div className="text-element-700">{agent.description}</div>
-          </ContextItem.Description>
-        </ContextItem>
-      ))}
-    </ContextItem.List>
+    <>
+      <ContextItem.List>
+        <ContextItem.SectionHeader
+          title={SCOPE_INFO[scope].label + "s"}
+          description={SCOPE_INFO[scope].text}
+        />
+        {filteredList.map((agent) => (
+          <ContextItem
+            key={agent.sId}
+            title={`@${agent.name}`}
+            subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
+            visual={
+              <Avatar visual={<img src={agent.pictureUrl} />} size="md" />
+            }
+            onClick={onAssistantClick(agent)}
+          >
+            <ContextItem.Description>
+              <div className="text-element-700">{agent.description}</div>
+            </ContextItem.Description>
+          </ContextItem>
+        ))}
+      </ContextItem.List>
+    </>
   );
 }
