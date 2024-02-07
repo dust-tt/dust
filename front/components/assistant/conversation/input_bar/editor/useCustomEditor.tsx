@@ -5,10 +5,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
-import type {
-  EditorSuggestion,
-  EditorSuggestions,
-} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 export interface EditorMention {
