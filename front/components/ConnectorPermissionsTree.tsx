@@ -51,7 +51,7 @@ export function PermissionTreeChildren({
   onPermissionUpdate,
   parentIsSelected,
   showExpand,
-  displaySource,
+  displayDocumentSource,
   useConnectorPermissionsHook,
 }: {
   owner: WorkspaceType;
@@ -68,7 +68,7 @@ export function PermissionTreeChildren({
   }) => void;
   parentIsSelected?: boolean;
   showExpand?: boolean;
-  displaySource: (documentId: string) => void;
+  displayDocumentSource: (documentId: string) => void;
   useConnectorPermissionsHook: typeof useConnectorPermissions;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
@@ -174,7 +174,7 @@ export function PermissionTreeChildren({
                   icon={BracesIcon}
                   onClick={() => {
                     if (r.dustDocumentId) {
-                      displaySource(r.dustDocumentId);
+                      displayDocumentSource(r.dustDocumentId);
                     }
                   }}
                   className={classNames(
@@ -198,7 +198,7 @@ export function PermissionTreeChildren({
                   (parentIsSelected || localStateByInternalId[r.internalId]) ??
                   ["read", "read_write"].includes(r.permission)
                 }
-                displaySource={displaySource}
+                displayDocumentSource={displayDocumentSource}
                 useConnectorPermissionsHook={useConnectorPermissionsHook}
               />
             )}
@@ -257,7 +257,7 @@ export function PermissionTree({
           onPermissionUpdate={onPermissionUpdate}
           showExpand={showExpand}
           parentIsSelected={false}
-          displaySource={(documentId: string) => {
+          displayDocumentSource={(documentId: string) => {
             setDocumentToDisplay(documentId);
           }}
           useConnectorPermissionsHook={useConnectorPermissions}

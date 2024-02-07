@@ -14,7 +14,7 @@ export function PokePermissionTree({
   canUpdatePermissions,
   onPermissionUpdate,
   showExpand,
-  displaySource,
+  displayDocumentSource,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -28,7 +28,7 @@ export function PokePermissionTree({
     permission: ConnectorPermission;
   }) => void;
   showExpand?: boolean;
-  displaySource: (documentId: string) => void;
+  displayDocumentSource: (documentId: string) => void;
 }) {
   return (
     <>
@@ -42,7 +42,7 @@ export function PokePermissionTree({
           onPermissionUpdate={onPermissionUpdate}
           showExpand={showExpand}
           parentIsSelected={false}
-          displaySource={displaySource}
+          displayDocumentSource={displayDocumentSource}
           useConnectorPermissionsHook={usePokeConnectorPermissions}
         />
       </div>

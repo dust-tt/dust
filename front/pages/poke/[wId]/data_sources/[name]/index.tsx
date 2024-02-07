@@ -488,7 +488,7 @@ const DataSourcePage = ({
               <PokePermissionTree
                 owner={owner}
                 dataSource={dataSource}
-                displaySource={onDisplayDocumentSource}
+                displayDocumentSource={onDisplayDocumentSource}
               />
             )}
           </div>
