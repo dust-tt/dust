@@ -39,7 +39,7 @@ const _webhookGoogleDriveAPIHandler = async (
   }
 
   const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
-    webhook.connectorId.toString()
+    webhook.connectorId
   );
 
   if (workflowRes.isErr()) {
