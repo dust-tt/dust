@@ -164,7 +164,7 @@ export function AssistantEditionMenu({
           )}
           {showEditionHeader && <DropdownMenu.SectionHeader label="Edition" />}
           {/* Should use the router to have a better navigation experience */}
-          {isBuilder(owner) && (
+          {(isBuilder(owner) || !isAgentWorkspace) && (
             <DropdownMenu.Item
               label="Edit"
               href={`/w/${owner.sId}/builder/assistants/${
