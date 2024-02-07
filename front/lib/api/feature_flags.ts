@@ -4,7 +4,7 @@ import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { isDevelopment } from "@app/lib/development";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 
-const { ACTIVATE_ALL_FEATURES_DEV = true } = process.env;
+const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 export async function isFeatureEnabled(
   owner: WorkspaceType,
