@@ -202,7 +202,7 @@ export default function AssistantsGallery({
             size="sm"
           />
         </DropdownMenu.Button>
-        <DropdownMenu.Items origin="bottomRight">
+        <DropdownMenu.Items origin="topLeft">
           <DropdownMenu.Item
             key="name"
             label="Name"
@@ -280,8 +280,8 @@ export default function AssistantsGallery({
             />
             <div className="block md:hidden">{SearchOrderDropdown}</div>
           </div>
-          <div className="flex flex-row space-x-4 overflow-x-auto scrollbar-hide">
-            <div className="shrink-0 grow">
+          <div className="flex flex-row space-x-4">
+            <div className="grow overflow-x-auto scrollbar-hide">
               <Tab tabs={tabs} />
             </div>
             <div className="hidden md:block">{SearchOrderDropdown}</div>
