@@ -3,55 +3,35 @@ import {
   BookOpenIcon,
   Button,
   ContextItem,
-  Icon,
-  MoreIcon,
-  Page,
-  PencilSquareIcon,
   PlusIcon,
-  RobotIcon,
   Searchbar,
-  SliderToggle,
-  Tab,
   Tooltip,
-  TrashIcon,
-  UserGroupIcon,
-  UserIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType } from "@dust-tt/types";
+import type { AgentConfigurationScope, SubscriptionType } from "@dust-tt/types";
 import type {
-  AgentUserListStatus,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useContext, useState } from "react";
+import { useRouter } from "next/router";
+import { useState } from "react";
 
-import {
-  DeleteAssistantDialog,
-  RemoveAssistantFromListDialog,
-} from "@app/components/assistant/AssistantActions";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-const PERSONAL_ASSISTANTS_VIEWS = ["personal", "workspace"] as const;
-export type PersonalAssitsantsView = (typeof PERSONAL_ASSISTANTS_VIEWS)[number];
-
 export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  view: PersonalAssitsantsView;
   gaTrackingId: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -69,105 +49,50 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
-  const view = PERSONAL_ASSISTANTS_VIEWS.includes(
-    context.query.view as PersonalAssitsantsView
-  )
-    ? (context.query.view as PersonalAssitsantsView)
-    : "personal";
-
   return {
     props: {
       owner,
       subscription,
-      view,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
 });
 
-export default function PersonalAssistants({
+export default function MyAssistants({
   owner,
   subscription,
-  view,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { agentConfigurations, mutateAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: view === "personal" ? "list" : "workspace",
-      includes: view === "personal" ? ["authors"] : [],
-    });
+  const router = useRouter();
+  const {
+    agentConfigurations,
+    mutateAgentConfigurations,
+    isAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    includes: ["authors"],
+  });
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
-  const viewAssistants = agentConfigurations.filter((a) => {
-    if (view === "personal") {
-      return a.scope === "private" || a.scope === "published";
-    }
-    if (view === "workspace") {
-      return a.scope === "workspace" || a.scope === "global";
-    }
-  });
-
-  const filtered = viewAssistants.filter((a) => {
+  const searchFilteredAssistants = agentConfigurations.filter((a) => {
     return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
   });
-
-  const [showRemovalModal, setShowRemovalModal] =
-    useState<LightAgentConfigurationType | null>(null);
-  const [showDeletionModal, setShowDeletionModal] =
-    useState<LightAgentConfigurationType | null>(null);
-
-  const tabs = [
-    {
-      label: "Personal & Shared Assistants",
-      href: `/w/${owner.sId}/assistant/assistants?view=personal`,
-      current: view === "personal",
-    },
-    {
-      label: "Company Assistants",
-      href: `/w/${owner.sId}/assistant/assistants?view=workspace`,
-      current: view === "workspace",
-    },
-  ];
-
-  const sendNotification = useContext(SendNotificationsContext);
-
-  const updateAgentUserList = async (
-    agentConfiguration: LightAgentConfigurationType,
-    listStatus: AgentUserListStatus
-  ) => {
-    const { errorMessage, success } = await updateAgentUserListStatus({
-      listStatus,
-      owner,
-      agentConfigurationId: agentConfiguration.sId,
-    });
-
-    if (success) {
-      sendNotification({
-        title: `Assistant ${
-          listStatus === "in-list" ? "added to" : "removed from"
-        } your list`,
-        type: "success",
-      });
-      await mutateAgentConfigurations();
-    } else {
-      sendNotification({
-        title: `Error ${
-          listStatus === "in-list" ? "adding" : "removing"
-        } Assistant`,
-        description: errorMessage,
-        type: "error",
-      });
-    }
-  };
 
   return (
     <AppLayout
       subscription={subscription}
       owner={owner}
+      hideSidebar
+      titleChildren={
+        <AppLayoutSimpleCloseTitle
+          title="My Assistants"
+          onClose={() => router.back()}
+        />
+      }
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="conversations"
       navChildren={
@@ -183,201 +108,96 @@ export default function PersonalAssistants({
           mutateAgentConfigurations={mutateAgentConfigurations}
         />
       )}
-
-      {showRemovalModal && (
-        <RemoveAssistantFromListDialog
-          owner={owner}
-          agentConfiguration={showRemovalModal}
-          show={!!showRemovalModal}
-          onClose={() => setShowRemovalModal(null)}
-          onRemove={() => {
-            void mutateAgentConfigurations();
+      <div className="flex flex-col gap-4 pt-9">
+        <Searchbar
+          name="search"
+          size="md"
+          placeholder="Search (Name)"
+          value={assistantSearch}
+          onChange={(s) => {
+            setAssistantSearch(s);
           }}
         />
-      )}
-      {showDeletionModal && (
-        <DeleteAssistantDialog
-          owner={owner}
-          agentConfigurationId={showDeletionModal.sId}
-          show={!!showDeletionModal}
-          onClose={() => setShowDeletionModal(null)}
-          onDelete={() => {
-            void mutateAgentConfigurations();
-          }}
-          isPrivateAssistant={true}
-        />
-      )}
-
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Manage Assistants"
-          icon={RobotIcon}
-          description="Manage your list of assistants, create and discover new ones."
-        />
-        <Page.Vertical gap="lg" align="stretch">
-          <Tab tabs={tabs} />
-          <Page.Vertical gap="md" align="stretch">
-            <div className="flex flex-row gap-2">
-              <div className="flex w-full flex-1">
-                <div className="w-full">
-                  <Searchbar
-                    name="search"
-                    placeholder="Assistant Name"
-                    value={assistantSearch}
-                    onChange={(s) => {
-                      setAssistantSearch(s);
-                    }}
-                  />
-                </div>
-              </div>
-              <Button.List>
-                {view !== "workspace" && (
-                  <Link
-                    href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}
-                  >
-                    <Button
-                      variant="primary"
-                      icon={BookOpenIcon}
-                      label="Add from gallery"
-                    />
-                  </Link>
-                )}
-                {view !== "workspace" && viewAssistants.length > 0 && (
-                  <Tooltip label="Create your own assistant">
-                    <Link
-                      href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-                    >
-                      <Button variant="primary" icon={PlusIcon} label="New" />
-                    </Link>
-                  </Tooltip>
-                )}
-              </Button.List>
-            </div>
-
-            {view === "workspace" || viewAssistants.length > 0 ? (
-              <ContextItem.List className="text-element-900">
-                {filtered.map((agent) => (
-                  <ContextItem
-                    key={agent.sId}
-                    title={`@${agent.name}`}
-                    subElement={
-                      agent.lastAuthors && agent.lastAuthors.length > 0 ? (
-                        <>
-                          <Icon
-                            visual={
-                              agent.lastAuthors.length > 1
-                                ? UserGroupIcon
-                                : UserIcon
-                            }
-                            size="xs"
-                          />
-                          {agent.lastAuthors.join(", ")}
-                        </>
-                      ) : (
-                        <></>
-                      )
-                    }
-                    visual={
-                      <Avatar
-                        visual={<img src={agent.pictureUrl} />}
-                        size={"sm"}
-                      />
-                    }
-                    action={
-                      agent.scope !== "global" && (
-                        <>
-                          {agent.scope !== "workspace" ? (
-                            <Button.List>
-                              <Button
-                                key="show_details"
-                                icon={MoreIcon}
-                                label={"View Assistant"}
-                                labelVisible={false}
-                                size="xs"
-                                variant="tertiary"
-                                onClick={() => setShowDetails(agent)}
-                              />
-
-                              <Link
-                                href={`/w/${owner.sId}/builder/assistants/${agent.sId}?flow=personal_assistants`}
-                              >
-                                <Button
-                                  variant="tertiary"
-                                  icon={PencilSquareIcon}
-                                  label="Edit"
-                                  size="xs"
-                                />
-                              </Link>
-                              <Button
-                                variant="tertiary"
-                                icon={
-                                  agent.scope === "private"
-                                    ? TrashIcon
-                                    : XMarkIcon
-                                }
-                                label={
-                                  agent.scope === "private"
-                                    ? "Delete"
-                                    : "Remove from my list"
-                                }
-                                labelVisible={false}
-                                onClick={() => {
-                                  agent.scope === "private"
-                                    ? setShowDeletionModal(agent)
-                                    : setShowRemovalModal(agent);
-                                }}
-                                size="xs"
-                              />
-                            </Button.List>
-                          ) : (
-                            <Button.List>
-                              <Button
-                                key="show_details"
-                                icon={MoreIcon}
-                                label={"View Assistant"}
-                                labelVisible={false}
-                                size="xs"
-                                variant="tertiary"
-                                onClick={() => setShowDetails(agent)}
-                              />
-
-                              <SliderToggle
-                                size="xs"
-                                onClick={async () => {
-                                  await updateAgentUserList(
-                                    agent,
-                                    agent.userListStatus === "in-list"
-                                      ? "not-in-list"
-                                      : "in-list"
-                                  );
-                                }}
-                                selected={agent.userListStatus === "in-list"}
-                              />
-                            </Button.List>
-                          )}
-                        </>
-                      )
-                    }
-                  >
-                    <ContextItem.Description>
-                      <div className="text-element-700">
-                        {agent.description}
-                      </div>
-                    </ContextItem.Description>
-                  </ContextItem>
-                ))}
-              </ContextItem.List>
-            ) : (
-              <div className="pt-2">
-                <EmptyCallToAction
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-                  label="Create an Assistant"
+        <Button.List>
+          {searchFilteredAssistants.length > 0 && (
+            <Tooltip label="Create your own assistant">
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+              >
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Create An Assistant"
+                  size="sm"
                 />
-              </div>
-            )}
-          </Page.Vertical>
-        </Page.Vertical>
-      </Page.Vertical>
+              </Link>
+            </Tooltip>
+          )}
+          <Link href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}>
+            <Button
+              variant="primary"
+              icon={BookOpenIcon}
+              label="Explore the Assistant Gallery"
+              size="sm"
+            />
+          </Link>
+        </Button.List>
+        {searchFilteredAssistants.length === 0 &&
+          !isAgentConfigurationsLoading && (
+            <ContextItem
+              title="No assistant found matching the search."
+              visual={undefined}
+            />
+          )}
+        {["private", "published", "workspace", "global"].map((scope) => (
+          <ScopeSection
+            key={scope}
+            assistantList={searchFilteredAssistants}
+            scope={scope as AgentConfigurationScope}
+            onAssistantClick={(agent) => () => setShowDetails(agent)}
+          />
+        ))}
+      </div>
     </AppLayout>
+  );
+}
+
+function ScopeSection({
+  assistantList,
+  scope,
+  onAssistantClick,
+}: {
+  assistantList: LightAgentConfigurationType[];
+  scope: AgentConfigurationScope;
+  onAssistantClick: (agent: LightAgentConfigurationType) => () => void;
+}) {
+  const filteredList = assistantList.filter((a) => a.scope === scope);
+  if (filteredList.length === 0) {
+    return null;
+  }
+  return (
+    <>
+      <ContextItem.List>
+        <ContextItem.SectionHeader
+          title={SCOPE_INFO[scope].label + "s"}
+          description={SCOPE_INFO[scope].text}
+        />
+        {filteredList.map((agent) => (
+          <ContextItem
+            key={agent.sId}
+            title={`@${agent.name}`}
+            subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
+            visual={
+              <Avatar visual={<img src={agent.pictureUrl} />} size="md" />
+            }
+            onClick={onAssistantClick(agent)}
+          >
+            <ContextItem.Description>
+              <div className="text-element-700">{agent.description}</div>
+            </ContextItem.Description>
+          </ContextItem>
+        ))}
+      </ContextItem.List>
+    </>
   );
 }
