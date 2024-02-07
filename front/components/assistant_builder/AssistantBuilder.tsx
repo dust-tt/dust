@@ -612,10 +612,8 @@ export default function AssistantBuilder({
     return newAgentConfiguration;
   };
 
-  const onClose = async () => {
-    if (flow === "workspace_assistants")
-      await router.push(`/w/${owner.sId}/builder/assistants`);
-    else await router.push(`/w/${owner.sId}/assistant/assistants`);
+  const onClose = () => {
+    router.back();
   };
 
   const onAssistantSave = async () => {
@@ -623,7 +621,7 @@ export default function AssistantBuilder({
     try {
       await submitForm();
       setIsSavingOrDeleting(false);
-      await onClose();
+      onClose();
     } catch (e) {
       setIsSavingOrDeleting(false);
       sendNotification({
@@ -1221,7 +1219,7 @@ export default function AssistantBuilder({
                 onClose={() => setShowDeletionModal(false)}
                 onDelete={async () => {
                   setShowDeletionModal(false);
-                  await onClose();
+                  onClose();
                 }}
               />
               <Button
