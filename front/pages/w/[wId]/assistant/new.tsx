@@ -1,5 +1,5 @@
 import {
-  AssistantPreview,
+  AssistantPreview2,
   Avatar,
   BookOpenIcon,
   Button,
@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   Page,
   Popup,
+  RobotSharedIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -92,15 +93,33 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
-  const { agentConfigurations } = useAgentConfigurations({
+
+  // No limit on global assistants call as they include both active and inactive.
+  const globalAgentConfigurations = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "list",
-  });
+    agentsGetView: "global",
+    includes: ["authors"],
+    sort: "priority",
+  }).agentConfigurations;
 
-  const activeAgents = agentConfigurations.filter((a) => a.status === "active");
-  activeAgents.sort(compareAgentsForSort);
+  const workspaceAgentConfigurations = isBuilder
+    ? []
+    : useAgentConfigurations({
+        workspaceId: owner.sId,
+        agentsGetView: "workspace",
+        includes: ["authors"],
+        limit: 2,
+        sort: "alphabetical",
+      }).agentConfigurations;
 
-  const displayedAgents = activeAgents.slice(0, isBuilder ? 2 : 4);
+  const displayedAgents = [
+    ...globalAgentConfigurations,
+    ...workspaceAgentConfigurations,
+  ]
+    .filter((a) => a.status === "active")
+    // Sort is necessary due to separately fetched global and workspace assistants, ensuring unified ordering.
+    .sort(compareAgentsForSort)
+    .slice(0, isBuilder ? 2 : 4);
 
   const { submit: handleSubmit } = useSubmitFunction(
     async (
@@ -210,7 +229,7 @@ export default function AssistantNew({
                               variant="primary"
                               icon={BookOpenIcon}
                               size="xs"
-                              label="Discover more in the Assistant Gallery"
+                              label="Explore the Assistants Gallery"
                             />
                           </Link>
                         )}
@@ -223,46 +242,51 @@ export default function AssistantNew({
                             <div className="text-base font-bold text-element-800">
                               Assistants
                             </div>
-                            <Link
-                              href={`/w/${owner.sId}/assistant/gallery?flow=conversation_add`}
-                            >
+                            <Link href={`/w/${owner.sId}/builder/assistants`}>
                               <Button
                                 variant="secondary"
-                                icon={BookOpenIcon}
+                                icon={RobotSharedIcon}
                                 size="xs"
-                                label="Discover more in the Assistant Gallery"
+                                label="Manage Assistants"
                               />
                             </Link>
                           </>
                         )}
                         <div
-                          className={`grid grid-cols-2 gap-4 py-2 ${
+                          className={`grid grid-cols-2 items-start gap-4 py-2 ${
                             isBuilder ? "" : "sm:grid-cols-4"
                           }`}
                         >
                           {displayedAgents.map((agent) => (
-                            <a
+                            <AssistantPreview2
+                              variant="item"
+                              title={agent.name}
+                              description={agent.description}
+                              pictureUrl={agent.pictureUrl}
                               key={agent.sId}
-                              className="cursor-pointer"
                               onClick={() => {
                                 setShowDetails(agent);
                               }}
-                            >
-                              <AssistantPreview
-                                variant="sm"
-                                name={agent.name}
-                                description={agent.description}
-                                pictureUrl={agent.pictureUrl}
-                                key={agent.sId}
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Prevent event from bubbling up to <a> tag
-                                  setSelectedAssistant({
-                                    configurationId: agent.sId,
-                                  });
-                                  setShouldAnimateInput(true);
-                                }}
-                              />
-                            </a>
+                              subtitle={agent.lastAuthors?.join(", ") || ""}
+                              actions={
+                                <div className="s-flex s-justify-end">
+                                  <Button
+                                    icon={ChatBubbleBottomCenterTextIcon}
+                                    label="Chat"
+                                    variant="tertiary"
+                                    size="xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+
+                                      setSelectedAssistant({
+                                        configurationId: agent.sId,
+                                      });
+                                      setShouldAnimateInput(true);
+                                    }}
+                                  />
+                                </div>
+                              }
+                            />
                           ))}
                         </div>
                         <Button.List isWrapping={true}>
@@ -306,30 +330,36 @@ export default function AssistantNew({
                             </Link>
                           </div>
                           <div className="flex flex-wrap gap-2 py-2">
-                            <Avatar
-                              size="md"
-                              visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
-                            />
-                            <Avatar
-                              size="md"
-                              visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
-                            />
-                            <Avatar
-                              size="md"
-                              visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
-                            />
-                            <Avatar
-                              size="md"
-                              visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
-                            />
-                            <Avatar
-                              size="md"
-                              visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
-                            />
+                            <Link
+                              href={`/w/${owner.sId}/builder/data-sources/managed`}
+                              className="flex flex-wrap gap-2 py-2"
+                            >
+                              <Avatar
+                                size="md"
+                                visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
+                              />
+                              <Avatar
+                                size="md"
+                                visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
+                              />
+                              <Avatar
+                                size="md"
+                                visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+                              />
+                              <Avatar
+                                size="md"
+                                visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
+                              />
+                              <Avatar
+                                size="md"
+                                visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
+                              />
+                            </Link>
                           </div>
-                          <div className="text-xs font-normal text-element-700 sm:pt-2.5">
-                            Make assistants smarter by giving them access to
-                            your company’s knowledge and data.
+                          <div className="py-0.5 text-xs font-normal text-element-700">
+                            Manage access to your company’s knowledge and data
+                            through connections (to GDrive, Notion,...) and
+                            uploads (Folder).
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
