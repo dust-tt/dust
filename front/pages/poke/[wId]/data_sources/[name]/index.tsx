@@ -489,6 +489,7 @@ const DataSourcePage = ({
                 owner={owner}
                 dataSource={dataSource}
                 displayDocumentSource={onDisplayDocumentSource}
+                permissionFilter="read"
               />
             )}
           </div>
