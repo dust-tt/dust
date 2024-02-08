@@ -113,6 +113,7 @@ export type AgentsGetViewType =
 export type AgentUsageType = {
   userCount: number;
   messageCount: number;
+  usersWithAgentInListCount: number;
 
   // userCount and messageCount are over the last `timePeriodSec` seconds
   timePeriodSec: number;

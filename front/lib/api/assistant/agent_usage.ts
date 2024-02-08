@@ -1,35 +1,42 @@
-import type { AgentUsageType, ModelId } from "@dust-tt/types";
+import type {
+  AgentUsageType,
+  LightAgentConfigurationType,
+  ModelId,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import {
   Conversation as DBConversation,
+  Membership,
   Mention,
   Message,
   UserMessage,
   Workspace,
 } from "@app/lib/models";
+import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { redisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 30 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 
 function _getKeys({
-  workspaceId,
-  agentConfigurationId,
+  workspaceSId,
+  agentConfigurationSId,
 }: {
-  workspaceId: string;
-  agentConfigurationId: string;
+  workspaceSId: string;
+  agentConfigurationSId: string;
 }) {
-  // One sorted set per agent for counting the number of times the agent has been used.
-  // score is: timestamp of each use of the agent
+  // One sorted set per agent for counting the number of messages from the agent.
+  // score is: timestamp of each message of the agent
   // value: random unique distinct value.
-  const agentMessageCountKey = `agent_usage_count_${workspaceId}_${agentConfigurationId}`;
+  const agentMessageCountKey = `agent_usage_count_${workspaceSId}_${agentConfigurationSId}`;
 
-  // One sorted set per agent for counting the number of users that have used the agent.
+  // One sorted set per agent for counting the number of users that have mentioned the agent.
   // score is: timestamp of last usage by a given user
   // value: user_id
-  const agentUserCountKey = `agent_user_count_${workspaceId}_${agentConfigurationId}`;
+  const agentUserCountKey = `agent_user_count_${workspaceSId}_${agentConfigurationSId}`;
   return {
     agentMessageCountKey,
     agentUserCountKey,
@@ -37,22 +44,21 @@ function _getKeys({
 }
 
 async function signalInRedis({
-  agentConfigurationId,
-  workspaceId,
+  agentConfigurationSId,
+  workspaceSId,
   userId,
   timestamp,
   redis,
 }: {
-  agentConfigurationId: string;
-  workspaceId: string;
+  agentConfigurationSId: string;
+  workspaceSId: string;
   userId: string;
   timestamp: number;
-  messageId: ModelId;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    workspaceId,
-    agentConfigurationId,
+    workspaceSId,
+    agentConfigurationSId,
   });
 
   await redis.zAdd(agentMessageCountKey, {
@@ -69,27 +75,27 @@ async function signalInRedis({
 }
 
 async function populateUsageIfNeeded({
-  agentConfigurationId,
-  workspaceId,
+  agentConfigurationSId,
+  workspaceSId,
   messageId,
   redis,
 }: {
-  agentConfigurationId: string;
-  workspaceId: string;
+  agentConfigurationSId: string;
+  workspaceSId: string;
   messageId: ModelId | null;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
   const owner = await Workspace.findOne({
     where: {
-      sId: workspaceId,
+      sId: workspaceSId,
     },
   });
   if (!owner) {
-    throw new Error(`Workspace ${workspaceId} not found`);
+    throw new Error(`Workspace ${workspaceSId} not found`);
   }
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    agentConfigurationId,
-    workspaceId,
+    agentConfigurationSId,
+    workspaceSId,
   });
 
   const existCount = await redis.exists([
@@ -101,7 +107,7 @@ async function populateUsageIfNeeded({
     // by fetching the data from the database.
     // We need to ensure that only one process is going through the populate code path
     // so we are using redis.incr() to act as a non blocking lock.
-    const populateLockKey = `agent_usage_populate_${workspaceId}_${agentConfigurationId}`;
+    const populateLockKey = `agent_usage_populate_${workspaceSId}_${agentConfigurationSId}`;
     const needToPopulate = (await redis.incr(populateLockKey)) === 1;
 
     // Keeping the lock key around for 10 minutes, which essentially gives 10 minutes
@@ -120,7 +126,7 @@ async function populateUsageIfNeeded({
     const mentions = await Mention.findAll({
       where: {
         ...{
-          agentConfigurationId: agentConfigurationId,
+          agentConfigurationSId: agentConfigurationSId,
           createdAt: {
             [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
           },
@@ -142,7 +148,7 @@ async function populateUsageIfNeeded({
               as: "conversation",
               required: true,
               where: {
-                workspaceId: owner.id,
+                workspaceSId: owner.id,
               },
             },
           ],
@@ -154,14 +160,13 @@ async function populateUsageIfNeeded({
       // at a time.
       if (mention.message?.userMessage) {
         await signalInRedis({
-          agentConfigurationId,
-          workspaceId,
+          agentConfigurationSId,
+          workspaceSId,
           userId:
             mention.message.userMessage.userId?.toString() ||
             mention.message.userMessage.userContextEmail ||
             mention.message.userMessage.userContextUsername,
           timestamp: mention.createdAt.getTime(),
-          messageId: mention.messageId,
           redis,
         });
       }
@@ -169,27 +174,54 @@ async function populateUsageIfNeeded({
   }
 }
 
+// Consider moving this to Redis if it's really slow.
+async function getUsersWithAgentInListCount(
+  agentConfiguration: LightAgentConfigurationType,
+  workspaceId: number
+) {
+  if (agentConfiguration.scope === "published") {
+    return AgentUserRelation.count({
+      where: {
+        workspaceId,
+        agentConfiguration: agentConfiguration.sId,
+        listStatusOverride: "in-list",
+      },
+    });
+  } else {
+    return Membership.count({
+      where: {
+        workspaceId,
+        role: {
+          [Op.ne]: "revoked",
+        },
+      },
+    });
+  }
+}
+
 export async function getAgentUsage({
-  workspaceId,
-  agentConfigurationId,
+  workspace,
+  agentConfiguration,
   providedRedis,
 }: {
-  workspaceId: string;
-  agentConfigurationId: string;
+  workspace: WorkspaceType;
+  agentConfiguration: LightAgentConfigurationType;
   providedRedis?: Awaited<ReturnType<typeof redisClient>>;
 }): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+  const { sId: workspaceSId } = workspace;
+  const { sId: agentConfigurationSId } = agentConfiguration;
 
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    agentConfigurationId,
-    workspaceId,
+    agentConfigurationSId,
+    workspaceSId,
   });
 
   try {
     redis = providedRedis ?? (await redisClient());
     await populateUsageIfNeeded({
-      agentConfigurationId,
-      workspaceId,
+      agentConfigurationSId,
+      workspaceSId,
       messageId: null,
       redis,
     });
@@ -205,11 +237,16 @@ export async function getAgentUsage({
       thirtyDaysAgo.getTime(),
       now.getTime()
     );
+    const usersWithAgentInListCount = await getUsersWithAgentInListCount(
+      agentConfiguration,
+      workspace.id
+    );
 
     return {
       messageCount,
       userCount,
       timePeriodSec: rankingTimeframeSec,
+      usersWithAgentInListCount,
     };
   } finally {
     if (redis && !providedRedis) {
@@ -219,14 +256,14 @@ export async function getAgentUsage({
 }
 
 export async function signalAgentUsage({
-  agentConfigurationId,
-  workspaceId,
+  agentConfigurationSId,
+  workspaceSId,
   userId,
   timestamp,
   messageId,
 }: {
-  agentConfigurationId: string;
-  workspaceId: string;
+  agentConfigurationSId: string;
+  workspaceSId: string;
   userId: string;
   timestamp: number;
   messageId: ModelId;
@@ -235,17 +272,16 @@ export async function signalAgentUsage({
   try {
     redis = await redisClient();
     await populateUsageIfNeeded({
-      agentConfigurationId,
-      workspaceId,
+      agentConfigurationSId,
+      workspaceSId,
       messageId,
       redis,
     });
     await signalInRedis({
-      agentConfigurationId,
-      workspaceId,
+      agentConfigurationSId,
+      workspaceSId,
       userId,
       timestamp,
-      messageId,
       redis,
     });
   } finally {
