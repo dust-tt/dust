@@ -31,6 +31,7 @@ type ConfirmationModalDataType = {
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
   {
+    shortLabel: string;
     label: string;
     color: "pink" | "amber" | "sky" | "slate";
     icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
@@ -39,6 +40,7 @@ export const SCOPE_INFO: Record<
   }
 > = {
   published: {
+    shortLabel: "Shared",
     label: "Shared Assistant",
     color: "pink",
     icon: UserGroupIcon,
@@ -51,6 +53,7 @@ export const SCOPE_INFO: Record<
     },
   },
   workspace: {
+    shortLabel: "Company",
     label: "Company Assistant",
     color: "amber",
     icon: PlanetIcon,
@@ -63,6 +66,7 @@ export const SCOPE_INFO: Record<
     },
   },
   private: {
+    shortLabel: "Personal",
     label: "Personal Assistant",
     color: "sky",
     icon: LockIcon,
@@ -76,6 +80,7 @@ export const SCOPE_INFO: Record<
     },
   },
   global: {
+    shortLabel: "Default",
     label: "Default Assistant",
     color: "slate",
     icon: DustIcon,

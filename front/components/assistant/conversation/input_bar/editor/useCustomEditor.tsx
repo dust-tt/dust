@@ -5,7 +5,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo } from "react";
 
-import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 export interface EditorMention {
@@ -130,7 +130,7 @@ export interface CustomEditorProps {
     textAndMentions: ReturnType<typeof getTextAndMentionsFromNode>,
     clearEditor: () => void
   ) => void;
-  suggestions: EditorSuggestion[];
+  suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
 }
 

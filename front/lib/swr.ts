@@ -38,6 +38,7 @@ import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
 import type { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
+import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
   fetch(...args).then(async (res) => {
@@ -728,5 +729,26 @@ export function useApp({
     isAppLoading: !error && !data,
     isAppError: error,
     mutateApp: mutate,
+  };
+}
+
+export function useWorkspaceAnalytics({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
+
+  const { data, error } = useSWR(
+    !disabled ? `/api/w/${workspaceId}/workspace-analytics` : null,
+    analyticsFetcher
+  );
+
+  return {
+    analytics: data ? data : null,
+    isMemberCountLoading: !error && !data,
+    isMemberCountError: error,
   };
 }

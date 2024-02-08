@@ -109,17 +109,24 @@ export function assistantUsageMessage({
   usage,
   isLoading,
   isError,
+  shortVersion,
 }: {
   assistantName: string;
   usage: AgentUsageType | null;
   isLoading: boolean;
   isError: boolean;
+  shortVersion?: boolean;
 }) {
   if (isError) {
     return "Error loading usage data.";
   } else if (isLoading) {
     return "Loading usage data...";
   } else if (usage) {
+    if (shortVersion) {
+      return `${usage.messageCount} message(s) over the last ${
+        usage.timePeriodSec / (60 * 60 * 24)
+      } days`;
+    }
     return `@${assistantName} has been used by ${usage.userCount} ${
       usage.userCount > 1 ? "people" : "person"
     } in ${usage.messageCount} message${

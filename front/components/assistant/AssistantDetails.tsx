@@ -29,6 +29,7 @@ import AssistantListActions from "@app/components/assistant/AssistantListActions
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { assistantUsageMessage } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
@@ -98,11 +99,13 @@ export function AssistantDetails({
     setIsUpdatingScope(false);
   };
 
-  const usageSentence =
-    agentUsage.agentUsage &&
-    `${agentUsage.agentUsage.messageCount} message(s) over the last ${
-      agentUsage.agentUsage.timePeriodSec / (60 * 60 * 24)
-    } days`;
+  const usageSentence = assistantUsageMessage({
+    assistantName: agentConfiguration.name,
+    usage: agentUsage.agentUsage,
+    isLoading: agentUsage.isAgentUsageLoading,
+    isError: agentUsage.isAgentUsageError,
+    shortVersion: true,
+  });
   const editedSentence =
     agentConfiguration.versionCreatedAt &&
     `Last edited ${timeAgoFrom(

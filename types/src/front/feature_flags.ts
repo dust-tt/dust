@@ -1,4 +1,8 @@
-export const WHITELISTABLE_FEATURES = ["crawler", "structured_data"] as const;
+export const WHITELISTABLE_FEATURES = [
+  "crawler",
+  "structured_data",
+  "workspace_analytics",
+] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
   feature: unknown

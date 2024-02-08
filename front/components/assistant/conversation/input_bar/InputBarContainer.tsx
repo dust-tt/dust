@@ -43,7 +43,7 @@ const InputBarContainer = ({
   selectedAssistant,
   stickyMentions,
 }: InputBarContainerProps) => {
-  const suggestions = useAssistantSuggestions(agentConfigurations);
+  const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
