@@ -113,6 +113,18 @@ async function handler(
 
         case "azure_openai":
           try {
+            const parsed = new URL(config.endpoint);
+            if (!parsed.hostname.endsWith(".openai.azure.com")) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message:
+                    "The endpoint is invalid (expecting `openai.azure.com`).",
+                },
+              });
+            }
+
             const deploymentsRes = await fetch(
               `${config.endpoint}openai/deployments?api-version=2022-12-01`,
               {
@@ -284,6 +296,18 @@ async function handler(
           });
           const client = await auth.getClient();
           const accessToken = await client.getAccessToken();
+
+          const parsed = new URL(endpoint);
+          if (!parsed.hostname.endsWith(".googleapis.com")) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The endpoint is invalid (expecting `googleapis.com`).",
+              },
+            });
+          }
           const testUrl = `${endpoint}/publishers/google/models/gemini-pro:streamGenerateContent`;
           const testRequestBody = {
             contents: {
