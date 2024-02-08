@@ -193,7 +193,7 @@ export default function DataSourceNew({
                 Crawling mode
               </p>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                Choose wether you want to crawl only pages that are children of
+                Choose whether you want to crawl only pages that are children of
                 the URL you provided or the entire website.
               </div>
 
