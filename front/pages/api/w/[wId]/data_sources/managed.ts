@@ -32,7 +32,7 @@ export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
   connectionId: t.union([t.string, t.undefined]),
   type: t.union([t.literal("oauth"), t.literal("url")]),
-  urlPayload: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
+  urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
 });
 
 function urlToDataSourceName(url: string) {
@@ -95,7 +95,7 @@ async function handler(
         });
       }
 
-      const { type, connectionId, urlPayload, provider } = bodyValidation.right;
+      const { type, connectionId, urlConfig, provider } = bodyValidation.right;
 
       if (!isConnectorProvider(provider)) {
         return apiError(req, res, {
@@ -170,17 +170,17 @@ async function handler(
           break;
         }
         case "url": {
-          if (!urlPayload) {
+          if (!urlConfig) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: "urlPayload is required for URL connectors.",
+                message: "urlConfig is required for URL connectors.",
               },
             });
           }
-          dataSourceName = urlToDataSourceName(urlPayload.url);
-          dataSourceDescription = urlPayload.url;
+          dataSourceName = urlToDataSourceName(urlConfig.url);
+          dataSourceDescription = urlConfig.url;
           break;
         }
 
@@ -339,7 +339,7 @@ async function handler(
           break;
         }
         case "url": {
-          if (!urlPayload?.url) {
+          if (!urlConfig?.url) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -348,7 +348,7 @@ async function handler(
               },
             });
           }
-          let cleanUrl = urlPayload.url.trim();
+          let cleanUrl = urlConfig.url.trim();
           if (
             !cleanUrl.startsWith("http://") &&
             !cleanUrl.startsWith("https://")
@@ -360,7 +360,7 @@ async function handler(
             owner.sId,
             systemAPIKeyRes.value.secret,
             dataSourceName,
-            urlPayload
+            urlConfig
           );
           break;
         }

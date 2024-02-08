@@ -122,7 +122,7 @@ export default function DataSourceNew({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        urlPayload: {
+        urlConfig: {
           url: dataSourceUrl,
           maxPages: maxPages || WEBCRAWLER_MAX_PAGES,
           depth: maxDepth || WEBCRAWLER_MAX_DEPTH,
@@ -169,9 +169,9 @@ export default function DataSourceNew({
         <div className="flex w-full flex-col gap-4">
           <div className="flex flex-row items-start gap-8">
             <div className="flex flex-col gap-4">
-              <div className="text-lg font-bold text-element-900">
+              <p className="text-lg font-bold text-element-900">
                 Website public URL
-              </div>
+              </p>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
                 URL of the website you want to crawl.{" "}
                 <span className="font-medium text-element-900">
@@ -193,7 +193,7 @@ export default function DataSourceNew({
                 Crawling mode
               </div>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                Choose weather you want to crawl only pages that are children of
+                Choose wether you want to crawl only pages that are children of
                 the URL you provided or the entire website.
               </div>
 
@@ -203,7 +203,7 @@ export default function DataSourceNew({
                   onChange={(value) => {
                     setCrawlMode(value == "child" ? "child" : "website");
                   }}
-                  name="test1"
+                  name="crawlMode"
                   choices={[
                     {
                       label: "Only sub pages.",
@@ -223,37 +223,35 @@ export default function DataSourceNew({
                 Maximum number of pages
               </div>
 
-              <div className="text-sm">
-                <Input
-                  placeholder={WEBCRAWLER_MAX_PAGES.toString()}
-                  value={maxPages?.toString() || ""}
-                  onChange={(value) => {
-                    const parsed = parseInt(value);
-                    if (!isNaN(parsed)) {
-                      setMaxPages(parseInt(value));
-                    } else if (value == "") {
-                      setMaxPages(null);
-                    }
-                  }}
-                  showErrorLabel={
-                    maxPages &&
-                    maxPages > WEBCRAWLER_MAX_PAGES &&
-                    maxPages &&
-                    maxPages < 1
-                      ? false
-                      : true
+              <Input
+                placeholder={WEBCRAWLER_MAX_PAGES.toString()}
+                value={maxPages?.toString() || ""}
+                onChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed)) {
+                    setMaxPages(parseInt(value));
+                  } else if (value == "") {
+                    setMaxPages(null);
                   }
-                  error={
-                    (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
-                    (maxPages && maxPages < 1)
-                      ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
-                      : null
-                  }
-                  name="maxPages"
-                  size="sm"
-                  className="text-sm"
-                />
-              </div>
+                }}
+                showErrorLabel={
+                  maxPages &&
+                  maxPages > WEBCRAWLER_MAX_PAGES &&
+                  maxPages &&
+                  maxPages < 1
+                    ? false
+                    : true
+                }
+                error={
+                  (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
+                  (maxPages && maxPages < 1)
+                    ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
+                    : null
+                }
+                name="maxPages"
+                size="sm"
+                className="text-sm"
+              />
 
               <div className="text-lg font-bold text-element-900">
                 Maximum depth
@@ -263,37 +261,35 @@ export default function DataSourceNew({
                 from the starting page, our crawler will go to find content.
                 Maximum value is 5.
               </div>
-              <div className="text-sm">
-                <Input
-                  placeholder={WEBCRAWLER_MAX_DEPTH.toString()}
-                  value={maxDepth?.toString() || ""}
-                  onChange={(value) => {
-                    const parsed = parseInt(value);
-                    if (!isNaN(parsed)) {
-                      setMaxDepth(parsed);
-                    } else if (value == "") {
-                      setMaxDepth(null);
-                    }
-                  }}
-                  showErrorLabel={
-                    maxDepth &&
-                    maxDepth > WEBCRAWLER_MAX_DEPTH &&
-                    maxDepth &&
-                    maxDepth < 1
-                      ? false
-                      : true
+              <Input
+                placeholder={WEBCRAWLER_MAX_DEPTH.toString()}
+                value={maxDepth?.toString() || ""}
+                onChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed)) {
+                    setMaxDepth(parsed);
+                  } else if (value == "") {
+                    setMaxDepth(null);
                   }
-                  error={
-                    (maxDepth && maxDepth > WEBCRAWLER_MAX_DEPTH) ||
-                    (maxDepth && maxDepth < 1)
-                      ? `Maximum depth must be between 1 and ${WEBCRAWLER_MAX_DEPTH}`
-                      : null
-                  }
-                  name="maxDeph"
-                  size="sm"
-                  className="text-sm"
-                />
-              </div>
+                }}
+                showErrorLabel={
+                  maxDepth &&
+                  maxDepth > WEBCRAWLER_MAX_DEPTH &&
+                  maxDepth &&
+                  maxDepth < 1
+                    ? false
+                    : true
+                }
+                error={
+                  (maxDepth && maxDepth > WEBCRAWLER_MAX_DEPTH) ||
+                  (maxDepth && maxDepth < 1)
+                    ? `Maximum depth must be between 1 and ${WEBCRAWLER_MAX_DEPTH}`
+                    : null
+                }
+                name="maxDeph"
+                size="sm"
+                className="text-sm"
+              />
             </div>
           </div>
         </div>
