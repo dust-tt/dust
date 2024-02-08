@@ -107,10 +107,10 @@ export async function setInternalWorkspaceSegmentation(
 export async function getMembers(
   auth: Authenticator,
   {
-    role,
+    roles,
     userIds,
   }: {
-    role?: RoleType;
+    roles?: RoleType[];
     userIds?: ModelId[];
   } = {}
 ): Promise<UserTypeWithWorkspaces[]> {
@@ -122,12 +122,12 @@ export async function getMembers(
   const whereClause: {
     workspaceId: ModelId;
     userId?: ModelId[];
-    role?: RoleType;
+    role?: RoleType[];
   } = userIds
     ? { workspaceId: owner.id, userId: userIds }
     : { workspaceId: owner.id };
-  if (role) {
-    whereClause.role = role;
+  if (roles) {
+    whereClause.role = roles;
   }
 
   const memberships = await Membership.findAll({
