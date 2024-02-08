@@ -8,6 +8,7 @@ type ContextItemProps = {
   action?: ReactNode;
   children?: ReactNode;
   hasSeparator?: boolean;
+  hasSeparatorIfLast?: boolean;
   subElement?: ReactNode;
   title: ReactNode;
   visual: ReactNode;
@@ -18,6 +19,7 @@ export function ContextItem({
   action,
   children,
   hasSeparator = true,
+  hasSeparatorIfLast = false,
   subElement,
   title,
   visual,
@@ -27,7 +29,8 @@ export function ContextItem({
     <div
       className={classNames(
         hasSeparator ? "s-border-b s-border-structure-200" : "",
-        "s-flex s-w-full s-flex-col"
+        "s-flex s-w-full s-flex-col",
+        hasSeparatorIfLast ? "" : "last:s-border-none"
       )}
     >
       <div
@@ -70,28 +73,23 @@ ContextItem.List = function ({
 }: ContextItemListProps) {
   // Ensure all children are of type ContextItem or ContextItem.SectionHeader
   React.Children.forEach(children, (child) => {
+    if (child === null || child === undefined) return;
     if (
       !React.isValidElement(child) ||
-      (child.type !== ContextItem && child.type !== ContextItem.SectionHeader)
+      (child.type !== ContextItem &&
+        child.type !== ContextItem.SectionHeader &&
+        // all children of child must be of type ContextItem or ContextItem.SectionHeader
+        React.Children.toArray(child.props.children).some(
+          (c) =>
+            !React.isValidElement(c) ||
+            (c.type !== ContextItem && c.type !== ContextItem.SectionHeader)
+        ))
     ) {
       throw new Error(
         "All children of ContextItem.List must be of type ContextItem or ContextItem.SectionHeader"
       );
     }
   });
-
-  // Convert children into an array and modify the last child's props
-  const modifiedChildren = React.Children.toArray(children).map(
-    (child, index, array) => {
-      if (React.isValidElement(child) && index === array.length - 1) {
-        return React.cloneElement(child, {
-          ...child.props,
-          hasSeparator: false,
-        });
-      }
-      return child;
-    }
-  );
 
   return (
     <div
@@ -101,7 +99,7 @@ ContextItem.List = function ({
         "s-flex s-flex-col"
       )}
     >
-      {modifiedChildren}
+      {children}
     </div>
   );
 };

@@ -134,6 +134,7 @@ export const ListItemExample = () => (
       >
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
       </ContextItem>
+      {undefined}
     </ContextItem.List>
   </div>
 );
