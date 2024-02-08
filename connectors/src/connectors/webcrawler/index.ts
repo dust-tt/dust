@@ -1,4 +1,5 @@
 import type { ConnectorResource, ModelId } from "@dust-tt/types";
+import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
 
 import {
   getDisplayNameForPage,
@@ -43,6 +44,9 @@ export async function createWebcrawlerConnector(
         {
           connectorId: connector.id,
           url,
+          maxPageToCrawl: WEBCRAWLER_MAX_PAGES,
+          depth: WEBCRAWLER_MAX_DEPTH,
+          crawlMode: "website",
         },
         {
           transaction: t,
