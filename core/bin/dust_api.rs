@@ -2091,6 +2091,65 @@ async fn tables_rows_retrieve(
     }
 }
 
+async fn tables_rows_delete(
+    extract::Path((project_id, data_source_id, table_id, row_id)): extract::Path<(
+        i64,
+        String,
+        String,
+        String,
+    )>,
+    extract::Extension(state): extract::Extension<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to load table",
+                Some(e),
+            )
+        }
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(APIResponse {
+                    error: Some(APIError {
+                        code: "table_not_found".to_string(),
+                        message: format!("No table found for id `{}`", table_id),
+                    }),
+                    response: None,
+                }),
+            )
+        }
+        Ok(Some(table)) => match table
+            .delete_row(state.databases_store.clone(), &row_id)
+            .await
+        {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to delete row",
+                Some(e),
+            ),
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "success": true,
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct DatabasesRowsListQuery {
     offset: usize,
@@ -2501,6 +2560,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",
             get(tables_rows_retrieve),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",
+            delete(tables_rows_delete),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",

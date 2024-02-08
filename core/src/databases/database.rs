@@ -304,6 +304,16 @@ impl Table {
             .await
     }
 
+    pub async fn delete_row(
+        &self,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        row_id: &str,
+    ) -> Result<()> {
+        databases_store
+            .delete_table_row(&self.unique_id(), row_id)
+            .await
+    }
+
     pub async fn list_rows(
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,

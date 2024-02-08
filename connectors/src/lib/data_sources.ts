@@ -624,6 +624,10 @@ export async function upsertTableRow({
 
     localLogger.info("Successfully uploaded structured data to Dust.");
   } else {
+    if (dustRequestResult.status === 404) {
+      localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+      return;
+    }
     statsDClient.increment(
       "data_source_structured_data_upserts_error.count",
       1,
@@ -716,6 +720,10 @@ export async function deleteTableRow({
 
     localLogger.info("Successfully deleted structured data from Dust.");
   } else {
+    if (dustRequestResult.status === 404) {
+      localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+      return;
+    }
     statsDClient.increment(
       "data_source_structured_data_deletes_error.count",
       1,
@@ -823,5 +831,48 @@ export async function deleteTable({
       "Error deleting structured data from Dust."
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
+  }
+}
+
+export async function getTable({
+  dataSourceConfig,
+  tableId,
+  loggerArgs,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  loggerArgs?: Record<string, string | number>;
+}) {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    tableId,
+  });
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axios.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error getting table from Dust.");
+    throw e;
+  }
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    return dustRequestResult.data;
+  } else {
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+      },
+      "Error getting table from Dust."
+    );
+    throw new Error(`Error getting table from dust: ${dustRequestResult}`);
   }
 }
