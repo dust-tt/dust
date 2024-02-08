@@ -19,6 +19,7 @@ import type {
 import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ComponentType } from "react";
 import { useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -38,7 +39,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   plan: PlanType | null;
   subscription: SubscriptionType;
-  agentsGetView: AgentsGetViewType;
   gaTrackingId: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -58,15 +58,12 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
-  const agentsGetView = (context.query.view || "all") as AgentsGetViewType;
-
   return {
     props: {
       user,
       owner,
       plan,
       subscription,
-      agentsGetView,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -77,11 +74,12 @@ export default function AssistantsGallery({
   owner,
   plan,
   subscription,
-  agentsGetView,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [orderBy, setOrderBy] = useState<"name" | "usage">("name");
+
+  const [agentsGetView, setAgentsGetView] = useState<AgentsGetViewType>("all");
 
   const { agentConfigurations, mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -142,29 +140,34 @@ export default function AssistantsGallery({
   const [testModalAssistant, setTestModalAssistant] =
     useState<LightAgentConfigurationType | null>(null);
 
-  const tabs = [
+  const tabs: {
+    label: string;
+    current: boolean;
+    viewId: AgentsGetViewType;
+    icon?: ComponentType<{ className?: string }>;
+  }[] = [
     {
       label: "All",
-      href: `/w/${owner.sId}/assistant/gallery?view=all`,
       current: agentsGetView === "all",
+      viewId: "all",
     },
     {
       label: "Shared",
-      href: `/w/${owner.sId}/assistant/gallery?view=published`,
       current: agentsGetView === "published",
       icon: UserGroupIcon,
+      viewId: "published",
     },
     {
       label: "Company",
-      href: `/w/${owner.sId}/assistant/gallery?view=workspace`,
       current: agentsGetView === "workspace",
       icon: PlanetIcon,
+      viewId: "workspace",
     },
     {
       label: "Default",
-      href: `/w/${owner.sId}/assistant/gallery?view=global`,
       current: agentsGetView === "global",
       icon: DustIcon,
+      viewId: "global",
     },
   ];
 
@@ -250,7 +253,13 @@ export default function AssistantsGallery({
           </div>
           <div className="flex flex-row space-x-4">
             <div className="grow overflow-x-auto scrollbar-hide">
-              <Tab tabs={tabs} />
+              <Tab
+                tabs={tabs}
+                onTabClick={(tabName) => {
+                  const newView = tabs.find((t) => t.label === tabName)?.viewId;
+                  newView && setAgentsGetView(newView);
+                }}
+              />
             </div>
             <div className="hidden md:block">{SearchOrderDropdown}</div>
           </div>
