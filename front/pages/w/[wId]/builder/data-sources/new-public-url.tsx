@@ -189,9 +189,9 @@ export default function DataSourceNew({
                   className="text-sm"
                 />
               </div>
-              <div className="text-lg font-bold text-element-900">
+              <p className="text-lg font-bold text-element-900">
                 Crawling mode
-              </div>
+              </p>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
                 Choose wether you want to crawl only pages that are children of
                 the URL you provided or the entire website.
@@ -219,9 +219,9 @@ export default function DataSourceNew({
                 />
               </div>
 
-              <div className="text-lg font-bold text-element-900">
+              <p className="text-lg font-bold text-element-900">
                 Maximum number of pages
-              </div>
+              </p>
 
               <Input
                 placeholder={WEBCRAWLER_MAX_PAGES.toString()}
@@ -253,9 +253,9 @@ export default function DataSourceNew({
                 className="text-sm"
               />
 
-              <div className="text-lg font-bold text-element-900">
+              <p className="text-lg font-bold text-element-900">
                 Maximum depth
-              </div>
+              </p>
               <div className="flex-grow self-stretch text-sm font-normal text-element-700">
                 Crawling depth determines how many levels deep, or links away
                 from the starting page, our crawler will go to find content.
