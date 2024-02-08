@@ -77,12 +77,12 @@ async function signalInRedis({
 async function populateUsageIfNeeded({
   agentConfigurationId,
   workspaceId,
-  messageId,
+  messageModelId,
   redis,
 }: {
   agentConfigurationId: string;
   workspaceId: string;
-  messageId: ModelId | null;
+  messageModelId: ModelId | null;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
   const owner = await Workspace.findOne({
@@ -121,7 +121,7 @@ async function populateUsageIfNeeded({
     }
 
     // We are safe to populate the sorted sets until the Redis populateLockKey expires.
-    // Get all mentions for this agent that have a messageId smaller than messageId
+    // Get all mentions for this agent that have a messageModelId smaller than messageModelId
     // and that happened within the last 30 days.
     const mentions = await Mention.findAll({
       where: {
@@ -131,7 +131,9 @@ async function populateUsageIfNeeded({
             [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
           },
         },
-        ...(messageId ? { messageId: { [Op.lt]: messageId } } : {}),
+        ...(messageModelId
+          ? { messageModelId: { [Op.lt]: messageModelId } }
+          : {}),
       },
       include: [
         {
@@ -215,7 +217,7 @@ export async function getAgentUsage(
     await populateUsageIfNeeded({
       agentConfigurationId,
       workspaceId,
-      messageId: null,
+      messageModelId: null,
       redis,
     });
     const now = new Date();
@@ -253,13 +255,13 @@ export async function signalAgentUsage({
   workspaceId,
   userId,
   timestamp,
-  messageId,
+  messageModelId,
 }: {
   agentConfigurationId: string;
   workspaceId: string;
   userId: string;
   timestamp: number;
-  messageId: ModelId;
+  messageModelId: ModelId;
 }) {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   try {
@@ -267,7 +269,7 @@ export async function signalAgentUsage({
     await populateUsageIfNeeded({
       agentConfigurationId,
       workspaceId,
-      messageId,
+      messageModelId,
       redis,
     });
     await signalInRedis({

@@ -1060,9 +1060,9 @@ export async function* postUserMessage(
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
         userId: user?.id.toString() || context.email || context.username,
-        agentConfigurationSId: agentMessage.configuration.sId,
+        agentConfigurationId: agentMessage.configuration.sId,
         workspaceId: owner.sId,
-        messageId: agentMessage.id,
+        messageModelId: agentMessage.id,
         timestamp: agentMessage.created,
       });
     }
@@ -1552,8 +1552,8 @@ export async function* editUserMessage(
           user?.id.toString() ||
           message.context.email ||
           message.context.username,
-        agentConfigurationSId: agentMessage.configuration.sId,
-        messageId: agentMessage.id,
+        agentConfigurationId: agentMessage.configuration.sId,
+        messageModelId: agentMessage.id,
         timestamp: agentMessage.created,
         workspaceId: owner.sId,
       });
