@@ -11,6 +11,7 @@ import {
   Modal,
   Page,
   PencilSquareIcon,
+  PlayIcon,
   PlusIcon,
   SlackLogo,
   TrashIcon,
@@ -38,7 +39,7 @@ import {
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
@@ -81,8 +82,18 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import {
+  useFeatures,
+  useSlackChannelsLinkedWithAgent,
+  useUser,
+} from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+
+type SlackChannel = { slackChannelId: string; slackChannelName: string };
+type SlackChannelLinkedWithAgent = SlackChannel & {
+  agentConfigurationId: string;
+};
 
 const usedModelConfigs = [
   GPT_4_TURBO_MODEL_CONFIG,
@@ -201,8 +212,6 @@ export default function AssistantBuilder({
   defaultIsEdited,
 }: AssistantBuilderProps) {
   const router = useRouter();
-  const { mutate } = useSWRConfig();
-
   const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
@@ -246,6 +255,7 @@ export default function AssistantBuilder({
         }
   );
 
+  const [showTryAssistantModal, setShowTryAssistantModal] = useState(false);
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
@@ -281,10 +291,7 @@ export default function AssistantBuilder({
 
   // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<
-    {
-      channelId: string;
-      channelName: string;
-    }[]
+    SlackChannel[]
   >([]);
 
   // Retrieve all the slack channels that are linked with an agent.
@@ -311,8 +318,8 @@ export default function AssistantBuilder({
             (channel) => channel.agentConfigurationId === agentConfigurationId
           )
           .map((channel) => ({
-            channelId: channel.slackChannelId,
-            channelName: channel.slackChannelName,
+            slackChannelId: channel.slackChannelId,
+            slackChannelName: channel.slackChannelName,
           }))
       );
       setSlackChannelsInitialized(true);
@@ -460,157 +467,6 @@ export default function AssistantBuilder({
     });
   };
 
-  const submitForm = async () => {
-    if (
-      !builderState.handle ||
-      !builderState.description ||
-      !builderState.instructions ||
-      !builderState.avatarUrl
-    ) {
-      // should be unreachable
-      // we keep this for TS
-      throw new Error("Form not valid");
-    }
-
-    type BodyType = t.TypeOf<
-      typeof PostOrPatchAgentConfigurationRequestBodySchema
-    >;
-
-    let actionParam: BodyType["assistant"]["action"] | null = null;
-
-    switch (builderState.actionMode) {
-      case "GENERIC":
-        break;
-      case "RETRIEVAL_SEARCH":
-      case "RETRIEVAL_EXHAUSTIVE":
-        actionParam = {
-          type: "retrieval_configuration",
-          query:
-            builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
-          relativeTimeFrame:
-            builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
-              ? {
-                  duration: builderState.timeFrame.value,
-                  unit: builderState.timeFrame.unit,
-                }
-              : "auto",
-          topK: "auto",
-          dataSources: Object.values(builderState.dataSourceConfigurations).map(
-            ({ dataSource, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSource.name,
-              workspaceId: owner.sId,
-              filter: {
-                parents: !isSelectAll
-                  ? { in: Object.keys(selectedResources), not: [] }
-                  : null,
-                tags: null,
-              },
-            })
-          ),
-        };
-        break;
-
-      case "DUST_APP_RUN":
-        if (builderState.dustAppConfiguration) {
-          actionParam = {
-            type: "dust_app_run_configuration",
-            appWorkspaceId: owner.sId,
-            appId: builderState.dustAppConfiguration.app.sId,
-          };
-        }
-        break;
-
-      case "TABLES_QUERY":
-        if (builderState.tablesQueryConfiguration) {
-          actionParam = {
-            type: "tables_query_configuration",
-            tables: Object.values(builderState.tablesQueryConfiguration),
-          };
-        }
-        break;
-
-      default:
-        ((x: never) => {
-          throw new Error(`Unknown data source mode ${x}`);
-        })(builderState.actionMode);
-    }
-
-    const body: t.TypeOf<
-      typeof PostOrPatchAgentConfigurationRequestBodySchema
-    > = {
-      assistant: {
-        name: removeLeadingAt(builderState.handle),
-        pictureUrl: builderState.avatarUrl,
-        description: builderState.description.trim(),
-        status: "active",
-        scope: builderState.scope,
-        action: actionParam,
-        generation: {
-          prompt: builderState.instructions.trim(),
-          model: builderState.generationSettings.modelSettings,
-          temperature: builderState.generationSettings.temperature,
-        },
-      },
-    };
-
-    const res = await fetch(
-      !agentConfigurationId
-        ? `/api/w/${owner.sId}/assistant/agent_configurations`
-        : `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
-      {
-        method: !agentConfigurationId ? "POST" : "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error("An error occurred while saving the configuration.");
-    }
-
-    const newAgentConfiguration = await res.json();
-    const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
-
-    // PATCH the linked slack channels if either:
-    // - there were already linked channels
-    // - there are newly selected channels
-    // If the user selected channels that were already routed to a different assistant, the current behavior is to
-    // unlink them from the previous assistant and link them to the this one.
-    if (
-      selectedSlackChannels.length ||
-      slackChannelsLinkedWithAgent.filter(
-        (channel) => channel.agentConfigurationId === agentConfigurationId
-      ).length
-    ) {
-      const slackLinkRes = await fetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            slack_channel_ids: selectedSlackChannels.map(
-              ({ channelId }) => channelId
-            ),
-          }),
-        }
-      );
-
-      if (!slackLinkRes.ok) {
-        throw new Error("An error occurred while linking Slack channels.");
-      }
-
-      await mutate(
-        `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
-      );
-    }
-
-    return newAgentConfiguration;
-  };
-
   const onClose = async () => {
     // TODO(2024-02-08 flav) Remove once internal router is in better shape.
     // Opening a new tab/window counts the default page as an entry in the
@@ -630,7 +486,16 @@ export default function AssistantBuilder({
   const onAssistantSave = async () => {
     setIsSavingOrDeleting(true);
     try {
-      await submitForm();
+      await submitForm({
+        owner,
+        builderState,
+        agentConfigurationId,
+        slackData: {
+          selectedSlackChannels,
+          slackDataSource,
+          slackChannelsLinkedWithAgent,
+        },
+      });
       setIsSavingOrDeleting(false);
       await onClose();
     } catch (e) {
@@ -672,6 +537,12 @@ export default function AssistantBuilder({
           }));
         }}
         dataSourceToManage={dataSourceToManage}
+      />
+      <TryModalInBuilder
+        owner={owner}
+        builderState={builderState}
+        toggleModal={setShowTryAssistantModal}
+        disabled={!submitEnabled}
       />
       <AssistantBuilderDustAppModal
         isOpen={showDustAppsModal}
@@ -1267,6 +1138,215 @@ export default function AssistantBuilder({
   );
 }
 
+async function submitForm({
+  owner,
+  builderState,
+  agentConfigurationId,
+  slackData,
+}: {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  agentConfigurationId: string | null;
+  slackData: {
+    selectedSlackChannels: SlackChannel[];
+    slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
+    slackDataSource?: DataSourceType;
+  };
+}) {
+  const { mutate } = useSWRConfig();
+  const {
+    selectedSlackChannels,
+    slackChannelsLinkedWithAgent,
+    slackDataSource,
+  } = slackData;
+  if (
+    !builderState.handle ||
+    !builderState.description ||
+    !builderState.instructions ||
+    !builderState.avatarUrl
+  ) {
+    // should be unreachable
+    // we keep this for TS
+    throw new Error("Form not valid");
+  }
+
+  type BodyType = t.TypeOf<
+    typeof PostOrPatchAgentConfigurationRequestBodySchema
+  >;
+
+  let actionParam: BodyType["assistant"]["action"] | null = null;
+
+  switch (builderState.actionMode) {
+    case "GENERIC":
+      break;
+    case "RETRIEVAL_SEARCH":
+    case "RETRIEVAL_EXHAUSTIVE":
+      actionParam = {
+        type: "retrieval_configuration",
+        query: builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
+        relativeTimeFrame:
+          builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
+            ? {
+                duration: builderState.timeFrame.value,
+                unit: builderState.timeFrame.unit,
+              }
+            : "auto",
+        topK: "auto",
+        dataSources: Object.values(builderState.dataSourceConfigurations).map(
+          ({ dataSource, selectedResources, isSelectAll }) => ({
+            dataSourceId: dataSource.name,
+            workspaceId: owner.sId,
+            filter: {
+              parents: !isSelectAll
+                ? { in: Object.keys(selectedResources), not: [] }
+                : null,
+              tags: null,
+            },
+          })
+        ),
+      };
+      break;
+
+    case "DUST_APP_RUN":
+      if (builderState.dustAppConfiguration) {
+        actionParam = {
+          type: "dust_app_run_configuration",
+          appWorkspaceId: owner.sId,
+          appId: builderState.dustAppConfiguration.app.sId,
+        };
+      }
+      break;
+
+    case "TABLES_QUERY":
+      if (builderState.tablesQueryConfiguration) {
+        actionParam = {
+          type: "tables_query_configuration",
+          tables: Object.values(builderState.tablesQueryConfiguration),
+        };
+      }
+      break;
+
+    default:
+      ((x: never) => {
+        throw new Error(`Unknown data source mode ${x}`);
+      })(builderState.actionMode);
+  }
+
+  const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
+    {
+      assistant: {
+        name: removeLeadingAt(builderState.handle),
+        pictureUrl: builderState.avatarUrl,
+        description: builderState.description.trim(),
+        status: "active",
+        scope: builderState.scope,
+        action: actionParam,
+        generation: {
+          prompt: builderState.instructions.trim(),
+          model: builderState.generationSettings.modelSettings,
+          temperature: builderState.generationSettings.temperature,
+        },
+      },
+    };
+
+  const res = await fetch(
+    !agentConfigurationId
+      ? `/api/w/${owner.sId}/assistant/agent_configurations`
+      : `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
+    {
+      method: !agentConfigurationId ? "POST" : "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("An error occurred while saving the configuration.");
+  }
+
+  const newAgentConfiguration = await res.json();
+  const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
+
+  // PATCH the linked slack channels if either:
+  // - there were already linked channels
+  // - there are newly selected channels
+  // If the user selected channels that were already routed to a different assistant, the current behavior is to
+  // unlink them from the previous assistant and link them to the this one.
+  if (
+    selectedSlackChannels.length ||
+    slackChannelsLinkedWithAgent.filter(
+      (channel) => channel.agentConfigurationId === agentConfigurationId
+    ).length
+  ) {
+    const slackLinkRes = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slack_channel_ids: selectedSlackChannels.map(
+            ({ slackChannelId }) => slackChannelId
+          ),
+        }),
+      }
+    );
+
+    if (!slackLinkRes.ok) {
+      throw new Error("An error occurred while linking Slack channels.");
+    }
+
+    await mutate(
+      `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
+    );
+  }
+
+  return newAgentConfiguration;
+}
+
+function TryModalInBuilder({
+  owner,
+  builderState,
+  toggleModal,
+  disabled,
+}: {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  toggleModal: (isOpen: boolean) => void;
+  disabled: boolean;
+}) {
+  const { user } = useUser();
+  const agentConfiguration = null;
+
+  function onTryClick() {
+    toggleModal(true);
+  }
+  return (
+    <>
+      {user && agentConfiguration && (
+        <TryAssistantModal
+          owner={owner}
+          user={user}
+          assistant={agentConfiguration}
+          onClose={() => toggleModal(false)}
+        />
+      )}
+      <Button
+        label="Try"
+        onClick={onTryClick}
+        size="md"
+        className="fixed bottom-8 right-8"
+        icon={PlayIcon}
+        disabled={disabled}
+        variant="primary"
+      />
+    </>
+  );
+}
+
 function SlackIntegration({
   slackDataSource,
   owner,
@@ -1276,8 +1356,8 @@ function SlackIntegration({
 }: {
   slackDataSource: DataSourceType;
   owner: WorkspaceType;
-  onSave: (channels: { channelId: string; channelName: string }[]) => void;
-  existingSelection: { channelId: string; channelName: string }[];
+  onSave: (channels: SlackChannel[]) => void;
+  existingSelection: { slackChannelId: string; slackChannelName: string }[];
   assistantHandle?: string;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -1291,9 +1371,9 @@ function SlackIntegration({
   const resetSelection = useCallback(() => {
     setSelectedChannelTitleById(
       existingSelection.reduce(
-        (acc, { channelId, channelName }) => ({
+        (acc, { slackChannelId, slackChannelName }) => ({
           ...acc,
-          [channelId]: channelName,
+          [slackChannelId]: slackChannelName,
         }),
         {}
       )
@@ -1313,9 +1393,9 @@ function SlackIntegration({
   const save = () => {
     onSave(
       Object.entries(selectedChannelTitleById).map(
-        ([channelId, channelName]) => ({
-          channelId,
-          channelName,
+        ([slackChannelId, slackChannelName]) => ({
+          slackChannelId,
+          slackChannelName,
         })
       )
     );
@@ -1404,32 +1484,38 @@ function SlackIntegration({
       {existingSelection.length ? (
         <>
           <ContextItem.List className="mt-2 border-b border-t border-structure-200">
-            {existingSelection.map(({ channelId, channelName }) => {
-              return (
-                <ContextItem
-                  key={channelId}
-                  title={channelName}
-                  visual={<ContextItem.Visual visual={SlackLogo} />}
-                  action={
-                    <Button.List>
-                      <Button
-                        icon={TrashIcon}
-                        variant="secondaryWarning"
-                        label="Remove"
-                        labelVisible={false}
-                        onClick={() => {
-                          onSave(
-                            existingSelection.filter(
-                              (channel) => channel.channelId !== channelId
-                            )
-                          );
-                        }}
-                      />
-                    </Button.List>
-                  }
-                />
-              );
-            })}
+            {existingSelection.map(
+              ({
+                slackChannelId: channelId,
+                slackChannelName: channelName,
+              }) => {
+                return (
+                  <ContextItem
+                    key={channelId}
+                    title={channelName}
+                    visual={<ContextItem.Visual visual={SlackLogo} />}
+                    action={
+                      <Button.List>
+                        <Button
+                          icon={TrashIcon}
+                          variant="secondaryWarning"
+                          label="Remove"
+                          labelVisible={false}
+                          onClick={() => {
+                            onSave(
+                              existingSelection.filter(
+                                (channel) =>
+                                  channel.slackChannelId !== channelId
+                              )
+                            );
+                          }}
+                        />
+                      </Button.List>
+                    }
+                  />
+                );
+              }
+            )}
           </ContextItem.List>
         </>
       ) : null}
