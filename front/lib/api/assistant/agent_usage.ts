@@ -37,7 +37,12 @@ function _getKeys({
   // score is: timestamp of last usage by a given user
   // value: user_id
   const agentUserCountKey = `agent_user_count_${workspaceId}_${agentConfigurationId}`;
+
+  // One key to store the number of users who have this agent in their list.
+  const agentInListCountKey = `agent_in_list_count_${workspaceId}_${agentConfigurationId}`;
+
   return {
+    agentInListCountKey,
     agentMessageCountKey,
     agentUserCountKey,
   };
@@ -174,20 +179,46 @@ async function populateUsageIfNeeded({
   }
 }
 
-// Consider moving this to Redis if it's really slow.
+// We don't need real-time accuracy on the number of members
+// that added the agent in their list.
+// Best-effort, we cache the result for a day.
 async function getAgentInListCount(
   auth: Authenticator,
+  redis: Awaited<ReturnType<typeof redisClient>>,
+  workspaceId: string,
   agentConfiguration: LightAgentConfigurationType
 ) {
-  if (agentConfiguration.scope === "published") {
-    return getUsersWithAgentInListCount(auth, agentConfiguration.sId);
+  const { agentInListCountKey } = _getKeys({
+    agentConfigurationId: agentConfiguration.sId,
+    workspaceId,
+  });
+
+  const cachedCount = await redis.get(agentInListCountKey);
+  if (cachedCount !== null) {
+    return parseInt(cachedCount, 10);
   }
 
-  if (agentConfiguration.scope === "workspace") {
-    return getMembersCount(auth, { activeOnly: true });
-  }
+  const calculateAndCacheCount = async (countPromise: Promise<number>) => {
+    const count = await countPromise;
+    await redis.set(agentInListCountKey, count.toString(), {
+      EX: 86400, // Cache for 1 day.
+    });
+    return count;
+  };
 
-  return 0;
+  // Determine the count based on the scope and cache the result.
+  switch (agentConfiguration.scope) {
+    case "published":
+      return calculateAndCacheCount(
+        getUsersWithAgentInListCount(auth, agentConfiguration.sId)
+      );
+    case "workspace":
+      return calculateAndCacheCount(
+        getMembersCount(auth, { activeOnly: true })
+      );
+    default:
+      return 0;
+  }
 }
 
 export async function getAgentUsage(
@@ -232,6 +263,8 @@ export async function getAgentUsage(
     );
     const usersWithAgentInListCount = await getAgentInListCount(
       auth,
+      redis,
+      workspaceId,
       agentConfiguration
     );
 
