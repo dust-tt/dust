@@ -117,7 +117,7 @@ const slackMembershipAccessBlocks = {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "Access the Slack integration by joining your Dust workspace. Only members can use this feature. Click 'Join My Workspace' to get started. For help, contact a Dust admin.",
+        text: "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator.",
       },
     },
     {
@@ -143,7 +143,7 @@ const slackMembershipAccessBlocks = {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "Oops! It looks like you're not a member of Dust yet. Please reach out to a Dust admin to join the workspace and start using the Slack integration.",
+        text: "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack.",
       },
     },
   ],
