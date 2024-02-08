@@ -142,21 +142,23 @@ export default function MyAssistants({
             />
           </Link>
         </Button.List>
-        {searchFilteredAssistants.length === 0 &&
-          !isAgentConfigurationsLoading && (
-            <ContextItem
-              title="No assistant found matching the search."
-              visual={undefined}
+        <ContextItem.List>
+          {searchFilteredAssistants.length === 0 &&
+            !isAgentConfigurationsLoading && (
+              <ContextItem
+                title="No assistant found matching the search."
+                visual={undefined}
+              />
+            )}
+          {["private", "published", "workspace", "global"].map((scope) => (
+            <ScopeSection
+              key={scope}
+              assistantList={searchFilteredAssistants}
+              scope={scope as AgentConfigurationScope}
+              onAssistantClick={(agent) => () => setShowDetails(agent)}
             />
-          )}
-        {["private", "published", "workspace", "global"].map((scope) => (
-          <ScopeSection
-            key={scope}
-            assistantList={searchFilteredAssistants}
-            scope={scope as AgentConfigurationScope}
-            onAssistantClick={(agent) => () => setShowDetails(agent)}
-          />
-        ))}
+          ))}
+        </ContextItem.List>
       </div>
     </AppLayout>
   );
@@ -177,27 +179,23 @@ function ScopeSection({
   }
   return (
     <>
-      <ContextItem.List>
-        <ContextItem.SectionHeader
-          title={SCOPE_INFO[scope].label + "s"}
-          description={SCOPE_INFO[scope].text}
-        />
-        {filteredList.map((agent) => (
-          <ContextItem
-            key={agent.sId}
-            title={`@${agent.name}`}
-            subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
-            visual={
-              <Avatar visual={<img src={agent.pictureUrl} />} size="md" />
-            }
-            onClick={onAssistantClick(agent)}
-          >
-            <ContextItem.Description>
-              <div className="text-element-700">{agent.description}</div>
-            </ContextItem.Description>
-          </ContextItem>
-        ))}
-      </ContextItem.List>
+      <ContextItem.SectionHeader
+        title={SCOPE_INFO[scope].label + "s"}
+        description={SCOPE_INFO[scope].text}
+      />
+      {filteredList.map((agent) => (
+        <ContextItem
+          key={agent.sId}
+          title={`@${agent.name}`}
+          subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
+          visual={<Avatar visual={<img src={agent.pictureUrl} />} size="md" />}
+          onClick={onAssistantClick(agent)}
+        >
+          <ContextItem.Description>
+            <div className="text-element-700">{agent.description}</div>
+          </ContextItem.Description>
+        </ContextItem>
+      ))}
     </>
   );
 }
