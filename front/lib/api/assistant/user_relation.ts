@@ -119,7 +119,7 @@ export async function getUsersWithAgentInListCount(
 ) {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
-    throw new Error("Workspace not found");
+    throw new Error("Workspace not found.");
   }
 
   return AgentUserRelation.count({

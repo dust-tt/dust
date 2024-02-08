@@ -188,14 +188,12 @@ export async function getMembersCount(
       }
     : {};
 
-  const membershipsCount = await Membership.count({
+  return Membership.count({
     where: {
       workspaceId: owner.id,
       ...whereClause,
     },
   });
-
-  return membershipsCount;
 }
 
 /**

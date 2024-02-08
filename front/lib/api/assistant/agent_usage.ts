@@ -2,7 +2,6 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
   ModelId,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
@@ -17,7 +16,6 @@ import {
   UserMessage,
   Workspace,
 } from "@app/lib/models";
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { redisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 30 days period.
