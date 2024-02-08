@@ -114,7 +114,7 @@ async function handler(
         case "azure_openai":
           try {
             const parsed = new URL(config.endpoint);
-            if (!parsed.hostname.endsWith("openai.azure.com")) {
+            if (!parsed.hostname.endsWith(".openai.azure.com")) {
               return apiError(req, res, {
                 status_code: 400,
                 api_error: {
@@ -298,7 +298,7 @@ async function handler(
           const accessToken = await client.getAccessToken();
 
           const parsed = new URL(endpoint);
-          if (!parsed.hostname.endsWith("googleapis.com")) {
+          if (!parsed.hostname.endsWith(".googleapis.com")) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
