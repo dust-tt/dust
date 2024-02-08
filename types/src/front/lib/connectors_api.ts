@@ -1,4 +1,8 @@
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
+import {
+  CreateConnectorOAuthRequestBody,
+  CreateConnectorUrlRequestBody,
+} from "../../connectors/api_handlers/create_connector";
 import { ConnectorProvider } from "../../front/data_source";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
@@ -91,12 +95,8 @@ export class ConnectorsAPI {
     workspaceAPIKey: string,
     dataSourceName: string,
     connectorParams:
-      | {
-          connectionId: string;
-        }
-      | {
-          url: string;
-        }
+      | CreateConnectorOAuthRequestBody
+      | CreateConnectorUrlRequestBody
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/create/${encodeURIComponent(provider)}`,

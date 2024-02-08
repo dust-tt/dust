@@ -1,7 +1,12 @@
-import { Page } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
+import { Input, RadioButton } from "@dust-tt/sparkle";
+import type {
+  DataSourceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
+import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
@@ -11,8 +16,8 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { classNames } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -61,6 +66,9 @@ export default function DataSourceNew({
 
   const [dataSourceNameError, setDataSourceNameError] = useState("");
   const [dataSourceUrl, setDataSourceUrl] = useState("");
+  const [maxPages, setMaxPages] = useState<number | null>(50);
+  const [maxDepth, setMaxDepth] = useState<number | null>(2);
+  const [crawlMode, setCrawlMode] = useState<"child" | "website">("website");
 
   const formValidation = useCallback(() => {
     const urlRegex =
@@ -114,12 +122,16 @@ export default function DataSourceNew({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        visibility: "private",
-        assistantDefaultSelected: false,
-        url: dataSourceUrl,
+        urlConfig: {
+          url: dataSourceUrl,
+          maxPages: maxPages || WEBCRAWLER_MAX_PAGES,
+          depth: maxDepth || WEBCRAWLER_MAX_DEPTH,
+          crawlMode: crawlMode,
+        },
         type: "url",
         provider: "webcrawler",
-      }),
+        connectionId: undefined,
+      } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
     });
     if (res.ok) {
       await router.push(`/w/${owner.sId}/builder/data-sources/public-urls`);
@@ -142,7 +154,7 @@ export default function DataSourceNew({
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
-          title="Create a Folder"
+          title="Add a Website"
           onSave={isValid && isEdited && !isSaving ? handleCreate : undefined}
           onCancel={() => {
             void router.push(
@@ -153,39 +165,131 @@ export default function DataSourceNew({
       }
       hideSidebar={true}
     >
-      <div className="flex flex-1 flex-col space-y-4">
-        <Page.SectionHeader
-          title="Add a new public URL"
-          description="Provide the public URL to be added."
-        />
-        <div>
-          <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-6">
-            <div className="sm:col-span-3">
-              <label
-                htmlFor="dataSourceName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Public URL
-              </label>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  name="url"
-                  id="dataSourceUrl"
-                  className={classNames(
-                    "block w-full min-w-0 flex-1 rounded-md  text-sm",
-                    dataSourceNameError
-                      ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : "border-gray-300 focus:border-action-500 focus:ring-action-500"
-                  )}
+      <div className="flex flex-col space-y-8 pb-16 pt-8">
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex flex-row items-start gap-8">
+            <div className="flex flex-col gap-4">
+              <p className="text-lg font-bold text-element-900">
+                Website public URL
+              </p>
+              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                URL of the website you want to crawl.{" "}
+                <span className="font-medium text-element-900">
+                  Public URL only.
+                </span>
+              </div>
+              <div className="text-sm">
+                <Input
+                  placeholder="https://example.com/acticles"
                   value={dataSourceUrl}
-                  onChange={(e) => setDataSourceUrl(e.target.value)}
+                  onChange={(value) => setDataSourceUrl(value)}
+                  error={dataSourceNameError}
+                  name="dataSourceUrl"
+                  showErrorLabel
+                  className="text-sm"
                 />
               </div>
-              <p className="mt-2 text-sm text-gray-500">
-                This is the highest level URL on the selected domain that will
-                be crawled.
+              <p className="text-lg font-bold text-element-900">
+                Crawling mode
               </p>
+              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                Choose wether you want to crawl only pages that are children of
+                the URL you provided or the entire website.
+              </div>
+
+              <div className="text-sm">
+                <RadioButton
+                  value={crawlMode}
+                  onChange={(value) => {
+                    setCrawlMode(value == "child" ? "child" : "website");
+                  }}
+                  name="crawlMode"
+                  choices={[
+                    {
+                      label: "Only sub pages.",
+                      value: "child",
+                      disabled: false,
+                    },
+                    {
+                      label: "The entire website.",
+                      value: "website",
+                      disabled: false,
+                    },
+                  ]}
+                />
+              </div>
+
+              <p className="text-lg font-bold text-element-900">
+                Maximum number of pages
+              </p>
+
+              <Input
+                placeholder={WEBCRAWLER_MAX_PAGES.toString()}
+                value={maxPages?.toString() || ""}
+                onChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed)) {
+                    setMaxPages(parseInt(value));
+                  } else if (value == "") {
+                    setMaxPages(null);
+                  }
+                }}
+                showErrorLabel={
+                  maxPages &&
+                  maxPages > WEBCRAWLER_MAX_PAGES &&
+                  maxPages &&
+                  maxPages < 1
+                    ? false
+                    : true
+                }
+                error={
+                  (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
+                  (maxPages && maxPages < 1)
+                    ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
+                    : null
+                }
+                name="maxPages"
+                size="sm"
+                className="text-sm"
+              />
+
+              <p className="text-lg font-bold text-element-900">
+                Maximum depth
+              </p>
+              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                Crawling depth determines how many levels deep, or links away
+                from the starting page, our crawler will go to find content.
+                Maximum value is 5.
+              </div>
+              <Input
+                placeholder={WEBCRAWLER_MAX_DEPTH.toString()}
+                value={maxDepth?.toString() || ""}
+                onChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed)) {
+                    setMaxDepth(parsed);
+                  } else if (value == "") {
+                    setMaxDepth(null);
+                  }
+                }}
+                showErrorLabel={
+                  maxDepth &&
+                  maxDepth > WEBCRAWLER_MAX_DEPTH &&
+                  maxDepth &&
+                  maxDepth < 1
+                    ? false
+                    : true
+                }
+                error={
+                  (maxDepth && maxDepth > WEBCRAWLER_MAX_DEPTH) ||
+                  (maxDepth && maxDepth < 1)
+                    ? `Maximum depth must be between 1 and ${WEBCRAWLER_MAX_DEPTH}`
+                    : null
+                }
+                name="maxDeph"
+                size="sm"
+                className="text-sm"
+              />
             </div>
           </div>
         </div>

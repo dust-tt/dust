@@ -2,6 +2,7 @@ import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
+  CreateConnectorUrlRequestBodySchema,
   DEFAULT_FREE_QDRANT_CLUSTER,
   DEFAULT_PAID_QDRANT_CLUSTER,
   EMBEDDING_CONFIG,
@@ -27,11 +28,11 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { NODE_ENV } = process.env;
 
-const PostManagedDataSourceRequestBodySchema = t.type({
+export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
   connectionId: t.union([t.string, t.undefined]),
   type: t.union([t.literal("oauth"), t.literal("url")]),
-  url: t.union([t.string, t.undefined]),
+  urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
 });
 
 function urlToDataSourceName(url: string) {
@@ -94,7 +95,7 @@ async function handler(
         });
       }
 
-      const { type, connectionId, url, provider } = bodyValidation.right;
+      const { type, connectionId, urlConfig, provider } = bodyValidation.right;
 
       if (!isConnectorProvider(provider)) {
         return apiError(req, res, {
@@ -169,8 +170,17 @@ async function handler(
           break;
         }
         case "url": {
-          dataSourceName = urlToDataSourceName(url as string);
-          dataSourceDescription = url as string;
+          if (!urlConfig) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "urlConfig is required for URL connectors.",
+              },
+            });
+          }
+          dataSourceName = urlToDataSourceName(urlConfig.url);
+          dataSourceDescription = urlConfig.url;
           break;
         }
 
@@ -329,7 +339,7 @@ async function handler(
           break;
         }
         case "url": {
-          if (!url) {
+          if (!urlConfig?.url) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -338,7 +348,7 @@ async function handler(
               },
             });
           }
-          let cleanUrl = url.trim();
+          let cleanUrl = urlConfig.url.trim();
           if (
             !cleanUrl.startsWith("http://") &&
             !cleanUrl.startsWith("https://")
@@ -350,9 +360,7 @@ async function handler(
             owner.sId,
             systemAPIKeyRes.value.secret,
             dataSourceName,
-            {
-              url: cleanUrl,
-            }
+            urlConfig
           );
           break;
         }

@@ -1,5 +1,8 @@
-import type { ConnectorResource, ModelId } from "@dust-tt/types";
-import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import type {
+  ConnectorResource,
+  CreateConnectorUrlRequestBody,
+  ModelId,
+} from "@dust-tt/types";
 
 import {
   getDisplayNameForPage,
@@ -25,14 +28,14 @@ import {
 
 export async function createWebcrawlerConnector(
   dataSourceConfig: DataSourceConfig,
-  url: string
+  urlConfig: CreateConnectorUrlRequestBody
 ): Promise<Result<string, Error>> {
   const res = await sequelize_conn.transaction(
     async (t): Promise<Result<Connector, Error>> => {
       const connector = await Connector.create(
         {
           type: "webcrawler",
-          connectionId: url,
+          connectionId: urlConfig.url,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
@@ -43,10 +46,10 @@ export async function createWebcrawlerConnector(
       await WebCrawlerConfiguration.create(
         {
           connectorId: connector.id,
-          url,
-          maxPageToCrawl: WEBCRAWLER_MAX_PAGES,
-          depth: WEBCRAWLER_MAX_DEPTH,
-          crawlMode: "website",
+          url: urlConfig.url,
+          maxPageToCrawl: urlConfig.maxPages,
+          crawlMode: urlConfig.crawlMode,
+          depth: urlConfig.depth,
         },
         {
           transaction: t,
