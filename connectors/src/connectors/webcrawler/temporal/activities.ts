@@ -1,5 +1,6 @@
-import type { ModelId } from "@dust-tt/types";
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration } from "crawlee";
@@ -30,8 +31,6 @@ import {
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 
-const MAX_DEPTH = 5;
-const MAX_PAGES = 512;
 const CONCURRENCY = 4;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
@@ -56,7 +55,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
-      maxRequestsPerCrawl: MAX_PAGES,
+      maxRequestsPerCrawl: Math.min(
+        webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES,
+        WEBCRAWLER_MAX_PAGES
+      ),
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 60, // 5 requests per second to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
@@ -86,7 +88,22 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             depth: request.userData.depth ? request.userData.depth + 1 : 1,
           },
           transformRequestFunction: (req) => {
-            if (request.userData.depth > MAX_DEPTH) {
+            if (webCrawlerConfig.crawlMode === "child") {
+              // We only want to crawl children of the original url
+              if (
+                !new URL(req.url).pathname.startsWith(
+                  new URL(webCrawlerConfig.url).pathname
+                )
+              ) {
+                // path is not a child of the original url
+                return false;
+              }
+            }
+            if (
+              request.userData.depth > WEBCRAWLER_MAX_DEPTH ||
+              (webCrawlerConfig.depth &&
+                request.userData.depth > webCrawlerConfig.depth)
+            ) {
               logger.info(
                 {
                   depth: request.userData.depth,

@@ -17,6 +17,9 @@ export class WebCrawlerConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare url: string;
   declare connectorId: ForeignKey<Connector["id"]>;
+  declare maxPageToCrawl: number | null;
+  declare crawlMode: "child" | "website";
+  declare depth: number | null;
 }
 
 WebCrawlerConfiguration.init(
@@ -39,6 +42,19 @@ WebCrawlerConfiguration.init(
     url: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    maxPageToCrawl: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    crawlMode: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: true,
+    },
+    depth: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {
