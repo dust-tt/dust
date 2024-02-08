@@ -612,8 +612,20 @@ export default function AssistantBuilder({
     return newAgentConfiguration;
   };
 
-  const onClose = () => {
-    router.back();
+  const onClose = async () => {
+    // TODO(2024-02-08 flav) Remove once internal router is in better shape.
+    // Opening a new tab/window counts the default page as an entry in the
+    // history stack, leading to a history length of 2. Directly opening a link
+    // without the "new tab" page results in a history length of 1.
+    if (window.history.length < 3) {
+      if (flow === "workspace_assistants") {
+        await router.push(`/w/${owner.sId}/builder/assistants`);
+      } else {
+        await router.push(`/w/${owner.sId}/assistant/assistants`);
+      }
+    } else {
+      router.back();
+    }
   };
 
   const onAssistantSave = async () => {
@@ -621,7 +633,7 @@ export default function AssistantBuilder({
     try {
       await submitForm();
       setIsSavingOrDeleting(false);
-      onClose();
+      await onClose();
     } catch (e) {
       setIsSavingOrDeleting(false);
       sendNotification({
@@ -1217,9 +1229,9 @@ export default function AssistantBuilder({
                 agentConfigurationId={agentConfigurationId}
                 show={showDeletionModal}
                 onClose={() => setShowDeletionModal(false)}
-                onDelete={() => {
+                onDelete={async () => {
                   setShowDeletionModal(false);
-                  onClose();
+                  await onClose();
                 }}
               />
               <Button
