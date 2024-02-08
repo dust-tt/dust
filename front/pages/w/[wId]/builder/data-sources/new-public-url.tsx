@@ -66,8 +66,8 @@ export default function DataSourceNew({
 
   const [dataSourceNameError, setDataSourceNameError] = useState("");
   const [dataSourceUrl, setDataSourceUrl] = useState("");
-  const [maxPages, setMaxPages] = useState<number | null>(WEBCRAWLER_MAX_PAGES);
-  const [maxDepth, setMaxDepth] = useState<number | null>(WEBCRAWLER_MAX_DEPTH);
+  const [maxPages, setMaxPages] = useState<number | null>(50);
+  const [maxDepth, setMaxDepth] = useState<number | null>(2);
   const [crawlMode, setCrawlMode] = useState<"child" | "website">("website");
 
   const formValidation = useCallback(() => {
@@ -211,7 +211,7 @@ export default function DataSourceNew({
                       disabled: false,
                     },
                     {
-                      label: "The entier website.",
+                      label: "The entire website.",
                       value: "website",
                       disabled: false,
                     },
