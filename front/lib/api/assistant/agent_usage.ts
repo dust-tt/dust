@@ -183,9 +183,13 @@ async function getAgentInListCount(
 ) {
   if (agentConfiguration.scope === "published") {
     return getUsersWithAgentInListCount(auth, agentConfiguration.sId);
-  } else {
+  }
+
+  if (agentConfiguration.scope === "workspace") {
     return getMembersCount(auth, { activeOnly: true });
   }
+
+  return 0;
 }
 
 export async function getAgentUsage(
