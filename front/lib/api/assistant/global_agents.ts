@@ -288,7 +288,7 @@ async function _getMistralSmallGlobalAgent({
 }: {
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  const status = settings ? settings.status : "disabled_by_admin";
+  const status = settings ? settings.status : "active";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
