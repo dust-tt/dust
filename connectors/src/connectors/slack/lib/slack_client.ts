@@ -1,13 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
 import type {
   CodedError,
-  UsersInfoResponse,
   WebAPIHTTPError,
   WebAPIPlatformError,
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
 
-import { isMemberOfWorkspace } from "@connectors/connectors/slack/lib/workspace_limits";
 import type { WorkflowError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { Connector } from "@connectors/lib/models";

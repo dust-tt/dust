@@ -9,26 +9,14 @@ import type {
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { Connector } from "@connectors/lib/models";
-import { redisClient } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
 
 const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
 
-export async function safeRedisClient<T>(
-  fn: (client: Awaited<ReturnType<typeof redisClient>>) => PromiseLike<T>
-): Promise<T> {
-  const client = await redisClient();
-  try {
-    return await fn(client);
-  } finally {
-    await client.quit();
-  }
-}
-
 async function getActiveMemberEmails(connector: Connector): Promise<string[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
-  // List the email of active members in the workspace.
+  // List the emails of all active members in the workspace.
   const dustAPI = new DustAPI(
     {
       apiKey: ds.workspaceAPIKey,
@@ -165,11 +153,10 @@ async function postMessageForUnhautorizedUser(
   connector: Connector,
   slackClient: WebClient,
   slackUserInfo: UsersInfoResponse,
-  {
-    slackChannelId,
-    slackMessageTs,
-  }: { slackChannelId: string; slackMessageTs: string }
+  slackInfos: SlackInfos
 ) {
+  const { slackChannelId, slackMessageTs } = slackInfos;
+
   const autoJoinEnabled = await isAutoJoinEnabledForDomain(
     connector,
     slackUserInfo
@@ -187,7 +174,7 @@ async function postMessageForUnhautorizedUser(
   });
 }
 
-export async function isMemberOfWorkspace(
+export async function isActiveMemberOfWorkspace(
   connector: Connector,
   slackUserEmail: string | undefined
 ) {
@@ -199,11 +186,7 @@ export async function isMemberOfWorkspace(
     connector
   );
 
-  if (workspaceActiveMemberEmails.includes(slackUserEmail)) {
-    return true;
-  }
-
-  return false;
+  return workspaceActiveMemberEmails.includes(slackUserEmail);
 }
 
 function isBotAllowed(user: User) {
@@ -256,10 +239,24 @@ async function isExternalUserAllowed(
   return isChannelPublic && isWhitelistedDomain;
 }
 
-async function isUserAllowed(connector: Connector, profile: Profile) {
-  const isMember = await isMemberOfWorkspace(connector, profile?.email);
+async function isUserAllowed(
+  connector: Connector,
+  profile: Profile,
+  whitelistedDomains?: string[]
+) {
+  const isMember = await isActiveMemberOfWorkspace(connector, profile?.email);
   if (isMember) {
     return true;
+  }
+
+  // To de-risk while releasing, we relies on an array of whitelisted domains.
+  // TODO(2024-02-08 flav) Remove once released is completed.
+  if (whitelistedDomains && whitelistedDomains.length > 0) {
+    const userDomain = profile?.email?.split("@")[1];
+
+    if (userDomain) {
+      return whitelistedDomains.includes(userDomain);
+    }
   }
 
   return false;
