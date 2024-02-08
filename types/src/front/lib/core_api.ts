@@ -1134,7 +1134,13 @@ export class CoreAPI {
     rowId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await fetch(
-      `${CORE_API}/projects/${projectId}/data_sources/${dataSourceName}/tables/${tableId}/rows/${rowId}`,
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(
+        rowId
+      )}`,
       {
         method: "DELETE",
       }

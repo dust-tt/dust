@@ -67,7 +67,6 @@ async function handler(
     });
   }
 
-  const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "POST":
       return handlePostTableCsvUpsertRequest(auth, req, res);
@@ -102,10 +101,7 @@ export async function handlePostTableCsvUpsertRequest(
   }
 
   if (!owner.flags.includes("structured_data")) {
-    res.status(404).end();
-    return;
-  }
-    apiError(req, res, {
+    return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
