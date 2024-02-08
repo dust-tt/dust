@@ -36,5 +36,5 @@ function isTrailingLoneSurrogate(code: number): boolean {
 }
 
 export function pluralize(count: number) {
-  return count > 1 ? "s" : "";
+  return count !== 1 ? "s" : "";
 }
