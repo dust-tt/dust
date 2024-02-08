@@ -41,12 +41,12 @@ export async function getWorkspaceInfos(
 }
 
 export async function getWorkspaceVerifiedDomain(
-  workspaceId: ModelId
+  workspace: WorkspaceType
 ): Promise<WorkspaceDomain | null> {
   const workspaceDomain = await WorkspaceHasDomain.findOne({
     attributes: ["domain", "domainAutoJoinEnabled"],
     where: {
-      workspaceId: workspaceId,
+      workspaceId: workspace.id,
     },
     // For now, one workspace can only have one domain.
     limit: 1,
