@@ -145,24 +145,24 @@ export default function AssistantsGallery({
   const tabs = [
     {
       label: "All",
-      href: `/w/${owner.sId}/assistant/gallery?view=all`,
+      shallowHref: `/w/${owner.sId}/assistant/gallery?view=all`,
       current: agentsGetView === "all",
     },
     {
       label: "Shared",
-      href: `/w/${owner.sId}/assistant/gallery?view=published`,
+      shallowHref: `/w/${owner.sId}/assistant/gallery?view=published`,
       current: agentsGetView === "published",
       icon: UserGroupIcon,
     },
     {
       label: "Company",
-      href: `/w/${owner.sId}/assistant/gallery?view=workspace`,
+      shallowHref: `/w/${owner.sId}/assistant/gallery?view=workspace`,
       current: agentsGetView === "workspace",
       icon: PlanetIcon,
     },
     {
       label: "Default",
-      href: `/w/${owner.sId}/assistant/gallery?view=global`,
+      shallowHref: `/w/${owner.sId}/assistant/gallery?view=global`,
       current: agentsGetView === "global",
       icon: DustIcon,
     },
@@ -250,7 +250,19 @@ export default function AssistantsGallery({
           </div>
           <div className="flex flex-row space-x-4">
             <div className="grow overflow-x-auto scrollbar-hide">
-              <Tab tabs={tabs} />
+              <Tab
+                tabs={tabs}
+                // TODO(2024-02-08 flav) Improve our tab components to support NextJS router.
+                // Due to a limitation with our headless UI tabs implementation.
+                // We use this event handler to replace the current path in the router.
+                onTabClick={async (label) => {
+                  const [clickedTab] = tabs.filter((t) => t.label === label);
+
+                  if (clickedTab) {
+                    await router.replace(clickedTab.shallowHref);
+                  }
+                }}
+              />
             </div>
             <div className="hidden md:block">{SearchOrderDropdown}</div>
           </div>
