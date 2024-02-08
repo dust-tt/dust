@@ -34,3 +34,7 @@ function isLeadingLoneSurrogate(code: number): boolean {
 function isTrailingLoneSurrogate(code: number): boolean {
   return code >= 0xdc00 && code <= 0xdfff;
 }
+
+export function pluralize(count: number) {
+  return count !== 1 ? "s" : "";
+}

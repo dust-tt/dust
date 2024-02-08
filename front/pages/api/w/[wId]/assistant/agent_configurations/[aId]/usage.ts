@@ -56,8 +56,8 @@ async function handler(
           },
         });
       }
-      const agentUsage = await getAgentUsage({
-        agentConfigurationId: agentConfiguration.sId,
+      const agentUsage = await getAgentUsage(auth, {
+        agentConfiguration,
         workspaceId: owner.sId,
       });
       return res.status(200).json({ agentUsage });

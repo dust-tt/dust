@@ -1062,7 +1062,7 @@ export async function* postUserMessage(
         userId: user?.id.toString() || context.email || context.username,
         agentConfigurationId: agentMessage.configuration.sId,
         workspaceId: owner.sId,
-        messageId: agentMessage.id,
+        messageModelId: agentMessage.id,
         timestamp: agentMessage.created,
       });
     }
@@ -1553,7 +1553,7 @@ export async function* editUserMessage(
           message.context.email ||
           message.context.username,
         agentConfigurationId: agentMessage.configuration.sId,
-        messageId: agentMessage.id,
+        messageModelId: agentMessage.id,
         timestamp: agentMessage.created,
         workspaceId: owner.sId,
       });

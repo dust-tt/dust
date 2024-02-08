@@ -4,7 +4,7 @@ import type {
   LightAgentConfigurationType,
 } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { pluralize, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
@@ -119,19 +119,34 @@ export function assistantUsageMessage({
 }) {
   if (isError) {
     return "Error loading usage data.";
-  } else if (isLoading) {
+  }
+
+  if (isLoading) {
     return "Loading usage data...";
-  } else if (usage) {
+  }
+
+  if (usage) {
+    const days = usage.timePeriodSec / (60 * 60 * 24);
+
     if (shortVersion) {
-      return `${usage.messageCount} message(s) over the last ${
-        usage.timePeriodSec / (60 * 60 * 24)
-      } days`;
+      const messageCount = `${usage.messageCount} message${pluralize(
+        usage.messageCount
+      )}`;
+
+      return `${messageCount} over the last ${days} days`;
     }
-    return `@${assistantName} has been used by ${usage.userCount} ${
-      usage.userCount > 1 ? "people" : "person"
-    } in ${usage.messageCount} message${
-      usage.messageCount > 1 ? "s" : ""
-    } over the last ${usage.timePeriodSec / (60 * 60 * 24)} days.`;
+
+    const usersWithAgentInListCount = `${
+      usage.usersWithAgentInListCount
+    } member${pluralize(usage.usersWithAgentInListCount)}`;
+    const messageCount = `${usage.messageCount} time${pluralize(
+      usage.messageCount
+    )}`;
+    const userCount = `${usage.userCount} member${pluralize(usage.userCount)}`;
+
+    return `@${assistantName} is active for ${usersWithAgentInListCount} and has been used ${messageCount} by ${userCount} in the last ${
+      usage.timePeriodSec / (60 * 60 * 24)
+    } days.`;
   }
 }
 
