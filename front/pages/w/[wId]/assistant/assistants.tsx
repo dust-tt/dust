@@ -90,7 +90,7 @@ export default function MyAssistants({
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="My Assistants"
-          onClose={() => router.push(`/w/${owner.id}/assistant/new`)}
+          onClose={() => router.push(`/w/${owner.sId}/assistant/new`)}
         />
       }
       gaTrackingId={gaTrackingId}
