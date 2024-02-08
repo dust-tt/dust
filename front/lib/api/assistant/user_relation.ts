@@ -115,7 +115,7 @@ export async function setAgentUserListStatus({
 
 export async function getUsersWithAgentInListCount(
   auth: Authenticator,
-  agentSId: string
+  agentId: string
 ) {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -125,7 +125,7 @@ export async function getUsersWithAgentInListCount(
   return AgentUserRelation.count({
     where: {
       workspaceId: owner.id,
-      agentConfiguration: agentSId,
+      agentConfiguration: agentId,
       listStatusOverride: "in-list",
     },
   });

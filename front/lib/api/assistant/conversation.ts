@@ -1061,7 +1061,7 @@ export async function* postUserMessage(
       void signalAgentUsage({
         userId: user?.id.toString() || context.email || context.username,
         agentConfigurationSId: agentMessage.configuration.sId,
-        workspaceSId: owner.sId,
+        workspaceId: owner.sId,
         messageId: agentMessage.id,
         timestamp: agentMessage.created,
       });
@@ -1555,7 +1555,7 @@ export async function* editUserMessage(
         agentConfigurationSId: agentMessage.configuration.sId,
         messageId: agentMessage.id,
         timestamp: agentMessage.created,
-        workspaceSId: owner.sId,
+        workspaceId: owner.sId,
       });
     }
   }

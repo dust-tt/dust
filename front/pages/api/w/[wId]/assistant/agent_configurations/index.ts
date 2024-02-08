@@ -125,7 +125,7 @@ async function handler(
                   usage: await getAgentUsage(auth, {
                     providedRedis: redis,
                     agentConfiguration,
-                    workspaceSId: owner.sId,
+                    workspaceId: owner.sId,
                   }),
                 };
               }

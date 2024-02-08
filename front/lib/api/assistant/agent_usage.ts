@@ -22,21 +22,21 @@ import { redisClient } from "@app/lib/redis";
 const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 
 function _getKeys({
-  workspaceSId,
-  agentConfigurationSId,
+  workspaceId,
+  agentConfigurationId,
 }: {
-  workspaceSId: string;
-  agentConfigurationSId: string;
+  workspaceId: string;
+  agentConfigurationId: string;
 }) {
   // One sorted set per agent for counting the number of messages from the agent.
   // score is: timestamp of each message of the agent
   // value: random unique distinct value.
-  const agentMessageCountKey = `agent_usage_count_${workspaceSId}_${agentConfigurationSId}`;
+  const agentMessageCountKey = `agent_usage_count_${workspaceId}_${agentConfigurationId}`;
 
   // One sorted set per agent for counting the number of users that have mentioned the agent.
   // score is: timestamp of last usage by a given user
   // value: user_id
-  const agentUserCountKey = `agent_user_count_${workspaceSId}_${agentConfigurationSId}`;
+  const agentUserCountKey = `agent_user_count_${workspaceId}_${agentConfigurationId}`;
   return {
     agentMessageCountKey,
     agentUserCountKey,
@@ -44,21 +44,21 @@ function _getKeys({
 }
 
 async function signalInRedis({
-  agentConfigurationSId,
-  workspaceSId,
+  agentConfigurationId,
+  workspaceId,
   userId,
   timestamp,
   redis,
 }: {
-  agentConfigurationSId: string;
-  workspaceSId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
   userId: string;
   timestamp: number;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    workspaceSId,
-    agentConfigurationSId,
+    workspaceId,
+    agentConfigurationId,
   });
 
   await redis.zAdd(agentMessageCountKey, {
@@ -75,27 +75,27 @@ async function signalInRedis({
 }
 
 async function populateUsageIfNeeded({
-  agentConfigurationSId,
-  workspaceSId,
+  agentConfigurationId,
+  workspaceId,
   messageId,
   redis,
 }: {
-  agentConfigurationSId: string;
-  workspaceSId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
   messageId: ModelId | null;
   redis: Awaited<ReturnType<typeof redisClient>>;
 }) {
   const owner = await Workspace.findOne({
     where: {
-      sId: workspaceSId,
+      sId: workspaceId,
     },
   });
   if (!owner) {
-    throw new Error(`Workspace ${workspaceSId} not found`);
+    throw new Error(`Workspace ${workspaceId} not found`);
   }
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    agentConfigurationSId,
-    workspaceSId,
+    agentConfigurationId,
+    workspaceId,
   });
 
   const existCount = await redis.exists([
@@ -107,7 +107,7 @@ async function populateUsageIfNeeded({
     // by fetching the data from the database.
     // We need to ensure that only one process is going through the populate code path
     // so we are using redis.incr() to act as a non blocking lock.
-    const populateLockKey = `agent_usage_populate_${workspaceSId}_${agentConfigurationSId}`;
+    const populateLockKey = `agent_usage_populate_${workspaceId}_${agentConfigurationId}`;
     const needToPopulate = (await redis.incr(populateLockKey)) === 1;
 
     // Keeping the lock key around for 10 minutes, which essentially gives 10 minutes
@@ -126,7 +126,7 @@ async function populateUsageIfNeeded({
     const mentions = await Mention.findAll({
       where: {
         ...{
-          agentConfigurationSId: agentConfigurationSId,
+          agentConfigurationId: agentConfigurationId,
           createdAt: {
             [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
           },
@@ -148,7 +148,7 @@ async function populateUsageIfNeeded({
               as: "conversation",
               required: true,
               where: {
-                workspaceSId: owner.id,
+                workspaceId: owner.id,
               },
             },
           ],
@@ -160,8 +160,8 @@ async function populateUsageIfNeeded({
       // at a time.
       if (mention.message?.userMessage) {
         await signalInRedis({
-          agentConfigurationSId,
-          workspaceSId,
+          agentConfigurationId,
+          workspaceId,
           userId:
             mention.message.userMessage.userId?.toString() ||
             mention.message.userMessage.userContextEmail ||
@@ -193,28 +193,28 @@ async function getAgentInListCount(
 export async function getAgentUsage(
   auth: Authenticator,
   {
-    workspaceSId,
+    workspaceId,
     agentConfiguration,
     providedRedis,
   }: {
-    workspaceSId: string;
+    workspaceId: string;
     agentConfiguration: LightAgentConfigurationType;
     providedRedis?: Awaited<ReturnType<typeof redisClient>>;
   }
 ): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
-  const { sId: agentConfigurationSId } = agentConfiguration;
+  const { sId: agentConfigurationId } = agentConfiguration;
 
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    agentConfigurationSId,
-    workspaceSId,
+    agentConfigurationId,
+    workspaceId,
   });
 
   try {
     redis = providedRedis ?? (await redisClient());
     await populateUsageIfNeeded({
-      agentConfigurationSId,
-      workspaceSId,
+      agentConfigurationId,
+      workspaceId,
       messageId: null,
       redis,
     });
@@ -249,14 +249,14 @@ export async function getAgentUsage(
 }
 
 export async function signalAgentUsage({
-  agentConfigurationSId,
-  workspaceSId,
+  agentConfigurationId,
+  workspaceId,
   userId,
   timestamp,
   messageId,
 }: {
-  agentConfigurationSId: string;
-  workspaceSId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
   userId: string;
   timestamp: number;
   messageId: ModelId;
@@ -265,14 +265,14 @@ export async function signalAgentUsage({
   try {
     redis = await redisClient();
     await populateUsageIfNeeded({
-      agentConfigurationSId,
-      workspaceSId,
+      agentConfigurationId,
+      workspaceId,
       messageId,
       redis,
     });
     await signalInRedis({
-      agentConfigurationSId,
-      workspaceSId,
+      agentConfigurationId,
+      workspaceId,
       userId,
       timestamp,
       redis,
