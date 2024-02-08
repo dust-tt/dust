@@ -215,6 +215,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
 }: AssistantBuilderProps) {
   const router = useRouter();
+  const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
   const slackDataSource = dataSources.find(
     (ds) => ds.connectorProvider === "slack"
@@ -499,6 +500,10 @@ export default function AssistantBuilder({
           slackChannelsLinkedWithAgent,
         },
       });
+      await mutate(
+        `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
+      );
+
       setIsSavingOrDeleting(false);
       await onClose();
     } catch (e) {
@@ -1156,7 +1161,6 @@ async function submitForm({
     slackDataSource?: DataSourceType;
   };
 }): Promise<LightAgentConfigurationType | AgentConfigurationType> {
-  const { mutate } = useSWRConfig();
   const {
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
@@ -1303,10 +1307,6 @@ async function submitForm({
     if (!slackLinkRes.ok) {
       throw new Error("An error occurred while linking Slack channels.");
     }
-
-    await mutate(
-      `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
-    );
   }
 
   return newAgentConfiguration.agentConfiguration;
@@ -1324,18 +1324,32 @@ function TryModalInBuilder({
   disabled: boolean;
 }) {
   const { user } = useUser();
-  const agentConfiguration = null;
+  const [assistant, setAssistant] = useState<
+    LightAgentConfigurationType | AgentConfigurationType | null
+  >(null);
 
-  function onTryClick() {
+  async function onTryClick() {
+    setAssistant(
+      await submitForm({
+        owner,
+        builderState: { ...builderState },
+        agentConfigurationId: null,
+        slackData: {
+          selectedSlackChannels: [],
+          slackChannelsLinkedWithAgent: [],
+          slackDataSource: undefined,
+        },
+      })
+    );
     toggleModal(true);
   }
   return (
     <>
-      {user && agentConfiguration && (
+      {user && assistant && (
         <TryAssistantModal
           owner={owner}
           user={user}
-          assistant={agentConfiguration}
+          assistant={assistant}
           onClose={() => toggleModal(false)}
         />
       )}
