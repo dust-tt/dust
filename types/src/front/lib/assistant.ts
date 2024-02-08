@@ -57,7 +57,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   largeModel: false,
 } as const;
 
-export const MISTRAL_NEXT_MODEL_ID = "mistral-test" as const;
+export const MISTRAL_NEXT_MODEL_ID = "mistral-next" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
 

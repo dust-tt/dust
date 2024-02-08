@@ -18,8 +18,8 @@ import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  MISTRAL_TEST_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
@@ -869,12 +869,14 @@ export async function getGlobalAgents(
     )
   );
 
-  // ROLLOUT INTERCOM
+  // Rollout Intercom.
   if (!isDevelopmentOrDustWorkspace(owner)) {
     agentCandidates = agentCandidates?.filter(
       (agent) => agent?.sId !== GLOBAL_AGENTS_SID.INTERCOM
     );
   }
+
+  // Rollout Mistral.
   if (!isDevelopmentOrDustWorkspace(owner)) {
     agentCandidates = agentCandidates?.filter(
       (agent) => agent?.sId !== GLOBAL_AGENTS_SID.MISTRAL_NEXT
