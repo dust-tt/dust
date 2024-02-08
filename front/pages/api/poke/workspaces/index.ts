@@ -141,6 +141,7 @@ async function handler(
           allowedDomain: ws.allowedDomain || null,
           role: "admin",
           segmentation: ws.segmentation,
+          flags: [],
         })),
       });
     default:

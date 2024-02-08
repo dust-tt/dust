@@ -37,6 +37,8 @@ export async function getWorkspaceInfos(
     allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
+    // Flags are not needed from outside of the workspace.
+    flags: [],
   };
 }
 
@@ -94,6 +96,7 @@ export async function setInternalWorkspaceSegmentation(
     allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
+    flags: [],
   };
 }
 
