@@ -18,8 +18,10 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
+  AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
+  LightAgentConfigurationType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
@@ -89,6 +91,7 @@ import {
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+import { Agent } from "http";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -1152,7 +1155,7 @@ async function submitForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
     slackDataSource?: DataSourceType;
   };
-}) {
+}): Promise<LightAgentConfigurationType | AgentConfigurationType> {
   const { mutate } = useSWRConfig();
   const {
     selectedSlackChannels,
@@ -1266,7 +1269,9 @@ async function submitForm({
     throw new Error("An error occurred while saving the configuration.");
   }
 
-  const newAgentConfiguration = await res.json();
+  const newAgentConfiguration: {
+    agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
+  } = await res.json();
   const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 
   // PATCH the linked slack channels if either:
@@ -1304,7 +1309,7 @@ async function submitForm({
     );
   }
 
-  return newAgentConfiguration;
+  return newAgentConfiguration.agentConfiguration;
 }
 
 function TryModalInBuilder({
