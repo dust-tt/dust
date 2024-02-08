@@ -121,7 +121,7 @@ async function populateUsageIfNeeded({
     }
 
     // We are safe to populate the sorted sets until the Redis populateLockKey expires.
-    // Get all mentions for this agent that have a messageModelId smaller than messageModelId
+    // Get all mentions for this agent that have a messageId smaller than messageId
     // and that happened within the last 30 days.
     const mentions = await Mention.findAll({
       where: {
@@ -131,9 +131,7 @@ async function populateUsageIfNeeded({
             [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
           },
         },
-        ...(messageModelId
-          ? { messageModelId: { [Op.lt]: messageModelId } }
-          : {}),
+        ...(messageModelId ? { messageId: { [Op.lt]: messageModelId } } : {}),
       },
       include: [
         {
