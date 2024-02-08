@@ -106,7 +106,7 @@ const _createConnectorAPIHandler = async (
             dataSourceName: dataSourceName,
             workspaceId: workspaceId,
           },
-          params.url
+          params
         );
         break;
       }

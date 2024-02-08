@@ -1,4 +1,8 @@
-import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorsAPIError,
+  CreateConnectorUrlRequestBody,
+  ModelId,
+} from "@dust-tt/types";
 
 import type { Result } from "@connectors/lib/result";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -14,7 +18,7 @@ export type ConnectorCreatorOAuth = (
 
 export type ConnectorCreatorUrl = (
   dataSourceConfig: DataSourceConfig,
-  url: string
+  urlConfig: CreateConnectorUrlRequestBody
 ) => Promise<Result<string, Error>>;
 
 export type ConnectorUpdater = (
