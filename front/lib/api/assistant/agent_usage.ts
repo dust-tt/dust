@@ -7,9 +7,11 @@ import type {
 import { literal, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
+import { getUsersWithAgentInListCount } from "@app/lib/api/assistant/user_relation";
+import { getMembersCount } from "@app/lib/api/workspace";
+import type { Authenticator } from "@app/lib/auth";
 import {
   Conversation as DBConversation,
-  Membership,
   Mention,
   Message,
   UserMessage,
@@ -175,41 +177,30 @@ async function populateUsageIfNeeded({
 }
 
 // Consider moving this to Redis if it's really slow.
-async function getUsersWithAgentInListCount(
-  agentConfiguration: LightAgentConfigurationType,
-  workspaceId: number
+async function getAgentInListCount(
+  auth: Authenticator,
+  agentConfiguration: LightAgentConfigurationType
 ) {
   if (agentConfiguration.scope === "published") {
-    return AgentUserRelation.count({
-      where: {
-        workspaceId,
-        agentConfiguration: agentConfiguration.sId,
-        listStatusOverride: "in-list",
-      },
-    });
+    return getUsersWithAgentInListCount(auth, agentConfiguration.sId);
   } else {
-    return Membership.count({
-      where: {
-        workspaceId,
-        role: {
-          [Op.ne]: "revoked",
-        },
-      },
-    });
+    return getMembersCount(auth, { activeOnly: true });
   }
 }
 
-export async function getAgentUsage({
-  workspace,
-  agentConfiguration,
-  providedRedis,
-}: {
-  workspace: WorkspaceType;
-  agentConfiguration: LightAgentConfigurationType;
-  providedRedis?: Awaited<ReturnType<typeof redisClient>>;
-}): Promise<AgentUsageType> {
+export async function getAgentUsage(
+  auth: Authenticator,
+  {
+    workspaceSId,
+    agentConfiguration,
+    providedRedis,
+  }: {
+    workspaceSId: string;
+    agentConfiguration: LightAgentConfigurationType;
+    providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+  }
+): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
-  const { sId: workspaceSId } = workspace;
   const { sId: agentConfigurationSId } = agentConfiguration;
 
   const { agentMessageCountKey, agentUserCountKey } = _getKeys({
@@ -237,9 +228,9 @@ export async function getAgentUsage({
       thirtyDaysAgo.getTime(),
       now.getTime()
     );
-    const usersWithAgentInListCount = await getUsersWithAgentInListCount(
-      agentConfiguration,
-      workspace.id
+    const usersWithAgentInListCount = await getAgentInListCount(
+      auth,
+      agentConfiguration
     );
 
     return {

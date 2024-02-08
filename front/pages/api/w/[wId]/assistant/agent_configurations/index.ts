@@ -122,10 +122,10 @@ async function handler(
               ): Promise<LightAgentConfigurationType> => {
                 return {
                   ...agentConfiguration,
-                  usage: await getAgentUsage({
+                  usage: await getAgentUsage(auth, {
                     providedRedis: redis,
                     agentConfiguration,
-                    workspace: owner,
+                    workspaceSId: owner.sId,
                   }),
                 };
               }
