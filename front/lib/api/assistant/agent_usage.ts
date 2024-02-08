@@ -3,6 +3,7 @@ import type {
   LightAgentConfigurationType,
   ModelId,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
@@ -216,8 +217,11 @@ async function getAgentInListCount(
       return calculateAndCacheCount(
         getMembersCount(auth, { activeOnly: true })
       );
-    default:
+    case "global":
+    case "private":
       return 0;
+    default:
+      assertNever(agentConfiguration.scope);
   }
 }
 
