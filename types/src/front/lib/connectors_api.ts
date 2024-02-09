@@ -4,6 +4,7 @@ import {
   CreateConnectorUrlRequestBody,
 } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
+import { WebCrawlerConfigurationType } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
@@ -433,6 +434,24 @@ export class ConnectorsAPI {
       `${CONNECTORS_API}/slack/channels/linked_with_agent?connector_id=${encodeURIComponent(
         connectorId
       )}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async getWebCrawlerConfiguration({
+    connectorId,
+  }: {
+    connectorId: string;
+  }): Promise<ConnectorsAPIResponse<WebCrawlerConfigurationType>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/webcrawler/${encodeURIComponent(
+        connectorId
+      )}/configuration`,
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
