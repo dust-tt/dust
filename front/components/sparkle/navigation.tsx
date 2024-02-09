@@ -123,13 +123,11 @@ export const subNavigationBuild = ({
   current,
   subMenuLabel,
   subMenu,
-  crawlerEnabled,
 }: {
   owner: WorkspaceType;
   current: SubNavigationAssistantsId;
   subMenuLabel?: string;
   subMenu?: SparkleAppLayoutNavigation[];
-  crawlerEnabled?: boolean;
 }) => {
   const nav: SidebarNavigation[] = [];
 
@@ -174,7 +172,7 @@ export const subNavigationBuild = ({
       subMenu: current === "data_sources_static" ? subMenu : undefined,
     },
   ];
-  if (crawlerEnabled) {
+  if (owner.flags.includes("crawler")) {
     dataSourceItems.push({
       id: "data_sources_url",
       label: "Websites",

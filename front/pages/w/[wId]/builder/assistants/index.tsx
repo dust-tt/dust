@@ -34,7 +34,7 @@ import {
   compareAgentsForSort,
 } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { useAgentConfigurations, useFeatures } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
@@ -160,7 +160,6 @@ export default function WorkspaceAssistants({
     icon: SCOPE_INFO[scope].icon,
     href: `/w/${owner.sId}/builder/assistants?tabScope=${scope}`,
   }));
-  const { features } = useFeatures(owner);
 
   return (
     <AppLayout
@@ -171,7 +170,6 @@ export default function WorkspaceAssistants({
       subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",
-        crawlerEnabled: features?.includes("crawler"),
       })}
     >
       {showDetails && (

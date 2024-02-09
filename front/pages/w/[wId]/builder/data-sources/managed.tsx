@@ -34,7 +34,6 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
-import { useFeatures } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -478,8 +477,6 @@ export default function DataSourcesView({
 
   const router = useRouter();
 
-  const { features } = useFeatures(owner);
-
   return (
     <AppLayout
       subscription={subscription}
@@ -489,7 +486,6 @@ export default function DataSourcesView({
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_managed",
-        crawlerEnabled: features?.includes("crawler"),
       })}
     >
       {showConfirmConnection && (

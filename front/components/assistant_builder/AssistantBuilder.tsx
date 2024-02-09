@@ -81,7 +81,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useFeatures, useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 const usedModelConfigs = [
@@ -209,8 +209,7 @@ export default function AssistantBuilder({
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-  const { features } = useFeatures(owner);
-  const structuredDataEnabled = features?.includes("structured_data");
+  const structuredDataEnabled = owner.flags.includes("structured_data");
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
