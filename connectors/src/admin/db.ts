@@ -24,6 +24,7 @@ import {
 import {
   IntercomArticle,
   IntercomCollection,
+  IntercomConversation,
   IntercomHelpCenter,
   IntercomTeam,
 } from "@connectors/lib/models/intercom";
@@ -78,6 +79,7 @@ async function main(): Promise<void> {
   await IntercomCollection.sync({ alter: true });
   await IntercomArticle.sync({ alter: true });
   await IntercomTeam.sync({ alter: true });
+  await IntercomConversation.sync({ alter: true });
   await WebCrawlerConfiguration.sync({ alter: true });
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
