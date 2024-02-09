@@ -2,6 +2,7 @@ import type {
   AgentRecentAuthors,
   LightAgentConfigurationType,
   UserType,
+  UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
@@ -123,15 +124,13 @@ function renderAuthors(
   );
 }
 
-export async function getAgentRecentAuthors({
-  agent,
+export async function getAgentsRecentAuthors({
+  agents,
   auth,
 }: {
-  agent: LightAgentConfigurationType;
+  agents: LightAgentConfigurationType[];
   auth: Authenticator;
-}): Promise<AgentRecentAuthors> {
-  const { sId: agentId, versionAuthorId } = agent;
-
+}): Promise<AgentRecentAuthors[]> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Owner is required");
@@ -139,30 +138,74 @@ export async function getAgentRecentAuthors({
   const { sId: workspaceId } = owner;
   const currentUserId = auth.user()?.id;
 
-  const isGlobalAgent = versionAuthorId === null;
-  // For global agents, which have no authors, return early.
-  if (isGlobalAgent) {
-    return [DUST_OWNED_ASSISTANTS_AUTHOR_NAME];
-  }
+  const recentAuthorsIdsByAgentId: Record<string, number[] | null> = (
+    await Promise.all(
+      agents.map(async (agent): Promise<[string, number[] | null]> => {
+        const { sId: agentId, versionAuthorId } = agent;
+        const isGlobalAgent = versionAuthorId === null;
+        if (isGlobalAgent) {
+          return [agentId, null];
+        }
+        const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
+          agentId,
+          workspaceId,
+        });
+        let recentAuthorIds = await safeRedisClient(async (redis) =>
+          redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
+        );
+        if (recentAuthorIds.length === 0) {
+          // Populate from the database and store in Redis if the entry is not already present.
+          recentAuthorIds = await populateAuthorIdsFromDb({
+            agentId,
+            workspaceId,
+          });
+        }
+        return [agentId, recentAuthorIds.map((id) => parseInt(id, 10))];
+      })
+    )
+  ).reduce((acc, [agentId, recentAuthorIds]) => {
+    acc[agentId] = recentAuthorIds;
+    return acc;
+  }, {} as Record<string, number[] | null>);
 
-  const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
-    agentId,
-    workspaceId,
+  const authorByUserId: Record<number, UserTypeWithWorkspaces> = (
+    await getMembers(auth, {
+      userIds: Array.from(
+        new Set(Object.values(recentAuthorsIdsByAgentId).flat())
+      )
+        .filter((id) => id !== null)
+        // Ts doesn't narrow the type of `id` to `number` after the `filter` call.
+        .map((id) => id as number),
+    })
+  ).reduce((acc, member) => {
+    acc[member.id] = member;
+    return acc;
+  }, {} as Record<number, UserTypeWithWorkspaces>);
+
+  return agents.map((agent) => {
+    const recentAuthorIds = recentAuthorsIdsByAgentId[agent.sId];
+    if (recentAuthorIds === null) {
+      return [DUST_OWNED_ASSISTANTS_AUTHOR_NAME];
+    }
+    return renderAuthors(
+      recentAuthorIds.map((id) => authorByUserId[id]),
+      currentUserId
+    );
   });
+}
 
-  let recentAuthorIds = await safeRedisClient(async (redis) =>
-    redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
-  );
-
-  if (recentAuthorIds.length === 0) {
-    // Populate from the database and store in Redis if the entry is not already present.
-    recentAuthorIds = await populateAuthorIdsFromDb({ agentId, workspaceId });
-  }
-  const authors = await getMembers(auth, {
-    userIds: recentAuthorIds.map((id) => parseInt(id, 10)),
+export async function getAgentRecentAuthors({
+  agent,
+  auth,
+}: {
+  agent: LightAgentConfigurationType;
+  auth: Authenticator;
+}): Promise<AgentRecentAuthors> {
+  const recentAuthors = await getAgentsRecentAuthors({
+    agents: [agent],
+    auth,
   });
-  // Consider moving this logic to the FE if we need to fetch members in different places.
-  return renderAuthors(authors, currentUserId);
+  return recentAuthors[0];
 }
 
 export async function agentConfigurationWasUpdatedBy({
