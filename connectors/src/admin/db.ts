@@ -1,5 +1,6 @@
 import type { Sequelize } from "sequelize";
 
+import { Connector } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -47,7 +48,6 @@ import {
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { Connector } from "@connectors/resources/storage/schemas/connectors";
 
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
