@@ -197,7 +197,9 @@ export default function WorkspaceAssistants({
               }}
             />
             <Button.List>
-              <Link href={`/w/${owner.sId}/builder/assistants/new`}>
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+              >
                 <Button
                   variant="primary"
                   icon={PlusIcon}
