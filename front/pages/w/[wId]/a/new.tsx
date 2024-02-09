@@ -1,8 +1,8 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
+import type { AppType, AppVisibility } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -55,7 +55,7 @@ export default function NewApp({
   const [appName, setAppName] = useState("");
   const [appNameError, setAppNameError] = useState("");
   const [appDescription, setAppDescription] = useState("");
-  const [appVisibility, setAppVisibility] = useState("private");
+  const [appVisibility, setAppVisibility] = useState<AppVisibility>("private");
 
   const [creating, setCreating] = useState(false);
 
@@ -195,7 +195,7 @@ export default function NewApp({
                     checked={appVisibility == "public"}
                     onChange={(e) => {
                       if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value);
+                        setAppVisibility(e.target.value as AppVisibility);
                       }
                     }}
                   />
@@ -220,7 +220,7 @@ export default function NewApp({
                     checked={appVisibility == "private"}
                     onChange={(e) => {
                       if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value);
+                        setAppVisibility(e.target.value as AppVisibility);
                       }
                     }}
                   />

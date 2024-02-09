@@ -2,6 +2,7 @@ import type {
   RoleType,
   UserType,
   UserTypeWithWorkspaces,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -32,6 +33,8 @@ import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 
+import { FeatureFlag } from "./models/feature_flag";
+
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
   DUST_DEVELOPMENT_SYSTEM_API_KEY,
@@ -51,6 +54,7 @@ export class Authenticator {
   _user: User | null;
   _role: RoleType;
   _subscription: SubscriptionType | null;
+  _flags: WhitelistableFeature[];
 
   // Should only be called from the static methods below.
   constructor({
@@ -58,16 +62,19 @@ export class Authenticator {
     user,
     role,
     subscription,
+    flags,
   }: {
     workspace?: Workspace | null;
     user?: User | null;
     role: RoleType;
     subscription?: SubscriptionType | null;
+    flags: WhitelistableFeature[];
   }) {
     this._workspace = workspace || null;
     this._user = user || null;
     this._role = role;
     this._subscription = subscription || null;
+    this._flags = flags;
   }
 
   /**
@@ -103,9 +110,10 @@ export class Authenticator {
 
     let role = "none" as RoleType;
     let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
 
     if (user && workspace) {
-      [role, subscription] = await Promise.all([
+      [role, subscription, flags] = await Promise.all([
         (async (): Promise<RoleType> => {
           const membership = await Membership.findOne({
             where: {
@@ -119,6 +127,15 @@ export class Authenticator {
             : "none";
         })(),
         subscriptionForWorkspace(workspace),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
       ]);
     }
 
@@ -127,6 +144,7 @@ export class Authenticator {
       user,
       role,
       subscription,
+      flags,
     });
   }
 
@@ -168,15 +186,30 @@ export class Authenticator {
       })(),
     ]);
 
-    const subscription = workspace
-      ? await subscriptionForWorkspace(workspace)
-      : null;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (workspace) {
+      [subscription, flags] = await Promise.all([
+        subscriptionForWorkspace(workspace),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace?.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
+      ]);
+    }
 
     return new Authenticator({
       workspace,
       user,
       role: user?.isDustSuperUser ? "admin" : "none",
       subscription,
+      flags,
     });
   }
 
@@ -219,15 +252,30 @@ export class Authenticator {
       }
     }
 
-    const subscription = workspace
-      ? await subscriptionForWorkspace(workspace)
-      : null;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (workspace) {
+      [subscription, flags] = await Promise.all([
+        subscriptionForWorkspace(workspace),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace?.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
+      ]);
+    }
 
     return {
       auth: new Authenticator({
         workspace,
         role,
         subscription,
+        flags,
       }),
       keyWorkspaceId: keyWorkspace.sId,
     };
@@ -250,11 +298,27 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    const subscription = await subscriptionForWorkspace(workspace);
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    [subscription, flags] = await Promise.all([
+      subscriptionForWorkspace(workspace),
+      (async () => {
+        return (
+          await FeatureFlag.findAll({
+            where: {
+              workspaceId: workspace?.id,
+            },
+          })
+        ).map((flag) => flag.name);
+      })(),
+    ]);
+
     return new Authenticator({
       workspace,
       role: "builder",
       subscription,
+      flags,
     });
   }
 
@@ -271,11 +335,27 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    const subscription = await subscriptionForWorkspace(workspace);
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    [subscription, flags] = await Promise.all([
+      subscriptionForWorkspace(workspace),
+      (async () => {
+        return (
+          await FeatureFlag.findAll({
+            where: {
+              workspaceId: workspace?.id,
+            },
+          })
+        ).map((flag) => flag.name);
+      })(),
+    ]);
+
     return new Authenticator({
       workspace,
       role: "admin",
       subscription,
+      flags,
     });
   }
 
@@ -295,7 +375,7 @@ export class Authenticator {
     return isAdmin(this.workspace());
   }
 
-  workspace(): WorkspaceType | null {
+  workspace(): (WorkspaceType & { flags: WhitelistableFeature[] }) | null {
     return this._workspace
       ? {
           id: this._workspace.id,
@@ -304,6 +384,7 @@ export class Authenticator {
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           segmentation: this._workspace.segmentation || null,
+          flags: this._flags,
         }
       : null;
   }
@@ -442,6 +523,7 @@ export async function getUserFromSession(
         allowedDomain: w.allowedDomain || null,
         role,
         segmentation: w.segmentation || null,
+        flags: null,
       };
     }),
   };

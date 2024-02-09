@@ -20,7 +20,7 @@ import {
 
 export async function getWorkspaceInfos(
   wId: string
-): Promise<WorkspaceType | null> {
+): Promise<(WorkspaceType & { flags: null }) | null> {
   const workspace = await Workspace.findOne({
     where: {
       sId: wId,
@@ -38,6 +38,8 @@ export async function getWorkspaceInfos(
     allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
+    // Flags are not needed from outside of the workspace.
+    flags: null,
   };
 }
 
@@ -66,7 +68,7 @@ export async function getWorkspaceVerifiedDomain(
 export async function setInternalWorkspaceSegmentation(
   auth: Authenticator,
   segmentation: WorkspaceSegmentationType
-): Promise<WorkspaceType> {
+): Promise<WorkspaceType & { flags: null }> {
   const owner = auth.workspace();
   const user = auth.user();
 
@@ -95,6 +97,7 @@ export async function setInternalWorkspaceSegmentation(
     allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
+    flags: null,
   };
 }
 
@@ -166,7 +169,7 @@ export async function getMembers(
       firstName: u.firstName,
       lastName: u.lastName,
       image: u.imageUrl,
-      workspaces: [{ ...owner, role }],
+      workspaces: [{ ...owner, role, flags: null }],
     };
   });
 }

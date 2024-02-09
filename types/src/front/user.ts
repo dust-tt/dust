@@ -1,5 +1,6 @@
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
+import { WhitelistableFeature } from "./feature_flags";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 export type RoleType = "admin" | "builder" | "user" | "none";
@@ -11,6 +12,7 @@ export type WorkspaceType = {
   allowedDomain: string | null;
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
+  flags: WhitelistableFeature[] | null;
 };
 
 export type UserProviderType = "github" | "google";
@@ -29,7 +31,7 @@ export type UserType = {
 };
 
 export type UserTypeWithWorkspaces = UserType & {
-  workspaces: WorkspaceType[];
+  workspaces: (WorkspaceType & { flags: null })[];
 };
 
 export type UserMetadataType = {

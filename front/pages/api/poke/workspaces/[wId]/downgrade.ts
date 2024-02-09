@@ -6,7 +6,7 @@ import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscri
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DowngradeWorkspaceResponseBody = {
-  workspace: WorkspaceType;
+  workspace: WorkspaceType & { flags: null };
 };
 
 async function handler(
@@ -45,6 +45,7 @@ async function handler(
           allowedDomain: owner.allowedDomain || null,
           role: "admin",
           segmentation: owner.segmentation || null,
+          flags: null,
         },
       });
 

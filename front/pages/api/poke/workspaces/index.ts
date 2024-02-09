@@ -8,7 +8,7 @@ import { Subscription, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetWorkspacesResponseBody = {
-  workspaces: WorkspaceType[];
+  workspaces: (WorkspaceType & { flags: null })[];
 };
 
 async function handler(
@@ -141,6 +141,7 @@ async function handler(
           allowedDomain: ws.allowedDomain || null,
           role: "admin",
           segmentation: ws.segmentation,
+          flags: null,
         })),
       });
     default:
