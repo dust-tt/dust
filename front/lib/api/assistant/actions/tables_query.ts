@@ -210,7 +210,7 @@ export async function* runTablesQuery({
     auth,
     "assistant-v2-query-tables",
     config,
-    [{ question: input.question }]
+    [{ question: input.question, guidelines: input.guidelines }]
   );
 
   if (res.isErr()) {
