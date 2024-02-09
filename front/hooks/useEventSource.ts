@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 
 export function useEventSource(
   buildURL: (lastMessage: string | null) => string | null,
-  onEventCallback: (event: string) => void
+  onEventCallback: (event: string) => void,
+  { isReadyToConsumeStream }: { isReadyToConsumeStream: boolean } = {
+    isReadyToConsumeStream: true,
+  }
 ) {
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
@@ -12,6 +15,10 @@ export function useEventSource(
   const [isError, setIsError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!isReadyToConsumeStream) {
+      return;
+    }
+
     const url = buildURL(lastEvent.current);
     if (!url) {
       return;
@@ -54,7 +61,7 @@ export function useEventSource(
       }
       es.close();
     };
-  }, [buildURL, onEventCallback, reconnectCounter]);
+  }, [buildURL, onEventCallback, reconnectCounter, isReadyToConsumeStream]);
 
   return { isError };
 }
