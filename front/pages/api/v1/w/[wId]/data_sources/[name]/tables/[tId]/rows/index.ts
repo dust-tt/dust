@@ -67,7 +67,7 @@ async function handler(
     });
   }
 
-  if(!owner.flags.includes("structured_data")){
+  if (!owner.flags.includes("structured_data")) {
     res.status(404).end();
     return;
   }
