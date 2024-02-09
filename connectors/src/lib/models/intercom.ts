@@ -6,7 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/db";
 
 export class IntercomHelpCenter extends Model<
   InferAttributes<IntercomHelpCenter>,
@@ -70,7 +71,7 @@ IntercomHelpCenter.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "helpCenterId"],
@@ -164,7 +165,7 @@ IntercomCollection.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "collectionId"],
@@ -268,7 +269,7 @@ IntercomArticle.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "articleId"],
@@ -335,7 +336,7 @@ IntercomTeam.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "teamId"],

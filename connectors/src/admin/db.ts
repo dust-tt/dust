@@ -1,6 +1,6 @@
 import type { Sequelize } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -47,6 +47,7 @@ import {
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/db";
 
 async function main(): Promise<void> {
   await Connector.sync({ alter: true });
@@ -83,16 +84,16 @@ async function main(): Promise<void> {
   await WebCrawlerPage.sync({ alter: true });
 
   // enable the `unaccent` extension
-  await sequelize_conn.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
+  await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
   await addSearchVectorTrigger(
-    sequelize_conn,
+    sequelizeConnection,
     "notion_pages",
     "notion_pages_vector_update",
     "notion_pages_trigger"
   );
   await addSearchVectorTrigger(
-    sequelize_conn,
+    sequelizeConnection,
     "notion_databases",
     "notion_databases_vector_update",
     "notion_databases_trigger"
@@ -115,13 +116,13 @@ main()
   });
 
 async function addSearchVectorTrigger(
-  sequelize_conn: Sequelize,
+  sequelizeConnection: Sequelize,
   tableName: string,
   triggerName: string,
   functionName: string
 ) {
   // this creates/updates a function that will be called on every insert/update
-  await sequelize_conn.query(`
+  await sequelizeConnection.query(`
       CREATE OR REPLACE FUNCTION ${functionName}() RETURNS trigger AS $$
       begin
         if TG_OP = 'INSERT' OR new.title IS DISTINCT FROM old.title then
@@ -133,7 +134,7 @@ async function addSearchVectorTrigger(
     `);
 
   // this creates/updates a trigger that will call the function above
-  await sequelize_conn.query(`
+  await sequelizeConnection.query(`
       DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = '${triggerName}') THEN
           CREATE TRIGGER ${triggerName}

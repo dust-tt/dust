@@ -7,7 +7,7 @@ import {
   registerWebhook,
 } from "@connectors/connectors/google_drive/lib";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -45,6 +45,7 @@ import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { sequelizeConnection } from "@connectors/resources/db";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
 const {
@@ -58,7 +59,7 @@ export async function createGoogleDriveConnector(
   nangoConnectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
   try {
-    const connector = await sequelize_conn.transaction(
+    const connector = await sequelizeConnection.transaction(
       async (t): Promise<Connector> => {
         if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
           throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
@@ -243,7 +244,7 @@ export async function cleanupGoogleDriveConnector(
   connectorId: ModelId,
   force = false
 ): Promise<Result<undefined, Error>> {
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     const connector = await Connector.findByPk(connectorId, {
       transaction: transaction,
     });
