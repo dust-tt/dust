@@ -876,8 +876,8 @@ export async function getGlobalAgents(
     );
   }
 
-  // Rollout Mistral.
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  // Mistral-next flag.
+  if (!owner.flags.includes("mistral_next")) {
     agentCandidates = agentCandidates?.filter(
       (agent) => agent?.sId !== GLOBAL_AGENTS_SID.MISTRAL_NEXT
     );
