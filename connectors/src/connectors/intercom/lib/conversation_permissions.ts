@@ -1,5 +1,4 @@
 import type { ConnectorResource } from "@dust-tt/types";
-import type { Client as IntercomClient } from "intercom-client";
 
 import {
   fetchIntercomTeam,
@@ -14,11 +13,9 @@ import logger from "@connectors/logger/logger";
 
 export async function allowSyncTeam({
   connector,
-  intercomClient,
   teamId,
 }: {
   connector: Connector;
-  intercomClient: IntercomClient;
   teamId: string;
 }): Promise<IntercomTeam> {
   let team = await IntercomTeam.findOne({
@@ -33,7 +30,10 @@ export async function allowSyncTeam({
     });
   }
   if (!team) {
-    const teamOnIntercom = await fetchIntercomTeam(intercomClient, teamId);
+    const teamOnIntercom = await fetchIntercomTeam(
+      connector.connectionId,
+      teamId
+    );
     if (teamOnIntercom) {
       team = await IntercomTeam.create({
         connectorId: connector.id,
