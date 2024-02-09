@@ -9,7 +9,14 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
-import { Err, isAdmin, isBuilder, isUser, Ok } from "@dust-tt/types";
+import {
+  Err,
+  isAdmin,
+  isBuilder,
+  isUser,
+  Ok,
+  WHITELISTABLE_FEATURES,
+} from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -18,7 +25,9 @@ import type {
 import { getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
+import { isDevelopment } from "@app/lib/development";
 import {
+  FeatureFlag,
   Key,
   Membership,
   Plan,
@@ -33,13 +42,12 @@ import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 
-import { FeatureFlag } from "./models/feature_flag";
-
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
   DUST_DEVELOPMENT_SYSTEM_API_KEY,
   NODE_ENV,
   DUST_PROD_API = "https://dust.tt",
+  ACTIVATE_ALL_FEATURES_DEV = false,
 } = process.env;
 
 /**
@@ -384,7 +392,10 @@ export class Authenticator {
           allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           segmentation: this._workspace.segmentation || null,
-          flags: this._flags,
+          flags:
+            ACTIVATE_ALL_FEATURES_DEV && isDevelopment()
+              ? [...WHITELISTABLE_FEATURES]
+              : this._flags,
         }
       : null;
   }
