@@ -1091,7 +1091,6 @@ export default function DataSourceView({
   nangoConfig,
   githubAppUrl,
   gaTrackingId,
-  structuredDataEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -1149,7 +1148,6 @@ export default function DataSourceView({
             plan,
             readOnly: readOnly || standardView,
             dataSource,
-            structuredDataEnabled,
           }}
         />
       )}
