@@ -177,7 +177,7 @@ async fn create_in_memory_sqlite_db(
                 None => None,
             })
             .collect::<Vec<_>>()
-            .join("\n");
+            .join(";\n");
 
         info!(
             duration = utils::now() - generate_create_table_sql_start,
