@@ -197,7 +197,7 @@ export async function cleanupIntercomConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  return sequelize_conn.transaction(async (transaction) => {
+  await sequelize_conn.transaction(async (transaction) => {
     await Promise.all([
       IntercomWorkspace.destroy({
         where: {
@@ -229,22 +229,21 @@ export async function cleanupIntercomConnector(
         },
         transaction: transaction,
       }),
+      connector.destroy({
+        transaction: transaction,
+      }),
     ]);
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      NANGO_INTERCOM_CONNECTOR_ID
-    );
-    if (nangoRes.isErr()) {
-      throw nangoRes.error;
-    }
-
-    await connector.destroy({
-      transaction: transaction,
-    });
-
-    return new Ok(undefined);
   });
+
+  const nangoRes = await nangoDeleteConnection(
+    connector.connectionId,
+    NANGO_INTERCOM_CONNECTOR_ID
+  );
+  if (nangoRes.isErr()) {
+    throw nangoRes.error;
+  }
+
+  return new Ok(undefined);
 }
 
 export async function stopIntercomConnector(
