@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import type {
   CodedError,
-  UsersInfoResponse,
   WebAPIHTTPError,
   WebAPIPlatformError,
 } from "@slack/web-api";
@@ -109,60 +108,11 @@ export async function getSlackUserInfo(slackClient: WebClient, userId: string) {
   });
 }
 
-async function getSlackConversationInfo(
+export async function getSlackConversationInfo(
   slackClient: WebClient,
   channelId: string
 ) {
   return slackClient.conversations.info({ channel: channelId });
-}
-
-// Verify the Slack user is not an external guest to the workspace.
-// An exception is made for users from domains on the whitelist,
-// allowing them to interact with the bot in public channels.
-// See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619
-export async function isUserAllowedToUseChatbot(
-  slackClient: WebClient,
-  slackUserInfo: UsersInfoResponse,
-  slackChanneId: string,
-  slackTeamId: string,
-  whitelistedDomains?: readonly string[]
-): Promise<boolean> {
-  if (!slackUserInfo.user) {
-    return false;
-  }
-
-  const {
-    is_restricted,
-    is_stranger: isStranger,
-    is_ultra_restricted,
-    profile,
-  } = slackUserInfo.user;
-
-  const isInWorkspace = profile?.team === slackTeamId;
-  if (!isInWorkspace) {
-    return false;
-  }
-
-  const isGuest = is_restricted || is_ultra_restricted;
-  const isExternal = isGuest || isStranger;
-
-  if (isExternal) {
-    const userDomain = profile?.email?.split("@")[1];
-    // Ensure the domain matches exactly.
-    const isWhitelistedDomain = userDomain
-      ? whitelistedDomains?.includes(userDomain) ?? false
-      : false;
-
-    const slackConversationInfo = await getSlackConversationInfo(
-      slackClient,
-      slackChanneId
-    );
-
-    const isChannelPublic = !slackConversationInfo.channel?.is_private;
-    return isChannelPublic && isWhitelistedDomain;
-  }
-
-  return true;
 }
 
 export async function getSlackAccessToken(

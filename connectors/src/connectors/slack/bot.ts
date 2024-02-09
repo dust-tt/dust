@@ -21,9 +21,9 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 import {
   getSlackClient,
   getSlackUserInfo,
-  isUserAllowedToUseChatbot,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import { notifyIfSlackUserIsNotAllowed } from "@connectors/connectors/slack/lib/workspace_limits";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { Connector } from "@connectors/lib/models";
 import {
@@ -53,8 +53,6 @@ class SlackExternalUserError extends Error {}
  */
 const MAX_SLACK_MESSAGE_LENGTH = 3000;
 
-const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
-
 export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
@@ -62,7 +60,7 @@ export async function botAnswerMessageWithErrorHandling(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null
-): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       slackTeamId: slackTeamId,
@@ -157,7 +155,7 @@ async function botAnswerMessage(
   slackThreadTs: string | null,
   connector: Connector,
   slackConfig: SlackConfiguration
-): Promise<Result<AgentGenerationSuccessEvent, Error>> {
+): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({
@@ -179,44 +177,24 @@ async function botAnswerMessage(
     throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
   }
 
-  const hasChatbotAccess = await isUserAllowedToUseChatbot(
+  const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+    connector,
     slackClient,
     slackUserInfo,
-    slackChannel,
-    slackTeamId,
+    {
+      slackChannelId: slackChannel,
+      slackTeamId,
+      slackMessageTs,
+    },
     slackConfig.whitelistedDomains
   );
   if (!hasChatbotAccess) {
-    return new Err(
-      new SlackExternalUserError(
-        "Hi there. Sorry, but I can only answer to members of the workspace where I am installed."
-      )
-    );
-  }
-
-  const displayName = slackUserInfo.user.profile?.display_name;
-  const realName = slackUserInfo.user.profile?.real_name;
-
-  if (
-    slackUserInfo.user.is_bot &&
-    !(
-      WHITELISTED_BOT_NAME.includes(displayName || "") ||
-      WHITELISTED_BOT_NAME.includes(realName || "")
-    )
-  ) {
-    logger.info(
-      {
-        user: slackUserInfo.user,
-      },
-      "Ignoring bot message"
-    );
-    // We throw (which will create an unhandled API error for now) and don't reply anything.
-    throw new Error(
-      `Ignoring bot message: ${JSON.stringify(slackUserInfo.user)}`
-    );
+    return new Ok(undefined);
   }
 
   const slackUser = slackUserInfo.user;
+  const displayName = slackUser.profile?.display_name ?? "";
+  const realName = slackUser.profile?.real_name ?? "";
 
   const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
