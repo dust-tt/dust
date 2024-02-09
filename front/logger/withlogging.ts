@@ -55,6 +55,7 @@ export function withLogging<T>(
           url: req.url,
           route,
           durationMs: elapsed,
+          streaming,
           error: err,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
