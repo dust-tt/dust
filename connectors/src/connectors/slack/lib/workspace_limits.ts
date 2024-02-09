@@ -242,7 +242,7 @@ async function isExternalUserAllowed(
 async function isUserAllowed(
   connector: Connector,
   profile: Profile,
-  whitelistedDomains?: string[]
+  whitelistedDomains?: readonly string[]
 ) {
   const isMember = await isActiveMemberOfWorkspace(connector, profile?.email);
   if (isMember) {
@@ -297,7 +297,7 @@ async function isSlackUserAllowed(
   }
 
   // Otherwise, ensure that the slack user is an active member in the workspace.
-  return isUserAllowed(connector, profile);
+  return isUserAllowed(connector, profile, whitelistedDomains);
 }
 
 export async function notifyIfSlackUserIsNotAllowed(
