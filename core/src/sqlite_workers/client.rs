@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use hyper::{Body, Client, Request};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use urlencoding::encode;
 
 use crate::{
     databases::database::{QueryResult, Table},
@@ -45,7 +46,11 @@ impl SqliteWorker {
 
         let req = Request::builder()
             .method("POST")
-            .uri(format!("{}/databases/{}", worker_url, database_unique_id))
+            .uri(format!(
+                "{}/databases/{}",
+                worker_url,
+                encode(database_unique_id)
+            ))
             .header("Content-Type", "application/json")
             .body(Body::from(
                 json!({
