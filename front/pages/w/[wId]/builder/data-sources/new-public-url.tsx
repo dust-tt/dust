@@ -1,4 +1,11 @@
-import { Input, RadioButton } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  DropdownMenu,
+  Input,
+  Page,
+  RadioButton,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   SubscriptionType,
@@ -165,102 +172,91 @@ export default function DataSourceNew({
       }
       hideSidebar={true}
     >
-      <div className="flex flex-col space-y-8 pb-16 pt-8">
-        <div className="flex w-full flex-col gap-4">
-          <div className="flex flex-row items-start gap-8">
-            <div className="flex flex-col gap-4">
-              <p className="text-lg font-bold text-element-900">
-                Website public URL
-              </p>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                URL of the website you want to crawl.{" "}
-                <span className="font-medium text-element-900">
-                  Public URL only.
-                </span>
-              </div>
-              <div className="text-sm">
-                <Input
-                  placeholder="https://example.com/acticles"
-                  value={dataSourceUrl}
-                  onChange={(value) => setDataSourceUrl(value)}
-                  error={dataSourceNameError}
-                  name="dataSourceUrl"
-                  showErrorLabel
-                  className="text-sm"
-                />
-              </div>
-              <p className="text-lg font-bold text-element-900">
-                Crawling mode
-              </p>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                Choose whether you want to crawl only pages that are children of
-                the URL you provided or the entire website.
-              </div>
+      <div className="py-8">
+        <Page.Layout direction="vertical" gap="xl">
+          <Page.Layout direction="vertical" gap="md">
+            <Page.H variant="h3">Website Entry Point</Page.H>
+            <Page.P>
+              Enter the address of the website you'd like to explore.
+            </Page.P>
+            <Input
+              placeholder="https://example.com/acticles"
+              value={dataSourceUrl}
+              onChange={(value) => setDataSourceUrl(value)}
+              error={dataSourceNameError}
+              name="dataSourceUrl"
+              showErrorLabel
+              className="text-sm"
+            />
+            <ContentMessage title="Ensure the webpage is public" variant="pink">
+              Only directly accessible (without authetification), public
+              websites will work here.
+            </ContentMessage>
+          </Page.Layout>
 
-              <div className="text-sm">
-                <RadioButton
-                  value={crawlMode}
-                  onChange={(value) => {
-                    setCrawlMode(value == "child" ? "child" : "website");
-                  }}
-                  name="crawlMode"
-                  choices={[
-                    {
-                      label: "Only sub pages.",
-                      value: "child",
-                      disabled: false,
-                    },
-                    {
-                      label: "The entire website.",
-                      value: "website",
-                      disabled: false,
-                    },
-                  ]}
-                />
-              </div>
-
-              <p className="text-lg font-bold text-element-900">
-                Maximum number of pages
-              </p>
-
-              <Input
-                placeholder={WEBCRAWLER_MAX_PAGES.toString()}
-                value={maxPages?.toString() || ""}
-                onChange={(value) => {
-                  const parsed = parseInt(value);
-                  if (!isNaN(parsed)) {
-                    setMaxPages(parseInt(value));
-                  } else if (value == "") {
-                    setMaxPages(null);
-                  }
-                }}
-                showErrorLabel={
-                  maxPages &&
-                  maxPages > WEBCRAWLER_MAX_PAGES &&
-                  maxPages &&
-                  maxPages < 1
-                    ? false
-                    : true
-                }
-                error={
-                  (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
-                  (maxPages && maxPages < 1)
-                    ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
-                    : null
-                }
-                name="maxPages"
-                size="sm"
-                className="text-sm"
+          <Page.Layout direction="vertical" gap="md">
+            <Page.H variant="h3">Importation settings</Page.H>
+            <Page.P>
+              Adjust the settings in order to import only the data you are
+              interested in.
+            </Page.P>
+          </Page.Layout>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-8">
+            <Page.Layout direction="vertical" sizing="grow">
+              <Page.SectionHeader
+                title="Crawling strategy"
+                description="Do you want to stay on the domain or expend outside?"
               />
-
-              <p className="text-lg font-bold text-element-900">
-                Maximum depth
-              </p>
-              <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                Crawling depth determines how many levels deep, or links away
-                from the starting page, our crawler will go to find content.
-                Maximum value is 5.
+              <RadioButton
+                value={crawlMode}
+                className="flex-col font-medium"
+                onChange={(value) => {
+                  setCrawlMode(value == "child" ? "child" : "website");
+                }}
+                name="crawlMode"
+                choices={[
+                  {
+                    label: "Only children pages",
+                    value: "child",
+                    disabled: false,
+                  },
+                  {
+                    label: "Follow all the links",
+                    value: "website",
+                    disabled: false,
+                  },
+                ]}
+              />
+            </Page.Layout>
+            <Page.Layout direction="vertical" sizing="grow">
+              <Page.SectionHeader
+                title="Refresh schedule"
+                description="How often would you like to check for updates?"
+              />
+              <div>
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      label="Never"
+                      type="select"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items width={220} origin="topLeft">
+                    <DropdownMenu.Item label="Never" />
+                    <DropdownMenu.Item label="Monthly" />
+                    <DropdownMenu.Item label="Weekly" />
+                    <DropdownMenu.Item label="Daily" />
+                  </DropdownMenu.Items>
+                </DropdownMenu>
               </div>
+            </Page.Layout>
+            <Page.Layout direction="vertical" sizing="grow">
+              <Page.SectionHeader
+                title="Depth of Search"
+                description="How far from the starting page should we go?"
+              />
               <Input
                 placeholder={WEBCRAWLER_MAX_DEPTH.toString()}
                 value={maxDepth?.toString() || ""}
@@ -287,12 +283,43 @@ export default function DataSourceNew({
                     : null
                 }
                 name="maxDeph"
-                size="sm"
-                className="text-sm"
               />
-            </div>
+            </Page.Layout>
+            <Page.Layout direction="vertical" sizing="grow">
+              <Page.SectionHeader
+                title="Page Limit"
+                description="What is the maximum number of pages you'd like to import?"
+              />
+              <Input
+                placeholder={WEBCRAWLER_MAX_PAGES.toString()}
+                value={maxPages?.toString() || ""}
+                onChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed)) {
+                    setMaxPages(parseInt(value));
+                  } else if (value == "") {
+                    setMaxPages(null);
+                  }
+                }}
+                showErrorLabel={
+                  maxPages &&
+                  maxPages > WEBCRAWLER_MAX_PAGES &&
+                  maxPages &&
+                  maxPages < 1
+                    ? false
+                    : true
+                }
+                error={
+                  (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
+                  (maxPages && maxPages < 1)
+                    ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
+                    : null
+                }
+                name="maxPages"
+              />
+            </Page.Layout>
           </div>
-        </div>
+        </Page.Layout>
       </div>
     </AppLayout>
   );
