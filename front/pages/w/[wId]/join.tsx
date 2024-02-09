@@ -6,7 +6,10 @@ import { signIn } from "next-auth/react";
 import { SignInButton } from "@app/components/Button";
 import { A, H1, P, Strong } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import {
+  getWorkspaceInfos,
+  getWorkspaceVerifiedDomain,
+} from "@app/lib/api/workspace";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -17,17 +20,17 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
  * Case 1: "email_invite"
  *   url = /w/[wId]/join?t=[token]
  *      -> you've been invited to a workspace by email from the member management page.
- *      -> we don't care if workspace has allowed domain.
+ *      -> we don't care if workspace has a verified domain with auto-join enabled.
  *
  * Case 2: "domain_invite_link"
  *   url = /w/[wId]/join
- *      -> Workspace has activated onboarding with link for an allowed domain.
- *      -> the workspace needs to have allowed domain.
+ *      -> Workspace has activated onboarding with link for an verified domain.
+ *      -> the workspace needs to have a verified domain with auto-join enabled.
  *
  * Case 3: "domain_conversation_link"
  *   url = /w/[wId]/join?cId=[conversationId]
- *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has allowed domain.
- *      -> the workspace needs to have allowed domain. *
+ *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has a verified domain.
+ *      -> the workspace needs to have a verified domain with auto-join enabled. *
  */
 
 type OnboardingType =
@@ -54,6 +57,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       notFound: true,
     };
   }
+  const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
@@ -64,9 +68,9 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     ? "email_invite"
     : "domain_invite_link";
 
-  // Redirect to 404 if in a flow where we need allowed domain and domain is not allowed.
+  // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
-    !workspace.allowedDomain &&
+    !workspaceDomain?.domainAutoJoinEnabled &&
     (onboardingType === "domain_conversation_link" ||
       onboardingType === "domain_invite_link")
   ) {

@@ -42,8 +42,6 @@ export async function createWorkspace(session: any) {
   const workspace = await Workspace.create({
     sId: generateModelSId(),
     name: session.user.username,
-    // TODO(2024-01-15 flav) Deprecate after full release of `WorkflowHasDomain`.
-    allowedDomain: verifiedDomain,
   });
 
   if (verifiedDomain) {
@@ -108,50 +106,9 @@ async function handler(
     });
   }
 
-  // `workspaceInvite` is set to a `Workspace` if the query includes a `wId`. It means the user
-  // is going through the flow of whitelisted domain to join the workspace.
-  let workspaceInvite: null | Workspace = null;
   let isAdminOnboarding = false;
 
-  const { inviteToken, wId } = req.query;
-  // TODO(2024-01-16 flav) Remove once auto join whitelisted domains is fully released.
-  if (wId && typeof wId === "string") {
-    workspaceInvite = await Workspace.findOne({
-      where: {
-        sId: wId,
-      },
-    });
-
-    if (workspaceInvite) {
-      const allowedDomain = workspaceInvite.allowedDomain;
-      if (!allowedDomain) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The workspace you are trying to join does not allow your domain name, contact us at team@dust.tt for assistance.",
-          },
-        });
-      }
-
-      if (!isGoogleSession(session) || !session.user.email_verified) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "You can only join a workspace using Google sign-in with a verified email, contact us at team@dust.tt for assistance.",
-          },
-        });
-      }
-
-      if (allowedDomain !== session.user.email.split("@")[1]) {
-        res.redirect(`/login-error?domain=${session.user.email.split("@")[1]}`);
-        return;
-      }
-    }
-  }
+  const { inviteToken } = req.query;
 
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
   // `inviteToken`, meaning the user is going through the invite by email flow.
@@ -190,8 +147,7 @@ async function handler(
     },
   });
 
-  // The user already exists, we create memberships as needed given the values of
-  // `workspaceInvite` and `membershipInvite`.
+  // The user already exists, we create memberships as needed given the value of `membershipInvite`.
   if (user) {
     // Update the user object from the updated session information.
     user.username = session.user.username;
@@ -236,8 +192,8 @@ async function handler(
     );
 
     // If there is no invite, we create a personal workspace for the user, otherwise the user
-    // will be added to the workspace they were invited to (either by email or by domain) below.
-    if (!workspaceInvite && !membershipInvite && !autoJoinWorkspaceWithDomain) {
+    // will be added to the workspace they were invited to (by domain) below.
+    if (!membershipInvite && !autoJoinWorkspaceWithDomain) {
       const workspace = await createWorkspace(session);
       await createAndLogMembership({
         workspace,
@@ -254,21 +210,19 @@ async function handler(
 
   let targetWorkspace: Workspace | null = null;
 
-  // `workspaceInvite` flow: we know we can add the user to the workspace as all the checks
+  // Auto joing workspace flow, we know we can add the user to the workspace as all the checks
   // have been run. Simply create the membership if does not already exist.
-  const selectedWorkspaceInvite =
-    workspaceInvite ?? autoJoinWorkspaceWithDomain;
-  if (selectedWorkspaceInvite) {
+  if (autoJoinWorkspaceWithDomain) {
     let m = await Membership.findOne({
       where: {
         userId: user.id,
-        workspaceId: selectedWorkspaceInvite.id,
+        workspaceId: autoJoinWorkspaceWithDomain.id,
       },
     });
 
     if (!m) {
       m = await createAndLogMembership({
-        workspace: selectedWorkspaceInvite,
+        workspace: autoJoinWorkspaceWithDomain,
         userId: user.id,
         role: "user",
       });
@@ -285,7 +239,7 @@ async function handler(
       });
     }
 
-    targetWorkspace = selectedWorkspaceInvite;
+    targetWorkspace = autoJoinWorkspaceWithDomain;
   }
 
   // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as

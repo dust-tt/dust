@@ -9,7 +9,6 @@ export type LightWorkspaceType = {
   id: ModelId;
   sId: string;
   name: string;
-  allowedDomain: string | null;
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
 };

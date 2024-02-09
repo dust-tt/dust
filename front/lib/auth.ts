@@ -389,7 +389,6 @@ export class Authenticator {
           id: this._workspace.id,
           sId: this._workspace.sId,
           name: this._workspace.name,
-          allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           segmentation: this._workspace.segmentation || null,
           flags:
@@ -530,7 +529,6 @@ export async function getUserFromSession(
         id: w.id,
         sId: w.sId,
         name: w.name,
-        allowedDomain: w.allowedDomain || null,
         role,
         segmentation: w.segmentation || null,
       };
