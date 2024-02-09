@@ -195,7 +195,7 @@ export default function NewApp({
                     checked={appVisibility == "public"}
                     onChange={(e) => {
                       if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value);
+                        setAppVisibility(e.target.value as AppVisibility);
                       }
                     }}
                   />
@@ -220,7 +220,7 @@ export default function NewApp({
                     checked={appVisibility == "private"}
                     onChange={(e) => {
                       if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value);
+                        setAppVisibility(e.target.value as AppVisibility);
                       }
                     }}
                   />
