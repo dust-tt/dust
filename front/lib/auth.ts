@@ -375,7 +375,7 @@ export class Authenticator {
     return isAdmin(this.workspace());
   }
 
-  workspace(): WorkspaceType | null {
+  workspace(): (WorkspaceType & { flags: WhitelistableFeature[] }) | null {
     return this._workspace
       ? {
           id: this._workspace.id,
@@ -523,7 +523,7 @@ export async function getUserFromSession(
         allowedDomain: w.allowedDomain || null,
         role,
         segmentation: w.segmentation || null,
-        flags: [],
+        flags: null,
       };
     }),
   };

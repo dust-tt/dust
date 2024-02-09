@@ -12,7 +12,7 @@ export type WorkspaceType = {
   allowedDomain: string | null;
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
-  flags: WhitelistableFeature[];
+  flags: WhitelistableFeature[] | null;
 };
 
 export type UserProviderType = "github" | "google";
@@ -31,7 +31,7 @@ export type UserType = {
 };
 
 export type UserTypeWithWorkspaces = UserType & {
-  workspaces: WorkspaceType[];
+  workspaces: (WorkspaceType & { flags: null })[];
 };
 
 export type UserMetadataType = {
