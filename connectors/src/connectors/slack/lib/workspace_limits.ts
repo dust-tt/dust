@@ -325,6 +325,12 @@ export async function notifyIfSlackUserIsNotAllowed(
   );
 
   if (!isAllowed) {
+    logger.info("Unauthorized Slack user attempted to access webhook.", {
+      connectorId: connector.id,
+      slackInfos,
+      slackUserEmail: slackUserInfo.user?.profile?.email,
+    });
+
     await postMessageForUnhautorizedUser(
       connector,
       slackClient,
