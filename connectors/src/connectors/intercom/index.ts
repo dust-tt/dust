@@ -84,6 +84,7 @@ export async function createIntercomConnector(
       connectorId: connector.id,
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
+      conversationsSlidingWindow: 90,
     });
 
     const workflowStarted = await launchIntercomSyncWorkflow(

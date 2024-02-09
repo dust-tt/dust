@@ -363,11 +363,13 @@ export async function fetchIntercomTeam(
 export async function fetchIntercomConversationsForTeamId({
   nangoConnectionId,
   teamId,
+  slidingWindow,
   cursor = null,
   pageSize = 20,
 }: {
   nangoConnectionId: string;
   teamId: string;
+  slidingWindow: number;
   cursor: string | null;
   pageSize?: number;
 }): Promise<{
@@ -389,8 +391,10 @@ export async function fetchIntercomConversationsForTeamId({
     useCache: true,
   });
 
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const minCreatedAt = Math.floor(ninetyDaysAgo.getTime() / 1000);
+  const minCreatedAtDate = new Date(
+    Date.now() - slidingWindow * 24 * 60 * 60 * 1000
+  );
+  const minCreatedAt = Math.floor(minCreatedAtDate.getTime() / 1000);
 
   const resp = await fetch(`https://api.intercom.io/conversations/search`, {
     method: "POST",
