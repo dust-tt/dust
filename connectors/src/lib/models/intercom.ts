@@ -8,6 +8,59 @@ import { DataTypes, Model } from "sequelize";
 
 import { Connector, sequelize_conn } from "@connectors/lib/models";
 
+export class IntercomWorkspace extends Model<
+  InferAttributes<IntercomWorkspace>,
+  InferCreationAttributes<IntercomWorkspace>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare intercomWorkspaceId: string;
+  declare name: string;
+
+  declare connectorId: ForeignKey<Connector["id"]>;
+}
+IntercomWorkspace.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    intercomWorkspaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelize_conn,
+    indexes: [
+      {
+        fields: ["connectorId", "intercomWorkspaceId"],
+        unique: true,
+        name: "intercom_connector_workspace_idx",
+      },
+    ],
+    modelName: "intercom_workspaces",
+  }
+);
+Connector.hasMany(IntercomWorkspace);
+
 export class IntercomHelpCenter extends Model<
   InferAttributes<IntercomHelpCenter>,
   InferCreationAttributes<IntercomHelpCenter>
