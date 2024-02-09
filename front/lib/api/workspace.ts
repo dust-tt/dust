@@ -5,7 +5,6 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import { Op } from "sequelize";
@@ -36,14 +35,13 @@ export async function getWorkspaceInfos(
     id: workspace.id,
     sId: workspace.sId,
     name: workspace.name,
-    allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
   };
 }
 
 export async function getWorkspaceVerifiedDomain(
-  workspace: WorkspaceType
+  workspace: LightWorkspaceType
 ): Promise<WorkspaceDomain | null> {
   const workspaceDomain = await WorkspaceHasDomain.findOne({
     attributes: ["domain", "domainAutoJoinEnabled"],
@@ -93,7 +91,6 @@ export async function setInternalWorkspaceSegmentation(
     id: workspace.id,
     sId: workspace.sId,
     name: workspace.name,
-    allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
   };

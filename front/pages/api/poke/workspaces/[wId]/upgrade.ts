@@ -50,7 +50,6 @@ async function handler(
           id: owner.id,
           sId: owner.sId,
           name: owner.name,
-          allowedDomain: owner.allowedDomain || null,
           role: "admin",
           segmentation: owner.segmentation || null,
         },

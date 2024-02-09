@@ -138,7 +138,6 @@ async function handler(
           id: ws.id,
           sId: ws.sId,
           name: ws.name,
-          allowedDomain: ws.allowedDomain || null,
           role: "admin",
           segmentation: ws.segmentation,
         })),
