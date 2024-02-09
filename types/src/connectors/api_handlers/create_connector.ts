@@ -5,6 +5,11 @@ export const CreateConnectorUrlRequestBodySchema = t.type({
   depth: t.number,
   maxPages: t.number,
   crawlMode: t.union([t.literal("child"), t.literal("website")]),
+  crawlFrequency: t.union([
+    t.literal("daily"),
+    t.literal("weekly"),
+    t.literal("monthly"),
+  ]),
 });
 
 export const CreateConnectorOAuthRequestBodySchema = t.type({

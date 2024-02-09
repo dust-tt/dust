@@ -1,5 +1,6 @@
 import type {
   ConnectorNode,
+  ConnectorsAPIError,
   CreateConnectorUrlRequestBody,
   ModelId,
 } from "@dust-tt/types";
@@ -51,6 +52,7 @@ export async function createWebcrawlerConnector(
           maxPageToCrawl: urlConfig.maxPages,
           crawlMode: urlConfig.crawlMode,
           depth: urlConfig.depth,
+          crawlFrequency: urlConfig.crawlFrequency,
         },
         {
           transaction: t,
@@ -75,6 +77,36 @@ export async function createWebcrawlerConnector(
   );
 
   return new Ok(res.value.id.toString());
+}
+
+export async function updateWebcrawlerConnector(
+  connectorId: ModelId,
+  urlConfig: CreateConnectorUrlRequestBody
+): Promise<Result<string, ConnectorsAPIError>> {
+  const connector = await ConnectorModel.findByPk(connectorId);
+  if (!connector) {
+    return new Err({
+      message: "Connector not found",
+      type: "connector_not_found",
+    });
+  }
+
+  await WebCrawlerConfiguration.update(
+    {
+      url: urlConfig.url,
+      maxPageToCrawl: urlConfig.maxPages,
+      crawlMode: urlConfig.crawlMode,
+      depth: urlConfig.depth,
+      crawlFrequency: urlConfig.crawlFrequency,
+    },
+    {
+      where: {
+        connectorId: connector.id,
+      },
+    }
+  );
+
+  return new Ok(connector.id.toString());
 }
 
 export async function retrieveWebcrawlerConnectorPermissions({

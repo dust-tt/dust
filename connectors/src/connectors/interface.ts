@@ -19,11 +19,16 @@ export type ConnectorCreatorUrl = (
   urlConfig: CreateConnectorUrlRequestBody
 ) => Promise<Result<string, Error>>;
 
-export type ConnectorUpdater = (
+export type ConnectorUpdaterOAuth = (
   connectorId: ModelId,
   params: {
     connectionId?: string | null;
   }
+) => Promise<Result<string, ConnectorsAPIError>>;
+
+export type ConnectorUpdaterUrl = (
+  connectorId: ModelId,
+  urlConfig: CreateConnectorUrlRequestBody
 ) => Promise<Result<string, ConnectorsAPIError>>;
 
 export type ConnectorStopper = (

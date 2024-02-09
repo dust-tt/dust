@@ -1,7 +1,21 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type {
+  CreateConnectorOAuthRequestBody,
+  CreateConnectorUrlRequestBody,
+  WithConnectorsAPIErrorReponse,
+} from "@dust-tt/types";
+import {
+  provider2createConnectorType,
+  UpdateConnectorRequestBodySchema,
+} from "@dust-tt/types";
 import type { Request, Response } from "express";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 
 import { UPDATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import type {
+  ConnectorUpdaterOAuth,
+  ConnectorUpdaterUrl,
+} from "@connectors/connectors/interface";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -26,6 +40,21 @@ const _getConnectorUpdateAPIHandler = async (
     });
   }
 
+  const bodyValidation = UpdateConnectorRequestBodySchema.decode(req.body);
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${pathError}`,
+      },
+    });
+  }
+
+  const { connectorParams } = bodyValidation.right;
+
   const connector = await ConnectorModel.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
@@ -37,11 +66,27 @@ const _getConnectorUpdateAPIHandler = async (
     });
   }
 
-  const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[connector.type];
+  const updateRes = await (async () => {
+    switch (provider2createConnectorType[connector.type]) {
+      case "oauth": {
+        const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[
+          connector.type
+        ] as ConnectorUpdaterOAuth;
+        const params = connectorParams as CreateConnectorOAuthRequestBody;
 
-  const updateRes = await connectorUpdater(connector.id, {
-    connectionId: req.body.connectionId,
-  });
+        return connectorUpdater(connector.id, {
+          connectionId: params.connectionId,
+        });
+      }
+      case "url": {
+        const params = connectorParams as CreateConnectorUrlRequestBody;
+        const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[
+          connector.type
+        ] as ConnectorUpdaterUrl;
+        return connectorUpdater(connector.id, params);
+      }
+    }
+  })();
 
   if (updateRes.isErr()) {
     if (updateRes.error.type === "connector_oauth_target_mismatch") {
