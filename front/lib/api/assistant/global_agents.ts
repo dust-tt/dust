@@ -19,6 +19,7 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
@@ -246,6 +247,43 @@ async function _getClaudeGlobalAgent({
   };
 }
 
+async function _getMistralNextGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  let status = settings?.status ?? "disabled_by_admin";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.MISTRAL_NEXT,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "mistral-test",
+    description: "Mistral model (32k context).",
+    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: MISTRAL_NEXT_MODEL_CONFIG.providerId,
+        modelId: MISTRAL_NEXT_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
 async function _getMistralMediumGlobalAgent({
   auth,
   settings,
@@ -265,7 +303,7 @@ async function _getMistralMediumGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "mistral-medium",
-    description: "Mistral latest larger model (32k context).",
+    description: "Mistral latest `medium` model (32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
@@ -733,6 +771,12 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.CLAUDE:
       agentConfiguration = await _getClaudeGlobalAgent({ auth, settings });
       break;
+    case GLOBAL_AGENTS_SID.MISTRAL_NEXT:
+      agentConfiguration = await _getMistralNextGlobalAgent({
+        settings,
+        auth,
+      });
+      break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
       agentConfiguration = await _getMistralMediumGlobalAgent({
         settings,
@@ -825,10 +869,17 @@ export async function getGlobalAgents(
     )
   );
 
-  // ROLLOUT INTERCOM
+  // Rollout Intercom.
   if (!isDevelopmentOrDustWorkspace(owner)) {
     agentCandidates = agentCandidates?.filter(
       (agent) => agent?.sId !== GLOBAL_AGENTS_SID.INTERCOM
+    );
+  }
+
+  // Mistral-next flag.
+  if (!owner.flags.includes("mistral_next")) {
+    agentCandidates = agentCandidates?.filter(
+      (agent) => agent?.sId !== GLOBAL_AGENTS_SID.MISTRAL_NEXT
     );
   }
 
