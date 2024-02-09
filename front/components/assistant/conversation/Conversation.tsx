@@ -128,7 +128,16 @@ export default function Conversation({
           case "user_message_new":
           case "agent_message_new":
           case "agent_generation_cancelled":
-            void mutateConversation();
+            const isMessageAlreadyInConversation = conversation?.content?.some(
+              (contentBlock) =>
+                contentBlock.some(
+                  (message) =>
+                    "sId" in message && message.sId === event.messageId
+                )
+            );
+            if (!isMessageAlreadyInConversation) {
+              void mutateConversation();
+            }
             break;
           case "conversation_title": {
             void mutateConversation();
@@ -142,10 +151,13 @@ export default function Conversation({
         }
       }
     },
-    [mutateConversation, mutateConversations]
+    [mutateConversation, mutateConversations, conversation]
   );
 
-  useEventSource(buildEventSourceURL, onEventCallback);
+  useEventSource(buildEventSourceURL, onEventCallback, {
+    // We only start consuming the stream when the conversation has been loaded.
+    isReadyToConsumeStream: !isConversationLoading,
+  });
   const eventIds = useRef<string[]>([]);
 
   if (isConversationLoading) {
