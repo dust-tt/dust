@@ -331,8 +331,6 @@ export async function notifyIfSlackUserIsNotAllowed(
     return isBotAllowed(user);
   }
 
-  console.log(">> whitelistedDomains:", whitelistedDomains);
-
   const isAllowed = await isSlackUserAllowed(
     user,
     connector,
