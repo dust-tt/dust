@@ -86,6 +86,18 @@ export const getVerifiedDomainsForWorkspaceMemoized = cacheWithRedis(
   15 * 10 * 1000
 );
 
+function getSlackUserEmailFromProfile(
+  profile: Profile | undefined
+): string | undefined {
+  return profile?.email?.toLowerCase();
+}
+
+function getSlackUserEmailDomainFromProfile(
+  profile: Profile | undefined
+): string | undefined {
+  return getSlackUserEmailFromProfile(profile)?.split("@")[1];
+}
+
 async function isAutoJoinEnabledForDomain(
   connector: Connector,
   slackUserInfo: UsersInfoResponse
@@ -95,7 +107,7 @@ async function isAutoJoinEnabledForDomain(
     return false;
   }
 
-  const userDomain = user.profile?.email?.split("@")[1];
+  const userDomain = getSlackUserEmailDomainFromProfile(user.profile);
   if (!userDomain) {
     return false;
   }
@@ -224,7 +236,7 @@ async function isExternalUserAllowed(
 ) {
   const { slackChannelId } = slackInfos;
 
-  const userDomain = profile?.email?.split("@")[1];
+  const userDomain = getSlackUserEmailDomainFromProfile(profile);
   // Ensure the domain matches exactly.
   const isWhitelistedDomain = userDomain
     ? whitelistedDomains?.includes(userDomain) ?? false
@@ -244,7 +256,10 @@ async function isUserAllowed(
   profile: Profile,
   whitelistedDomains?: readonly string[]
 ) {
-  const isMember = await isActiveMemberOfWorkspace(connector, profile?.email);
+  const isMember = await isActiveMemberOfWorkspace(
+    connector,
+    getSlackUserEmailFromProfile(profile)
+  );
   if (isMember) {
     return true;
   }
@@ -252,7 +267,7 @@ async function isUserAllowed(
   // To de-risk while releasing, we relies on an array of whitelisted domains.
   // TODO(2024-02-08 flav) Remove once released is completed.
   if (whitelistedDomains && whitelistedDomains.length > 0) {
-    const userDomain = profile?.email?.split("@")[1];
+    const userDomain = getSlackUserEmailDomainFromProfile(profile);
 
     if (userDomain) {
       return whitelistedDomains.includes(userDomain);
@@ -329,7 +344,9 @@ export async function notifyIfSlackUserIsNotAllowed(
       {
         connectorId: connector.id,
         slackInfos,
-        slackUserEmail: slackUserInfo.user?.profile?.email,
+        slackUserEmail: getSlackUserEmailFromProfile(
+          slackUserInfo.user?.profile
+        ),
       },
       "Unauthorized Slack user attempted to access webhook."
     );
