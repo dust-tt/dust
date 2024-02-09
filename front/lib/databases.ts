@@ -9,7 +9,7 @@ const acquireAttempts = new WeakMap();
 export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   pool: {
     // default is 5
-    max: 20,
+    max: 50,
   },
   logging: false,
   hooks: {
