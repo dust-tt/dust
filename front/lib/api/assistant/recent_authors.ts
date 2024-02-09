@@ -143,6 +143,7 @@ export async function getAgentsRecentAuthors({
       agents.map(async (agent): Promise<[string, number[] | null]> => {
         const { sId: agentId, versionAuthorId } = agent;
         const isGlobalAgent = versionAuthorId === null;
+
         if (isGlobalAgent) {
           return [agentId, null];
         }
@@ -163,24 +164,27 @@ export async function getAgentsRecentAuthors({
         return [agentId, recentAuthorIds.map((id) => parseInt(id, 10))];
       })
     )
-  ).reduce((acc, [agentId, recentAuthorIds]) => {
-    acc[agentId] = recentAuthorIds;
-    return acc;
-  }, {} as Record<string, number[] | null>);
+  ).reduce<Record<string, number[] | null>>(
+    (acc, [agentId, recentAuthorIds]) => {
+      acc[agentId] = recentAuthorIds;
+      return acc;
+    },
+    {}
+  );
 
   const authorByUserId: Record<number, UserTypeWithWorkspaces> = (
     await getMembers(auth, {
       userIds: Array.from(
         new Set(Object.values(recentAuthorsIdsByAgentId).flat())
       )
-        .filter((id) => id !== null)
-        // Ts doesn't narrow the type of `id` to `number` after the `filter` call.
-        .map((id) => id as number),
+        // Filter-out null IDs in a way that allows narrowing the type.
+        .map((id) => (id ? [id] : []))
+        .flat(),
     })
-  ).reduce((acc, member) => {
+  ).reduce<Record<number, UserTypeWithWorkspaces>>((acc, member) => {
     acc[member.id] = member;
     return acc;
-  }, {} as Record<number, UserTypeWithWorkspaces>);
+  }, {});
 
   return agents.map((agent) => {
     const recentAuthorIds = recentAuthorsIdsByAgentId[agent.sId];
