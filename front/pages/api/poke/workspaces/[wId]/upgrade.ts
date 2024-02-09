@@ -1,7 +1,4 @@
-import type {
-  LightWorkspaceType,
-  WithAPIErrorReponse,
-} from "@dust-tt/types";
+import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
