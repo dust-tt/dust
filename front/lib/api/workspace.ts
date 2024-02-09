@@ -5,7 +5,6 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import { Op } from "sequelize";
