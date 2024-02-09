@@ -1,18 +1,36 @@
 import type { ModelId } from "@dust-tt/types";
+import { Op } from "sequelize";
 
-import { fetchIntercomHelpCenter } from "@connectors/connectors/intercom/lib/intercom_api";
+import {
+  fetchIntercomConversationsForTeamId,
+  fetchIntercomHelpCenter,
+  fetchIntercomTeam,
+} from "@connectors/connectors/intercom/lib/intercom_api";
+import {
+  deleteConversation,
+  deleteTeamAndConversations,
+  syncConversation,
+} from "@connectors/connectors/intercom/temporal/sync_conversation";
 import {
   removeHelpCenter,
   syncCollection,
 } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { Connector } from "@connectors/lib/models";
+import {
+  IntercomConversation,
+  IntercomWorkspace,
+} from "@connectors/lib/models/intercom";
 import {
   IntercomCollection,
   IntercomHelpCenter,
+  IntercomTeam,
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+
+const INTERCOM_CONVO_BATCH_SIZE = 20;
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
   const connector = await Connector.findOne({
@@ -209,4 +227,214 @@ export async function syncCollectionActivity({
     collection,
     currentSyncMs,
   });
+}
+
+/**
+ * This activity is responsible for retrieving the list
+ * of team ids to sync for a given connector.
+ */
+export async function getTeamIdsToSyncActivity(connectorId: ModelId) {
+  const teams = await IntercomTeam.findAll({
+    attributes: ["teamId"],
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  return teams.map((t) => t.teamId);
+}
+
+/**
+ * This activity is responsible for syncing the conversations of a given Team.
+ * If the team is not allowed anymore, it will delete all its data.
+ * If the team is not present on Intercom anymore, it will delete all its data.
+ * If the team is present on Intercom and is allowed, it will sync its conversations.
+ */
+export async function syncTeamOnlyActivity({
+  connectorId,
+  teamId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string;
+  currentSyncMs: number;
+}): Promise<boolean> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "intercom",
+    dataSourceName: dataSourceConfig.dataSourceName,
+  };
+
+  const teamOnDB = await IntercomTeam.findOne({
+    where: {
+      connectorId,
+      teamId,
+    },
+  });
+  if (!teamOnDB) {
+    logger.error({ loggerArgs, teamId }, "[Intercom] Team not found");
+    return false;
+  }
+
+  // If our rights were revoked we delete the team and its conversations
+  if (teamOnDB.permission === "none") {
+    await deleteTeamAndConversations({
+      connectorId,
+      dataSourceConfig,
+      team: teamOnDB,
+    });
+    return false;
+  }
+
+  // If the team does not exists on Intercom we delete the team and its conversations
+  const teamOnIntercom = await fetchIntercomTeam(
+    connector.connectionId,
+    teamId
+  );
+  if (!teamOnIntercom) {
+    await deleteTeamAndConversations({
+      connectorId,
+      dataSourceConfig,
+      team: teamOnDB,
+    });
+    return false;
+  }
+
+  // Otherwise we update the team name and lastUpsertedTs
+  await teamOnDB.update({
+    name: teamOnIntercom.name,
+    lastUpsertedTs: new Date(currentSyncMs),
+  });
+  return true;
+}
+
+/**
+ * This activity is responsible for getting the next batch
+ * of conversations to sync for a given team.
+ */
+export async function getNextConversationBatchToSyncActivity({
+  connectorId,
+  teamId,
+  cursor,
+}: {
+  connectorId: ModelId;
+  teamId: string;
+  cursor: string | null;
+}): Promise<{ conversationIds: string[]; nextPageCursor: string | null }> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!intercomWorkspace) {
+    throw new Error("[Intercom] Workspace not found");
+  }
+
+  const result = await fetchIntercomConversationsForTeamId({
+    nangoConnectionId: connector.connectionId,
+    teamId,
+    slidingWindow: intercomWorkspace.conversationsSlidingWindow,
+    cursor,
+    pageSize: INTERCOM_CONVO_BATCH_SIZE,
+  });
+
+  const conversationIds = result.conversations.map((c) => c.id);
+  const nextPageCursor = result.pages.next
+    ? result.pages.next.starting_after
+    : null;
+
+  return { conversationIds, nextPageCursor };
+}
+
+/**
+ * This activity is responsible for syncing a batch of conversations.
+ */
+export async function syncConversationBatchActivity({
+  connectorId,
+  teamId,
+  conversationIds,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string;
+  conversationIds: string[];
+  currentSyncMs: number;
+}): Promise<void> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const nangoConnectionId = connector.connectionId;
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "intercom",
+    dataSourceName: dataSourceConfig.dataSourceName,
+    teamId,
+  };
+
+  await concurrentExecutor(
+    conversationIds,
+    (conversationId) =>
+      syncConversation({
+        connectorId,
+        nangoConnectionId,
+        dataSourceConfig,
+        teamId,
+        conversationId,
+        currentSyncMs,
+        loggerArgs,
+      }),
+    { concurrency: 10 }
+  );
+}
+
+/**
+ * This activity is responsible for fetching a batch of conversations
+ * that are older than 90 days and ready to be deleted.
+ */
+export async function getNextConversationsBatchToDeleteActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<string[]> {
+  const conversations = await IntercomConversation.findAll({
+    attributes: ["conversationId"],
+    where: {
+      connectorId,
+      conversationCreatedAt: {
+        [Op.lt]: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
+      },
+    },
+    limit: INTERCOM_CONVO_BATCH_SIZE,
+  });
+
+  return conversations.map((c) => c.conversationId);
+}
+
+/**
+ * This activity is responsible for syncing a batch of conversations.
+ */
+export async function deleteConversationBatchActivity({
+  connectorId,
+  conversationIds,
+}: {
+  connectorId: ModelId;
+  conversationIds: string[];
+}): Promise<void> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await concurrentExecutor(
+    conversationIds,
+    (conversationId) =>
+      deleteConversation({
+        connectorId,
+        conversationId,
+        dataSourceConfig,
+      }),
+    { concurrency: 10 }
+  );
 }
