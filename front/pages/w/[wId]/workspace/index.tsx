@@ -14,7 +14,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
-import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useWorkspaceAnalytics } from "@app/lib/swr";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
@@ -25,7 +24,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
-  workspaceAnalyticsEnabled: boolean;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
@@ -46,10 +44,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       owner,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
-      workspaceAnalyticsEnabled: await isFeatureEnabled(
-        owner,
-        "workspace_analytics"
-      ),
     },
   };
 });
@@ -58,7 +52,6 @@ export default function WorkspaceAdmin({
   owner,
   subscription,
   gaTrackingId,
-  workspaceAnalyticsEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -312,7 +305,7 @@ export default function WorkspaceAdmin({
                   }}
                 />
               </div>
-              {workspaceAnalyticsEnabled && (
+              {owner.flags.includes("workspace_analytics") && (
                 <div className="align-center flex flex-col gap-6">
                   <Page.SectionHeader
                     title="Workspace Analytics"
