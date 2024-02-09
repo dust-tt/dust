@@ -22,6 +22,7 @@ export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
         logger.info(
           {
             elapsedTime,
+            callStack: new Error().stack,
           },
           "Long sequelize connection acquisition detected"
         );
