@@ -89,22 +89,33 @@ export type AgentConfigurationScope =
 export type AgentUserListStatus = "in-list" | "not-in-list";
 
 /**
- * Defines strategies for fetching agent configurations based on various 'views':
- * - 'list': Retrieves all agents within the user's list, including their private agents, agents from the workspace and global scope,
- * plus any published agents they've added to their list (refer to AgentUserRelationTable).
+ * Defines strategies for fetching agent configurations based on various
+ * 'views':
+ * - 'list': Retrieves all agents within the user's list, including their
+ *   private agents, agents from the workspace and global scope, plus any
+ *   published agents they've added to their list (refer to
+ *   AgentUserRelationTable).
  * - {agentId: string}: Retrieves a single agent by its ID.
- * - {conversationId: string}: all agent from the user's list view, plus the agents mentioned in the conversation with the provided Id.
- * - 'all': Combines workspace and published agents, excluding private agents. Typically used in agent galleries.
+ * - {conversationId: string}: all agent from the user's list view, plus the
+ *   agents mentioned in the conversation with the provided Id.
+ * - 'all': Combines workspace and published agents, excluding private agents.
+ *   Typically used in agent galleries.
+ * - 'manage-assistants-search': specific to the manage-assistants page,
+ *   retrieves all global agents including inactive ones, all workspace, all
+ *   published and the user's private agents.
  * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
- * - 'admin_internal': Grants access to all agents, including private ones. Intended strictly for internal use with necessary superuser or admin authorization.
+ * - 'admin_internal': Grants access to all agents, including private ones.
+ *   Intended strictly for internal use with necessary superuser or admin
+ *   authorization.
  */
 export type AgentsGetViewType =
   | { agentId: string; allVersions?: boolean }
   | "list"
   | { conversationId: string }
   | "all"
+  | "manage-assistants-search"
   | "workspace"
   | "published"
   | "global"

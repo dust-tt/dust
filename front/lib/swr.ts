@@ -493,6 +493,9 @@ export function useConversationReactions({
   };
 }
 
+/*
+ * Agent configurations. A null agentsGetView means no fetching
+ */
 export function useAgentConfigurations({
   workspaceId,
   agentsGetView,
@@ -501,7 +504,7 @@ export function useAgentConfigurations({
   sort,
 }: {
   workspaceId: string;
-  agentsGetView: AgentsGetViewType;
+  agentsGetView: AgentsGetViewType | null;
   includes?: ("authors" | "usage")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
@@ -515,7 +518,7 @@ export function useAgentConfigurations({
     if (typeof agentsGetView === "string") {
       params.append("view", agentsGetView);
     } else {
-      if ("conversationId" in agentsGetView) {
+      if (agentsGetView && "conversationId" in agentsGetView) {
         params.append("conversationId", agentsGetView.conversationId);
       }
     }
@@ -539,7 +542,9 @@ export function useAgentConfigurations({
 
   const queryString = getQueryString();
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`,
+    agentsGetView
+      ? `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`
+      : null,
     agentConfigurationsFetcher
   );
 

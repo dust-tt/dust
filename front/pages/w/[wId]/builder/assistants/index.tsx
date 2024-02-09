@@ -81,6 +81,11 @@ export default function WorkspaceAssistants({
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [assistantSearch, setAssistantSearch] = useState<string>("");
+
+  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
+    useState<string | null>(null);
+
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
       case "published":
@@ -105,14 +110,20 @@ export default function WorkspaceAssistants({
     agentsGetView: tabScope === "private" ? "list" : tabScope,
     includes,
   });
-  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
-    useState<string | null>(null);
 
-  const [assistantSearch, setAssistantSearch] = useState<string>("");
+  // except when user searches: search across all agents
+  const { agentConfigurations: searchableAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: assistantSearch ? "manage-assistants-search" : null,
+    });
 
-  const filteredAgents = agentConfigurations.filter((a) => {
+  const filteredAgents = (
+    assistantSearch ? searchableAgentConfigurations : agentConfigurations
+  ).filter((a) => {
     return (
-      a.scope === tabScope && // to filter private agents from 'list' view
+      // filter by tab only if no search
+      (assistantSearch || a.scope === tabScope) &&
       subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
     );
   });
@@ -214,13 +225,17 @@ export default function WorkspaceAssistants({
             </Button.List>
           </div>
           <div className="flex flex-col gap-4">
-            <Tab tabs={tabs} />
-            <Page.P>{SCOPE_INFO[tabScope].text}</Page.P>
+            {!assistantSearch && ( // only show tabline when not searching
+              <>
+                <Tab tabs={tabs} />
+                <Page.P>{SCOPE_INFO[tabScope].text}</Page.P>
+              </>
+            )}
             {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
               <AgentViewForScope
                 owner={owner}
                 agents={filteredAgents}
-                tabScope={tabScope}
+                scopeView={assistantSearch ? "search-view" : tabScope}
                 setShowDetails={setShowDetails}
                 handleToggleAgentStatus={handleToggleAgentStatus}
                 showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
@@ -246,7 +261,7 @@ export default function WorkspaceAssistants({
 function AgentViewForScope({
   owner,
   agents,
-  tabScope,
+  scopeView,
   setShowDetails,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
@@ -254,7 +269,7 @@ function AgentViewForScope({
 }: {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  tabScope: AgentConfigurationScope;
+  scopeView: AgentConfigurationScope | "search-view";
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
@@ -263,7 +278,7 @@ function AgentViewForScope({
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
 }) {
   const router = useRouter();
-  if (tabScope === "published") {
+  if (scopeView === "published") {
     return (
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {agents.map((a) => (
@@ -288,7 +303,7 @@ function AgentViewForScope({
           key={agent.sId}
           title={`@${agent.name}`}
           subElement={
-            agent.scope === "global"
+            agent.scope === "global" || scopeView === "search-view"
               ? null
               : assistantUsageMessage({
                   assistantName: agent.name,
