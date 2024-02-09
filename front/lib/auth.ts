@@ -375,7 +375,7 @@ export class Authenticator {
     return isAdmin(this.workspace());
   }
 
-  workspace(): (WorkspaceType & { flags: WhitelistableFeature[] }) | null {
+  workspace(): WorkspaceType | null {
     return this._workspace
       ? {
           id: this._workspace.id,
@@ -406,7 +406,7 @@ export class Authenticator {
    * object won't have the user's workspaces set.
    * @returns
    */
-  user(): (UserType & { workspaces: null }) | null {
+  user(): UserType | null {
     return this._user
       ? {
           id: this._user.id,
@@ -421,7 +421,6 @@ export class Authenticator {
           lastName: this._user.lastName || null,
           // Not available from this method
           image: null,
-          workspaces: null,
         }
       : null;
   }
@@ -523,7 +522,6 @@ export async function getUserFromSession(
         allowedDomain: w.allowedDomain || null,
         role,
         segmentation: w.segmentation || null,
-        flags: null,
       };
     }),
   };

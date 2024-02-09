@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -9,7 +9,7 @@ import {
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type UpgradeWorkspaceResponseBody = {
-  workspace: WorkspaceType & { flags: null };
+  workspace: LightWorkspaceType;
 };
 
 async function handler(
@@ -53,7 +53,6 @@ async function handler(
           allowedDomain: owner.allowedDomain || null,
           role: "admin",
           segmentation: owner.segmentation || null,
-          flags: null,
         },
       });
 

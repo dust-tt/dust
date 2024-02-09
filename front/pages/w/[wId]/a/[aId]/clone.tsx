@@ -1,5 +1,9 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AppType, AppVisibility } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -87,7 +91,7 @@ export default function CloneView({
   const [appNameError, setAppNameError] = useState("");
   const [appDescription, setAppDescription] = useState(app.description || "");
   const [appVisibility, setAppVisibility] = useState<AppVisibility>("private");
-  const [targetWorkspace, setTargetWorkspace] = useState<WorkspaceType>(
+  const [targetWorkspace, setTargetWorkspace] = useState<LightWorkspaceType>(
     user.workspaces[0]
   );
   const [cloning, setCloning] = useState(false);

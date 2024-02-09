@@ -1,5 +1,5 @@
 import { GoogleLogo, Logo } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
@@ -37,7 +37,7 @@ type OnboardingType =
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   onboardingType: OnboardingType;
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
   signUpCallbackUrl: string;
   gaTrackingId: string;
   baseUrl: string;

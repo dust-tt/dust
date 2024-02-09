@@ -6,7 +6,6 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -54,7 +53,7 @@ async function handler(
     });
   }
 
-  if (!(await isFeatureEnabled(owner, "structured_data"))) {
+  if (!owner.flags.includes("structured_data")) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

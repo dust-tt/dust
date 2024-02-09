@@ -48,7 +48,7 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
-import { usePokeFeatures, usePokePlans } from "@app/lib/swr";
+import { usePokePlans } from "@app/lib/swr";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
@@ -122,9 +122,6 @@ const WorkspacePage = ({
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const { plans } = usePokePlans();
-  const { features: enabledFeatures } = usePokeFeatures({
-    workspaceId: owner.sId,
-  });
 
   const [showDustAppLogsModal, setShowDustAppLogsModal] = React.useState(false);
 
@@ -600,7 +597,7 @@ const WorkspacePage = ({
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="mb-2 text-lg font-semibold">{f}</h3>
-                      {enabledFeatures.includes(f) ? (
+                      {owner.flags.includes(f) ? (
                         <Button
                           label="Disable"
                           variant="secondaryWarning"

@@ -1,4 +1,5 @@
 import type {
+  LightWorkspaceType,
   ModelId,
   RoleType,
   UserTypeWithWorkspaces,
@@ -20,7 +21,7 @@ import {
 
 export async function getWorkspaceInfos(
   wId: string
-): Promise<(WorkspaceType & { flags: null }) | null> {
+): Promise<LightWorkspaceType | null> {
   const workspace = await Workspace.findOne({
     where: {
       sId: wId,
@@ -38,8 +39,6 @@ export async function getWorkspaceInfos(
     allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
-    // Flags are not needed from outside of the workspace.
-    flags: null,
   };
 }
 
@@ -68,7 +67,7 @@ export async function getWorkspaceVerifiedDomain(
 export async function setInternalWorkspaceSegmentation(
   auth: Authenticator,
   segmentation: WorkspaceSegmentationType
-): Promise<WorkspaceType & { flags: null }> {
+): Promise<LightWorkspaceType> {
   const owner = auth.workspace();
   const user = auth.user();
 
@@ -97,7 +96,6 @@ export async function setInternalWorkspaceSegmentation(
     allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
-    flags: null,
   };
 }
 

@@ -39,7 +39,6 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { tableKey } from "@app/lib/client/tables_query";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -81,7 +80,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   };
   githubAppUrl: string;
   gaTrackingId: string;
-  structuredDataEnabled: boolean;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
@@ -99,12 +97,9 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
-  const [dataSource, structuredDataEnabled] = await Promise.all([
-    getDataSource(auth, context.params?.name as string, {
-      includeEditedBy: true,
-    }),
-    isFeatureEnabled(owner, "structured_data"),
-  ]);
+  const dataSource = await getDataSource(auth, context.params?.name as string, {
+    includeEditedBy: true,
+  });
 
   if (!dataSource) {
     return {
@@ -150,7 +145,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       },
       githubAppUrl: GITHUB_APP_URL,
       gaTrackingId: GA_TRACKING_ID,
-      structuredDataEnabled,
     },
   };
 });
@@ -160,13 +154,11 @@ function StandardDataSourceView({
   plan,
   readOnly,
   dataSource,
-  structuredDataEnabled,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
-  structuredDataEnabled: boolean;
 }) {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState("Documents");
@@ -186,6 +178,8 @@ function StandardDataSourceView({
       );
     }
   }, [router]);
+
+  const structuredDataEnabled = owner.flags.includes("structured_data");
 
   return (
     <div className="pt-6">
@@ -1097,7 +1091,6 @@ export default function DataSourceView({
   nangoConfig,
   githubAppUrl,
   gaTrackingId,
-  structuredDataEnabled,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -1155,7 +1148,6 @@ export default function DataSourceView({
             plan,
             readOnly: readOnly || standardView,
             dataSource,
-            structuredDataEnabled,
           }}
         />
       )}
