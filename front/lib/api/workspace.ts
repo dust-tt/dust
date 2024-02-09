@@ -168,7 +168,7 @@ export async function getMembers(
       firstName: u.firstName,
       lastName: u.lastName,
       image: u.imageUrl,
-      workspaces: [{ ...owner, role }],
+      workspaces: [{ ...owner, role, flags: null }],
     };
   });
 }

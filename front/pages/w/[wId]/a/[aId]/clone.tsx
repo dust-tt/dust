@@ -87,7 +87,9 @@ export default function CloneView({
   const [appNameError, setAppNameError] = useState("");
   const [appDescription, setAppDescription] = useState(app.description || "");
   const [appVisibility, setAppVisibility] = useState("public" as AppVisibility);
-  const [targetWorkspace, setTargetWorkspace] = useState(user.workspaces[0]);
+  const [targetWorkspace, setTargetWorkspace] = useState<WorkspaceType>(
+    user.workspaces[0]
+  );
   const [cloning, setCloning] = useState(false);
 
   const formValidation = () => {
