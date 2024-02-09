@@ -35,7 +35,7 @@ import {
 } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { subFilter } from "@app/lib/utils";
+import { classNames, subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -81,6 +81,11 @@ export default function WorkspaceAssistants({
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [assistantSearch, setAssistantSearch] = useState<string>("");
+
+  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
+    useState<string | null>(null);
+
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
       case "published":
@@ -95,7 +100,8 @@ export default function WorkspaceAssistants({
     }
   })();
 
-  // only fetch the agents that are relevant to the current scope
+  // only fetch the agents that are relevant to the current scope, except when
+  // user searches: search across all agents
   const {
     agentConfigurations,
     mutateAgentConfigurations,
@@ -105,14 +111,19 @@ export default function WorkspaceAssistants({
     agentsGetView: tabScope === "private" ? "list" : tabScope,
     includes,
   });
-  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
-    useState<string | null>(null);
 
-  const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const { agentConfigurations: searchableAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: assistantSearch ? "manage-assistants-search" : null,
+    });
 
-  const filteredAgents = agentConfigurations.filter((a) => {
+  const filteredAgents = (
+    assistantSearch ? searchableAgentConfigurations : agentConfigurations
+  ).filter((a) => {
     return (
-      a.scope === tabScope && // to filter private agents from 'list' view
+      // filter by tab only if no search
+      (assistantSearch || a.scope === tabScope) &&
       subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
     );
   });
@@ -160,6 +171,9 @@ export default function WorkspaceAssistants({
     icon: SCOPE_INFO[scope].icon,
     href: `/w/${owner.sId}/builder/assistants?tabScope=${scope}`,
   }));
+
+  const disabledTablineClass =
+    "!border-element-500 !text-element-500 !cursor-default";
 
   return (
     <AppLayout
@@ -214,13 +228,22 @@ export default function WorkspaceAssistants({
             </Button.List>
           </div>
           <div className="flex flex-col gap-4">
-            <Tab tabs={tabs} />
-            <Page.P>{SCOPE_INFO[tabScope].text}</Page.P>
+            <Tab
+              tabs={tabs}
+              className={classNames(
+                assistantSearch ? disabledTablineClass : ""
+              )}
+            />
+            <Page.P>
+              {assistantSearch
+                ? "Searching across all assistants"
+                : SCOPE_INFO[tabScope].text}
+            </Page.P>
             {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
               <AgentViewForScope
                 owner={owner}
                 agents={filteredAgents}
-                tabScope={tabScope}
+                scopeView={assistantSearch ? "search-view" : tabScope}
                 setShowDetails={setShowDetails}
                 handleToggleAgentStatus={handleToggleAgentStatus}
                 showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
@@ -229,12 +252,14 @@ export default function WorkspaceAssistants({
                 }
               />
             ) : (
-              <div className="pt-2">
-                <EmptyCallToAction
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
-                  label="Create an Assistant"
-                />
-              </div>
+              !assistantSearch && (
+                <div className="pt-2">
+                  <EmptyCallToAction
+                    href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+                    label="Create an Assistant"
+                  />
+                </div>
+              )
             )}
           </div>
         </Page.Vertical>
@@ -246,7 +271,7 @@ export default function WorkspaceAssistants({
 function AgentViewForScope({
   owner,
   agents,
-  tabScope,
+  scopeView,
   setShowDetails,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
@@ -254,7 +279,7 @@ function AgentViewForScope({
 }: {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  tabScope: AgentConfigurationScope;
+  scopeView: AgentConfigurationScope | "search-view";
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
@@ -263,7 +288,7 @@ function AgentViewForScope({
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
 }) {
   const router = useRouter();
-  if (tabScope === "published") {
+  if (scopeView === "published") {
     return (
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {agents.map((a) => (
@@ -288,7 +313,7 @@ function AgentViewForScope({
           key={agent.sId}
           title={`@${agent.name}`}
           subElement={
-            agent.scope === "global"
+            agent.scope === "global" || scopeView === "search-view"
               ? null
               : assistantUsageMessage({
                   assistantName: agent.name,
