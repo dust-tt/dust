@@ -34,8 +34,8 @@ import {
   compareAgentsForSort,
 } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { useAgentConfigurations } from "@app/lib/swr";
-import { subFilter } from "@app/lib/utils";
+import { useAgentConfigurations, useFeatures } from "@app/lib/swr";
+import { classNames, subFilter } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -100,7 +100,8 @@ export default function WorkspaceAssistants({
     }
   })();
 
-  // only fetch the agents that are relevant to the current scope
+  // only fetch the agents that are relevant to the current scope, except when
+  // user searches: search across all agents
   const {
     agentConfigurations,
     mutateAgentConfigurations,
@@ -111,7 +112,6 @@ export default function WorkspaceAssistants({
     includes,
   });
 
-  // except when user searches: search across all agents
   const { agentConfigurations: searchableAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -171,6 +171,9 @@ export default function WorkspaceAssistants({
     icon: SCOPE_INFO[scope].icon,
     href: `/w/${owner.sId}/builder/assistants?tabScope=${scope}`,
   }));
+  const { features } = useFeatures(owner);
+  const disabledTablineClass =
+    "!border-element-500 !text-element-500 !cursor-default";
 
   return (
     <AppLayout
@@ -225,12 +228,17 @@ export default function WorkspaceAssistants({
             </Button.List>
           </div>
           <div className="flex flex-col gap-4">
-            {!assistantSearch && ( // only show tabline when not searching
-              <>
-                <Tab tabs={tabs} />
-                <Page.P>{SCOPE_INFO[tabScope].text}</Page.P>
-              </>
-            )}
+            <Tab
+              tabs={tabs}
+              className={classNames(
+                assistantSearch ? disabledTablineClass : ""
+              )}
+            />
+            <Page.P>
+              {assistantSearch
+                ? "Searching across all assistants"
+                : SCOPE_INFO[tabScope].text}
+            </Page.P>
             {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
               <AgentViewForScope
                 owner={owner}
@@ -244,12 +252,14 @@ export default function WorkspaceAssistants({
                 }
               />
             ) : (
-              <div className="pt-2">
-                <EmptyCallToAction
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
-                  label="Create an Assistant"
-                />
-              </div>
+              !assistantSearch && (
+                <div className="pt-2">
+                  <EmptyCallToAction
+                    href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
+                    label="Create an Assistant"
+                  />
+                </div>
+              )
             )}
           </div>
         </Page.Vertical>

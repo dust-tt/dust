@@ -112,15 +112,13 @@ function determineGlobalAgentIdsToFetch(
   switch (agentsGetView) {
     case "workspace":
     case "published":
-      // No global agents in workspace & published view.
-      return [];
+      return []; // fetch no global agents
     case "global":
     case "list":
     case "all":
     case "admin_internal":
     case "manage-assistants-search":
-      // All global agents in global, list, all, admin_internal views.
-      return undefined;
+      return undefined; // undefined means all global agents will be fetched
     default:
       if (
         typeof agentsGetView === "object" &&
