@@ -1,6 +1,7 @@
 import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
 import type {
   APIError,
+  ConnectorProvider,
   DataSourceType,
   SubscriptionType,
   WorkspaceType,
@@ -20,6 +21,7 @@ import { classNames } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
+const PROVIDERS_WITH_SETTINGS: ConnectorProvider[] = ["webcrawler"];
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
@@ -44,7 +46,11 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   }
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
-  if (!dataSource || dataSource.connectorProvider) {
+  if (
+    !dataSource ||
+    (dataSource.connectorProvider &&
+      !PROVIDERS_WITH_SETTINGS.includes(dataSource.connectorProvider))
+  ) {
     return {
       notFound: true,
     };

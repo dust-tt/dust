@@ -15,6 +15,17 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
 
+export const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
+  {
+    confluence: "oauth",
+    github: "oauth",
+    google_drive: "oauth",
+    slack: "oauth",
+    notion: "oauth",
+    intercom: "oauth",
+    webcrawler: "url",
+  } as const;
+
 interface EditedByUser {
   editedAt: number | null;
   fullName: string | null;
