@@ -9,7 +9,7 @@ import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,

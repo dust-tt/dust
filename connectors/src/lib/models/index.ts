@@ -10,7 +10,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class Connector extends Model<
   InferAttributes<Connector>,

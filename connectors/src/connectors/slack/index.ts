@@ -31,7 +31,7 @@ import {
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type {

@@ -8,7 +8,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorPermission } from "@connectors/types/resources";
 
 import { getSlackClient } from "./slack_client";

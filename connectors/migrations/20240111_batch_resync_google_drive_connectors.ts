@@ -3,7 +3,7 @@ import parseArgs from "minimist";
 import readline from "readline";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

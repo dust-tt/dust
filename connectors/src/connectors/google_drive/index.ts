@@ -45,7 +45,7 @@ import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
 const {

@@ -11,7 +11,7 @@ import type {
   PageObjectProperties,
 } from "@connectors/connectors/notion/lib/types";
 import { Connector } from "@connectors/lib/models";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,

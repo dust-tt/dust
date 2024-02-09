@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { Connector } from "@connectors/lib/models";
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 async function main() {
   await Connector.update(

@@ -1,4 +1,4 @@
-import { sequelizeConnection } from "@connectors/resources/db";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 async function main() {
   await sequelizeConnection.query(
