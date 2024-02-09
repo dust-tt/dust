@@ -254,10 +254,7 @@ async function _getMistralNextGlobalAgent({
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  let status = settings?.status ?? "disabled_by_admin";
-  if (!auth.isUpgraded()) {
-    status = "disabled_free_workspace";
-  }
+  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
 
   return {
     id: -1,
@@ -265,10 +262,10 @@ async function _getMistralNextGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral-test",
+    name: "mistral-next",
     description: "Mistral model (32k context).",
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
-    status,
+    status: settings ? settings.status : status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
