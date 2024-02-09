@@ -65,6 +65,12 @@ function getTablesQueryAppSpecification() {
           "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation.",
         type: "string" as const,
       },
+      {
+        name: "guidelines",
+        description:
+          "Some additional guidelines and context that could help generate the right query. This could come from the assistant's instructions or from the conversation history. Return an empty string when not applicable.",
+        type: "string" as const,
+      },
     ],
   };
 }
