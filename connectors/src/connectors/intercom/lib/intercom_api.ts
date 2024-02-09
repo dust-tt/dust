@@ -41,18 +41,50 @@ type IntercomArticleType = ArticleObject & {
   parent_ids: string[];
 };
 
-// TO BE REMOVED IN A NEXT PR
-export async function validateAccessToken(intercomAccessToken: string) {
-  const intercomClient = new Client({
-    tokenAuth: { token: intercomAccessToken },
-  });
-  try {
-    await intercomClient.admins.list(); // trying a simple request
-  } catch (e) {
-    return false;
-  }
-  return true;
-}
+export type IntercomTeamType = {
+  type: "team";
+  id: string;
+  name: string;
+  admin_ids: string[];
+};
+
+export type IntercomConversationType = {
+  type: "conversation";
+  id: string;
+  created_at: Date;
+  updated_at: Date;
+  title: string;
+  admin_assignee_id: number;
+  team_assignee_id: number;
+  open: boolean;
+  tags: IntercomTagType[];
+  conversation_parts?: ConversationPartType;
+};
+
+export type IntercomTagType = {
+  type: "tag";
+  id: string;
+  name: string;
+};
+
+export type ConversationPartType = {
+  id: string;
+  part_type: string;
+  body: string;
+  created_at: Date;
+  updated_at: Date;
+  notified_at: Date;
+  assigned_to: string | null;
+  author: IntercomAuthor;
+  attachments: [];
+  redacted: boolean;
+};
+
+type IntercomAuthor = {
+  id: string;
+  type: "user" | "admin" | "bot" | "team";
+  name: string;
+};
 
 /**
  * Return the Intercom Access Token that was defined in the Dust Intercom App.
@@ -80,7 +112,12 @@ export async function getIntercomClient(
  * Return the Intercom Workspace Id.
  * Not available via the Node SDK, calling the API directly.
  */
-export async function fetchIntercomWorkspaceId(nangoConnectionId: string) {
+export async function fetchIntercomWorkspace(
+  nangoConnectionId: string
+): Promise<{
+  id: string;
+  name: string;
+}> {
   if (!NANGO_INTERCOM_CONNECTOR_ID) {
     throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
   }
@@ -105,7 +142,10 @@ export async function fetchIntercomWorkspaceId(nangoConnectionId: string) {
   if (!workspaceId) {
     throw new Error("No Intercom Workspace Id found.");
   }
-  return workspaceId;
+  return {
+    id: workspaceId,
+    name: data.app.name,
+  };
 }
 
 /**
@@ -290,11 +330,143 @@ export async function fetchIntercomTeams(
  * Return the detail of a Team.
  */
 export async function fetchIntercomTeam(
-  intercomClient: Client,
+  nangoConnectionId: string,
   teamId: string
-): Promise<TeamObject | null> {
-  const teamsResponse = await intercomClient.teams.find({
-    id: teamId,
+): Promise<IntercomTeamType | null> {
+  if (!NANGO_INTERCOM_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  const accessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_INTERCOM_CONNECTOR_ID,
+    useCache: true,
   });
-  return teamsResponse ?? null;
+
+  const resp = await fetch(`https://api.intercom.io/teams/${teamId}`, {
+    method: "GET",
+    headers: {
+      "Intercom-Version": "2.10",
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const response = await resp.json();
+  return response;
+}
+
+/**
+ * Return the paginated list of Conversation for a given Team.
+ * Filtered on the last 3 months and closed Conversations.
+ */
+export async function fetchIntercomConversationsForTeamId({
+  nangoConnectionId,
+  teamId,
+  slidingWindow,
+  cursor = null,
+  pageSize = 20,
+}: {
+  nangoConnectionId: string;
+  teamId: string;
+  slidingWindow: number;
+  cursor: string | null;
+  pageSize?: number;
+}): Promise<{
+  conversations: IntercomConversationType[];
+  pages: {
+    next?: {
+      page: number;
+      starting_after: string;
+    };
+  };
+}> {
+  if (!NANGO_INTERCOM_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  const accessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_INTERCOM_CONNECTOR_ID,
+    useCache: true,
+  });
+
+  const minCreatedAtDate = new Date(
+    Date.now() - slidingWindow * 24 * 60 * 60 * 1000
+  );
+  const minCreatedAt = Math.floor(minCreatedAtDate.getTime() / 1000);
+
+  const resp = await fetch(`https://api.intercom.io/conversations/search`, {
+    method: "POST",
+    headers: {
+      "Intercom-Version": "2.10",
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: {
+        operator: "AND",
+        value: [
+          {
+            field: "open",
+            operator: "=",
+            value: false,
+          },
+          {
+            field: "team_assignee_id",
+            operator: "=",
+            value: teamId,
+          },
+          {
+            field: "created_at",
+            operator: ">",
+            value: minCreatedAt,
+          },
+        ],
+      },
+      pagination: {
+        per_page: pageSize,
+        starting_after: cursor,
+      },
+    }),
+  });
+
+  const response = await resp.json();
+  return response;
+}
+
+/**
+ * Return the detail of a Conversation.
+ */
+export async function fetchIntercomConversation({
+  nangoConnectionId,
+  conversationId,
+}: {
+  nangoConnectionId: string;
+  conversationId: string;
+}) {
+  if (!NANGO_INTERCOM_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  const accessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_INTERCOM_CONNECTOR_ID,
+    useCache: true,
+  });
+
+  const resp = await fetch(
+    `https://api.intercom.io/conversations/${conversationId}`,
+    {
+      method: "GET",
+      headers: {
+        "Intercom-Version": "2.10",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const response = await resp.json();
+  return response;
 }

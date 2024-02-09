@@ -19,7 +19,7 @@ import {
   revokeSyncHelpCenter,
 } from "@connectors/connectors/intercom/lib/help_center_permissions";
 import {
-  fetchIntercomWorkspaceId,
+  fetchIntercomWorkspace,
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
@@ -44,6 +44,7 @@ import {
   IntercomCollection,
   IntercomHelpCenter,
   IntercomTeam,
+  IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok } from "@connectors/lib/result";
@@ -73,7 +74,26 @@ export async function createIntercomConnector(
       dataSourceName: dataSourceConfig.dataSourceName,
     });
 
-    await launchIntercomSyncWorkflow(connector.id, null);
+    const intercomWorkspace = await fetchIntercomWorkspace(nangoConnectionId);
+
+    if (!intercomWorkspace) {
+      return new Err(new Error("Error retrieving intercom workspace"));
+    }
+
+    await IntercomWorkspace.create({
+      connectorId: connector.id,
+      intercomWorkspaceId: intercomWorkspace.id,
+      name: intercomWorkspace.name,
+      conversationsSlidingWindow: 90,
+    });
+
+    const workflowStarted = await launchIntercomSyncWorkflow(
+      connector.id,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      return new Err(workflowStarted.error);
+    }
     return new Ok(connector.id.toString());
   } catch (e) {
     logger.error({ error: e }, "[Intercom] Error creating connector.");
@@ -102,45 +122,59 @@ export async function updateIntercomConnector(
     });
   }
 
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: { connectorId: connector.id },
+  });
+
+  if (!intercomWorkspace) {
+    return new Err({
+      type: "connector_update_error",
+      message: "Error retrieving intercom workspace to update connector",
+    });
+  }
+
   if (connectionId) {
     const oldConnectionId = connector.connectionId;
-    const oldIntercomWorkspaceId = await fetchIntercomWorkspaceId(
-      oldConnectionId
-    );
-
     const newConnectionId = connectionId;
-    const newIntercomWorkspaceId = await fetchIntercomWorkspaceId(
-      newConnectionId
-    );
+    const newIntercomWorkspace = await fetchIntercomWorkspace(newConnectionId);
 
-    if (!oldIntercomWorkspaceId || !newIntercomWorkspaceId) {
+    if (!newIntercomWorkspace) {
       return new Err({
         type: "connector_update_error",
         message: "Error retrieving nango connection info to update connector",
       });
     }
-    if (oldIntercomWorkspaceId !== newIntercomWorkspaceId) {
+    if (intercomWorkspace.intercomWorkspaceId !== newIntercomWorkspace.id) {
       nangoDeleteConnection(newConnectionId, NANGO_INTERCOM_CONNECTOR_ID).catch(
         (e) => {
           logger.error(
-            { error: e, oldConnectionId },
+            { error: e, connectorId },
             "Error deleting old Nango connection"
           );
         }
       );
       return new Err({
         type: "connector_oauth_target_mismatch",
-        message: "Cannot change workspace of a Notion connector",
+        message: "Cannot change workspace of a Intercom connector",
       });
     }
 
     await connector.update({
       connectionId: newConnectionId,
     });
+    await IntercomWorkspace.update(
+      {
+        intercomWorkspaceId: newIntercomWorkspace.id,
+        name: newIntercomWorkspace.name,
+      },
+      {
+        where: { connectorId: connector.id },
+      }
+    );
     nangoDeleteConnection(oldConnectionId, NANGO_INTERCOM_CONNECTOR_ID).catch(
       (e) => {
         logger.error(
-          { error: e, oldConnectionId },
+          { error: e, connectorId, oldConnectionId },
           "Error deleting old Nango connection"
         );
       }
@@ -164,8 +198,14 @@ export async function cleanupIntercomConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  return sequelize_conn.transaction(async (transaction) => {
+  await sequelize_conn.transaction(async (transaction) => {
     await Promise.all([
+      IntercomWorkspace.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction: transaction,
+      }),
       IntercomHelpCenter.destroy({
         where: {
           connectorId: connector.id,
@@ -190,22 +230,21 @@ export async function cleanupIntercomConnector(
         },
         transaction: transaction,
       }),
+      connector.destroy({
+        transaction: transaction,
+      }),
     ]);
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      NANGO_INTERCOM_CONNECTOR_ID
-    );
-    if (nangoRes.isErr()) {
-      throw nangoRes.error;
-    }
-
-    await connector.destroy({
-      transaction: transaction,
-    });
-
-    return new Ok(undefined);
   });
+
+  const nangoRes = await nangoDeleteConnection(
+    connector.connectionId,
+    NANGO_INTERCOM_CONNECTOR_ID
+  );
+  if (nangoRes.isErr()) {
+    throw nangoRes.error;
+  }
+
+  return new Ok(undefined);
 }
 
 export async function stopIntercomConnector(
@@ -356,7 +395,6 @@ export async function setIntercomConnectorPermissions(
         if (permission === "read") {
           const newTeam = await allowSyncTeam({
             connector,
-            intercomClient,
             teamId,
           });
           if (newTeam) {
