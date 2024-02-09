@@ -34,6 +34,7 @@ import {
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
+import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import {
@@ -64,6 +65,7 @@ export {
   DocumentTrackerChangeSuggestion,
   EventSchema,
   ExtractedEvent,
+  FeatureFlag,
   GlobalAgentSettings,
   Key,
   Membership,
