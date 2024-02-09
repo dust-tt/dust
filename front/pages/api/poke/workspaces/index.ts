@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -8,7 +8,7 @@ import { Subscription, Workspace } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetWorkspacesResponseBody = {
-  workspaces: (WorkspaceType & { flags: null })[];
+  workspaces: LightWorkspaceType[];
 };
 
 async function handler(
@@ -141,7 +141,6 @@ async function handler(
           allowedDomain: ws.allowedDomain || null,
           role: "admin",
           segmentation: ws.segmentation,
-          flags: null,
         })),
       });
     default:

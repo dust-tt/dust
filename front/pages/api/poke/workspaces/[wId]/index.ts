@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -14,7 +14,7 @@ export const WorkspaceTypeSchema = t.type({
 });
 
 export type SegmentWorkspaceResponseBody = {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 };
 
 export type DeleteWorkspaceResponseBody = {
