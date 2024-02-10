@@ -1,4 +1,5 @@
-import { removeNulls, type ModelId } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 
 import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";

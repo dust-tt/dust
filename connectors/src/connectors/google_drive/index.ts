@@ -41,11 +41,8 @@ import {
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
-import {
-  removeNulls,
-  type ConnectorsAPIError,
-  type ModelId,
-} from "@dust-tt/types";
+import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";

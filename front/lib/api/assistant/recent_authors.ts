@@ -1,10 +1,10 @@
-import {
-  type AgentRecentAuthors,
-  type LightAgentConfigurationType,
-  type UserType,
-  type UserTypeWithWorkspaces,
-  removeNulls,
+import type {
+  AgentRecentAuthors,
+  LightAgentConfigurationType,
+  UserType,
+  UserTypeWithWorkspaces,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { getMembers } from "@app/lib/api/workspace";
