@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import { removeNulls, type ModelId } from "@dust-tt/types";
 
 import { Connector } from "@connectors/lib/models";
 import { Err, Ok } from "@connectors/lib/result";
@@ -33,9 +33,9 @@ export async function launchSlackSyncWorkflow(
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
   if (channelsToSync === null) {
-    channelsToSync = (await getChannelsToSync(connectorId))
-      .map((c) => c.id)
-      .flatMap((c) => (c ? [c] : []));
+    channelsToSync = removeNulls(
+      (await getChannelsToSync(connectorId)).map((c) => c.id || null)
+    );
   }
   const client = await getTemporalClient();
 
