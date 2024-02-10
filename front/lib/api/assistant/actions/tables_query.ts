@@ -68,7 +68,7 @@ function getTablesQueryAppSpecification() {
       {
         name: "guidelines",
         description:
-          "Some additional guidelines and context that could help generate the right query. This could come from the assistant's instructions or from the conversation history. Return an empty string when not applicable.",
+          "Some additional guidelines that could help generate the right query. This could come from the assistant's instructions or from the conversation history. If the user asked to correct a previous attempt at the same query in a specific way, this information must be included. Return an empty string when not applicable.",
         type: "string" as const,
       },
     ],
