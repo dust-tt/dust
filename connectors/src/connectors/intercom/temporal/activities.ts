@@ -9,7 +9,7 @@ import {
 import {
   deleteConversation,
   deleteTeamAndConversations,
-  syncConversation,
+  fetchAndSyncConversation,
 } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import {
   removeHelpCenter,
@@ -378,13 +378,13 @@ export async function syncConversationBatchActivity({
   await concurrentExecutor(
     conversationIds,
     (conversationId) =>
-      syncConversation({
+      fetchAndSyncConversation({
         connectorId,
         nangoConnectionId,
         dataSourceConfig,
-        teamId,
         conversationId,
         currentSyncMs,
+        syncType: "batch",
         loggerArgs,
       }),
     { concurrency: 10 }

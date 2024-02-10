@@ -51,14 +51,32 @@ export type IntercomTeamType = {
 export type IntercomConversationType = {
   type: "conversation";
   id: string;
-  created_at: Date;
-  updated_at: Date;
+  created_at: number;
+  updated_at: number;
   title: string;
-  admin_assignee_id: number;
-  team_assignee_id: number;
+  admin_assignee_id: number | null;
+  team_assignee_id: number | null; // it says string in the API doc but it's actually a number
   open: boolean;
-  tags: IntercomTagType[];
-  conversation_parts?: ConversationPartType;
+  tags: {
+    type: "tag.list";
+    tags: IntercomTagType[];
+  };
+  source: {
+    type: "conversation";
+    id: number;
+    delivered_as: string;
+    subject: string;
+    body: string;
+    author: IntercomAuthor;
+  };
+};
+
+export type IntercomConversationWithPartsType = IntercomConversationType & {
+  conversation_parts: {
+    type: "conversation_part.list";
+    conversation_parts: ConversationPartType[];
+    total_count: number;
+  };
 };
 
 export type IntercomTagType = {
@@ -68,13 +86,17 @@ export type IntercomTagType = {
 };
 
 export type ConversationPartType = {
+  type: "conversation_part";
   id: string;
   part_type: string;
   body: string;
   created_at: Date;
   updated_at: Date;
   notified_at: Date;
-  assigned_to: string | null;
+  assigned_to: {
+    type: string;
+    id: string;
+  };
   author: IntercomAuthor;
   attachments: [];
   redacted: boolean;
@@ -84,6 +106,7 @@ type IntercomAuthor = {
   id: string;
   type: "user" | "admin" | "bot" | "team";
   name: string;
+  email: string;
 };
 
 /**

@@ -19,6 +19,7 @@ import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
+import { webhookIntercomAPIHandler } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -93,6 +94,11 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),
     webhookGithubAPIHandler
+  );
+  app.post(
+    "/webhooks/:webhooks_secret/intercom",
+    bodyParser.raw({ type: "application/json" }),
+    webhookIntercomAPIHandler
   );
 
   app.post(

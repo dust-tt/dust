@@ -3,6 +3,7 @@ import TurndownService from "turndown";
 
 import type {
   ConversationPartType,
+  IntercomConversationWithPartsType,
   IntercomTagType,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import { fetchIntercomConversation } from "@connectors/connectors/intercom/lib/intercom_api";
@@ -17,7 +18,7 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import type { IntercomTeam } from "@connectors/lib/models/intercom";
+import { IntercomTeam } from "@connectors/lib/models/intercom";
 import {
   IntercomConversation,
   IntercomWorkspace,
@@ -87,21 +88,21 @@ export async function deleteConversation({
   ]);
 }
 
-export async function syncConversation({
+export async function fetchAndSyncConversation({
   connectorId,
   nangoConnectionId,
   dataSourceConfig,
-  teamId,
   conversationId,
   currentSyncMs,
+  syncType,
   loggerArgs,
 }: {
   connectorId: ModelId;
   nangoConnectionId: string;
   dataSourceConfig: DataSourceConfig;
-  teamId: string;
   conversationId: string;
   currentSyncMs: number;
+  syncType: "incremental" | "batch";
   loggerArgs: Record<string, string | number>;
 }) {
   const conversation = await fetchIntercomConversation({
@@ -114,6 +115,52 @@ export async function syncConversation({
       conversationId,
       loggerArgs,
     });
+    return;
+  }
+
+  await syncConversation({
+    connectorId,
+    dataSourceConfig,
+    conversation,
+    currentSyncMs,
+    syncType,
+    loggerArgs,
+  });
+}
+
+export async function syncConversation({
+  connectorId,
+  dataSourceConfig,
+  conversation,
+  currentSyncMs,
+  syncType,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  conversation: IntercomConversationWithPartsType;
+  currentSyncMs: number;
+  syncType: "incremental" | "batch";
+  loggerArgs: Record<string, string | number>;
+}) {
+  if (!conversation.team_assignee_id) {
+    logger.error(
+      "[Intercom] Conversation has no team assignee. Skipping sync",
+      { conversationId: conversation.id, loggerArgs }
+    );
+    return;
+  }
+  const team = await IntercomTeam.findOne({
+    where: {
+      connectorId,
+      teamId: conversation.team_assignee_id.toString(),
+    },
+  });
+  if (!team || team.permission !== "read") {
+    logger.error(
+      "[Intercom] Team not found or has no read permission. Skipping sync",
+      { conversationId: conversation.id, loggerArgs }
+    );
     return;
   }
 
@@ -141,8 +188,14 @@ export async function syncConversation({
     conversationOnDB = await IntercomConversation.create({
       connectorId,
       conversationId: conversation.id,
-      teamId: conversation.team_assignee_id,
-      conversationCreatedAt: conversation.created_at,
+      teamId: conversation.team_assignee_id.toString(),
+      conversationCreatedAt: new Date(conversation.created_at * 1000),
+      lastUpsertedTs: new Date(currentSyncMs),
+    });
+  } else {
+    await conversationOnDB.update({
+      teamId: conversation.team_assignee_id.toString(),
+      conversationCreatedAt: new Date(conversation.created_at * 1000),
       lastUpsertedTs: new Date(currentSyncMs),
     });
   }
@@ -204,7 +257,7 @@ export async function syncConversation({
       `createdAt:${conversation.created_at}`,
       `updatedAt:${conversation.updated_at}`,
     ],
-    parents: [getTeamInternalId(connectorId, teamId)],
+    parents: [getTeamInternalId(connectorId, team.teamId)],
     retries: 3,
     delayBetweenRetriesMs: 500,
     loggerArgs: {
@@ -212,7 +265,7 @@ export async function syncConversation({
       conversationId: conversation.id,
     },
     upsertContext: {
-      sync_type: "batch",
+      sync_type: syncType,
     },
   });
 }
