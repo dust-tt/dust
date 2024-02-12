@@ -758,6 +758,12 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
+// This function is used to create a text representation of a notion database properties.
+// We use it to render databases inline (in the Notion Page document on Dust), and to create
+// structured Tables on Dust (we use the CSV format).
+// The function accepts a `dustIdColumn` array which must have the same length as the `pagesProperties`. This
+// array is used to add a column to the CSV that contains the Dust ID of the page (__dust_id). This is useful
+// to uniquely identify the notion page in the CSV.
 export async function renderDatabaseFromPages({
   databaseTitle,
   pagesProperties,
