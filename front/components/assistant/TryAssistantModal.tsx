@@ -96,7 +96,7 @@ export function TryAssistantModal({
       hasChanged={false}
       variant="side-md"
     >
-      <div id="modal-content">
+      <div id="modal-content" className="h-full overflow-y-auto">
         <GenerationContextProvider>
           {conversation && (
             <Conversation
