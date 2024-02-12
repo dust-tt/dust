@@ -19,6 +19,19 @@ export function getConnectorReplicaDbConnection() {
   return connectorReplicaDbInstance;
 }
 
+export function getCoreReplicaDbConnection() {
+  if (!connectorReplicaDbInstance) {
+    connectorReplicaDbInstance = new Sequelize(
+      config.getCoreDatabaseReadReplicaUri() as string,
+      {
+        logging: false,
+      }
+    );
+  }
+
+  return connectorReplicaDbInstance;
+}
+
 export function getFrontReplicaDbConnection() {
   if (!frontReplicaDbInstance) {
     frontReplicaDbInstance = new Sequelize(
