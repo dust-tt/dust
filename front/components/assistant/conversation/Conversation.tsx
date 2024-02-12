@@ -10,6 +10,8 @@ import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -17,9 +19,6 @@ import {
   useConversationReactions,
   useConversations,
 } from "@app/lib/swr";
-
-import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
-import { CONVERSATION_PARENT_DIV } from "@app/components/assistant/conversation/lib";
 
 /**
  *
@@ -60,12 +59,12 @@ export default function Conversation({
 
   useEffect(() => {
     const mainTag = document.getElementById(
-      CONVERSATION_PARENT_DIV[isInModal ? "modal" : "page"]
+      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
     if (mainTag) {
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
-  }, [conversation?.content.length]);
+  }, [conversation?.content.length, isInModal]);
 
   useEffect(() => {
     if (!onStickyMentionsChange) {

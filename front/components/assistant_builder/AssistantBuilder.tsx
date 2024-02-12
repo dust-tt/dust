@@ -1316,6 +1316,8 @@ function TryModalInBuilder({
   >(null);
 
   async function onTryClick() {
+    // A new assistant is created on the fly with status 'draft'
+    // so that the user can try it out while creating it.
     setAssistant(
       await submitForm({
         owner,

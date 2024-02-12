@@ -32,6 +32,7 @@ import { AgentAction } from "@app/components/assistant/conversation/AgentAction"
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import {
   linkFromDocument,
   providerFromDocument,
@@ -40,7 +41,6 @@ import {
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { CONVERSATION_PARENT_DIV } from "@app/components/assistant/conversation/lib";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -226,7 +226,7 @@ export function AgentMessage({
     const previousHeight = messageHeight.current || 0;
     messageHeight.current = messageRef.current?.scrollHeight || previousHeight;
     const mainTag = document.getElementById(
-      CONVERSATION_PARENT_DIV[isInModal ? "modal" : "page"]
+      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
     if (mainTag && agentMessageToRender.status === "created") {
       if (
@@ -241,6 +241,7 @@ export function AgentMessage({
     agentMessageToRender.status,
     agentMessageToRender.action,
     activeReferences.length,
+    isInModal,
   ]);
 
   // GenerationContext: to know if we are generating or not

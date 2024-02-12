@@ -13,7 +13,11 @@ import type * as t from "io-ts";
 import type { NotificationType } from "@app/components/sparkle/Notification";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
-export const CONVERSATION_PARENT_DIV = {
+/**
+ * id of the parent div that should be scrolled for autosrcolling to work on
+ * conversations
+ */
+export const CONVERSATION_PARENT_SCROLL_DIV_ID = {
   modal: "modal-content",
   page: "main-content",
 };

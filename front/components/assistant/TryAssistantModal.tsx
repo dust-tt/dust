@@ -13,6 +13,7 @@ import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
+  CONVERSATION_PARENT_SCROLL_DIV_ID as CONVERSATION_PARENT_SCROLL_DIV_ID,
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
@@ -96,7 +97,10 @@ export function TryAssistantModal({
       hasChanged={false}
       variant="side-md"
     >
-      <div id="modal-content" className="h-full overflow-y-auto">
+      <div
+        id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
+        className="h-full overflow-y-auto"
+      >
         <GenerationContextProvider>
           {conversation && (
             <Conversation
