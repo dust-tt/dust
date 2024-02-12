@@ -1143,6 +1143,7 @@ async function submitForm({
   builderState,
   agentConfigurationId,
   slackData,
+  isDraft,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -1151,6 +1152,7 @@ async function submitForm({
     selectedSlackChannels: SlackChannel[];
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
+  isDraft?: boolean;
 }): Promise<LightAgentConfigurationType | AgentConfigurationType> {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
   if (
@@ -1232,7 +1234,7 @@ async function submitForm({
         name: removeLeadingAt(builderState.handle),
         pictureUrl: builderState.avatarUrl,
         description: builderState.description.trim(),
-        status: "active",
+        status: isDraft ? "draft" : "active",
         scope: builderState.scope,
         action: actionParam,
         generation: {
@@ -1323,6 +1325,7 @@ function TryModalInBuilder({
           selectedSlackChannels: [],
           slackChannelsLinkedWithAgent: [],
         },
+        isDraft: true,
       })
     );
   }
@@ -1333,7 +1336,9 @@ function TryModalInBuilder({
           owner={owner}
           user={user}
           assistant={assistant}
-          onClose={() => setAssistant(null)}
+          onClose={() => {
+            setAssistant(null);
+          }}
         />
       )}
       <Button
