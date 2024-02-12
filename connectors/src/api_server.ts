@@ -1,6 +1,7 @@
 import { setupGlobalErrorHandler } from "@dust-tt/types";
 import bodyParser from "body-parser";
 import express from "express";
+import { rateLimit } from "express-rate-limit";
 
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
@@ -45,6 +46,13 @@ export function startServer(port: number) {
         // but we need it to validate webhooks signatures
         req.rawBody = buf;
       },
+    })
+  );
+
+  app.use(
+    rateLimit({
+      windowMs: 60 * 1000, // 1 minute
+      max: 1000, // limit each IP to 1000 requests per windowMs
     })
   );
 
