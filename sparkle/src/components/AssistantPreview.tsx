@@ -1,253 +1,223 @@
-import React, { SyntheticEvent } from "react";
+import React, { SyntheticEvent, useState } from "react";
 
+import { Button, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
-import { Button } from "@sparkle/components/Button";
-import { Chip } from "@sparkle/components/Chip";
-import {
-  ChatBubbleBottomCenterText,
-  Dash,
-  More,
-  Play,
-  Plus,
-} from "@sparkle/icons/solid";
+import { classNames } from "@sparkle/lib/utils";
 
-type AssistantPreviewVariant = "sm" | "md" | "lg" | "list";
+type AssistantPreviewVariant = "item" | "list" | "gallery";
 
 interface BaseAssistantPreviewProps {
-  description: string;
-  name: string;
-  pictureUrl: string;
   variant: AssistantPreviewVariant;
+  description: string;
+  title: string;
+  pictureUrl: string;
+  subtitle: string;
+  onClick?: () => void;
 }
 
-type LargeVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
-  variant: "lg";
-
-  allowAddAction?: boolean;
-  allowRemoveAction?: boolean;
-  isAdded: boolean;
-  isUpdatingList: boolean;
-  isWorkspace: boolean;
-  subtitle: string;
-
-  onShowDetailsClick?: () => void;
-  onTestClick?: () => void;
-  onUpdate: (action: "added" | "removed") => Promise<void> | void;
+type ItemVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "item";
+  actions: React.ReactNode;
 };
 
-type SmallVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
-  variant: "sm";
+type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "list";
+};
 
-  onClick: (e: SyntheticEvent) => void;
+type GalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "gallery";
+  renderActions?: (isHovered: boolean) => React.ReactNode;
+  onPlayClick?: (e: SyntheticEvent) => void;
 };
 
 type AssistantPreviewProps =
-  | SmallVariantAssistantPreviewProps
-  | LargeVariantAssistantPreviewProps;
+  | ItemVariantAssistantPreviewProps
+  | ListVariantAssistantPreviewProps
+  | GalleryVariantAssistantPreviewProps;
 
-// Define defaultProps for the AssistantPreview component.
-AssistantPreview.defaultProps = {
-  allowAddAction: false,
-  allowRemoveAction: false,
+const titleClassNames = {
+  base: "s-truncate s-font-medium s-text-element-900 s-w-full",
+  item: "s-text-sm",
+  list: "s-text-base",
+  gallery: "s-text-lg",
+};
+const subtitleClassNames = {
+  base: "s-font-normal s-text-element-700 s-truncate s-w-full",
+  item: "s-text-xs",
+  list: "s-text-sm",
+  gallery: "s-text-sm",
+};
+const descriptionClassNames = {
+  base: "s-font-normal s-mb-1",
+  item: "s-text-xs s-text-element-700 s-pl-1 s-line-clamp-3",
+  list: "s-text-base s-text-element-800",
+  gallery: "s-text-base s-text-element-800",
 };
 
-function renderVariantContent(props: AssistantPreviewProps) {
+function renderVariantContent(
+  props: AssistantPreviewProps & { isHovered: boolean }
+) {
   switch (props.variant) {
-    case "sm":
-      return <SmallVariantContent {...props} />;
-    case "lg":
-      return <LargeVariantContent {...props} />;
+    case "item":
+      return <ItemVariantContent {...props} />;
+    case "list":
+      return <ListVariantContent {...props} />;
+    case "gallery":
+      return <GalleryVariantContent {...props} />;
     default:
       return <></>;
   }
 }
 
-const SmallVariantContent = (props: SmallVariantAssistantPreviewProps) => {
-  const { description, name, onClick, pictureUrl } = props;
-
+const ItemVariantContent = ({
+  actions,
+  description,
+  title,
+  pictureUrl,
+  subtitle,
+}: ItemVariantAssistantPreviewProps) => {
   return (
-    <div className="s-flex s-flex-col s-py-2">
-      <div className="s-flex s-flex-row s-gap-2">
+    <>
+      <div className="s-flex s-items-center s-gap-2">
         <Avatar
-          visual={<img src={pictureUrl} alt={`Avatar of ${name}`} />}
-          size="md"
+          visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
+          size="sm"
         />
-        <div className="s-flex s-flex-col s-gap-2">
-          <div className="s-text-sm s-font-medium s-text-element-900">
-            @{name}
+        <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
+          <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
+            <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
+              <div
+                className={classNames(
+                  titleClassNames["base"],
+                  titleClassNames.item
+                )}
+              >
+                @{title}
+              </div>
+              <div
+                className={classNames(
+                  subtitleClassNames["base"],
+                  subtitleClassNames.item
+                )}
+              >
+                By: {subtitle}
+              </div>
+            </div>
           </div>
-          <Button
-            key="start"
-            variant="tertiary"
-            icon={ChatBubbleBottomCenterText}
-            size="xs"
-            label={"Start"}
-            onClick={onClick}
-          />
         </div>
       </div>
-      <div className="s-py-1.5 s-text-sm s-font-normal s-text-element-700">
+      <div
+        className={classNames(
+          descriptionClassNames["base"],
+          descriptionClassNames.item
+        )}
+      >
         {description}
+      </div>
+      {actions}
+    </>
+  );
+};
+
+const ListVariantContent = ({
+  description,
+  title,
+  pictureUrl,
+  subtitle,
+}: ListVariantAssistantPreviewProps) => {
+  return (
+    <div className="s-flex s-gap-2">
+      <Avatar
+        visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
+        size="md"
+      />
+      <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
+        <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
+          <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
+            <div
+              className={classNames(
+                titleClassNames["base"],
+                titleClassNames.list
+              )}
+            >
+              @{title}
+            </div>
+            <div
+              className={classNames(
+                subtitleClassNames["base"],
+                subtitleClassNames.list
+              )}
+            >
+              By: {subtitle}
+            </div>
+          </div>
+        </div>
+        <div
+          className={classNames(
+            descriptionClassNames["base"],
+            descriptionClassNames.list
+          )}
+        >
+          {description}
+        </div>
       </div>
     </div>
   );
 };
 
-type GalleryChipProps = Pick<
-  LargeVariantAssistantPreviewProps,
-  | "allowAddAction"
-  | "allowRemoveAction"
-  | "isAdded"
-  | "isUpdatingList"
-  | "onUpdate"
->;
-
-const GalleryChip = ({
-  allowAddAction,
-  allowRemoveAction,
-  isAdded,
-  isUpdatingList,
-  onUpdate,
-}: GalleryChipProps) => {
-  if (!isAdded || !allowAddAction) return null;
-
+const GalleryVariantContent = ({
+  renderActions,
+  description,
+  onPlayClick,
+  title,
+  pictureUrl,
+  subtitle,
+  isHovered,
+}: GalleryVariantAssistantPreviewProps & { isHovered: boolean }) => {
   return (
-    allowAddAction && (
-      <div className="s-group">
-        <Chip
-          color="emerald"
-          size="xs"
-          label="Added"
-          className={allowRemoveAction ? "group-hover:s-hidden" : ""}
-        />
-        {allowRemoveAction && (
-          <div className="s-hidden group-hover:s-block">
-            <Button.List isWrapping={true}>
-              <Button
-                key="remove"
-                variant="tertiary"
-                icon={Dash}
-                disabled={isUpdatingList}
-                size="xs"
-                label={"Remove"}
-                onClick={() => onUpdate("removed")}
-              />
-            </Button.List>
-          </div>
-        )}
-      </div>
-    )
-  );
-};
-
-type ButtonsGroupProps = Pick<
-  LargeVariantAssistantPreviewProps,
-  | "allowAddAction"
-  | "isAdded"
-  | "isUpdatingList"
-  | "isWorkspace"
-  | "onShowDetailsClick"
-  | "onTestClick"
-  | "onUpdate"
->;
-
-const ButtonsGroup = ({
-  allowAddAction,
-  isAdded,
-  isUpdatingList,
-  isWorkspace,
-  onShowDetailsClick,
-  onTestClick,
-  onUpdate,
-}: ButtonsGroupProps) => {
-  return (
-    <Button.List isWrapping={true}>
-      {!isAdded && allowAddAction && (
-        <Button
-          key="add"
-          variant="tertiary"
-          icon={Plus}
-          disabled={isUpdatingList}
-          size="xs"
-          label={isWorkspace ? "Add to Workspace" : "Add"}
-          onClick={() => onUpdate("added")}
-        />
-      )}
-      {onTestClick && (
-        <Button
-          key="test"
-          variant="tertiary"
-          icon={Play}
-          size="xs"
-          label={"Test"}
-          onClick={onTestClick}
-        />
-      )}
-      {onShowDetailsClick && (
-        <Button
-          key="show_details"
-          icon={More}
-          label={"View Assistant"}
-          labelVisible={false}
-          size="xs"
-          variant="tertiary"
-          onClick={onShowDetailsClick}
-        />
-      )}
-    </Button.List>
-  );
-};
-
-const LargeVariantContent = (props: LargeVariantAssistantPreviewProps) => {
-  const {
-    allowAddAction,
-    allowRemoveAction,
-    description,
-    isAdded,
-    isUpdatingList,
-    isWorkspace,
-    name,
-    onShowDetailsClick,
-    onTestClick,
-    onUpdate,
-    pictureUrl,
-    subtitle,
-  } = props;
-
-  return (
-    <div className="s-flex s-flex-row s-gap-2 s-py-2">
+    <div className="s-flex s-gap-2">
       <Avatar
-        visual={<img src={pictureUrl} alt={`Avatar of ${name}`} />}
+        visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
         size="md"
       />
-      <div className="s-flex s-flex-col s-gap-2">
-        <div>
-          <div className="s-text-sm s-font-medium s-text-element-900">
-            @{name}
+      <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
+        <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
+          <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
+            <div
+              className={classNames(
+                titleClassNames["base"],
+                titleClassNames.gallery
+              )}
+            >
+              @{title}
+            </div>
+            <div
+              className={classNames(
+                subtitleClassNames["base"],
+                subtitleClassNames.gallery
+              )}
+            >
+              By: {subtitle}
+            </div>
           </div>
-          <div className="s-text-sm s-font-normal s-text-element-700">
-            {subtitle}
-          </div>
+          {isHovered && onPlayClick && (
+            <Button
+              variant="primary"
+              size="sm"
+              label="Try"
+              labelVisible={false}
+              icon={PlayIcon}
+              onClick={onPlayClick}
+            />
+          )}
         </div>
-        <div className="s-flex s-flex-row s-gap-2">
-          <GalleryChip
-            allowAddAction={allowAddAction}
-            allowRemoveAction={allowRemoveAction}
-            isAdded={isAdded}
-            isUpdatingList={isUpdatingList}
-            onUpdate={onUpdate}
-          />
-          <ButtonsGroup
-            allowAddAction={allowAddAction}
-            isAdded={isAdded}
-            isUpdatingList={isUpdatingList}
-            isWorkspace={isWorkspace}
-            onShowDetailsClick={onShowDetailsClick}
-            onTestClick={onTestClick}
-            onUpdate={onUpdate}
-          />
-        </div>
-        <div className="s-text-sm s-font-normal s-text-element-800">
+        {renderActions && renderActions(isHovered)}
+        <div
+          className={classNames(
+            descriptionClassNames["base"],
+            descriptionClassNames.gallery
+          )}
+        >
           {description}
         </div>
       </div>
@@ -256,7 +226,21 @@ const LargeVariantContent = (props: LargeVariantAssistantPreviewProps) => {
 };
 
 export function AssistantPreview(props: AssistantPreviewProps) {
-  const VariantContent = renderVariantContent(props);
+  const { onClick, variant } = props;
+  // State to manage the visibility of the play button
+  const [isHovered, setIsHovered] = useState(false);
 
-  return <div>{VariantContent}</div>;
+  return (
+    <div
+      className={classNames(
+        "s-flex s-flex-col s-gap-2 s-border s-border-structure-100/0 s-transition s-duration-200 hover:s-cursor-pointer hover:s-border-structure-100 hover:s-bg-structure-50",
+        variant === "item" ? "s-rounded-2xl s-p-3" : " s-rounded-3xl s-p-4"
+      )}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {renderVariantContent({ ...props, isHovered })}
+    </div>
+  );
 }
