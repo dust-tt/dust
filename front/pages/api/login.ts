@@ -323,7 +323,6 @@ async function handler(
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
     } else {
       const { flow, workspace } = await handleRegularSignupFlow(session, user);
-      console.log(">>>>>> flow:", flow);
       if (flow) {
         res.redirect(`/no-workspace?flow=${flow}`);
         return;
