@@ -192,12 +192,12 @@ async function handler(
     );
 
     // Redirect the user to a different screen if a workspace with
-    // a verified domain exists but auto join is not enabled.
+    // a verified domain exists but auto join is not enabled and there is no membership invite.
     const workspaceHasAutoJoin =
       workspaceWithVerifiedDomain?.domainAutoJoinEnabled === true;
     if (workspaceHasAutoJoin) {
       autoJoinWorkspaceWithDomain = workspaceWithVerifiedDomain.workspace;
-    } else if (workspaceWithVerifiedDomain) {
+    } else if (workspaceWithVerifiedDomain && !membershipInvite) {
       res.redirect("/no-workspace?flow=no-auto-join");
       return;
     }
