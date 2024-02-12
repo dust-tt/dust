@@ -404,11 +404,12 @@ export async function setIntercomConnectorPermissions(
       }
     }
 
-    if (toBeSignaledHelpCenterIds.size > 0) {
+    if (toBeSignaledHelpCenterIds.size > 0 || toBeSignaledTeamIds.size > 0) {
       const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow(
         connectorId,
         null,
-        [...toBeSignaledHelpCenterIds]
+        [...toBeSignaledHelpCenterIds],
+        [...toBeSignaledTeamIds]
       );
       if (sendSignalToWorkflowResult.isErr()) {
         return new Err(sendSignalToWorkflowResult.error);

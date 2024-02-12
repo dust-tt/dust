@@ -20,6 +20,17 @@ const {
   startToCloseTimeout: "30 minutes",
 });
 
+const {
+  getTeamIdsToSyncActivity,
+  syncTeamOnlyActivity,
+  getNextConversationBatchToSyncActivity,
+  syncConversationBatchActivity,
+  getNextConversationsBatchToDeleteActivity,
+  deleteConversationBatchActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
+
 const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "1 minute",
@@ -41,6 +52,9 @@ export async function intercomSyncWorkflow({
   const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
   const uniqueHelpCenterIds = new Set(helpCenterIds);
 
+  const teamIds = await getTeamIdsToSyncActivity(connectorId);
+  const uniqueTeamIds = new Set(teamIds);
+
   // If we get a signal, update the workflow state by adding help center ids.
   // We send a signal when permissions are updated by the admin.
   setHandler(
@@ -49,6 +63,8 @@ export async function intercomSyncWorkflow({
       for (const { type, intercomId } of intercomUpdates) {
         if (type === "help_center") {
           uniqueHelpCenterIds.add(intercomId);
+        } else if (type === "team") {
+          uniqueTeamIds.add(intercomId);
         }
       }
     }
@@ -89,7 +105,38 @@ export async function intercomSyncWorkflow({
     }
   }
 
-  await saveIntercomConnectorSuccessSync({ connectorId });
+  // Async operations allow Temporal's event loop to process signals.
+  // If a signal arrives during an async operation, it will update the set before the next iteration.
+  while (uniqueTeamIds.size > 0) {
+    // Create a copy of the set to iterate over, to avoid issues with concurrent modification.
+    const teamIdsToProcess = new Set(uniqueTeamIds);
+    for (const teamId of teamIdsToProcess) {
+      if (!uniqueTeamIds.has(teamId)) {
+        continue;
+      }
+      // Async operation yielding control to the Temporal runtime.
+      await executeChild(intercomTeamFullSyncWorkflow, {
+        workflowId: `${workflowId}-team-${teamId}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectorId,
+            teamId,
+            currentSyncMs,
+          },
+        ],
+        memo,
+      });
+      // Remove the processed team from the original set after the async operation.
+      uniqueTeamIds.delete(teamId);
+    }
+  }
+
+  await intercomOldConversationsCleanup({
+    connectorId,
+  });
+
+  await await saveIntercomConnectorSuccessSync({ connectorId });
 }
 
 /**
@@ -125,4 +172,75 @@ export async function intercomHelpCenterSyncWorklow({
       currentSyncMs,
     });
   }
+}
+
+/**
+ * Sync Workflow for a Team.
+ * Launched by the IntercomSyncWorkflow, it will sync a given Team.
+ * We sync a Team by fetching the conversations attached to this team.
+ */
+export async function intercomTeamFullSyncWorkflow({
+  connectorId,
+  teamId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string;
+  currentSyncMs: number;
+}) {
+  // Updates the Team name and make sure we're still allowed to sync it.
+  // If the team is not allowed anymore (permission to none or object not in Intercom anymore), it will delete all its data.
+  const hasPermission = await syncTeamOnlyActivity({
+    connectorId,
+    teamId,
+    currentSyncMs,
+  });
+
+  if (!hasPermission) {
+    // We don't have permission anymore on this team, we don't sync it.
+    return;
+  }
+
+  let cursor = null;
+
+  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+  do {
+    const { conversationIds, nextPageCursor } =
+      await getNextConversationBatchToSyncActivity({
+        connectorId,
+        teamId,
+        cursor,
+      });
+
+    await syncConversationBatchActivity({
+      connectorId,
+      teamId,
+      conversationIds,
+      currentSyncMs,
+    });
+
+    cursor = nextPageCursor;
+  } while (cursor);
+}
+
+/**
+ * Cleaning Workflow to remove old convos.
+ * Launched by the IntercomSyncWorkflow, it will sync a given Team.
+ * We sync a Team by fetching the conversations attached to this team.
+ */
+export async function intercomOldConversationsCleanup({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  let conversationIds = [];
+  do {
+    conversationIds = await getNextConversationsBatchToDeleteActivity({
+      connectorId,
+    });
+    await deleteConversationBatchActivity({
+      connectorId,
+      conversationIds,
+    });
+  } while (conversationIds.length > 0);
 }
