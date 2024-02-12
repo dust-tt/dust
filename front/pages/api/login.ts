@@ -3,6 +3,7 @@ import { FrontApiError } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
+import { Op } from "sequelize";
 
 import { getUserFromSession } from "@app/lib/auth";
 import {
@@ -74,7 +75,6 @@ async function findWorkspaceWithVerifiedDomain(
   const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
     where: {
       domain: userEmailDomain,
-      domainAutoJoinEnabled: true,
     },
     include: [
       {
@@ -203,10 +203,13 @@ async function handleRegularSignupFlow(
   flow: "no-auto-join" | "revoked" | null;
   workspace: Workspace | null;
 }> {
-  // If the user already has a membership in a workspace, return early.
+  // If the user already has an active membership in a workspace, return early.
   const allMemberships = await Membership.findOne({
     where: {
       userId: user.id,
+      role: {
+        [Op.ne]: "revoked",
+      },
     },
   });
   if (allMemberships) {
@@ -320,6 +323,7 @@ async function handler(
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
     } else {
       const { flow, workspace } = await handleRegularSignupFlow(session, user);
+      console.log(">>>>>> flow:", flow);
       if (flow) {
         res.redirect(`/no-workspace?flow=${flow}`);
         return;
