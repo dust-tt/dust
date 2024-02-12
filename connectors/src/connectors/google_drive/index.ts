@@ -42,6 +42,7 @@ import {
 } from "./temporal/client";
 export type NangoConnectionId = string;
 import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -405,10 +406,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
         { concurrency: 4 }
       );
 
-      // Filter out the `null`.
-      const resources = folderAsConnectorResources.flatMap((f) =>
-        f ? [f] : []
-      );
+      const resources = removeNulls(folderAsConnectorResources);
 
       resources.sort((a, b) => {
         return a.title.localeCompare(b.title);
