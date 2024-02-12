@@ -153,11 +153,16 @@ export async function intercomHelpCenterSyncWorklow({
   helpCenterId: string;
   currentSyncMs: number;
 }) {
-  await syncHelpCenterOnlyActivity({
+  const hasPermission = await syncHelpCenterOnlyActivity({
     connectorId,
     helpCenterId,
     currentSyncMs,
   });
+
+  if (!hasPermission) {
+    // We don't have permission anymore on this help center, we don't sync it.
+    return;
+  }
 
   const collectionIds = await getCollectionsIdsToSyncActivity({
     connectorId,

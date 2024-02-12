@@ -143,6 +143,14 @@ async function handleMembershipInvite(
   user: User,
   membershipInvite: MembershipInvitation
 ) {
+  if (membershipInvite.inviteEmail !== user.email) {
+    throw new FrontApiError(
+      "The invitation token is not intended for use with this email address.",
+      400,
+      "invalid_request_error"
+    );
+  }
+
   const workspace = await Workspace.findOne({
     where: {
       id: membershipInvite.workspaceId,
@@ -294,6 +302,7 @@ async function handler(
     membershipInvite = await MembershipInvitation.findOne({
       where: {
         id: decodedToken.membershipInvitationId,
+        status: "pending",
       },
     });
     if (!membershipInvite) {
@@ -305,9 +314,6 @@ async function handler(
             "The invite token is invalid, please ask your admin to resend an invitation.",
         },
       });
-    }
-    if (membershipInvite.status !== "pending") {
-      membershipInvite = null;
     }
   }
 

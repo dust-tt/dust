@@ -109,7 +109,7 @@ export async function syncHelpCenterOnlyActivity({
   connectorId: ModelId;
   helpCenterId: string;
   currentSyncMs: number;
-}) {
+}): Promise<boolean> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
@@ -131,31 +131,57 @@ export async function syncHelpCenterOnlyActivity({
     );
   }
 
-  // If our rights were revoked or the help center is not on intercom anymore we delete it
-  let shouldRemoveHelpCenter = helpCenterOnDb.permission === "none";
-  if (!shouldRemoveHelpCenter) {
-    const helpCenterOnIntercom = await fetchIntercomHelpCenter(
-      connector.connectionId,
-      helpCenterOnDb.helpCenterId
-    );
-    if (!helpCenterOnIntercom) {
-      shouldRemoveHelpCenter = true;
-    } else {
-      await helpCenterOnDb.update({
-        name: helpCenterOnIntercom.display_name || "Help Center",
-        lastUpsertedTs: new Date(currentSyncMs),
-      });
-    }
-  }
-
-  if (shouldRemoveHelpCenter) {
+  // If our rights were revoked we delete the Help Center data
+  if (helpCenterOnDb.permission === "none") {
     await removeHelpCenter({
       connectorId,
       dataSourceConfig,
       helpCenter: helpCenterOnDb,
       loggerArgs,
     });
+    return false;
   }
+
+  // If the help center is not on intercom anymore we delete the Help Center data
+  const helpCenterOnIntercom = await fetchIntercomHelpCenter(
+    connector.connectionId,
+    helpCenterOnDb.helpCenterId
+  );
+  if (!helpCenterOnIntercom) {
+    await removeHelpCenter({
+      connectorId,
+      dataSourceConfig,
+      helpCenter: helpCenterOnDb,
+      loggerArgs,
+    });
+    return false;
+  }
+
+  // If all children collections are not allowed anymore we delete the Help Center data
+  const collectionsWithReadPermission = await IntercomCollection.findAll({
+    where: {
+      connectorId,
+      helpCenterId: helpCenterId,
+      permission: "read",
+      parentId: null,
+    },
+  });
+  if (collectionsWithReadPermission.length === 0) {
+    await removeHelpCenter({
+      connectorId,
+      dataSourceConfig,
+      helpCenter: helpCenterOnDb,
+      loggerArgs,
+    });
+    return false;
+  }
+
+  // Otherwise we update the help center name and lastUpsertedTs
+  await helpCenterOnDb.update({
+    name: helpCenterOnIntercom.display_name || "Help Center",
+    lastUpsertedTs: new Date(currentSyncMs),
+  });
+  return true;
 }
 
 /**
