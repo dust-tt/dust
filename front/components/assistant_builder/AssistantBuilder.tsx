@@ -41,13 +41,14 @@ import {
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import type { ReactNode } from "react";
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SharingSection } from "@app/components/assistant/Sharing";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
@@ -84,14 +85,8 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import {
-  useFeatures,
-  useSlackChannelsLinkedWithAgent,
-  useUser,
-} from "@app/lib/swr";
+import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
-import { Agent } from "http";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -259,7 +254,6 @@ export default function AssistantBuilder({
         }
   );
 
-  const [showTryAssistantModal, setShowTryAssistantModal] = useState(false);
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
@@ -496,7 +490,6 @@ export default function AssistantBuilder({
         agentConfigurationId,
         slackData: {
           selectedSlackChannels,
-          slackDataSource,
           slackChannelsLinkedWithAgent,
         },
       });
@@ -549,7 +542,6 @@ export default function AssistantBuilder({
       <TryModalInBuilder
         owner={owner}
         builderState={builderState}
-        toggleModal={setShowTryAssistantModal}
         disabled={!submitEnabled}
       />
       <AssistantBuilderDustAppModal
@@ -1158,14 +1150,9 @@ async function submitForm({
   slackData: {
     selectedSlackChannels: SlackChannel[];
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
-    slackDataSource?: DataSourceType;
   };
 }): Promise<LightAgentConfigurationType | AgentConfigurationType> {
-  const {
-    selectedSlackChannels,
-    slackChannelsLinkedWithAgent,
-    slackDataSource,
-  } = slackData;
+  const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
   if (
     !builderState.handle ||
     !builderState.description ||
@@ -1315,12 +1302,10 @@ async function submitForm({
 function TryModalInBuilder({
   owner,
   builderState,
-  toggleModal,
   disabled,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
-  toggleModal: (isOpen: boolean) => void;
   disabled: boolean;
 }) {
   const { user } = useUser();
@@ -1337,11 +1322,9 @@ function TryModalInBuilder({
         slackData: {
           selectedSlackChannels: [],
           slackChannelsLinkedWithAgent: [],
-          slackDataSource: undefined,
         },
       })
     );
-    toggleModal(true);
   }
   return (
     <>
@@ -1350,7 +1333,7 @@ function TryModalInBuilder({
           owner={owner}
           user={user}
           assistant={assistant}
-          onClose={() => toggleModal(false)}
+          onClose={() => setAssistant(null)}
         />
       )}
       <Button

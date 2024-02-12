@@ -47,7 +47,11 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     name: t.string,
     description: t.string,
     pictureUrl: t.string,
-    status: t.union([t.literal("active"), t.literal("archived")]),
+    status: t.union([
+      t.literal("active"),
+      t.literal("archived"),
+      t.literal("draft"),
+    ]),
     scope: t.union([
       t.literal("workspace"),
       t.literal("published"),

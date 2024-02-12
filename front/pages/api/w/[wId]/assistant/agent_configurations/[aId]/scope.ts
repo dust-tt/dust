@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { AgentStatus, WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -131,7 +131,7 @@ async function handler(
           assistant: {
             ...assistant,
             scope: bodyValidation.right.scope,
-            status: assistant.status as "active" | "archived", // type adjustment
+            status: assistant.status as AgentStatus,
           },
         },
         assistant.sId
