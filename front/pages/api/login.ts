@@ -60,19 +60,19 @@ export async function createWorkspace(session: any) {
   return workspace;
 }
 
-async function findWorkspaceWithVerifiedDomain(
-  session: any
-): Promise<WorkspaceHasDomain | null> {
+async function findWorkspaceWithWhitelistedDomain(session: any) {
   const { user } = session;
 
   if (!isGoogleSession(session) || !user.email_verified) {
-    return null;
+    return undefined;
   }
 
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
+  const workspaceWithWhitelistedDomain = await WorkspaceHasDomain.findOne({
+    attributes: ["workspaceId"],
     where: {
       domain: userEmailDomain,
+      domainAutoJoinEnabled: true,
     },
     include: [
       {
@@ -83,7 +83,7 @@ async function findWorkspaceWithVerifiedDomain(
     ],
   });
 
-  return workspaceWithVerifiedDomain;
+  return workspaceWithWhitelistedDomain?.workspace;
 }
 
 async function handler(
@@ -187,25 +187,13 @@ async function handler(
       lastName,
     });
 
-    const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
+    autoJoinWorkspaceWithDomain = await findWorkspaceWithWhitelistedDomain(
       session
     );
 
-    // Redirect the user to a different screen if a workspace with
-    // a verified domain exists but auto join is not enabled and there is no membership invite.
-    const workspaceHasAutoJoin =
-      workspaceWithVerifiedDomain?.domainAutoJoinEnabled === true;
-    if (workspaceHasAutoJoin) {
-      autoJoinWorkspaceWithDomain = workspaceWithVerifiedDomain.workspace;
-    } else if (workspaceWithVerifiedDomain && !membershipInvite) {
-      res.redirect("/no-workspace?flow=no-auto-join");
-      return;
-    }
-
-    // If there is no invite or no existing workspace with the email's domain,
-    // we create a personal workspace for the user, otherwise the user
+    // If there is no invite, we create a personal workspace for the user, otherwise the user
     // will be added to the workspace they were invited to (by domain) below.
-    if (!membershipInvite && !workspaceWithVerifiedDomain) {
+    if (!membershipInvite && !autoJoinWorkspaceWithDomain) {
       const workspace = await createWorkspace(session);
       await createAndLogMembership({
         workspace,
@@ -308,7 +296,7 @@ async function handler(
   const u = await getUserFromSession(session);
 
   if (!u || u.workspaces.length === 0) {
-    res.redirect("/no-workspace?flow=revoked");
+    res.redirect(`/no-workspace`);
     return;
   }
 
