@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse, WorkspaceDomain } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
