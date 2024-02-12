@@ -4,6 +4,7 @@ import config from "@app/production_checks/lib/config";
 
 // Variables to hold the singleton instances.
 let connectorReplicaDbInstance: Sequelize | null = null;
+let coreReplicaDbInstance: Sequelize | null = null;
 let frontReplicaDbInstance: Sequelize | null = null;
 
 export function getConnectorReplicaDbConnection() {
@@ -20,8 +21,8 @@ export function getConnectorReplicaDbConnection() {
 }
 
 export function getCoreReplicaDbConnection() {
-  if (!connectorReplicaDbInstance) {
-    connectorReplicaDbInstance = new Sequelize(
+  if (!coreReplicaDbInstance) {
+    coreReplicaDbInstance = new Sequelize(
       config.getCoreDatabaseReadReplicaUri() as string,
       {
         logging: false,
@@ -29,7 +30,7 @@ export function getCoreReplicaDbConnection() {
     );
   }
 
-  return connectorReplicaDbInstance;
+  return coreReplicaDbInstance;
 }
 
 export function getFrontReplicaDbConnection() {
