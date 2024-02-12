@@ -3,6 +3,7 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+import { GaxiosError } from "googleapis-common";
 
 export class GoogleDriveCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
@@ -14,21 +15,7 @@ export class GoogleDriveCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
-      const maybeGoogleInternalError = err as {
-        code: number;
-        type: string;
-        config: {
-          url: string;
-        };
-      };
-
-      if (
-        maybeGoogleInternalError.code === 500 &&
-        maybeGoogleInternalError.config.url.startsWith(
-          "https://www.googleapis.com/"
-        ) &&
-        maybeGoogleInternalError.type === "GaxiosError"
-      ) {
+      if (err instanceof GaxiosError && err.response?.status === 500) {
         throw {
           __is_dust_error: true,
           message: "Google Drive Internal Error",
