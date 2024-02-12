@@ -169,7 +169,7 @@ async function handleMembershipInvite(
     },
   });
 
-  if (m && m.role === "revoked") {
+  if (m?.role === "revoked") {
     throw new FrontApiError(
       "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
       400,
@@ -192,6 +192,9 @@ async function handleMembershipInvite(
   return workspace;
 }
 
+// Regular flow, only if the user is a newlky created user.
+// We check if a workspace exist with the same verified domain and has auto join enabled.
+// If so, the user will join the workspace, othwerwise, we create a new workspace.
 async function handleRegularSignupFlow(
   session: any,
   user: User
@@ -200,29 +203,28 @@ async function handleRegularSignupFlow(
     session
   );
 
-  // If an existing workspace set this domain has a verified domain, use it.
   if (workspaceWithAutoJoinEnabled) {
-    let m = await Membership.findOne({
+    const m = await Membership.findOne({
       where: {
         userId: user.id,
         workspaceId: workspaceWithAutoJoinEnabled.id,
       },
     });
 
-    if (!m) {
-      m = await createAndLogMembership({
-        workspace: workspaceWithAutoJoinEnabled,
-        userId: user.id,
-        role: "user",
-      });
-    }
-
-    if (m.role === "revoked") {
+    if (m?.role === "revoked") {
       throw new FrontApiError(
         "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
         400,
         "invalid_request_error"
       );
+    }
+
+    if (!m) {
+      await createAndLogMembership({
+        workspace: workspaceWithAutoJoinEnabled,
+        userId: user.id,
+        role: "user",
+      });
     }
 
     return workspaceWithAutoJoinEnabled;
