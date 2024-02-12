@@ -64,9 +64,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   if (user && user.workspaces.length > 0) {
     let url = `/w/${user.workspaces[0].sId}`;
 
-    if (context.query.wId) {
-      url = `/api/login?wId=${context.query.wId}`;
-    }
     if (context.query.inviteToken) {
       url = `/api/login?inviteToken=${context.query.inviteToken}`;
     }
@@ -120,9 +117,7 @@ export default function Home({
 
   function getCallbackUrl(routerQuery: ParsedUrlQuery): string {
     let callbackUrl = "/api/login";
-    if (routerQuery.wId) {
-      callbackUrl += `?wId=${routerQuery.wId}`;
-    } else if (routerQuery.inviteToken) {
+    if (routerQuery.inviteToken) {
       callbackUrl += `?inviteToken=${routerQuery.inviteToken}`;
     }
     return callbackUrl;

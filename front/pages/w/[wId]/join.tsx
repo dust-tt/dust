@@ -22,21 +22,13 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
  *      -> you've been invited to a workspace by email from the member management page.
  *      -> we don't care if workspace has a verified domain with auto-join enabled.
  *
- * Case 2: "domain_invite_link"
- *   url = /w/[wId]/join
- *      -> Workspace has activated onboarding with link for an verified domain.
- *      -> the workspace needs to have a verified domain with auto-join enabled.
- *
- * Case 3: "domain_conversation_link"
+ * Case 2: "domain_conversation_link"
  *   url = /w/[wId]/join?cId=[conversationId]
  *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has a verified domain.
  *      -> the workspace needs to have a verified domain with auto-join enabled. *
  */
 
-type OnboardingType =
-  | "email_invite"
-  | "domain_invite_link"
-  | "domain_conversation_link";
+type OnboardingType = "email_invite" | "domain_conversation_link";
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   onboardingType: OnboardingType;
@@ -62,17 +54,20 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
 
-  const onboardingType: OnboardingType = cId
-    ? "domain_conversation_link"
-    : token
-    ? "email_invite"
-    : "domain_invite_link";
+  let onboardingType: OnboardingType | null = null;
+
+  if (cId) {
+    onboardingType = "domain_conversation_link";
+  } else if (token) {
+    onboardingType = "email_invite";
+  } else {
+    throw new Error("Unsupported onboarding type.");
+  }
 
   // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
     !workspaceDomain?.domainAutoJoinEnabled &&
-    (onboardingType === "domain_conversation_link" ||
-      onboardingType === "domain_invite_link")
+    onboardingType === "domain_conversation_link"
   ) {
     return {
       notFound: true,
@@ -86,9 +81,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       break;
     case "email_invite":
       signUpCallbackUrl = `/api/login?inviteToken=${token}`;
-      break;
-    case "domain_invite_link":
-      signUpCallbackUrl = `/api/login?wId=${wId}`;
       break;
     default:
       return {
