@@ -122,7 +122,7 @@ async function createOrUpdateUser(session: any): Promise<User> {
       session.user.name
     );
 
-    const user = await User.create({
+    return User.create({
       provider: session.provider.provider,
       providerId: session.provider.id.toString(),
       username: session.user.username,
@@ -131,8 +131,6 @@ async function createOrUpdateUser(session: any): Promise<User> {
       firstName,
       lastName,
     });
-
-    return user;
   }
 }
 
@@ -237,11 +235,7 @@ async function handleRegularSignupFlow(
     });
 
     if (m?.role === "revoked") {
-      throw new FrontApiError(
-        "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
-        400,
-        "invalid_request_error"
-      );
+      return { flow: "revoked", workspace: null };
     }
 
     if (!m) {
