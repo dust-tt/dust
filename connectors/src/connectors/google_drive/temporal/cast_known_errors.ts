@@ -25,7 +25,7 @@ export class GoogleDriveCastKnownErrorsInterceptor
       if (
         maybeGoogleInternalError.code === 500 &&
         maybeGoogleInternalError.config.url.startsWith(
-          "https://www.googleapis.com"
+          "https://www.googleapis.com/"
         ) &&
         maybeGoogleInternalError.type === "GaxiosError"
       ) {
