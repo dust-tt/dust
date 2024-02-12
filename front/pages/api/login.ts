@@ -218,21 +218,21 @@ async function handleRegularSignupFlow(
     };
   }
 
-  const workspaceWithAutoJoinEnabled = await findWorkspaceWithVerifiedDomain(
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
     session
   );
 
-  if (workspaceWithAutoJoinEnabled && workspaceWithAutoJoinEnabled.workspace) {
-    if (workspaceWithAutoJoinEnabled.domainAutoJoinEnabled === false) {
+  if (workspaceWithVerifiedDomain && workspaceWithVerifiedDomain.workspace) {
+    if (workspaceWithVerifiedDomain.domainAutoJoinEnabled === false) {
       return { flow: "no-auto-join", workspace: null };
     }
 
-    const { workspace } = workspaceWithAutoJoinEnabled;
+    const { workspace } = workspaceWithVerifiedDomain;
 
     const m = await Membership.findOne({
       where: {
         userId: user.id,
-        workspaceId: workspaceWithAutoJoinEnabled.id,
+        workspaceId: workspace.id,
       },
     });
 
