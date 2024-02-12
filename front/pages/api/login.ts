@@ -192,9 +192,9 @@ async function handleMembershipInvite(
   return workspace;
 }
 
-// Regular flow, only if the user is a newlky created user.
-// We check if a workspace exist with the same verified domain and has auto join enabled.
-// If so, the user will join the workspace, othwerwise, we create a new workspace.
+// Regular flow, only if the user is a newly created user.
+// Verify if there's an existing workspace with the same verified domain that allows auto-joining.
+// The user will join this workspace if it exists; otherwise, a new workspace is created.
 async function handleRegularSignupFlow(
   session: any,
   user: User
