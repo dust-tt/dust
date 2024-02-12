@@ -277,6 +277,7 @@ async function handler(
     membershipInvite = await MembershipInvitation.findOne({
       where: {
         id: decodedToken.membershipInvitationId,
+        status: "pending",
       },
     });
     if (!membershipInvite) {
@@ -288,9 +289,6 @@ async function handler(
             "The invite token is invalid, please ask your admin to resend an invitation.",
         },
       });
-    }
-    if (membershipInvite.status !== "pending") {
-      membershipInvite = null;
     }
   }
 
