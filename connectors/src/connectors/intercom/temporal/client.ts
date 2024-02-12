@@ -44,6 +44,7 @@ export async function launchIntercomSyncWorkflow(
     type: "team",
     intercomId: teamId,
   }));
+  const signals = [...signaledHelpCenterIds, ...signaledTeamIds];
 
   // When the workflow is inactive, we omit passing helpCenterIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
@@ -55,7 +56,7 @@ export async function launchIntercomSyncWorkflow(
         connectorId: [connectorId],
       },
       signal: intercomUpdatesSignal,
-      signalArgs: [signaledHelpCenterIds, signaledTeamIds],
+      signalArgs: [signals],
       memo: {
         connectorId,
       },
