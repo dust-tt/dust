@@ -146,7 +146,10 @@ export async function syncConversation({
   if (!conversation.team_assignee_id) {
     logger.error(
       "[Intercom] Conversation has no team assignee. Skipping sync",
-      { conversationId: conversation.id, loggerArgs }
+      {
+        conversationId: conversation.id,
+        loggerArgs,
+      }
     );
     return;
   }
@@ -158,7 +161,7 @@ export async function syncConversation({
   });
   if (!team || team.permission !== "read") {
     logger.error(
-      "[Intercom] Team not found or has no read permission. Skipping sync",
+      "[Intercom] Conversation team unknown or non allowed. Skipping sync",
       { conversationId: conversation.id, loggerArgs }
     );
     return;

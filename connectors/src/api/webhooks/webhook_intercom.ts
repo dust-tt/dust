@@ -34,6 +34,12 @@ const _webhookIntercomAPIHandler = async (
   const event = req.body;
   logger.info("[Intercom] Received Intercom webhook", { event });
 
+  if (event.topic !== "conversation.admin.closed") {
+    logger.error("[Intercom] Received Intercom webhook with unknown topic", {
+      event,
+    });
+  }
+
   const intercomWorkspaceId = event.app_id;
   if (!intercomWorkspaceId) {
     logger.error("[Intercom] Received Intercom webhook with no workspace id", {
@@ -79,7 +85,7 @@ const _webhookIntercomAPIHandler = async (
 
   // Check we have the permissions to sync this conversation
   if (!conversation.team_assignee_id) {
-    logger.error(
+    logger.info(
       "[Intercom] Received webhook for conversation without team, skipping."
     );
     return res.status(200).end();
@@ -91,7 +97,7 @@ const _webhookIntercomAPIHandler = async (
       },
     });
     if (!team || team.permission !== "read") {
-      logger.error(
+      logger.info(
         "[Intercom] Received webhook for conversation attached to team without read permission, skipping."
       );
       return res.status(200).end();
