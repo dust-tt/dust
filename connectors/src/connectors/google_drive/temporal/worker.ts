@@ -2,6 +2,7 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/google_drive/temporal/activities";
+import { GoogleDriveCastKnownErrorsInterceptor } from "@connectors/connectors/google_drive/temporal/cast_known_errors";
 import * as sync_status from "@connectors/lib/sync_status";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
@@ -23,6 +24,7 @@ export async function runGoogleWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new GoogleDriveCastKnownErrorsInterceptor(),
       ],
     },
   });
