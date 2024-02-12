@@ -1,5 +1,5 @@
 import {
-  AssistantPreview2,
+  AssistantPreview,
   Avatar,
   BookOpenIcon,
   Button,
@@ -256,7 +256,7 @@ export default function AssistantNew({
                           }`}
                         >
                           {displayedAgents.map((agent) => (
-                            <AssistantPreview2
+                            <AssistantPreview
                               variant="item"
                               title={agent.name}
                               description={agent.description}

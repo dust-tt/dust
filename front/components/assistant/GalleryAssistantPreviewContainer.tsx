@@ -1,4 +1,4 @@
-import { AssistantPreview2 } from "@dust-tt/sparkle";
+import { AssistantPreview } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   PlanType,
@@ -43,7 +43,7 @@ export function GalleryAssistantPreviewContainer({
     hasAccessToLargeModels || !isLargeModel(generation?.model);
   const isTestable = !isGlobal && eligibleForTesting;
   return (
-    <AssistantPreview2
+    <AssistantPreview
       title={name}
       pictureUrl={pictureUrl}
       subtitle={lastAuthors?.join(", ") ?? ""}
