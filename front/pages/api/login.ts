@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorReponse, WorkspaceDomain } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
@@ -60,19 +60,17 @@ export async function createWorkspace(session: any) {
   return workspace;
 }
 
-async function findWorkspaceWithWhitelistedDomain(session: any) {
+async function findWorkspaceWithVerifiedDomain(session: any) {
   const { user } = session;
 
   if (!isGoogleSession(session) || !user.email_verified) {
-    return undefined;
+    return null;
   }
 
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithWhitelistedDomain = await WorkspaceHasDomain.findOne({
-    attributes: ["workspaceId"],
+  const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
     where: {
       domain: userEmailDomain,
-      domainAutoJoinEnabled: true,
     },
     include: [
       {
@@ -83,7 +81,7 @@ async function findWorkspaceWithWhitelistedDomain(session: any) {
     ],
   });
 
-  return workspaceWithWhitelistedDomain?.workspace;
+  return workspaceWithVerifiedDomain;
 }
 
 async function handler(
@@ -187,13 +185,24 @@ async function handler(
       lastName,
     });
 
-    autoJoinWorkspaceWithDomain = await findWorkspaceWithWhitelistedDomain(
+    const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
       session
     );
 
-    // If there is no invite, we create a personal workspace for the user, otherwise the user
+    // Redirect the user to a different screen if a workspace with a verified domain exists.
+    const workspaceHasAutoJoin =
+      workspaceWithVerifiedDomain?.domainAutoJoinEnabled === true;
+    if (workspaceHasAutoJoin) {
+      autoJoinWorkspaceWithDomain = workspaceWithVerifiedDomain.workspace;
+    } else if (workspaceWithVerifiedDomain) {
+      res.redirect("/no-workspace?flow=no-auto-join");
+      return;
+    }
+
+    // If there is no invite or no existing workspace with the email's domain,
+    // we create a personal workspace for the user, otherwise the user
     // will be added to the workspace they were invited to (by domain) below.
-    if (!membershipInvite && !autoJoinWorkspaceWithDomain) {
+    if (!membershipInvite && !workspaceWithVerifiedDomain) {
       const workspace = await createWorkspace(session);
       await createAndLogMembership({
         workspace,
@@ -296,7 +305,7 @@ async function handler(
   const u = await getUserFromSession(session);
 
   if (!u || u.workspaces.length === 0) {
-    res.redirect(`/no-workspace`);
+    res.redirect("/no-workspace?flow=revoked");
     return;
   }
 
