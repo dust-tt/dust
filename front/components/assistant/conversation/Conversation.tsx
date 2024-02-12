@@ -18,18 +18,26 @@ import {
   useConversations,
 } from "@app/lib/swr";
 
-import { ContentFragment } from "./ContentFragment";
+import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import { CONVERSATION_PARENT_DIV } from "@app/components/assistant/conversation/lib";
 
+/**
+ *
+ * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
+ * @returns
+ */
 export default function Conversation({
   owner,
   user,
   conversationId,
   onStickyMentionsChange,
+  isInModal,
 }: {
   owner: WorkspaceType;
   user: UserType;
   conversationId: string;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
+  isInModal?: boolean;
 }) {
   const {
     conversation,
@@ -51,7 +59,9 @@ export default function Conversation({
   });
 
   useEffect(() => {
-    const mainTag = document.getElementById("main-content");
+    const mainTag = document.getElementById(
+      CONVERSATION_PARENT_DIV[isInModal ? "modal" : "page"]
+    );
     if (mainTag) {
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
@@ -210,6 +220,7 @@ export default function Conversation({
                     user={user}
                     conversationId={conversationId}
                     reactions={messageReactions}
+                    isInModal={isInModal}
                   />
                 </div>
               </div>

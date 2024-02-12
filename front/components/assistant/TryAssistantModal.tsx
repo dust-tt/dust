@@ -96,26 +96,29 @@ export function TryAssistantModal({
       hasChanged={false}
       variant="side-md"
     >
-      <GenerationContextProvider>
-        {conversation && (
-          <Conversation
-            owner={owner}
-            user={user}
-            conversationId={conversation.sId}
-            onStickyMentionsChange={setStickyMentions}
-          />
-        )}
+      <div id="modal-content">
+        <GenerationContextProvider>
+          {conversation && (
+            <Conversation
+              owner={owner}
+              user={user}
+              conversationId={conversation.sId}
+              onStickyMentionsChange={setStickyMentions}
+              isInModal
+            />
+          )}
 
-        <div className="lg:[&>*]:left-0">
-          <FixedAssistantInputBar
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation?.sId || null}
-            additionalAgentConfigurations={[assistant]}
-          />
-        </div>
-      </GenerationContextProvider>
+          <div className="lg:[&>*]:left-0">
+            <FixedAssistantInputBar
+              owner={owner}
+              onSubmit={handleSubmit}
+              stickyMentions={stickyMentions}
+              conversationId={conversation?.sId || null}
+              additionalAgentConfigurations={[assistant]}
+            />
+          </div>
+        </GenerationContextProvider>
+      </div>
     </Modal>
   );
 }

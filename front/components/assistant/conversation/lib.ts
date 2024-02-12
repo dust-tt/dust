@@ -13,6 +13,11 @@ import type * as t from "io-ts";
 import type { NotificationType } from "@app/components/sparkle/Notification";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
+export const CONVERSATION_PARENT_DIV = {
+  modal: "modal-content",
+  page: "main-content",
+};
+
 export type ConversationErrorType = {
   type:
     | "attachment_upload_error"

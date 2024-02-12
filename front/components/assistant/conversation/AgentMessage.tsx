@@ -40,24 +40,33 @@ import {
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { CONVERSATION_PARENT_DIV } from "@app/components/assistant/conversation/lib";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
 }
 
+/**
+ *
+ * @param isInModal is the conversation happening in a side modal, i.e. when
+ * testing an assistant? see conversation/Conversation.tsx
+ * @returns
+ */
 export function AgentMessage({
   message,
   owner,
   user,
   conversationId,
   reactions,
+  isInModal,
 }: {
   message: AgentMessageType;
   owner: WorkspaceType;
   user: UserType;
   conversationId: string;
   reactions: MessageReactionType[];
+  isInModal?: boolean;
 }) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -216,7 +225,9 @@ export function AgentMessage({
   useEffect(() => {
     const previousHeight = messageHeight.current || 0;
     messageHeight.current = messageRef.current?.scrollHeight || previousHeight;
-    const mainTag = document.getElementById("main-content");
+    const mainTag = document.getElementById(
+      CONVERSATION_PARENT_DIV[isInModal ? "modal" : "page"]
+    );
     if (mainTag && agentMessageToRender.status === "created") {
       if (
         mainTag.offsetHeight + mainTag.scrollTop >=
