@@ -23,6 +23,7 @@ import {
   getSession,
 } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
+import { urlToDataSourceName } from "@app/lib/webcrawler";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -34,13 +35,6 @@ export const PostManagedDataSourceRequestBodySchema = t.type({
   type: t.union([t.literal("oauth"), t.literal("url")]),
   urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
 });
-
-function urlToDataSourceName(url: string) {
-  return url
-    .replace(/https?:\/\//, "")
-    .replace(/\/$/, "")
-    .replace(/\//g, "-");
-}
 
 export type PostManagedDataSourceResponseBody = {
   dataSource: DataSourceType;

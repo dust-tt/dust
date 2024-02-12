@@ -16,6 +16,7 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { urlToDataSourceName } from "@app/lib/webcrawler";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
 
@@ -78,8 +79,9 @@ export default function DataSourceNew({
     let valid = true;
 
     let exists = false;
+    const dsName = urlToDataSourceName(dataSourceUrl);
     dataSources.forEach((d) => {
-      if (d.name == dataSourceUrl) {
+      if (d.name == dsName) {
         exists = true;
       }
     });
