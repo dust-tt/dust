@@ -91,12 +91,12 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     workspace = workspaceHasDomain?.workspace ?? null;
     workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
 
-    if (!workspace) {
+    if (!workspace || !workspaceVerifiedDomain) {
       logger.error(
         { userId: user.id, panic: true },
         "Unreachable: workspace not found."
       );
-      throw new Error("Workspace not found");
+      throw new Error("Workspace not found.");
     }
   } else if (flow === "revoked") {
     status = "revoked";
@@ -107,7 +107,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
         { userId: user.id, panic: true },
         "Unreachable: workspace not found."
       );
-      throw new Error("Workspace not found");
+      throw new Error("Workspace not found.");
     }
   } else {
     throw new Error("No workspace found.");

@@ -60,7 +60,9 @@ export async function createWorkspace(session: any) {
   return workspace;
 }
 
-async function findWorkspaceWithVerifiedDomain(session: any) {
+async function findWorkspaceWithVerifiedDomain(
+  session: any
+): Promise<WorkspaceHasDomain | null> {
   const { user } = session;
 
   if (!isGoogleSession(session) || !user.email_verified) {
@@ -189,7 +191,8 @@ async function handler(
       session
     );
 
-    // Redirect the user to a different screen if a workspace with a verified domain exists.
+    // Redirect the user to a different screen if a workspace with
+    // a verified domain exists but auto join is not enabled.
     const workspaceHasAutoJoin =
       workspaceWithVerifiedDomain?.domainAutoJoinEnabled === true;
     if (workspaceHasAutoJoin) {
