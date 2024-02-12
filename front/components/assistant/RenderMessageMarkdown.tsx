@@ -24,7 +24,7 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-import { linkFromDocument } from "./conversation/RetrievalAction";
+import { linkFromDocument } from "@app/components/assistant/conversation/RetrievalAction";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -269,7 +269,7 @@ function MentionBlock({
       ? "(This assistant was deleted)"
       : agentConfiguration?.status === "active"
       ? ""
-      : "(This assistant is deactivated for this workspace)";
+      : "(This assistant is either deactivated or being tested)";
   const tooltipLabel = agentConfiguration?.description || "" + " " + statusText;
   return (
     <span className="inline-block cursor-default font-medium text-brand">

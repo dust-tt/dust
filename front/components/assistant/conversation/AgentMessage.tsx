@@ -32,6 +32,7 @@ import { AgentAction } from "@app/components/assistant/conversation/AgentAction"
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import {
   linkFromDocument,
   providerFromDocument,
@@ -46,18 +47,26 @@ function cleanUpCitations(message: string): string {
   return message.replace(regex, "");
 }
 
+/**
+ *
+ * @param isInModal is the conversation happening in a side modal, i.e. when
+ * testing an assistant? see conversation/Conversation.tsx
+ * @returns
+ */
 export function AgentMessage({
   message,
   owner,
   user,
   conversationId,
   reactions,
+  isInModal,
 }: {
   message: AgentMessageType;
   owner: WorkspaceType;
   user: UserType;
   conversationId: string;
   reactions: MessageReactionType[];
+  isInModal?: boolean;
 }) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -216,7 +225,9 @@ export function AgentMessage({
   useEffect(() => {
     const previousHeight = messageHeight.current || 0;
     messageHeight.current = messageRef.current?.scrollHeight || previousHeight;
-    const mainTag = document.getElementById("main-content");
+    const mainTag = document.getElementById(
+      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
+    );
     if (mainTag && agentMessageToRender.status === "created") {
       if (
         mainTag.offsetHeight + mainTag.scrollTop >=
@@ -230,6 +241,7 @@ export function AgentMessage({
     agentMessageToRender.status,
     agentMessageToRender.action,
     activeReferences.length,
+    isInModal,
   ]);
 
   // GenerationContext: to know if we are generating or not

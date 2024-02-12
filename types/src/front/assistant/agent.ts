@@ -66,7 +66,16 @@ export type GlobalAgentStatus =
   | "disabled_by_admin"
   | "disabled_missing_datasource"
   | "disabled_free_workspace";
-export type AgentStatus = "active" | "archived";
+
+/**
+ * Agent statuses:
+ * - "active" means the agent can be used directly
+ * - "archived" means the agent was either deleted, or that there is a newer
+ *   version
+ * - "draft" is used for the "try" button in builder, when the agent is not yet
+ *   fully created / updated
+ */
+export type AgentStatus = "active" | "archived" | "draft";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**
