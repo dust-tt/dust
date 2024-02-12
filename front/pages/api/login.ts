@@ -197,7 +197,7 @@ async function handler(
       workspaceWithVerifiedDomain?.domainAutoJoinEnabled === true;
     if (workspaceHasAutoJoin) {
       autoJoinWorkspaceWithDomain = workspaceWithVerifiedDomain.workspace;
-    } else if (workspaceWithVerifiedDomain) {
+    } else if (workspaceWithVerifiedDomain && !membershipInvite) {
       res.redirect("/no-workspace?flow=no-auto-join");
       return;
     }
