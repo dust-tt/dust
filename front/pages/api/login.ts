@@ -3,6 +3,7 @@ import { FrontApiError } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
+import { Op } from "sequelize";
 
 import { getUserFromSession } from "@app/lib/auth";
 import {
@@ -61,19 +62,19 @@ export async function createWorkspace(session: any) {
   return workspace;
 }
 
-async function findWorkspaceWithWhitelistedDomain(session: any) {
+async function findWorkspaceWithVerifiedDomain(
+  session: any
+): Promise<WorkspaceHasDomain | null> {
   const { user } = session;
 
   if (!isGoogleSession(session) || !user.email_verified) {
-    return undefined;
+    return null;
   }
 
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithWhitelistedDomain = await WorkspaceHasDomain.findOne({
-    attributes: ["workspaceId"],
+  const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
     where: {
       domain: userEmailDomain,
-      domainAutoJoinEnabled: true,
     },
     include: [
       {
@@ -84,13 +85,10 @@ async function findWorkspaceWithWhitelistedDomain(session: any) {
     ],
   });
 
-  return workspaceWithWhitelistedDomain?.workspace;
+  return workspaceWithVerifiedDomain;
 }
 
-async function createOrUpdateUser(session: any): Promise<{
-  isCreated: boolean;
-  user: User;
-}> {
+async function createOrUpdateUser(session: any): Promise<User> {
   const user = await User.findOne({
     where: {
       provider: session.provider.provider,
@@ -118,16 +116,13 @@ async function createOrUpdateUser(session: any): Promise<{
 
     await user.save();
 
-    return {
-      isCreated: false,
-      user,
-    };
+    return user;
   } else {
     const { firstName, lastName } = guessFirstandLastNameFromFullName(
       session.user.name
     );
 
-    const user = await User.create({
+    return User.create({
       provider: session.provider.provider,
       providerId: session.provider.id.toString(),
       username: session.user.username,
@@ -136,8 +131,6 @@ async function createOrUpdateUser(session: any): Promise<{
       firstName,
       lastName,
     });
-
-    return { isCreated: true, user };
   }
 }
 
@@ -206,36 +199,57 @@ async function handleMembershipInvite(
 async function handleRegularSignupFlow(
   session: any,
   user: User
-): Promise<Workspace> {
-  const workspaceWithAutoJoinEnabled = await findWorkspaceWithWhitelistedDomain(
+): Promise<{
+  flow: "no-auto-join" | "revoked" | null;
+  workspace: Workspace | null;
+}> {
+  // If the user already has an active membership in a workspace, return early.
+  const allMemberships = await Membership.findOne({
+    where: {
+      userId: user.id,
+      role: {
+        [Op.ne]: "revoked",
+      },
+    },
+  });
+  if (allMemberships) {
+    return {
+      flow: null,
+      workspace: null,
+    };
+  }
+
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
     session
   );
 
-  if (workspaceWithAutoJoinEnabled) {
+  if (workspaceWithVerifiedDomain && workspaceWithVerifiedDomain.workspace) {
+    if (workspaceWithVerifiedDomain.domainAutoJoinEnabled === false) {
+      return { flow: "no-auto-join", workspace: null };
+    }
+
+    const { workspace } = workspaceWithVerifiedDomain;
+
     const m = await Membership.findOne({
       where: {
         userId: user.id,
-        workspaceId: workspaceWithAutoJoinEnabled.id,
+        workspaceId: workspace.id,
       },
     });
 
     if (m?.role === "revoked") {
-      throw new FrontApiError(
-        "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
-        400,
-        "invalid_request_error"
-      );
+      return { flow: "revoked", workspace: null };
     }
 
     if (!m) {
       await createAndLogMembership({
-        workspace: workspaceWithAutoJoinEnabled,
+        workspace,
         userId: user.id,
         role: "user",
       });
     }
 
-    return workspaceWithAutoJoinEnabled;
+    return { flow: null, workspace };
   } else {
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
@@ -248,7 +262,7 @@ async function handleRegularSignupFlow(
       workspaceId: workspace.sId,
     });
 
-    return workspace;
+    return { flow: null, workspace };
   }
 }
 
@@ -301,14 +315,20 @@ async function handler(
   }
 
   // Login flow: first step is to attempt to find the user.
-  const { user, isCreated } = await createOrUpdateUser(session);
+  const user = await createOrUpdateUser(session);
 
   let targetWorkspace: Workspace | null = null;
   try {
     if (membershipInvite) {
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
-    } else if (isCreated) {
-      targetWorkspace = await handleRegularSignupFlow(session, user);
+    } else {
+      const { flow, workspace } = await handleRegularSignupFlow(session, user);
+      if (flow) {
+        res.redirect(`/no-workspace?flow=${flow}`);
+        return;
+      }
+
+      targetWorkspace = workspace;
     }
   } catch (err) {
     if (err instanceof FrontApiError) {
@@ -324,7 +344,7 @@ async function handler(
 
   const u = await getUserFromSession(session);
   if (!u || u.workspaces.length === 0) {
-    res.redirect(`/no-workspace`);
+    res.redirect("/no-workspace?flow=revoked");
     return;
   }
 
