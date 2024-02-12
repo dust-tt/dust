@@ -21,7 +21,6 @@ const {
 });
 
 const {
-  getTeamIdsToSyncActivity,
   syncTeamOnlyActivity,
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
@@ -49,11 +48,8 @@ export async function intercomSyncWorkflow({
 }) {
   await saveIntercomConnectorStartSync({ connectorId });
 
-  const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
-  const uniqueHelpCenterIds = new Set(helpCenterIds);
-
-  const teamIds = await getTeamIdsToSyncActivity(connectorId);
-  const uniqueTeamIds = new Set(teamIds);
+  const uniqueHelpCenterIds = new Set<string>();
+  const uniqueTeamIds = new Set<string>();
 
   // If we get a signal, update the workflow state by adding help center ids.
   // We send a signal when permissions are updated by the admin.
@@ -69,6 +65,13 @@ export async function intercomSyncWorkflow({
       }
     }
   );
+
+  // If we got no signal, then we're on the hourly execution
+  // We will only refresh the Help Center data as Conversations have webhooks
+  if (uniqueHelpCenterIds.size === 0 && uniqueTeamIds.size === 0) {
+    const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
+    helpCenterIds.forEach((i) => uniqueHelpCenterIds.add(i));
+  }
 
   const {
     workflowId,

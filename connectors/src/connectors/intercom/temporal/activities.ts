@@ -256,20 +256,6 @@ export async function syncCollectionActivity({
 }
 
 /**
- * This activity is responsible for retrieving the list
- * of team ids to sync for a given connector.
- */
-export async function getTeamIdsToSyncActivity(connectorId: ModelId) {
-  const teams = await IntercomTeam.findAll({
-    attributes: ["teamId"],
-    where: {
-      connectorId: connectorId,
-    },
-  });
-  return teams.map((t) => t.teamId);
-}
-
-/**
  * This activity is responsible for syncing the conversations of a given Team.
  * If the team is not allowed anymore, it will delete all its data.
  * If the team is not present on Intercom anymore, it will delete all its data.
