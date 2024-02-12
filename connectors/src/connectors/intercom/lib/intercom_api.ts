@@ -316,7 +316,9 @@ export async function fetchIntercomArticles(
     }
   } while (hasMore);
 
-  return articles.filter((article) => article.parent_id == parentId);
+  return articles.filter(
+    (article) => article.parent_id == parentId && article.state === "published"
+  );
 }
 
 /**

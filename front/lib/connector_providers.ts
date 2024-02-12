@@ -85,8 +85,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built-dust-only", // ROLLOUT INTERCOM
     hide: false,
     description:
-      "Authorize access to your Intercom Help Center Collections & Articles. Conversations coming soon.",
-    limitations: null,
+      "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",
+    limitations:
+      "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
     logoComponent: IntercomLogo,
     isNested: true,
   },
