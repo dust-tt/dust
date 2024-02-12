@@ -358,7 +358,10 @@ export async function confluenceGetActiveChildPageIdsActivity({
   return getActiveChildPageIds(client, parentPageId, pageCursor);
 }
 
-export async function confluenceGetRootPageIdActivity({
+// Confluence has a single main landing page.
+// However, users have the ability to create "orphaned" root pages that don't link from the main landing.
+// It's important to ensure these pages are also imported.
+export async function confluenceGetRootPageIdsActivity({
   connectorId,
   confluenceCloudId,
   spaceId,
@@ -366,7 +369,7 @@ export async function confluenceGetRootPageIdActivity({
   connectorId: ModelId;
   confluenceCloudId: string;
   spaceId: string;
-}) {
+}): Promise<string[]> {
   const localLogger = logger.child({
     connectorId,
     spaceId,
@@ -380,20 +383,7 @@ export async function confluenceGetRootPageIdActivity({
   localLogger.info("Fetching Confluence root page in space.");
 
   const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
-  const [rootPage] = rootPages;
-  if (!rootPage) {
-    return undefined;
-  }
-
-  // TODO(2024-01-31 flav) Find a better way to deal with spaces
-  // that have many root pages.
-  if (rootPages.length > 1) {
-    localLogger.error("Found Confluence space with many root pages.", {
-      rootPagesCount: rootPages.length,
-    });
-  }
-
-  return rootPage.id;
+  return rootPages.map((rp) => rp.id);
 }
 
 export async function confluenceGetTopLevelPageIdsActivity({
