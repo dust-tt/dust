@@ -1,3 +1,4 @@
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { FrontApiError } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -243,7 +244,7 @@ async function handleRegularSignupFlow(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<FrontWithAPIErrorReponse<void>>
+  res: NextApiResponse<WithAPIErrorReponse<void>>
 ): Promise<void> {
   const session = await getServerSession(req, res, authOptions);
   if (!session) {
