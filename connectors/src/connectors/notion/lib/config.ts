@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@connectors/connectors/config";
+import { EnvironmentConfig } from "@dust-tt/types";
 
 export const notionConfig = {
   getRequiredNangoNotionConnectorId: (): string => {
