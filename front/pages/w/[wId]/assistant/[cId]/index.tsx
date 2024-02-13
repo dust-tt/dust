@@ -195,7 +195,6 @@ export default function AssistantConversation({
         <AssistantDetails
           owner={owner}
           assistantId={detailViewContent}
-          show={isAssistantDetailOpen}
           onClose={handleCloseModal}
         />
         <Conversation

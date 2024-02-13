@@ -186,16 +186,12 @@ export default function WorkspaceAssistants({
         current: "workspace_assistants",
       })}
     >
-      {showDetails && (
-        <AssistantDetails
-          owner={owner}
-          assistantId={showDetails.sId}
-          show={showDetails !== null}
-          onClose={() => setShowDetails(null)}
-          mutateAgentConfigurations={mutateAgentConfigurations}
-        />
-      )}
-
+      <AssistantDetails
+        owner={owner}
+        assistantId={showDetails?.sId || null}
+        onClose={() => setShowDetails(null)}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+      />
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header title="Manage Assistants" icon={RobotSharedIcon} />
         <Page.Vertical gap="md" align="stretch">

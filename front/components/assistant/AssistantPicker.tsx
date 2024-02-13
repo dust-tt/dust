@@ -46,16 +46,13 @@ export function AssistantPicker({
     <DropdownMenu>
       {({ close }) => (
         <>
-          {showDetails && (
-            <AssistantDetails
-              owner={owner}
-              assistantId={showDetails.sId}
-              show={showDetails !== null}
-              onClose={() => {
-                setShowDetails(null);
-              }}
-            />
-          )}
+          <AssistantDetails
+            owner={owner}
+            assistantId={showDetails?.sId || null}
+            onClose={() => {
+              setShowDetails(null);
+            }}
+          />
 
           <div onClick={() => setSearchText("")} className="flex">
             {pickerButton ? (
