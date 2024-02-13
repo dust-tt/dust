@@ -23,7 +23,7 @@ async function main() {
   );
   if (process.argv[2] === "all") {
     // get all connectors that are not done yet
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "notion",
         id: {

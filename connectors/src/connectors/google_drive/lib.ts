@@ -3,16 +3,16 @@ import { cacheWithRedis } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { HTTPError } from "@connectors/lib/error";
-import type { Connector } from "@connectors/lib/models";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getAuthObject } from "./temporal/activities";
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhook(
-  connector: Connector
+  connector: ConnectorModel
 ): Promise<
   Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
 > {
