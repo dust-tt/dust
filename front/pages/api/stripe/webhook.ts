@@ -401,9 +401,9 @@ async function handler(
               "Couldn't get owner or subscription from `auth`."
             );
           }
-          const adminEmails = (await getMembers(auth, { role: "admin" })).map(
-            (u) => u.email
-          );
+          const adminEmails = (
+            await getMembers(auth, { roles: ["admin"] })
+          ).map((u) => u.email);
           const customerEmail = invoice.customer_email;
           if (customerEmail && !adminEmails.includes(customerEmail)) {
             adminEmails.push(customerEmail);
@@ -464,9 +464,9 @@ async function handler(
             );
 
             // then email admins
-            const adminEmails = (await getMembers(auth, { role: "admin" })).map(
-              (u) => u.email
-            );
+            const adminEmails = (
+              await getMembers(auth, { roles: ["admin"] })
+            ).map((u) => u.email);
             if (adminEmails.length === 0) {
               return apiError(req, res, {
                 status_code: 500,
@@ -679,7 +679,7 @@ async function checkStaticDatasourcesSize(auth: Authenticator) {
     }
     await sendOpsDowngradeTooMuchDataEmail(workspace.sId, datasourcesTooBig);
     // for all admins
-    const adminEmails = (await getMembers(auth, { role: "admin" })).map(
+    const adminEmails = (await getMembers(auth, { roles: ["admin"] })).map(
       (u) => u.email
     );
     for (const adminEmail of adminEmails)

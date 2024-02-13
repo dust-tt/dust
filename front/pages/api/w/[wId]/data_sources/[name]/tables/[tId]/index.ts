@@ -3,7 +3,6 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
@@ -45,7 +44,7 @@ async function handler(
     });
   }
 
-  if (!(await isFeatureEnabled(owner, "structured_data"))) {
+  if (!owner.flags.includes("structured_data")) {
     res.status(404).end();
     return;
   }

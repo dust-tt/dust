@@ -1,12 +1,15 @@
 import { GoogleLogo, Logo } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
 import { A, H1, P, Strong } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import {
+  getWorkspaceInfos,
+  getWorkspaceVerifiedDomain,
+} from "@app/lib/api/workspace";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -17,27 +20,19 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
  * Case 1: "email_invite"
  *   url = /w/[wId]/join?t=[token]
  *      -> you've been invited to a workspace by email from the member management page.
- *      -> we don't care if workspace has allowed domain.
+ *      -> we don't care if workspace has a verified domain with auto-join enabled.
  *
- * Case 2: "domain_invite_link"
- *   url = /w/[wId]/join
- *      -> Workspace has activated onboarding with link for an allowed domain.
- *      -> the workspace needs to have allowed domain.
- *
- * Case 3: "domain_conversation_link"
+ * Case 2: "domain_conversation_link"
  *   url = /w/[wId]/join?cId=[conversationId]
- *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has allowed domain.
- *      -> the workspace needs to have allowed domain. *
+ *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has a verified domain.
+ *      -> the workspace needs to have a verified domain with auto-join enabled. *
  */
 
-type OnboardingType =
-  | "email_invite"
-  | "domain_invite_link"
-  | "domain_conversation_link";
+type OnboardingType = "email_invite" | "domain_conversation_link";
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   onboardingType: OnboardingType;
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
   signUpCallbackUrl: string;
   gaTrackingId: string;
   baseUrl: string;
@@ -54,21 +49,25 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       notFound: true,
     };
   }
+  const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
 
-  const onboardingType: OnboardingType = cId
-    ? "domain_conversation_link"
-    : token
-    ? "email_invite"
-    : "domain_invite_link";
+  let onboardingType: OnboardingType | null = null;
 
-  // Redirect to 404 if in a flow where we need allowed domain and domain is not allowed.
+  if (cId) {
+    onboardingType = "domain_conversation_link";
+  } else if (token) {
+    onboardingType = "email_invite";
+  } else {
+    throw new Error("Unsupported onboarding type.");
+  }
+
+  // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
-    !workspace.allowedDomain &&
-    (onboardingType === "domain_conversation_link" ||
-      onboardingType === "domain_invite_link")
+    !workspaceDomain?.domainAutoJoinEnabled &&
+    onboardingType === "domain_conversation_link"
   ) {
     return {
       notFound: true,
@@ -82,9 +81,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       break;
     case "email_invite":
       signUpCallbackUrl = `/api/login?inviteToken=${token}`;
-      break;
-    case "domain_invite_link":
-      signUpCallbackUrl = `/api/login?wId=${wId}`;
       break;
     default:
       return {

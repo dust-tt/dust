@@ -24,7 +24,6 @@ export class Workspace extends Model<
   declare sId: string;
   declare name: string;
   declare description: string | null;
-  declare allowedDomain: string | null;
   declare segmentation: WorkspaceSegmentationType;
   declare subscriptions: NonAttribute<Subscription[]>;
 }
@@ -59,10 +58,6 @@ Workspace.init(
     },
     description: {
       type: DataTypes.STRING,
-    },
-    allowedDomain: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     segmentation: {
       type: DataTypes.STRING,

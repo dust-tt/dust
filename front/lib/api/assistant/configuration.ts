@@ -112,14 +112,13 @@ function determineGlobalAgentIdsToFetch(
   switch (agentsGetView) {
     case "workspace":
     case "published":
-      // No global agents in workspace & published view.
-      return [];
+      return []; // fetch no global agents
     case "global":
     case "list":
     case "all":
     case "admin_internal":
-      // All global agents in global, list, all, admin_internal views.
-      return undefined;
+    case "manage-assistants-search":
+      return undefined; // undefined means all global agents will be fetched
     default:
       if (
         typeof agentsGetView === "object" &&
@@ -154,7 +153,9 @@ async function fetchGlobalAgentConfigurationForView(
   const allGlobalAgents = await getGlobalAgents(auth, globalAgentIdsToFetch);
   const matchingGlobalAgents = allGlobalAgents.filter(
     (a) =>
-      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
+      (!agentPrefix ||
+        a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())) &&
+      !(a.status === "disabled_missing_datasource")
   );
 
   if (
@@ -237,6 +238,7 @@ async function fetchAgentConfigurationsForView(
         where: baseConditionsAndScopesIn(["published"]),
       });
 
+    case "manage-assistants-search":
     case "list":
       const user = auth.user();
 

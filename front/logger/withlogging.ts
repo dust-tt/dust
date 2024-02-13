@@ -39,7 +39,7 @@ export function withLogging<T>(
       route = route.split("?")[0];
       for (const key in req.query) {
         const value = req.query[key];
-        if (typeof value === "string") {
+        if (typeof value === "string" && value.length > 0) {
           route = route.replaceAll(value, `[${key}]`);
         }
       }
@@ -55,6 +55,7 @@ export function withLogging<T>(
           url: req.url,
           route,
           durationMs: elapsed,
+          streaming,
           error: err,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
@@ -100,6 +101,7 @@ export function withLogging<T>(
         route,
         statusCode: res.statusCode,
         durationMs: elapsed,
+        streaming,
       },
       "Processed request"
     );
@@ -149,7 +151,7 @@ export function withGetServerSidePropsLogging<T extends { [key: string]: any }>(
     let route = context.resolvedUrl.split("?")[0];
     for (const key in context.params) {
       const value = context.params[key];
-      if (typeof value === "string") {
+      if (typeof value === "string" && value.length > 0) {
         route = route.replaceAll(value, `[${key}]`);
       }
     }

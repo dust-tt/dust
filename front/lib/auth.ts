@@ -2,13 +2,21 @@ import type {
   RoleType,
   UserType,
   UserTypeWithWorkspaces,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
-import { Err, isAdmin, isBuilder, isUser, Ok } from "@dust-tt/types";
+import {
+  Err,
+  isAdmin,
+  isBuilder,
+  isUser,
+  Ok,
+  WHITELISTABLE_FEATURES,
+} from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -17,7 +25,9 @@ import type {
 import { getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
+import { isDevelopment } from "@app/lib/development";
 import {
+  FeatureFlag,
   Key,
   Membership,
   Plan,
@@ -37,6 +47,7 @@ const {
   DUST_DEVELOPMENT_SYSTEM_API_KEY,
   NODE_ENV,
   DUST_PROD_API = "https://dust.tt",
+  ACTIVATE_ALL_FEATURES_DEV = false,
 } = process.env;
 
 /**
@@ -51,6 +62,7 @@ export class Authenticator {
   _user: User | null;
   _role: RoleType;
   _subscription: SubscriptionType | null;
+  _flags: WhitelistableFeature[];
 
   // Should only be called from the static methods below.
   constructor({
@@ -58,16 +70,19 @@ export class Authenticator {
     user,
     role,
     subscription,
+    flags,
   }: {
     workspace?: Workspace | null;
     user?: User | null;
     role: RoleType;
     subscription?: SubscriptionType | null;
+    flags: WhitelistableFeature[];
   }) {
     this._workspace = workspace || null;
     this._user = user || null;
     this._role = role;
     this._subscription = subscription || null;
+    this._flags = flags;
   }
 
   /**
@@ -103,9 +118,10 @@ export class Authenticator {
 
     let role = "none" as RoleType;
     let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
 
     if (user && workspace) {
-      [role, subscription] = await Promise.all([
+      [role, subscription, flags] = await Promise.all([
         (async (): Promise<RoleType> => {
           const membership = await Membership.findOne({
             where: {
@@ -119,6 +135,15 @@ export class Authenticator {
             : "none";
         })(),
         subscriptionForWorkspace(workspace),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
       ]);
     }
 
@@ -127,6 +152,7 @@ export class Authenticator {
       user,
       role,
       subscription,
+      flags,
     });
   }
 
@@ -168,15 +194,30 @@ export class Authenticator {
       })(),
     ]);
 
-    const subscription = workspace
-      ? await subscriptionForWorkspace(workspace)
-      : null;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (workspace) {
+      [subscription, flags] = await Promise.all([
+        subscriptionForWorkspace(workspace),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace?.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
+      ]);
+    }
 
     return new Authenticator({
       workspace,
       user,
       role: user?.isDustSuperUser ? "admin" : "none",
       subscription,
+      flags,
     });
   }
 
@@ -219,15 +260,30 @@ export class Authenticator {
       }
     }
 
-    const subscription = workspace
-      ? await subscriptionForWorkspace(workspace)
-      : null;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (workspace) {
+      [subscription, flags] = await Promise.all([
+        subscriptionForWorkspace(workspace),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace?.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
+      ]);
+    }
 
     return {
       auth: new Authenticator({
         workspace,
         role,
         subscription,
+        flags,
       }),
       keyWorkspaceId: keyWorkspace.sId,
     };
@@ -250,11 +306,27 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    const subscription = await subscriptionForWorkspace(workspace);
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    [subscription, flags] = await Promise.all([
+      subscriptionForWorkspace(workspace),
+      (async () => {
+        return (
+          await FeatureFlag.findAll({
+            where: {
+              workspaceId: workspace?.id,
+            },
+          })
+        ).map((flag) => flag.name);
+      })(),
+    ]);
+
     return new Authenticator({
       workspace,
       role: "builder",
       subscription,
+      flags,
     });
   }
 
@@ -271,11 +343,27 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
-    const subscription = await subscriptionForWorkspace(workspace);
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    [subscription, flags] = await Promise.all([
+      subscriptionForWorkspace(workspace),
+      (async () => {
+        return (
+          await FeatureFlag.findAll({
+            where: {
+              workspaceId: workspace?.id,
+            },
+          })
+        ).map((flag) => flag.name);
+      })(),
+    ]);
+
     return new Authenticator({
       workspace,
       role: "admin",
       subscription,
+      flags,
     });
   }
 
@@ -301,9 +389,12 @@ export class Authenticator {
           id: this._workspace.id,
           sId: this._workspace.sId,
           name: this._workspace.name,
-          allowedDomain: this._workspace.allowedDomain || null,
           role: this._role,
           segmentation: this._workspace.segmentation || null,
+          flags:
+            ACTIVATE_ALL_FEATURES_DEV && isDevelopment()
+              ? [...WHITELISTABLE_FEATURES]
+              : this._flags,
         }
       : null;
   }
@@ -325,7 +416,7 @@ export class Authenticator {
    * object won't have the user's workspaces set.
    * @returns
    */
-  user(): (UserType & { workspaces: null }) | null {
+  user(): UserType | null {
     return this._user
       ? {
           id: this._user.id,
@@ -340,7 +431,6 @@ export class Authenticator {
           lastName: this._user.lastName || null,
           // Not available from this method
           image: null,
-          workspaces: null,
         }
       : null;
   }
@@ -439,7 +529,6 @@ export async function getUserFromSession(
         id: w.id,
         sId: w.sId,
         name: w.name,
-        allowedDomain: w.allowedDomain || null,
         role,
         segmentation: w.segmentation || null,
       };

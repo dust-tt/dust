@@ -16,6 +16,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
+    t.literal("manage-assistants-search"),
     t.undefined,
   ]),
   conversationId: t.union([t.string, t.undefined]),
@@ -36,6 +37,7 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
     t.literal("published"),
     t.literal("global"),
     t.literal("admin_internal"),
+    t.literal("manage-assistants-search"),
     t.literal("all"),
   ]),
 });
@@ -45,7 +47,11 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     name: t.string,
     description: t.string,
     pictureUrl: t.string,
-    status: t.union([t.literal("active"), t.literal("archived")]),
+    status: t.union([
+      t.literal("active"),
+      t.literal("archived"),
+      t.literal("draft"),
+    ]),
     scope: t.union([
       t.literal("workspace"),
       t.literal("published"),

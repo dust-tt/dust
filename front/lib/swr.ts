@@ -15,7 +15,6 @@ import useSWR from "swr";
 
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
-import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
@@ -31,7 +30,6 @@ import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
-import type { GetFeaturesResponseBody } from "@app/pages/api/w/[wId]/features";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
@@ -431,36 +429,6 @@ export function usePokePlans() {
   };
 }
 
-export function usePokeFeatures({ workspaceId }: { workspaceId: string }) {
-  const featuresFetcher: Fetcher<GetPokeFeaturesResponseBody> = fetcher;
-
-  const { data, error } = useSWR(
-    `/api/poke/workspaces/${workspaceId}/features`,
-    featuresFetcher
-  );
-
-  return {
-    features: useMemo(() => (data ? data.features : []), [data]),
-    isFeaturesLoading: !error && !data,
-    isFeaturesError: error,
-  };
-}
-
-export function useFeatures(owner: WorkspaceType) {
-  const featuresFetcher: Fetcher<GetFeaturesResponseBody> = fetcher;
-
-  const { data, error } = useSWR(
-    `/api/w/${owner.sId}/features`,
-    featuresFetcher
-  );
-
-  return {
-    features: useMemo(() => (data ? data.features : []), [data]),
-    isFeaturesLoading: !error && !data,
-    isFeaturesError: error,
-  };
-}
-
 export function useConversation({
   conversationId,
   workspaceId,
@@ -525,6 +493,9 @@ export function useConversationReactions({
   };
 }
 
+/*
+ * Agent configurations. A null agentsGetView means no fetching
+ */
 export function useAgentConfigurations({
   workspaceId,
   agentsGetView,
@@ -533,7 +504,7 @@ export function useAgentConfigurations({
   sort,
 }: {
   workspaceId: string;
-  agentsGetView: AgentsGetViewType;
+  agentsGetView: AgentsGetViewType | null;
   includes?: ("authors" | "usage")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
@@ -547,7 +518,7 @@ export function useAgentConfigurations({
     if (typeof agentsGetView === "string") {
       params.append("view", agentsGetView);
     } else {
-      if ("conversationId" in agentsGetView) {
+      if (agentsGetView && "conversationId" in agentsGetView) {
         params.append("conversationId", agentsGetView.conversationId);
       }
     }
@@ -571,7 +542,9 @@ export function useAgentConfigurations({
 
   const queryString = getQueryString();
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`,
+    agentsGetView
+      ? `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`
+      : null,
     agentConfigurationsFetcher
   );
 

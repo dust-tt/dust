@@ -18,6 +18,7 @@ import { CoreAPITokenType } from "../../front/lib/core_api";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { RunType } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
+import { WorkspaceDomain } from "../workspace";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -727,6 +728,46 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.tokens);
+  }
+
+  async getActiveMemberEmailsInWorkspace() {
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/emails?activeOnly=true`;
+
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+    });
+
+    const r: DustAPIResponse<{ emails: string[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.emails);
+  }
+
+  async getWorkspaceVerifiedDomains() {
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/verified_domains`;
+
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+    });
+
+    const r: DustAPIResponse<{ verified_domains: WorkspaceDomain[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.verified_domains);
   }
 
   private async _resultFromResponse<T>(

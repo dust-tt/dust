@@ -1,10 +1,10 @@
 import type {
+  LightWorkspaceType,
   ModelId,
   RoleType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import { Op } from "sequelize";
@@ -20,7 +20,7 @@ import {
 
 export async function getWorkspaceInfos(
   wId: string
-): Promise<WorkspaceType | null> {
+): Promise<LightWorkspaceType | null> {
   const workspace = await Workspace.findOne({
     where: {
       sId: wId,
@@ -35,19 +35,18 @@ export async function getWorkspaceInfos(
     id: workspace.id,
     sId: workspace.sId,
     name: workspace.name,
-    allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
   };
 }
 
 export async function getWorkspaceVerifiedDomain(
-  workspaceId: ModelId
+  workspace: LightWorkspaceType
 ): Promise<WorkspaceDomain | null> {
   const workspaceDomain = await WorkspaceHasDomain.findOne({
     attributes: ["domain", "domainAutoJoinEnabled"],
     where: {
-      workspaceId: workspaceId,
+      workspaceId: workspace.id,
     },
     // For now, one workspace can only have one domain.
     limit: 1,
@@ -66,7 +65,7 @@ export async function getWorkspaceVerifiedDomain(
 export async function setInternalWorkspaceSegmentation(
   auth: Authenticator,
   segmentation: WorkspaceSegmentationType
-): Promise<WorkspaceType> {
+): Promise<LightWorkspaceType> {
   const owner = auth.workspace();
   const user = auth.user();
 
@@ -92,7 +91,6 @@ export async function setInternalWorkspaceSegmentation(
     id: workspace.id,
     sId: workspace.sId,
     name: workspace.name,
-    allowedDomain: workspace.allowedDomain,
     role: "none",
     segmentation: workspace.segmentation,
   };
@@ -108,10 +106,10 @@ export async function setInternalWorkspaceSegmentation(
 export async function getMembers(
   auth: Authenticator,
   {
-    role,
+    roles,
     userIds,
   }: {
-    role?: RoleType;
+    roles?: RoleType[];
     userIds?: ModelId[];
   } = {}
 ): Promise<UserTypeWithWorkspaces[]> {
@@ -123,12 +121,12 @@ export async function getMembers(
   const whereClause: {
     workspaceId: ModelId;
     userId?: ModelId[];
-    role?: RoleType;
+    role?: RoleType[];
   } = userIds
     ? { workspaceId: owner.id, userId: userIds }
     : { workspaceId: owner.id };
-  if (role) {
-    whereClause.role = role;
+  if (roles) {
+    whereClause.role = roles;
   }
 
   const memberships = await Membership.findAll({
@@ -166,7 +164,7 @@ export async function getMembers(
       firstName: u.firstName,
       lastName: u.lastName,
       image: u.imageUrl,
-      workspaces: [{ ...owner, role }],
+      workspaces: [{ ...owner, role, flags: null }],
     };
   });
 }

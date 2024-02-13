@@ -1,5 +1,9 @@
 import { Button, Tab } from "@dust-tt/sparkle";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AppType, AppVisibility } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -86,8 +90,10 @@ export default function CloneView({
   const [appName, setAppName] = useState(app.name);
   const [appNameError, setAppNameError] = useState("");
   const [appDescription, setAppDescription] = useState(app.description || "");
-  const [appVisibility, setAppVisibility] = useState("public" as AppVisibility);
-  const [targetWorkspace, setTargetWorkspace] = useState(user.workspaces[0]);
+  const [appVisibility, setAppVisibility] = useState<AppVisibility>("private");
+  const [targetWorkspace, setTargetWorkspace] = useState<LightWorkspaceType>(
+    user.workspaces[0]
+  );
   const [cloning, setCloning] = useState(false);
 
   const formValidation = () => {
@@ -296,8 +302,8 @@ export default function CloneView({
                           >
                             Public
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone on the Internet can see the app. Only you
-                              can edit.
+                              Anyone on the Internet can see the app. Only
+                              builders of your workspace can edit.
                             </p>
                           </label>
                         </div>
@@ -323,34 +329,8 @@ export default function CloneView({
                           >
                             Private
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Only you can see and edit the app.
-                            </p>
-                          </label>
-                        </div>
-                        <div className="flex items-center">
-                          <input
-                            id="appVisibilityUnlisted"
-                            name="visibility"
-                            type="radio"
-                            value="unlisted"
-                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                            checked={appVisibility == "unlisted"}
-                            onChange={(e) => {
-                              if (e.target.value != appVisibility) {
-                                setAppVisibility(
-                                  e.target.value as AppVisibility
-                                );
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor="app-visibility-unlisted"
-                            className="ml-3 block text-sm font-medium text-gray-700"
-                          >
-                            Unlisted
-                            <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone with the link can see the app. Only you can
-                              edit.
+                              Only builders of your workspace can see and edit
+                              the app.
                             </p>
                           </label>
                         </div>

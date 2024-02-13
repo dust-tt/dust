@@ -10,6 +10,8 @@ import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useRef } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -18,18 +20,23 @@ import {
   useConversations,
 } from "@app/lib/swr";
 
-import { ContentFragment } from "./ContentFragment";
-
+/**
+ *
+ * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
+ * @returns
+ */
 export default function Conversation({
   owner,
   user,
   conversationId,
   onStickyMentionsChange,
+  isInModal,
 }: {
   owner: WorkspaceType;
   user: UserType;
   conversationId: string;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
+  isInModal?: boolean;
 }) {
   const {
     conversation,
@@ -51,11 +58,13 @@ export default function Conversation({
   });
 
   useEffect(() => {
-    const mainTag = document.getElementById("main-content");
+    const mainTag = document.getElementById(
+      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
+    );
     if (mainTag) {
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
-  }, [conversation?.content.length]);
+  }, [conversation?.content.length, isInModal]);
 
   useEffect(() => {
     if (!onStickyMentionsChange) {
@@ -128,7 +137,16 @@ export default function Conversation({
           case "user_message_new":
           case "agent_message_new":
           case "agent_generation_cancelled":
-            void mutateConversation();
+            const isMessageAlreadyInConversation = conversation?.content?.some(
+              (contentBlock) =>
+                contentBlock.some(
+                  (message) =>
+                    "sId" in message && message.sId === event.messageId
+                )
+            );
+            if (!isMessageAlreadyInConversation) {
+              void mutateConversation();
+            }
             break;
           case "conversation_title": {
             void mutateConversation();
@@ -142,10 +160,13 @@ export default function Conversation({
         }
       }
     },
-    [mutateConversation, mutateConversations]
+    [mutateConversation, mutateConversations, conversation]
   );
 
-  useEventSource(buildEventSourceURL, onEventCallback);
+  useEventSource(buildEventSourceURL, onEventCallback, {
+    // We only start consuming the stream when the conversation has been loaded.
+    isReadyToConsumeStream: !isConversationLoading,
+  });
   const eventIds = useRef<string[]>([]);
 
   if (isConversationLoading) {
@@ -198,6 +219,7 @@ export default function Conversation({
                     user={user}
                     conversationId={conversationId}
                     reactions={messageReactions}
+                    isInModal={isInModal}
                   />
                 </div>
               </div>

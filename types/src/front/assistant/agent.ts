@@ -66,7 +66,16 @@ export type GlobalAgentStatus =
   | "disabled_by_admin"
   | "disabled_missing_datasource"
   | "disabled_free_workspace";
-export type AgentStatus = "active" | "archived";
+
+/**
+ * Agent statuses:
+ * - "active" means the agent can be used directly
+ * - "archived" means the agent was either deleted, or that there is a newer
+ *   version
+ * - "draft" is used for the "try" button in builder, when the agent is not yet
+ *   fully created / updated
+ */
+export type AgentStatus = "active" | "archived" | "draft";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**
@@ -89,22 +98,33 @@ export type AgentConfigurationScope =
 export type AgentUserListStatus = "in-list" | "not-in-list";
 
 /**
- * Defines strategies for fetching agent configurations based on various 'views':
- * - 'list': Retrieves all agents within the user's list, including their private agents, agents from the workspace and global scope,
- * plus any published agents they've added to their list (refer to AgentUserRelationTable).
+ * Defines strategies for fetching agent configurations based on various
+ * 'views':
+ * - 'list': Retrieves all agents within the user's list, including their
+ *   private agents, agents from the workspace and global scope, plus any
+ *   published agents they've added to their list (refer to
+ *   AgentUserRelationTable).
  * - {agentId: string}: Retrieves a single agent by its ID.
- * - {conversationId: string}: all agent from the user's list view, plus the agents mentioned in the conversation with the provided Id.
- * - 'all': Combines workspace and published agents, excluding private agents. Typically used in agent galleries.
+ * - {conversationId: string}: all agent from the user's list view, plus the
+ *   agents mentioned in the conversation with the provided Id.
+ * - 'all': Combines workspace and published agents, excluding private agents.
+ *   Typically used in agent galleries.
+ * - 'manage-assistants-search': specific to the manage-assistants page,
+ *   retrieves all global agents including inactive ones, all workspace, all
+ *   published and the user's private agents.
  * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
- * - 'admin_internal': Grants access to all agents, including private ones. Intended strictly for internal use with necessary superuser or admin authorization.
+ * - 'admin_internal': Grants access to all agents, including private ones.
+ *   Intended strictly for internal use with necessary superuser or admin
+ *   authorization.
  */
 export type AgentsGetViewType =
   | { agentId: string; allVersions?: boolean }
   | "list"
   | { conversationId: string }
   | "all"
+  | "manage-assistants-search"
   | "workspace"
   | "published"
   | "global"

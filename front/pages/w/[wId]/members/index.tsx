@@ -65,7 +65,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       notFound: true,
     };
   }
-  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner.id);
+  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
 
   return {
     props: {

@@ -49,7 +49,6 @@ export function Chip({
     sizeClasses[size],
     backgroundColor,
     textColor,
-    "s-cursor-default",
     className
   );
 
@@ -58,7 +57,12 @@ export function Chip({
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {isBusy && <Spinner size={size} variant="darkGrey" />}
       {label && (
-        <span className={classNames(textColor, "s-grow s-truncate")}>
+        <span
+          className={classNames(
+            textColor,
+            "s-pointer s-grow s-cursor-default s-truncate"
+          )}
+        >
           {label}
         </span>
       )}

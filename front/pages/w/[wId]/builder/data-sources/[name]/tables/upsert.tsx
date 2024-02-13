@@ -20,7 +20,6 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { isFeatureEnabled } from "@app/lib/api/feature_flags";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useTable } from "@app/lib/swr";
@@ -54,12 +53,9 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
-  const [dataSource, structuredDataEnabled] = await Promise.all([
-    getDataSource(auth, context.params?.name as string),
-    isFeatureEnabled(owner, "structured_data"),
-  ]);
+  const dataSource = await getDataSource(auth, context.params?.name as string);
 
-  if (!dataSource || !structuredDataEnabled) {
+  if (!dataSource || !owner.flags.includes("structured_data")) {
     return {
       notFound: true,
     };

@@ -84,7 +84,7 @@ export const SCOPE_INFO: Record<
     label: "Default Assistant",
     color: "slate",
     icon: DustIcon,
-    text: "Default assistant provided by Dust.",
+    text: "Default assistants provided by Dust.",
     confirmationModalData: null,
   },
 } as const;
@@ -287,12 +287,9 @@ export function SharingDropdown({
 
 export function SharingChip({ scope }: { scope: AgentConfigurationScope }) {
   return (
-    <Chip
-      label={SCOPE_INFO[scope].label}
-      color={SCOPE_INFO[scope].color}
-      icon={SCOPE_INFO[scope].icon}
-      className="cursor-default"
-    />
+    <Chip color={SCOPE_INFO[scope].color} icon={SCOPE_INFO[scope].icon}>
+      {SCOPE_INFO[scope].label}
+    </Chip>
   );
 }
 

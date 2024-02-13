@@ -28,46 +28,48 @@ export function Notification({
   return (
     <div
       className={classNames(
-        "s-pointer-events-auto s-relative s-flex s-max-w-[260px] s-items-start s-gap-2 s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-pb-5 s-pl-4 s-pr-8 s-pt-4 s-shadow-xl",
+        "s-pointer-events-auto s-flex s-max-w-[260px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl",
         className
       )}
     >
       {variant === "success" ? (
         <Icon
-          size="md"
+          size="lg"
           visual={CheckCircleIcon}
           className="s-pt-0.5 s-text-success-500"
         />
       ) : (
         <Icon
-          size="md"
+          size="lg"
           visual={XCircleIcon}
           className="s-pt-0.5 s-text-warning-500"
         />
       )}
-      <div className="s-flex s-flex-col s-gap-1">
-        <div
-          className={classNames(
-            "s-text-md s-font-semibold",
-            variant === "success" ? "s-text-success-500" : "s-text-warning-500"
-          )}
-        >
-          {title || variant}
+
+      <div className="s-flex s-flex-col">
+        <div className="s-flex s-grow s-flex-row s-gap-6">
+          <div
+            className={classNames(
+              "s-text-md s-grow  s-font-semibold",
+              variant === "success"
+                ? "s-text-success-500"
+                : "s-text-warning-500"
+            )}
+          >
+            {title || variant}
+          </div>
+          <IconButton
+            icon={XMarkIcon}
+            size="sm"
+            variant="tertiary"
+            onClick={onClick}
+          />
         </div>
         {description && (
-          <div className="s-text-sm s-font-normal s-text-element-700">
+          <div className="s-pr-2 s-text-sm s-font-normal s-text-element-700">
             {description}
           </div>
         )}
-      </div>
-      <div className="s-absolute s-right-2 s-top-2">
-        <IconButton
-          className="s-pt-0.5"
-          icon={XMarkIcon}
-          size="sm"
-          variant="secondary"
-          onClick={onClick}
-        />
       </div>
     </div>
   );

@@ -27,6 +27,12 @@ export function getTeamInternalId(
 ): string {
   return `intercom-team-${connectorId}-${teamId}`;
 }
+export function getConversationInternalId(
+  connectorId: ModelId,
+  conversationId: string
+): string {
+  return `intercom-conversation-${connectorId}-${conversationId}`;
+}
 
 /**
  * From internalId to id

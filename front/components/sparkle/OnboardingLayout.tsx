@@ -1,4 +1,4 @@
-import type { WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
 import { useRef } from "react";
@@ -11,7 +11,7 @@ export default function OnboardingLayout({
   gaTrackingId,
   children,
 }: {
-  owner?: WorkspaceType;
+  owner: LightWorkspaceType;
   gaTrackingId: string;
   children: React.ReactNode;
 }) {
@@ -20,7 +20,7 @@ export default function OnboardingLayout({
   return (
     <>
       <Head>
-        <title>{`Dust - ${owner?.name || "Onboarding"}`}</title>
+        <title>{`Dust - ${owner.name || "Onboarding"}`}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
 
         <meta name="apple-mobile-web-app-title" content="Dust" />
@@ -98,9 +98,8 @@ export default function OnboardingLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){window.dataLayer.push(arguments);}
             gtag('js', new Date());
-  
             gtag('config', '${gaTrackingId}');
-            `}
+          `}
         </Script>
       </>
     </>

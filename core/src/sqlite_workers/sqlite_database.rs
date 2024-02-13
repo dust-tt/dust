@@ -19,6 +19,8 @@ pub struct SqliteDatabase {
     interrupt_handle: Option<Arc<tokio::sync::Mutex<InterruptHandle>>>,
 }
 
+const MAX_ROWS: usize = 128;
+
 impl SqliteDatabase {
     pub fn new() -> Self {
         Self {
@@ -112,6 +114,8 @@ impl SqliteDatabase {
                         })
                         .collect::<Result<serde_json::Value>>()
                 })?
+                // Limit to 128 rows.
+                .take(MAX_ROWS)
                 .collect::<Result<Vec<_>>>()?
                 .into_par_iter()
                 .map(|value| QueryResult { value })
@@ -177,7 +181,7 @@ async fn create_in_memory_sqlite_db(
                 None => None,
             })
             .collect::<Vec<_>>()
-            .join("\n");
+            .join(";\n");
 
         info!(
             duration = utils::now() - generate_create_table_sql_start,

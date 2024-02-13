@@ -176,8 +176,6 @@ export async function notionSyncWorkflow({
     // wait for all child workflows to finish
     await Promise.all(promises);
 
-    await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
-
     // these are resources (pages/DBs) that we didn't get from the search API but that are child pages/DBs
     // of other pages that we did get from the search API.
     // We upsert those as well.
@@ -198,6 +196,9 @@ export async function notionSyncWorkflow({
       topLevelWorkflowId,
       forceResync,
     });
+
+    // Compute parents after all documents are added/updated
+    await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
 
     if (!isGarbageCollectionRun) {
       await saveSuccessSync(connectorId);
