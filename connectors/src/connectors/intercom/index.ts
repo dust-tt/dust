@@ -42,6 +42,7 @@ import { Connector, sequelize_conn } from "@connectors/lib/models";
 import {
   IntercomArticle,
   IntercomCollection,
+  IntercomConversation,
   IntercomHelpCenter,
   IntercomTeam,
   IntercomWorkspace,
@@ -225,6 +226,12 @@ export async function cleanupIntercomConnector(
         transaction: transaction,
       }),
       IntercomTeam.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction: transaction,
+      }),
+      IntercomConversation.destroy({
         where: {
           connectorId: connector.id,
         },
