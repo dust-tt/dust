@@ -1,8 +1,11 @@
-import { QueryTypes, Sequelize } from "sequelize";
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import { QueryTypes } from "sequelize";
 
-import { Err, Ok, Result } from "@dust-tt/types";
-const { CORE_DATABASE_READ_REPLICA_URI, FRONT_DATABASE_READ_REPLICA_URI } =
-  process.env;
+import {
+  getCoreReplicaDbConnection,
+  getFrontReplicaDbConnection,
+} from "@app/production_checks/lib/utils";
 
 export type CoreDSDocument = {
   id: number;
@@ -13,18 +16,8 @@ export type CoreDSDocument = {
 export async function getCoreDocuments(
   frontDataSourceId: number
 ): Promise<Result<CoreDSDocument[], Error>> {
-  const core_sequelize = new Sequelize(
-    CORE_DATABASE_READ_REPLICA_URI as string,
-    {
-      logging: false,
-    }
-  );
-  const front_sequelize = new Sequelize(
-    FRONT_DATABASE_READ_REPLICA_URI as string,
-    {
-      logging: false,
-    }
-  );
+  const core_sequelize = getCoreReplicaDbConnection();
+  const front_sequelize = getFrontReplicaDbConnection();
 
   const managedDsData = await front_sequelize.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId" \
