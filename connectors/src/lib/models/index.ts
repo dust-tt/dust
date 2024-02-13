@@ -8,16 +8,9 @@ import type {
   InferAttributes,
   InferCreationAttributes,
 } from "sequelize";
-import { DataTypes, Model, Sequelize } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 
-const { CONNECTORS_DATABASE_URI } = process.env;
-if (!CONNECTORS_DATABASE_URI) {
-  throw new Error("CONNECTORS_DATABASE_URI is not defined");
-}
-
-export const sequelize_conn = new Sequelize(CONNECTORS_DATABASE_URI as string, {
-  logging: false,
-});
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class Connector extends Model<
   InferAttributes<Connector>,
@@ -114,7 +107,7 @@ Connector.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "connectors",
     indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
   }

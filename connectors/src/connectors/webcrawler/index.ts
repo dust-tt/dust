@@ -9,7 +9,7 @@ import {
   normalizeFolderUrl,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
@@ -18,6 +18,7 @@ import {
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import type { ConnectorPermissionRetriever } from "../interface";
@@ -30,7 +31,7 @@ export async function createWebcrawlerConnector(
   dataSourceConfig: DataSourceConfig,
   urlConfig: CreateConnectorUrlRequestBody
 ): Promise<Result<string, Error>> {
-  const res = await sequelize_conn.transaction(
+  const res = await sequelizeConnection.transaction(
     async (t): Promise<Result<Connector, Error>> => {
       const connector = await Connector.create(
         {
@@ -206,7 +207,7 @@ export async function stopWebcrawlerConnector(
 export async function cleanupWebcrawlerConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     await WebCrawlerPage.destroy({
       where: {
         connectorId: connectorId,

@@ -38,7 +38,7 @@ import {
 } from "@connectors/connectors/intercom/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   IntercomArticle,
   IntercomCollection,
@@ -49,6 +49,7 @@ import {
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type { ConnectorResource } from "@connectors/types/resources";
@@ -198,7 +199,7 @@ export async function cleanupIntercomConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await sequelize_conn.transaction(async (transaction) => {
+  await sequelizeConnection.transaction(async (transaction) => {
     await Promise.all([
       IntercomWorkspace.destroy({
         where: {

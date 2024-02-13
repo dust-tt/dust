@@ -6,7 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class ConfluenceConfiguration extends Model<
   InferAttributes<ConfluenceConfiguration>,
@@ -53,7 +54,7 @@ ConfluenceConfiguration.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "confluence_configurations",
     indexes: [
       { fields: ["connectorId"], unique: true },
@@ -111,7 +112,7 @@ ConfluenceSpace.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "confluence_spaces",
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
@@ -191,7 +192,7 @@ ConfluencePage.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       { fields: ["connectorId", "pageId"], unique: true },
       { fields: ["connectorId", "spaceId", "parentId"] },

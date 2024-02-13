@@ -1,7 +1,7 @@
-import { sequelize_conn } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 async function main() {
-  await sequelize_conn.query(`
+  await sequelizeConnection.query(`
         DELETE FROM notion_connector_page_cache_entries WHERE "connectorId" IS NULL;
         DELETE FROM notion_connector_block_cache_entries WHERE "connectorId" IS NULL;
         DELETE FROM notion_connector_resources_to_check_cache_entries WHERE "connectorId" IS NULL;

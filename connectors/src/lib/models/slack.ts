@@ -6,7 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorPermission } from "@connectors/types/resources";
 
 export class SlackConfiguration extends Model<
@@ -53,7 +54,7 @@ SlackConfiguration.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       { fields: ["slackTeamId"] },
       { fields: ["connectorId"], unique: true },
@@ -115,7 +116,7 @@ SlackMessages.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "slack_messages",
     indexes: [
       { fields: ["connectorId", "channelId", "messageTs"], unique: true },
@@ -179,7 +180,7 @@ SlackChannel.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "slack_channels",
     indexes: [
       { fields: ["connectorId", "slackChannelId"], unique: true },
@@ -283,7 +284,7 @@ SlackChatBotMessage.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "slack_chat_bot_messages",
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }

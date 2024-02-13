@@ -6,7 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class IntercomWorkspace extends Model<
   InferAttributes<IntercomWorkspace>,
@@ -54,7 +55,7 @@ IntercomWorkspace.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "intercomWorkspaceId"],
@@ -129,7 +130,7 @@ IntercomHelpCenter.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "helpCenterId"],
@@ -223,7 +224,7 @@ IntercomCollection.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "collectionId"],
@@ -327,7 +328,7 @@ IntercomArticle.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "articleId"],
@@ -394,7 +395,7 @@ IntercomTeam.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "teamId"],
@@ -459,7 +460,7 @@ IntercomConversation.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "conversationId"],

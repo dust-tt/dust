@@ -18,7 +18,7 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import { ExternalOauthTokenError, NangoError } from "@connectors/lib/error";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
   SlackConfiguration,
@@ -31,6 +31,7 @@ import {
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type {
@@ -47,7 +48,7 @@ export async function createSlackConnector(
 ): Promise<Result<string, Error>> {
   const nangoConnectionId = connectionId;
 
-  const res = await sequelize_conn.transaction(
+  const res = await sequelizeConnection.transaction(
     async (t): Promise<Result<Connector, Error>> => {
       const nango = nango_client();
       if (!NANGO_SLACK_CONNECTOR_ID) {
@@ -291,7 +292,7 @@ export async function uninstallSlack(nangoConnectionId: string) {
 export async function cleanupSlackConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     const connector = await Connector.findByPk(connectorId, {
       transaction: transaction,
     });

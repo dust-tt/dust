@@ -3,7 +3,7 @@ import parseArgs from "minimist";
 import readline from "readline";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import { sequelize_conn } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
@@ -18,7 +18,7 @@ const main = async () => {
     throw new Error("batchNumber must be positive");
   }
 
-  const queryRes = await sequelize_conn.query(`
+  const queryRes = await sequelizeConnection.query(`
     SELECT COUNT(*) c, "connectorId"
     FROM google_drive_files
     WHERE "connectorId" IS NOT NULL

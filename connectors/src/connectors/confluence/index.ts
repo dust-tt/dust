@@ -29,7 +29,7 @@ import {
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -43,6 +43,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -74,29 +75,31 @@ export async function createConfluenceConnector(
 
   const { id: cloudId, url: cloudUrl } = confluenceCloudInformation;
   try {
-    const connector = await sequelize_conn.transaction(async (transaction) => {
-      const connector = await Connector.create(
-        {
-          type: "confluence",
-          connectionId: nangoConnectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
-        },
-        { transaction }
-      );
-      await ConfluenceConfiguration.create(
-        {
-          cloudId,
-          connectorId: connector.id,
-          url: cloudUrl,
-          userAccountId,
-        },
-        { transaction }
-      );
+    const connector = await sequelizeConnection.transaction(
+      async (transaction) => {
+        const connector = await Connector.create(
+          {
+            type: "confluence",
+            connectionId: nangoConnectionId,
+            workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+            workspaceId: dataSourceConfig.workspaceId,
+            dataSourceName: dataSourceConfig.dataSourceName,
+          },
+          { transaction }
+        );
+        await ConfluenceConfiguration.create(
+          {
+            cloudId,
+            connectorId: connector.id,
+            url: cloudUrl,
+            userAccountId,
+          },
+          { transaction }
+        );
 
-      return connector;
-    });
+        return connector;
+      }
+    );
 
     const workflowStarted = await launchConfluenceSyncWorkflow(
       connector.id,
@@ -242,7 +245,7 @@ export async function cleanupConfluenceConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     await Promise.all([
       ConfluenceConfiguration.destroy({
         where: {

@@ -11,7 +11,7 @@ import type {
   ConnectorConfigGetter,
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -23,6 +23,7 @@ import {
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type {
   ConnectorPermission,
@@ -43,28 +44,30 @@ export async function createGithubConnector(
     return new Err(new Error("Github installation id is invalid"));
   }
   try {
-    const connector = await sequelize_conn.transaction(async (transaction) => {
-      const connector = await Connector.create(
-        {
-          type: "github",
-          connectionId: githubInstallationId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
-        },
-        { transaction }
-      );
-      await GithubConnectorState.create(
-        {
-          connectorId: connector.id,
-          webhooksEnabledAt: new Date(),
-          codeSyncEnabled: false,
-        },
-        { transaction }
-      );
+    const connector = await sequelizeConnection.transaction(
+      async (transaction) => {
+        const connector = await Connector.create(
+          {
+            type: "github",
+            connectionId: githubInstallationId,
+            workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+            workspaceId: dataSourceConfig.workspaceId,
+            dataSourceName: dataSourceConfig.dataSourceName,
+          },
+          { transaction }
+        );
+        await GithubConnectorState.create(
+          {
+            connectorId: connector.id,
+            webhooksEnabledAt: new Date(),
+            codeSyncEnabled: false,
+          },
+          { transaction }
+        );
 
-      return connector;
-    });
+        return connector;
+      }
+    );
     await launchGithubFullSyncWorkflow({
       connectorId: connector.id,
       syncCodeOnly: false,
@@ -220,7 +223,7 @@ export async function fullResyncGithubConnector(
 export async function cleanupGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     try {
       const connector = await Connector.findOne({
         where: {

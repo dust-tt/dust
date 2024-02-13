@@ -8,7 +8,7 @@ import {
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -25,6 +25,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type { ConnectorResource } from "@connectors/types/resources";
@@ -56,7 +57,7 @@ export async function createNotionConnector(
   let connector: Connector;
   let notionConnectorState: NotionConnectorState;
   try {
-    const txRes = await sequelize_conn.transaction(async (transaction) => {
+    const txRes = await sequelizeConnection.transaction(async (transaction) => {
       const connector = await Connector.create(
         {
           type: "notion",
@@ -324,7 +325,7 @@ export async function fullResyncNotionConnector(
 export async function cleanupNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     const connector = await Connector.findOne({
       where: { type: "notion", id: connectorId },
       transaction: transaction,

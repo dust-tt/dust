@@ -1,11 +1,11 @@
-import { sequelize_conn } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 async function main() {
-  await sequelize_conn.query(`
+  await sequelizeConnection.query(`
     UPDATE "notion_pages"
     SET "titleSearchVector" = to_tsvector('english', unaccent(coalesce("title", '')));
   `);
-  await sequelize_conn.query(`
+  await sequelizeConnection.query(`
     UPDATE "notion_databases"
     SET "titleSearchVector" = to_tsvector('english', unaccent(coalesce("title", '')));
   `);

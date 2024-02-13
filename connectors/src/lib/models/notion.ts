@@ -10,7 +10,8 @@ import type {
   NotionBlockType,
   PageObjectProperties,
 } from "@connectors/connectors/notion/lib/types";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,
@@ -58,7 +59,7 @@ NotionConnectorState.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "notion_connector_states",
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
@@ -147,7 +148,7 @@ NotionPage.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       { fields: ["notionPageId", "connectorId"], unique: true },
       { fields: ["connectorId", "lastSeenTs"], concurrently: true },
@@ -246,7 +247,7 @@ NotionDatabase.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
       { fields: ["connectorId", "skipReason"] },
@@ -351,7 +352,7 @@ NotionConnectorPageCacheEntry.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "notion_connector_page_cache_entries",
     indexes: [
       {
@@ -440,7 +441,7 @@ NotionConnectorBlockCacheEntry.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "notion_connector_block_cache_entries",
     indexes: [
       {
@@ -503,7 +504,7 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "notion_connector_resources_to_check_cache_entries",
     indexes: [
       {

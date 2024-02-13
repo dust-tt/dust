@@ -6,7 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class GoogleDriveConfig extends Model<
   InferAttributes<GoogleDriveConfig>,
@@ -46,7 +47,7 @@ GoogleDriveConfig.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "google_drive_configs",
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
@@ -90,7 +91,7 @@ GoogleDriveFolders.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "google_drive_folders",
     indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
   }
@@ -172,7 +173,7 @@ GoogleDriveFiles.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "google_drive_files",
     indexes: [
       { fields: ["connectorId", "driveFileId"], unique: true },
@@ -226,7 +227,7 @@ GoogleDriveSyncToken.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "google_drive_sync_tokens",
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }
@@ -286,7 +287,7 @@ GoogleDriveWebhook.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     modelName: "google_drive_webhooks",
     indexes: [
       { fields: ["webhookId"], unique: true },

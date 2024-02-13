@@ -3,11 +3,12 @@ import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorPermission } from "@connectors/types/resources";
 
 import { getSlackClient } from "./slack_client";
@@ -31,7 +32,7 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelName: string;
   connectorId: number;
 }): Promise<SlackChannelType> {
-  return sequelize_conn.transaction(async (transaction) => {
+  return sequelizeConnection.transaction(async (transaction) => {
     const connector = await Connector.findOne({
       where: {
         id: connectorId,

@@ -31,7 +31,7 @@ import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -42,6 +42,7 @@ import {
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
@@ -1010,7 +1011,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
       if (webhookInfo.isErr()) {
         throw webhookInfo.error;
       } else {
-        await sequelize_conn.transaction(async (t) => {
+        await sequelizeConnection.transaction(async (t) => {
           const freshWebhook = await GoogleDriveWebhook.create(
             {
               webhookId: webhookInfo.value.id,

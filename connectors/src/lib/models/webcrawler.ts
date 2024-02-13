@@ -6,7 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 export class WebCrawlerConfiguration extends Model<
   InferAttributes<WebCrawlerConfiguration>,
@@ -58,7 +59,7 @@ WebCrawlerConfiguration.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [],
     modelName: "webcrawler_configurations",
   }
@@ -112,7 +113,7 @@ WebCrawlerFolder.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         unique: true,
@@ -175,7 +176,7 @@ WebCrawlerPage.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         unique: true,

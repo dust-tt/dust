@@ -1,11 +1,12 @@
 import { Op } from "sequelize";
 
-import { Connector, sequelize_conn } from "@connectors/lib/models";
+import { Connector } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 async function main() {
   await Connector.update(
     {
-      connectionId: sequelize_conn.col("nangoConnectionId"),
+      connectionId: sequelizeConnection.col("nangoConnectionId"),
     },
     {
       // @ts-expect-error `connectionId` has been made non-nullable

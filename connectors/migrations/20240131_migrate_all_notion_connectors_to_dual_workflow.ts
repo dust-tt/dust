@@ -1,7 +1,7 @@
-import { sequelize_conn } from "@connectors/lib/models";
+import { sequelizeConnection } from "@connectors/resources/storage";
 
 async function main() {
-  await sequelize_conn.query(`
+  await sequelizeConnection.query(`
         UPDATE notion_connector_states SET "useDualWorkflow" = true;
     `);
 }
