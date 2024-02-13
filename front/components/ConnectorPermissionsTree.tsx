@@ -120,7 +120,9 @@ export function PermissionTreeChildren({
             variant={r.type}
             className="whitespace-nowrap"
             checkbox={
-              canUpdatePermissions && onPermissionUpdate
+              r.preventSelection !== true &&
+              canUpdatePermissions &&
+              onPermissionUpdate
                 ? {
                     disabled: parentIsSelected,
                     checked:

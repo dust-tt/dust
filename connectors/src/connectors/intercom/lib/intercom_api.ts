@@ -22,7 +22,7 @@ type IntercomMeResponseType = {
   };
 };
 
-type IntercomHelpCenterType = {
+export type IntercomHelpCenterType = {
   id: string;
   workspace_id: string;
   created_at: number;
