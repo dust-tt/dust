@@ -110,7 +110,7 @@ export async function retrieveIntercomConversationsPermissions({
     lastUpdatedAt: null,
   };
 
-  const teamswithReadPermission = await IntercomTeam.findAll({
+  const teamsWithReadPermission = await IntercomTeam.findAll({
     where: {
       connectorId: connectorId,
       permission: "read",
@@ -121,11 +121,11 @@ export async function retrieveIntercomConversationsPermissions({
   // If isReadPermissionsOnly = true, we retrieve the list of Teams from DB that have permission = "read"
   // If isReadPermissionsOnly = false, we retrieve the list of Teams from Intercom
   if (isReadPermissionsOnly) {
-    if (isRootLevel && teamswithReadPermission.length > 0) {
+    if (isRootLevel && teamsWithReadPermission.length > 0) {
       resources.push(rootConversationRessource);
     }
     if (parentInternalId === teamsInternalId) {
-      teamswithReadPermission.forEach((team) => {
+      teamsWithReadPermission.forEach((team) => {
         resources.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.teamId),
@@ -147,7 +147,7 @@ export async function retrieveIntercomConversationsPermissions({
     if (parentInternalId === teamsInternalId) {
       const teams = await fetchIntercomTeams(intercomClient);
       teams.forEach((team) => {
-        const isTeamInDb = teamswithReadPermission.some((teamFromDb) => {
+        const isTeamInDb = teamsWithReadPermission.some((teamFromDb) => {
           return teamFromDb.teamId === team.id;
         });
         resources.push({
