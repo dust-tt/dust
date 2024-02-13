@@ -55,7 +55,7 @@ IntercomWorkspace.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "intercomWorkspaceId"],
@@ -460,7 +460,7 @@ IntercomConversation.init(
     },
   },
   {
-    sequelize: sequelize_conn,
+    sequelize: sequelizeConnection,
     indexes: [
       {
         fields: ["connectorId", "conversationId"],
