@@ -655,7 +655,7 @@ async function makeContentFragment(
   threadTs: string,
   startingAtTs: string | null,
   slackChatBotMessage: SlackChatBotMessage,
-  connector: Connector
+  connector: ConnectorModel
 ): Promise<
   Result<
     t.TypeOf<typeof PublicPostContentFragmentRequestBodySchema> | null,

@@ -26,7 +26,7 @@ export async function launchIntercomSyncWorkflow(
   }
 
   const client = await getTemporalClient();
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(
       `[Intercom] Connector not found. ConnectorId: ${connectorId}`

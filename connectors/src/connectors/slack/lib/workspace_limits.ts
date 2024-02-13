@@ -14,7 +14,7 @@ import type { ConnectorModel } from "@connectors/resources/storage/models/connec
 const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
 
 async function getActiveMemberEmails(
-  connector: ConnectorModelModel
+  connector: ConnectorModel
 ): Promise<string[]> {
   const ds = dataSourceConfigFromConnector(connector);
 

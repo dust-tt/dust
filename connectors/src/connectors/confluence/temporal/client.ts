@@ -82,7 +82,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = []
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(
       `[Confluence] Connector not found. ConnectorId: ${connectorId}`
