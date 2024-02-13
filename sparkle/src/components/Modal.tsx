@@ -29,7 +29,7 @@ const modalStyles = {
   [ModalType.Side]: {
     containerClasses: "s-h-full s-ml-auto",
     panelClasses:
-      "s-h-full s-max-h-full s-shadow-xl s-border s-border-structure-100",
+      "s-h-full s-max-h-full s-shadow-xl s-border s-border-structure-100 s-w-full s-max-w-full",
     transitionEnterFrom: "s-opacity-0 s-translate-x-16",
     transitionEnterTo: "s-opacity-100 s-translate-x-0",
     transitionLeaveFrom: "s-opacity-100 s-translate-x-0",
