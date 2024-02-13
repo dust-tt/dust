@@ -4,6 +4,7 @@ import type {
   UserType,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { getMembers } from "@app/lib/api/workspace";
@@ -174,12 +175,9 @@ export async function getAgentsRecentAuthors({
 
   const authorByUserId: Record<number, UserTypeWithWorkspaces> = (
     await getMembers(auth, {
-      userIds: Array.from(
-        new Set(Object.values(recentAuthorsIdsByAgentId).flat())
-      )
-        // Filter-out null IDs in a way that allows narrowing the type.
-        .map((id) => (id ? [id] : []))
-        .flat(),
+      userIds: removeNulls(
+        Array.from(new Set(Object.values(recentAuthorsIdsByAgentId).flat()))
+      ),
     })
   ).reduce<Record<number, UserTypeWithWorkspaces>>((acc, member) => {
     acc[member.id] = member;

@@ -69,18 +69,27 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
+  const flow =
+    context.query.flow && typeof context.query.flow === "string"
+      ? context.query.flow
+      : null;
+
   if (user.workspaces.length) {
     const message = "Unreachable: user already has a workspace.";
-    logger.error({ userId: user.id, panic: true }, message);
+    logger.error(
+      {
+        flow,
+        panic: true,
+        userId: user.id,
+        workspaceIds: user.workspaces.map((w) => w.id),
+      },
+      message
+    );
     return {
       notFound: true,
     };
   }
 
-  const flow =
-    context.query.flow && typeof context.query.flow === "string"
-      ? context.query.flow
-      : null;
   let workspace: Workspace | null = null;
   let workspaceVerifiedDomain: string | null = null;
   let status: "auto-join-disabled" | "revoked";
@@ -93,7 +102,11 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
     if (!workspace || !workspaceVerifiedDomain) {
       logger.error(
-        { userId: user.id, panic: true },
+        {
+          flow,
+          userId: user.id,
+          panic: true,
+        },
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");
@@ -104,7 +117,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
     if (!workspace) {
       logger.error(
-        { userId: user.id, panic: true },
+        { flow, userId: user.id, panic: true },
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");

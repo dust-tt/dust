@@ -24,6 +24,9 @@ export const DropdownExample = () => {
           description="This is a success notification"
           variant="error"
         />
+        <div>
+          <Notification title="Failure" variant="error" />
+        </div>
       </div>
     </>
   );

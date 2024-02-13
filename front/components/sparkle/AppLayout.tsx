@@ -16,6 +16,7 @@ import Script from "next/script";
 import { signOut } from "next-auth/react";
 import React, { Fragment, useContext, useEffect, useState } from "react";
 
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type {
   SidebarNavigation,
   TopNavigationId,
@@ -425,7 +426,7 @@ export default function AppLayout({
           {/** END Incident Banner */}
 
           <main
-            id="main-content"
+            id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "h-full overflow-x-hidden pt-16",
               titleChildren ? "" : "lg:pt-8"

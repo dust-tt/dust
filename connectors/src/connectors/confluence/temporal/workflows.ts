@@ -27,7 +27,7 @@ const {
   confluenceUpdatePagesParentIdsActivity,
   confluenceCheckAndUpsertPageActivity,
   confluenceGetActiveChildPageIdsActivity,
-  confluenceGetRootPageIdActivity,
+  confluenceGetRootPageIdsActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
 
   confluenceGetReportPersonalActionActivity,
@@ -142,43 +142,52 @@ export async function confluenceSpaceSyncWorkflow(
     return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
   }
 
-  // Get the root level page for the space.
-  const rootPageId = await confluenceGetRootPageIdActivity({
+  // Get the root level pages for the space.
+  const rootPageIds = await confluenceGetRootPageIdsActivity({
     connectorId,
     confluenceCloudId,
     spaceId,
   });
-  if (!rootPageId) {
+  if (rootPageIds.length === 0) {
     return;
   }
 
-  // Upsert the root page.
-  const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
-    ...params,
-    spaceName,
-    pageId: rootPageId,
-    visitedAtMs,
-  });
-  if (!successfullyUpsert) {
-    return;
+  const allowedRootPageIds = new Set(rootPageIds);
+
+  // Upsert the root pages.
+  for (const rootPageId of rootPageIds) {
+    const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
+      ...params,
+      spaceName,
+      pageId: rootPageId,
+      visitedAtMs,
+    });
+
+    // If the page fails the upsert operation, it indicates the page is restricted.
+    // Such pages should be excluded from the list of allowed pages.
+    if (!successfullyUpsert) {
+      allowedRootPageIds.delete(rootPageId);
+    }
   }
 
   // Fetch all top-level pages within a specified space. Top-level pages
-  // refer to those directly nested under the space's root page.
-  let nextPageCursor: string | null = "";
-  do {
-    const { topLevelPageIds, nextPageCursor: nextCursor } =
-      await confluenceGetTopLevelPageIdsActivity({
-        connectorId,
-        confluenceCloudId,
-        spaceId,
-        rootPageId,
-      });
+  // refer to those directly nested under the space's root pages.
+  for (const allowedRootPageId of allowedRootPageIds) {
+    let nextPageCursor: string | null = "";
+    do {
+      const { topLevelPageIds, nextPageCursor: nextCursor } =
+        await confluenceGetTopLevelPageIdsActivity({
+          connectorId,
+          confluenceCloudId,
+          spaceId,
+          rootPageId: allowedRootPageId,
+        });
 
-    nextPageCursor = nextCursor; // Prepare for the next iteration.
+      nextPageCursor = nextCursor; // Prepare for the next iteration.
 
-    topLevelPageIds.forEach((id) => uniqueTopLevelPageIds.add(id));
-  } while (nextPageCursor !== null);
+      topLevelPageIds.forEach((id) => uniqueTopLevelPageIds.add(id));
+    } while (nextPageCursor !== null);
+  }
 
   const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
   for (const pageId of uniqueTopLevelPageIds) {

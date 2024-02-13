@@ -84,7 +84,7 @@ export const SCOPE_INFO: Record<
     label: "Default Assistant",
     color: "slate",
     icon: DustIcon,
-    text: "Default assistant provided by Dust.",
+    text: "Default assistants provided by Dust.",
     confirmationModalData: null,
   },
 } as const;

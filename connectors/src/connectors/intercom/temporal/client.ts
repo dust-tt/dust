@@ -18,7 +18,8 @@ function getIntercomSyncWorkflowId(connectorId: ModelId) {
 export async function launchIntercomSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null,
-  helpCenterIds: string[] = []
+  helpCenterIds: string[] = [],
+  teamIds: string[] = []
 ): Promise<Result<string, Error>> {
   if (fromTs) {
     throw new Error("[Intercom] Workflow does not support fromTs.");
@@ -39,6 +40,11 @@ export async function launchIntercomSyncWorkflow(
       intercomId: helpCenterId,
     })
   );
+  const signaledTeamIds: IntercomUpdateSignal[] = teamIds.map((teamId) => ({
+    type: "team",
+    intercomId: teamId,
+  }));
+  const signals = [...signaledHelpCenterIds, ...signaledTeamIds];
 
   // When the workflow is inactive, we omit passing helpCenterIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
@@ -50,7 +56,7 @@ export async function launchIntercomSyncWorkflow(
         connectorId: [connectorId],
       },
       signal: intercomUpdatesSignal,
-      signalArgs: [signaledHelpCenterIds],
+      signalArgs: [signals],
       memo: {
         connectorId,
       },

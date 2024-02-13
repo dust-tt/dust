@@ -1,7 +1,9 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
+import { FrontApiError } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
+import { Op } from "sequelize";
 
 import { getUserFromSession } from "@app/lib/auth";
 import {
@@ -86,6 +88,184 @@ async function findWorkspaceWithVerifiedDomain(
   return workspaceWithVerifiedDomain;
 }
 
+async function createOrUpdateUser(session: any): Promise<User> {
+  const user = await User.findOne({
+    where: {
+      provider: session.provider.provider,
+      providerId: session.provider.id.toString(),
+    },
+  });
+
+  if (user) {
+    // Update the user object from the updated session information.
+    user.username = session.user.username;
+    user.name = session.user.name;
+
+    // We only update the user's email if the session is not from Google.
+    if (!isGoogleSession(session)) {
+      user.email = session.user.email;
+    }
+
+    if (!user.firstName && !user.lastName) {
+      const { firstName, lastName } = guessFirstandLastNameFromFullName(
+        session.user.name
+      );
+      user.firstName = firstName;
+      user.lastName = lastName;
+    }
+
+    await user.save();
+
+    return user;
+  } else {
+    const { firstName, lastName } = guessFirstandLastNameFromFullName(
+      session.user.name
+    );
+
+    return User.create({
+      provider: session.provider.provider,
+      providerId: session.provider.id.toString(),
+      username: session.user.username,
+      email: session.user.email,
+      name: session.user.name,
+      firstName,
+      lastName,
+    });
+  }
+}
+
+// `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
+// all the checks (decoding the JWT) have been run before. Simply create the membership if
+// it does not already exist and mark the invitation as consumed.
+async function handleMembershipInvite(
+  user: User,
+  membershipInvite: MembershipInvitation
+) {
+  if (membershipInvite.inviteEmail !== user.email) {
+    throw new FrontApiError(
+      "The invitation token is not intended for use with this email address.",
+      400,
+      "invalid_request_error"
+    );
+  }
+
+  const workspace = await Workspace.findOne({
+    where: {
+      id: membershipInvite.workspaceId,
+    },
+  });
+
+  if (!workspace) {
+    throw new FrontApiError(
+      "The invite token is invalid, please ask your admin to resend an invitation.",
+      400,
+      "invalid_request_error"
+    );
+  }
+
+  const m = await Membership.findOne({
+    where: {
+      userId: user.id,
+      workspaceId: membershipInvite.workspaceId,
+    },
+  });
+
+  if (m?.role === "revoked") {
+    throw new FrontApiError(
+      "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
+      400,
+      "invalid_request_error"
+    );
+  }
+
+  if (!m) {
+    await createAndLogMembership({
+      workspace: workspace,
+      userId: user.id,
+      role: "user",
+    });
+  }
+
+  membershipInvite.status = "consumed";
+  membershipInvite.invitedUserId = user.id;
+  await membershipInvite.save();
+
+  return workspace;
+}
+
+// Regular flow, only if the user is a newly created user.
+// Verify if there's an existing workspace with the same verified domain that allows auto-joining.
+// The user will join this workspace if it exists; otherwise, a new workspace is created.
+async function handleRegularSignupFlow(
+  session: any,
+  user: User
+): Promise<{
+  flow: "no-auto-join" | "revoked" | null;
+  workspace: Workspace | null;
+}> {
+  // If the user already has an active membership in a workspace, return early.
+  const allMemberships = await Membership.findOne({
+    where: {
+      userId: user.id,
+      role: {
+        [Op.ne]: "revoked",
+      },
+    },
+  });
+  if (allMemberships) {
+    return {
+      flow: null,
+      workspace: null,
+    };
+  }
+
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
+    session
+  );
+
+  if (workspaceWithVerifiedDomain && workspaceWithVerifiedDomain.workspace) {
+    if (workspaceWithVerifiedDomain.domainAutoJoinEnabled === false) {
+      return { flow: "no-auto-join", workspace: null };
+    }
+
+    const { workspace } = workspaceWithVerifiedDomain;
+
+    const m = await Membership.findOne({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    if (m?.role === "revoked") {
+      return { flow: "revoked", workspace: null };
+    }
+
+    if (!m) {
+      await createAndLogMembership({
+        workspace,
+        userId: user.id,
+        role: "user",
+      });
+    }
+
+    return { flow: null, workspace };
+  } else {
+    const workspace = await createWorkspace(session);
+    await createAndLogMembership({
+      workspace,
+      userId: user.id,
+      role: "admin",
+    });
+
+    await internalSubscribeWorkspaceToFreeTestPlan({
+      workspaceId: workspace.sId,
+    });
+
+    return { flow: null, workspace };
+  }
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<void>>
@@ -106,14 +286,11 @@ async function handler(
     });
   }
 
-  let isAdminOnboarding = false;
-
   const { inviteToken } = req.query;
 
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
   // `inviteToken`, meaning the user is going through the invite by email flow.
   let membershipInvite: MembershipInvitation | null = null;
-
   if (inviteToken && typeof inviteToken === "string") {
     const decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
       membershipInvitationId: number;
@@ -122,6 +299,7 @@ async function handler(
     membershipInvite = await MembershipInvitation.findOne({
       where: {
         id: decodedToken.membershipInvitationId,
+        status: "pending",
       },
     });
     if (!membershipInvite) {
@@ -134,179 +312,37 @@ async function handler(
         },
       });
     }
-    if (membershipInvite.status !== "pending") {
-      membershipInvite = null;
-    }
   }
 
   // Login flow: first step is to attempt to find the user.
-  let user = await User.findOne({
-    where: {
-      provider: session.provider.provider,
-      providerId: session.provider.id.toString(),
-    },
-  });
-
-  // The user already exists, we create memberships as needed given the value of `membershipInvite`.
-  if (user) {
-    // Update the user object from the updated session information.
-    user.username = session.user.username;
-    user.name = session.user.name;
-
-    // We only update the user's email if the session is not from Google.
-    if (!isGoogleSession(session)) {
-      user.email = session.user.email;
-    }
-
-    if (!user.firstName && !user.lastName) {
-      const { firstName, lastName } = guessFirstandLastNameFromFullName(
-        session.user.name
-      );
-      user.firstName = firstName;
-      user.lastName = lastName;
-    }
-
-    await user.save();
-  }
-
-  let autoJoinWorkspaceWithDomain: Workspace | undefined;
-
-  // Create a new user and a personal workspace if no invite or auto-join workspace is available.
-  if (!user) {
-    const { firstName, lastName } = guessFirstandLastNameFromFullName(
-      session.user.name
-    );
-
-    user = await User.create({
-      provider: session.provider.provider,
-      providerId: session.provider.id.toString(),
-      username: session.user.username,
-      email: session.user.email,
-      name: session.user.name,
-      firstName,
-      lastName,
-    });
-
-    const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
-      session
-    );
-
-    // Redirect the user to a different screen if a workspace with
-    // a verified domain exists but auto join is not enabled.
-    const workspaceHasAutoJoin =
-      workspaceWithVerifiedDomain?.domainAutoJoinEnabled === true;
-    if (workspaceHasAutoJoin) {
-      autoJoinWorkspaceWithDomain = workspaceWithVerifiedDomain.workspace;
-    } else if (workspaceWithVerifiedDomain) {
-      res.redirect("/no-workspace?flow=no-auto-join");
-      return;
-    }
-
-    // If there is no invite or no existing workspace with the email's domain,
-    // we create a personal workspace for the user, otherwise the user
-    // will be added to the workspace they were invited to (by domain) below.
-    if (!membershipInvite && !workspaceWithVerifiedDomain) {
-      const workspace = await createWorkspace(session);
-      await createAndLogMembership({
-        workspace,
-        userId: user.id,
-        role: "admin",
-      });
-
-      await internalSubscribeWorkspaceToFreeTestPlan({
-        workspaceId: workspace.sId,
-      });
-      isAdminOnboarding = true;
-    }
-  }
+  const user = await createOrUpdateUser(session);
 
   let targetWorkspace: Workspace | null = null;
+  try {
+    if (membershipInvite) {
+      targetWorkspace = await handleMembershipInvite(user, membershipInvite);
+    } else {
+      const { flow, workspace } = await handleRegularSignupFlow(session, user);
+      if (flow) {
+        res.redirect(`/no-workspace?flow=${flow}`);
+        return;
+      }
 
-  // Auto joing workspace flow, we know we can add the user to the workspace as all the checks
-  // have been run. Simply create the membership if does not already exist.
-  if (autoJoinWorkspaceWithDomain) {
-    let m = await Membership.findOne({
-      where: {
-        userId: user.id,
-        workspaceId: autoJoinWorkspaceWithDomain.id,
-      },
-    });
-
-    if (!m) {
-      m = await createAndLogMembership({
-        workspace: autoJoinWorkspaceWithDomain,
-        userId: user.id,
-        role: "user",
-      });
+      targetWorkspace = workspace;
     }
-
-    if (m.role === "revoked") {
+  } catch (err) {
+    if (err instanceof FrontApiError) {
       return apiError(req, res, {
-        status_code: 400,
+        status_code: err.statusCode,
         api_error: {
-          type: "invalid_request_error",
-          message:
-            "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
-        },
-      });
-    }
-
-    targetWorkspace = autoJoinWorkspaceWithDomain;
-  }
-
-  // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
-  // all the checkcs (decoding the JWT) have been run before. Simply create the membership if
-  // it does not already exist and mark the invitation as consumed.
-  if (membershipInvite) {
-    let m = await Membership.findOne({
-      where: {
-        userId: user.id,
-        workspaceId: membershipInvite.workspaceId,
-      },
-    });
-
-    targetWorkspace = await Workspace.findOne({
-      where: {
-        id: membershipInvite.workspaceId,
-      },
-    });
-
-    if (!targetWorkspace) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The invite token is invalid, please ask your admin to resend an invitation.",
-        },
-      });
-    }
-
-    if (!m) {
-      m = await createAndLogMembership({
-        workspace: targetWorkspace,
-        userId: user.id,
-        role: "user",
-      });
-    }
-    membershipInvite.status = "consumed";
-    membershipInvite.invitedUserId = user.id;
-    await membershipInvite.save();
-
-    if (m.role === "revoked") {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
+          type: err.type,
+          message: err.message,
         },
       });
     }
   }
 
   const u = await getUserFromSession(session);
-
   if (!u || u.workspaces.length === 0) {
     res.redirect("/no-workspace?flow=revoked");
     return;
@@ -319,11 +355,6 @@ async function handler(
       return;
     }
     res.redirect(`/w/${targetWorkspace.sId}/welcome`);
-    return;
-  }
-
-  if (isAdminOnboarding) {
-    res.redirect(`/w/${u.workspaces[0].sId}/welcome`);
     return;
   }
 

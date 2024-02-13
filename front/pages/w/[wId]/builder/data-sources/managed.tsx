@@ -13,6 +13,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -32,7 +33,6 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { githubAuth } from "@app/lib/github_auth";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -55,7 +55,8 @@ type DataSourceIntegration = {
   connector: ConnectorType | null;
   fetchConnectorError: boolean;
   fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built-dust-only" | "built";
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag: WhitelistableFeature | null;
   connectorProvider: ConnectorProvider;
   description: string;
   limitations: string | null;
@@ -166,6 +167,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       name: integration.name,
       connectorProvider: integration.connectorProvider,
       status: integration.status,
+      rollingOutFlag: integration.rollingOutFlag || null,
       description: integration.description,
       limitations: integration.limitations,
       dataSourceName: mc.dataSourceName,
@@ -209,6 +211,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
         name: integration.name,
         connectorProvider: integration.connectorProvider,
         status: integration.status,
+        rollingOutFlag: integration.rollingOutFlag || null,
         description: integration.description,
         limitations: integration.limitations,
         dataSourceName: null,
@@ -520,8 +523,9 @@ export default function DataSourcesView({
             .map((ds) => {
               const isBuilt =
                 ds.status === "built" ||
-                (ds.status === "built-dust-only" &&
-                  isDevelopmentOrDustWorkspace(owner));
+                (ds.status === "rolling_out" &&
+                  ds.rollingOutFlag &&
+                  owner.flags.includes(ds.rollingOutFlag));
               return (
                 <ContextItem
                   key={

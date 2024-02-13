@@ -276,14 +276,17 @@ const DataSourcePage = ({
   });
 
   const onDisplayDocumentSource = (documentId: string) => {
-    window.confirm(
-      "Are you sure you want to access this sensible user data? (Access will be logged)"
-    );
-    void router.push(
-      `/poke/${owner.sId}/data_sources/${
-        dataSource.name
-      }/view?documentId=${encodeURIComponent(documentId)}`
-    );
+    if (
+      window.confirm(
+        "Are you sure you want to access this sensible user data? (Access will be logged)"
+      )
+    ) {
+      void router.push(
+        `/poke/${owner.sId}/data_sources/${
+          dataSource.name
+        }/view?documentId=${encodeURIComponent(documentId)}`
+      );
+    }
   };
 
   return (
@@ -292,7 +295,25 @@ const DataSourcePage = ({
       <div className="mx-auto max-w-4xl">
         <div className="px-8 py-8"></div>
         <Page.Vertical align="stretch">
-          <Page.SectionHeader title={`${dataSource.name}`} />
+          <div className="flex flex-row gap-2">
+            <Page.SectionHeader title={`${dataSource.name}`} />
+            <div
+              className="cursor-pointer text-sm text-action-500"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Are you sure you want to access this sensible user data? (Access will be logged)"
+                  )
+                ) {
+                  void router.push(
+                    `/poke/${owner.sId}/data_sources/${dataSource.name}/search`
+                  );
+                }
+              }}
+            >
+              search
+            </div>
+          </div>
 
           {dataSource.editedByUser && dataSource.editedByUser.editedAt && (
             <div className="flex items-center gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">

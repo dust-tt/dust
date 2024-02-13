@@ -28,9 +28,6 @@ export { ContextItem };
 import { AssistantPreview } from "./components/AssistantPreview";
 export { AssistantPreview };
 
-import { AssistantPreview2 } from "./components/AssistantPreview2";
-export { AssistantPreview2 };
-
 import { Banner } from "./components/Banner";
 export { Banner };
 
