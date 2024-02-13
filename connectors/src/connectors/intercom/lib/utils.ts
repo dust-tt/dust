@@ -21,6 +21,9 @@ export function getHelpCenterArticleInternalId(
 ): string {
   return `intercom-article-${connectorId}-${articleId}`;
 }
+export function getTeamsInternalId(connectorId: ModelId): string {
+  return `intercom-teams-${connectorId}`;
+}
 export function getTeamInternalId(
   connectorId: ModelId,
   teamId: string

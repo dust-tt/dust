@@ -5,7 +5,10 @@ import {
   fetchIntercomTeams,
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
-import { getTeamInternalId } from "@connectors/connectors/intercom/lib/utils";
+import {
+  getTeamInternalId,
+  getTeamsInternalId,
+} from "@connectors/connectors/intercom/lib/utils";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { Connector } from "@connectors/lib/models";
 import { IntercomTeam } from "@connectors/lib/models/intercom";
@@ -90,55 +93,81 @@ export async function retrieveIntercomConversationsPermissions({
   const intercomClient = await getIntercomClient(connector.connectionId);
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
-  let resources: ConnectorResource[] = [];
+  const teamsInternalId = getTeamsInternalId(connectorId);
+  const resources: ConnectorResource[] = [];
 
-  // If Root level we retrieve the list of Help Centers.
+  const rootConversationRessource: ConnectorResource = {
+    provider: "intercom",
+    internalId: teamsInternalId,
+    parentInternalId: null,
+    type: "channel",
+    title: "Conversations",
+    sourceUrl: null,
+    expandable: true,
+    preventSelection: true,
+    permission: "none",
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+  };
+
+  const teamsWithReadPermission = await IntercomTeam.findAll({
+    where: {
+      connectorId: connectorId,
+      permission: "read",
+    },
+  });
+
+  // If Root level we display the fake parent "Conversations"
   // If isReadPermissionsOnly = true, we retrieve the list of Teams from DB that have permission = "read"
   // If isReadPermissionsOnly = false, we retrieve the list of Teams from Intercom
-  if (isRootLevel) {
-    const teamsFromDb = await IntercomTeam.findAll({
-      where: {
-        connectorId: connectorId,
-        permission: "read",
-      },
-    });
-
-    if (isReadPermissionsOnly) {
-      resources = teamsFromDb.map((team) => ({
-        provider: connector.type,
-        internalId: getTeamInternalId(connectorId, team.teamId),
-        parentInternalId: null,
-        type: "channel",
-        title: team.name,
-        sourceUrl: null,
-        expandable: false,
-        permission: team.permission,
-        dustDocumentId: null,
-        lastUpdatedAt: null,
-      }));
-    } else {
+  if (isReadPermissionsOnly) {
+    if (isRootLevel && teamsWithReadPermission.length > 0) {
+      resources.push(rootConversationRessource);
+    }
+    if (parentInternalId === teamsInternalId) {
+      teamsWithReadPermission.forEach((team) => {
+        resources.push({
+          provider: connector.type,
+          internalId: getTeamInternalId(connectorId, team.teamId),
+          parentInternalId: teamsInternalId,
+          type: "folder",
+          title: team.name,
+          sourceUrl: null,
+          expandable: false,
+          permission: team.permission,
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        });
+      });
+    }
+  } else {
+    if (isRootLevel) {
+      resources.push(rootConversationRessource);
+    }
+    if (parentInternalId === teamsInternalId) {
       const teams = await fetchIntercomTeams(intercomClient);
-      resources = teams.map((team) => {
-        const isTeamInDb = teamsFromDb.some((teamFromDb) => {
+      teams.forEach((team) => {
+        const isTeamInDb = teamsWithReadPermission.some((teamFromDb) => {
           return teamFromDb.teamId === team.id;
         });
-        return {
+        resources.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.id),
-          parentInternalId: null,
-          type: "channel",
+          parentInternalId: teamsInternalId,
+          type: "folder",
           title: team.name,
           sourceUrl: null,
           expandable: false,
           permission: isTeamInDb ? "read" : "none",
           dustDocumentId: null,
           lastUpdatedAt: null,
-        };
+        });
       });
     }
-    resources.sort((a, b) => {
-      return a.title.localeCompare(b.title);
-    });
   }
+  resources.sort((a, b) => {
+    return a.title.localeCompare(b.title);
+  });
+
   return resources;
 }

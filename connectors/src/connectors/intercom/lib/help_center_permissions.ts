@@ -270,11 +270,25 @@ export async function revokeSyncCollection({
       collectionId,
     },
   });
-  if (collection?.permission === "read") {
-    await collection.update({
-      permission: "none",
-    });
+
+  if (!collection) {
+    logger.warn(
+      { collectionId },
+      "[Intercom] Called revokeSyncCollection on a Collection not found."
+    );
+    return null;
   }
+  if (collection.permission === "none") {
+    logger.warn(
+      { collectionId },
+      "[Intercom] Called revokeSyncCollection on a Collection already set to permission none."
+    );
+    return null;
+  }
+
+  await collection.update({
+    permission: "none",
+  });
 
   // Revoke permission for all children collections (level 2 and level 3)
   const level2Collections = await IntercomCollection.findAll({
@@ -308,6 +322,21 @@ export async function revokeSyncCollection({
       },
     }
   );
+
+  // Revoke permission for Help Center if no more collections are allowed
+  const level1Collections = await IntercomCollection.findAll({
+    where: {
+      helpCenterId: collection.helpCenterId,
+      parentId: null,
+      permission: "read",
+    },
+  });
+  if (level1Collections.length === 0) {
+    await revokeSyncHelpCenter({
+      connector,
+      helpCenterId: collection.helpCenterId,
+    });
+  }
 
   return collection;
 }
@@ -419,6 +448,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         title: helpCenter.display_name || "Help Center",
         sourceUrl: null,
         expandable: true,
+        preventSelection: true,
         permission: "none",
         dustDocumentId: null,
         lastUpdatedAt: null,

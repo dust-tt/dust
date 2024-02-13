@@ -67,6 +67,7 @@ export type ConnectorResource = {
   title: string;
   sourceUrl: string | null;
   expandable: boolean;
+  preventSelection?: boolean;
   permission: ConnectorPermission;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
