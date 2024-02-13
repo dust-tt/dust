@@ -9,7 +9,7 @@ import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ConnectorPermission } from "@connectors/types/resources";
+import type { ConnectorPermission } from "@connectors/types/nodes";
 
 import { getSlackClient } from "./slack_client";
 

@@ -8,7 +8,7 @@ import { DataTypes, Model } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ConnectorPermission } from "@connectors/types/resources";
+import type { ConnectorPermission } from "@connectors/types/nodes";
 
 export class SlackConfiguration extends Model<
   InferAttributes<SlackConfiguration>,

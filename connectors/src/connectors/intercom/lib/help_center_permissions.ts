@@ -1,4 +1,4 @@
-import type { ConnectorResource } from "@dust-tt/types";
+import type { ConnectorNode } from "@dust-tt/types";
 import type { Client as IntercomClient } from "intercom-client";
 import { Op } from "sequelize";
 
@@ -398,7 +398,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorResource[]> {
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorNode[]> {
   const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
@@ -408,7 +408,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   const intercomClient = await getIntercomClient(connector.connectionId);
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
-  let resources: ConnectorResource[] = [];
+  let nodes: ConnectorNode[] = [];
 
   // If Root level we retrieve the list of Help Centers.
   // If isReadPermissionsOnly = true, we retrieve the list of Help Centers from DB that have permission = "read"
@@ -421,7 +421,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: "read",
         },
       });
-      resources = helpCentersFromDb.map((helpCenter) => ({
+      nodes = helpCentersFromDb.map((helpCenter) => ({
         provider: connector.type,
         internalId: getHelpCenterInternalId(
           connectorId,
@@ -440,7 +440,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       const helpCenters = await fetchIntercomHelpCenters(
         connector.connectionId
       );
-      resources = helpCenters.map((helpCenter) => ({
+      nodes = helpCenters.map((helpCenter) => ({
         provider: connector.type,
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
@@ -454,10 +454,10 @@ export async function retrieveIntercomHelpCentersPermissions({
         lastUpdatedAt: null,
       }));
     }
-    resources.sort((a, b) => {
+    nodes.sort((a, b) => {
       return a.title.localeCompare(b.title);
     });
-    return resources;
+    return nodes;
   }
 
   const helpCenterParentId = getHelpCenterIdFromInternalId(
@@ -484,7 +484,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       },
     });
     if (isReadPermissionsOnly) {
-      resources = collectionsInDb.map((collection) => ({
+      nodes = collectionsInDb.map((collection) => ({
         provider: connector.type,
         internalId: getHelpCenterCollectionInternalId(
           connectorId,
@@ -507,7 +507,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         helpCenterParentId,
         parentId
       );
-      resources = collectionsInIntercom.map((collection) => {
+      nodes = collectionsInIntercom.map((collection) => {
         const matchingCollectionInDb = collectionsInDb.find(
           (c) => c.collectionId === collection.id
         );
@@ -526,7 +526,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           type: "folder",
           title: collection.name,
           sourceUrl: collection.url,
-          expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING RESOURCES
+          expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
           permission: matchingCollectionInDb ? "read" : "none",
           dustDocumentId: null,
           lastUpdatedAt:
@@ -534,10 +534,10 @@ export async function retrieveIntercomHelpCentersPermissions({
         };
       });
     }
-    resources.sort((a, b) => {
+    nodes.sort((a, b) => {
       return a.title.localeCompare(b.title);
     });
-    return resources;
+    return nodes;
   }
 
   // If parent is a Collection we retrieve the list of Collections & articles that have this parent.
@@ -552,7 +552,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: "read",
         },
       });
-      const collectionResources: ConnectorResource[] = collectionsInDb.map(
+      const collectionNodes: ConnectorNode[] = collectionsInDb.map(
         (collection) => ({
           provider: connector.type,
           internalId: getHelpCenterCollectionInternalId(
@@ -582,44 +582,42 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: "read",
         },
       });
-      const articleResources: ConnectorResource[] = articlesInDb.map(
-        (article) => ({
-          provider: connector.type,
-          internalId: getHelpCenterArticleInternalId(
-            connectorId,
-            article.articleId
-          ),
-          parentInternalId: article.parentId
-            ? getHelpCenterArticleInternalId(connectorId, article.parentId)
-            : null,
-          type: "file",
-          title: article.title,
-          sourceUrl: article.url,
-          expandable: false,
-          permission: article.permission,
-          dustDocumentId: null,
-          lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
-        })
-      );
+      const articleNodes: ConnectorNode[] = articlesInDb.map((article) => ({
+        provider: connector.type,
+        internalId: getHelpCenterArticleInternalId(
+          connectorId,
+          article.articleId
+        ),
+        parentInternalId: article.parentId
+          ? getHelpCenterArticleInternalId(connectorId, article.parentId)
+          : null,
+        type: "file",
+        title: article.title,
+        sourceUrl: article.url,
+        expandable: false,
+        permission: article.permission,
+        dustDocumentId: null,
+        lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
+      }));
 
-      collectionResources.sort((a, b) => {
+      collectionNodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
       });
-      articleResources.sort((a, b) => {
+      articleNodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
       });
-      resources = [...collectionResources, ...articleResources];
+      nodes = [...collectionNodes, ...articleNodes];
     } else {
       logger.error(
         { connectorId, parentInternalId },
         "Trying to retrieve children of a collection while permissions are limited to level 1 collections only."
       );
     }
-    resources.sort((a, b) => {
+    nodes.sort((a, b) => {
       return a.title.localeCompare(b.title);
     });
-    return resources;
+    return nodes;
   }
 
-  return resources;
+  return nodes;
 }

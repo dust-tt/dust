@@ -20,11 +20,6 @@ import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import type {
-  ConnectorPermission,
-  ConnectorResource,
-  ConnectorResourceType,
-} from "@connectors/types/resources";
 
 import {
   driveObjectToDustType,
@@ -41,7 +36,13 @@ import {
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
-import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  ConnectorNodeType,
+  ConnectorPermission,
+  ConnectorsAPIError,
+  ModelId,
+} from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -356,7 +357,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   const c = await ConnectorModel.findOne({
     where: {
@@ -377,9 +378,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const folderAsConnectorResources = await concurrentExecutor(
+      const folderAsConnectorNodes = await concurrentExecutor(
         folders,
-        async (f): Promise<ConnectorResource | null> => {
+        async (f): Promise<ConnectorNode | null> => {
           const fd = await getGoogleDriveObject(authCredentials, f.folderId);
           if (!fd) {
             return null;
@@ -407,13 +408,13 @@ export async function retrieveGoogleDriveConnectorPermissions({
         { concurrency: 4 }
       );
 
-      const resources = removeNulls(folderAsConnectorResources);
+      const nodes = removeNulls(folderAsConnectorNodes);
 
-      resources.sort((a, b) => {
+      nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
       });
 
-      return new Ok(resources);
+      return new Ok(nodes);
     } else {
       // Return the list of all folders and files synced in a parent folder.
       const folderOrFiles = await GoogleDriveFiles.findAll({
@@ -423,9 +424,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const resources = await concurrentExecutor(
+      const nodes = await concurrentExecutor(
         folderOrFiles,
-        async (f): Promise<ConnectorResource> => {
+        async (f): Promise<ConnectorNode> => {
           return {
             provider: c.type,
             internalId: f.driveFileId,
@@ -455,23 +456,23 @@ export async function retrieveGoogleDriveConnectorPermissions({
         { concurrency: 4 }
       );
 
-      // Sorting resources, folders first then alphabetically.
-      resources.sort((a, b) => {
+      // Sorting nodes, folders first then alphabetically.
+      nodes.sort((a, b) => {
         if (a.type !== b.type) {
           return a.type === "folder" ? -1 : 1;
         }
         return a.title.localeCompare(b.title);
       });
 
-      return new Ok(resources);
+      return new Ok(nodes);
     }
   } else if (filterPermission === null) {
     if (parentInternalId === null) {
       // Return the list of remote shared drives.
       const drives = await getDrivesIds(c.id);
 
-      const resources: ConnectorResource[] = await Promise.all(
-        drives.map(async (d): Promise<ConnectorResource> => {
+      const nodes: ConnectorNode[] = await Promise.all(
+        drives.map(async (d): Promise<ConnectorNode> => {
           const driveObject = await getGoogleDriveObject(authCredentials, d.id);
           if (!driveObject) {
             throw new Error(`Drive ${d.id} unexpectedly not found (got 404).`);
@@ -480,7 +481,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             provider: c.type,
             internalId: driveObject.id,
             parentInternalId: driveObject.parent,
-            type: "folder" as ConnectorResourceType,
+            type: "folder" as ConnectorNodeType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
             dustDocumentId: null,
@@ -498,11 +499,11 @@ export async function retrieveGoogleDriveConnectorPermissions({
         })
       );
 
-      resources.sort((a, b) => {
+      nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
       });
 
-      return new Ok(resources);
+      return new Ok(nodes);
     } else {
       // Return the list of remote folders inside a parent folder.
       const drive = await getDriveClient(authCredentials);
@@ -534,15 +535,15 @@ export async function retrieveGoogleDriveConnectorPermissions({
         nextPageToken = res.data.nextPageToken || undefined;
       } while (nextPageToken);
 
-      const resources: ConnectorResource[] = await Promise.all(
-        remoteFolders.map(async (rf): Promise<ConnectorResource> => {
+      const nodes: ConnectorNode[] = await Promise.all(
+        remoteFolders.map(async (rf): Promise<ConnectorNode> => {
           const driveObject = await driveObjectToDustType(rf, authCredentials);
 
           return {
             provider: c.type,
             internalId: driveObject.id,
             parentInternalId: driveObject.parent,
-            type: "folder" as ConnectorResourceType,
+            type: "folder" as ConnectorNodeType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
             expandable: await folderHasChildren(connectorId, driveObject.id),
@@ -560,11 +561,11 @@ export async function retrieveGoogleDriveConnectorPermissions({
         })
       );
 
-      resources.sort((a, b) => {
+      nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
       });
 
-      return new Ok(resources);
+      return new Ok(nodes);
     }
   } else {
     return new Err(new Error(`Invalid permission: ${filterPermission}`));
@@ -597,7 +598,7 @@ export async function setGoogleDriveConnectorPermissions(
       });
     } else {
       return new Err(
-        new Error(`Invalid permission ${permission} for resource ${id}`)
+        new Error(`Invalid permission ${permission} for node ${id}`)
       );
     }
   }

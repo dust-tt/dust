@@ -20,7 +20,7 @@ import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSe
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
-import type { GetConnectorResourceParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
+import type { GetConnectorNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,
@@ -227,7 +227,7 @@ function DataSourceResourceSelector({
       if (!res.ok) {
         throw new Error("Failed to fetch parents");
       }
-      const json: GetConnectorResourceParentsResponseBody = await res.json();
+      const json: GetConnectorNodeParentsResponseBody = await res.json();
       setParentsById(
         json.resources.reduce((acc, r) => {
           acc[r.internalId] = new Set(r.parents);

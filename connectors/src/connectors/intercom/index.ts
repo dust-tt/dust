@@ -1,4 +1,5 @@
 import type {
+  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
   ModelId,
@@ -53,7 +54,6 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import type { ConnectorResource } from "@connectors/types/resources";
 
 const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 
@@ -297,7 +297,7 @@ export async function retrieveIntercomConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
@@ -306,18 +306,18 @@ export async function retrieveIntercomConnectorPermissions({
   }
 
   try {
-    const helpCenterResources = await retrieveIntercomHelpCentersPermissions({
+    const helpCenterNodes = await retrieveIntercomHelpCentersPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
     });
-    const convosResources = await retrieveIntercomConversationsPermissions({
+    const convosNodes = await retrieveIntercomConversationsPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
     });
-    const resources = [...helpCenterResources, ...convosResources];
-    return new Ok(resources);
+    const nodes = [...helpCenterNodes, ...convosNodes];
+    return new Ok(nodes);
   } catch (e) {
     return new Err(e as Error);
   }
@@ -437,7 +437,7 @@ export async function setIntercomConnectorPermissions(
   }
 }
 
-export async function retrieveIntercomResourcesTitles(
+export async function retrieveIntercomNodesTitles(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<Record<string, string | null>, Error>> {

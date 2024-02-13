@@ -1,4 +1,6 @@
 import type {
+  ConnectorNode,
+  ConnectorPermission,
   ConnectorsAPIError,
   CreateConnectorUrlRequestBody,
   ModelId,
@@ -6,10 +8,6 @@ import type {
 
 import type { Result } from "@connectors/lib/result";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
 
 export type ConnectorCreatorOAuth = (
   dataSourceConfig: DataSourceConfig,
@@ -51,7 +49,7 @@ export type ConnectorPermissionRetriever = (params: {
   connectorId: ModelId;
   parentInternalId: string | null;
   filterPermission: ConnectorPermission | null;
-}) => Promise<Result<ConnectorResource[], Error>>;
+}) => Promise<Result<ConnectorNode[], Error>>;
 
 export type ConnectorPermissionSetter = (
   connectorId: ModelId,
@@ -64,7 +62,7 @@ export type ConnectorBatchResourceTitleRetriever = (
   internalIds: string[]
 ) => Promise<Result<Record<string, string | null>, Error>>;
 
-export type ConnectorResourceParentsRetriever = (
+export type ConnectorNodeParentsRetriever = (
   connectorId: ModelId,
   internalId: string,
   memoizationKey?: string

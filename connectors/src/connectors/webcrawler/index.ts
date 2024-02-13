@@ -1,5 +1,5 @@
 import type {
-  ConnectorResource,
+  ConnectorNode,
   CreateConnectorUrlRequestBody,
   ModelId,
 } from "@dust-tt/types";
@@ -81,7 +81,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
@@ -137,7 +137,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
     folders
       // We don't want to show folders that are also pages.
       .filter((f) => !excludedFoldersSet.has(f.url))
-      .map((folder): ConnectorResource => {
+      .map((folder): ConnectorNode => {
         return {
           provider: "webcrawler",
           internalId: folder.internalId,
@@ -161,7 +161,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
         };
       })
       .concat(
-        pages.map((page): ConnectorResource => {
+        pages.map((page): ConnectorNode => {
           const isFileAndFolder = excludedFoldersSet.has(
             normalizeFolderUrl(page.url)
           );
