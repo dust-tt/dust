@@ -25,7 +25,6 @@ import {
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import { notifyIfSlackUserIsNotAllowed } from "@connectors/connectors/slack/lib/workspace_limits";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
 import {
   SlackChannel,
   SlackChatBotMessage,
@@ -34,6 +33,7 @@ import {
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import {
   formatMessagesForUpsert,
@@ -74,7 +74,7 @@ export async function botAnswerMessageWithErrorHandling(
       )
     );
   }
-  const connector = await Connector.findByPk(slackConfig.connectorId);
+  const connector = await ConnectorModel.findByPk(slackConfig.connectorId);
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
@@ -153,7 +153,7 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null,
-  connector: Connector,
+  connector: ConnectorModel,
   slackConfig: SlackConfiguration
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
@@ -655,7 +655,7 @@ async function makeContentFragment(
   threadTs: string,
   startingAtTs: string | null,
   slackChatBotMessage: SlackChatBotMessage,
-  connector: Connector
+  connector: ConnectorModel
 ): Promise<
   Result<
     t.TypeOf<typeof PublicPostContentFragmentRequestBodySchema> | null,

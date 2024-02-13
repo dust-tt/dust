@@ -32,13 +32,13 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import type { WorkflowError } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
@@ -153,7 +153,7 @@ export async function syncChannel(
   weeksSynced: Record<number, boolean>,
   messagesCursor?: string
 ): Promise<SyncChannelRes | undefined> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -353,7 +353,7 @@ export async function syncNonThreaded(
   connectorId: ModelId,
   isBatchSync = false
 ) {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -535,7 +535,7 @@ export async function syncThread(
   connectorId: ModelId,
   isBatchSync = false
 ) {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -924,7 +924,7 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
   const maxMessages = 1000;
   let nbDeleted = 0;
 
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Could not find connector ${connectorId}`);
   }

@@ -6,8 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ConnectorPermission } from "@connectors/types/resources";
 
 export class SlackConfiguration extends Model<
@@ -19,7 +19,7 @@ export class SlackConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
   declare botEnabled: boolean;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare whitelistedDomains?: readonly string[];
 }
 SlackConfiguration.init(
@@ -67,7 +67,7 @@ SlackConfiguration.init(
     modelName: "slack_configurations",
   }
 );
-Connector.hasOne(SlackConfiguration);
+ConnectorModel.hasOne(SlackConfiguration);
 
 export class SlackMessages extends Model<
   InferAttributes<SlackMessages>,
@@ -76,7 +76,7 @@ export class SlackMessages extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
@@ -123,7 +123,7 @@ SlackMessages.init(
     ],
   }
 );
-Connector.hasOne(SlackMessages);
+ConnectorModel.hasOne(SlackMessages);
 
 export class SlackChannel extends Model<
   InferAttributes<SlackChannel>,
@@ -133,7 +133,7 @@ export class SlackChannel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackChannelId: string;
   declare slackChannelName: string;
 
@@ -188,7 +188,7 @@ SlackChannel.init(
     ],
   }
 );
-Connector.hasMany(SlackChannel);
+ConnectorModel.hasMany(SlackChannel);
 
 export class SlackChatBotMessage extends Model<
   InferAttributes<SlackChatBotMessage>,
@@ -197,7 +197,7 @@ export class SlackChatBotMessage extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare channelId: string;
   declare message: string;
   declare slackUserId: string;
@@ -289,4 +289,4 @@ SlackChatBotMessage.init(
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
 );
-Connector.hasOne(SlackChatBotMessage);
+ConnectorModel.hasOne(SlackChatBotMessage);

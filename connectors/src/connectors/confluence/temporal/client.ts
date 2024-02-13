@@ -19,9 +19,9 @@ import {
   confluenceRemoveSpacesWorkflow,
   confluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
-import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { isScheduleAlreadyRunning } from "@connectors/types/errors";
 
 export async function launchConfluenceSyncWorkflow(
@@ -34,7 +34,7 @@ export async function launchConfluenceSyncWorkflow(
     throw new Error("[Confluence] Workflow does not support fromTs.");
   }
 
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(
       `[Confluence] Connector not found. ConnectorId: ${connectorId}`
@@ -82,7 +82,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
   connectorId: ModelId,
   spaceIds: string[] = []
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(
       `[Confluence] Connector not found. ConnectorId: ${connectorId}`
@@ -127,7 +127,7 @@ export async function stopConfluenceSyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(
       `[Confluence] Connector not found. ConnectorId: ${connectorId}`

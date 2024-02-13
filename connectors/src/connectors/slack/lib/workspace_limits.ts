@@ -8,12 +8,14 @@ import type {
 
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import type { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
 
-async function getActiveMemberEmails(connector: Connector): Promise<string[]> {
+async function getActiveMemberEmails(
+  connector: ConnectorModel
+): Promise<string[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
   // List the emails of all active members in the workspace.
@@ -41,7 +43,7 @@ async function getActiveMemberEmails(connector: Connector): Promise<string[]> {
 
 export const getActiveMemberEmailsMemoized = cacheWithRedis(
   getActiveMemberEmails,
-  (connector: Connector) => {
+  (connector: ConnectorModel) => {
     return `active-member-emails-connector-${connector.id}`;
   },
   // Caches data for 15 minutes to limit frequent API calls.
@@ -50,7 +52,7 @@ export const getActiveMemberEmailsMemoized = cacheWithRedis(
 );
 
 async function getVerifiedDomainsForWorkspace(
-  connector: Connector
+  connector: ConnectorModel
 ): Promise<WorkspaceDomain[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
@@ -78,7 +80,7 @@ async function getVerifiedDomainsForWorkspace(
 
 export const getVerifiedDomainsForWorkspaceMemoized = cacheWithRedis(
   getVerifiedDomainsForWorkspace,
-  (connector: Connector) => {
+  (connector: ConnectorModel) => {
     return `workspace-verified-domains-${connector.id}`;
   },
   // Caches data for 15 minutes to limit frequent API calls.
@@ -99,7 +101,7 @@ function getSlackUserEmailDomainFromProfile(
 }
 
 async function isAutoJoinEnabledForDomain(
-  connector: Connector,
+  connector: ConnectorModel,
   slackUserInfo: UsersInfoResponse
 ): Promise<boolean> {
   const { user } = slackUserInfo;
@@ -162,7 +164,7 @@ const slackMembershipAccessBlocks = {
 };
 
 async function postMessageForUnhautorizedUser(
-  connector: Connector,
+  connector: ConnectorModel,
   slackClient: WebClient,
   slackUserInfo: UsersInfoResponse,
   slackInfos: SlackInfos
@@ -187,7 +189,7 @@ async function postMessageForUnhautorizedUser(
 }
 
 export async function isActiveMemberOfWorkspace(
-  connector: Connector,
+  connector: ConnectorModel,
   slackUserEmail: string | undefined
 ) {
   if (!slackUserEmail) {
@@ -252,7 +254,7 @@ async function isExternalUserAllowed(
 }
 
 async function isUserAllowed(
-  connector: Connector,
+  connector: ConnectorModel,
   profile: Profile,
   whitelistedDomains?: readonly string[]
 ) {
@@ -279,7 +281,7 @@ async function isUserAllowed(
 
 async function isSlackUserAllowed(
   user: User,
-  connector: Connector,
+  connector: ConnectorModel,
   slackClient: WebClient,
   slackInfos: SlackInfos,
   whitelistedDomains?: readonly string[]
@@ -316,7 +318,7 @@ async function isSlackUserAllowed(
 }
 
 export async function notifyIfSlackUserIsNotAllowed(
-  connector: Connector,
+  connector: ConnectorModel,
   slackClient: WebClient,
   slackUserInfo: UsersInfoResponse,
   slackInfos: SlackInfos,

@@ -7,7 +7,6 @@ import {
   registerWebhook,
 } from "@connectors/connectors/google_drive/lib";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector } from "@connectors/lib/models";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -19,6 +18,7 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type {
   ConnectorPermission,
@@ -61,7 +61,7 @@ export async function createGoogleDriveConnector(
 ): Promise<Result<string, Error>> {
   try {
     const connector = await sequelizeConnection.transaction(
-      async (t): Promise<Connector> => {
+      async (t): Promise<ConnectorModel> => {
         if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
           throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
         }
@@ -107,7 +107,7 @@ export async function createGoogleDriveConnector(
             );
           });
 
-        const connector = await Connector.create(
+        const connector = await ConnectorModel.create(
           {
             type: "google_drive",
             connectionId: nangoConnectionId,
@@ -170,7 +170,7 @@ export async function updateGoogleDriveConnector(
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID not set");
   }
 
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -246,7 +246,7 @@ export async function cleanupGoogleDriveConnector(
   force = false
 ): Promise<Result<undefined, Error>> {
   return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await Connector.findByPk(connectorId, {
+    const connector = await ConnectorModel.findByPk(connectorId, {
       transaction: transaction,
     });
     if (!connector) {
@@ -358,7 +358,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -575,7 +575,7 @@ export async function setGoogleDriveConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
@@ -646,7 +646,7 @@ export async function getGoogleDriveConfig(
   connectorId: ModelId,
   configKey: string
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { id: connectorId },
   });
   if (!connector) {
@@ -674,7 +674,7 @@ export async function setGoogleDriveConfig(
   configKey: string,
   configValue: string
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { id: connectorId },
   });
   if (!connector) {
@@ -717,7 +717,7 @@ export async function setGoogleDriveConfig(
 }
 
 export async function googleDriveGarbageCollect(connectorId: ModelId) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { id: connectorId },
   });
   if (!connector) {

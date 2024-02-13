@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
-import { Connector } from "@connectors/lib/models";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
   if (!process.argv[2]) {
@@ -23,7 +23,7 @@ async function main() {
   );
   if (process.argv[2] === "all") {
     // get all connectors that are not done yet
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "notion",
         id: {
@@ -32,7 +32,7 @@ async function main() {
       },
     });
   } else {
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "notion",
         workspaceId: process.argv[2],
@@ -53,7 +53,7 @@ async function main() {
   }
 }
 
-async function updateParentsFieldForConnector(connector: Connector) {
+async function updateParentsFieldForConnector(connector: ConnectorModel) {
   // get all pages and databases for this connector
   const pages = await NotionPage.findAll({
     where: {

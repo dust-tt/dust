@@ -2,8 +2,8 @@ import { Sequelize } from "sequelize";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 // To be run from connectors with `CORE_DATABASE_URI` and `FRONT_DATABASE_URI` set.
 const { CORE_DATABASE_URI, FRONT_DATABASE_URI, LIVE = false } = process.env;
@@ -16,7 +16,7 @@ async function main() {
     logging: false,
   });
 
-  const gDriveConnectors = await Connector.findAll({
+  const gDriveConnectors = await ConnectorModel.findAll({
     where: {
       type: "google_drive",
     },
@@ -116,7 +116,7 @@ async function main() {
   }
 }
 
-async function deleteDocument(connector: Connector, fileId: string) {
+async function deleteDocument(connector: ConnectorModel, fileId: string) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   await deleteFromDataSource(dataSourceConfig, fileId);
 }

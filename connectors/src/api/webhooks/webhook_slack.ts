@@ -8,12 +8,12 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Connector } from "@connectors/lib/models";
 import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
 import { Ok } from "@connectors/lib/result";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -197,7 +197,9 @@ const _webhookSlackAPIHandler = async (
               status_code: 404,
             });
           }
-          const connector = await Connector.findByPk(slackConfig.connectorId);
+          const connector = await ConnectorModel.findByPk(
+            slackConfig.connectorId
+          );
           if (!connector) {
             return apiError(req, res, {
               api_error: {

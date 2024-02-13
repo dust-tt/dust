@@ -2,8 +2,8 @@ import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import { Connector } from "@connectors/lib/models";
 import { withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type GetSyncStatusRes = WithConnectorsAPIErrorReponse<{ workflowId: string }>;
 
@@ -22,7 +22,7 @@ const _syncConnectorAPIHandler = async (
     return;
   }
 
-  const connector = await Connector.findByPk(req.params.connector_id);
+  const connector = await ConnectorModel.findByPk(req.params.connector_id);
   if (!connector) {
     res.status(404).send({
       error: {

@@ -10,8 +10,8 @@ import type {
   NotionBlockType,
   PageObjectProperties,
 } from "@connectors/connectors/notion/lib/types";
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export class NotionConnectorState extends Model<
   InferAttributes<NotionConnectorState>,
@@ -26,7 +26,7 @@ export class NotionConnectorState extends Model<
 
   declare lastGarbageCollectionFinishTime?: Date;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorState.init(
   {
@@ -64,7 +64,7 @@ NotionConnectorState.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-Connector.hasOne(NotionConnectorState);
+ConnectorModel.hasOne(NotionConnectorState);
 
 export class NotionPage extends Model<
   InferAttributes<NotionPage>,
@@ -87,7 +87,7 @@ export class NotionPage extends Model<
   declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
 
-  declare connectorId: ForeignKey<Connector["id"]> | null;
+  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 NotionPage.init(
   {
@@ -163,7 +163,7 @@ NotionPage.init(
     modelName: "notion_pages",
   }
 );
-Connector.hasMany(NotionPage);
+ConnectorModel.hasMany(NotionPage);
 
 export class NotionDatabase extends Model<
   InferAttributes<NotionDatabase>,
@@ -186,7 +186,7 @@ export class NotionDatabase extends Model<
   declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
 
-  declare connectorId: ForeignKey<Connector["id"]> | null;
+  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 NotionDatabase.init(
   {
@@ -263,7 +263,7 @@ NotionDatabase.init(
     modelName: "notion_databases",
   }
 );
-Connector.hasMany(NotionDatabase);
+ConnectorModel.hasMany(NotionDatabase);
 
 export class NotionConnectorPageCacheEntry extends Model<
   InferAttributes<NotionConnectorPageCacheEntry>,
@@ -286,7 +286,7 @@ export class NotionConnectorPageCacheEntry extends Model<
 
   declare workflowId: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorPageCacheEntry.init(
   {
@@ -366,7 +366,7 @@ NotionConnectorPageCacheEntry.init(
     ],
   }
 );
-Connector.hasMany(NotionConnectorPageCacheEntry);
+ConnectorModel.hasMany(NotionConnectorPageCacheEntry);
 
 export class NotionConnectorBlockCacheEntry extends Model<
   InferAttributes<NotionConnectorBlockCacheEntry>,
@@ -388,7 +388,7 @@ export class NotionConnectorBlockCacheEntry extends Model<
 
   declare workflowId: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorBlockCacheEntry.init(
   {
@@ -456,7 +456,7 @@ NotionConnectorBlockCacheEntry.init(
     ],
   }
 );
-Connector.hasMany(NotionConnectorBlockCacheEntry);
+ConnectorModel.hasMany(NotionConnectorBlockCacheEntry);
 
 export class NotionConnectorResourcesToCheckCacheEntry extends Model<
   InferAttributes<NotionConnectorResourcesToCheckCacheEntry>,
@@ -471,7 +471,7 @@ export class NotionConnectorResourcesToCheckCacheEntry extends Model<
 
   declare workflowId: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 NotionConnectorResourcesToCheckCacheEntry.init(
   {
@@ -517,4 +517,4 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     ],
   }
 );
-Connector.hasMany(NotionConnectorResourcesToCheckCacheEntry);
+ConnectorModel.hasMany(NotionConnectorResourcesToCheckCacheEntry);

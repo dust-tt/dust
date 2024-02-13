@@ -8,10 +8,10 @@ import { Op } from "sequelize";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import { getBlockParentMemoized } from "@connectors/connectors/notion/lib/notion_api";
-import { Connector } from "@connectors/lib/models";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { nango_client } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const logger = mainLogger.child({
   migration: "20230828_notion_block_parents",
@@ -49,7 +49,7 @@ async function main() {
     ] as number[])
   );
 
-  const connectors = await Connector.findAll({
+  const connectors = await ConnectorModel.findAll({
     where: {
       id: connectorIds,
     },

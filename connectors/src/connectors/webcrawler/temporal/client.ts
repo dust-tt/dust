@@ -3,9 +3,9 @@ import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { Connector } from "@connectors/lib/models";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { QUEUE_NAME } from "./config";
 import { crawlWebsiteWorkflow, crawlWebsiteWorkflowId } from "./workflows";
@@ -13,7 +13,7 @@ import { crawlWebsiteWorkflow, crawlWebsiteWorkflowId } from "./workflows";
 export async function launchCrawlWebsiteWorkflow(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }

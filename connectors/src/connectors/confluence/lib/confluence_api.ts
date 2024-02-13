@@ -2,9 +2,9 @@ import type { ModelId } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
-import type { Connector } from "@connectors/lib/models";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 
@@ -37,7 +37,7 @@ async function fetchConfluenceConfiguration(connectorId: ModelId) {
 }
 
 export async function listConfluenceSpaces(
-  connector: Connector,
+  connector: ConnectorModel,
   confluenceConfig?: ConfluenceConfiguration
 ) {
   const { id: connectorId, connectionId } = connector;

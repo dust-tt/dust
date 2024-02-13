@@ -27,7 +27,6 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { isNotFoundError } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -36,6 +35,7 @@ import {
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({
@@ -58,7 +58,7 @@ async function getConfluenceAccessToken(connectionId: string) {
 }
 
 async function fetchConfluenceConnector(connectorId: ModelId) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "confluence",
       id: connectorId,
@@ -77,14 +77,14 @@ async function getConfluenceClient(config: {
 }): Promise<ConfluenceClient>;
 async function getConfluenceClient(
   config: { cloudId?: string },
-  connector: Connector
+  connector: ConnectorModel
 ): Promise<ConfluenceClient>;
 async function getConfluenceClient(
   config: {
     cloudId?: string;
     connectorId?: ModelId;
   },
-  connector?: Connector
+  connector?: ConnectorModel
 ) {
   const { cloudId, connectorId } = config;
 

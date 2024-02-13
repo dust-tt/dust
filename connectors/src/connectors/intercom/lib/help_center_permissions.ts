@@ -19,13 +19,13 @@ import {
   getHelpCenterInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector } from "@connectors/lib/models";
 import {
   IntercomArticle,
   IntercomCollection,
   IntercomHelpCenter,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 // A Help Center contains collections and articles:
 // - Level 1: Collections (parent_id is null)
@@ -45,7 +45,7 @@ export async function allowSyncHelpCenter({
   helpCenterId,
   withChildren = false,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   intercomClient: IntercomClient;
   helpCenterId: string;
   withChildren?: boolean;
@@ -111,7 +111,7 @@ export async function revokeSyncHelpCenter({
   connector,
   helpCenterId,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   helpCenterId: string;
 }): Promise<IntercomHelpCenter | null> {
   const helpCenter = await IntercomHelpCenter.findOne({
@@ -171,7 +171,7 @@ export async function allowSyncCollection({
   intercomClient,
   collectionId,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   intercomClient: IntercomClient;
   collectionId: string;
 }): Promise<IntercomCollection | null> {
@@ -260,7 +260,7 @@ export async function revokeSyncCollection({
   connector,
   collectionId,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   collectionId: string;
 }): Promise<IntercomCollection | null> {
   // Revoke permission for this level 1 collection
@@ -349,7 +349,7 @@ export async function allowSyncArticle({
   intercomClient,
   articleId,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   intercomClient: IntercomClient;
   articleId: string;
 }): Promise<IntercomArticle | null> {
@@ -399,7 +399,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorResource[]> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     throw new Error("Connector not found");

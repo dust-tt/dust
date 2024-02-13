@@ -12,9 +12,9 @@ import { DataTypes, Model } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 
-export class Connector extends Model<
-  InferAttributes<Connector>,
-  InferCreationAttributes<Connector>
+export class ConnectorModel extends Model<
+  InferAttributes<ConnectorModel>,
+  InferCreationAttributes<ConnectorModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -36,7 +36,7 @@ export class Connector extends Model<
   declare lastGCTime: Date | null;
 }
 
-Connector.init(
+ConnectorModel.init(
   {
     id: {
       type: DataTypes.INTEGER,

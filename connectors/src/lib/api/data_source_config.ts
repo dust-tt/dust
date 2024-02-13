@@ -1,8 +1,8 @@
-import type { Connector } from "@connectors/lib/models";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export function dataSourceConfigFromConnector(
-  connector: Connector
+  connector: ConnectorModel
 ): DataSourceConfig {
   return {
     workspaceAPIKey: connector.workspaceAPIKey,

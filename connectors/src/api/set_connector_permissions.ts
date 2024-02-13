@@ -5,8 +5,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { SET_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
-import { Connector } from "@connectors/lib/models";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type SetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
   success: true;
@@ -64,7 +64,7 @@ const _setConnectorPermissions = async (
 
   const { resources } = bodyValidation.right;
 
-  const connector = await Connector.findByPk(req.params.connector_id);
+  const connector = await ConnectorModel.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       status_code: 404,

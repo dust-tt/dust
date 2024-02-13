@@ -10,15 +10,15 @@ import {
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector } from "@connectors/lib/models";
 import { IntercomTeam } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export async function allowSyncTeam({
   connector,
   teamId,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   teamId: string;
 }): Promise<IntercomTeam> {
   let team = await IntercomTeam.findOne({
@@ -62,7 +62,7 @@ export async function revokeSyncTeam({
   connector,
   teamId,
 }: {
-  connector: Connector;
+  connector: ConnectorModel;
   teamId: string;
 }): Promise<IntercomTeam | null> {
   const team = await IntercomTeam.findOne({
@@ -84,7 +84,7 @@ export async function retrieveIntercomConversationsPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorResource[]> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     throw new Error("Connector not found");

@@ -6,8 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export class GoogleDriveConfig extends Model<
   InferAttributes<GoogleDriveConfig>,
@@ -16,7 +16,7 @@ export class GoogleDriveConfig extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare pdfEnabled: boolean;
 }
 GoogleDriveConfig.init(
@@ -61,7 +61,7 @@ export class GoogleDriveFolders extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare folderId: string;
 }
 GoogleDriveFolders.init(
@@ -96,7 +96,7 @@ GoogleDriveFolders.init(
     indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
   }
 );
-Connector.hasOne(GoogleDriveFolders);
+ConnectorModel.hasOne(GoogleDriveFolders);
 // GoogleDriveFiles stores files and folders synced from Google Drive.
 
 export class GoogleDriveFiles extends Model<
@@ -109,7 +109,7 @@ export class GoogleDriveFiles extends Model<
   declare lastSeenTs: Date | null;
   declare lastUpsertedTs: Date | null;
   declare skipReason: string | null;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare dustFileId: string;
   declare driveFileId: string;
   declare name: string;
@@ -181,7 +181,7 @@ GoogleDriveFiles.init(
     ],
   }
 );
-Connector.hasOne(GoogleDriveFiles);
+ConnectorModel.hasOne(GoogleDriveFiles);
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
 
@@ -194,7 +194,7 @@ export class GoogleDriveSyncToken extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare driveId: string;
   declare syncToken: string;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GoogleDriveSyncToken.init(
   {
@@ -232,7 +232,7 @@ GoogleDriveSyncToken.init(
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }
 );
-Connector.hasOne(GoogleDriveSyncToken);
+ConnectorModel.hasOne(GoogleDriveSyncToken);
 
 export class GoogleDriveWebhook extends Model<
   InferAttributes<GoogleDriveWebhook>,
@@ -245,7 +245,7 @@ export class GoogleDriveWebhook extends Model<
   declare renewedByWebhookId: string | null;
   declare expiresAt: Date;
   declare renewAt: Date | null;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GoogleDriveWebhook.init(
   {
@@ -296,4 +296,4 @@ GoogleDriveWebhook.init(
     ],
   }
 );
-Connector.hasOne(GoogleDriveWebhook);
+ConnectorModel.hasOne(GoogleDriveWebhook);

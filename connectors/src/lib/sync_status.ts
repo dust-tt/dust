@@ -4,9 +4,9 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 
-import { Connector } from "@connectors/lib/models";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function syncFinished({
   connectorId,
@@ -19,7 +19,7 @@ async function syncFinished({
   finishedAt: Date;
   errorType: ConnectorErrorType | null;
 }): Promise<Result<void, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
@@ -42,7 +42,7 @@ export async function reportInitialSyncProgress(
   connectorId: ModelId,
   progress: string
 ) {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
@@ -98,7 +98,7 @@ export async function syncStarted(connectorId: ModelId, startedAt?: Date) {
   if (!startedAt) {
     startedAt = new Date();
   }
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }

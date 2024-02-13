@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Op } from "sequelize";
 
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
 import { SlackMessages } from "@connectors/lib/models/slack";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
   if (!process.argv[2]) {
@@ -24,7 +24,7 @@ async function main() {
   );
   if (process.argv[2] === "all") {
     // get all connectors that are not done yet
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "slack",
         id: {
@@ -33,7 +33,7 @@ async function main() {
       },
     });
   } else {
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "slack",
         workspaceId: process.argv[2],
@@ -54,7 +54,7 @@ async function main() {
   }
 }
 
-async function updateParentsFieldForConnector(connector: Connector) {
+async function updateParentsFieldForConnector(connector: ConnectorModel) {
   // get all distinct documentIds and their channel ids from slack messages in
   // this connector
   const documentIdsAndChannels = await SlackMessages.findAll({

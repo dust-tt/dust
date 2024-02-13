@@ -6,8 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export class ConfluenceConfiguration extends Model<
   InferAttributes<ConfluenceConfiguration>,
@@ -21,7 +21,7 @@ export class ConfluenceConfiguration extends Model<
   declare url: string;
   declare userAccountId: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 ConfluenceConfiguration.init(
   {
@@ -62,7 +62,7 @@ ConfluenceConfiguration.init(
     ],
   }
 );
-Connector.hasOne(ConfluenceConfiguration);
+ConnectorModel.hasOne(ConfluenceConfiguration);
 
 // ConfluenceSpace stores the global spaces selected by the user to sync.
 export class ConfluenceSpace extends Model<
@@ -72,7 +72,7 @@ export class ConfluenceSpace extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare name: string;
   declare spaceId: string;
   declare urlSuffix?: string;
@@ -117,7 +117,7 @@ ConfluenceSpace.init(
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
 );
-Connector.hasOne(ConfluenceSpace);
+ConnectorModel.hasOne(ConfluenceSpace);
 
 // ConfluencePages stores the pages.
 export class ConfluencePage extends Model<
@@ -137,7 +137,7 @@ export class ConfluencePage extends Model<
   declare title: string;
   declare version: number;
 
-  declare connectorId: ForeignKey<Connector["id"]> | null;
+  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 ConfluencePage.init(
   {
@@ -201,4 +201,4 @@ ConfluencePage.init(
     modelName: "confluence_pages",
   }
 );
-Connector.hasMany(ConfluencePage);
+ConnectorModel.hasMany(ConfluencePage);

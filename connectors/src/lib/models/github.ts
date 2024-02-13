@@ -6,8 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export class GithubConnectorState extends Model<
   InferAttributes<GithubConnectorState>,
@@ -20,7 +20,7 @@ export class GithubConnectorState extends Model<
   declare webhooksEnabledAt?: Date | null;
   declare codeSyncEnabled: boolean;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubConnectorState.init(
   {
@@ -55,7 +55,7 @@ GithubConnectorState.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-Connector.hasOne(GithubConnectorState);
+ConnectorModel.hasOne(GithubConnectorState);
 
 export class GithubIssue extends Model<
   InferAttributes<GithubIssue>,
@@ -68,7 +68,7 @@ export class GithubIssue extends Model<
   declare repoId: string;
   declare issueNumber: number;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubIssue.init(
   {
@@ -106,7 +106,7 @@ GithubIssue.init(
     modelName: "github_issues",
   }
 );
-Connector.hasMany(GithubIssue);
+ConnectorModel.hasMany(GithubIssue);
 
 export class GithubDiscussion extends Model<
   InferAttributes<GithubDiscussion>,
@@ -119,7 +119,7 @@ export class GithubDiscussion extends Model<
   declare repoId: string;
   declare discussionNumber: number;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubDiscussion.init(
   {
@@ -157,7 +157,7 @@ GithubDiscussion.init(
     modelName: "github_discussions",
   }
 );
-Connector.hasMany(GithubDiscussion);
+ConnectorModel.hasMany(GithubDiscussion);
 
 export class GithubCodeRepository extends Model<
   InferAttributes<GithubCodeRepository>,
@@ -175,7 +175,7 @@ export class GithubCodeRepository extends Model<
 
   declare sourceUrl: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeRepository.init(
   {
@@ -227,7 +227,7 @@ GithubCodeRepository.init(
     modelName: "github_code_repositories",
   }
 );
-Connector.hasMany(GithubCodeRepository);
+ConnectorModel.hasMany(GithubCodeRepository);
 
 export class GithubCodeFile extends Model<
   InferAttributes<GithubCodeFile>,
@@ -247,7 +247,7 @@ export class GithubCodeFile extends Model<
   declare sourceUrl: string;
   declare contentHash: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeFile.init(
   {
@@ -310,7 +310,7 @@ GithubCodeFile.init(
     modelName: "github_code_files",
   }
 );
-Connector.hasMany(GithubCodeFile);
+ConnectorModel.hasMany(GithubCodeFile);
 
 export class GithubCodeDirectory extends Model<
   InferAttributes<GithubCodeDirectory>,
@@ -329,7 +329,7 @@ export class GithubCodeDirectory extends Model<
   declare dirName: string;
   declare sourceUrl: string;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GithubCodeDirectory.init(
   {
@@ -388,4 +388,4 @@ GithubCodeDirectory.init(
     modelName: "github_code_directories",
   }
 );
-Connector.hasMany(GithubCodeDirectory);
+ConnectorModel.hasMany(GithubCodeDirectory);

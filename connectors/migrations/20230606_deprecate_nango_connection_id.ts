@@ -1,10 +1,10 @@
 import { Op } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
-  await Connector.update(
+  await ConnectorModel.update(
     {
       connectionId: sequelizeConnection.col("nangoConnectionId"),
     },

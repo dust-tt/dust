@@ -11,7 +11,6 @@ import type {
   ConnectorConfigGetter,
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
-import { Connector } from "@connectors/lib/models";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -24,6 +23,7 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type {
   ConnectorPermission,
@@ -46,7 +46,7 @@ export async function createGithubConnector(
   try {
     const connector = await sequelizeConnection.transaction(
       async (transaction) => {
-        const connector = await Connector.create(
+        const connector = await ConnectorModel.create(
           {
             type: "github",
             connectionId: githubInstallationId,
@@ -88,7 +88,7 @@ export async function updateGithubConnector(
     connectionId?: string | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -122,7 +122,7 @@ export async function stopGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   try {
-    const connector = await Connector.findOne({
+    const connector = await ConnectorModel.findOne({
       where: {
         id: connectorId,
       },
@@ -160,7 +160,7 @@ export async function resumeGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   try {
-    const connector = await Connector.findOne({
+    const connector = await ConnectorModel.findOne({
       where: {
         id: connectorId,
       },
@@ -225,7 +225,7 @@ export async function cleanupGithubConnector(
 ): Promise<Result<undefined, Error>> {
   return sequelizeConnection.transaction(async (transaction) => {
     try {
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           id: connectorId,
         },
@@ -269,7 +269,7 @@ export async function retrieveGithubConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -474,7 +474,7 @@ export async function retrieveGithubReposTitles(
   connectorId: ModelId,
   repoIds: string[]
 ): Promise<Result<Record<string, string>, Error>> {
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -513,7 +513,7 @@ export const getGithubConfig: ConnectorConfigGetter = async function (
   connectorId: ModelId,
   configKey: string
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { id: connectorId },
   });
   if (!connector) {
@@ -547,7 +547,7 @@ export async function setGithubConfig(
   configKey: string,
   configValue: string
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { id: connectorId },
   });
   if (!connector) {
@@ -593,7 +593,7 @@ export async function retrieveGithubResourceParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { id: connectorId },
   });
   if (!connector) {
