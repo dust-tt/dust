@@ -34,6 +34,12 @@ function AgentMention({
   );
 }
 
+/**
+ *
+ * @param tryModalAgentConfiguration when trying an assistant in a side modal we
+ * need to pass the agent configuration to the input bar (it may not be in the
+ * user's list of assistants)
+ */
 export function AssistantInputBar({
   owner,
   onSubmit,
@@ -285,13 +291,6 @@ export function AssistantInputBar({
   );
 }
 
-/**
- *
- * @param tryModalAgentConfiguration when trying an assistant in a side modal we
- * need to pass the agent configuration to the input bar (it may not be in the
- * user's list of assistants)
- * @returns
- */
 export function FixedAssistantInputBar({
   owner,
   onSubmit,
