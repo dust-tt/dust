@@ -39,7 +39,7 @@ export function AssistantInputBar({
   onSubmit,
   conversationId,
   stickyMentions,
-  additionalAgentConfigurations,
+  tryModalAgentConfiguration,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -49,7 +49,7 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  additionalAgentConfigurations?: LightAgentConfigurationType[];
+  tryModalAgentConfiguration?: LightAgentConfigurationType;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -66,13 +66,16 @@ export function AssistantInputBar({
     });
 
   const agentConfigurations = useMemo(() => {
-    const agentConfigurationsToAdd = additionalAgentConfigurations
-      ? additionalAgentConfigurations.filter(
-          (a) => !baseAgentConfigurations.find((b) => a.sId === b.sId)
-        )
-      : [];
-    return [...baseAgentConfigurations, ...agentConfigurationsToAdd];
-  }, [baseAgentConfigurations, additionalAgentConfigurations]);
+    if (
+      baseAgentConfigurations.find(
+        (a) => a.sId === tryModalAgentConfiguration?.sId
+      ) ||
+      !tryModalAgentConfiguration
+    ) {
+      return baseAgentConfigurations;
+    }
+    return [...baseAgentConfigurations, tryModalAgentConfiguration];
+  }, [baseAgentConfigurations, tryModalAgentConfiguration]);
 
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -264,6 +267,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
+                isInTryModal={!!tryModalAgentConfiguration}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
@@ -281,12 +285,19 @@ export function AssistantInputBar({
   );
 }
 
+/**
+ *
+ * @param tryModalAgentConfiguration when trying an assistant in a side modal we
+ * need to pass the agent configuration to the input bar (it may not be in the
+ * user's list of assistants)
+ * @returns
+ */
 export function FixedAssistantInputBar({
   owner,
   onSubmit,
   stickyMentions,
   conversationId,
-  additionalAgentConfigurations,
+  tryModalAgentConfiguration,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -296,7 +307,7 @@ export function FixedAssistantInputBar({
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  additionalAgentConfigurations?: LightAgentConfigurationType[];
+  tryModalAgentConfiguration?: LightAgentConfigurationType;
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
@@ -306,7 +317,7 @@ export function FixedAssistantInputBar({
           onSubmit={onSubmit}
           conversationId={conversationId}
           stickyMentions={stickyMentions}
-          additionalAgentConfigurations={additionalAgentConfigurations}
+          tryModalAgentConfiguration={tryModalAgentConfiguration}
         />
       </div>
     </div>

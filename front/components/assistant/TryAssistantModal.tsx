@@ -118,7 +118,7 @@ export function TryAssistantModal({
               onSubmit={handleSubmit}
               stickyMentions={stickyMentions}
               conversationId={conversation?.sId || null}
-              additionalAgentConfigurations={[assistant]}
+              tryModalAgentConfiguration={assistant}
             />
           </div>
         </GenerationContextProvider>
