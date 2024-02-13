@@ -6,8 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export class WebCrawlerConfiguration extends Model<
   InferAttributes<WebCrawlerConfiguration>,
@@ -17,7 +17,7 @@ export class WebCrawlerConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare url: string;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare maxPageToCrawl: number | null;
   declare crawlMode: "child" | "website";
   declare depth: number | null;
@@ -64,7 +64,7 @@ WebCrawlerConfiguration.init(
     modelName: "webcrawler_configurations",
   }
 );
-Connector.hasMany(WebCrawlerConfiguration);
+ConnectorModel.hasMany(WebCrawlerConfiguration);
 
 export class WebCrawlerFolder extends Model<
   InferAttributes<WebCrawlerFolder>,
@@ -78,7 +78,7 @@ export class WebCrawlerFolder extends Model<
   // Folders are not upserted to the data source but their ids are
   // used as parent to WebCrawlerPage.
   declare internalId: string;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
 
@@ -123,7 +123,7 @@ WebCrawlerFolder.init(
     modelName: "webcrawler_folders",
   }
 );
-Connector.hasMany(WebCrawlerFolder);
+ConnectorModel.hasMany(WebCrawlerFolder);
 WebCrawlerConfiguration.hasMany(WebCrawlerFolder);
 
 export class WebCrawlerPage extends Model<
@@ -137,7 +137,7 @@ export class WebCrawlerPage extends Model<
   declare parentUrl: string | null;
   declare url: string;
   declare documentId: string;
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
 
@@ -186,5 +186,5 @@ WebCrawlerPage.init(
     modelName: "webcrawler_pages",
   }
 );
-Connector.hasMany(WebCrawlerPage);
+ConnectorModel.hasMany(WebCrawlerPage);
 WebCrawlerConfiguration.hasMany(WebCrawlerPage);

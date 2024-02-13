@@ -6,8 +6,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { Connector } from "@connectors/lib/models";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export class IntercomWorkspace extends Model<
   InferAttributes<IntercomWorkspace>,
@@ -21,7 +21,7 @@ export class IntercomWorkspace extends Model<
   declare name: string;
   declare conversationsSlidingWindow: number;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 IntercomWorkspace.init(
   {
@@ -66,7 +66,7 @@ IntercomWorkspace.init(
     modelName: "intercom_workspaces",
   }
 );
-Connector.hasMany(IntercomWorkspace);
+ConnectorModel.hasMany(IntercomWorkspace);
 
 export class IntercomHelpCenter extends Model<
   InferAttributes<IntercomHelpCenter>,
@@ -85,7 +85,7 @@ export class IntercomHelpCenter extends Model<
   declare lastUpsertedTs?: Date;
   declare permission: "read" | "none";
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 IntercomHelpCenter.init(
   {
@@ -143,7 +143,7 @@ IntercomHelpCenter.init(
     modelName: "intercom_help_centers",
   }
 );
-Connector.hasMany(IntercomHelpCenter);
+ConnectorModel.hasMany(IntercomHelpCenter);
 
 export class IntercomCollection extends Model<
   InferAttributes<IntercomCollection>,
@@ -166,7 +166,7 @@ export class IntercomCollection extends Model<
   declare lastUpsertedTs?: Date;
   declare permission: "read" | "none";
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 IntercomCollection.init(
@@ -237,7 +237,7 @@ IntercomCollection.init(
     modelName: "intercom_collections",
   }
 );
-Connector.hasMany(IntercomCollection);
+ConnectorModel.hasMany(IntercomCollection);
 
 export class IntercomArticle extends Model<
   InferAttributes<IntercomArticle>,
@@ -262,7 +262,7 @@ export class IntercomArticle extends Model<
   declare lastUpsertedTs?: Date;
   declare permission: "read" | "none";
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 IntercomArticle.init(
@@ -341,7 +341,7 @@ IntercomArticle.init(
     modelName: "intercom_articles",
   }
 );
-Connector.hasMany(IntercomArticle);
+ConnectorModel.hasMany(IntercomArticle);
 
 export class IntercomTeam extends Model<
   InferAttributes<IntercomTeam>,
@@ -357,7 +357,7 @@ export class IntercomTeam extends Model<
   declare lastUpsertedTs?: Date;
   declare permission: "read" | "none";
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 IntercomTeam.init(
@@ -406,7 +406,7 @@ IntercomTeam.init(
     modelName: "intercom_teams",
   }
 );
-Connector.hasMany(IntercomTeam);
+ConnectorModel.hasMany(IntercomTeam);
 
 export class IntercomConversation extends Model<
   InferAttributes<IntercomConversation>,
@@ -422,7 +422,7 @@ export class IntercomConversation extends Model<
 
   declare lastUpsertedTs: Date;
 
-  declare connectorId: ForeignKey<Connector["id"]>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 
 IntercomConversation.init(
@@ -471,4 +471,4 @@ IntercomConversation.init(
     modelName: "intercom_conversations",
   }
 );
-Connector.hasMany(IntercomConversation);
+ConnectorModel.hasMany(IntercomConversation);
