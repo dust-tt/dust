@@ -6,8 +6,8 @@ import {
   getIssueDocumentId,
 } from "@connectors/connectors/github/temporal/activities";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
   if (!process.argv[2]) {
@@ -27,7 +27,7 @@ async function main() {
   );
   if (process.argv[2] === "all") {
     // get all connectors that are not done yet
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "github",
         id: {
@@ -36,7 +36,7 @@ async function main() {
       },
     });
   } else {
-    connectors = await Connector.findAll({
+    connectors = await ConnectorModel.findAll({
       where: {
         type: "github",
         workspaceId: process.argv[2],
@@ -59,7 +59,9 @@ async function main() {
   }
 }
 
-async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
+async function updateDiscussionsParentsFieldForConnector(
+  connector: ConnectorModel
+) {
   // get all distinct documentIds and their channel ids from slack messages in
   // this connector
   const documentData = await GithubDiscussion.findAll({
@@ -93,7 +95,7 @@ async function updateDiscussionsParentsFieldForConnector(connector: Connector) {
   }
 }
 
-async function updateIssuesParentsFieldForConnector(connector: Connector) {
+async function updateIssuesParentsFieldForConnector(connector: ConnectorModel) {
   // get all distinct issues  and their repo ids fro
   const documentData = await GithubIssue.findAll({
     where: {

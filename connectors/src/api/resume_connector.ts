@@ -3,9 +3,9 @@ import type { Request, Response } from "express";
 
 import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type ConnectorResumeResBody = WithConnectorsAPIErrorReponse<{
   connectorId: string;
@@ -16,7 +16,7 @@ const _resumeConnectorAPIHandler = async (
   res: Response<ConnectorResumeResBody>
 ) => {
   try {
-    const connector = await Connector.findByPk(req.params.connector_id);
+    const connector = await ConnectorModel.findByPk(req.params.connector_id);
     if (!connector) {
       return apiError(req, res, {
         status_code: 404,

@@ -1,8 +1,8 @@
-import { Connector } from "@connectors/lib/models";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
-  const connectors = await Connector.findAll();
+  const connectors = await ConnectorModel.findAll();
   console.log(`Found ${connectors.length} connectors`);
   for (const connector of connectors) {
     console.log(`Processing connector ${connector.id} (${connector.type})...`);

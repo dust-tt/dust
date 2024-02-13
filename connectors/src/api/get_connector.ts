@@ -4,10 +4,10 @@ import type {
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { Connector } from "@connectors/lib/models";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type GetConnectorRes = WithConnectorsAPIErrorReponse<ConnectorType>;
 
@@ -24,7 +24,7 @@ const _getConnector = async (
       status_code: 400,
     });
   }
-  const connector = await Connector.findByPk(req.params.connector_id);
+  const connector = await ConnectorModel.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       api_error: {

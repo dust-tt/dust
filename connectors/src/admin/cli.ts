@@ -36,7 +36,6 @@ import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Connector } from "@connectors/lib/models";
 import { GithubConnectorState } from "@connectors/lib/models/github";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -48,6 +47,7 @@ import {
   terminateAllWorkflowsForConnectorId,
 } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -57,11 +57,11 @@ async function getConnectorOrThrow({
 }: {
   connectorType: string;
   workspaceId: string;
-}): Promise<Connector> {
+}): Promise<ConnectorModel> {
   if (!workspaceId) {
     throw new Error("Missing workspace ID (wId)");
   }
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: connectorType,
       workspaceId: workspaceId,
@@ -86,7 +86,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
 
   // We retrieve by data source name as we can have multiple data source with the same provider for
   // a given workspace.
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       workspaceId: args.wId,
       dataSourceName: args.dataSourceName,
@@ -165,7 +165,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --repo argument");
       }
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           type: "github",
           workspaceId: args.wId,
@@ -218,7 +218,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const enable = args.enable === "true";
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           type: "github",
           workspaceId: args.wId,
@@ -265,7 +265,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
     case "restart-all": {
       const queue = new PQueue({ concurrency: 10 });
       const promises: Promise<void>[] = [];
-      const connectors = await Connector.findAll({
+      const connectors = await ConnectorModel.findAll({
         where: {
           type: "notion",
           errorType: null,
@@ -325,7 +325,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const pageId = args.pageId as string;
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
           workspaceId: args.wId,
@@ -386,7 +386,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const databaseId = args.databaseId as string;
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
           workspaceId: args.wId,
@@ -461,7 +461,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
           workspaceId: args.wId,
@@ -513,7 +513,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
       }
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
           workspaceId: args.wId,
@@ -579,7 +579,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     case "stop-all-garbage-collectors": {
-      const connectors = await Connector.findAll({
+      const connectors = await ConnectorModel.findAll({
         where: {
           type: "notion",
         },
@@ -606,7 +606,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
 const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "garbage-collect-all": {
-      const connectors = await Connector.findAll({
+      const connectors = await ConnectorModel.findAll({
         where: {
           type: "google_drive",
         },
@@ -634,7 +634,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
       console.log(`Checking gdrive file`);
-      const connector = await Connector.findByPk(args.connectorId);
+      const connector = await ConnectorModel.findByPk(args.connectorId);
       if (!connector) {
         throw new Error(`Connector ${args.connectorId} not found`);
       }
@@ -668,7 +668,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --dataSourceName argument");
       }
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: args.wId,
           dataSourceName: args.dataSourceName,
@@ -696,7 +696,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --fileId argument");
       }
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: args.wId,
           dataSourceName: args.dataSourceName,
@@ -742,7 +742,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: args.wId,
           type: "slack",
@@ -765,7 +765,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --channelId argument");
       }
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: wId,
           type: "slack",
@@ -792,7 +792,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.channelId) {
         throw new Error("Missing --channelId argument");
       }
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: args.wId,
           type: "slack",
@@ -882,7 +882,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --whitelistedDomains argument");
       }
 
-      const connector = await Connector.findOne({
+      const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: args.wId,
           type: "slack",
@@ -930,7 +930,7 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
         fromTs = parseInt(args.fromTs as string, 10);
       }
 
-      const connectors = await Connector.findAll({
+      const connectors = await ConnectorModel.findAll({
         where: {
           type: args.provider,
         },

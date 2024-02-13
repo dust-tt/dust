@@ -8,7 +8,6 @@ import {
   stopNotionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -26,6 +25,7 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 import type { ConnectorResource } from "@connectors/types/resources";
@@ -54,11 +54,11 @@ export async function createNotionConnector(
     return new Err(new Error("Notion access token is invalid"));
   }
 
-  let connector: Connector;
+  let connector: ConnectorModel;
   let notionConnectorState: NotionConnectorState;
   try {
     const txRes = await sequelizeConnection.transaction(async (transaction) => {
-      const connector = await Connector.create(
+      const connector = await ConnectorModel.create(
         {
           type: "notion",
           connectionId: nangoConnectionId,
@@ -112,7 +112,7 @@ export async function updateNotionConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -191,7 +191,7 @@ export async function updateNotionConnector(
 export async function stopNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
 
   if (!connector) {
     logger.error(
@@ -224,7 +224,7 @@ export async function stopNotionConnector(
 export async function resumeNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
 
   if (!connector) {
     logger.error(
@@ -262,7 +262,7 @@ export async function fullResyncNotionConnector(
   connectorId: ModelId,
   fromTs: number | null
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { type: "notion", id: connectorId },
   });
 
@@ -326,7 +326,7 @@ export async function cleanupNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await Connector.findOne({
+    const connector = await ConnectorModel.findOne({
       where: { type: "notion", id: connectorId },
       transaction: transaction,
     });
@@ -395,7 +395,7 @@ export async function retrieveNotionConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  const c = await Connector.findOne({
+  const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -562,7 +562,7 @@ export async function retrieveNotionResourceParents(
   internalId: string,
   memoizationKey?: string
 ): Promise<Result<string[], Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));

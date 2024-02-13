@@ -29,7 +29,6 @@ import {
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { Connector } from "@connectors/lib/models";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -44,6 +43,7 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -77,7 +77,7 @@ export async function createConfluenceConnector(
   try {
     const connector = await sequelizeConnection.transaction(
       async (transaction) => {
-        const connector = await Connector.create(
+        const connector = await ConnectorModel.create(
           {
             type: "confluence",
             connectionId: nangoConnectionId,
@@ -126,7 +126,7 @@ export async function updateConfluenceConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -205,7 +205,7 @@ export async function resumeConfluenceConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   try {
-    const connector = await Connector.findOne({
+    const connector = await ConnectorModel.findOne({
       where: {
         id: connectorId,
       },
@@ -237,7 +237,7 @@ export async function resumeConfluenceConnector(
 export async function cleanupConfluenceConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: { type: "confluence", id: connectorId },
   });
   if (!connector) {
@@ -290,7 +290,7 @@ export async function retrieveConfluenceConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       id: connectorId,
     },
@@ -340,7 +340,7 @@ export async function setConfluenceConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

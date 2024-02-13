@@ -19,7 +19,6 @@ import {
   MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
@@ -30,11 +29,12 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const CONCURRENCY = 4;
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found.`);
   }

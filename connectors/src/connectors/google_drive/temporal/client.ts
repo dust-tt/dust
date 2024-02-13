@@ -4,11 +4,11 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC, QUEUE_NAME } from "./config";
 import { newWebhookSignal } from "./signals";
@@ -28,7 +28,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
@@ -89,7 +89,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
 export async function launchGoogleDriveIncrementalSyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
@@ -185,7 +185,7 @@ export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
 export async function launchGoogleGarbageCollector(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }

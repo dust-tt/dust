@@ -7,9 +7,9 @@ import * as reporter from "io-ts-reporters";
 
 import { RETRIEVE_RESOURCE_PARENTS_BY_TYPE } from "@connectors/connectors";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const GetResourcesParentsRequestBodySchema = t.type({
   resourceInternalIds: t.array(t.string),
@@ -34,7 +34,7 @@ const _getResourcesParents = async (
   >,
   res: Response<GetResourcesParentsResponseBody>
 ) => {
-  const connector = await Connector.findByPk(req.params.connector_id);
+  const connector = await ConnectorModel.findByPk(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       status_code: 404,

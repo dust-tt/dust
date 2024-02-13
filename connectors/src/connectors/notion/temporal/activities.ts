@@ -54,7 +54,6 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -67,6 +66,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;
@@ -108,7 +108,7 @@ export async function fetchDatabaseChildPages({
   pageIds: string[];
   nextCursor: string | null;
 }> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -282,7 +282,7 @@ export async function getPagesAndDatabasesToSync({
   databaseIds: string[];
   nextCursor: string | null;
 }> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -448,7 +448,7 @@ export async function upsertDatabaseInConnectorsDb(
   runTimestamp: number,
   loggerArgs: Record<string, string | number>
 ): Promise<void> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -508,7 +508,7 @@ export async function upsertDatabaseInConnectorsDb(
 }
 
 export async function saveSuccessSync(connectorId: ModelId) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -525,7 +525,7 @@ export async function saveSuccessSync(connectorId: ModelId) {
 }
 
 export async function saveStartSync(connectorId: ModelId) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -560,7 +560,7 @@ export async function shouldGarbageCollect({
   connectorId: ModelId;
   garbageCollectionMode: NotionGarbageCollectionMode;
 }): Promise<boolean> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -644,7 +644,7 @@ export async function garbageCollectorMarkAsSeen({
   databaseIds: string[];
   runTimestamp: number;
 }): Promise<{ newPageIds: string[]; newDatabaseIds: string[] }> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -733,7 +733,7 @@ export async function garbageCollect({
   runTimestamp: number;
   startTs: number;
 }) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -1053,7 +1053,7 @@ export async function updateParentsFields(
   runTimestamp: number,
   activityExecutionTimestamp: number
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -1120,7 +1120,7 @@ export async function cachePage({
 }): Promise<{
   skipped: boolean;
 }> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -1250,7 +1250,7 @@ export async function cacheBlockChildren({
   childDatabases: string[];
   blocksCount: number;
 }> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -1403,7 +1403,7 @@ async function cacheDatabaseChildPages({
   pages: PageObjectResponse[];
   databaseId: string;
 }): Promise<void> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -1625,7 +1625,7 @@ export async function renderAndUpsertPageFromCache({
   isFullSync: boolean;
   topLevelWorkflowId: string;
 }) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -2036,7 +2036,7 @@ export async function clearWorkflowCache({
   connectorId: ModelId;
   topLevelWorkflowId: string;
 }) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
@@ -2079,7 +2079,7 @@ export async function getDiscoveredResourcesFromCache({
   connectorId: ModelId;
   topLevelWorkflowId: string;
 }): Promise<{ pageIds: string[]; databaseIds: string[] }> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,

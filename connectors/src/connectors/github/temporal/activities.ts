@@ -27,7 +27,6 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { Connector } from "@connectors/lib/models";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -38,6 +37,7 @@ import {
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({
@@ -257,7 +257,7 @@ export async function githubUpsertIssueActivity(
     },
   });
 
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       connectionId: installationId,
       dataSourceName: dataSourceConfig.dataSourceName,
@@ -454,7 +454,7 @@ export async function githubUpsertDiscussionActivity(
     },
   });
 
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       connectionId: installationId,
       dataSourceName: dataSourceConfig.dataSourceName,
@@ -503,7 +503,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
 export async function githubSaveStartSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "github",
       workspaceId: dataSourceConfig.workspaceId,
@@ -523,7 +523,7 @@ export async function githubSaveStartSyncActivity(
 export async function githubSaveSuccessSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "github",
       workspaceId: dataSourceConfig.workspaceId,
@@ -579,7 +579,7 @@ export async function githubRepoGarbageCollectActivity(
   repoId: string,
   loggerArgs: Record<string, string | number>
 ) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       connectionId: installationId,
     },
@@ -646,7 +646,7 @@ async function deleteIssue(
 ) {
   const localLogger = logger.child({ ...loggerArgs, issueNumber });
 
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       connectionId: installationId,
       dataSourceName: dataSourceConfig.dataSourceName,
@@ -699,7 +699,7 @@ async function deleteDiscussion(
 ) {
   const localLogger = logger.child({ ...loggerArgs, discussionNumber });
 
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       connectionId: installationId,
       dataSourceName: dataSourceConfig.dataSourceName,
@@ -783,7 +783,7 @@ export function formatCodeContentForUpsert(
 
 async function garbageCollectCodeSync(
   dataSourceConfig: DataSourceConfig,
-  connector: Connector,
+  connector: ConnectorModel,
   repoId: number,
   codeSyncStartedAt: Date,
   loggerArgs: Record<string, string | number>
@@ -868,7 +868,7 @@ export async function githubCodeSyncActivity({
   const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
 
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       connectionId: installationId,
       dataSourceName: dataSourceConfig.dataSourceName,

@@ -22,9 +22,9 @@ import type {
   ConnectorCreatorUrl,
 } from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
-import { Connector } from "@connectors/lib/models";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 
@@ -126,7 +126,7 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    const connector = await Connector.findByPk(connectorRes.value);
+    const connector = await ConnectorModel.findByPk(connectorRes.value);
     if (!connector) {
       return apiError(req, res, {
         status_code: 500,

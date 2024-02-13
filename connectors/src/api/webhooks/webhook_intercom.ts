@@ -4,13 +4,13 @@ import type { Request, Response } from "express";
 import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/intercom_api";
 import { syncConversation } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { Connector } from "@connectors/lib/models";
 import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const logger = mainLogger.child({ provider: "intercom" });
 
@@ -70,7 +70,7 @@ const _webhookIntercomAPIHandler = async (
   }
 
   // Find Connector
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       id: intercomWorskpace.connectorId,
       type: "intercom",

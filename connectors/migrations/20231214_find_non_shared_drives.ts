@@ -4,11 +4,11 @@ import {
   getGoogleDriveObject,
   objectIsInFolders,
 } from "@connectors/connectors/google_drive/temporal/activities";
-import { Connector } from "@connectors/lib/models";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
-  const gDriveConnectors = await Connector.findAll({
+  const gDriveConnectors = await ConnectorModel.findAll({
     where: {
       type: "google_drive",
     },

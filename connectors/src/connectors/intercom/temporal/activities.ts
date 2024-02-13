@@ -17,7 +17,6 @@ import {
 } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { Connector } from "@connectors/lib/models";
 import {
   IntercomConversation,
   IntercomWorkspace,
@@ -29,11 +28,12 @@ import {
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "intercom",
       id: connectorId,

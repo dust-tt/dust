@@ -9,7 +9,6 @@ import {
   normalizeFolderUrl,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
-import { Connector } from "@connectors/lib/models";
 import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
@@ -19,6 +18,7 @@ import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import type { ConnectorPermissionRetriever } from "../interface";
@@ -32,8 +32,8 @@ export async function createWebcrawlerConnector(
   urlConfig: CreateConnectorUrlRequestBody
 ): Promise<Result<string, Error>> {
   const res = await sequelizeConnection.transaction(
-    async (t): Promise<Result<Connector, Error>> => {
-      const connector = await Connector.create(
+    async (t): Promise<Result<ConnectorModel, Error>> => {
+      const connector = await ConnectorModel.create(
         {
           type: "webcrawler",
           connectionId: urlConfig.url,
@@ -83,7 +83,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorResource[], Error>
 > {
-  const connector = await Connector.findByPk(connectorId);
+  const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
@@ -227,7 +227,7 @@ export async function cleanupWebcrawlerConnector(
       },
       transaction,
     });
-    await Connector.destroy({
+    await ConnectorModel.destroy({
       where: {
         id: connectorId,
       },

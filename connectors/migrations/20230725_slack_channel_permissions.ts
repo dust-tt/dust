@@ -1,9 +1,9 @@
 import { getChannels } from "@connectors/connectors/slack/temporal/activities";
-import { Connector } from "@connectors/lib/models";
 import { SlackChannel } from "@connectors/lib/models/slack";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
-  const slackConnectors = await Connector.findAll({
+  const slackConnectors = await ConnectorModel.findAll({
     where: {
       type: "slack",
     },
