@@ -7,14 +7,15 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider, WhitelistableFeature } from "@dust-tt/types";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
   {
     name: string;
     connectorProvider: ConnectorProvider;
-    status: "preview" | "built-dust-only" | "built";
+    status: "preview" | "built" | "rolling_out";
+    rollingOutFlag?: WhitelistableFeature;
     hide: boolean;
     logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
     description: string;
@@ -82,7 +83,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   intercom: {
     name: "Intercom",
     connectorProvider: "intercom",
-    status: "built-dust-only", // ROLLOUT INTERCOM
+    status: "rolling_out",
+    rollingOutFlag: "intercom_connection",
     hide: false,
     description:
       "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",
