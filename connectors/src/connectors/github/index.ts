@@ -1,4 +1,9 @@
-import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  ConnectorPermission,
+  ConnectorsAPIError,
+  ModelId,
+} from "@dust-tt/types";
 
 import {
   getRepo,
@@ -25,10 +30,6 @@ import mainLogger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type {
-  ConnectorNode,
-  ConnectorPermission,
-} from "@connectors/types/nodes";
 
 type GithubInstallationId = string;
 

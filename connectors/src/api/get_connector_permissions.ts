@@ -1,4 +1,7 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  WithConnectorsAPIErrorReponse,
+} from "@dust-tt/types";
 import type { ConnectorNode } from "@dust-tt/types";
 import type { Request, Response } from "express";
 

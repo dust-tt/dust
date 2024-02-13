@@ -14,8 +14,8 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   NotionConnectorBlockCacheEntry,
-  NotionConnectorNodesToCheckCacheEntry,
   NotionConnectorPageCacheEntry,
+  NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
@@ -363,7 +363,7 @@ export async function cleanupNotionConnector(
       },
       transaction: transaction,
     });
-    await NotionConnectorNodesToCheckCacheEntry.destroy({
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
       where: {
         connectorId: connector.id,
       },
