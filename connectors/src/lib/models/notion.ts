@@ -187,9 +187,9 @@ export class NotionDatabase extends Model<
   declare notionUrl?: string | null;
 
   declare structuredDataEnabled: CreationOptional<boolean>;
-
-  declare connectorId: ForeignKey<Connector["id"]> | null;
+  declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
+
 NotionDatabase.init(
   {
     id: {
