@@ -19,7 +19,8 @@ export class BaseResource<T extends Model> {
     id: number | string
   ): Promise<T | null> {
     const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
-    const blob = await this.model.findByPk(parsedId);
+    // Use `raw: true` to avoid the nested level with `dataValues`.
+    const blob = await this.model.findByPk(parsedId, { raw: true });
     if (!blob) {
       return null;
     }
