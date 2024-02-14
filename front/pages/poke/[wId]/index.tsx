@@ -42,6 +42,7 @@ import {
 } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { isDevelopment } from "@app/lib/development";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -394,7 +395,7 @@ const WorkspacePage = ({
                 href={`/poke/${owner.sId}/memberships`}
                 className="text-xs text-action-400"
               >
-                view members
+                View members
               </Link>
             </div>
             <div>
@@ -404,9 +405,24 @@ const WorkspacePage = ({
                   setShowDustAppLogsModal(true);
                 }}
               >
-                view dust app logs
+                View dust app logs
               </a>
             </div>
+            {subscription.stripeSubscriptionId && (
+              <div>
+                <Link
+                  href={
+                    isDevelopment()
+                      ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
+                      : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
+                  }
+                  target="_blank"
+                  className="text-xs text-action-400"
+                >
+                  View Stripe Subscription
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="flex-col justify-center">
