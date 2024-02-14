@@ -67,8 +67,20 @@ export async function createIntercomConnector(
     throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
   }
 
+  let connector = null;
+  let intercomWorkpace = null;
+
   try {
-    const connector = await ConnectorModel.create({
+    const intercomWorkspace = await fetchIntercomWorkspace(nangoConnectionId);
+    if (!intercomWorkspace) {
+      return new Err(
+        new Error(
+          "Error retrieving intercom workspace, cannot create Connector."
+        )
+      );
+    }
+
+    connector = await ConnectorModel.create({
       type: "intercom",
       connectionId: nangoConnectionId,
       workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
@@ -76,13 +88,7 @@ export async function createIntercomConnector(
       dataSourceName: dataSourceConfig.dataSourceName,
     });
 
-    const intercomWorkspace = await fetchIntercomWorkspace(nangoConnectionId);
-
-    if (!intercomWorkspace) {
-      return new Err(new Error("Error retrieving intercom workspace"));
-    }
-
-    await IntercomWorkspace.create({
+    intercomWorkpace = await IntercomWorkspace.create({
       connectorId: connector.id,
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
@@ -94,11 +100,29 @@ export async function createIntercomConnector(
       null
     );
     if (workflowStarted.isErr()) {
+      await connector.destroy();
+      await intercomWorkpace.destroy();
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          error: workflowStarted.error,
+        },
+        "[Intercom] Error creating connector Could not launch sync workflow."
+      );
       return new Err(workflowStarted.error);
     }
     return new Ok(connector.id.toString());
   } catch (e) {
-    logger.error({ error: e }, "[Intercom] Error creating connector.");
+    logger.error(
+      { workspaceId: dataSourceConfig.workspaceId, error: e },
+      "[Intercom] Unknown Error creating connector."
+    );
+    if (connector) {
+      await connector.destroy();
+    }
+    if (intercomWorkpace) {
+      await intercomWorkpace.destroy();
+    }
     return new Err(e as Error);
   }
 }
