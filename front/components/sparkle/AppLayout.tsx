@@ -406,20 +406,28 @@ export default function AppLayout({
             </div>
           </div>
 
-          <div className="relative z-[80] flex w-full items-center justify-center bg-warning-300 py-2 text-element-900">
+          <div className="relative z-[80] flex w-full items-center justify-center bg-orange-200 py-2 text-element-900">
             <div className="">
-              <span className="font-bold">OpenAI Outage:</span> OpenAI is
-              encountering a{" "}
+              <span className="font-bold">
+                OpenAI APIs are encountering a{" "}
+                <a
+                  href="https://status.openai.com/"
+                  target="_blank"
+                  className="underline"
+                >
+                  partial outage
+                </a>
+              </span>{" "}
+              that may cause slowness and errors from assistants using GPT or
+              data retrieval. We are monitoring the situation{" "}
               <a
-                href="https://status.openai.com/"
+                href="http://status.dust.tt/"
                 target="_blank"
                 className="underline"
               >
-                partial outage of their APIs
+                here
               </a>
-              {". "}
-              All our services are impacted except assistants with no retrieval,
-              and based on Anthropic AI, Mistral or Gemini.
+              .
             </div>
           </div>
 
