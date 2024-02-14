@@ -1122,6 +1122,33 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async deleteTableRow({
+    projectId,
+    dataSourceName,
+    tableId,
+    rowId,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    tableId: string;
+    rowId: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await fetch(
+      `${CORE_API}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(
+        rowId
+      )}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async queryDatabase({
     tables,
     query,

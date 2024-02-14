@@ -29,7 +29,8 @@ import {
   isAccessibleAndUnarchived,
   parsePageBlock,
   parsePageProperties,
-  renderChildDatabaseFromPages,
+  parsePropertyText,
+  renderDatabaseFromPages,
   retrieveBlockChildrenResultPage,
   retrieveDatabaseChildrenResultPage,
   retrievePage,
@@ -47,10 +48,14 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
+  deleteTable,
+  deleteTableRow,
   MAX_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
+  upsertTableFromCsv,
+  upsertTableRow,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -888,27 +893,44 @@ export async function garbageCollect({
 
       continue;
     }
-
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     if (x.resourceType === "page") {
       iterationLogger.info("Deleting page.");
-      await deleteFromDataSource(
-        {
-          dataSourceName: connector.dataSourceName,
-          workspaceId: connector.workspaceId,
-          workspaceAPIKey: connector.workspaceAPIKey,
-        },
-        `notion-${x.resourceId}`
-      );
+      await deleteFromDataSource(dataSourceConfig, `notion-${x.resourceId}`);
       deletedPagesCount++;
-      await NotionPage.destroy({
+      const notionPage = await NotionPage.findOne({
         where: {
           connectorId: connector.id,
           notionPageId: x.resourceId,
         },
       });
+      if (notionPage?.parentType === "database" && notionPage.parentId) {
+        const parentDatabase = await NotionDatabase.findOne({
+          where: {
+            connectorId: connector.id,
+            notionDatabaseId: notionPage.parentId,
+          },
+        });
+        if (parentDatabase?.structuredDataEnabled) {
+          const tableId = `notion-${parentDatabase.notionDatabaseId}`;
+          const rowId = `notion-${notionPage.notionPageId}`;
+          await deleteTableRow({ dataSourceConfig, tableId, rowId });
+        }
+      }
+      await notionPage?.destroy();
     } else {
       iterationLogger.info("Deleting database.");
       deletedDatabasesCount++;
+      const notionDatabase = await NotionDatabase.findOne({
+        where: {
+          connectorId: connector.id,
+          notionDatabaseId: x.resourceId,
+        },
+      });
+      if (notionDatabase?.structuredDataEnabled) {
+        const tableId = `notion-${notionDatabase.notionDatabaseId}`;
+        await deleteTable({ dataSourceConfig, tableId });
+      }
       await NotionDatabase.destroy({
         where: {
           connectorId: connector.id,
@@ -1674,6 +1696,34 @@ export async function renderAndUpsertPageFromCache({
     throw new Error("Could not find page in cache");
   }
 
+  if (notionPageInDb?.parentType === "database" && notionPageInDb.parentId) {
+    const parentDb = await NotionDatabase.findOne({
+      where: {
+        connectorId: connector.id,
+        notionDatabaseId: notionPageInDb.parentId,
+      },
+    });
+
+    if (parentDb?.structuredDataEnabled) {
+      const tableId = `notion-${parentDb.notionDatabaseId}`;
+      const rowId = `notion-${pageId}`;
+      const row: Record<string, string | null> = {};
+      for (const [key, value] of Object.entries(
+        JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
+      )) {
+        row[key] = parsePropertyText(value);
+      }
+
+      await upsertTableRow({
+        dataSourceConfig: dsConfig,
+        tableId,
+        rowId,
+        row,
+        loggerArgs,
+      });
+    }
+  }
+
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Retrieving blocks from cache."
   );
@@ -1725,7 +1775,7 @@ export async function renderAndUpsertPageFromCache({
   }
   const renderedChildDatabases: Record<string, string> = {};
   for (const [databaseId, pages] of Object.entries(childDatabases)) {
-    renderedChildDatabases[databaseId] = await renderChildDatabaseFromPages({
+    renderedChildDatabases[databaseId] = await renderDatabaseFromPages({
       databaseTitle: childDatabaseTitleById[databaseId] ?? null,
       pagesProperties: pages.map(
         (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
@@ -2309,4 +2359,79 @@ async function renderPageSection({
 
 function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
+}
+
+export async function upsertDatabaseStructuredDataFromCache({
+  databaseId,
+  connectorId,
+  topLevelWorkflowId,
+  loggerArgs,
+}: {
+  databaseId: string;
+  connectorId: number;
+  topLevelWorkflowId: string;
+  loggerArgs: Record<string, string | number>;
+}): Promise<void> {
+  const connector = await ConnectorModel.findOne({
+    where: {
+      type: "notion",
+      id: connectorId,
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    ...loggerArgs,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+    databaseId,
+  });
+
+  const dbModel = await NotionDatabase.findOne({
+    where: {
+      connectorId,
+      notionDatabaseId: databaseId,
+    },
+  });
+
+  if (!dbModel?.structuredDataEnabled) {
+    localLogger.info("Structured data not enabled for database (skipping).");
+    return;
+  }
+
+  const pageCacheEntries = await NotionConnectorPageCacheEntry.findAll({
+    where: {
+      parentId: databaseId,
+      connectorId,
+      workflowId: topLevelWorkflowId,
+    },
+  });
+
+  const csv = await renderDatabaseFromPages({
+    databaseTitle: null,
+    pagesProperties: pageCacheEntries.map(
+      (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
+    ),
+    dustIdColumn: pageCacheEntries.map((p) => `notion-${p.notionPageId}`),
+    cellSeparator: ",",
+    rowBoundary: "",
+  });
+
+  const tableId = `notion-${databaseId}`;
+  const tableName = dbModel.title ?? `Untitled Database (${databaseId})`;
+  const tableDescription = `Structured data from Notion database${
+    tableName ?? ""
+  }`;
+
+  await upsertTableFromCsv({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    tableId,
+    tableName,
+    tableDescription,
+    tableCsv: csv,
+    loggerArgs,
+  });
 }

@@ -627,7 +627,7 @@ export async function validateAccessToken(notionAccessToken: string) {
   return true;
 }
 
-function parsePropertyText(
+export function parsePropertyText(
   property: PageObjectProperties[PropertyKeys]
 ): string | null {
   switch (property.type) {
@@ -758,14 +758,22 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
-export async function renderChildDatabaseFromPages({
+// This function is used to create a text representation of a notion database properties.
+// We use it to render databases inline (in the Notion Page document on Dust), and to create
+// structured Tables on Dust (we use the CSV format).
+// The function accepts a `dustIdColumn` array which must have the same length as the `pagesProperties`. This
+// array is used to add a column to the CSV that contains the Dust ID of the page (__dust_id). This is useful
+// to uniquely identify the notion page in the CSV.
+export async function renderDatabaseFromPages({
   databaseTitle,
   pagesProperties,
+  dustIdColumn,
   rowBoundary = "||",
   cellSeparator = " | ",
 }: {
   databaseTitle: string | null;
   pagesProperties: PageObjectProperties[];
+  dustIdColumn?: string[];
   rowBoundary?: string;
   cellSeparator?: string;
 }) {
@@ -773,9 +781,21 @@ export async function renderChildDatabaseFromPages({
     return "";
   }
 
-  const header = Object.entries(pagesProperties[0]).map(([key]) => key);
-  const rows = pagesProperties.map((pageProperties) =>
+  if (dustIdColumn && dustIdColumn.length !== pagesProperties.length) {
+    throw new Error(
+      "The dustIdColumn should have the same length as the pagesProperties."
+    );
+  }
+
+  let header = Object.entries(pagesProperties[0]).map(([key]) => key);
+  if (dustIdColumn) {
+    header = ["__dust_id", ...header];
+  }
+  const rows = pagesProperties.map((pageProperties, pageIndex) =>
     header.map((k) => {
+      if (k === "__dust_id" && dustIdColumn) {
+        return dustIdColumn[pageIndex];
+      }
       const property = pageProperties[k];
       if (!property) {
         return "";

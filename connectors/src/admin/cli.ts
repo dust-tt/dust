@@ -559,6 +559,73 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       break;
     }
 
+    case "enable-structured-data": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.databaseId) {
+        throw new Error("Missing --databaseId argument");
+      }
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: args.wId,
+      });
+
+      const database = await NotionDatabase.findOne({
+        where: {
+          notionDatabaseId: args.databaseId,
+          connectorId: connector.id,
+        },
+      });
+
+      if (!database) {
+        throw new Error(
+          `Could not find database ${args.databaseId} for connector ${connector.id}`
+        );
+      }
+
+      logger.info("Enabling structured data", { databaseId: args.databaseId });
+
+      await database.update({
+        structuredDataEnabled: true,
+      });
+
+      logger.info("Upserting database", { databaseId: args.databaseId });
+      const connectorId = connector.id;
+      const client = await getTemporalClient();
+
+      const wf = await client.workflow.start(upsertDatabaseWorkflow, {
+        args: [
+          {
+            connectorId,
+            databaseId: args.databaseId,
+            forceResync: false,
+          },
+        ],
+        taskQueue: QUEUE_NAME,
+        workflowId: `notion-force-sync-upsert-database-${args.databaseId}-connector-${connectorId}`,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId: connectorId,
+        },
+      });
+
+      const wfId = wf.workflowId;
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (!temporalNamespace) {
+        console.log(`Started temporal workflow with id: ${wfId}`);
+      } else {
+        console.log(
+          `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+        );
+      }
+
+      break;
+    }
+
     case "search-pages": {
       const { query, wId } = args;
 

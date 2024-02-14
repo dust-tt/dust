@@ -32,6 +32,7 @@ const {
   renderAndUpsertPageFromCache,
   clearWorkflowCache,
   getDiscoveredResourcesFromCache,
+  upsertDatabaseStructuredDataFromCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -644,9 +645,7 @@ async function upsertDatabase({
         isGarbageCollectionRun || forceResync,
       runTimestamp,
       topLevelWorkflowId,
-      // We don't store pages in cache here, we only want to return the pageIds
-      // that need to be synced.
-      storeInCache: false,
+      storeInCache: true,
     });
     cursor = nextCursor;
     pageIndex += 1;
@@ -667,6 +666,15 @@ async function upsertDatabase({
 
     promises.push(upsertsPromise);
   } while (cursor);
+
+  promises.push(
+    upsertDatabaseStructuredDataFromCache({
+      databaseId,
+      connectorId,
+      topLevelWorkflowId,
+      loggerArgs,
+    })
+  );
 
   return Promise.all(promises);
 }
