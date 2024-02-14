@@ -5,7 +5,7 @@ import { DropdownMenu, Item } from "../index_with_tw_base";
 import { Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Item",
+  title: "Primitives/Item",
   component: Item,
 } satisfies Meta<typeof Item>;
 

@@ -4,7 +4,7 @@ import React from "react";
 import { RadioButton } from "@sparkle/components/RadioButton";
 
 const meta = {
-  title: "Atoms/RadioButton",
+  title: "Primitives/RadioButton",
   component: RadioButton,
 } satisfies Meta<typeof RadioButton>;
 

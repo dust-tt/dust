@@ -4,7 +4,7 @@ import React from "react";
 import { Notification } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Notification",
+  title: "Modules/Notification",
   component: Notification,
 } satisfies Meta<typeof Notification>;
 

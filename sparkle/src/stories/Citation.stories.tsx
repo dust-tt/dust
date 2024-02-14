@@ -4,7 +4,7 @@ import React from "react";
 import { Citation } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/Citation",
+  title: "Components/Citation",
   component: Citation,
 } satisfies Meta<typeof Citation>;
 

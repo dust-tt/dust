@@ -4,7 +4,7 @@ import React from "react";
 import { Hoverable } from "@sparkle/components/Hoverable";
 
 const meta = {
-  title: "Molecule/Hoverable",
+  title: "Primitives/Hoverable",
   component: Hoverable,
 } satisfies Meta<typeof Hoverable>;
 

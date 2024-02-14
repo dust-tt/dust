@@ -4,7 +4,7 @@ import React from "react";
 import { Tooltip } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Tooltip",
+  title: "Primitives/Tooltip",
   component: Tooltip,
 } satisfies Meta<typeof Tooltip>;
 

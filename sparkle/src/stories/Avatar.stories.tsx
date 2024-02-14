@@ -4,7 +4,7 @@ import React from "react";
 import { Avatar } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Avatar",
+  title: "Components/Avatar",
   component: Avatar,
 } satisfies Meta<typeof Avatar>;
 
