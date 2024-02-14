@@ -28,6 +28,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_res";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -194,7 +195,7 @@ export async function updateNotionConnector(
 export async function stopNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     logger.error(
@@ -227,7 +228,7 @@ export async function stopNotionConnector(
 export async function resumeNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     logger.error(
@@ -559,7 +560,7 @@ export async function retrieveNotionResourceParents(
   internalId: string,
   memoizationKey?: string
 ): Promise<Result<string[], Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));

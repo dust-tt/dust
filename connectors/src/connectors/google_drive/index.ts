@@ -47,6 +47,7 @@ import { removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { ConnectorResource } from "@connectors/resources/connector_res";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -171,12 +172,8 @@ export async function updateGoogleDriveConnector(
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID not set");
   }
 
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
-  if (!c) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
       message: "Connector not found",
@@ -189,7 +186,7 @@ export async function updateGoogleDriveConnector(
   // Workaround is checking the domain of the user who is updating the connector
   if (connectionId) {
     try {
-      const oldConnectionId = c.connectionId;
+      const oldConnectionId = connector.connectionId;
       const currentDriveClient = await getDriveClient(oldConnectionId);
       const currentDriveUser = await currentDriveClient.about.get({
         fields: "user",
@@ -226,8 +223,9 @@ export async function updateGoogleDriveConnector(
       );
     }
 
-    const oldConnectionId = c.connectionId;
-    await c.update({ connectionId });
+    const oldConnectionId = connector.connectionId;
+    await connector.updateConnection(connector.id, { connectionId });
+
     nangoDeleteConnection(
       oldConnectionId,
       NANGO_GOOGLE_DRIVE_CONNECTOR_ID
@@ -239,117 +237,108 @@ export async function updateGoogleDriveConnector(
     });
   }
 
-  return new Ok(c.id.toString());
+  return new Ok(connector.id.toString());
 }
 
 export async function cleanupGoogleDriveConnector(
   connectorId: ModelId,
   force = false
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorModel.findByPk(connectorId, {
-      transaction: transaction,
-    });
-    if (!connector) {
-      return new Err(
-        new Error(`Could not find connector with id ${connectorId}`)
-      );
-    }
-    if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
-      return new Err(
-        new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined")
-      );
-    }
-    if (!GOOGLE_CLIENT_ID) {
-      return new Err(new Error("GOOGLE_CLIENT_ID is not defined"));
-    }
-    if (!GOOGLE_CLIENT_SECRET) {
-      return new Err(new Error("GOOGLE_CLIENT_SECRET is not defined"));
-    }
-
-    const authClient = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
     );
-    try {
-      const credentials = await getGoogleCredentials(connector.connectionId);
+  }
 
-      const revokeTokenRes = await authClient.revokeToken(
-        credentials.credentials.refresh_token
-      );
+  if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
+    return new Err(new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined"));
+  }
+  if (!GOOGLE_CLIENT_ID) {
+    return new Err(new Error("GOOGLE_CLIENT_ID is not defined"));
+  }
+  if (!GOOGLE_CLIENT_SECRET) {
+    return new Err(new Error("GOOGLE_CLIENT_SECRET is not defined"));
+  }
 
-      if (revokeTokenRes.status !== 200) {
-        logger.error(
-          {
-            error: revokeTokenRes.data,
-          },
-          "Could not revoke token"
-        );
-        if (!force) {
-          return new Err(new Error("Could not revoke token"));
-        }
-      }
-    } catch (err) {
-      if (!force) {
-        throw err;
-      } else {
-        logger.error(
-          {
-            err,
-          },
-          "Error revoking token"
-        );
-      }
-    }
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      NANGO_GOOGLE_DRIVE_CONNECTOR_ID
+  const authClient = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET
+  );
+
+  try {
+    const credentials = await getGoogleCredentials(connector.connectionId);
+
+    const revokeTokenRes = await authClient.revokeToken(
+      credentials.credentials.refresh_token
     );
-    if (nangoRes.isErr()) {
+
+    if (revokeTokenRes.status !== 200) {
+      logger.error(
+        {
+          error: revokeTokenRes.data,
+        },
+        "Could not revoke token"
+      );
       if (!force) {
-        return nangoRes;
-      } else {
-        logger.error(
-          {
-            err: nangoRes.error,
-          },
-          "Error deleting connection from Nango"
-        );
+        return new Err(new Error("Could not revoke token"));
       }
     }
+  } catch (err) {
+    if (!force) {
+      throw err;
+    } else {
+      logger.error(
+        {
+          err,
+        },
+        "Error revoking token"
+      );
+    }
+  }
 
-    await GoogleDriveFolders.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction: transaction,
-    });
-    await GoogleDriveFiles.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction: transaction,
-    });
+  const nangoRes = await nangoDeleteConnection(
+    connector.connectionId,
+    NANGO_GOOGLE_DRIVE_CONNECTOR_ID
+  );
+  if (nangoRes.isErr()) {
+    if (!force) {
+      return nangoRes;
+    } else {
+      logger.error(
+        {
+          err: nangoRes.error,
+        },
+        "Error deleting connection from Nango"
+      );
+    }
+  }
 
-    await GoogleDriveSyncToken.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction: transaction,
-    });
-    await GoogleDriveWebhook.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction: transaction,
-    });
-
-    await connector.destroy({
-      transaction: transaction,
-    });
-
-    return new Ok(undefined);
+  await GoogleDriveFolders.destroy({
+    where: {
+      connectorId: connectorId,
+    },
   });
+  await GoogleDriveFiles.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  await GoogleDriveSyncToken.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  await GoogleDriveWebhook.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  await connector.delete();
+
+  return new Ok(undefined);
 }
 
 export async function retrieveGoogleDriveConnectorPermissions({
@@ -576,7 +565,7 @@ export async function setGoogleDriveConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

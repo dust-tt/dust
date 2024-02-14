@@ -35,6 +35,7 @@ import {
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_res";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
@@ -293,96 +294,83 @@ export async function uninstallSlack(nangoConnectionId: string) {
 export async function cleanupSlackConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorModel.findByPk(connectorId, {
-      transaction: transaction,
-    });
-    if (!connector) {
-      return new Err(
-        new Error(`Could not find connector with id ${connectorId}`)
-      );
-    }
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
+    );
+  }
 
-    const configuration = await SlackConfiguration.findOne({
-      where: {
-        connectorId: connectorId,
+  const configuration = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (!configuration) {
+    return new Err(
+      new Error(`Could not find configuration for connector id ${connectorId}`)
+    );
+  }
+
+  const configurations = await SlackConfiguration.findAll({
+    where: {
+      slackTeamId: configuration.slackTeamId,
+    },
+  });
+
+  // We deactivate our connections only if we are the only live slack connection for this team.
+  if (configurations.length == 1) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        slackTeamId: configuration.slackTeamId,
+        nangoConnectionId: connector.connectionId,
       },
-      transaction: transaction,
-    });
-    if (!configuration) {
-      return new Err(
-        new Error(
-          `Could not find configuration for connector id ${connectorId}`
-        )
-      );
+      `Attempting Slack app deactivation [cleanupSlackConnector]`
+    );
+
+    const uninstallRes = await uninstallSlack(connector.connectionId);
+    if (uninstallRes.isErr()) {
+      return uninstallRes;
     }
 
-    const configurations = await SlackConfiguration.findAll({
-      where: {
+    logger.info(
+      {
+        connectorId: connector.id,
         slackTeamId: configuration.slackTeamId,
       },
-      transaction: transaction,
-    });
-
-    // We deactivate our connections only if we are the only live slack connection for this team.
-    if (configurations.length == 1) {
-      logger.info(
-        {
-          connectorId: connector.id,
-          slackTeamId: configuration.slackTeamId,
-          nangoConnectionId: connector.connectionId,
-        },
-        `Attempting Slack app deactivation [cleanupSlackConnector]`
-      );
-
-      const uninstallRes = await uninstallSlack(connector.connectionId);
-      if (uninstallRes.isErr()) {
-        return uninstallRes;
-      }
-
-      logger.info(
-        {
-          connectorId: connector.id,
-          slackTeamId: configuration.slackTeamId,
-        },
-        `Deactivated Slack app [cleanupSlackConnector]`
-      );
-    } else {
-      logger.info(
-        {
-          connectorId: connector.id,
-          slackTeamId: configuration.slackTeamId,
-          activeConfigurations: configurations.length - 1,
-        },
-        `Skipping deactivation of the Slack app [cleanupSlackConnector]`
-      );
-    }
-
-    await SlackChannel.destroy({
-      where: {
-        connectorId: connectorId,
+      `Deactivated Slack app [cleanupSlackConnector]`
+    );
+  } else {
+    logger.info(
+      {
+        connectorId: connector.id,
+        slackTeamId: configuration.slackTeamId,
+        activeConfigurations: configurations.length - 1,
       },
-      transaction: transaction,
-    });
-    await SlackMessages.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction: transaction,
-    });
-    await SlackConfiguration.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction: transaction,
-    });
+      `Skipping deactivation of the Slack app [cleanupSlackConnector]`
+    );
+  }
 
-    await connector.destroy({
-      transaction: transaction,
-    });
-
-    return new Ok(undefined);
+  await SlackChannel.destroy({
+    where: {
+      connectorId: connectorId,
+    },
   });
+  await SlackMessages.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  await SlackConfiguration.destroy({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+
+  await connector.delete();
+
+  return new Ok(undefined);
 }
 
 export async function retrieveSlackConnectorPermissions({
@@ -497,7 +485,7 @@ export async function setSlackConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

@@ -6,6 +6,7 @@ import type {
 
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
+import { ConnectorResource } from "@connectors/resources/connector_res";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function syncFinished({
@@ -19,7 +20,7 @@ async function syncFinished({
   finishedAt: Date;
   errorType: ConnectorErrorType | null;
 }): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
@@ -33,7 +34,11 @@ async function syncFinished({
     connector.lastSyncSuccessfulTime = finishedAt;
   }
 
-  await connector.save();
+  await ConnectorModel.update(connector, {
+    where: {
+      id: connector.id,
+    },
+  });
 
   return new Ok(undefined);
 }
@@ -42,13 +47,18 @@ export async function reportInitialSyncProgress(
   connectorId: ModelId,
   progress: string
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
   connector.firstSyncProgress = progress;
   connector.lastSyncSuccessfulTime = null;
-  await connector.save();
+
+  await ConnectorModel.update(connector, {
+    where: {
+      id: connector.id,
+    },
+  });
 
   return new Ok(undefined);
 }
@@ -98,12 +108,16 @@ export async function syncStarted(connectorId: ModelId, startedAt?: Date) {
   if (!startedAt) {
     startedAt = new Date();
   }
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
   connector.lastSyncStartTime = startedAt;
-  await connector.save();
+  await ConnectorModel.update(connector, {
+    where: {
+      id: connector.id,
+    },
+  });
 
   return new Ok(undefined);
 }

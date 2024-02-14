@@ -24,7 +24,7 @@ import type {
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_res";
 
 type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 
@@ -126,7 +126,7 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    const connector = await ConnectorModel.findByPk(connectorRes.value);
+    const connector = await ConnectorResource.fetchById(connectorRes.value);
     if (!connector) {
       return apiError(req, res, {
         status_code: 500,
@@ -136,8 +136,6 @@ const _createConnectorAPIHandler = async (
         },
       });
     }
-
-    await connector.reload();
 
     return res.status(200).json({
       id: connector.id.toString(),
