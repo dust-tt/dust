@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 type CsvParsingError = {
   type:
     | "invalid_delimiter"
+    | "invalid_header"
     | "duplicate_header"
     | "invalid_record_length"
     | "empty_csv"
@@ -283,20 +284,33 @@ async function rowsFromCsv(
     const record = anyRecord as string[];
 
     if (!header) {
-      header = record;
-      continue;
-    }
-
-    header = header.map((h) => h.trim().toLowerCase());
-    const headerSet = new Set<string>();
-    for (const h of header) {
-      if (headerSet.has(h)) {
-        return new Err({
-          type: "duplicate_header",
-          message: `Duplicate header: ${h}.`,
-        });
+      header = [];
+      const firstRecordCells = record.map((h) => h.trim().toLocaleLowerCase());
+      let emptyHeaderCellFound = false;
+      for (const r of firstRecordCells) {
+        if (r === "") {
+          emptyHeaderCellFound = true;
+        } else {
+          if (emptyHeaderCellFound) {
+            return new Err({
+              type: "invalid_header",
+              message: `Invalid header: found non-empty cell after empty cell.`,
+            });
+          }
+          header.push(r);
+        }
       }
-      headerSet.add(h);
+      const headerSet = new Set<string>();
+      for (const h of header) {
+        if (headerSet.has(h)) {
+          return new Err({
+            type: "duplicate_header",
+            message: `Duplicate header: ${h}.`,
+          });
+        }
+        headerSet.add(h);
+      }
+      continue;
     }
 
     for (const [i, h] of header.entries()) {
