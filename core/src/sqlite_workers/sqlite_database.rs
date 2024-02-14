@@ -19,6 +19,25 @@ pub struct SqliteDatabase {
     interrupt_handle: Option<Arc<tokio::sync::Mutex<InterruptHandle>>>,
 }
 
+#[derive(Debug)]
+pub enum QueryError {
+    ExceededMaxRows(usize),
+    QueryExecutionError(anyhow::Error),
+}
+
+impl std::fmt::Display for QueryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueryError::ExceededMaxRows(limit) => {
+                write!(f, "Query returned more than {} rows", limit)
+            }
+            QueryError::QueryExecutionError(e) => write!(f, "Query execution error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for QueryError {}
+
 const MAX_ROWS: usize = 128;
 
 impl SqliteDatabase {
@@ -47,22 +66,26 @@ impl SqliteDatabase {
         }
     }
 
-    pub async fn query(&self, query: &str, timeout_ms: u64) -> Result<Vec<QueryResult>> {
+    pub async fn query(
+        &self,
+        query: &str,
+        timeout_ms: u64,
+    ) -> Result<Vec<QueryResult>, QueryError> {
         let query = query.to_string();
         let conn = self.conn.clone();
 
         let query_future = task::spawn_blocking(move || {
-            let conn = match conn {
-                Some(conn) => conn.clone(),
-                None => Err(anyhow!("Database not initialized"))?,
-            };
+            let conn = conn.ok_or(QueryError::QueryExecutionError(anyhow!(
+                "Database not initialized"
+            )))?;
 
-            // This lock is a parking_lot so it's blocking but we're in a spawn_blocking, so OK.
             let conn = conn.lock();
             let time_query_start = utils::now();
 
-            // Execute the query and collect results
-            let mut stmt = conn.prepare(&query)?;
+            let mut stmt = conn
+                .prepare(&query)
+                .map_err(|e| QueryError::QueryExecutionError(anyhow::Error::new(e)))?;
+
             let column_names = stmt
                 .column_names()
                 .into_iter()
@@ -113,13 +136,22 @@ impl SqliteDatabase {
                             ))
                         })
                         .collect::<Result<serde_json::Value>>()
-                })?
-                // Limit to 128 rows.
-                .take(MAX_ROWS)
-                .collect::<Result<Vec<_>>>()?
+                })
+                // At this point we have a result (from the query_and_then fn itself) of results (for each
+                // individual row parsing). We wrap the potential top-level error in a QueryError and bubble it up.
+                .map_err(|e| QueryError::QueryExecutionError(anyhow::Error::new(e)))?
+                .take(MAX_ROWS + 1)
+                .collect::<Result<Vec<_>, _>>()
+                // Thanks to the collect above, we now have a single top-level result.
+                // We wrap the potential error in a QueryError and bubble up if needed.
+                .map_err(QueryError::QueryExecutionError)?
                 .into_par_iter()
                 .map(|value| QueryResult { value })
                 .collect::<Vec<_>>();
+
+            if result_rows.len() > MAX_ROWS {
+                return Err(QueryError::ExceededMaxRows(MAX_ROWS));
+            }
 
             info!(
                 duration = utils::now() - time_query_start,
@@ -129,16 +161,26 @@ impl SqliteDatabase {
             Ok(result_rows)
         });
 
-        match timeout(std::time::Duration::from_millis(timeout_ms), query_future).await {
-            Ok(r) => r?,
+        match timeout(std::time::Duration::from_millis(timeout_ms), query_future)
+            .await
+            .map_err(|_| QueryError::QueryExecutionError(anyhow!("Join error")))?
+        {
+            Ok(r) => r,
             Err(_) => {
-                let interrupt_handle = match &self.interrupt_handle {
-                    Some(interrupt_handle) => interrupt_handle.clone(),
-                    None => Err(anyhow!("Database not initialized"))?,
-                };
+                let interrupt_handle =
+                    self.interrupt_handle
+                        .as_ref()
+                        .ok_or(QueryError::QueryExecutionError(anyhow!(
+                            "Database is not initialized"
+                        )))?;
+
                 let interrupt_handle = interrupt_handle.lock().await;
                 interrupt_handle.interrupt();
-                Err(anyhow!("Query execution timed out after {}ms", timeout_ms))?
+
+                Err(QueryError::QueryExecutionError(anyhow!(format!(
+                    "Query execution timed out after {} ms",
+                    timeout_ms
+                ))))
             }
         }
     }
