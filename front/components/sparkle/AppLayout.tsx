@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Banner,
   DropdownMenu,
   Item,
   Logo,
@@ -25,6 +26,11 @@ import { topNavigation } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+
+/* Set to true when there is an incident, to show the banner (customize
+ * IncidentBanner component at bottom of the page)
+ */
+const SHOW_INCIDENT_BANNER = true;
 
 function NavigationBar({
   owner,
@@ -393,44 +399,23 @@ export default function AppLayout({
           </div>
           <div
             className={classNames(
-              "fixed left-0 right-0 top-0 z-30 flex h-16 flex-row pl-12 lg:pl-0",
+              "fixed left-0 right-0 top-0 z-30 flex flex-col pl-12 lg:pl-0",
               !hideSidebar ? "lg:left-80" : "",
               "border-b border-structure-300/30 bg-white/80 backdrop-blur",
               titleChildren ? "fixed" : "lg:hidden"
             )}
           >
-            <div className="grow">
+            <div className="h-16 grow">
               <div className="mx-auto h-full grow px-6">
                 {loaded && titleChildren && titleChildren}
               </div>
             </div>
+            {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
           </div>
 
-          <div className="relative z-[80] flex w-full items-center justify-center bg-orange-200 py-2 text-element-900">
-            <div className="">
-              <span className="font-bold">
-                OpenAI APIs are encountering a{" "}
-                <a
-                  href="https://status.openai.com/"
-                  target="_blank"
-                  className="underline"
-                >
-                  partial outage
-                </a>
-              </span>{" "}
-              that may cause slowness and errors from assistants using GPT or
-              data retrieval. We are monitoring the situation{" "}
-              <a
-                href="http://status.dust.tt/"
-                target="_blank"
-                className="underline"
-              >
-                here
-              </a>
-              .
-            </div>
-          </div>
-
+          {!titleChildren && SHOW_INCIDENT_BANNER && (
+            <IncidentBanner className="relative" />
+          )}
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
@@ -515,5 +500,36 @@ function SubscriptionPastDueBanner() {
         .
       </div>
     </div>
+  );
+}
+
+function IncidentBanner({ className }: { className?: string }) {
+  return (
+    <Banner
+      allowDismiss={false}
+      classNames={classNames("bg-amber-600 z-[80] w-full h-8", className ?? "")}
+      title={
+        <span className="font-bold">
+          OpenAI APIs are encountering a{" "}
+          <a
+            href="https://status.openai.com/"
+            target="_blank"
+            className="underline"
+          >
+            partial outage.
+          </a>
+        </span>
+      }
+      label=""
+    >
+      <span>
+        It may cause slowness and errors from assistants using GPT or data
+        retrieval. We are monitoring the situation{" "}
+        <a href="http://status.dust.tt/" target="_blank" className="underline">
+          here
+        </a>
+        .
+      </span>
+    </Banner>
   );
 }
