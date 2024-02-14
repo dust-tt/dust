@@ -1,3 +1,4 @@
+import type { ConnectorPermission } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -8,7 +9,6 @@ import { DataTypes, Model } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ConnectorPermission } from "@connectors/types/resources";
 
 export class SlackConfiguration extends Model<
   InferAttributes<SlackConfiguration>,

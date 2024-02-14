@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ConnectorPermission, ModelId } from "@dust-tt/types";
 import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
@@ -9,7 +9,6 @@ import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ConnectorPermission } from "@connectors/types/resources";
 
 import { getSlackClient } from "./slack_client";
 

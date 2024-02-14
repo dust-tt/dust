@@ -7,10 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import type {
-  ConnectorPermission,
-  ConnectorResourceType,
-} from "@dust-tt/types";
+import type { ConnectorNodeType, ConnectorPermission } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
@@ -64,7 +61,7 @@ export type IconComponentType =
   | typeof CircleStackIcon
   | typeof ChatBubbleLeftRightIcon;
 
-function getIconForType(type: ConnectorResourceType): IconComponentType {
+function getIconForType(type: ConnectorNodeType): IconComponentType {
   switch (type) {
     case "file":
       return DocumentTextIcon;

@@ -1,6 +1,6 @@
 import type {
+  ConnectorNode,
   ConnectorPermission,
-  ConnectorResource,
   ConnectorsAPIError,
   ModelId,
 } from "@dust-tt/types";
@@ -288,7 +288,7 @@ export async function retrieveConfluenceConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   const connector = await ConnectorModel.findOne({
     where: {

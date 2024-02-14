@@ -1,16 +1,16 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  WithConnectorsAPIErrorReponse,
+} from "@dust-tt/types";
+import type { ConnectorNode } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
 
 type GetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
-  resources: ConnectorResource[];
+  resources: ConnectorNode[];
 }>;
 
 const _getConnectorPermissions = async (

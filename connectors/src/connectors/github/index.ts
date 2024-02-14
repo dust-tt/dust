@@ -1,4 +1,9 @@
-import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  ConnectorPermission,
+  ConnectorsAPIError,
+  ModelId,
+} from "@dust-tt/types";
 
 import {
   getRepo,
@@ -25,10 +30,6 @@ import mainLogger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
 
 type GithubInstallationId = string;
 
@@ -267,7 +268,7 @@ export async function retrieveGithubConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   const c = await ConnectorModel.findOne({
     where: {
@@ -284,7 +285,7 @@ export async function retrieveGithubConnectorPermissions({
   if (!parentInternalId) {
     // No parentInternalId: we return the repositories.
 
-    let resources: ConnectorResource[] = [];
+    let nodes: ConnectorNode[] = [];
     let pageNumber = 1; // 1-indexed
     for (;;) {
       const page = await getReposPage(githubInstallationId, pageNumber);
@@ -293,7 +294,7 @@ export async function retrieveGithubConnectorPermissions({
         break;
       }
 
-      resources = resources.concat(
+      nodes = nodes.concat(
         page.map((repo) => ({
           provider: c.type,
           internalId: repo.id.toString(),
@@ -309,11 +310,11 @@ export async function retrieveGithubConnectorPermissions({
       );
     }
 
-    resources.sort((a, b) => {
+    nodes.sort((a, b) => {
       return a.title.localeCompare(b.title);
     });
 
-    return new Ok(resources);
+    return new Ok(nodes);
   } else {
     if (parentInternalId.startsWith("github-code-")) {
       const [files, directories] = await Promise.all([
@@ -342,10 +343,10 @@ export async function retrieveGithubConnectorPermissions({
         return a.dirName.localeCompare(b.dirName);
       });
 
-      const resources: ConnectorResource[] = [];
+      const nodes: ConnectorNode[] = [];
 
       directories.forEach((directory) => {
-        resources.push({
+        nodes.push({
           provider: c.type,
           internalId: directory.internalId,
           parentInternalId,
@@ -360,7 +361,7 @@ export async function retrieveGithubConnectorPermissions({
       });
 
       files.forEach((file) => {
-        resources.push({
+        nodes.push({
           provider: c.type,
           internalId: file.documentId,
           parentInternalId,
@@ -374,7 +375,7 @@ export async function retrieveGithubConnectorPermissions({
         });
       });
 
-      return new Ok(resources);
+      return new Ok(nodes);
     } else {
       // If parentInternalId is set and does not start with `github-code` it means that it is
       // supposed to be the repoId. We support issues and discussions and also want to add the code
@@ -418,10 +419,10 @@ export async function retrieveGithubConnectorPermissions({
         ]
       );
 
-      const resources: ConnectorResource[] = [];
+      const nodes: ConnectorNode[] = [];
 
       if (latestIssue) {
-        resources.push({
+        nodes.push({
           provider: c.type,
           internalId: `${repoId}-issues`,
           parentInternalId,
@@ -436,7 +437,7 @@ export async function retrieveGithubConnectorPermissions({
       }
 
       if (latestDiscussion) {
-        resources.push({
+        nodes.push({
           provider: c.type,
           internalId: `${repoId}-discussions`,
           parentInternalId,
@@ -451,7 +452,7 @@ export async function retrieveGithubConnectorPermissions({
       }
 
       if (codeRepo) {
-        resources.push({
+        nodes.push({
           provider: c.type,
           internalId: `github-code-${repoId}`,
           parentInternalId,
@@ -465,7 +466,7 @@ export async function retrieveGithubConnectorPermissions({
         });
       }
 
-      return new Ok(resources);
+      return new Ok(nodes);
     }
   }
 }

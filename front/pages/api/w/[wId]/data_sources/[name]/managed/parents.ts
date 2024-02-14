@@ -10,19 +10,17 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const GetConnectorResourceParentsRequestBodySchema = t.type({
+const GetConnectorNodeParentsRequestBodySchema = t.type({
   resourceInternalIds: t.array(t.string),
 });
 
-export type GetConnectorResourceParentsResponseBody = {
+export type GetConnectorNodeParentsResponseBody = {
   resources: { parents: string[]; internalId: string }[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorReponse<GetConnectorResourceParentsResponseBody>
-  >
+  res: NextApiResponse<WithAPIErrorReponse<GetConnectorNodeParentsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -88,8 +86,9 @@ async function handler(
         });
       }
 
-      const bodyValidation =
-        GetConnectorResourceParentsRequestBodySchema.decode(req.body);
+      const bodyValidation = GetConnectorNodeParentsRequestBodySchema.decode(
+        req.body
+      );
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

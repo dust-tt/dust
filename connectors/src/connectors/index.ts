@@ -43,8 +43,8 @@ import {
   createIntercomConnector,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
+  retrieveIntercomNodesTitles,
   retrieveIntercomObjectsParents,
-  retrieveIntercomResourcesTitles,
   setIntercomConnectorPermissions,
   stopIntercomConnector,
   updateIntercomConnector,
@@ -58,9 +58,9 @@ import type {
   ConnectorCreatorOAuth,
   ConnectorCreatorUrl,
   ConnectorGarbageCollector,
+  ConnectorNodeParentsRetriever,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
-  ConnectorResourceParentsRetriever,
   ConnectorResumer,
   ConnectorStopper,
   ConnectorUpdater,
@@ -72,8 +72,8 @@ import {
   fullResyncNotionConnector,
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
+  retrieveNotionNodesTitles,
   retrieveNotionResourceParents,
-  retrieveNotionResourcesTitles,
   stopNotionConnector,
   updateNotionConnector,
 } from "@connectors/connectors/notion";
@@ -236,16 +236,16 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
 > = {
   confluence: retrieveConfluenceObjectsTitles,
   slack: retrieveSlackChannelsTitles,
-  notion: retrieveNotionResourcesTitles,
+  notion: retrieveNotionNodesTitles,
   github: retrieveGithubReposTitles,
   google_drive: retrieveGoogleDriveObjectsTitles,
-  intercom: retrieveIntercomResourcesTitles,
+  intercom: retrieveIntercomNodesTitles,
   webcrawler: retrieveWebCrawlerObjectsTitles,
 };
 
 export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorResourceParentsRetriever
+  ConnectorNodeParentsRetriever
 > = {
   confluence: retrieveConfluenceResourceParents,
   notion: retrieveNotionResourceParents,

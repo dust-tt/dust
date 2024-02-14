@@ -1,4 +1,8 @@
-import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  ConnectorsAPIError,
+  ModelId,
+} from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
@@ -28,7 +32,6 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import type { ConnectorResource } from "@connectors/types/resources";
 
 import type { ConnectorPermissionRetriever } from "../interface";
 import { getParents } from "./lib/parents";
@@ -393,7 +396,7 @@ export async function retrieveNotionConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   const c = await ConnectorModel.findOne({
     where: {
@@ -422,9 +425,7 @@ export async function retrieveNotionConnectorPermissions({
     }),
   ]);
 
-  const getPageResources = async (
-    page: NotionPage
-  ): Promise<ConnectorResource> => {
+  const getPageNodes = async (page: NotionPage): Promise<ConnectorNode> => {
     const [childPage, childDB] = await Promise.all([
       NotionPage.findOne({
         where: {
@@ -457,13 +458,9 @@ export async function retrieveNotionConnectorPermissions({
     };
   };
 
-  const pageResources = await Promise.all(
-    pages.map((p) => getPageResources(p))
-  );
+  const pageNodes = await Promise.all(pages.map((p) => getPageNodes(p)));
 
-  const getDbResources = async (
-    db: NotionDatabase
-  ): Promise<ConnectorResource> => {
+  const getDbNodes = async (db: NotionDatabase): Promise<ConnectorNode> => {
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
@@ -479,9 +476,9 @@ export async function retrieveNotionConnectorPermissions({
     };
   };
 
-  const dbResources = await Promise.all(dbs.map((db) => getDbResources(db)));
+  const dbNodes = await Promise.all(dbs.map((db) => getDbNodes(db)));
 
-  const folderResources: ConnectorResource[] = [];
+  const folderNodes: ConnectorNode[] = [];
   if (!parentInternalId) {
     const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
       NotionPage.count({
@@ -501,7 +498,7 @@ export async function retrieveNotionConnectorPermissions({
     if (orphanedPagesCount + orphanedDbsCount > 0) {
       // We also need to return a "fake" top-level folder call "Orphaned" to include resources
       // we haven't been able to find a parent for.
-      folderResources.push({
+      folderNodes.push({
         provider: c.type,
         // Orphaned resources in the database will have "unknown" as their parentId.
         internalId: "unknown",
@@ -517,16 +514,16 @@ export async function retrieveNotionConnectorPermissions({
     }
   }
 
-  const resources = pageResources.concat(dbResources);
+  const nodes = pageNodes.concat(dbNodes);
 
-  resources.sort((a, b) => {
+  nodes.sort((a, b) => {
     return a.title.localeCompare(b.title);
   });
 
-  return new Ok(resources.concat(folderResources));
+  return new Ok(nodes.concat(folderNodes));
 }
 
-export async function retrieveNotionResourcesTitles(
+export async function retrieveNotionNodesTitles(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<Record<string, string | null>, Error>> {

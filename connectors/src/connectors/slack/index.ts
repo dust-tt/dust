@@ -1,4 +1,9 @@
-import type { ConnectorsAPIError, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  ConnectorPermission,
+  ConnectorsAPIError,
+  ModelId,
+} from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -34,10 +39,6 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
-import type {
-  ConnectorPermission,
-  ConnectorResource,
-} from "@connectors/types/resources";
 
 const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
   process.env;
@@ -389,7 +390,7 @@ export async function retrieveSlackConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorResource[], Error>
+  Result<ConnectorNode[], Error>
 > {
   if (parentInternalId) {
     return new Err(
@@ -472,7 +473,7 @@ export async function retrieveSlackConnectorPermissions({
     }
   }
 
-  const resources: ConnectorResource[] = slackChannels.map((ch) => ({
+  const resources: ConnectorNode[] = slackChannels.map((ch) => ({
     provider: "slack",
     internalId: ch.slackChannelId,
     parentInternalId: null,

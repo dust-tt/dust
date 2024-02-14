@@ -1,4 +1,4 @@
-import type { ConnectorResource } from "@dust-tt/types";
+import type { ConnectorNode } from "@dust-tt/types";
 
 import {
   fetchIntercomTeam,
@@ -83,7 +83,7 @@ export async function retrieveIntercomConversationsPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorResource[]> {
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorNode[]> {
   const connector = await ConnectorModel.findByPk(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
@@ -94,9 +94,9 @@ export async function retrieveIntercomConversationsPermissions({
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
   const teamsInternalId = getTeamsInternalId(connectorId);
-  const resources: ConnectorResource[] = [];
+  const nodes: ConnectorNode[] = [];
 
-  const rootConversationRessource: ConnectorResource = {
+  const rootConversationNode: ConnectorNode = {
     provider: "intercom",
     internalId: teamsInternalId,
     parentInternalId: null,
@@ -122,11 +122,11 @@ export async function retrieveIntercomConversationsPermissions({
   // If isReadPermissionsOnly = false, we retrieve the list of Teams from Intercom
   if (isReadPermissionsOnly) {
     if (isRootLevel && teamsWithReadPermission.length > 0) {
-      resources.push(rootConversationRessource);
+      nodes.push(rootConversationNode);
     }
     if (parentInternalId === teamsInternalId) {
       teamsWithReadPermission.forEach((team) => {
-        resources.push({
+        nodes.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.teamId),
           parentInternalId: teamsInternalId,
@@ -142,7 +142,7 @@ export async function retrieveIntercomConversationsPermissions({
     }
   } else {
     if (isRootLevel) {
-      resources.push(rootConversationRessource);
+      nodes.push(rootConversationNode);
     }
     if (parentInternalId === teamsInternalId) {
       const teams = await fetchIntercomTeams(intercomClient);
@@ -150,7 +150,7 @@ export async function retrieveIntercomConversationsPermissions({
         const isTeamInDb = teamsWithReadPermission.some((teamFromDb) => {
           return teamFromDb.teamId === team.id;
         });
-        resources.push({
+        nodes.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.id),
           parentInternalId: teamsInternalId,
@@ -165,9 +165,9 @@ export async function retrieveIntercomConversationsPermissions({
       });
     }
   }
-  resources.sort((a, b) => {
+  nodes.sort((a, b) => {
     return a.title.localeCompare(b.title);
   });
 
-  return resources;
+  return nodes;
 }

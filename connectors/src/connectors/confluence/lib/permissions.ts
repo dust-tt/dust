@@ -1,6 +1,6 @@
 import type {
+  ConnectorNode,
   ConnectorPermission,
-  ConnectorResource,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -34,12 +34,12 @@ function isConfluenceSpaceModel(
   );
 }
 
-function createConnectorResourceFromSpace(
+function createConnectorNodeFromSpace(
   space: ConfluenceSpace | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
   { isExpandable }: { isExpandable: boolean }
-): ConnectorResource {
+): ConnectorNode {
   const urlSuffix = isConfluenceSpaceModel(space)
     ? space.urlSuffix
     : space._links.webui;
@@ -59,12 +59,12 @@ function createConnectorResourceFromSpace(
   };
 }
 
-function createConnectorResourceFromPage(
+function createConnectorNodeFromPage(
   parent: { id: string; type: "page" | "space" },
   baseUrl: string,
   page: ConfluencePage,
   isExpandable = false
-): ConnectorResource {
+): ConnectorNode {
   return {
     provider: "confluence",
     internalId: makeConfluenceInternalPageId(page.pageId),
@@ -98,7 +98,7 @@ async function getSynchronizedSpaces(
   connectorId: ModelId,
   confluenceConfig: ConfluenceConfiguration,
   parentInternalId: string
-): Promise<Result<ConnectorResource[], Error>> {
+): Promise<Result<ConnectorNode[], Error>> {
   const confluenceId = getIdFromConfluenceInternalId(parentInternalId);
 
   const parentSpace = await ConfluenceSpace.findOne({
@@ -124,11 +124,11 @@ async function getSynchronizedSpaces(
     },
   });
 
-  const allPages: ConnectorResource[] = [];
+  const allPages: ConnectorNode[] = [];
   for (const page of pagesWithinSpace) {
     const hasChildren = await checkPageHasChildren(connectorId, page.pageId);
 
-    const res = createConnectorResourceFromPage(
+    const res = createConnectorNodeFromPage(
       { id: parentSpace.spaceId, type: "space" },
       confluenceConfig.url,
       page,
@@ -145,7 +145,7 @@ async function getSynchronizedChildrenPages(
   connectorId: ModelId,
   confluenceConfig: ConfluenceConfiguration,
   parentInternalId: string
-): Promise<Result<ConnectorResource[], Error>> {
+): Promise<Result<ConnectorNode[], Error>> {
   const confluenceId = getIdFromConfluenceInternalId(parentInternalId);
 
   const parentPage = await ConfluencePage.findOne({
@@ -168,11 +168,11 @@ async function getSynchronizedChildrenPages(
     },
   });
 
-  const allPages: ConnectorResource[] = [];
+  const allPages: ConnectorNode[] = [];
   for (const page of pagesWithinSpace) {
     const hasChildren = await checkPageHasChildren(connectorId, page.pageId);
 
-    const res = createConnectorResourceFromPage(
+    const res = createConnectorNodeFromPage(
       { id: parentPage.pageId, type: "page" },
       confluenceConfig.url,
       page,
@@ -229,7 +229,7 @@ export async function retrieveHierarchyForParent(
   });
 
   const allSpaces = syncedSpaces.map((space) =>
-    createConnectorResourceFromSpace(space, confluenceConfig.url, "read", {
+    createConnectorNodeFromSpace(space, confluenceConfig.url, "read", {
       isExpandable: true,
     })
   );
@@ -254,7 +254,7 @@ export async function retrieveAvailableSpaces(
   return spaces.map((space) => {
     const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
 
-    return createConnectorResourceFromSpace(
+    return createConnectorNodeFromSpace(
       space,
       confluenceConfig.url,
       isSynced ? "read" : "none",
