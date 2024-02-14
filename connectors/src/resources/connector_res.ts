@@ -18,7 +18,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       },
     });
 
-    return blobs.map((b) => new ConnectorResource(ConnectorResource.model, b));
+    return blobs.map((b) => new ConnectorResource(b));
   }
 
   async updateConnectionId(connectionId: string) {
