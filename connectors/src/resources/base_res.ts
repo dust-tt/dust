@@ -1,19 +1,21 @@
-import type { Model, ModelStatic } from "sequelize";
-
-import type { WithoutSequelizeAttributes } from "@connectors/resources/storage/types";
+import type { Attributes, Model, ModelStatic } from "sequelize";
 
 // BaseResource is an abstract foundation for resource classes, focusing
-// on stateless behavior. It retains only the ID, enabling operations like
+// on stateless behavior. It retains only the Id, enabling operations like
 // delete and update. Updates require a full attribute set, ensuring
 // explicit data management.
-export class BaseResource<T extends Model> {
-  constructor(blob: WithoutSequelizeAttributes<T>) {
+export class BaseResource<M extends Model> {
+  readonly id: number;
+
+  constructor(protected readonly model: ModelStatic<M>, blob: Attributes<M>) {
     Object.assign(this, blob);
+    // TODO();
+    this.id = (blob as unknown as { id: number }).id;
   }
 
   static async fetchById<T extends BaseResource<M>, M extends Model>(
     this: {
-      new (blob: WithoutSequelizeAttributes<M>): T;
+      new (model: ModelStatic<M>, blob: Attributes<M>): T;
       model: ModelStatic<M>;
     },
     id: number | string
@@ -25,10 +27,24 @@ export class BaseResource<T extends Model> {
       return null;
     }
 
-    return new this(blob);
+    return new this(this.model, blob);
   }
 
   async delete(): Promise<number> {
-    throw new Error("Not implemented!");
+    return this.model.destroy({
+      // @ts-expect-error test
+      where: {
+        id: this.id,
+      },
+    });
+  }
+
+  async update(blob: Partial<Attributes<M>>): Promise<void> {
+    await this.model.update(blob, {
+      // @ts-expect-error test
+      where: {
+        id: this.id,
+      },
+    });
   }
 }

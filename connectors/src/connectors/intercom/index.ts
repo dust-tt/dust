@@ -161,7 +161,7 @@ export async function updateIntercomConnector(
       });
     }
 
-    await connector.updateConnectionId(newConnectionId);
+    await connector.update({ connectionId: newConnectionId });
 
     await IntercomWorkspace.update(
       {

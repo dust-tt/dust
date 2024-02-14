@@ -1,4 +1,9 @@
-import type { Model } from "sequelize";
+import type { Attributes, Model } from "sequelize";
+
+export type AttributesType<T extends Model> = Attributes<T>;
+export type ReadonlyAttributesType<T extends Model> = {
+  readonly [K in keyof AttributesType<T>]: AttributesType<T>[K];
+};
 
 // This is a temporary type that is a best effort at abstracting Sequelize models methods.
 export type WithoutSequelizeAttributes<T extends Model> = Omit<
