@@ -415,7 +415,7 @@ export default function AppLayout({
                 target="_blank"
                 className="underline"
               >
-                full outage of their APIs
+                partial outage of their APIs
               </a>
               {". "}
               All our services are impacted except assistants with no retrieval,
