@@ -2361,23 +2361,6 @@ function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
 }
 
-export async function databaseHasStructuredDataEnabled({
-  databaseId,
-  connectorId,
-}: {
-  databaseId: string;
-  connectorId: ModelId;
-}): Promise<boolean> {
-  const dbModel = await NotionDatabase.findOne({
-    where: {
-      connectorId,
-      notionDatabaseId: databaseId,
-    },
-  });
-
-  return !!dbModel?.structuredDataEnabled;
-}
-
 export async function upsertDatabaseStructuredDataFromCache({
   databaseId,
   connectorId,
