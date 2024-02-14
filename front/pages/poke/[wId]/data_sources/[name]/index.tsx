@@ -211,7 +211,7 @@ const DataSourcePage = ({
           },
           body: JSON.stringify({
             configKey: "botEnabled",
-            botEnabled: `${!features.slackBotEnabled}`,
+            configValue: `${!features.slackBotEnabled}`,
           }),
         }
       );
