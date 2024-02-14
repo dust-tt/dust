@@ -1,7 +1,8 @@
 {
   "scripts": {
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "start": "tsx main.ts"
   },
   "devDependencies": {
     "@types/minimist": "^1.2.2",
@@ -28,6 +29,7 @@
     "openai": "^4.23.0",
     "p-queue": "^8.0.1",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "tsx": "^4.7.1"
   }
 }
