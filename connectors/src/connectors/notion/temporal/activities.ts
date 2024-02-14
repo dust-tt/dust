@@ -1988,7 +1988,9 @@ export async function renderAndUpsertPageFromCache({
         lastEditor,
         createdTime: createdAt.getTime(),
         updatedTime: updatedAt.getTime(),
+        parsedProperties,
       }),
+
       parents,
       retries: 3,
       delayBetweenRetriesMs: 5000,
