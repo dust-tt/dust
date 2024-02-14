@@ -286,20 +286,20 @@ async function rowsFromCsv(
     if (!header) {
       header = [];
       const firstRecordCells = record.map((h) => h.trim().toLocaleLowerCase());
-      let emptyHeaderCellFound = false;
-      for (const r of firstRecordCells) {
-        if (r === "") {
-          emptyHeaderCellFound = true;
-        } else {
-          if (emptyHeaderCellFound) {
-            return new Err({
-              type: "invalid_header",
-              message: `Invalid header: found non-empty cell after empty cell.`,
-            });
-          }
-          header.push(r);
+      const firstEmptyCellIndex = firstRecordCells.indexOf("");
+      if (firstEmptyCellIndex !== -1) {
+        // Ensure there are no non-empty cells after the first empty cell.
+        if (firstRecordCells.slice(firstEmptyCellIndex).some((c) => c !== "")) {
+          return new Err({
+            type: "invalid_header",
+            message: `Invalid header: found non-empty cell after empty cell.`,
+          });
         }
       }
+      header = firstRecordCells.slice(
+        0,
+        firstEmptyCellIndex === -1 ? undefined : firstEmptyCellIndex
+      );
       const headerSet = new Set<string>();
       for (const h of header) {
         if (headerSet.has(h)) {
