@@ -1,5 +1,6 @@
-import { setupGlobalErrorHandler } from "@dust-tt/types";
+import { rateLimiter, setupGlobalErrorHandler } from "@dust-tt/types";
 import bodyParser from "body-parser";
+import type { NextFunction, Request, Response } from "express";
 import express from "express";
 
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
@@ -32,6 +33,8 @@ import {
 export function startServer(port: number) {
   setupGlobalErrorHandler(logger);
   const app = express();
+  // Indicates that the app is behind a proxy / LB. req.ip will be the left-most entry in the X-Forwarded-* header.
+  app.set("trust proxy", true);
 
   // for health check -- doesn't go through auth middleware
   app.get("/", (_req, res) => {
@@ -47,6 +50,25 @@ export function startServer(port: number) {
       },
     })
   );
+
+  app.use(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const clientIp = req.ip;
+      const remainingRequests = await rateLimiter({
+        key: `rate_limit:${clientIp}`,
+        maxPerTimeframe: 1000,
+        timeframeSeconds: 60,
+        logger: logger,
+      });
+      if (remainingRequests > 0) {
+        next();
+      } else {
+        res.status(429).send("Too many requests");
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.use(authMiddleware);
 
