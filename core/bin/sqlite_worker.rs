@@ -9,7 +9,7 @@ use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     databases::database::Table,
     databases_store::{self, store::DatabasesStore},
-    sqlite_workers::sqlite_database::SqliteDatabase,
+    sqlite_workers::sqlite_database::{QueryError, SqliteDatabase},
     utils::{error_response, APIResponse},
 };
 use hyper::{Body, Client, Request, StatusCode};
@@ -216,12 +216,20 @@ async fn databases_query(
                 response: Some(json!(results)),
             }),
         ),
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to query database",
-            Some(e),
-        ),
+        Err(e) => match e {
+            QueryError::ExceededMaxRows(max) => error_response(
+                StatusCode::BAD_REQUEST,
+                "too_many_result_rows",
+                &format!("Result contains too many rows (max: {})", max),
+                Some(e.into()),
+            ),
+            _ => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to query database",
+                Some(e.into()),
+            ),
+        },
     }
 }
 

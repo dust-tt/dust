@@ -2309,7 +2309,7 @@ async fn sqlite_workers_heartbeat(
                             StatusCode::INTERNAL_SERVER_ERROR,
                             "internal_server_error",
                             "Failed to expire SQLite worker databases",
-                            Some(e),
+                            Some(e.into()),
                         )
                     }
                     Ok(_) => (),
