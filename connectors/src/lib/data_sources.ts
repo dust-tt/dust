@@ -485,9 +485,6 @@ export async function upsertTableFromCsv({
     );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
-    if (axios.isAxiosError(e) && e.config?.data) {
-      e.config.data = "[REDACTED]";
-    }
     statsDClient.increment(
       "data_source_structured_data_upserts_error.count",
       1,
@@ -596,9 +593,6 @@ export async function upsertTableRow({
     );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
-    if (axios.isAxiosError(e) && e.config?.data) {
-      e.config.data = "[REDACTED]";
-    }
     statsDClient.increment(
       "data_source_structured_data_upserts_error.count",
       1,
