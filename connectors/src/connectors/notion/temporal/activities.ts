@@ -72,7 +72,6 @@ import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_res";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const { getRequiredNangoNotionConnectorId } = notionConfig;

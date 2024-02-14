@@ -34,11 +34,7 @@ async function syncFinished({
     connector.lastSyncSuccessfulTime = finishedAt;
   }
 
-  await ConnectorModel.update(connector, {
-    where: {
-      id: connector.id,
-    },
-  });
+  await connector.update(connector);
 
   return new Ok(undefined);
 }
@@ -54,11 +50,7 @@ export async function reportInitialSyncProgress(
   connector.firstSyncProgress = progress;
   connector.lastSyncSuccessfulTime = null;
 
-  await ConnectorModel.update(connector, {
-    where: {
-      id: connector.id,
-    },
-  });
+  await connector.update(connector);
 
   return new Ok(undefined);
 }
@@ -113,11 +105,7 @@ export async function syncStarted(connectorId: ModelId, startedAt?: Date) {
     return new Err(new Error("Connector not found"));
   }
   connector.lastSyncStartTime = startedAt;
-  await ConnectorModel.update(connector, {
-    where: {
-      id: connector.id,
-    },
-  });
+  await connector.update(connector);
 
   return new Ok(undefined);
 }

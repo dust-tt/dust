@@ -43,7 +43,6 @@ import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_res";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
@@ -1115,16 +1114,7 @@ export async function garbageCollectorFinished(connectorId: ModelId) {
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  await ConnectorModel.update(
-    {
-      lastGCTime: new Date(),
-    },
-    {
-      where: {
-        id: connector.id,
-      },
-    }
-  );
+  await connector.update({ lastGCTime: new Date() });
 }
 
 export async function getLastGCTime(connectorId: ModelId): Promise<number> {

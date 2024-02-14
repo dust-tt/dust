@@ -13,8 +13,6 @@ import type { ConnectorPermissionRetriever } from "@connectors/connectors/interf
 import { IntercomTeam } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_res";
-import { ConnectorResource } from "@connectors/resources/connector_res";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 export async function allowSyncTeam({
   connector,

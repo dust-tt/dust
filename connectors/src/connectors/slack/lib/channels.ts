@@ -8,8 +8,6 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_res";
-import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getSlackClient } from "./slack_client";
 
