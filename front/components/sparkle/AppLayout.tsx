@@ -30,7 +30,7 @@ import { classNames } from "@app/lib/utils";
 /* Set to true when there is an incident, to show the banner (customize
  * IncidentBanner component at bottom of the page)
  */
-const SHOW_INCIDENT_BANNER = true;
+const SHOW_INCIDENT_BANNER = false;
 
 function NavigationBar({
   owner,
