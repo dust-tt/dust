@@ -209,13 +209,15 @@ export async function syncConversation({
   const tags = conversation.tags?.tags
     .map((tag: IntercomTagType) => tag.name)
     .join(", ");
+  const source = conversation.source.type;
   const firstMessageAuthor = conversation.source.author;
   const firstMessageContent = turndownService.turndown(
     conversation.source.body
   );
 
   markdown += `# ${convoTitle}\n\n`;
-  markdown += `**TAGS: ${tags || "no tags"}**\n\n`;
+  markdown += `**TAGS: ${tags || "no tags"}**\n`;
+  markdown += `**SOURCE: ${source || "unknown"}**\n`;
   markdown += `**[Message] ${firstMessageAuthor.name} (${firstMessageAuthor.type})**\n`;
   markdown += `${firstMessageContent}\n\n`;
 
@@ -243,11 +245,11 @@ export async function syncConversation({
     dataSourceConfig,
     title: conversation.title,
     content: renderedMarkdown,
-    createdAt: new Date(conversation.created_at),
-    updatedAt: new Date(conversation.updated_at),
+    createdAt: new Date(conversation.created_at * 1000),
+    updatedAt: new Date(conversation.updated_at * 1000),
   });
 
-  const conversationUrl = `https://app.intercom.com/a/apps/${intercomWorkspace.intercomWorkspaceId}/inbox/inbox/${conversation.id}`;
+  const conversationUrl = `https://app.intercom.com/a/inbox/${intercomWorkspace.intercomWorkspaceId}/inbox/conversation/${conversation.id}`;
 
   await upsertToDatasource({
     dataSourceConfig,

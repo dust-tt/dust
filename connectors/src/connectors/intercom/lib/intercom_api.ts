@@ -62,7 +62,7 @@ export type IntercomConversationType = {
     tags: IntercomTagType[];
   };
   source: {
-    type: "conversation";
+    type: string;
     id: number;
     delivered_as: string;
     subject: string;
