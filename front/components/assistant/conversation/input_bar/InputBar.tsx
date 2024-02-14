@@ -233,6 +233,8 @@ export function AssistantInputBar({
     }
   }, [isProcessing, generationContext.generatingMessageIds.length]);
 
+  const isInTryModal = !!tryModalAgentConfiguration;
+
   return (
     <>
       {generationContext.generatingMessageIds.length > 0 && (
@@ -273,7 +275,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                isInTryModal={!!tryModalAgentConfiguration}
+                hideQuickActions={isInTryModal}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}

@@ -31,7 +31,7 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
-  isInTryModal: boolean;
+  hideQuickActions: boolean;
 }
 
 const InputBarContainer = ({
@@ -43,7 +43,7 @@ const InputBarContainer = ({
   owner,
   selectedAssistant,
   stickyMentions,
-  isInTryModal,
+  hideQuickActions,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
@@ -128,7 +128,7 @@ const InputBarContainer = ({
               fileInputRef.current?.click();
             }}
           />
-          {!isInTryModal && (
+          {!hideQuickActions && (
             <>
               <AssistantPicker
                 owner={owner}
