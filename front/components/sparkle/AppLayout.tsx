@@ -507,7 +507,7 @@ function IncidentBanner({ className }: { className?: string }) {
   return (
     <Banner
       allowDismiss={false}
-      classNames={classNames("bg-amber-600 z-[80] w-full", className ?? "")}
+      classNames={classNames("bg-amber-600 z-[80] w-full h-8", className ?? "")}
       title={
         <span className="font-bold">
           OpenAI APIs are encountering a{" "}
