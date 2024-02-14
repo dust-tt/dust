@@ -32,50 +32,38 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelName: string;
   connectorId: number;
 }): Promise<SlackChannelType> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: connectorId,
-      },
-      transaction,
-    });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Could not find connector ${connectorId}`);
+  }
 
-    if (!connector) {
-      throw new Error(`Could not find connector ${connectorId}`);
-    }
-
-    let channel = await SlackChannel.findOne({
-      where: {
-        connectorId,
-        slackChannelId,
-      },
-      transaction,
-    });
-
-    if (!channel) {
-      throw new Error(
-        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
-      );
-    } else {
-      if (channel.slackChannelName !== slackChannelName) {
-        channel = await channel.update(
-          {
-            slackChannelName,
-          },
-          { transaction }
-        );
-      }
-    }
-
-    return {
-      id: channel.id,
-      connectorId: channel.connectorId,
-      name: channel.slackChannelName,
-      slackId: channel.slackChannelId,
-      permission: channel.permission,
-      agentConfigurationId: channel.agentConfigurationId,
-    };
+  let channel = await SlackChannel.findOne({
+    where: {
+      connectorId,
+      slackChannelId,
+    },
   });
+
+  if (!channel) {
+    throw new Error(
+      `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
+    );
+  } else {
+    if (channel.slackChannelName !== slackChannelName) {
+      channel = await channel.update({
+        slackChannelName,
+      });
+    }
+  }
+
+  return {
+    id: channel.id,
+    connectorId: channel.connectorId,
+    name: channel.slackChannelName,
+    slackId: channel.slackChannelId,
+    permission: channel.permission,
+    agentConfigurationId: channel.agentConfigurationId,
+  };
 }
 
 export async function joinChannel(

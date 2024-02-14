@@ -51,7 +51,6 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_res";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
@@ -192,57 +191,46 @@ export async function cleanupIntercomConnector(
     throw new Error("INTERCOM_NANGO_CONNECTOR_ID not set");
   }
 
-  const connector = await ConnectorModel.findOne({
-    where: { type: "intercom", id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Intercom connector not found.");
     return new Err(new Error("Connector not found"));
   }
 
-  await sequelizeConnection.transaction(async (transaction) => {
-    await Promise.all([
-      IntercomWorkspace.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction: transaction,
-      }),
-      IntercomHelpCenter.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction: transaction,
-      }),
-      IntercomCollection.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction: transaction,
-      }),
-      IntercomArticle.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction: transaction,
-      }),
-      IntercomTeam.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction: transaction,
-      }),
-      IntercomConversation.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction: transaction,
-      }),
-      connector.destroy({
-        transaction: transaction,
-      }),
-    ]);
-  });
+  await Promise.all([
+    IntercomWorkspace.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    }),
+    IntercomHelpCenter.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    }),
+    IntercomCollection.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    }),
+    IntercomArticle.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    }),
+    IntercomTeam.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    }),
+    IntercomConversation.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    }),
+  ]);
+
+  await connector.delete();
 
   const nangoRes = await nangoDeleteConnection(
     connector.connectionId,

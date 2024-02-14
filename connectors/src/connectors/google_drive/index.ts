@@ -224,7 +224,7 @@ export async function updateGoogleDriveConnector(
     }
 
     const oldConnectionId = connector.connectionId;
-    await connector.updateConnection(connector.id, { connectionId });
+    await connector.update({ connectionId });
 
     nangoDeleteConnection(
       oldConnectionId,
@@ -348,11 +348,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorNode[], Error>
 > {
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -636,9 +632,7 @@ export async function getGoogleDriveConfig(
   connectorId: ModelId,
   configKey: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
@@ -664,9 +658,7 @@ export async function setGoogleDriveConfig(
   configKey: string,
   configValue: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
@@ -707,9 +699,7 @@ export async function setGoogleDriveConfig(
 }
 
 export async function googleDriveGarbageCollect(connectorId: ModelId) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

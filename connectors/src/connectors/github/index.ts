@@ -27,6 +27,7 @@ import {
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_res";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -89,11 +90,7 @@ export async function updateGithubConnector(
     connectionId?: string | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
@@ -123,11 +120,7 @@ export async function stopGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   try {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: connectorId,
-      },
-    });
+    const connector = await ConnectorResource.fetchById(connectorId);
 
     if (!connector) {
       return new Err(new Error("Connector not found"));
@@ -161,11 +154,7 @@ export async function resumeGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   try {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: connectorId,
-      },
-    });
+    const connector = await ConnectorResource.fetchById(connectorId);
 
     if (!connector) {
       return new Err(new Error("Connector not found"));
@@ -224,44 +213,33 @@ export async function fullResyncGithubConnector(
 export async function cleanupGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    try {
-      const connector = await ConnectorModel.findOne({
-        where: {
-          id: connectorId,
-        },
-        transaction,
-      });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
 
-      if (!connector) {
-        logger.error({ connectorId }, "Connector not found");
-        return new Err(new Error("Connector not found"));
-      }
+  try {
+    await GithubIssue.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    await GithubConnectorState.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    await connector.delete();
 
-      await GithubIssue.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      });
-      await GithubConnectorState.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      });
-      await connector.destroy({
-        transaction: transaction,
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      logger.error(
-        { connectorId, error: err },
-        "Error cleaning up github connector"
-      );
-      return new Err(err as Error);
-    }
-  });
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      { connectorId, error: err },
+      "Error cleaning up github connector"
+    );
+    return new Err(err as Error);
+  }
 }
 
 export async function retrieveGithubConnectorPermissions({
@@ -270,11 +248,7 @@ export async function retrieveGithubConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorNode[], Error>
 > {
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -475,11 +449,7 @@ export async function retrieveGithubReposTitles(
   connectorId: ModelId,
   repoIds: string[]
 ): Promise<Result<Record<string, string>, Error>> {
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -514,9 +484,7 @@ export const getGithubConfig: ConnectorConfigGetter = async function (
   connectorId: ModelId,
   configKey: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(
       new Error(`Connector not found (connectorId: ${connectorId})`)
@@ -548,9 +516,7 @@ export async function setGithubConfig(
   configKey: string,
   configValue: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(
       new Error(`Connector not found (connectorId: ${connectorId})`)
@@ -594,9 +560,7 @@ export async function retrieveGithubResourceParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(
       new Error(`Connector not found (connectorId: ${connectorId})`)

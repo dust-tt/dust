@@ -134,11 +134,7 @@ export async function updateSlackConnector(
     throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
   }
 
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
@@ -388,11 +384,7 @@ export async function retrieveSlackConnectorPermissions({
     );
   }
 
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -631,9 +623,7 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
   connectorId: ModelId,
   configKey: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
@@ -656,9 +646,7 @@ export async function setSlackConfig(
   configKey: string,
   configValue: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

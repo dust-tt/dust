@@ -42,4 +42,12 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       },
     });
   }
+
+  async update(blob: Partial<ConnectorResource>) {
+    return ConnectorResource.model.update(blob, {
+      where: {
+        id: this.id,
+      },
+    });
+  }
 }
