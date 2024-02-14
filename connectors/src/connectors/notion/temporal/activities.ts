@@ -2372,7 +2372,7 @@ export async function upsertDatabaseStructuredDataFromCache({
   topLevelWorkflowId: string;
   loggerArgs: Record<string, string | number>;
 }): Promise<void> {
-  const connector = await Connector.findOne({
+  const connector = await ConnectorModel.findOne({
     where: {
       type: "notion",
       id: connectorId,
