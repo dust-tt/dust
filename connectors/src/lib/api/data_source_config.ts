@@ -3,7 +3,7 @@ import type { ConnectorModel } from "@connectors/resources/storage/models/connec
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export function dataSourceConfigFromConnector(
-  // TODO(2024-02-14 flav) Remove ConnectorModel once full bundled in `ConnectorResource`.
+  // TODO(2024-02-14 flav) Remove ConnectorModel once fully bundled in `ConnectorResource`.
   connector: ConnectorResource | ConnectorModel
 ): DataSourceConfig {
   return {

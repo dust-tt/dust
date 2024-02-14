@@ -7,12 +7,14 @@ import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import type { ConnectorResource } from "@connectors/resources/connector_res";
+import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getAuthObject } from "./temporal/activities";
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhook(
-  connector: ConnectorResource
+  // TODO(2024-02-14 flav) Remove ConnectorModel once full bundled in `ConnectorResource`.
+  connector: ConnectorResource | ConnectorModel
 ): Promise<
   Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
 > {
