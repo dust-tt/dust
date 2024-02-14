@@ -5,6 +5,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { PROVIDERS_WITH_SETTINGS } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -44,7 +45,11 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   }
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
-  if (!dataSource || dataSource.connectorProvider) {
+  if (
+    !dataSource ||
+    (dataSource.connectorProvider &&
+      !PROVIDERS_WITH_SETTINGS.includes(dataSource.connectorProvider))
+  ) {
     return {
       notFound: true,
     };

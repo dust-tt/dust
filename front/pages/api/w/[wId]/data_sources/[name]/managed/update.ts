@@ -1,7 +1,10 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { ConnectorsAPI, sendUserOperationMessage } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  sendUserOperationMessage,
+  UpdateConnectorRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -12,11 +15,6 @@ import {
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-// TODO (@fontanierh): camelCase -> snake_case
-const PostManagedDataSourceSettingsRequestBodySchema = t.type({
-  connectionId: t.union([t.string, t.null, t.undefined]),
-});
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -79,8 +77,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation =
-        PostManagedDataSourceSettingsRequestBodySchema.decode(req.body);
+      const bodyValidation = UpdateConnectorRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -94,14 +91,10 @@ async function handler(
         });
       }
 
-      const { connectionId } = bodyValidation.right;
-
       const connectorsAPI = new ConnectorsAPI(logger);
       const updateRes = await connectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
-        params: {
-          connectionId,
-        },
+        params: bodyValidation.right,
       });
 
       void sendUserOperationMessage({

@@ -1,5 +1,4 @@
 import type {
-  ConnectorProvider,
   ConnectorType,
   CreateConnectorOAuthRequestBodySchema,
   CreateConnectorUrlRequestBodySchema,
@@ -10,6 +9,7 @@ import {
   assertNever,
   ConnectorCreateRequestBodySchema,
   isConnectorProvider,
+  provider2createConnectorType,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -27,17 +27,6 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
-
-const provider2createConnectorType: Record<ConnectorProvider, "oauth" | "url"> =
-  {
-    confluence: "oauth",
-    github: "oauth",
-    google_drive: "oauth",
-    slack: "oauth",
-    notion: "oauth",
-    intercom: "oauth",
-    webcrawler: "url",
-  };
 
 const _createConnectorAPIHandler = async (
   req: Request<{ connector_provider: string }, ConnectorCreateResBody>,
