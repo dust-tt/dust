@@ -106,6 +106,12 @@ export const createCheckoutSession = async ({
     client_reference_id: owner.sId,
     customer_email: user.email,
     customer: auth.subscription()?.stripeCustomerId || undefined,
+    subscription_data: {
+      metadata: {
+        planCode: planCode,
+        workspaceId: owner.sId,
+      },
+    },
     metadata: {
       planCode: planCode,
     },
