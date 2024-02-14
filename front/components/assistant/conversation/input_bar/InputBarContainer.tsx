@@ -31,6 +31,7 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
+  hideQuickActions: boolean;
 }
 
 const InputBarContainer = ({
@@ -42,6 +43,7 @@ const InputBarContainer = ({
   owner,
   selectedAssistant,
   stickyMentions,
+  hideQuickActions,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
@@ -126,24 +128,28 @@ const InputBarContainer = ({
               fileInputRef.current?.click();
             }}
           />
-          <AssistantPicker
-            owner={owner}
-            size="sm"
-            onItemClick={(c) => {
-              editorService.insertMention({ id: c.sId, label: c.name });
-            }}
-            assistants={allAssistants}
-            showBuilderButtons={true}
-          />
-          <div className="hidden sm:flex">
-            <IconButton
-              variant={"tertiary"}
-              icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-              size="sm"
-              className="flex"
-              onClick={handleExpansionToggle}
-            />
-          </div>
+          {!hideQuickActions && (
+            <>
+              <AssistantPicker
+                owner={owner}
+                size="sm"
+                onItemClick={(c) => {
+                  editorService.insertMention({ id: c.sId, label: c.name });
+                }}
+                assistants={allAssistants}
+                showBuilderButtons={true}
+              />
+              <div className="hidden sm:flex">
+                <IconButton
+                  variant={"tertiary"}
+                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  size="sm"
+                  className="flex"
+                  onClick={handleExpansionToggle}
+                />
+              </div>
+            </>
+          )}
         </div>
         <Button
           size="sm"
