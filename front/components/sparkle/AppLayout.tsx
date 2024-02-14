@@ -419,7 +419,7 @@ export default function AppLayout({
               </a>
               {". "}
               All our services are impacted except assistants with no retrieval,
-              and based on Anthropic AI.
+              and based on Anthropic AI, Mistral or Gemini.
             </div>
           </div>
 
