@@ -567,18 +567,10 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --databaseId argument");
       }
 
-      const connector = await Connector.findOne({
-        where: {
-          type: "notion",
-          workspaceId: args.wId,
-          dataSourceName: "managed-notion",
-        },
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: args.wId,
       });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
-        );
-      }
 
       const database = await NotionDatabase.findOne({
         where: {
