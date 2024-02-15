@@ -243,7 +243,9 @@ async fn databases_delete(
         axum::http::StatusCode::OK,
         Json(APIResponse {
             error: None,
-            response: None,
+            response: Some(json!({
+                "success": true,
+            })),
         }),
     )
 }
@@ -258,7 +260,9 @@ async fn expire_all(
         axum::http::StatusCode::OK,
         Json(APIResponse {
             error: None,
-            response: None,
+            response: Some(json!({
+                "success": true,
+            })),
         }),
     )
 }
