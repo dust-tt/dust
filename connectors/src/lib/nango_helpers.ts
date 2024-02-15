@@ -72,7 +72,7 @@ const _getCachedConnectionFromNango = cacheWithRedis(
   NANGO_ACCESS_TOKEN_TTL_SECONDS * 1000
 );
 
-type NangoConnectionResponse = {
+export type NangoConnectionResponse = {
   connection_id: string;
   credentials: {
     type: string;
