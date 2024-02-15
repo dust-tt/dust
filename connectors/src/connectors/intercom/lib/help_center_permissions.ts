@@ -12,6 +12,7 @@ import {
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  getArticleInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
   getHelpCenterCollectionInternalId,
@@ -49,7 +50,7 @@ export async function allowSyncHelpCenter({
   intercomClient: IntercomClient;
   helpCenterId: string;
   withChildren?: boolean;
-}): Promise<IntercomHelpCenter | null> {
+}): Promise<IntercomHelpCenter> {
   let helpCenter = await IntercomHelpCenter.findOne({
     where: {
       connectorId: connector.id,
@@ -74,6 +75,7 @@ export async function allowSyncHelpCenter({
         name: helpCenterOnIntercom.display_name || "Help Center",
         identifier: helpCenterOnIntercom.identifier,
         intercomWorkspaceId: helpCenterOnIntercom.workspace_id,
+        websiteTurnedOn: helpCenterOnIntercom.website_turned_on,
         permission: "read",
       });
     }
@@ -84,7 +86,7 @@ export async function allowSyncHelpCenter({
     throw new Error("Help Center not found.");
   }
 
-  // If withChilren we are allowing the full Help Center.
+  // If withChildren we are allowing the full Help Center.
   if (withChildren) {
     const level1Collections = await fetchIntercomCollections(
       intercomClient,
@@ -215,12 +217,13 @@ export async function allowSyncCollection({
   }
 
   // We create the Help Center if it doesn't exist.
-  await allowSyncHelpCenter({
+  const helpCenter = await allowSyncHelpCenter({
     connector,
     intercomClient,
     helpCenterId: collection.helpCenterId,
     withChildren: false,
   });
+  const isHelpCenterWebsiteTurnedOn = helpCenter.websiteTurnedOn;
 
   // We  set all children (collections & articles) to "read" and create them if they don't exist.
   const childrenArticles = await fetchIntercomArticles(
@@ -232,6 +235,7 @@ export async function allowSyncCollection({
       connector,
       intercomClient,
       articleId: a.id,
+      isHelpCenterWebsiteTurnedOn,
     })
   );
   await Promise.all(articlePermissionPromises);
@@ -348,10 +352,12 @@ export async function allowSyncArticle({
   connector,
   intercomClient,
   articleId,
+  isHelpCenterWebsiteTurnedOn,
 }: {
   connector: ConnectorModel;
   intercomClient: IntercomClient;
   articleId: string;
+  isHelpCenterWebsiteTurnedOn: boolean;
 }): Promise<IntercomArticle | null> {
   const article = await IntercomArticle.findOne({
     where: {
@@ -378,11 +384,19 @@ export async function allowSyncArticle({
     );
     return null;
   }
+
+  // Article url is working only if the help center has activated the website feature
+  // Otherwise they generate an url that is not working
+  // So as a workaround we use the url of the article in the intercom app
+  const articleUrl = isHelpCenterWebsiteTurnedOn
+    ? intercomArticle.url
+    : getArticleInAppUrl(intercomArticle);
+
   return IntercomArticle.create({
     connectorId: connector.id,
     articleId: intercomArticle.id,
     title: intercomArticle.title,
-    url: intercomArticle.url,
+    url: articleUrl,
     intercomWorkspaceId: intercomArticle.workspace_id,
     authorId: intercomArticle.author_id,
     parentId: intercomArticle.parent_id,

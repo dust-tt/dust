@@ -37,7 +37,7 @@ export type IntercomCollectionType = CollectionObject & {
   parent_id: string;
 };
 
-type IntercomArticleType = ArticleObject & {
+export type IntercomArticleType = ArticleObject & {
   parent_ids: string[];
 };
 
@@ -62,7 +62,7 @@ export type IntercomConversationType = {
     tags: IntercomTagType[];
   };
   source: {
-    type: "conversation";
+    type: string;
     id: number;
     delivered_as: string;
     subject: string;

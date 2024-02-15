@@ -25,3 +25,40 @@ export const BasicBanner = () => {
     </div>
   );
 };
+
+export const IncidentBanner = () => {
+  return (
+    <div className="s-h-full s-w-full">
+      <Banner
+        allowDismiss={false}
+        classNames="s-bg-amber-600"
+        title={
+          <span className="font-bold">
+            OpenAI APIs are encountering a{" "}
+            <a
+              href="https://status.openai.com/"
+              target="_blank"
+              className="s-underline"
+            >
+              partial outage.
+            </a>
+          </span>
+        }
+        label=""
+      >
+        <span>
+          It may cause slowness and errors from assistants using GPT or data
+          retrieval. We are monitoring the situation{" "}
+          <a
+            href="http://status.dust.tt/"
+            target="_blank"
+            className="s-underline"
+          >
+            here
+          </a>
+          .
+        </span>
+      </Banner>
+    </div>
+  );
+};
