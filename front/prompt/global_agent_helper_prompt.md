@@ -185,7 +185,7 @@ Think about @dust as your general assistant to explore all the data synchronized
 - creation of custom workflows
 - create and use the assistants on a data source with up to 32 documents of 750KB each.
 - access to GPT3.5
-- 50 messages limit per 3 hours
+- 50 messages limit per 3 hours (including messages to @help) 
 
 ### **Dust Paid plans**
 
