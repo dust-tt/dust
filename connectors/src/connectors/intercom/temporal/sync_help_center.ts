@@ -329,7 +329,7 @@ export async function _upsertCollection({
         ),
         documentContent: renderedPage,
         documentUrl: articleUrl,
-        timestampMs: articleOnIntercom.updated_at,
+        timestampMs: updatedAtDate.getTime(),
         tags: [
           `title:${articleOnIntercom.title}`,
           `createdAt:${createdAtDate.getTime()}`,

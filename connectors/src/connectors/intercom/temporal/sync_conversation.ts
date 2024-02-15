@@ -259,7 +259,7 @@ export async function syncConversation({
     documentId: getConversationInternalId(connectorId, conversation.id),
     documentContent: renderedPage,
     documentUrl: conversationUrl,
-    timestampMs: conversation.updated_at,
+    timestampMs: updatedAtDate.getTime(),
     tags: [
       `title:${conversation.title}`,
       `createdAt:${createdAtDate.getTime()}`,
