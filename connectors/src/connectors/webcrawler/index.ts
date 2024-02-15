@@ -3,7 +3,11 @@ import type {
   ConnectorsAPIError,
   CreateConnectorUrlRequestBody,
   ModelId,
+  WebCrawlerConfigurationType,
+  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
+import { DepthOptions, isDepthOption } from "@dust-tt/types";
+import type { Request, Response } from "express";
 
 import {
   getDisplayNameForPage,
@@ -18,6 +22,7 @@ import {
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
+import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -33,6 +38,10 @@ export async function createWebcrawlerConnector(
   dataSourceConfig: DataSourceConfig,
   urlConfig: CreateConnectorUrlRequestBody
 ): Promise<Result<string, Error>> {
+  const depth = urlConfig.depth;
+  if (!isDepthOption(depth)) {
+    return new Err(new Error("Invalid depth option"));
+  }
   const res = await sequelizeConnection.transaction(
     async (t): Promise<Result<ConnectorModel, Error>> => {
       const connector = await ConnectorModel.create(
@@ -52,7 +61,7 @@ export async function createWebcrawlerConnector(
           url: urlConfig.url,
           maxPageToCrawl: urlConfig.maxPages,
           crawlMode: urlConfig.crawlMode,
-          depth: urlConfig.depth,
+          depth: depth,
           crawlFrequency: urlConfig.crawlFrequency,
         },
         {
@@ -84,11 +93,20 @@ export async function updateWebcrawlerConnector(
   connectorId: ModelId,
   urlConfig: CreateConnectorUrlRequestBody
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err({
       message: "Connector not found",
       type: "connector_not_found",
+    });
+  }
+  const depth = urlConfig.depth;
+  if (!isDepthOption(depth)) {
+    return new Err({
+      message: `Invalid depth option. Expected one of: (${DepthOptions.join(
+        ","
+      )})`,
+      type: "invalid_request_error",
     });
   }
 
@@ -97,7 +115,7 @@ export async function updateWebcrawlerConnector(
       url: urlConfig.url,
       maxPageToCrawl: urlConfig.maxPages,
       crawlMode: urlConfig.crawlMode,
-      depth: urlConfig.depth,
+      depth: depth,
       crawlFrequency: urlConfig.crawlFrequency,
     },
     {
@@ -106,6 +124,20 @@ export async function updateWebcrawlerConnector(
       },
     }
   );
+  const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
+  if (stopRes.isErr()) {
+    return new Err({
+      message: stopRes.error.message,
+      type: "internal_server_error",
+    });
+  }
+  const startRes = await launchCrawlWebsiteWorkflow(connector.id);
+  if (startRes.isErr()) {
+    return new Err({
+      message: startRes.error.message,
+      type: "internal_server_error",
+    });
+  }
 
   return new Ok(connector.id.toString());
 }
@@ -327,3 +359,45 @@ export async function retrieveWebCrawlerObjectsParents(
 
   return new Ok(parents);
 }
+
+type GetWebCrawlerConfigurationResBody =
+  WithConnectorsAPIErrorReponse<WebCrawlerConfigurationType>;
+
+async function _getWebcrawlerConfiguration(
+  req: Request<{ connector_id: string }, GetWebCrawlerConfigurationResBody>,
+  res: Response<GetWebCrawlerConfigurationResBody>
+) {
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
+  if (!connector) {
+    return apiError(req, res, {
+      api_error: {
+        type: "connector_not_found",
+        message: "Connector not found",
+      },
+      status_code: 404,
+    });
+  }
+  const config = await WebCrawlerConfiguration.findOne({
+    where: { connectorId: connector.id },
+  });
+  if (!config) {
+    return apiError(req, res, {
+      api_error: {
+        type: "internal_server_error",
+        message: "Connector config not found",
+      },
+      status_code: 404,
+    });
+  }
+  return res.status(200).json({
+    url: config.url,
+    maxPageToCrawl: config.maxPageToCrawl,
+    crawlMode: config.crawlMode,
+    depth: config.depth,
+    crawlFrequency: config.crawlFrequency,
+  });
+}
+
+export const getWebcrawlerConfiguration = withLogging(
+  _getWebcrawlerConfiguration
+);

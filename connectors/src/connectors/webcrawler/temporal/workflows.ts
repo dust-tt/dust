@@ -11,24 +11,27 @@ import type * as activities from "@connectors/connectors/webcrawler/temporal/act
 // leeway to crawl on slow websites
 export const REQUEST_HANDLING_TIMEOUT = 420;
 
-const { crawlWebsiteByConnectorId } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "120 minutes",
-  // for each page crawl, there are heartbeats, but a page crawl can last at max
-  // REQUEST_HANDLING_TIMEOUT seconds
-  heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT} seconds`,
-  cancellationType: ActivityCancellationType.TRY_CANCEL,
-  retry: {
-    initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,
-    maximumInterval: "3600 seconds",
-  },
-});
+const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "120 minutes",
+    // for each page crawl, there are heartbeats, but a page crawl can last at max
+    // REQUEST_HANDLING_TIMEOUT seconds
+    heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT} seconds`,
+    cancellationType: ActivityCancellationType.TRY_CANCEL,
+    retry: {
+      initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,
+      maximumInterval: "3600 seconds",
+    },
+  });
 
 export async function crawlWebsiteWorkflow(
   connectorId: ModelId
 ): Promise<void> {
+  const startedAtTs = Date.now();
   await CancellationScope.cancellable(
     crawlWebsiteByConnectorId.bind(null, connectorId)
   );
+  await webCrawlerGarbageCollector(connectorId, startedAtTs);
 }
 
 export function crawlWebsiteWorkflowId(connectorId: ModelId) {

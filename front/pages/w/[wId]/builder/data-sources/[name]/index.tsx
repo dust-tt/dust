@@ -27,6 +27,7 @@ import { assertNever } from "@dust-tt/types";
 import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
@@ -730,6 +731,7 @@ interface ConnectorUiConfig {
   displayDataSourceDetailsModal: boolean;
   displayManagePermissionButton: boolean;
   addDataButtonLabel: string | null;
+  displaySettingsButton: boolean;
 }
 
 function getRenderingConfigForConnectorProvider(
@@ -738,6 +740,7 @@ function getRenderingConfigForConnectorProvider(
   const commonConfig = {
     displayManagePermissionButton: true,
     addDataButtonLabel: "Add / Remove data",
+    displaySettingsButton: false,
   };
 
   switch (connectorProvider) {
@@ -759,18 +762,21 @@ function getRenderingConfigForConnectorProvider(
         displayDataSourceDetailsModal: true,
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
+        displaySettingsButton: false,
       };
     case "github":
       return {
         displayDataSourceDetailsModal: false,
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
+        displaySettingsButton: false,
       };
     case "webcrawler":
       return {
         displayDataSourceDetailsModal: false,
         displayManagePermissionButton: false,
         addDataButtonLabel: null,
+        displaySettingsButton: true,
       };
     default:
       assertNever(connectorProvider);
@@ -932,6 +938,7 @@ function ManagedDataSourceView({
     displayDataSourceDetailsModal,
     displayManagePermissionButton,
     addDataButtonLabel,
+    displaySettingsButton,
   } = getRenderingConfigForConnectorProvider(connectorProvider);
 
   return (
@@ -988,6 +995,23 @@ function ManagedDataSourceView({
                 }
               }}
             />
+          ) : (
+            <></>
+          )}
+          {isAdmin && displaySettingsButton ? (
+            <Link
+              className="ml-auto"
+              href={`/w/${owner.sId}/builder/data-sources/${encodeURIComponent(
+                dataSource.name
+              )}/edit-public-url`}
+            >
+              <Button
+                label="Settings"
+                variant="tertiary"
+                icon={LockIcon}
+                disabled={readOnly || !isAdmin}
+              />
+            </Link>
           ) : (
             <></>
           )}

@@ -1,4 +1,4 @@
-import type { CrawlingFrequency } from "@dust-tt/types";
+import type { CrawlingFrequency, DepthOption } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -19,9 +19,9 @@ export class WebCrawlerConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare url: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare maxPageToCrawl: number | null;
+  declare maxPageToCrawl: number;
   declare crawlMode: "child" | "website";
-  declare depth: number | null;
+  declare depth: DepthOption;
   declare crawlFrequency: CrawlingFrequency;
 }
 
@@ -57,7 +57,7 @@ WebCrawlerConfiguration.init(
     },
     depth: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false,
     },
     crawlFrequency: {
       type: DataTypes.STRING(20),
@@ -85,6 +85,7 @@ export class WebCrawlerFolder extends Model<
   // Folders are not upserted to the data source but their ids are
   // used as parent to WebCrawlerPage.
   declare internalId: string;
+  declare lastSeenAt: Date;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
@@ -118,6 +119,11 @@ WebCrawlerFolder.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -144,6 +150,8 @@ export class WebCrawlerPage extends Model<
   declare parentUrl: string | null;
   declare url: string;
   declare documentId: string;
+  declare depth: number;
+  declare lastSeenAt: Date;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
 }
@@ -180,6 +188,15 @@ WebCrawlerPage.init(
     documentId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    depth: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
   },
   {
