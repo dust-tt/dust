@@ -1,7 +1,7 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import type { ModelStatic } from "sequelize";
 
-import { BaseResource } from "@connectors/resources/base_res";
+import { BaseResource } from "@connectors/resources/base_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 

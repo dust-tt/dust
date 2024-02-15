@@ -328,33 +328,40 @@ export async function cleanupNotionConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await NotionPage.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-  await NotionConnectorState.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-  await NotionConnectorBlockCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-  await NotionConnectorPageCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-  });
-  await NotionConnectorResourcesToCheckCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-    },
-  });
+  await sequelizeConnection.transaction(async (transaction) => {
+    await NotionPage.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await NotionConnectorState.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await NotionConnectorBlockCacheEntry.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await NotionConnectorPageCacheEntry.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
 
-  await connector.delete();
+    await connector.delete(transaction);
+  });
 
   await deleteNangoConnection(connector.connectionId);
 

@@ -213,33 +213,37 @@ export async function fullResyncGithubConnector(
 export async function cleanupGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    logger.error({ connectorId }, "Connector not found");
-    return new Err(new Error("Connector not found"));
-  }
+  return sequelizeConnection.transaction(async (transaction) => {
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "Connector not found");
+      return new Err(new Error("Connector not found"));
+    }
 
-  try {
-    await GithubIssue.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-    await GithubConnectorState.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    });
-    await connector.delete();
+    try {
+      await GithubIssue.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      });
+      await GithubConnectorState.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      });
+      await connector.delete(transaction);
 
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      { connectorId, error: err },
-      "Error cleaning up github connector"
-    );
-    return new Err(err as Error);
-  }
+      return new Ok(undefined);
+    } catch (err) {
+      logger.error(
+        { connectorId, error: err },
+        "Error cleaning up github connector"
+      );
+      return new Err(err as Error);
+    }
+  });
 }
 
 export async function retrieveGithubConnectorPermissions({

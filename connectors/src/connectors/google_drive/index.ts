@@ -251,94 +251,102 @@ export async function cleanupGoogleDriveConnector(
     );
   }
 
-  if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
-    return new Err(new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined"));
-  }
-  if (!GOOGLE_CLIENT_ID) {
-    return new Err(new Error("GOOGLE_CLIENT_ID is not defined"));
-  }
-  if (!GOOGLE_CLIENT_SECRET) {
-    return new Err(new Error("GOOGLE_CLIENT_SECRET is not defined"));
-  }
+  return sequelizeConnection.transaction(async (transaction) => {
+    if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
+      return new Err(
+        new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined")
+      );
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      return new Err(new Error("GOOGLE_CLIENT_ID is not defined"));
+    }
+    if (!GOOGLE_CLIENT_SECRET) {
+      return new Err(new Error("GOOGLE_CLIENT_SECRET is not defined"));
+    }
 
-  const authClient = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET
-  );
-
-  try {
-    const credentials = await getGoogleCredentials(connector.connectionId);
-
-    const revokeTokenRes = await authClient.revokeToken(
-      credentials.credentials.refresh_token
+    const authClient = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET
     );
 
-    if (revokeTokenRes.status !== 200) {
-      logger.error(
-        {
-          error: revokeTokenRes.data,
-        },
-        "Could not revoke token"
+    try {
+      const credentials = await getGoogleCredentials(connector.connectionId);
+
+      const revokeTokenRes = await authClient.revokeToken(
+        credentials.credentials.refresh_token
       );
+
+      if (revokeTokenRes.status !== 200) {
+        logger.error(
+          {
+            error: revokeTokenRes.data,
+          },
+          "Could not revoke token"
+        );
+        if (!force) {
+          return new Err(new Error("Could not revoke token"));
+        }
+      }
+    } catch (err) {
       if (!force) {
-        return new Err(new Error("Could not revoke token"));
+        throw err;
+      } else {
+        logger.error(
+          {
+            err,
+          },
+          "Error revoking token"
+        );
       }
     }
-  } catch (err) {
-    if (!force) {
-      throw err;
-    } else {
-      logger.error(
-        {
-          err,
-        },
-        "Error revoking token"
-      );
+
+    const nangoRes = await nangoDeleteConnection(
+      connector.connectionId,
+      NANGO_GOOGLE_DRIVE_CONNECTOR_ID
+    );
+    if (nangoRes.isErr()) {
+      if (!force) {
+        return nangoRes;
+      } else {
+        logger.error(
+          {
+            err: nangoRes.error,
+          },
+          "Error deleting connection from Nango"
+        );
+      }
     }
-  }
 
-  const nangoRes = await nangoDeleteConnection(
-    connector.connectionId,
-    NANGO_GOOGLE_DRIVE_CONNECTOR_ID
-  );
-  if (nangoRes.isErr()) {
-    if (!force) {
-      return nangoRes;
-    } else {
-      logger.error(
-        {
-          err: nangoRes.error,
-        },
-        "Error deleting connection from Nango"
-      );
-    }
-  }
+    await GoogleDriveFolders.destroy({
+      where: {
+        connectorId: connectorId,
+      },
+      transaction,
+    });
+    await GoogleDriveFiles.destroy({
+      where: {
+        connectorId: connectorId,
+      },
+      transaction,
+    });
 
-  await GoogleDriveFolders.destroy({
-    where: {
-      connectorId: connectorId,
-    },
+    await GoogleDriveSyncToken.destroy({
+      where: {
+        connectorId: connectorId,
+      },
+      transaction,
+    });
+    await GoogleDriveWebhook.destroy({
+      where: {
+        connectorId: connectorId,
+      },
+      transaction,
+    });
+
+    await connector.delete(transaction);
+
+    return new Ok(undefined);
   });
-  await GoogleDriveFiles.destroy({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-
-  await GoogleDriveSyncToken.destroy({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-  await GoogleDriveWebhook.destroy({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-
-  await connector.delete();
-
-  return new Ok(undefined);
 }
 
 export async function retrieveGoogleDriveConnectorPermissions({

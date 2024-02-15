@@ -235,35 +235,40 @@ export async function cleanupConfluenceConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await Promise.all([
-    ConfluenceConfiguration.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    }),
-    ConfluenceSpace.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    }),
-    ConfluencePage.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-    }),
-  ]);
+  return sequelizeConnection.transaction(async (transaction) => {
+    await Promise.all([
+      ConfluenceConfiguration.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      ConfluenceSpace.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      ConfluencePage.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+    ]);
 
-  const nangoRes = await nangoDeleteConnection(
-    connector.connectionId,
-    getRequiredNangoConfluenceConnectorId()
-  );
-  if (nangoRes.isErr()) {
-    throw nangoRes.error;
-  }
+    const nangoRes = await nangoDeleteConnection(
+      connector.connectionId,
+      getRequiredNangoConfluenceConnectorId()
+    );
+    if (nangoRes.isErr()) {
+      throw nangoRes.error;
+    }
 
-  await connector.delete();
+    await connector.delete(transaction);
 
-  return new Ok(undefined);
+    return new Ok(undefined);
+  });
 }
 
 export async function retrieveConfluenceConnectorPermissions({
