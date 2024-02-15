@@ -1,9 +1,9 @@
+import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { objectIsInFolders } from "@connectors/connectors/google_drive/temporal/activities";
 import {
   getAuthObject,
   getDriveClient,
-  getGoogleDriveObject,
-  objectIsInFolders,
-} from "@connectors/connectors/google_drive/temporal/activities";
+} from "@connectors/connectors/google_drive/temporal/utils";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 

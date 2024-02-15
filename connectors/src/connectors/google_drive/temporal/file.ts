@@ -5,6 +5,7 @@ import type { OAuth2Client } from "googleapis-common";
 import os from "os";
 import type { CreationAttributes } from "sequelize";
 
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
   MIME_TYPES_TO_EXPORT,

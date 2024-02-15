@@ -2,13 +2,13 @@ import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
+import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import { HTTPError } from "@connectors/lib/error";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-import { getAuthObject } from "./temporal/activities";
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhook(
