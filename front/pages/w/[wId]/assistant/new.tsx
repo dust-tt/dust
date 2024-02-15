@@ -12,7 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
-  ContentFragmentContentType,
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
@@ -32,8 +31,10 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/i
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -48,6 +49,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   isBuilder: boolean;
   subscription: SubscriptionType;
   owner: WorkspaceType;
+  helper: LightAgentConfigurationType | null;
   gaTrackingId: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -69,11 +71,14 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
+  const helper = await getAgentConfiguration(auth, "helper");
+
   return {
     props: {
       user,
       isBuilder: auth.isBuilder(),
       owner,
+      helper,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -84,6 +89,7 @@ export default function AssistantNew({
   user,
   isBuilder,
   owner,
+  helper,
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -93,6 +99,7 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
+  const [showHelperModal, setShowHelperModal] = useState<boolean>(false);
 
   // No limit on global assistants call as they include both active and inactive.
   const globalAgentConfigurations = useAgentConfigurations({
@@ -202,6 +209,14 @@ export default function AssistantNew({
             />
           }
         >
+          {showHelperModal && helper && (
+            <TryAssistantModal
+              owner={owner}
+              user={user}
+              assistant={helper}
+              onClose={() => setShowHelperModal(false)}
+            />
+          )}
           <AssistantDetails
             owner={owner}
             assistantId={showDetails?.sId || null}
@@ -284,13 +299,21 @@ export default function AssistantNew({
                         </div>
                         <Button.List isWrapping={true}>
                           <div className="flex flex-wrap gap-2">
-                            <StartHelperConversationButton
-                              content="@help, what can I use the assistants for?"
-                              handleSubmit={handleSubmit}
+                            <Button
+                              variant="tertiary"
+                              icon={ChatBubbleBottomCenterTextIcon}
+                              label="@help, what can I use the assistants for?"
+                              size="xs"
+                              hasMagnifying={false}
+                              onClick={() => setShowHelperModal(true)}
                             />
-                            <StartHelperConversationButton
-                              content="@help, what are the limitations of assistants?"
-                              handleSubmit={handleSubmit}
+                            <Button
+                              variant="tertiary"
+                              icon={ChatBubbleBottomCenterTextIcon}
+                              label="@help, what are the limitations of assistants?"
+                              size="xs"
+                              hasMagnifying={false}
+                              onClick={() => setShowHelperModal(true)}
                             />
                           </div>
                         </Button.List>
@@ -356,9 +379,13 @@ export default function AssistantNew({
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
-                              <StartHelperConversationButton
-                                content="@help, tell me about Data Sources"
-                                handleSubmit={handleSubmit}
+                              <Button
+                                variant="tertiary"
+                                icon={ChatBubbleBottomCenterTextIcon}
+                                label="@help, tell me about Data Sources"
+                                size="xs"
+                                hasMagnifying={false}
+                                onClick={() => setShowHelperModal(true)}
                               />
                             </div>
                           </Button.List>
@@ -389,48 +416,6 @@ export default function AssistantNew({
         </AppLayout>
       </GenerationContextProvider>
     </InputBarContext.Provider>
-  );
-}
-
-function StartHelperConversationButton({
-  content,
-  handleSubmit,
-  variant = "tertiary",
-  size = "xs",
-}: {
-  content: string;
-  handleSubmit: (
-    input: string,
-    mentions: MentionType[],
-    contentFragment?: {
-      title: string;
-      content: string;
-      contentType: ContentFragmentContentType;
-    }
-  ) => Promise<void>;
-  variant?: "primary" | "secondary" | "tertiary";
-  size?: "sm" | "xs";
-}) {
-  const contentWithMarkdownMention = content.replace(
-    "@help",
-    ":mention[help]{sId=helper}"
-  );
-
-  return (
-    <Button
-      variant={variant}
-      icon={ChatBubbleBottomCenterTextIcon}
-      label={content}
-      size={size}
-      hasMagnifying={false}
-      onClick={() => {
-        void handleSubmit(contentWithMarkdownMention, [
-          {
-            configurationId: "helper",
-          },
-        ]);
-      }}
-    />
   );
 }
 
