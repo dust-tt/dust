@@ -116,7 +116,11 @@ impl SqliteWorker {
 
         let req = Request::builder()
             .method("DELETE")
-            .uri(format!("{}/databases/{}", worker_url, database_unique_id))
+            .uri(format!(
+                "{}/databases/{}",
+                worker_url,
+                encode(database_unique_id)
+            ))
             .body(Body::from(""))?;
 
         let _ = get_response_body(req).await?;
