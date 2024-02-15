@@ -10,7 +10,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Tree",
+  title: "Components/Tree",
   component: Tree,
 } satisfies Meta<typeof Tree>;
 

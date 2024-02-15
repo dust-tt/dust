@@ -4,7 +4,7 @@ import React from "react";
 import { Collapsible } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Collapsible",
+  title: "Primitives/Collapsible",
   component: Collapsible,
 } satisfies Meta<typeof Collapsible>;
 

@@ -6,7 +6,7 @@ import { ChatBubbleBottomCenterText } from "@sparkle/icons/solid";
 import { BarHeader, Page } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/BarHeader",
+  title: "Modules/BarHeader",
   component: BarHeader,
 } satisfies Meta<typeof BarHeader>;
 

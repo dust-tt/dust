@@ -5,12 +5,14 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
+import { ChevronRightIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
 type TabProps = {
+  variant?: "default" | "stepper";
   tabs: Array<{
     label: string;
     hideLabel?: boolean;
@@ -26,7 +28,7 @@ type TabProps = {
 
 const tabClasses = {
   default: {
-    base: "s-text-element-800 s-border-transparent s-cursor-pointer",
+    base: "s-text-element-800 s-border-transparent s-cursor-pointer s-border-b-2",
     hover: "hover:s-text-action-500 hover:s-border-action-300",
     dark: {
       base: "dark:s-text-element-700-dark",
@@ -34,10 +36,26 @@ const tabClasses = {
     },
   },
   selected: {
-    base: "s-border-action-500 s-text-action-500 s-cursor-default",
+    base: "s-border-action-500 s-text-action-500 s-cursor-default s-border-b-2",
     hover: "",
     dark: {
       base: "dark:s-border-action-500-dark dark:s-text-action-500-dark",
+      hover: "",
+    },
+  },
+  stepperDefault: {
+    base: "s-text-element-800 s-cursor-pointer",
+    hover: "hover:s-text-action-500",
+    dark: {
+      base: "dark:s-text-element-700-dark",
+      hover: "dark:hover:s-text-action-600-dark",
+    },
+  },
+  stepperSelected: {
+    base: "s-text-action-500 s-cursor-default",
+    hover: "",
+    dark: {
+      base: "dark:dark:s-text-action-500-dark",
       hover: "",
     },
   },
@@ -67,21 +85,38 @@ const tabSizingClasses = {
   expand: "s-flex-1",
 };
 
-export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
+export function Tab({
+  variant = "default",
+  tabs,
+  onTabClick,
+  className = "",
+}: TabProps) {
   const { components } = React.useContext(SparkleContext);
 
   const renderTabs = () =>
     tabs.map((tab, i) => {
-      const tabStateClasses = tab.current
-        ? tabClasses.selected
-        : tabClasses.default;
+      const tabStateClasses =
+        variant === "stepper"
+          ? tab.current
+            ? tabClasses.stepperSelected
+            : tabClasses.stepperDefault
+          : tab.current
+          ? tabClasses.selected
+          : tabClasses.default;
       const iconStateClasses = tab.current
         ? iconClasses.selected
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-2.5 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none s-border-b-2",
-        tab.icon ? (tab.hideLabel ? "s-px-3" : "s-pr-3.5 s-pl-2.5") : "s-px-3",
+        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-2.5 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none",
+        variant === "default"
+          ? tab.icon
+            ? tab.hideLabel
+              ? "s-px-3"
+              : "s-pr-3.5 s-pl-2.5"
+            : "s-px-3"
+          : "s-pl-1",
+
         tabStateClasses.base,
         tabStateClasses.hover,
         tabStateClasses.dark.base,
@@ -121,6 +156,13 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
               <Icon visual={tab.icon} className={finalIconClasses} size="sm" />
             )}
             {tab.hideLabel ?? tab.label}
+            {variant === "stepper" && i < tabs.length - 1 && (
+              <Icon
+                visual={ChevronRightIcon}
+                className="s-mx-2 s-text-element-500"
+                size="sm"
+              />
+            )}
           </div>
         </Link>
       );
@@ -155,7 +197,13 @@ export function Tab({ tabs, onTabClick, className = "" }: TabProps) {
     });
 
   return (
-    <div className="s-border-b s-border-structure-200 dark:s-border-structure-200-dark">
+    <div
+      className={classNames(
+        variant === "default"
+          ? "s-border-b s-border-structure-200 dark:s-border-structure-200-dark"
+          : ""
+      )}
+    >
       <nav className="-s-mb-px s-flex s-space-x-0" aria-label="Tabs">
         {renderTabs()}
       </nav>

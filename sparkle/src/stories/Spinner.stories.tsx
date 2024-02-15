@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Spinner } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Spinner",
+  title: "Primitives/Spinner",
   component: Spinner,
 } satisfies Meta<typeof Spinner>;
 

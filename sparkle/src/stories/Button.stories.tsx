@@ -4,7 +4,7 @@ import React from "react";
 import { Button, Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Button",
+  title: "Primitives/Button",
   component: Button,
 } satisfies Meta<typeof Button>;
 

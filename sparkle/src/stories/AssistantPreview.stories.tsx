@@ -10,7 +10,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof AssistantPreview> = {
-  title: "Molecule/AssistantPreview",
+  title: "Modules/AssistantPreview",
   component: AssistantPreview,
 };
 
