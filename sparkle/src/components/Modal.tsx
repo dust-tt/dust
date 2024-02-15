@@ -60,7 +60,7 @@ const modalStyles = {
   },
 };
 
-export type ModalProps = {
+type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
   action?: ButtonProps;
