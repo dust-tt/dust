@@ -179,6 +179,7 @@ export async function syncHelpCenterOnlyActivity({
   // Otherwise we update the help center name and lastUpsertedTs
   await helpCenterOnDb.update({
     name: helpCenterOnIntercom.display_name || "Help Center",
+    websiteTurnedOn: helpCenterOnIntercom.website_turned_on,
     lastUpsertedTs: new Date(currentSyncMs),
   });
   return true;
@@ -231,6 +232,20 @@ export async function syncCollectionActivity({
     dataSourceName: dataSourceConfig.dataSourceName,
   };
 
+  const helpCenter = await IntercomHelpCenter.findOne({
+    where: {
+      connectorId,
+      helpCenterId,
+    },
+  });
+  if (!helpCenter) {
+    logger.error(
+      { loggerArgs, helpCenterId },
+      "[Intercom] Collection to sync is missing a Help Center"
+    );
+    return;
+  }
+
   const collection = await IntercomCollection.findOne({
     where: {
       connectorId,
@@ -248,9 +263,10 @@ export async function syncCollectionActivity({
   await syncCollection({
     connectorId,
     connectionId: connector.connectionId,
+    isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
+    collection,
     dataSourceConfig,
     loggerArgs,
-    collection,
     currentSyncMs,
   });
 }

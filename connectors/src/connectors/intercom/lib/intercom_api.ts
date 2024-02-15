@@ -37,7 +37,7 @@ export type IntercomCollectionType = CollectionObject & {
   parent_id: string;
 };
 
-type IntercomArticleType = ArticleObject & {
+export type IntercomArticleType = ArticleObject & {
   parent_ids: string[];
 };
 
