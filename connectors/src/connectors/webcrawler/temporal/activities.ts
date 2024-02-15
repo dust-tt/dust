@@ -1,10 +1,17 @@
-import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  CrawlingFrequency,
+} from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
-import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import {
+  CrawlingFrequencies,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
+} from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration } from "crawlee";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 import turndown from "turndown";
 
 import {
@@ -48,6 +55,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (!webCrawlerConfig) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
+  webCrawlerConfig.lastCrawledAt = new Date();
+  // Immeditaley marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
+  // in case of the crawling taking too long or failing.
+  await webCrawlerConfig.save();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
@@ -335,4 +346,32 @@ export async function webCrawlerGarbageCollector(
       await folder.destroy();
     }
   } while (foldersToDelete.length > 0);
+}
+
+export async function getWebsitesToCrawl() {
+  const frequencyToSQLQuery: Record<CrawlingFrequency, string> = {
+    never: "never",
+    daily: "1 day",
+    weekly: "1 week",
+    monthly: "1 month",
+  };
+  const allConnectorIds: ModelId[] = [];
+
+  for (const frequency of CrawlingFrequencies) {
+    if (frequency === "never") {
+      continue;
+    }
+    const sql = frequencyToSQLQuery[frequency];
+    const websites = await WebCrawlerConfiguration.findAll({
+      where: {
+        lastCrawledAt: {
+          [Op.lt]: literal(`NOW() - INTERVAL '${sql}'`),
+        },
+        crawlFrequency: frequency,
+      },
+    });
+    allConnectorIds.push(...websites.map((w) => w.connectorId));
+  }
+
+  return allConnectorIds;
 }

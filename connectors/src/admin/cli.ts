@@ -36,6 +36,7 @@ import { uninstallSlack } from "@connectors/connectors/slack";
 import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
 import { GithubConnectorState } from "@connectors/lib/models/github";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
@@ -1038,6 +1039,15 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const webcrawler = async (command: string) => {
+  switch (command) {
+    case "start-scheduler": {
+      await throwOnError(launchCrawlWebsiteSchedulerWorkflow());
+      break;
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -1073,6 +1083,9 @@ const main = async () => {
       return;
     case "slack":
       await slack(command, argv);
+      return;
+    case "webcrawler":
+      await webcrawler(command);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);
