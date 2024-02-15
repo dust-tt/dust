@@ -372,7 +372,7 @@ export async function cleanupSlackConnector(
       transaction,
     });
 
-    await connector.delete();
+    await connector.delete(transaction);
 
     return new Ok(undefined);
   });
