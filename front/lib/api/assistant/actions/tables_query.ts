@@ -256,6 +256,7 @@ export async function* runTablesQuery({
       };
       return;
     }
+
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
 
@@ -268,15 +269,24 @@ export async function* runTablesQuery({
           },
           "Error running query_tables app"
         );
+
+        const error =
+          e.error === "too_many_result_rows"
+            ? {
+                code: "too_many_result_rows" as const,
+                message: `The query returned too many rows. Please refine your query.`,
+              }
+            : {
+                code: "tables_query_error" as const,
+                message: `Error running TablesQuery app: ${e.error}`,
+              };
+
         yield {
           type: "tables_query_error",
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
-          error: {
-            code: "tables_query_error",
-            message: `Error running TablesQuery app: ${e.error}`,
-          },
+          error,
         };
         return;
       }
