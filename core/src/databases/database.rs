@@ -41,7 +41,7 @@ pub enum QueryDatabaseError {
 impl From<SqliteWorkerError> for QueryDatabaseError {
     fn from(e: SqliteWorkerError) -> Self {
         match &e {
-            SqliteWorkerError::ServerError(code, _) => match code.as_str() {
+            SqliteWorkerError::ServerError(_, code, _) => match code.as_str() {
                 "too_many_result_rows" => QueryDatabaseError::TooManyResultRows,
                 _ => e.into(),
             },
