@@ -5,7 +5,7 @@ import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type ConnectorResumeResBody = WithConnectorsAPIErrorReponse<{
   connectorId: string;

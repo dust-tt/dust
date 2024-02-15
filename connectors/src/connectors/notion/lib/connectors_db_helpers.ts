@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 

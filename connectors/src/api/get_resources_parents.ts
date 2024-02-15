@@ -9,7 +9,7 @@ import { RETRIEVE_RESOURCE_PARENTS_BY_TYPE } from "@connectors/connectors";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const GetResourcesParentsRequestBodySchema = t.type({
   resourceInternalIds: t.array(t.string),

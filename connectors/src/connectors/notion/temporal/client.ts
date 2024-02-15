@@ -12,7 +12,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });

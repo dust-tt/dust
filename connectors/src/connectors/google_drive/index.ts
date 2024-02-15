@@ -47,7 +47,7 @@ import { removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 

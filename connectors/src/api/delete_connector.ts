@@ -7,7 +7,7 @@ import {
 } from "@connectors/connectors";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type ConnectorDeleteReqBody = {
   dataSourceName: string;

@@ -9,7 +9,7 @@ import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/
 import { intercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 function getIntercomSyncWorkflowId(connectorId: ModelId) {
   return `intercom-sync-${connectorId}`;

@@ -47,7 +47,7 @@ import {
   terminateAllWorkflowsForConnectorId,
 } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;

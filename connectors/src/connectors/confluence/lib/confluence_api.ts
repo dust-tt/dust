@@ -4,7 +4,7 @@ import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
-import type { ConnectorResource } from "@connectors/resources/connector_res";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 

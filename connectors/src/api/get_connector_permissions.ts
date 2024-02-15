@@ -7,7 +7,7 @@ import type { Request, Response } from "express";
 
 import { RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
   resources: ConnectorNode[];

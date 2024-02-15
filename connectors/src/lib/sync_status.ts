@@ -6,7 +6,7 @@ import type {
 
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 async function syncFinished({
   connectorId,

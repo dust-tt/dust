@@ -17,7 +17,7 @@ import type {
   ConnectorUpdaterUrl,
 } from "@connectors/connectors/interface";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type ConnectorUpdateReqBody = {
   connectionId?: string | null;

@@ -13,7 +13,7 @@ import { Ok } from "@connectors/lib/result";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type SlackWebhookReqBody = {
   type?: string;

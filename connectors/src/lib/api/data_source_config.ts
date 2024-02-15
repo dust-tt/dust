@@ -1,4 +1,4 @@
-import type { ConnectorResource } from "@connectors/resources/connector_res";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 

@@ -38,7 +38,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";

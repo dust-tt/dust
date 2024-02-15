@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GetSyncStatusRes = WithConnectorsAPIErrorReponse<{ workflowId: string }>;
 

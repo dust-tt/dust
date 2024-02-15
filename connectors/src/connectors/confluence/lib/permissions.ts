@@ -21,7 +21,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import type { ConnectorResource } from "@connectors/resources/connector_res";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 function isConfluenceSpaceModel(
   confluenceSpace: unknown

@@ -9,7 +9,7 @@ import { ErrorCode, WebClient } from "@slack/web-api";
 import type { WorkflowError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 // Timeout in ms for all network requests;

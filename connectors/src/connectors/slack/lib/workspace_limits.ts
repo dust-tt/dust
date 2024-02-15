@@ -9,7 +9,7 @@ import type {
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_res";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
 

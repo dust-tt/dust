@@ -25,7 +25,7 @@ import {
   IntercomHelpCenter,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // A Help Center contains collections and articles:
 // - Level 1: Collections (parent_id is null)

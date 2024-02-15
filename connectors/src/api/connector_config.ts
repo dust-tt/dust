@@ -9,7 +9,7 @@ import {
   SET_CONNECTOR_CONFIG_BY_TYPE,
 } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const ConfigSetReqBodySchema = t.type({
   configValue: t.string,

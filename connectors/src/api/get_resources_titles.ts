@@ -7,7 +7,7 @@ import * as reporter from "io-ts-reporters";
 import { BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE } from "@connectors/connectors";
 import type { Result } from "@connectors/lib/result";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const GetResourcesTitlesRequestBodySchema = t.type({
   resourceInternalIds: t.array(t.string),

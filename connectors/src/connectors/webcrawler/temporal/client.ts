@@ -5,7 +5,7 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { QUEUE_NAME } from "./config";
 import { crawlWebsiteWorkflow, crawlWebsiteWorkflowId } from "./workflows";

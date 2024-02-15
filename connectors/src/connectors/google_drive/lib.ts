@@ -6,7 +6,7 @@ import { HTTPError } from "@connectors/lib/error";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
-import type { ConnectorResource } from "@connectors/resources/connector_res";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 import { getAuthObject } from "./temporal/activities";

@@ -7,7 +7,7 @@ import type { Request, Response } from "express";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GetConnectorRes = WithConnectorsAPIErrorReponse<ConnectorType>;
 

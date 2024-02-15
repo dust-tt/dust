@@ -7,7 +7,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { getSlackClient } from "./slack_client";
 

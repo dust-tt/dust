@@ -41,7 +41,7 @@ import {
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import { syncFailed } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 
 const FILES_SYNC_CONCURRENCY = 10;

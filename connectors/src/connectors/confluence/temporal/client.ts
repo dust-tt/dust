@@ -21,7 +21,7 @@ import {
 } from "@connectors/connectors/confluence/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_res";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { isScheduleAlreadyRunning } from "@connectors/types/errors";
 
 export async function launchConfluenceSyncWorkflow(
