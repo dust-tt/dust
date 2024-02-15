@@ -81,6 +81,7 @@ export class IntercomHelpCenter extends Model<
 
   declare name: string;
   declare identifier: string;
+  declare websiteTurnedOn: boolean;
 
   declare lastUpsertedTs?: Date;
   declare permission: "read" | "none";
@@ -119,6 +120,11 @@ IntercomHelpCenter.init(
     identifier: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    websiteTurnedOn: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     lastUpsertedTs: {
       type: DataTypes.DATE,
