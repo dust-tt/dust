@@ -297,6 +297,9 @@ export async function _upsertCollection({
     const markdown = `CATEGORY: ${collection.description}\n\n${articleContentInMarkdown}`;
 
     if (articleContentInMarkdown) {
+      const createdAtDate = new Date(articleOnIntercom.created_at * 1000);
+      const updatedAtDate = new Date(articleOnIntercom.updated_at * 1000);
+
       const renderedMarkdown = await renderMarkdownSection(
         dataSourceConfig,
         markdown
@@ -305,8 +308,8 @@ export async function _upsertCollection({
         dataSourceConfig,
         title: articleOnIntercom.title,
         content: renderedMarkdown,
-        createdAt: new Date(articleOnIntercom.created_at),
-        updatedAt: new Date(articleOnIntercom.updated_at),
+        createdAt: createdAtDate,
+        updatedAt: updatedAtDate,
       });
 
       // Parents in the Core datasource should map the internal ids that we use in the permission modal
@@ -329,8 +332,8 @@ export async function _upsertCollection({
         timestampMs: articleOnIntercom.updated_at,
         tags: [
           `title:${articleOnIntercom.title}`,
-          `createdAt:${articleOnIntercom.created_at}`,
-          `updatedAt:${articleOnIntercom.updated_at}`,
+          `createdAt:${createdAtDate.getTime()}`,
+          `updatedAt:${updatedAtDate.getTime()}`,
         ],
         parents: parentsInternalsIds,
         retries: 3,

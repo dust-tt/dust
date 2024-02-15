@@ -187,18 +187,21 @@ export async function syncConversation({
     },
   });
 
+  const createdAtDate = new Date(conversation.created_at * 1000);
+  const updatedAtDate = new Date(conversation.updated_at * 1000);
+
   if (!conversationOnDB) {
     conversationOnDB = await IntercomConversation.create({
       connectorId,
       conversationId: conversation.id,
       teamId: conversation.team_assignee_id.toString(),
-      conversationCreatedAt: new Date(conversation.created_at * 1000),
+      conversationCreatedAt: createdAtDate,
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
     await conversationOnDB.update({
       teamId: conversation.team_assignee_id.toString(),
-      conversationCreatedAt: new Date(conversation.created_at * 1000),
+      conversationCreatedAt: createdAtDate,
       lastUpsertedTs: new Date(currentSyncMs),
     });
   }
@@ -245,8 +248,8 @@ export async function syncConversation({
     dataSourceConfig,
     title: conversation.title,
     content: renderedMarkdown,
-    createdAt: new Date(conversation.created_at * 1000),
-    updatedAt: new Date(conversation.updated_at * 1000),
+    createdAt: createdAtDate,
+    updatedAt: updatedAtDate,
   });
 
   const conversationUrl = `https://app.intercom.com/a/inbox/${intercomWorkspace.intercomWorkspaceId}/inbox/conversation/${conversation.id}`;
@@ -259,8 +262,8 @@ export async function syncConversation({
     timestampMs: conversation.updated_at,
     tags: [
       `title:${conversation.title}`,
-      `createdAt:${conversation.created_at}`,
-      `updatedAt:${conversation.updated_at}`,
+      `createdAt:${createdAtDate.getTime()}`,
+      `updatedAt:${updatedAtDate.getTime()}`,
     ],
     parents: [getTeamInternalId(connectorId, team.teamId)],
     retries: 3,
