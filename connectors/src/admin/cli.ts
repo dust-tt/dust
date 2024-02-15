@@ -16,15 +16,15 @@ import {
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import {
-  getAuthObject,
-  getDocumentId,
-  getDriveClient,
-  MIME_TYPES_TO_EXPORT,
-} from "@connectors/connectors/google_drive/temporal/activities";
-import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
+import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
+import {
+  getAuthObject,
+  getDocumentId,
+  getDriveClient,
+} from "@connectors/connectors/google_drive/temporal/utils";
 import { searchNotionPagesForQuery } from "@connectors/connectors/notion/lib/cli";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";

@@ -21,16 +21,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-import {
-  driveObjectToDustType,
-  folderHasChildren,
-  getAuthObject,
-  getDocumentId,
-  getDriveClient,
-  getDrivesIds,
-  getGoogleCredentials,
-  getGoogleDriveObject,
-} from "./temporal/activities";
+import { folderHasChildren, getDrivesIds } from "./temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleGarbageCollector,
@@ -46,15 +37,18 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
+import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
+import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import {
+  driveObjectToDustType,
+  getAuthObject,
+  getDocumentId,
+  getDriveClient,
+  getGoogleCredentials,
+} from "@connectors/connectors/google_drive/temporal/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
-
-const {
-  NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-} = process.env;
 
 export async function createGoogleDriveConnector(
   dataSourceConfig: DataSourceConfig,
@@ -63,9 +57,6 @@ export async function createGoogleDriveConnector(
   try {
     const connector = await sequelizeConnection.transaction(
       async (t): Promise<ConnectorModel> => {
-        if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
-          throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined");
-        }
         const driveClient = await getDriveClient(nangoConnectionId);
 
         // Sanity checks to confirm we have sufficient permissions
@@ -167,10 +158,6 @@ export async function updateGoogleDriveConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
-    throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID not set");
-  }
-
   const c = await ConnectorModel.findOne({
     where: {
       id: connectorId,
@@ -230,7 +217,7 @@ export async function updateGoogleDriveConnector(
     await c.update({ connectionId });
     nangoDeleteConnection(
       oldConnectionId,
-      NANGO_GOOGLE_DRIVE_CONNECTOR_ID
+      googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
     ).catch((e) => {
       logger.error(
         { error: e, oldConnectionId },
@@ -255,21 +242,9 @@ export async function cleanupGoogleDriveConnector(
         new Error(`Could not find connector with id ${connectorId}`)
       );
     }
-    if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
-      return new Err(
-        new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not defined")
-      );
-    }
-    if (!GOOGLE_CLIENT_ID) {
-      return new Err(new Error("GOOGLE_CLIENT_ID is not defined"));
-    }
-    if (!GOOGLE_CLIENT_SECRET) {
-      return new Err(new Error("GOOGLE_CLIENT_SECRET is not defined"));
-    }
-
     const authClient = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET
+      googleDriveConfig.getRequiredGoogleDriveClientId(),
+      googleDriveConfig.getRequiredGoogleDriveClientSecret()
     );
     try {
       const credentials = await getGoogleCredentials(connector.connectionId);
@@ -303,7 +278,7 @@ export async function cleanupGoogleDriveConnector(
     }
     const nangoRes = await nangoDeleteConnection(
       connector.connectionId,
-      NANGO_GOOGLE_DRIVE_CONNECTOR_ID
+      googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
     );
     if (nangoRes.isErr()) {
       if (!force) {
