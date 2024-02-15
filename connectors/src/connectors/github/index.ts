@@ -213,13 +213,13 @@ export async function fullResyncGithubConnector(
 export async function cleanupGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
 
+  return sequelizeConnection.transaction(async (transaction) => {
     try {
       await GithubIssue.destroy({
         where: {
