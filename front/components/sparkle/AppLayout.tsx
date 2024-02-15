@@ -517,7 +517,6 @@ function IncidentBanner({ className = "" }: { className?: string }) {
             partial outage.
           </a>
         </span>
-        <br />
         <span>
           It may cause slowness and errors from assistants using GPT or data
           retrieval. We are monitoring the situation{" "}
