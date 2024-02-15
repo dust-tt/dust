@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
@@ -133,12 +134,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
 }): Promise<NotionDatabase> {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "notion",
-      id: connectorId,
-    },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }

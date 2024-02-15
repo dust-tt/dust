@@ -7,7 +7,7 @@ import {
 } from "@connectors/connectors";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type ConnectorDeleteReqBody = {
   dataSourceName: string;
@@ -25,7 +25,7 @@ const _deleteConnectorAPIHandler = async (
   res: Response<ConnectorDeleteResBody>
 ) => {
   const force = req.query.force === "true";
-  const connector = await ConnectorModel.findByPk(req.params.connector_id);
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       status_code: 404,

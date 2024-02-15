@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Checkbox } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Checkbox",
+  title: "Primitives/Checkbox",
   component: Checkbox,
 } satisfies Meta<typeof Checkbox>;
 

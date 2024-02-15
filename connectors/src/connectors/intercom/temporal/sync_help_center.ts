@@ -10,6 +10,7 @@ import {
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  getArticleInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
@@ -67,16 +68,18 @@ export async function removeHelpCenter({
 export async function syncCollection({
   connectorId,
   connectionId,
+  isHelpCenterWebsiteTurnedOn,
+  collection,
   dataSourceConfig,
   loggerArgs,
-  collection,
   currentSyncMs,
 }: {
   connectorId: ModelId;
   connectionId: string;
+  isHelpCenterWebsiteTurnedOn: boolean;
+  collection: IntercomCollection;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number>;
-  collection: IntercomCollection;
   currentSyncMs: number;
 }) {
   if (collection.permission === "none") {
@@ -96,6 +99,7 @@ export async function syncCollection({
       await _upsertCollection({
         connectorId,
         collection: collectionOnIntercom,
+        isHelpCenterWebsiteTurnedOn,
         parents: [],
         dataSourceConfig,
         intercomClient,
@@ -191,6 +195,7 @@ export async function _upsertCollection({
   dataSourceConfig,
   loggerArgs,
   collection,
+  isHelpCenterWebsiteTurnedOn,
   parents,
   currentSyncMs,
 }: {
@@ -198,6 +203,7 @@ export async function _upsertCollection({
   intercomClient: IntercomClient;
   dataSourceConfig: DataSourceConfig;
   collection: IntercomCollectionType;
+  isHelpCenterWebsiteTurnedOn: boolean;
   loggerArgs: Record<string, string | number>;
   parents: string[];
   currentSyncMs: number;
@@ -246,10 +252,18 @@ export async function _upsertCollection({
       (article) => article.articleId === articleOnIntercom.id
     );
     let article = null;
+
+    // Article url is working only if the help center has activated the website feature
+    // Otherwise they generate an url that is not working
+    // So as a workaround we use the url of the article in the intercom app
+    const articleUrl = isHelpCenterWebsiteTurnedOn
+      ? articleOnIntercom.url
+      : getArticleInAppUrl(articleOnIntercom);
+
     if (matchingArticleOnDb) {
       article = await matchingArticleOnDb.update({
         title: articleOnIntercom.title,
-        url: articleOnIntercom.url,
+        url: articleUrl,
         authorId: articleOnIntercom.author_id,
         parentId: articleOnIntercom.parent_id,
         parentType:
@@ -263,7 +277,7 @@ export async function _upsertCollection({
         connectorId: connectorId,
         articleId: articleOnIntercom.id,
         title: articleOnIntercom.title,
-        url: articleOnIntercom.url,
+        url: articleUrl,
         intercomWorkspaceId: articleOnIntercom.workspace_id,
         authorId: articleOnIntercom.author_id,
         parentId: articleOnIntercom.parent_id,
@@ -283,6 +297,9 @@ export async function _upsertCollection({
     const markdown = `CATEGORY: ${collection.description}\n\n${articleContentInMarkdown}`;
 
     if (articleContentInMarkdown) {
+      const createdAtDate = new Date(articleOnIntercom.created_at * 1000);
+      const updatedAtDate = new Date(articleOnIntercom.updated_at * 1000);
+
       const renderedMarkdown = await renderMarkdownSection(
         dataSourceConfig,
         markdown
@@ -291,8 +308,8 @@ export async function _upsertCollection({
         dataSourceConfig,
         title: articleOnIntercom.title,
         content: renderedMarkdown,
-        createdAt: new Date(articleOnIntercom.created_at),
-        updatedAt: new Date(articleOnIntercom.updated_at),
+        createdAt: createdAtDate,
+        updatedAt: updatedAtDate,
       });
 
       // Parents in the Core datasource should map the internal ids that we use in the permission modal
@@ -311,12 +328,12 @@ export async function _upsertCollection({
           articleOnIntercom.id
         ),
         documentContent: renderedPage,
-        documentUrl: articleOnIntercom.url,
+        documentUrl: articleUrl,
         timestampMs: articleOnIntercom.updated_at,
         tags: [
           `title:${articleOnIntercom.title}`,
-          `createdAt:${articleOnIntercom.created_at}`,
-          `updatedAt:${articleOnIntercom.updated_at}`,
+          `createdAt:${createdAtDate.getTime()}`,
+          `updatedAt:${updatedAtDate.getTime()}`,
         ],
         parents: parentsInternalsIds,
         retries: 3,
@@ -353,6 +370,7 @@ export async function _upsertCollection({
         dataSourceConfig,
         loggerArgs,
         collection: collectionOnIntercom,
+        isHelpCenterWebsiteTurnedOn,
         parents: [...parents, collection.id],
         currentSyncMs,
       });

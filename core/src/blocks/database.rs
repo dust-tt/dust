@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
-use crate::databases::database::query_database;
+use crate::databases::database::{query_database, QueryDatabaseError};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -103,7 +103,14 @@ impl Block for Database {
         let query = replace_variables_in_string(&self.query, "query", env)?;
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
-        let (results, schema) = query_database(&tables, env.store.clone(), &query).await?;
+        let (results, schema) = query_database(&tables, env.store.clone(), &query)
+            .await
+            .map_err(|e| match &e {
+                // We don't have a proper way to return a typed error from a block, so we just return a generic error with a string.
+                // We expect the frontend to match the error code.
+                QueryDatabaseError::TooManyResultRows => anyhow!("too_many_result_rows"),
+                _ => e.into(),
+            })?;
 
         Ok(BlockResult {
             value: json!({

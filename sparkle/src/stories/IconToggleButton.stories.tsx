@@ -7,7 +7,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/IconToggleButton",
+  title: "Primitives/IconToggleButton",
   component: IconToggleButton,
 } satisfies Meta<typeof IconToggleButton>;
 

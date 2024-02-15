@@ -32,8 +32,8 @@ import {
 import { syncFailed } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
@@ -50,7 +50,7 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
     sharedDrive: boolean;
   }[]
 > {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -105,7 +105,7 @@ export async function syncFiles(
   count: number;
   subfolders: string[];
 }> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -243,7 +243,7 @@ export async function incrementalSync(
     runInstance: uuid4(),
   });
   try {
-    const connector = await ConnectorModel.findByPk(connectorId);
+    const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       throw new Error(`Connector ${connectorId} not found`);
     }
@@ -394,7 +394,7 @@ async function getSyncPageToken(
   driveId: string,
   sharedDrive: boolean
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -451,7 +451,7 @@ export async function garbageCollector(
   connectorId: ModelId,
   lastSeenTs: number
 ): Promise<number> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -539,7 +539,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
     throw new Error(`Webhook ${webhookId} not found`);
   }
 
-  const connector = await ConnectorModel.findByPk(wh.connectorId);
+  const connector = await ConnectorResource.fetchById(wh.connectorId);
 
   if (connector) {
     try {
@@ -625,7 +625,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
   }
 }
 export async function populateSyncTokens(connectorId: ModelId) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -645,17 +645,16 @@ export async function populateSyncTokens(connectorId: ModelId) {
 }
 
 export async function garbageCollectorFinished(connectorId: ModelId) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  connector.lastGCTime = new Date();
-  await connector.save();
+  await connector.update({ lastGCTime: new Date() });
 }
 
 export async function getLastGCTime(connectorId: ModelId): Promise<number> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -681,7 +680,7 @@ async function deleteOneFile(
 
 async function deleteFile(googleDriveFile: GoogleDriveFiles) {
   const connectorId = googleDriveFile.connectorId;
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -704,7 +703,7 @@ export async function markFolderAsVisited(
   connectorId: ModelId,
   driveFileId: string
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
@@ -735,7 +734,7 @@ export async function folderHasChildren(
   connectorId: ModelId,
   folderId: string
 ): Promise<boolean> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }

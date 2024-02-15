@@ -50,6 +50,7 @@ import {
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -139,7 +140,7 @@ export async function updateIntercomConnector(
     throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
   }
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err({
@@ -185,9 +186,8 @@ export async function updateIntercomConnector(
       });
     }
 
-    await connector.update({
-      connectionId: newConnectionId,
-    });
+    await connector.update({ connectionId: newConnectionId });
+
     await IntercomWorkspace.update(
       {
         intercomWorkspaceId: newIntercomWorkspace.id,
@@ -216,9 +216,7 @@ export async function cleanupIntercomConnector(
     throw new Error("INTERCOM_NANGO_CONNECTOR_ID not set");
   }
 
-  const connector = await ConnectorModel.findOne({
-    where: { type: "intercom", id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Intercom connector not found.");
     return new Err(new Error("Connector not found"));
@@ -230,42 +228,41 @@ export async function cleanupIntercomConnector(
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       IntercomHelpCenter.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       IntercomCollection.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       IntercomArticle.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       IntercomTeam.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
+        transaction,
       }),
       IntercomConversation.destroy({
         where: {
           connectorId: connector.id,
         },
-        transaction: transaction,
-      }),
-      connector.destroy({
-        transaction: transaction,
+        transaction,
       }),
     ]);
+
+    await connector.delete(transaction);
   });
 
   const nangoRes = await nangoDeleteConnection(
@@ -293,7 +290,7 @@ export async function stopIntercomConnector(
 export async function resumeIntercomConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err(new Error("Connector not found"));
@@ -323,7 +320,7 @@ export async function retrieveIntercomConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorNode[], Error>
 > {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err(new Error("Connector not found"));
@@ -351,7 +348,7 @@ export async function setIntercomConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err(new Error("Connector not found"));

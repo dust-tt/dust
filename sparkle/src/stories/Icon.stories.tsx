@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ChatBubbleBottomCenterTextIcon, Icon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Icon",
+  title: "Primitives/Icon",
   component: Icon,
 } satisfies Meta<typeof Icon>;
 

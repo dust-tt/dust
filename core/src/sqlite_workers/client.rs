@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use hyper::{body::Bytes, Body, Client, Request};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use thiserror::Error;
 use urlencoding::encode;
 
 use crate::{
@@ -17,30 +18,31 @@ pub struct SqliteWorker {
     url: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SqliteWorkerError {
-    ClientError(anyhow::Error),
-    ServerError(anyhow::Error, Option<String>, u16),
+    #[error("SqliteWorkerError Server error (code={0}, status={1})")]
+    ServerError(String, u16),
+    #[error("SqliteWorkerError Unexpected error: {0}")]
+    UnexpectedError(anyhow::Error),
 }
 
-impl std::fmt::Display for SqliteWorkerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::ClientError(e) => write!(f, "SqliteWorkerError: Client error: {}", e),
-            Self::ServerError(e, code, status) => {
-                write!(
-                    f,
-                    "SqliteWorkerError (code={}, status={}): Server error: {}",
-                    code.clone().unwrap_or_default(),
-                    status,
-                    e
-                )
-            }
-        }
+impl From<hyper::http::Error> for SqliteWorkerError {
+    fn from(e: hyper::http::Error) -> Self {
+        SqliteWorkerError::UnexpectedError(anyhow!(e))
     }
 }
 
-impl std::error::Error for SqliteWorkerError {}
+impl From<hyper::Error> for SqliteWorkerError {
+    fn from(e: hyper::Error) -> Self {
+        SqliteWorkerError::UnexpectedError(anyhow!(e))
+    }
+}
+
+impl From<serde_json::Error> for SqliteWorkerError {
+    fn from(e: serde_json::Error) -> Self {
+        SqliteWorkerError::UnexpectedError(anyhow!(e))
+    }
+}
 
 impl SqliteWorker {
     pub fn new(url: String, last_heartbeat: u64) -> Self {
@@ -83,14 +85,9 @@ impl SqliteWorker {
                     "query": query,
                 })
                 .to_string(),
-            ))
-            .map_err(|e| {
-                SqliteWorkerError::ClientError(anyhow!("Failed to build request: {}", e))
-            })?;
+            ))?;
 
-        let res = Client::new().request(req).await.map_err(|e| {
-            SqliteWorkerError::ClientError(anyhow!("Failed to execute request: {}", e))
-        })?;
+        let res = Client::new().request(req).await?;
 
         let body_bytes = get_response_body(res).await?;
 
@@ -100,19 +97,15 @@ impl SqliteWorker {
             response: Option<Vec<QueryResult>>,
         }
 
-        let body: ExecuteQueryResponseBody = serde_json::from_slice(&body_bytes).map_err(|e| {
-            SqliteWorkerError::ClientError(anyhow!("Failed to parse response: {}", e))
-        })?;
+        let body: ExecuteQueryResponseBody = serde_json::from_slice(&body_bytes)?;
 
         match body.error {
-            Some(e) => Err(SqliteWorkerError::ServerError(anyhow!(e), None, 200))?,
+            Some(e) => Err(SqliteWorkerError::UnexpectedError(anyhow!(e)))?,
             None => match body.response {
                 Some(r) => Ok(r),
-                None => Err(SqliteWorkerError::ServerError(
-                    anyhow!("No response in body"),
-                    None,
-                    200,
-                ))?,
+                None => Err(SqliteWorkerError::UnexpectedError(anyhow!(
+                    "No response in body"
+                )))?,
             },
         }
     }
@@ -126,14 +119,9 @@ impl SqliteWorker {
         let req = Request::builder()
             .method("DELETE")
             .uri(format!("{}/databases/{}", worker_url, database_unique_id))
-            .body(Body::from(""))
-            .map_err(|e| {
-                SqliteWorkerError::ClientError(anyhow!("Failed to build request: {}", e))
-            })?;
+            .body(Body::from(""))?;
 
-        let res = Client::new().request(req).await.map_err(|e| {
-            SqliteWorkerError::ClientError(anyhow!("Failed to execute request: {}", e))
-        })?;
+        let res = Client::new().request(req).await?;
 
         let _ = get_response_body(res).await?;
 
@@ -146,14 +134,9 @@ impl SqliteWorker {
         let req = Request::builder()
             .method("DELETE")
             .uri(format!("{}/databases", worker_url))
-            .body(Body::from(""))
-            .map_err(|e| {
-                SqliteWorkerError::ClientError(anyhow!("Failed to build request: {}", e))
-            })?;
+            .body(Body::from(""))?;
 
-        let res = Client::new().request(req).await.map_err(|e| {
-            SqliteWorkerError::ClientError(anyhow!("Failed to execute request: {}", e))
-        })?;
+        let res = Client::new().request(req).await?;
         let _ = get_response_body(res).await?;
 
         Ok(())
@@ -162,16 +145,12 @@ impl SqliteWorker {
 
 async fn get_response_body(res: hyper::Response<hyper::Body>) -> Result<Bytes, SqliteWorkerError> {
     let status = res.status().as_u16();
-    let body = hyper::body::to_bytes(res.into_body())
-        .await
-        .map_err(|e| SqliteWorkerError::ClientError(anyhow!("Failed to read response: {}", e)))?;
+    let body = hyper::body::to_bytes(res.into_body()).await?;
 
     match status {
         200 => Ok(body),
         s => {
-            let body_json: serde_json::Value = serde_json::from_slice(&body).map_err(|e| {
-                SqliteWorkerError::ClientError(anyhow!("Failed to parse response: {}", e))
-            })?;
+            let body_json: serde_json::Value = serde_json::from_slice(&body)?;
             let error = body_json.get("error");
             let error_code = match error {
                 Some(e) => e
@@ -181,11 +160,13 @@ async fn get_response_body(res: hyper::Response<hyper::Body>) -> Result<Bytes, S
                     .map(|s| s.to_string()),
                 None => None,
             };
-            Err(SqliteWorkerError::ServerError(
-                anyhow!("Received error response from SQLite worker",),
-                error_code,
-                s,
-            ))?
+            match error_code {
+                Some(code) => Err(SqliteWorkerError::ServerError(code.to_string(), s))?,
+                None => Err(SqliteWorkerError::UnexpectedError(anyhow!(
+                    "Received unexpected error response with status {} from SQLite worker",
+                    s
+                )))?,
+            }
         }
     }
 }

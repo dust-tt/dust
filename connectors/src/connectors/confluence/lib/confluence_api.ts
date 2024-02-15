@@ -4,7 +4,7 @@ import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 
@@ -37,7 +37,7 @@ async function fetchConfluenceConfiguration(connectorId: ModelId) {
 }
 
 export async function listConfluenceSpaces(
-  connector: ConnectorModel,
+  connector: ConnectorResource,
   confluenceConfig?: ConfluenceConfiguration
 ) {
   const { id: connectorId, connectionId } = connector;

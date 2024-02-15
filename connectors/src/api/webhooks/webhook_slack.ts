@@ -13,7 +13,7 @@ import { Ok } from "@connectors/lib/result";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -197,7 +197,7 @@ const _webhookSlackAPIHandler = async (
               status_code: 404,
             });
           }
-          const connector = await ConnectorModel.findByPk(
+          const connector = await ConnectorResource.fetchById(
             slackConfig.connectorId
           );
           if (!connector) {

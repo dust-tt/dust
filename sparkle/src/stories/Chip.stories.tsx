@@ -4,7 +4,7 @@ import React from "react";
 import { Chip, UserGroupIcon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Chip",
+  title: "Primitives/Chip",
   component: Chip,
 } satisfies Meta<typeof Chip>;
 

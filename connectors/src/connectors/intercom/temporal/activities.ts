@@ -28,17 +28,12 @@ import {
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "intercom",
-      id: connectorId,
-    },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Intercom] Connector not found.");
   }
@@ -179,6 +174,7 @@ export async function syncHelpCenterOnlyActivity({
   // Otherwise we update the help center name and lastUpsertedTs
   await helpCenterOnDb.update({
     name: helpCenterOnIntercom.display_name || "Help Center",
+    websiteTurnedOn: helpCenterOnIntercom.website_turned_on,
     lastUpsertedTs: new Date(currentSyncMs),
   });
   return true;
@@ -231,6 +227,20 @@ export async function syncCollectionActivity({
     dataSourceName: dataSourceConfig.dataSourceName,
   };
 
+  const helpCenter = await IntercomHelpCenter.findOne({
+    where: {
+      connectorId,
+      helpCenterId,
+    },
+  });
+  if (!helpCenter) {
+    logger.error(
+      { loggerArgs, helpCenterId },
+      "[Intercom] Collection to sync is missing a Help Center"
+    );
+    return;
+  }
+
   const collection = await IntercomCollection.findOne({
     where: {
       connectorId,
@@ -248,9 +258,10 @@ export async function syncCollectionActivity({
   await syncCollection({
     connectorId,
     connectionId: connector.connectionId,
+    isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
+    collection,
     dataSourceConfig,
     loggerArgs,
-    collection,
     currentSyncMs,
   });
 }

@@ -7,8 +7,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { getSlackClient } from "./slack_client";
 
@@ -31,50 +30,38 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelName: string;
   connectorId: number;
 }): Promise<SlackChannelType> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: connectorId,
-      },
-      transaction,
-    });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Could not find connector ${connectorId}`);
+  }
 
-    if (!connector) {
-      throw new Error(`Could not find connector ${connectorId}`);
-    }
-
-    let channel = await SlackChannel.findOne({
-      where: {
-        connectorId,
-        slackChannelId,
-      },
-      transaction,
-    });
-
-    if (!channel) {
-      throw new Error(
-        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
-      );
-    } else {
-      if (channel.slackChannelName !== slackChannelName) {
-        channel = await channel.update(
-          {
-            slackChannelName,
-          },
-          { transaction }
-        );
-      }
-    }
-
-    return {
-      id: channel.id,
-      connectorId: channel.connectorId,
-      name: channel.slackChannelName,
-      slackId: channel.slackChannelId,
-      permission: channel.permission,
-      agentConfigurationId: channel.agentConfigurationId,
-    };
+  let channel = await SlackChannel.findOne({
+    where: {
+      connectorId,
+      slackChannelId,
+    },
   });
+
+  if (!channel) {
+    throw new Error(
+      `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
+    );
+  } else {
+    if (channel.slackChannelName !== slackChannelName) {
+      channel = await channel.update({
+        slackChannelName,
+      });
+    }
+  }
+
+  return {
+    id: channel.id,
+    connectorId: channel.connectorId,
+    name: channel.slackChannelName,
+    slackId: channel.slackChannelId,
+    permission: channel.permission,
+    agentConfigurationId: channel.agentConfigurationId,
+  };
 }
 
 export async function joinChannel(
@@ -86,7 +73,7 @@ export async function joinChannel(
     Error
   >
 > {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }

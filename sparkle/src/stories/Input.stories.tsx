@@ -4,7 +4,7 @@ import React from "react";
 import { Input } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Input",
+  title: "Primitives/Input",
   component: Input,
 } satisfies Meta<typeof Input>;
 

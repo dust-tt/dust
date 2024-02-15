@@ -18,15 +18,13 @@ use dust::{
         data_source::{self, SearchFilter, Section},
         qdrant::QdrantClients,
     },
-    databases::database::{query_database, Row, Table},
-    databases_store::{store as databases_store, store::DatabasesStore},
-    dataset,
-    project::{self},
+    databases::database::{query_database, QueryDatabaseError, Row, Table},
+    databases_store::store::{self as databases_store, DatabasesStore},
+    dataset, project,
     providers::provider::{provider, ProviderID},
     run,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
-    stores::postgres,
-    stores::store,
+    stores::{postgres, store},
     utils::{error_response, APIError, APIResponse},
 };
 use futures::future::try_join_all;
@@ -2254,11 +2252,17 @@ async fn databases_query_run(
                 }
                 Some(tables) => {
                     match query_database(&tables, state.store.clone(), &payload.query).await {
+                        Err(QueryDatabaseError::TooManyResultRows) => error_response(
+                            StatusCode::BAD_REQUEST,
+                            "too_many_result_rows",
+                            "The query returned too many rows",
+                            None,
+                        ),
                         Err(e) => error_response(
                             StatusCode::INTERNAL_SERVER_ERROR,
                             "internal_server_error",
                             "Failed to run query",
-                            Some(e),
+                            Some(e.into()),
                         ),
                         Ok((results, schema)) => (
                             StatusCode::OK,

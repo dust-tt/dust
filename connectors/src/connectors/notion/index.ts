@@ -28,6 +28,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -115,11 +116,7 @@ export async function updateNotionConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
@@ -194,7 +191,7 @@ export async function updateNotionConnector(
 export async function stopNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     logger.error(
@@ -227,7 +224,7 @@ export async function stopNotionConnector(
 export async function resumeNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     logger.error(
@@ -265,10 +262,7 @@ export async function fullResyncNotionConnector(
   connectorId: ModelId,
   fromTs: number | null
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { type: "notion", id: connectorId },
-  });
-
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Notion connector not found.");
     return new Err(new Error("Connector not found"));
@@ -328,55 +322,50 @@ export async function fullResyncNotionConnector(
 export async function cleanupNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorModel.findOne({
-      where: { type: "notion", id: connectorId },
-      transaction: transaction,
-    });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Notion connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
 
-    if (!connector) {
-      logger.error({ connectorId }, "Notion connector not found.");
-      return new Err(new Error("Connector not found"));
-    }
-
+  await sequelizeConnection.transaction(async (transaction) => {
     await NotionPage.destroy({
       where: {
         connectorId: connector.id,
       },
-      transaction: transaction,
+      transaction,
     });
     await NotionConnectorState.destroy({
       where: {
         connectorId: connector.id,
       },
-      transaction: transaction,
+      transaction,
     });
     await NotionConnectorBlockCacheEntry.destroy({
       where: {
         connectorId: connector.id,
       },
-      transaction: transaction,
+      transaction,
     });
     await NotionConnectorPageCacheEntry.destroy({
       where: {
         connectorId: connector.id,
       },
-      transaction: transaction,
+      transaction,
     });
     await NotionConnectorResourcesToCheckCacheEntry.destroy({
       where: {
         connectorId: connector.id,
       },
-      transaction: transaction,
-    });
-    await connector.destroy({
-      transaction: transaction,
+      transaction,
     });
 
-    await deleteNangoConnection(connector.connectionId);
-
-    return new Ok(undefined);
+    await connector.delete(transaction);
   });
+
+  await deleteNangoConnection(connector.connectionId);
+
+  return new Ok(undefined);
 }
 
 async function deleteNangoConnection(connectionId: NangoConnectionId) {
@@ -398,11 +387,7 @@ export async function retrieveNotionConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorNode[], Error>
 > {
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -559,7 +544,7 @@ export async function retrieveNotionResourceParents(
   internalId: string,
   memoizationKey?: string
 ): Promise<Result<string[], Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));

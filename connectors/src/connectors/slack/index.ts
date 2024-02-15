@@ -35,6 +35,7 @@ import {
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
@@ -133,11 +134,7 @@ export async function updateSlackConnector(
     throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
   }
 
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err({
@@ -293,21 +290,19 @@ export async function uninstallSlack(nangoConnectionId: string) {
 export async function cleanupSlackConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    const connector = await ConnectorModel.findByPk(connectorId, {
-      transaction: transaction,
-    });
-    if (!connector) {
-      return new Err(
-        new Error(`Could not find connector with id ${connectorId}`)
-      );
-    }
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
+    );
+  }
 
+  return sequelizeConnection.transaction(async (transaction) => {
     const configuration = await SlackConfiguration.findOne({
       where: {
         connectorId: connectorId,
       },
-      transaction: transaction,
+      transaction,
     });
     if (!configuration) {
       return new Err(
@@ -321,7 +316,7 @@ export async function cleanupSlackConnector(
       where: {
         slackTeamId: configuration.slackTeamId,
       },
-      transaction: transaction,
+      transaction,
     });
 
     // We deactivate our connections only if we are the only live slack connection for this team.
@@ -362,24 +357,22 @@ export async function cleanupSlackConnector(
       where: {
         connectorId: connectorId,
       },
-      transaction: transaction,
+      transaction,
     });
     await SlackMessages.destroy({
       where: {
         connectorId: connectorId,
       },
-      transaction: transaction,
+      transaction,
     });
     await SlackConfiguration.destroy({
       where: {
         connectorId: connectorId,
       },
-      transaction: transaction,
+      transaction,
     });
 
-    await connector.destroy({
-      transaction: transaction,
-    });
+    await connector.delete(transaction);
 
     return new Ok(undefined);
   });
@@ -400,11 +393,7 @@ export async function retrieveSlackConnectorPermissions({
     );
   }
 
-  const c = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -497,7 +486,7 @@ export async function setSlackConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
@@ -643,9 +632,7 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
   connectorId: ModelId,
   configKey: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
@@ -668,9 +655,7 @@ export async function setSlackConfig(
   configKey: string,
   configValue: string
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: { id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

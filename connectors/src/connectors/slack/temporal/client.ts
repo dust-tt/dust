@@ -4,7 +4,7 @@ import { removeNulls } from "@dust-tt/types";
 import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
@@ -29,7 +29,7 @@ export async function launchSlackSyncWorkflow(
   fromTs: number | null,
   channelsToSync: string[] | null = null
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
@@ -87,7 +87,7 @@ export async function launchSlackSyncOneThreadWorkflow(
   channelId: string,
   threadTs: string
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
@@ -127,7 +127,7 @@ export async function launchSlackSyncOneMessageWorkflow(
   channelId: string,
   threadTs: string
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
@@ -165,7 +165,7 @@ export async function launchSlackSyncOneMessageWorkflow(
 }
 
 export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }

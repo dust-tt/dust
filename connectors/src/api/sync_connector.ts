@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 
 import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GetSyncStatusRes = WithConnectorsAPIErrorReponse<{ workflowId: string }>;
 
@@ -22,7 +22,7 @@ const _syncConnectorAPIHandler = async (
     return;
   }
 
-  const connector = await ConnectorModel.findByPk(req.params.connector_id);
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     res.status(404).send({
       error: {

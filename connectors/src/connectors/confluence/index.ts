@@ -42,6 +42,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -126,11 +127,7 @@ export async function updateConfluenceConnector(
     connectionId?: NangoConnectionId | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Connector not found.");
     return new Err({
@@ -205,12 +202,7 @@ export async function resumeConfluenceConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   try {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: connectorId,
-      },
-    });
-
+    const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       return new Err(
         new Error(`Confluence connector not found (connectorId: ${connectorId}`)
@@ -237,9 +229,7 @@ export async function resumeConfluenceConnector(
 export async function cleanupConfluenceConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  const connector = await ConnectorModel.findOne({
-    where: { type: "confluence", id: connectorId },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Confluence connector not found.");
     return new Err(new Error("Connector not found"));
@@ -275,9 +265,7 @@ export async function cleanupConfluenceConnector(
       throw nangoRes.error;
     }
 
-    await connector.destroy({
-      transaction,
-    });
+    await connector.delete(transaction);
 
     return new Ok(undefined);
   });
@@ -290,11 +278,7 @@ export async function retrieveConfluenceConnectorPermissions({
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ConnectorNode[], Error>
 > {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      id: connectorId,
-    },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
@@ -340,7 +324,7 @@ export async function setConfluenceConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }

@@ -4,7 +4,7 @@ import React from "react";
 import { Popup } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Popup",
+  title: "Primitives/Popup",
   component: Popup,
 } satisfies Meta<typeof Popup>;
 

@@ -4,7 +4,7 @@ import React from "react";
 import { Button, SliderToggle } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/SliderToggle",
+  title: "Primitives/SliderToggle",
   component: SliderToggle,
 } satisfies Meta<typeof SliderToggle>;
 
