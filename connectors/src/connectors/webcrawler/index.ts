@@ -63,6 +63,7 @@ export async function createWebcrawlerConnector(
           crawlMode: urlConfig.crawlMode,
           depth: depth,
           crawlFrequency: urlConfig.crawlFrequency,
+          lastCrawledAt: null,
         },
         {
           transaction: t,

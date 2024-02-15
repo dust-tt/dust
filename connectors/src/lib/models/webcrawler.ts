@@ -23,6 +23,7 @@ export class WebCrawlerConfiguration extends Model<
   declare crawlMode: "child" | "website";
   declare depth: DepthOption;
   declare crawlFrequency: CrawlingFrequency;
+  declare lastCrawledAt: Date | null;
 }
 
 WebCrawlerConfiguration.init(
@@ -63,6 +64,10 @@ WebCrawlerConfiguration.init(
       type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: "monthly" satisfies CrawlingFrequency,
+    },
+    lastCrawledAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

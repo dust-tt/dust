@@ -2,7 +2,9 @@ import type { ModelId } from "@dust-tt/types";
 import {
   ActivityCancellationType,
   CancellationScope,
+  executeChild,
   proxyActivities,
+  workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";
@@ -24,6 +26,10 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     },
   });
 
+const { getWebsitesToCrawl } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "2 minutes",
+});
+
 export async function crawlWebsiteWorkflow(
   connectorId: ModelId
 ): Promise<void> {
@@ -36,4 +42,23 @@ export async function crawlWebsiteWorkflow(
 
 export function crawlWebsiteWorkflowId(connectorId: ModelId) {
   return `webcrawler-${connectorId}`;
+}
+
+export async function crawlWebsiteSchedulerWorkflow() {
+  const connectorIds = await getWebsitesToCrawl();
+
+  for (const connectorId of connectorIds) {
+    await executeChild(crawlWebsiteWorkflow, {
+      workflowId: crawlWebsiteWorkflowId(connectorId),
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      args: [connectorId],
+      memo: workflowInfo().memo,
+    });
+  }
+}
+
+export function crawlWebsiteSchedulerWorkflowId() {
+  return `webcrawler-scheduler`;
 }
