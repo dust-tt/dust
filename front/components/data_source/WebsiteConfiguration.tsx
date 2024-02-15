@@ -1,9 +1,11 @@
 import {
+  Button,
   ContentMessage,
   DropdownMenu,
   Input,
   Page,
   RadioButton,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
   CrawlingFrequency,
@@ -23,6 +25,7 @@ import {
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
+import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -66,6 +69,7 @@ export default function WebsiteConfiguration({
     useState<CrawlingFrequency>(
       webCrawlerConfiguration?.crawlFrequency || "monthly"
     );
+  const { mutate } = useSWRConfig();
 
   const frequencyDisplayText: Record<CrawlingFrequency, string> = {
     never: "Never",
@@ -185,6 +189,30 @@ export default function WebsiteConfiguration({
         window.alert(`Error creating DataSource: ${err.error.message}`);
       }
     }
+  };
+
+  const handleDelete = async () => {
+    if (!dataSource) {
+      return;
+    }
+    setIsSaving(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      {
+        method: "DELETE",
+      }
+    );
+    setIsSaving(false);
+    if (res.ok) {
+      await mutate(`/api/w/${owner.sId}/data_sources`);
+      await router.push(`/w/${owner.sId}/builder/data-sources/public-urls`);
+    } else {
+      const err = (await res.json()) as { error: APIError };
+      window.alert(
+        `Failed to delete the Website (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+      );
+    }
+    return true;
   };
 
   return (
@@ -358,6 +386,46 @@ export default function WebsiteConfiguration({
               />
             </Page.Layout>
           </div>
+          {webCrawlerConfiguration && (
+            <div className="flex">
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    variant="secondaryWarning"
+                    icon={TrashIcon}
+                    label={"Delete this Website"}
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items width={280}>
+                  <div className="flex flex-col gap-y-4 px-4 py-4">
+                    <div className="flex flex-col gap-y-2">
+                      <div className="grow text-sm font-medium text-element-800">
+                        Are you sure you want to delete?
+                      </div>
+
+                      <div className="text-sm font-normal text-element-700">
+                        This will delete the Website for everyone.
+                      </div>
+                    </div>
+                    <div className="flex justify-center">
+                      <Button
+                        variant="primaryWarning"
+                        size="sm"
+                        label={"Delete for Everyone"}
+                        disabled={false}
+                        icon={TrashIcon}
+                        onClick={async () => {
+                          // setIsSavingOrDeleting(true);
+                          await handleDelete();
+                          // setIsSavingOrDeleting(false);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+          )}
         </Page.Layout>
       </div>
     </AppLayout>
