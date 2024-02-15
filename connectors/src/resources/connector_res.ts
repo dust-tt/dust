@@ -7,9 +7,7 @@ import type { ReadonlyAttributesType } from "@connectors/resources/storage/types
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface ConnectorResource
-  extends ReadonlyAttributesType<ConnectorModel> {
-  readonly id: number;
-}
+  extends ReadonlyAttributesType<ConnectorModel> {}
 export class ConnectorResource extends BaseResource<ConnectorModel> {
   static model: ModelStatic<ConnectorModel> = ConnectorModel;
 
@@ -18,9 +16,11 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       where: {
         type,
       },
-      raw: true,
     });
 
-    return blobs.map((b) => new ConnectorResource(ConnectorModel, b));
+    return blobs.map(
+      // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
+      (b: ConnectorModel) => new ConnectorResource(ConnectorModel, b.get())
+    );
   }
 }
