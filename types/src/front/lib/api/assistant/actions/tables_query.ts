@@ -6,7 +6,10 @@ export type TablesQueryErrorEvent = {
   configurationId: string;
   messageId: string;
   error: {
-    code: string;
+    code:
+      | "tables_query_error"
+      | "tables_query_parameters_generation_error"
+      | "too_many_result_rows";
     message: string;
   };
 };
