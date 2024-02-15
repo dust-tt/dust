@@ -12,7 +12,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Template/Page",
+  title: "Modules/Page",
   component: Page,
 } satisfies Meta<typeof Page>;
 

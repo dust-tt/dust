@@ -5,7 +5,7 @@ import { Button } from "@sparkle/_index";
 import { Banner } from "@sparkle/components/Banner";
 
 const meta = {
-  title: "Molecule/Banner",
+  title: "Components/Banner",
   component: Banner,
 } satisfies Meta<typeof Banner>;
 

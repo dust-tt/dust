@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Button, Searchbar } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/Searchbar",
+  title: "Components/Searchbar",
   component: Searchbar,
 } satisfies Meta<typeof Searchbar>;
 

@@ -4,7 +4,7 @@ import React from "react";
 import { ContentMessage } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/ContentMessage",
+  title: "Components/ContentMessage",
   component: ContentMessage,
 } satisfies Meta<typeof ContentMessage>;
 
@@ -12,7 +12,24 @@ export default meta;
 
 export const ContentExample = () => (
   <div className="s-flex s-flex-col s-gap-4">
+    <h2>Size "md"</h2>
     <ContentMessage title="This is a title">
+      This is a message. It can be multiple lines long.
+    </ContentMessage>
+    <ContentMessage title="This is a title" variant="pink">
+      This is a message. It can be multiple lines long.
+    </ContentMessage>
+    <ContentMessage title="This is a title" variant="emerald">
+      This is a message. It can be multiple lines long.
+    </ContentMessage>
+    <h2>Size "sm"</h2>
+    <ContentMessage title="This is a title" size="sm">
+      This is a message. It can be multiple lines long.
+    </ContentMessage>
+    <ContentMessage title="This is a title" variant="pink" size="sm">
+      This is a message. It can be multiple lines long.
+    </ContentMessage>
+    <ContentMessage title="This is a title" variant="emerald" size="sm">
       This is a message. It can be multiple lines long.
     </ContentMessage>
   </div>

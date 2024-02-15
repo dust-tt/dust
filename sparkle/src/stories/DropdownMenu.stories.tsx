@@ -22,7 +22,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Atoms/DropdownMenu",
+  title: "Components/DropdownMenu",
   component: DropdownMenu,
 } satisfies Meta<typeof DropdownMenu>;
 

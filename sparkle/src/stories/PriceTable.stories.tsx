@@ -4,7 +4,7 @@ import React from "react";
 import { Button, PriceTable } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/PriceTable",
+  title: "Components/PriceTable",
   component: PriceTable,
 } satisfies Meta<typeof PriceTable>;
 

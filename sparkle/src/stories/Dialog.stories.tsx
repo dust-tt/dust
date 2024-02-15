@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Button, Dialog } from "../index_with_tw_base";
 
 const meta = {
-  title: "Molecule/Dialog",
+  title: "Modules/Dialog",
   component: Dialog,
 } satisfies Meta<typeof Dialog>;
 
