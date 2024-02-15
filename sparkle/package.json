@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.93",
+  "version": "0.2.94",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -77,7 +77,7 @@
   },
   "homepage": "https://github.com/dust/dust-tt#readme",
   "dependencies": {
-    "@esbuild/linux-x64": "^0.20.0",
-    "@headlessui/react": "^1.7.17"
+    "@headlessui/react": "^1.7.17",
+    "esbuild": "^0.20.0"
   }
 }
