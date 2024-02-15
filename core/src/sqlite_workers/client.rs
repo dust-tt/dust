@@ -22,18 +22,18 @@ pub struct SqliteWorker {
 pub enum SqliteWorkerError {
     #[error("SqliteWorkerError Server error (code={0}, status={1})")]
     ServerError(String, u16),
+    #[error("SqliteWorkerError Unexpected server error (status={0}): {1}")]
+    UnexpectedServerError(u16, String),
+    #[error("SqliteWorkerError Body parsing error (status={1}): {0}")]
+    BodyParsingError(serde_json::Error, u16),
+    #[error("SqliteWorkerError HyperError: {0}")]
+    HyperError(#[from] hyper::Error),
     #[error("SqliteWorkerError Unexpected error: {0}")]
     UnexpectedError(anyhow::Error),
 }
 
 impl From<hyper::http::Error> for SqliteWorkerError {
     fn from(e: hyper::http::Error) -> Self {
-        SqliteWorkerError::UnexpectedError(anyhow!(e))
-    }
-}
-
-impl From<hyper::Error> for SqliteWorkerError {
-    fn from(e: hyper::Error) -> Self {
         SqliteWorkerError::UnexpectedError(anyhow!(e))
     }
 }
@@ -150,7 +150,8 @@ async fn get_response_body(res: hyper::Response<hyper::Body>) -> Result<Bytes, S
     match status {
         200 => Ok(body),
         s => {
-            let body_json: serde_json::Value = serde_json::from_slice(&body)?;
+            let body_json: serde_json::Value = serde_json::from_slice(&body)
+                .map_err(|e| SqliteWorkerError::BodyParsingError(e, s))?;
             let error = body_json.get("error");
             let error_code = match error {
                 Some(e) => e
@@ -162,10 +163,10 @@ async fn get_response_body(res: hyper::Response<hyper::Body>) -> Result<Bytes, S
             };
             match error_code {
                 Some(code) => Err(SqliteWorkerError::ServerError(code.to_string(), s))?,
-                None => Err(SqliteWorkerError::UnexpectedError(anyhow!(
-                    "Received unexpected error response with status {} from SQLite worker",
-                    s
-                )))?,
+                None => Err(SqliteWorkerError::UnexpectedServerError(
+                    s,
+                    format!("No error code in response: {}", body_json.to_string()),
+                ))?,
             }
         }
     }
