@@ -42,8 +42,6 @@ const _getResourcesTitles = async (
     });
   }
 
-  await connector.update({ lastSyncFinishTime: new Date() });
-
   const bodyValidation = GetResourcesTitlesRequestBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);

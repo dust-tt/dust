@@ -13,7 +13,7 @@ import { getAuthObject } from "./temporal/activities";
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhook(
-  // TODO(2024-02-14 flav) Remove ConnectorModel once full bundled in `ConnectorResource`.
+  // TODO(2024-02-14 flav) Remove ConnectorModel once fully bundled in `ConnectorResource`.
   connector: ConnectorResource | ConnectorModel
 ): Promise<
   Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
