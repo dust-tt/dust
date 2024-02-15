@@ -120,7 +120,7 @@ export default function WebsiteConfiguration({
 
     setIsEdited(edited);
     setIsValid(valid);
-  }, [dataSources, dataSourceUrl]);
+  }, [dataSourceUrl, dataSources, dataSource?.id]);
 
   useEffect(() => {
     formValidation();

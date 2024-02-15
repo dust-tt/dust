@@ -93,7 +93,7 @@ export async function updateWebcrawlerConnector(
   connectorId: ModelId,
   urlConfig: CreateConnectorUrlRequestBody
 ): Promise<Result<string, ConnectorsAPIError>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err({
       message: "Connector not found",
@@ -367,7 +367,7 @@ async function _getWebcrawlerConfiguration(
   req: Request<{ connector_id: string }, GetWebCrawlerConfigurationResBody>,
   res: Response<GetWebCrawlerConfigurationResBody>
 ) {
-  const connector = await ConnectorModel.findByPk(req.params.connector_id);
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       api_error: {
