@@ -507,7 +507,7 @@ function IncidentBanner({ className = "" }: { className?: string }) {
   return (
     <Banner className={className} variant="incident">
       <div>
-        <span className="s-font-bold">
+        <span className="font-bold">
           OpenAI APIs are encountering a{" "}
           <a
             href="https://status.openai.com/"
