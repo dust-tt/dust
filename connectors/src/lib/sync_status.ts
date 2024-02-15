@@ -23,17 +23,22 @@ async function syncFinished({
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  connector.lastSyncStatus = status;
-  connector.lastSyncFinishTime = finishedAt;
-  connector.errorType = errorType;
+
+  let { firstSuccessfulSyncTime, lastSyncSuccessfulTime } = connector;
   if (status === "succeeded") {
     if (!connector.firstSuccessfulSyncTime) {
-      connector.firstSuccessfulSyncTime = finishedAt;
+      firstSuccessfulSyncTime = finishedAt;
     }
-    connector.lastSyncSuccessfulTime = finishedAt;
+    lastSyncSuccessfulTime = finishedAt;
   }
 
-  await connector.update(connector);
+  await connector.update({
+    errorType: errorType,
+    firstSuccessfulSyncTime,
+    lastSyncFinishTime: finishedAt,
+    lastSyncStatus: status,
+    lastSyncSuccessfulTime,
+  });
 
   return new Ok(undefined);
 }
@@ -46,10 +51,11 @@ export async function reportInitialSyncProgress(
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  connector.firstSyncProgress = progress;
-  connector.lastSyncSuccessfulTime = null;
 
-  await connector.update(connector);
+  await connector.update({
+    firstSyncProgress: progress,
+    lastSyncSuccessfulTime: null,
+  });
 
   return new Ok(undefined);
 }
