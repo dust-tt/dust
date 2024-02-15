@@ -109,8 +109,9 @@ export async function syncStarted(connectorId: ModelId, startedAt?: Date) {
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  connector.lastSyncStartTime = startedAt;
-  await connector.update(connector);
+  await connector.update({
+    lastSyncStartTime: startedAt,
+  });
 
   return new Ok(undefined);
 }
