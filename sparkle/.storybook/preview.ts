@@ -10,6 +10,18 @@ const preview: Preview = {
         date: /Date$/,
       },
     },
+    options: {
+      storySort: {
+        order: [
+          "Assets",
+          "Primitives",
+          "Components",
+          "Modules",
+          "Styles",
+          "Exemple",
+        ], // Define your order here
+      },
+    },
     themes: {
       default: "light",
       list: [
