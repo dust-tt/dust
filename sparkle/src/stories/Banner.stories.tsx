@@ -24,20 +24,30 @@ export const BasicBanner = () => {
         </div>
       </Banner>
       <Banner variant="incident">
-        <div className="s-flex s-items-center">
-          <strong className="s-font-semibold">OpenAI Outage:</strong>&nbsp;It
-          may cause slowness and errors from assistants using GPT or data
-          retrieval. We are monitoring the situation&nbsp;
-          <strong className="s-font-semibold">
+        <div>
+          <span className="s-font-bold">
+            OpenAI APIs are encountering a{" "}
+            <a
+              href="https://status.openai.com/"
+              target="_blank"
+              className="underline"
+            >
+              partial outage.
+            </a>
+          </span>
+          <br />
+          <span>
+            It may cause slowness and errors from assistants using GPT or data
+            retrieval. We are monitoring the situation{" "}
             <a
               href="http://status.dust.tt/"
               target="_blank"
-              className="s-underline"
+              className="underline"
             >
               here
             </a>
-          </strong>
-          .
+            .
+          </span>
         </div>
       </Banner>
       <Banner variant="error">

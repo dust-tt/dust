@@ -503,13 +503,11 @@ function SubscriptionPastDueBanner() {
   );
 }
 
-function IncidentBanner({ className }: { className?: string }) {
+function IncidentBanner({ className = "" }: { className?: string }) {
   return (
-    <Banner
-      allowDismiss={false}
-      classNames={classNames("bg-amber-600 z-[80] w-full h-8", className ?? "")}
-      title={
-        <span className="font-bold">
+    <Banner className={className} variant="incident">
+      <div>
+        <span className="s-font-bold">
           OpenAI APIs are encountering a{" "}
           <a
             href="https://status.openai.com/"
@@ -519,17 +517,20 @@ function IncidentBanner({ className }: { className?: string }) {
             partial outage.
           </a>
         </span>
-      }
-      label=""
-    >
-      <span>
-        It may cause slowness and errors from assistants using GPT or data
-        retrieval. We are monitoring the situation{" "}
-        <a href="http://status.dust.tt/" target="_blank" className="underline">
-          here
-        </a>
-        .
-      </span>
+        <br />
+        <span>
+          It may cause slowness and errors from assistants using GPT or data
+          retrieval. We are monitoring the situation{" "}
+          <a
+            href="http://status.dust.tt/"
+            target="_blank"
+            className="underline"
+          >
+            here
+          </a>
+          .
+        </span>
+      </div>
     </Banner>
   );
 }
