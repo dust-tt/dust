@@ -5,6 +5,7 @@ import {
   Chip,
   Dialog,
   DropdownMenu,
+  ElementModal,
   Icon,
   Input,
   Modal,
@@ -192,16 +193,9 @@ export default function WorkspaceAdmin({
     const { invitations, isInvitationsLoading } =
       useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
-    /** Modal for changing member role: we need to use 2 states: set the member
-     * first, then open the modal with an unoticeable delay. Using
-     * only 1 state for both would break the modal animation because rerendering
-     * at the same time than switching modal to open*/
-    const [changeRoleModalOpen, setChangeRoleModalOpen] = useState(false);
+
     const [changeRoleMember, setChangeRoleMember] =
       useState<UserTypeWithWorkspaces | null>(null);
-    /* Same for invitations modal */
-    const [revokeInvitationModalOpen, setRevokeInvitationModalOpen] =
-      useState(false);
     const [invitationToRevoke, setInvitationToRevoke] =
       useState<MembershipInvitationType | null>(null);
 
@@ -245,15 +239,13 @@ export default function WorkspaceAdmin({
           members={members}
         />
         <RevokeInvitationModal
-          showModal={revokeInvitationModalOpen}
           invitation={invitationToRevoke}
-          onClose={() => setRevokeInvitationModalOpen(false)}
+          onClose={() => setInvitationToRevoke(null)}
           owner={owner}
         />
         <ChangeMemberModal
-          showModal={changeRoleModalOpen}
           member={changeRoleMember}
-          onClose={() => setChangeRoleModalOpen(false)}
+          onClose={() => setChangeRoleMember(null)}
         />
         <Page.Vertical gap="sm" align="stretch">
           <Page.H variant="h5">Member list</Page.H>
@@ -317,12 +309,6 @@ export default function WorkspaceAdmin({
                     if (user.id === item.id) return; // no action on self
                     if (isInvitation(item)) setInvitationToRevoke(item);
                     else setChangeRoleMember(item);
-                    /* Delay to let react re-render the modal before opening it otherwise no animation transition */
-                    setTimeout(() => {
-                      if (isInvitation(item))
-                        setRevokeInvitationModalOpen(true);
-                      else setChangeRoleModalOpen(true);
-                    }, 50);
                   }}
                 >
                   <div className="hidden sm:block">
@@ -643,12 +629,10 @@ function DomainAutoJoinModal({
 }
 
 function RevokeInvitationModal({
-  showModal,
   onClose,
   invitation,
   owner,
 }: {
-  showModal: boolean;
   onClose: () => void;
   invitation: MembershipInvitationType | null;
   owner: WorkspaceType;
@@ -690,8 +674,8 @@ function RevokeInvitationModal({
   }
 
   return (
-    <Modal
-      isOpen={showModal}
+    <ElementModal
+      openOnElement={invitation}
       onClose={onClose}
       hasChanged={false}
       title="Revoke invitation"
@@ -721,7 +705,7 @@ function RevokeInvitationModal({
           />
         </div>
       </div>
-    </Modal>
+    </ElementModal>
   );
 }
 
@@ -765,11 +749,9 @@ async function handleMemberRoleChange({
 }
 
 function ChangeMemberModal({
-  showModal,
   onClose,
   member,
 }: {
-  showModal: boolean;
   onClose: () => void;
   member: UserTypeWithWorkspaces | null;
 }) {
@@ -787,16 +769,19 @@ function ChangeMemberModal({
     user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
   };
   return (
-    <Modal
-      isOpen={showModal}
-      onClose={onClose}
+    <ElementModal
+      openOnElement={member}
+      onClose={() => {
+        onClose();
+        setIsSaving(false); // reset isSaving when closing the modal
+      }}
       isSaving={isSaving}
       hasChanged={
         selectedRole !== null && selectedRole !== member.workspaces[0].role
       }
       title={member.fullName || "Unreachable"}
       variant="side-sm"
-      onSave={async () => {
+      onSave={async (closeModalFn: () => void) => {
         setIsSaving(true);
         if (!selectedRole) return; // unreachable due to hasChanged
         await handleMemberRoleChange({
@@ -805,12 +790,7 @@ function ChangeMemberModal({
           mutate,
           sendNotification,
         });
-        onClose();
-        /* Delay to let react close the modal before cleaning isSaving, to
-         * avoid the user seeing the button change label again during the closing animation */
-        setTimeout(() => {
-          setIsSaving(false);
-        }, CLOSING_ANIMATION_DURATION);
+        closeModalFn();
       }}
       saveLabel="Update role"
     >
@@ -917,7 +897,7 @@ function ChangeMemberModal({
           </div>
         </div>
       </Modal>
-    </Modal>
+    </ElementModal>
   );
 }
 

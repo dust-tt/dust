@@ -2,7 +2,7 @@ import {
   Avatar,
   CloudArrowDownIcon,
   CommandLineIcon,
-  Modal,
+  ElementModal,
   Page,
   ServerIcon,
 } from "@dust-tt/sparkle";
@@ -38,10 +38,9 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
-  show: boolean;
   onClose: () => void;
   mutateAgentConfigurations?: KeyedMutator<GetAgentConfigurationsResponseBody>;
-  assistantId: string;
+  assistantId: string | null;
 };
 
 export function AssistantDetails({
@@ -49,7 +48,6 @@ export function AssistantDetails({
   onClose,
   mutateAgentConfigurations,
   owner,
-  show,
 }: AssistantDetailsProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const agentUsage = useAgentUsage({
@@ -209,8 +207,8 @@ export function AssistantDetails({
     ) : null;
 
   return (
-    <Modal
-      isOpen={show}
+    <ElementModal
+      openOnElement={agentConfiguration}
       title=""
       onClose={() => onClose()}
       hasChanged={false}
@@ -221,7 +219,7 @@ export function AssistantDetails({
         <InstructionsSection />
         <ActionSection action={agentConfiguration?.action || null} />
       </div>
-    </Modal>
+    </ElementModal>
   );
 }
 
