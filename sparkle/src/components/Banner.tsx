@@ -1,79 +1,64 @@
 import React, { useEffect, useState } from "react";
 
-import { Button } from "@sparkle/_index";
-import { XMark } from "@sparkle/icons/solid";
+import { IconButton, XMarkIcon } from "@sparkle/_index";
 import { classNames } from "@sparkle/lib/utils";
 
 interface BannerProps {
-  allowDismiss: boolean;
-  classNames: string;
-  ctaLabel?: string;
-  label: string;
-  hidden: boolean;
-  onClick?: () => void;
+  variant?: "info" | "incident" | "error";
+  allowDismiss?: boolean;
+  className?: string;
+  hidden?: boolean;
   onDismiss?: () => void;
-  title: string | React.ReactNode;
   children?: React.ReactNode;
 }
 
-// Define defaultProps for the Banner component.
-Banner.defaultProps = {
-  allowDismiss: true,
-  classNames: "",
-  hidden: false,
+const variantClasses = {
+  info: "s-bg-indigo-300 s-text-indigo-950",
+  incident: "s-bg-amber-300 s-text-amber-950",
+  error: "s-bg-red-300 s-text-red-950",
 };
 
-export function Banner(props: BannerProps) {
+export function Banner({
+  variant = "info",
+  allowDismiss = true,
+  className = "",
+  hidden = false,
+  onDismiss,
+  children,
+}: BannerProps) {
   const [isDismissed, setIsDismissed] = useState(true);
 
   useEffect(() => {
-    setIsDismissed(props.hidden);
-  }, [props.hidden]);
+    setIsDismissed(hidden);
+  }, [hidden]);
 
   return isDismissed ? (
     <></>
   ) : (
     <div
       className={classNames(
-        "sm:s-before:flex-1 s-flex s-items-center s-gap-x-6 s-px-6 s-py-2.5 sm:s-px-3.5",
-        props.classNames
+        variantClasses[variant],
+        "sm:s-before:flex-1 s-flex s-min-h-16 s-items-center s-px-6 s-py-4 s-text-sm sm:s-px-3.5",
+        className
       )}
     >
-      <div className="s-flex s-flex-1"></div>
-      <div className="s-flex s-flex-row s-flex-wrap s-items-center s-gap-4">
-        <p className="s-gap-4 s-text-sm s-leading-6 s-text-white">
-          <strong className="s-font-semibold">{props.title}</strong>
-          <svg
-            viewBox="0 0 2 2"
-            className="s-mx-2 s-inline s-h-0.5 s-w-0.5 s-fill-current"
-            aria-hidden="true"
-          ></svg>
-          {props.children ?? props.label}
-        </p>
-        {props.ctaLabel && (
-          <Button
-            label={props.ctaLabel}
-            variant="tertiary"
-            onClick={props.onClick}
-          />
-        )}
-      </div>
-      <div className="s-flex s-flex-1 s-justify-end">
-        {props.allowDismiss && (
-          <a
-            className="focus-visible:outline-offset-[-4px] s--m-3 s-p-3"
+      {children}
+      {allowDismiss && (
+        <div className="s-flex s-flex-1 s-items-center s-justify-end">
+          <span className="s-sr-only">Dismiss</span>
+          <IconButton
+            icon={XMarkIcon}
+            size="sm"
+            variant="secondary"
             onClick={() => {
               setIsDismissed(true);
-              if (props.onDismiss) {
-                props.onDismiss();
+              if (onDismiss) {
+                onDismiss();
               }
             }}
-          >
-            <span className="s-sr-only">Dismiss</span>
-            <XMark className="s-h-5 s-w-5 s-text-white" aria-hidden="true" />
-          </a>
-        )}
-      </div>
+          />
+        </div>
+      )}
     </div>
   );
 }
