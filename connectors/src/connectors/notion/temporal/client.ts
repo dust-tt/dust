@@ -12,7 +12,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -23,7 +23,7 @@ export async function launchNotionSyncWorkflow(
   forceResync = false
 ) {
   const client = await getTemporalClient();
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -88,7 +88,7 @@ export async function launchNotionGarbageCollectorWorkflow(
   connectorId: ModelId
 ) {
   const client = await getTemporalClient();
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -135,7 +135,7 @@ export async function launchNotionGarbageCollectorWorkflow(
 export async function stopNotionSyncWorkflow(
   connectorId: ModelId
 ): Promise<void> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -196,7 +196,7 @@ export async function stopNotionSyncWorkflow(
 export async function stopNotionGarbageCollectorWorkflow(
   connectorId: ModelId
 ): Promise<void> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }

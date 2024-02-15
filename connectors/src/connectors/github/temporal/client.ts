@@ -30,7 +30,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const logger = mainLogger.child({ provider: "github" });
 
@@ -43,7 +43,7 @@ export async function launchGithubFullSyncWorkflow({
 }) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -83,7 +83,7 @@ export async function getGithubFullSyncWorkflow(connectorId: ModelId): Promise<{
 } | null> {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -112,7 +112,7 @@ export async function launchGithubReposSyncWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -146,7 +146,7 @@ export async function launchGithubCodeSyncWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -177,7 +177,7 @@ export async function launchGithubIssueSyncWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -221,7 +221,7 @@ export async function launchGithubDiscussionSyncWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -266,7 +266,7 @@ export async function launchGithubIssueGarbageCollectWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -305,7 +305,7 @@ export async function launchGithubDiscussionGarbageCollectWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
@@ -344,7 +344,7 @@ export async function launchGithubRepoGarbageCollectWorkflow(
 ) {
   const client = await getTemporalClient();
 
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }

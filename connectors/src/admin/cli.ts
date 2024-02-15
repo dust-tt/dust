@@ -47,6 +47,7 @@ import {
   terminateAllWorkflowsForConnectorId,
 } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -701,7 +702,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
       console.log(`Checking gdrive file`);
-      const connector = await ConnectorModel.findByPk(args.connectorId);
+      const connector = await ConnectorResource.fetchById(args.connectorId);
       if (!connector) {
         throw new Error(`Connector ${args.connectorId} not found`);
       }

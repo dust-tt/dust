@@ -21,7 +21,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 function isConfluenceSpaceModel(
   confluenceSpace: unknown
@@ -186,7 +186,7 @@ async function getSynchronizedChildrenPages(
 }
 
 export async function retrieveHierarchyForParent(
-  connector: ConnectorModel,
+  connector: ConnectorResource,
   confluenceConfig: ConfluenceConfiguration,
   parentInternalId: string | null
 ) {
@@ -238,7 +238,7 @@ export async function retrieveHierarchyForParent(
 }
 
 export async function retrieveAvailableSpaces(
-  connector: ConnectorModel,
+  connector: ConnectorResource,
   confluenceConfig: ConfluenceConfiguration
 ) {
   const { id: connectorId } = connector;

@@ -9,7 +9,7 @@ import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/
 import { intercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 function getIntercomSyncWorkflowId(connectorId: ModelId) {
   return `intercom-sync-${connectorId}`;
@@ -26,7 +26,7 @@ export async function launchIntercomSyncWorkflow(
   }
 
   const client = await getTemporalClient();
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(
       `[Intercom] Connector not found. ConnectorId: ${connectorId}`
@@ -73,7 +73,7 @@ export async function stopIntercomSyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(
       `[Intercom] Connector not found. ConnectorId: ${connectorId}`

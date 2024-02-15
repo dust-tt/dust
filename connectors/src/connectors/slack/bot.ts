@@ -33,7 +33,7 @@ import {
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import {
   formatMessagesForUpsert,
@@ -74,7 +74,7 @@ export async function botAnswerMessageWithErrorHandling(
       )
     );
   }
-  const connector = await ConnectorModel.findByPk(slackConfig.connectorId);
+  const connector = await ConnectorResource.fetchById(slackConfig.connectorId);
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
@@ -153,7 +153,7 @@ async function botAnswerMessage(
   slackUserId: string,
   slackMessageTs: string,
   slackThreadTs: string | null,
-  connector: ConnectorModel,
+  connector: ConnectorResource,
   slackConfig: SlackConfiguration
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
@@ -655,7 +655,7 @@ async function makeContentFragment(
   threadTs: string,
   startingAtTs: string | null,
   slackChatBotMessage: SlackChatBotMessage,
-  connector: ConnectorModel
+  connector: ConnectorResource
 ): Promise<
   Result<
     t.TypeOf<typeof PublicPostContentFragmentRequestBodySchema> | null,

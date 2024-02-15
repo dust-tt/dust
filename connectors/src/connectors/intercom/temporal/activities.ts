@@ -28,17 +28,12 @@ import {
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "intercom",
-      id: connectorId,
-    },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("[Intercom] Connector not found.");
   }

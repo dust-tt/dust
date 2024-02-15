@@ -17,7 +17,7 @@ import type {
   ConnectorUpdaterUrl,
 } from "@connectors/connectors/interface";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type ConnectorUpdateReqBody = {
   connectionId?: string | null;
@@ -55,7 +55,7 @@ const _getConnectorUpdateAPIHandler = async (
 
   const { connectorParams } = bodyValidation.right;
 
-  const connector = await ConnectorModel.findByPk(req.params.connector_id);
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       api_error: {

@@ -7,7 +7,7 @@ import type { Request, Response } from "express";
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GetConnectorRes = WithConnectorsAPIErrorReponse<ConnectorType>;
 
@@ -24,7 +24,8 @@ const _getConnector = async (
       status_code: 400,
     });
   }
-  const connector = await ConnectorModel.findByPk(req.params.connector_id);
+
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       api_error: {

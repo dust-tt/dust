@@ -7,7 +7,7 @@ import * as reporter from "io-ts-reporters";
 import { BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE } from "@connectors/connectors";
 import type { Result } from "@connectors/lib/result";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const GetResourcesTitlesRequestBodySchema = t.type({
   resourceInternalIds: t.array(t.string),
@@ -31,7 +31,7 @@ const _getResourcesTitles = async (
   >,
   res: Response<GetResourcesTitlesResponseBody>
 ) => {
-  const connector = await ConnectorModel.findByPk(req.params.connector_id);
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       status_code: 404,

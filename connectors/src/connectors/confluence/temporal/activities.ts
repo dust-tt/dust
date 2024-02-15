@@ -35,7 +35,7 @@ import {
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({
@@ -58,12 +58,7 @@ async function getConfluenceAccessToken(connectionId: string) {
 }
 
 async function fetchConfluenceConnector(connectorId: ModelId) {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "confluence",
-      id: connectorId,
-    },
-  });
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Connector not found.");
   }
@@ -77,14 +72,14 @@ async function getConfluenceClient(config: {
 }): Promise<ConfluenceClient>;
 async function getConfluenceClient(
   config: { cloudId?: string },
-  connector: ConnectorModel
+  connector: ConnectorResource
 ): Promise<ConfluenceClient>;
 async function getConfluenceClient(
   config: {
     cloudId?: string;
     connectorId?: ModelId;
   },
-  connector?: ConnectorModel
+  connector?: ConnectorResource
 ) {
   const { cloudId, connectorId } = config;
 

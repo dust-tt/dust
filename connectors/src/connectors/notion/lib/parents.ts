@@ -11,7 +11,7 @@ import {
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -109,7 +109,7 @@ export async function updateAllParentsFields(
   createdOrMovedNotionDatabaseIds: string[],
   memoizationKey?: string
 ): Promise<number> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }

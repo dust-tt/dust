@@ -9,7 +9,7 @@ import {
   SET_CONNECTOR_CONFIG_BY_TYPE,
 } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const ConfigSetReqBodySchema = t.type({
   configValue: t.string,
@@ -45,9 +45,7 @@ const _getConnectorConfig = async (
     });
   }
 
-  const connector = await ConnectorModel.findOne({
-    where: { id: req.params.connector_id },
-  });
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       api_error: {
@@ -121,9 +119,7 @@ const _setConnectorConfig = async (
       status_code: 400,
     });
   }
-  const connector = await ConnectorModel.findOne({
-    where: { id: req.params.connector_id },
-  });
+  const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
       api_error: {

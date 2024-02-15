@@ -6,7 +6,7 @@ import type {
 
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 async function syncFinished({
   connectorId,
@@ -19,21 +19,26 @@ async function syncFinished({
   finishedAt: Date;
   errorType: ConnectorErrorType | null;
 }): Promise<Result<void, Error>> {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  connector.lastSyncStatus = status;
-  connector.lastSyncFinishTime = finishedAt;
-  connector.errorType = errorType;
+
+  let { firstSuccessfulSyncTime, lastSyncSuccessfulTime } = connector;
   if (status === "succeeded") {
     if (!connector.firstSuccessfulSyncTime) {
-      connector.firstSuccessfulSyncTime = finishedAt;
+      firstSuccessfulSyncTime = finishedAt;
     }
-    connector.lastSyncSuccessfulTime = finishedAt;
+    lastSyncSuccessfulTime = finishedAt;
   }
 
-  await connector.save();
+  await connector.update({
+    errorType: errorType,
+    firstSuccessfulSyncTime,
+    lastSyncFinishTime: finishedAt,
+    lastSyncStatus: status,
+    lastSyncSuccessfulTime,
+  });
 
   return new Ok(undefined);
 }
@@ -42,13 +47,15 @@ export async function reportInitialSyncProgress(
   connectorId: ModelId,
   progress: string
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  connector.firstSyncProgress = progress;
-  connector.lastSyncSuccessfulTime = null;
-  await connector.save();
+
+  await connector.update({
+    firstSyncProgress: progress,
+    lastSyncSuccessfulTime: null,
+  });
 
   return new Ok(undefined);
 }
@@ -98,12 +105,13 @@ export async function syncStarted(connectorId: ModelId, startedAt?: Date) {
   if (!startedAt) {
     startedAt = new Date();
   }
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
-  connector.lastSyncStartTime = startedAt;
-  await connector.save();
+  await connector.update({
+    lastSyncStartTime: startedAt,
+  });
 
   return new Ok(undefined);
 }

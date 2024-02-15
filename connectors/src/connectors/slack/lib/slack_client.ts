@@ -9,7 +9,7 @@ import { ErrorCode, WebClient } from "@slack/web-api";
 import type { WorkflowError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 // Timeout in ms for all network requests;
@@ -24,7 +24,9 @@ export async function getSlackClient(
 ): Promise<WebClient> {
   let slackAccessToken: string | undefined = undefined;
   if (typeof connectorIdOrAccessToken === "number") {
-    const connector = await ConnectorModel.findByPk(connectorIdOrAccessToken);
+    const connector = await ConnectorResource.fetchById(
+      connectorIdOrAccessToken
+    );
     if (!connector) {
       throw new Error(`Could not find connector ${connectorIdOrAccessToken}`);
     }
