@@ -282,7 +282,7 @@ export async function webCrawlerGarbageCollector(
   connectorId: ModelId,
   lastSyncStartTsMs: number
 ) {
-  const connector = await ConnectorModel.findByPk(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found.`);
   }
