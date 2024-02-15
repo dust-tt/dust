@@ -75,7 +75,6 @@ export default function AssistantConversation({
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const [isAssistantDetailOpen, setIsAssistantDetailOpen] = useState(false);
   const [detailViewContent, setDetailViewContent] = useState("");
 
   useEffect(() => {
@@ -110,10 +109,9 @@ export default function AssistantConversation({
     const handleRouteChange = () => {
       const assistantSId = router.query.assistantDetails ?? [];
       if (assistantSId && typeof assistantSId === "string") {
-        setIsAssistantDetailOpen(true);
         setDetailViewContent(assistantSId);
       } else {
-        setIsAssistantDetailOpen(false);
+        setDetailViewContent("");
       }
     };
 
@@ -194,7 +192,7 @@ export default function AssistantConversation({
       >
         <AssistantDetails
           owner={owner}
-          assistantId={detailViewContent}
+          assistantId={detailViewContent || null}
           onClose={handleCloseModal}
         />
         <Conversation

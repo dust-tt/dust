@@ -3,7 +3,6 @@ import {
   CloudArrowDownIcon,
   CommandLineIcon,
   ElementModal,
-  Modal,
   Page,
   ServerIcon,
 } from "@dust-tt/sparkle";

@@ -771,14 +771,17 @@ function ChangeMemberModal({
   return (
     <ElementModal
       openOnElement={member}
-      onClose={onClose}
+      onClose={() => {
+        onClose();
+        setIsSaving(false); // reset isSaving when closing the modal
+      }}
       isSaving={isSaving}
       hasChanged={
         selectedRole !== null && selectedRole !== member.workspaces[0].role
       }
       title={member.fullName || "Unreachable"}
       variant="side-sm"
-      onSave={async () => {
+      onSave={async (closeModalFn: () => void) => {
         setIsSaving(true);
         if (!selectedRole) return; // unreachable due to hasChanged
         await handleMemberRoleChange({
@@ -787,12 +790,7 @@ function ChangeMemberModal({
           mutate,
           sendNotification,
         });
-        onClose();
-        /* Delay to let react close the modal before cleaning isSaving, to
-         * avoid the user seeing the button change label again during the closing animation */
-        setTimeout(() => {
-          setIsSaving(false);
-        }, CLOSING_ANIMATION_DURATION);
+        closeModalFn();
       }}
       saveLabel="Update role"
     >
