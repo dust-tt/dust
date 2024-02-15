@@ -10,6 +10,7 @@ use futures::future::try_join_all;
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection, InterruptHandle};
+use thiserror::Error;
 use tokio::{task, time::timeout};
 use tracing::info;
 
@@ -19,24 +20,25 @@ pub struct SqliteDatabase {
     interrupt_handle: Option<Arc<tokio::sync::Mutex<InterruptHandle>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum QueryError {
+    #[error("Query returned more than {0} rows")]
     ExceededMaxRows(usize),
+    #[error("Query execution error: {0}")]
     QueryExecutionError(anyhow::Error),
 }
 
-impl std::fmt::Display for QueryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            QueryError::ExceededMaxRows(limit) => {
-                write!(f, "Query returned more than {} rows", limit)
-            }
-            QueryError::QueryExecutionError(e) => write!(f, "Query execution error: {}", e),
-        }
+impl From<rusqlite::Error> for QueryError {
+    fn from(e: rusqlite::Error) -> Self {
+        QueryError::QueryExecutionError(anyhow!(e))
     }
 }
 
-impl std::error::Error for QueryError {}
+impl From<anyhow::Error> for QueryError {
+    fn from(e: anyhow::Error) -> Self {
+        QueryError::QueryExecutionError(e)
+    }
+}
 
 const MAX_ROWS: usize = 128;
 
@@ -136,15 +138,9 @@ impl SqliteDatabase {
                             ))
                         })
                         .collect::<Result<serde_json::Value>>()
-                })
-                // At this point we have a result (from the query_and_then fn itself) of results (for each
-                // individual row parsing). We wrap the potential top-level error in a QueryError and bubble it up.
-                .map_err(|e| QueryError::QueryExecutionError(anyhow::Error::new(e)))?
+                })?
                 .take(MAX_ROWS + 1)
-                .collect::<Result<Vec<_>, _>>()
-                // Thanks to the collect above, we now have a single top-level result.
-                // We wrap the potential error in a QueryError and bubble up if needed.
-                .map_err(QueryError::QueryExecutionError)?
+                .collect::<Result<Vec<_>, _>>()?
                 .into_par_iter()
                 .map(|value| QueryResult { value })
                 .collect::<Vec<_>>();

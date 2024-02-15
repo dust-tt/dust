@@ -2,7 +2,7 @@ use super::table_schema::TableSchema;
 use crate::{
     databases_store::store::DatabasesStore,
     project::Project,
-    sqlite_workers::client::{SqliteWorker, HEARTBEAT_INTERVAL_MS},
+    sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},
     stores::store::Store,
     utils,
 };
@@ -11,6 +11,7 @@ use futures::future::try_join_all;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use thiserror::Error;
 use tracing::info;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
@@ -29,11 +30,31 @@ impl ToString for DatabaseType {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum QueryDatabaseError {
+    #[error("{0}")]
+    GenericError(#[from] anyhow::Error),
+    #[error("Too many result rows")]
+    TooManyResultRows,
+}
+
+impl From<SqliteWorkerError> for QueryDatabaseError {
+    fn from(e: SqliteWorkerError) -> Self {
+        match &e {
+            SqliteWorkerError::ServerError(code, _) => match code.as_str() {
+                "too_many_result_rows" => QueryDatabaseError::TooManyResultRows,
+                _ => e.into(),
+            },
+            _ => e.into(),
+        }
+    }
+}
+
 pub async fn query_database(
     tables: &Vec<Table>,
     store: Box<dyn Store + Sync + Send>,
     query: &str,
-) -> Result<(Vec<QueryResult>, TableSchema)> {
+) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
     let table_ids_hash = tables.iter().map(|t| t.unique_id()).sorted().join("/");
     let database = store
         .upsert_database(&table_ids_hash, HEARTBEAT_INTERVAL_MS)
