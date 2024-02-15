@@ -1,3 +1,4 @@
+import type { CrawlingFrequency } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -21,6 +22,7 @@ export class WebCrawlerConfiguration extends Model<
   declare maxPageToCrawl: number | null;
   declare crawlMode: "child" | "website";
   declare depth: number | null;
+  declare crawlFrequency: CrawlingFrequency;
 }
 
 WebCrawlerConfiguration.init(
@@ -56,6 +58,11 @@ WebCrawlerConfiguration.init(
     depth: {
       type: DataTypes.INTEGER,
       allowNull: true,
+    },
+    crawlFrequency: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "monthly" satisfies CrawlingFrequency,
     },
   },
   {

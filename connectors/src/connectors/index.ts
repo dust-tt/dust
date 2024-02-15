@@ -63,7 +63,8 @@ import type {
   ConnectorPermissionSetter,
   ConnectorResumer,
   ConnectorStopper,
-  ConnectorUpdater,
+  ConnectorUpdaterOAuth,
+  ConnectorUpdaterUrl,
   SyncConnector,
 } from "@connectors/connectors/interface";
 import {
@@ -98,6 +99,7 @@ import {
   retrieveWebCrawlerObjectsParents,
   retrieveWebCrawlerObjectsTitles,
   stopWebcrawlerConnector,
+  updateWebcrawlerConnector,
 } from "./webcrawler";
 import { launchCrawlWebsiteWorkflow } from "./webcrawler/temporal/client";
 
@@ -116,7 +118,7 @@ export const CREATE_CONNECTOR_BY_TYPE: Record<
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorUpdater
+  ConnectorUpdaterOAuth | ConnectorUpdaterUrl
 > = {
   confluence: updateConfluenceConnector,
   slack: updateSlackConnector,
@@ -124,9 +126,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   github: updateGithubConnector,
   google_drive: updateGoogleDriveConnector,
   intercom: updateIntercomConnector,
-  webcrawler: () => {
-    throw new Error("Not implemented");
-  },
+  webcrawler: updateWebcrawlerConnector,
 };
 
 export const STOP_CONNECTOR_BY_TYPE: Record<

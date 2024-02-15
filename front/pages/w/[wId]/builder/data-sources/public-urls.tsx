@@ -8,28 +8,39 @@ import {
   Popup,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  ConnectorType,
+  DataSourceType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
+
+type DataSourceWithConnector = DataSourceType & {
+  connector: ConnectorType;
+};
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceWithConnector[];
   gaTrackingId: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -51,8 +62,23 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   const readOnly = !auth.isBuilder();
 
   const allDataSources = await getDataSources(auth);
-  const dataSources = allDataSources.filter(
-    (ds) => ds.connectorProvider === "webcrawler"
+  const connectorsAPI = new ConnectorsAPI(logger);
+  const dataSources = await Promise.all(
+    allDataSources
+      .filter((ds) => ds.connectorProvider === "webcrawler")
+      .map(async (ds): Promise<DataSourceWithConnector> => {
+        if (!ds.connectorId) {
+          throw new Error("Connector ID is missing");
+        }
+        const connectorRes = await connectorsAPI.getConnector(ds.connectorId);
+        if (connectorRes.isErr()) {
+          throw new Error("Connector not found");
+        }
+        return {
+          ...ds,
+          connector: connectorRes.value,
+        };
+      })
   );
 
   return {
@@ -182,8 +208,10 @@ export default function DataSourcesView({
                 </Button.List>
               }
             >
+              <ConnectorSyncingChip connector={ds.connector} />
               <ContextItem.Description>
-                <div className="text-sm text-element-700">{ds.description}</div>
+                {" "}
+                <br />
               </ContextItem.Description>
             </ContextItem>
           ))}

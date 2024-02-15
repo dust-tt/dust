@@ -1,11 +1,16 @@
-import { Input, RadioButton } from "@dust-tt/sparkle";
+import { DropdownMenu, Input, RadioButton } from "@dust-tt/sparkle";
 import type {
+  CrawlingFrequency,
   DataSourceType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
-import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import {
+  CrawlingFrequencies,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
+} from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -70,6 +75,14 @@ export default function DataSourceNew({
   const [maxPages, setMaxPages] = useState<number | null>(50);
   const [maxDepth, setMaxDepth] = useState<number | null>(2);
   const [crawlMode, setCrawlMode] = useState<"child" | "website">("website");
+  const [selectedCrawlFrequency, setSelectedCrawlFrequency] =
+    useState<CrawlingFrequency>("monthly");
+
+  const frequencyDisplayText: Record<CrawlingFrequency, string> = {
+    daily: "Every day",
+    weekly: "Every week",
+    monthly: "Every month",
+  };
 
   const formValidation = useCallback(() => {
     const urlRegex =
@@ -129,6 +142,7 @@ export default function DataSourceNew({
           maxPages: maxPages || WEBCRAWLER_MAX_PAGES,
           depth: maxDepth || WEBCRAWLER_MAX_DEPTH,
           crawlMode: crawlMode,
+          crawlFrequency: selectedCrawlFrequency,
         },
         type: "url",
         provider: "webcrawler",
@@ -292,6 +306,37 @@ export default function DataSourceNew({
                 size="sm"
                 className="text-sm"
               />
+              <div style={{ display: "none" }}>
+                <p className="text-lg font-bold text-element-900">
+                  Crawling frequency
+                </p>
+                <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+                  How often do you want to crawl this website?
+                </div>
+                {(() => {
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenu.Button
+                        label={frequencyDisplayText[selectedCrawlFrequency]}
+                      />
+                      <DropdownMenu.Items origin="topLeft">
+                        {CrawlingFrequencies.map((frequency) => {
+                          return (
+                            <DropdownMenu.Item
+                              selected={selectedCrawlFrequency == frequency}
+                              key={frequency}
+                              label={frequencyDisplayText[frequency]}
+                              onClick={() => {
+                                setSelectedCrawlFrequency(frequency);
+                              }}
+                            />
+                          );
+                        })}
+                      </DropdownMenu.Items>
+                    </DropdownMenu>
+                  );
+                })()}
+              </div>
             </div>
           </div>
         </div>

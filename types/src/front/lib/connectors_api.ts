@@ -3,6 +3,7 @@ import {
   CreateConnectorOAuthRequestBody,
   CreateConnectorUrlRequestBody,
 } from "../../connectors/api_handlers/create_connector";
+import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ConnectorProvider } from "../../front/data_source";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
@@ -143,21 +144,17 @@ export class ConnectorsAPI {
 
   async updateConnector({
     connectorId,
-    params: { connectionId },
+    params,
   }: {
     connectorId: string;
-    params: {
-      connectionId?: string | null;
-    };
+    params: UpdateConnectorRequestBody;
   }): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/update/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          connectionId,
-        }),
+        body: JSON.stringify(params),
       }
     );
 

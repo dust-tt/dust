@@ -1,9 +1,11 @@
 import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
+import { ConnectorsAPI, DELETION_ALLOWED_BY_TYPE } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { deleteDataSource, getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetOrPostDataSourceResponseBody = {
@@ -169,7 +171,11 @@ async function handler(
       }
 
       // We only expose deleted non-managed data sources.
-      if (dataSource.connectorId) {
+      if (
+        dataSource.connectorId &&
+        dataSource.connectorProvider &&
+        !DELETION_ALLOWED_BY_TYPE.includes(dataSource.connectorProvider)
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -177,6 +183,27 @@ async function handler(
             message: "Managed data sources cannot be deleted.",
           },
         });
+      }
+
+      if (dataSource.connectorId && !dataSource.connectorProvider) {
+        const connectorsAPI = new ConnectorsAPI(logger);
+        const deleteRes = await connectorsAPI.deleteConnector(
+          dataSource.connectorId
+        );
+        if (deleteRes.isErr()) {
+          return apiError(
+            req,
+            res,
+            {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: deleteRes.error.message,
+              },
+            },
+            new Error(deleteRes.error.message)
+          );
+        }
       }
 
       const dRes = await deleteDataSource(auth, dataSource.name);

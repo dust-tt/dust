@@ -8,11 +8,12 @@ interface BannerProps {
   allowDismiss: boolean;
   classNames: string;
   ctaLabel?: string;
-  hidden: boolean;
   label: string;
+  hidden: boolean;
   onClick?: () => void;
   onDismiss?: () => void;
-  title: string;
+  title: string | React.ReactNode;
+  children?: React.ReactNode;
 }
 
 // Define defaultProps for the Banner component.
@@ -47,7 +48,7 @@ export function Banner(props: BannerProps) {
             className="s-mx-2 s-inline s-h-0.5 s-w-0.5 s-fill-current"
             aria-hidden="true"
           ></svg>
-          {props.label}
+          {props.children ?? props.label}
         </p>
         {props.ctaLabel && (
           <Button
@@ -58,18 +59,20 @@ export function Banner(props: BannerProps) {
         )}
       </div>
       <div className="s-flex s-flex-1 s-justify-end">
-        <a
-          className="focus-visible:outline-offset-[-4px] s--m-3 s-p-3"
-          onClick={() => {
-            setIsDismissed(true);
-            if (props.onDismiss) {
-              props.onDismiss();
-            }
-          }}
-        >
-          <span className="s-sr-only">Dismiss</span>
-          <XMark className="s-h-5 s-w-5 s-text-white" aria-hidden="true" />
-        </a>
+        {props.allowDismiss && (
+          <a
+            className="focus-visible:outline-offset-[-4px] s--m-3 s-p-3"
+            onClick={() => {
+              setIsDismissed(true);
+              if (props.onDismiss) {
+                props.onDismiss();
+              }
+            }}
+          >
+            <span className="s-sr-only">Dismiss</span>
+            <XMark className="s-h-5 s-w-5 s-text-white" aria-hidden="true" />
+          </a>
+        )}
       </div>
     </div>
   );
