@@ -85,9 +85,6 @@ export { Spinner };
 import { Modal } from "./components/Modal";
 export { Modal };
 
-import { ElementModal } from "./components/ElementModal";
-export { ElementModal };
-
 import { Dialog } from "./components/Dialog";
 export { Dialog };
 
