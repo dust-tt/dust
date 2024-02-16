@@ -4,6 +4,8 @@ import { Err, Ok } from "@dust-tt/types";
 import * as PDFJS from "pdfjs-dist/build/pdf";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 
+const supportedFileExtensions = [".txt", ".pdf", ".md", ".csv", ".tsv"];
+
 export async function handleFileUploadToText(
   file: File
 ): Promise<Result<{ title: string; content: string }, Error>> {
@@ -75,7 +77,10 @@ export async function handleFileUploadToText(
           "text/tsv",
           "text/comma-separated-values",
           "text/tab-separated-values",
-        ].includes(file.type)
+        ].includes(file.type) ||
+        supportedFileExtensions
+          .map((ext) => file.name.endsWith(ext))
+          .includes(true)
       ) {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
@@ -84,7 +89,8 @@ export async function handleFileUploadToText(
         return resolve(
           new Err(
             new Error(
-              "File type not supported. Supported file types: .txt, .pdf, .md, .csv, .tsv"
+              "File type not supported. Supported file types: " +
+                supportedFileExtensions.join(", ")
             )
           )
         );
