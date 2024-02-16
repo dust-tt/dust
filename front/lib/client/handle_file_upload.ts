@@ -77,7 +77,10 @@ export async function handleFileUploadToText(
           "text/tsv",
           "text/comma-separated-values",
           "text/tab-separated-values",
-        ].includes(file.type) || supportedFileExtensions.map((ext) => file.name.endsWith(ext)).includes(true)
+        ].includes(file.type) ||
+        supportedFileExtensions
+          .map((ext) => file.name.endsWith(ext))
+          .includes(true)
       ) {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
@@ -86,7 +89,8 @@ export async function handleFileUploadToText(
         return resolve(
           new Err(
             new Error(
-              "File type not supported. Supported file types: " + supportedFileExtensions.join(", ")
+              "File type not supported. Supported file types: " +
+                supportedFileExtensions.join(", ")
             )
           )
         );
