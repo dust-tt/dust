@@ -1,8 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
+import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
