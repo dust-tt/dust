@@ -299,90 +299,143 @@ export async function generateRetrievalParams(
 // Internal interface for the retrieval and rendering of a Retrieval action. This should not be used
 // outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderRetrievalActionByModelId(
-  id: ModelId
-): Promise<RetrievalActionType> {
-  const action = await AgentRetrievalAction.findByPk(id);
-  if (!action) {
-    throw new Error(`No Retrieval action found with id ${id}`);
+export async function renderRetrievalActionsByModelId(
+  ids: ModelId[]
+): Promise<RetrievalActionType[]> {
+  const actionById = (
+    await AgentRetrievalAction.findAll({
+      where: {
+        id: ids,
+      },
+    })
+  ).reduce<{
+    [id: ModelId]: AgentRetrievalAction;
+  }>((acc, a) => {
+    acc[a.id] = a;
+    return acc;
+  }, {});
+
+  if (Object.keys(actionById).length !== ids.length) {
+    throw new Error(
+      "Not all retrieval actions could be found in the database."
+    );
   }
 
-  const documentRows = await RetrievalDocument.findAll({
-    where: {
-      retrievalActionId: action.id,
-    },
-  });
+  const documentRowsByActionId = (
+    await RetrievalDocument.findAll({
+      where: {
+        retrievalActionId: ids,
+      },
+    })
+  ).reduce<{
+    [id: ModelId]: RetrievalDocument[];
+  }>((acc, d) => {
+    if (!acc[d.retrievalActionId]) {
+      acc[d.retrievalActionId] = [];
+    }
+    acc[d.retrievalActionId].push(d);
+    return acc;
+  }, {});
 
-  const chunkRows = await RetrievalDocumentChunk.findAll({
-    where: {
-      retrievalDocumentId: documentRows.map((d) => d.id),
-    },
-  });
+  const chunkRowsByDocumentId = (
+    await RetrievalDocumentChunk.findAll({
+      where: {
+        retrievalDocumentId: Object.values(documentRowsByActionId).flatMap(
+          (docs) => docs.map((d) => d.id)
+        ),
+      },
+    })
+  ).reduce<{
+    [id: ModelId]: RetrievalDocumentChunk[];
+  }>((acc, c) => {
+    if (!acc[c.retrievalDocumentId]) {
+      acc[c.retrievalDocumentId] = [];
+    }
+    acc[c.retrievalDocumentId].push(c);
+    return acc;
+  }, {});
 
-  let relativeTimeFrame: TimeFrame | null = null;
-  if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
-    relativeTimeFrame = {
-      duration: action.relativeTimeFrameDuration,
-      unit: action.relativeTimeFrameUnit,
-    };
-  }
+  const actions: RetrievalActionType[] = [];
 
-  const documents: RetrievalDocumentType[] = documentRows.map((d) => {
-    const chunks = chunkRows
-      .filter((c) => c.retrievalDocumentId === d.id)
-      .map((c) => ({
-        text: c.text,
-        offset: c.offset,
-        score: c.score,
-      }));
-    chunks.sort((a, b) => {
+  for (const id of ids) {
+    const action = actionById[id];
+    const documentRows = documentRowsByActionId[id] ?? [];
+    const chunkRows =
+      documentRows.flatMap((d) => chunkRowsByDocumentId[d.id]) ?? [];
+
+    let relativeTimeFrame: TimeFrame | null = null;
+    if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
+      relativeTimeFrame = {
+        duration: action.relativeTimeFrameDuration,
+        unit: action.relativeTimeFrameUnit,
+      };
+    }
+
+    const documents: RetrievalDocumentType[] = documentRows.map((d) => {
+      const chunks = chunkRows
+        .filter((c) => c.retrievalDocumentId === d.id)
+        .map((c) => ({
+          text: c.text,
+          offset: c.offset,
+          score: c.score,
+        }));
+      chunks.sort((a, b) => {
+        if (a.score === null && b.score === null) {
+          return a.offset - b.offset;
+        }
+        if (a.score !== null && b.score !== null) {
+          return b.score - a.score;
+        }
+        throw new Error(
+          "Unexpected comparison of null and non-null scored chunks."
+        );
+      });
+
+      return {
+        id: d.id,
+        dataSourceWorkspaceId: d.dataSourceWorkspaceId,
+        dataSourceId: d.dataSourceId,
+        sourceUrl: d.sourceUrl,
+        documentId: d.documentId,
+        reference: d.reference,
+        timestamp: d.documentTimestamp.getTime(),
+        tags: d.tags,
+        score: d.score,
+        chunks,
+      };
+    });
+
+    documents.sort((a, b) => {
       if (a.score === null && b.score === null) {
-        return a.offset - b.offset;
+        return b.timestamp - a.timestamp;
       }
       if (a.score !== null && b.score !== null) {
         return b.score - a.score;
       }
       throw new Error(
-        "Unexpected comparison of null and non-null scored chunks."
+        "Unexpected comparison of null and non-null scored documents."
       );
     });
 
-    return {
-      id: d.id,
-      dataSourceWorkspaceId: d.dataSourceWorkspaceId,
-      dataSourceId: d.dataSourceId,
-      sourceUrl: d.sourceUrl,
-      documentId: d.documentId,
-      reference: d.reference,
-      timestamp: d.documentTimestamp.getTime(),
-      tags: d.tags,
-      score: d.score,
-      chunks,
-    };
-  });
+    actions.push({
+      id: action.id,
+      type: "retrieval_action",
+      params: {
+        query: action.query,
+        relativeTimeFrame,
+        topK: action.topK,
+      },
+      documents,
+    });
+  }
 
-  documents.sort((a, b) => {
-    if (a.score === null && b.score === null) {
-      return b.timestamp - a.timestamp;
-    }
-    if (a.score !== null && b.score !== null) {
-      return b.score - a.score;
-    }
-    throw new Error(
-      "Unexpected comparison of null and non-null scored documents."
-    );
-  });
+  return actions;
+}
 
-  return {
-    id: action.id,
-    type: "retrieval_action",
-    params: {
-      query: action.query,
-      relativeTimeFrame,
-      topK: action.topK,
-    },
-    documents,
-  };
+export async function renderRetrievalActionByModelId(
+  id: ModelId
+): Promise<RetrievalActionType> {
+  return (await renderRetrievalActionsByModelId([id]))[0];
 }
 
 /**
