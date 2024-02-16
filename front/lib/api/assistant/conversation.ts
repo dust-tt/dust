@@ -31,7 +31,7 @@ import type {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG, md5 } from "@dust-tt/types";
+import { GPT_3_5_TURBO_MODEL_CONFIG, md5, removeNulls } from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
@@ -314,9 +314,11 @@ async function batchRenderAgentMessages(
     })(),
     (async () => {
       return renderRetrievalActionsByModelId(
-        agentMessages
-          .filter((m) => m.agentMessage?.agentRetrievalActionId)
-          .map((m) => m.agentMessage?.agentRetrievalActionId as number)
+        removeNulls(
+          agentMessages.map(
+            (m) => m.agentMessage?.agentRetrievalActionId ?? null
+          )
+        )
       );
     })(),
     (async () => {
