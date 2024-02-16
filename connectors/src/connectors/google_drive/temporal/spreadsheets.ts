@@ -16,7 +16,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
-const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 1000;
+const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 10000;
 
 type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;
