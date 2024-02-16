@@ -41,6 +41,7 @@ export function pluralize(count: number) {
 
 export function slugify(text: string) {
   return text
+    .replace(/([a-z])([A-Z0-9])/g, "$1_$2") // Get all lowercase letters that are near to uppercase ones and replace with _.
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "_") // Replace spaces with _.
