@@ -583,7 +583,7 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
 
 ---
 
-## Retrieve a Conversation {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversation/:conversation_id' }}
+## Retrieve a Conversation {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversations/:conversation_id' }}
 
 <Row>
   <Col>
@@ -605,10 +605,10 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversation/:conversation_id">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversations/:conversation_id">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c \
+    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversations/7b6396245c \
       -H "Authorization: Bearer sk-..." \
     ```
 
@@ -694,7 +694,7 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
 
 ---
 
-## Stream Conversation Events {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversation/:conversation_id/events' }}
+## Stream Conversation Events {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversations/:conversation_id/events' }}
 
 <Row>
   <Col>
@@ -724,10 +724,10 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversation/:conversation_id/events">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversations/:conversation_id/events">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c/events \
+    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversations/7b6396245c/events \
       -H "Authorization: Bearer sk-..." \
     ```
 
@@ -760,7 +760,7 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
 
 ---
 
-## Stream Message Events {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversation/:conversation_id/messages/:message_id/events' }}
+## Stream Message Events {{ tag: 'GET', label: '/v1/w/:workspace_id/assistant/conversations/:conversation_id/messages/:message_id/events' }}
 
 <Row>
   <Col>
@@ -803,10 +803,10 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversation/:conversation_id/messages/:message_id/events">
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/assistant/conversations/:conversation_id/messages/:message_id/events">
 
     ```bash {{ title: 'cURL' }}
-    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversaions/7b6396245c/messages/d349842779/events \
+    curl https://dust.tt/api/v1/w/3e26b0e764/assistant/conversations/7b6396245c/messages/d349842779/events \
       -H "Authorization: Bearer sk-..." \
     ```
 
