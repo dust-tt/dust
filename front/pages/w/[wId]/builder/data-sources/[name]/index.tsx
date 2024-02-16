@@ -1017,7 +1017,10 @@ function ManagedDataSourceView({
           )}
         </div>
         <div className="pt-2">
-          <ConnectorSyncingChip connector={connector} />
+          <ConnectorSyncingChip
+            workspaceId={connector.workspaceId}
+            dataSourceName={connector.dataSourceName}
+          />
         </div>
 
         {isAdmin && (

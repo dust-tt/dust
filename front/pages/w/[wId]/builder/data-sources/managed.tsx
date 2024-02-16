@@ -699,7 +699,10 @@ export default function DataSourcesView({
                           );
                         } else {
                           return (
-                            <ConnectorSyncingChip connector={ds.connector} />
+                            <ConnectorSyncingChip
+                              workspaceId={ds.connector.workspaceId}
+                              dataSourceName={ds.connector.dataSourceName}
+                            />
                           );
                         }
                       })()}

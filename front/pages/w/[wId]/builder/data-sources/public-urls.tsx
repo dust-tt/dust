@@ -208,7 +208,10 @@ export default function DataSourcesView({
                 </Button.List>
               }
             >
-              <ConnectorSyncingChip connector={ds.connector} />
+              <ConnectorSyncingChip
+                workspaceId={ds.connector.workspaceId}
+                dataSourceName={ds.connector.dataSourceName}
+              />
               <ContextItem.Description>
                 {" "}
                 <br />
