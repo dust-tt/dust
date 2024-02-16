@@ -46,7 +46,6 @@ import {
 import {
   driveObjectToDustType,
   getAuthObject,
-  getDocumentId,
   getDriveClient,
   getGoogleCredentials,
 } from "@connectors/connectors/google_drive/temporal/utils";
