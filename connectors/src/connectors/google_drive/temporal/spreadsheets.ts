@@ -10,6 +10,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -202,7 +203,10 @@ export async function syncSpreadSheet(
     throw new Error("Connector not found.");
   }
 
-  // TODO(2024-02-16 flav) Add check for FF.
+  const hasFF = await connectorHasAutoPreIngestAllDatabasesFF(connector);
+  if (!hasFF) {
+    return false;
+  }
 
   const loggerArgs = {
     connectorId,
