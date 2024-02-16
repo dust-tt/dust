@@ -39,6 +39,7 @@ export type APIErrorType =
   | "chat_message_not_found"
   | "event_schema_not_found"
   | "extracted_event_not_found"
+  | "connector_not_found_error"
   | "connector_update_error"
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"

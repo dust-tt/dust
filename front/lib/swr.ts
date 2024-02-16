@@ -26,6 +26,7 @@ import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
+import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
@@ -356,6 +357,34 @@ export function useConnectorConfig({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     mutateConfig: mutate,
+  };
+}
+
+export function useConnector({
+  workspaceId,
+  dataSourceName,
+  refreshInterval,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  refreshInterval: number;
+}) {
+  if (refreshInterval < 1000) {
+    throw new Error("refreshInterval must be at least 1000ms");
+  }
+  const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
+
+  const url = `/api/w/${workspaceId}/data_sources/${dataSourceName}/connector`;
+
+  const { data, error, mutate } = useSWR(url, configFetcher, {
+    refreshInterval,
+  });
+
+  return {
+    connector: data ? data.connector : null,
+    isConnectorLoading: !error && !data,
+    isConnectorError: error,
+    mutateConnector: mutate,
   };
 }
 
