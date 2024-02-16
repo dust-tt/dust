@@ -439,6 +439,7 @@ export async function upsertTableFromCsv({
   tableDescription,
   tableCsv,
   loggerArgs,
+  truncate,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -446,6 +447,7 @@ export async function upsertTableFromCsv({
   tableDescription: string;
   tableCsv: string;
   loggerArgs?: Record<string, string | number>;
+  truncate: boolean;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -469,6 +471,7 @@ export async function upsertTableFromCsv({
     description: tableDescription,
     csv: tableCsv,
     tableId,
+    truncate,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -514,114 +517,6 @@ export async function upsertTableFromCsv({
     );
     localLogger.info("Successfully uploaded structured data to Dust.");
   } else {
-    statsDClient.increment(
-      "data_source_structured_data_upserts_error.count",
-      1,
-      statsDTags
-    );
-    statsDClient.distribution(
-      "data_source_structured_data_upserts_error.duration.distribution",
-      elapsed,
-      statsDTags
-    );
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-        elapsed,
-      },
-      "Error uploading structured data to Dust."
-    );
-    throw new Error(`Error uploading to dust: ${dustRequestResult}`);
-  }
-}
-
-export async function upsertTableRow({
-  dataSourceConfig,
-  tableId,
-  rowId,
-  row,
-  loggerArgs,
-}: {
-  dataSourceConfig: DataSourceConfig;
-  tableId: string;
-  rowId: string;
-  row: Record<string, string | number | boolean | null>;
-  loggerArgs?: Record<string, string | number>;
-}) {
-  const localLogger = logger.child({
-    ...loggerArgs,
-    tableId,
-    rowId,
-  });
-  const statsDTags = [
-    `data_source_name:${dataSourceConfig.dataSourceName}`,
-    `workspace_id:${dataSourceConfig.workspaceId}`,
-  ];
-
-  localLogger.info("Attempting to upload structured data to Dust.");
-  statsDClient.increment(
-    "data_source_structured_data_upserts_attempt.count",
-    1,
-    statsDTags
-  );
-
-  const now = new Date();
-
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}/rows`;
-  const dustRequestPayload = {
-    rows: [
-      {
-        row_id: rowId,
-        value: row,
-      },
-    ],
-    truncate: false,
-  };
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
-    },
-  };
-
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axios.post(
-      endpoint,
-      dustRequestPayload,
-      dustRequestConfig
-    );
-  } catch (e) {
-    const elapsed = new Date().getTime() - now.getTime();
-    statsDClient.increment(
-      "data_source_structured_data_upserts_error.count",
-      1,
-      statsDTags
-    );
-    statsDClient.distribution(
-      "data_source_structured_data_upserts_error.duration.distribution",
-      elapsed,
-      statsDTags
-    );
-    localLogger.error({ error: e }, "Error uploading structured data to Dust.");
-    throw e;
-  }
-
-  const elapsed = new Date().getTime() - now.getTime();
-
-  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    statsDClient.increment(
-      "data_source_structured_data_upserts_success.count",
-      1,
-      statsDTags
-    );
-
-    localLogger.info("Successfully uploaded structured data to Dust.");
-  } else {
-    if (dustRequestResult.status === 404) {
-      localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
-      return;
-    }
     statsDClient.increment(
       "data_source_structured_data_upserts_error.count",
       1,

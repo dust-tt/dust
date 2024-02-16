@@ -73,6 +73,7 @@ async function upsertTable(
       sheetId: id,
       spreadsheetId: spreadsheet.id,
     },
+    truncate: true,
   });
 }
 

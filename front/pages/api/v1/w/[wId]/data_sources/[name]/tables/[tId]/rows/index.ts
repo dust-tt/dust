@@ -16,12 +16,25 @@ const UpsertTableRowsRequestBodySchema = t.type({
       row_id: t.string,
       value: t.record(
         t.string,
-        t.union([t.string, t.null, t.number, t.boolean])
+        t.union([
+          t.string,
+          t.null,
+          t.number,
+          t.boolean,
+          t.type({
+            type: t.literal("datetime"),
+            epoch: t.number,
+          }),
+        ])
       ),
     })
   ),
   truncate: t.union([t.boolean, t.undefined]),
 });
+
+type CellValueType = t.TypeOf<
+  typeof UpsertTableRowsRequestBodySchema
+>["rows"][number]["value"][string];
 
 type UpsertTableRowsResponseBody = {
   success: true;
@@ -174,7 +187,7 @@ async function handler(
         keysSet.add(key);
       }
       rowsToUpsert = rowsToUpsert.map((row) => {
-        const value: Record<string, string | number | boolean | null> = {};
+        const value: Record<string, CellValueType> = {};
         for (const [key, val] of Object.entries(row.value)) {
           value[key.toLowerCase()] = val;
         }

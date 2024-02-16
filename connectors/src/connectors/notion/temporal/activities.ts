@@ -29,7 +29,6 @@ import {
   isAccessibleAndUnarchived,
   parsePageBlock,
   parsePageProperties,
-  parsePropertyText,
   renderDatabaseFromPages,
   retrieveBlockChildrenResultPage,
   retrieveDatabaseChildrenResultPage,
@@ -55,7 +54,6 @@ import {
   renderPrefixSection,
   sectionLength,
   upsertTableFromCsv,
-  upsertTableRow,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -1651,21 +1649,29 @@ export async function renderAndUpsertPageFromCache({
       const autoIngestAllDatabases =
         await connectorHasAutoPreIngestAllDatabasesFF(connector);
       if (autoIngestAllDatabases || parentDb.structuredDataEnabled) {
-        const tableId = `notion-${parentDb.notionDatabaseId}`;
+        const { tableId, tableName, tableDescription } =
+          getTableInfoFromDatabase(parentDb);
         const rowId = `notion-${pageId}`;
-        const row: Record<string, string | null> = {};
-        for (const [key, value] of Object.entries(
-          JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
-        )) {
-          row[key] = parsePropertyText(value);
-        }
-
-        await upsertTableRow({
-          dataSourceConfig: dsConfig,
+        const csv = await renderDatabaseFromPages({
+          databaseTitle: null,
+          pagesProperties: [
+            JSON.parse(
+              pageCacheEntry.pagePropertiesText
+            ) as PageObjectProperties,
+          ],
+          dustIdColumn: [rowId],
+          cellSeparator: ",",
+          rowBoundary: "",
+        });
+        await upsertTableFromCsv({
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
           tableId,
-          rowId,
-          row,
+          tableName,
+          tableDescription,
+          tableCsv: csv,
           loggerArgs,
+          // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
+          truncate: false,
         });
       }
     }
@@ -2357,11 +2363,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     rowBoundary: "",
   });
 
-  const tableId = `notion-${databaseId}`;
-  const tableName = dbModel.title ?? `Untitled Database (${databaseId})`;
-  const tableDescription = `Structured data from Notion database${
-    tableName ?? ""
-  }`;
+  const { tableId, tableName, tableDescription } =
+    getTableInfoFromDatabase(dbModel);
 
   await upsertTableFromCsv({
     dataSourceConfig: dataSourceConfigFromConnector(connector),
@@ -2370,5 +2373,19 @@ export async function upsertDatabaseStructuredDataFromCache({
     tableDescription,
     tableCsv: csv,
     loggerArgs,
+    // We overwrite the whole table since we just fetched all child pages.
+    truncate: true,
   });
+}
+
+function getTableInfoFromDatabase(database: NotionDatabase): {
+  tableId: string;
+  tableName: string;
+  tableDescription: string;
+} {
+  const tableId = `notion-${database.notionDatabaseId}`;
+  const tableName =
+    database.title ?? `Untitled Database (${database.notionDatabaseId})`;
+  const tableDescription = `Structured data from Notion Database ${tableName}`;
+  return { tableId, tableName, tableDescription };
 }
