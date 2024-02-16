@@ -309,7 +309,7 @@ export async function renderRetrievalActionsByModelId(
       },
     })
   ).reduce<{
-    [id: number]: AgentRetrievalAction;
+    [id: ModelId]: AgentRetrievalAction;
   }>((acc, a) => {
     acc[a.id] = a;
     return acc;
@@ -328,7 +328,7 @@ export async function renderRetrievalActionsByModelId(
       },
     })
   ).reduce<{
-    [id: number]: RetrievalDocument[];
+    [id: ModelId]: RetrievalDocument[];
   }>((acc, d) => {
     if (!acc[d.retrievalActionId]) {
       acc[d.retrievalActionId] = [];
@@ -346,7 +346,7 @@ export async function renderRetrievalActionsByModelId(
       },
     })
   ).reduce<{
-    [id: number]: RetrievalDocumentChunk[];
+    [id: ModelId]: RetrievalDocumentChunk[];
   }>((acc, c) => {
     if (!acc[c.retrievalDocumentId]) {
       acc[c.retrievalDocumentId] = [];
