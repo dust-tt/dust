@@ -20,20 +20,20 @@ pub struct SqliteWorker {
 
 #[derive(Debug, Error)]
 pub enum SqliteWorkerError {
-    #[error("SqliteWorkerError Server error (code={0}, status={1})")]
-    ServerError(String, u16),
+    #[error("SqliteWorkerError Server error (uri={0}, code={1}, status={2})")]
+    ServerError(String, String, u16),
+    #[error("SqliteWorkerError Unexpected server error (uri={0}, status={1}): {2}")]
+    UnexpectedServerError(String, u16, String),
+    #[error("SqliteWorkerError Body parsing error (uri={1}, status={2}): {0}")]
+    BodyParsingError(serde_json::Error, String, u16),
+    #[error("SqliteWorkerError HyperError: {0}")]
+    HyperError(#[from] hyper::Error),
     #[error("SqliteWorkerError Unexpected error: {0}")]
     UnexpectedError(anyhow::Error),
 }
 
 impl From<hyper::http::Error> for SqliteWorkerError {
     fn from(e: hyper::http::Error) -> Self {
-        SqliteWorkerError::UnexpectedError(anyhow!(e))
-    }
-}
-
-impl From<hyper::Error> for SqliteWorkerError {
-    fn from(e: hyper::Error) -> Self {
         SqliteWorkerError::UnexpectedError(anyhow!(e))
     }
 }
@@ -87,9 +87,7 @@ impl SqliteWorker {
                 .to_string(),
             ))?;
 
-        let res = Client::new().request(req).await?;
-
-        let body_bytes = get_response_body(res).await?;
+        let body_bytes = get_response_body(req).await?;
 
         #[derive(Deserialize)]
         struct ExecuteQueryResponseBody {
@@ -118,12 +116,14 @@ impl SqliteWorker {
 
         let req = Request::builder()
             .method("DELETE")
-            .uri(format!("{}/databases/{}", worker_url, database_unique_id))
+            .uri(format!(
+                "{}/databases/{}",
+                worker_url,
+                encode(database_unique_id)
+            ))
             .body(Body::from(""))?;
 
-        let res = Client::new().request(req).await?;
-
-        let _ = get_response_body(res).await?;
+        let _ = get_response_body(req).await?;
 
         Ok(())
     }
@@ -136,21 +136,25 @@ impl SqliteWorker {
             .uri(format!("{}/databases", worker_url))
             .body(Body::from(""))?;
 
-        let res = Client::new().request(req).await?;
-        let _ = get_response_body(res).await?;
+        let _ = get_response_body(req).await?;
 
         Ok(())
     }
 }
 
-async fn get_response_body(res: hyper::Response<hyper::Body>) -> Result<Bytes, SqliteWorkerError> {
+async fn get_response_body(req: hyper::Request<hyper::Body>) -> Result<Bytes, SqliteWorkerError> {
+    let uri = req.uri().to_string();
+    let res = Client::new().request(req).await?;
+
     let status = res.status().as_u16();
     let body = hyper::body::to_bytes(res.into_body()).await?;
 
     match status {
         200 => Ok(body),
         s => {
-            let body_json: serde_json::Value = serde_json::from_slice(&body)?;
+            let body_json: serde_json::Value = serde_json::from_slice(&body)
+                .map_err(|e| SqliteWorkerError::BodyParsingError(e, uri.clone(), s))?;
+
             let error = body_json.get("error");
             let error_code = match error {
                 Some(e) => e
@@ -161,11 +165,12 @@ async fn get_response_body(res: hyper::Response<hyper::Body>) -> Result<Bytes, S
                 None => None,
             };
             match error_code {
-                Some(code) => Err(SqliteWorkerError::ServerError(code.to_string(), s))?,
-                None => Err(SqliteWorkerError::UnexpectedError(anyhow!(
-                    "Received unexpected error response with status {} from SQLite worker",
-                    s
-                )))?,
+                Some(code) => Err(SqliteWorkerError::ServerError(uri, code.to_string(), s))?,
+                None => Err(SqliteWorkerError::UnexpectedServerError(
+                    uri,
+                    s,
+                    format!("No error code in response: {}", body_json.to_string()),
+                ))?,
             }
         }
     }

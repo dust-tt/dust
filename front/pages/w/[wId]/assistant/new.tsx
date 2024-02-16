@@ -202,16 +202,11 @@ export default function AssistantNew({
             />
           }
         >
-          {showDetails && (
-            <AssistantDetails
-              owner={owner}
-              assistantId={showDetails.sId}
-              show={showDetails !== null}
-              onClose={() => {
-                setShowDetails(null);
-              }}
-            />
-          )}
+          <AssistantDetails
+            owner={owner}
+            assistantId={showDetails?.sId || null}
+            onClose={() => setShowDetails(null)}
+          />
           {!conversation ? (
             <div className="flex h-full items-center pb-20">
               <div className="flex text-sm font-normal text-element-800">

@@ -219,17 +219,12 @@ export default function AssistantsGallery({
         />
       }
     >
-      {showDetails && (
-        <AssistantDetails
-          owner={owner}
-          assistantId={showDetails.sId}
-          show={showDetails !== null}
-          onClose={() => {
-            setShowDetails(null);
-          }}
-          mutateAgentConfigurations={mutateAgentConfigurations}
-        />
-      )}
+      <AssistantDetails
+        owner={owner}
+        assistantId={showDetails?.sId || null}
+        onClose={() => setShowDetails(null)}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+      />
       {testModalAssistant && (
         <TryAssistantModal
           owner={owner}

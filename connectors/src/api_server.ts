@@ -22,6 +22,7 @@ import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
 import { webhookIntercomAPIHandler } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
+import { getWebcrawlerConfiguration } from "@connectors/connectors/webcrawler";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
@@ -131,6 +132,11 @@ export function startServer(port: number) {
   app.get(
     "/connectors/:connector_id/config/:config_key",
     getConnectorConfigAPIHandler
+  );
+
+  app.get(
+    "/connectors/webcrawler/:connector_id/configuration",
+    getWebcrawlerConfiguration
   );
 
   const server = app.listen(port, () => {

@@ -1,9 +1,17 @@
-import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  CrawlingFrequency,
+} from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
-import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
+import {
+  CrawlingFrequencies,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
+} from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration } from "crawlee";
+import { literal, Op } from "sequelize";
 import turndown from "turndown";
 
 import {
@@ -16,6 +24,7 @@ import {
 import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
+  deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
@@ -46,6 +55,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (!webCrawlerConfig) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
+  webCrawlerConfig.lastCrawledAt = new Date();
+  // Immeditaley marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
+  // in case of the crawling taking too long or failing.
+  await webCrawlerConfig.save();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
@@ -66,6 +79,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         Context.current().heartbeat({
           type: "http_request",
         });
+        const currentRequestDepth = request.userData.depth || 0;
 
         // try-catch allowing activity cancellation by temporal (timeout, or signal)
         try {
@@ -85,7 +99,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
         await enqueueLinks({
           userData: {
-            depth: request.userData.depth ? request.userData.depth + 1 : 1,
+            depth: currentRequestDepth + 1,
           },
           transformRequestFunction: (req) => {
             if (webCrawlerConfig.crawlMode === "child") {
@@ -100,9 +114,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               }
             }
             if (
-              request.userData.depth > WEBCRAWLER_MAX_DEPTH ||
-              (webCrawlerConfig.depth &&
-                request.userData.depth > webCrawlerConfig.depth)
+              req.userData?.depth >= WEBCRAWLER_MAX_DEPTH ||
+              req.userData?.depth >= webCrawlerConfig.depth
             ) {
               logger.info(
                 {
@@ -142,6 +155,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               url: folder,
               ressourceType: "folder",
             }),
+            lastSeenAt: new Date(),
           });
 
           createdFolders.add(folder);
@@ -160,6 +174,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           webcrawlerConfigurationId: webCrawlerConfig.id,
           documentId: documentId,
           title: pageTitle,
+          depth: currentRequestDepth,
+          lastSeenAt: new Date(),
         });
 
         Context.current().heartbeat({
@@ -271,4 +287,91 @@ function formatDocumentContent({
     content: `TITLE: ${title.substring(0, TITLE_MAX_LENGTH)}\n${content}`,
     sections: [],
   };
+}
+
+export async function webCrawlerGarbageCollector(
+  connectorId: ModelId,
+  lastSyncStartTsMs: number
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found.`);
+  }
+  const webCrawlerConfig = await WebCrawlerConfiguration.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!webCrawlerConfig) {
+    throw new Error(`Webcrawler configuration not found for connector.`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  let pagesToDelete: WebCrawlerPage[] = [];
+  do {
+    pagesToDelete = await WebCrawlerPage.findAll({
+      where: {
+        connectorId,
+        webcrawlerConfigurationId: webCrawlerConfig.id,
+        lastSeenAt: {
+          [Op.lt]: new Date(lastSyncStartTsMs),
+        },
+      },
+      limit: 100,
+    });
+    for (const page of pagesToDelete) {
+      Context.current().heartbeat({
+        type: "delete_page",
+      });
+      await deleteFromDataSource(dataSourceConfig, page.documentId);
+      await page.destroy();
+    }
+  } while (pagesToDelete.length > 0);
+
+  let foldersToDelete: WebCrawlerFolder[] = [];
+  do {
+    foldersToDelete = await WebCrawlerFolder.findAll({
+      where: {
+        connectorId,
+        webcrawlerConfigurationId: webCrawlerConfig.id,
+        lastSeenAt: {
+          [Op.lt]: new Date(lastSyncStartTsMs),
+        },
+      },
+      limit: 100,
+    });
+    Context.current().heartbeat({
+      type: "delete_folder",
+    });
+    for (const folder of foldersToDelete) {
+      await folder.destroy();
+    }
+  } while (foldersToDelete.length > 0);
+}
+
+export async function getWebsitesToCrawl() {
+  const frequencyToSQLQuery: Record<CrawlingFrequency, string> = {
+    never: "never",
+    daily: "1 day",
+    weekly: "1 week",
+    monthly: "1 month",
+  };
+  const allConnectorIds: ModelId[] = [];
+
+  for (const frequency of CrawlingFrequencies) {
+    if (frequency === "never") {
+      continue;
+    }
+    const sql = frequencyToSQLQuery[frequency];
+    const websites = await WebCrawlerConfiguration.findAll({
+      where: {
+        lastCrawledAt: {
+          [Op.lt]: literal(`NOW() - INTERVAL '${sql}'`),
+        },
+        crawlFrequency: frequency,
+      },
+    });
+    allConnectorIds.push(...websites.map((w) => w.connectorId));
+  }
+
+  return allConnectorIds;
 }

@@ -806,7 +806,7 @@ export async function renderDatabaseFromPages({
 
   const content = rows.map((r) =>
     header.reduce(
-      (acc, k, i) => ({ ...acc, [k]: r[i] ?? "" }),
+      (acc, k, i) => ({ ...acc, [k]: r[i]?.trim() ?? "" }),
       {} as Record<string, string>
     )
   );

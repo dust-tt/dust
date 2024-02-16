@@ -6,6 +6,7 @@ export const CreateConnectorUrlRequestBodySchema = t.type({
   maxPages: t.number,
   crawlMode: t.union([t.literal("child"), t.literal("website")]),
   crawlFrequency: t.union([
+    t.literal("never"),
     t.literal("daily"),
     t.literal("weekly"),
     t.literal("monthly"),

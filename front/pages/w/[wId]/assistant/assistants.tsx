@@ -99,15 +99,12 @@ export default function MyAssistants({
         <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
       }
     >
-      {showDetails && (
-        <AssistantDetails
-          owner={owner}
-          assistantId={showDetails.sId}
-          show={showDetails !== null}
-          onClose={() => setShowDetails(null)}
-          mutateAgentConfigurations={mutateAgentConfigurations}
-        />
-      )}
+      <AssistantDetails
+        owner={owner}
+        assistantId={showDetails?.sId || null}
+        onClose={() => setShowDetails(null)}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+      />
       <div className="flex flex-col gap-4 pt-9">
         <Searchbar
           name="search"

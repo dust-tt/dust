@@ -70,6 +70,7 @@ import {
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -852,6 +853,8 @@ export async function garbageCollect({
 
       continue;
     }
+    const autoIngestAllDatabases =
+      await connectorHasAutoPreIngestAllDatabasesFF(connector);
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     if (x.resourceType === "page") {
       iterationLogger.info("Deleting page.");
@@ -870,7 +873,10 @@ export async function garbageCollect({
             notionDatabaseId: notionPage.parentId,
           },
         });
-        if (parentDatabase?.structuredDataEnabled) {
+        if (
+          parentDatabase &&
+          (autoIngestAllDatabases || parentDatabase.structuredDataEnabled)
+        ) {
           const tableId = `notion-${parentDatabase.notionDatabaseId}`;
           const rowId = `notion-${notionPage.notionPageId}`;
           await deleteTableRow({ dataSourceConfig, tableId, rowId });
@@ -886,7 +892,10 @@ export async function garbageCollect({
           notionDatabaseId: x.resourceId,
         },
       });
-      if (notionDatabase?.structuredDataEnabled) {
+      if (
+        notionDatabase &&
+        (autoIngestAllDatabases || notionDatabase.structuredDataEnabled)
+      ) {
         const tableId = `notion-${notionDatabase.notionDatabaseId}`;
         await deleteTable({ dataSourceConfig, tableId });
       }
@@ -1638,23 +1647,27 @@ export async function renderAndUpsertPageFromCache({
       },
     });
 
-    if (parentDb?.structuredDataEnabled) {
-      const tableId = `notion-${parentDb.notionDatabaseId}`;
-      const rowId = `notion-${pageId}`;
-      const row: Record<string, string | null> = {};
-      for (const [key, value] of Object.entries(
-        JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
-      )) {
-        row[key] = parsePropertyText(value);
-      }
+    if (parentDb) {
+      const autoIngestAllDatabases =
+        await connectorHasAutoPreIngestAllDatabasesFF(connector);
+      if (autoIngestAllDatabases || parentDb.structuredDataEnabled) {
+        const tableId = `notion-${parentDb.notionDatabaseId}`;
+        const rowId = `notion-${pageId}`;
+        const row: Record<string, string | null> = {};
+        for (const [key, value] of Object.entries(
+          JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
+        )) {
+          row[key] = parsePropertyText(value);
+        }
 
-      await upsertTableRow({
-        dataSourceConfig: dsConfig,
-        tableId,
-        rowId,
-        row,
-        loggerArgs,
-      });
+        await upsertTableRow({
+          dataSourceConfig: dsConfig,
+          tableId,
+          rowId,
+          row,
+          loggerArgs,
+        });
+      }
     }
   }
 
@@ -2317,7 +2330,11 @@ export async function upsertDatabaseStructuredDataFromCache({
     },
   });
 
-  if (!dbModel?.structuredDataEnabled) {
+  const autoIngestAllDatabases = await connectorHasAutoPreIngestAllDatabasesFF(
+    connector
+  );
+
+  if (!dbModel || (!dbModel.structuredDataEnabled && !autoIngestAllDatabases)) {
     localLogger.info("Structured data not enabled for database (skipping).");
     return;
   }

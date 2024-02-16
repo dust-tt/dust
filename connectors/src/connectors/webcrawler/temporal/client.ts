@@ -8,7 +8,12 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { QUEUE_NAME } from "./config";
-import { crawlWebsiteWorkflow, crawlWebsiteWorkflowId } from "./workflows";
+import {
+  crawlWebsiteSchedulerWorkflow,
+  crawlWebsiteSchedulerWorkflowId,
+  crawlWebsiteWorkflow,
+  crawlWebsiteWorkflowId,
+} from "./workflows";
 
 export async function launchCrawlWebsiteWorkflow(
   connectorId: ModelId
@@ -85,6 +90,46 @@ export async function stopCrawlWebsiteWorkflow(
         error: e,
       },
       `Failed stopping workflow.`
+    );
+    return new Err(e as Error);
+  }
+}
+
+export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
+  Result<string, Error>
+> {
+  const client = await getTemporalClient();
+
+  const workflowId = crawlWebsiteSchedulerWorkflowId();
+  try {
+    const handle = client.workflow.getHandle(workflowId);
+    await handle.terminate();
+  } catch (e) {
+    if (!(e instanceof WorkflowNotFoundError)) {
+      throw e;
+    }
+  }
+  try {
+    await client.workflow.start(crawlWebsiteSchedulerWorkflow, {
+      args: [],
+      taskQueue: QUEUE_NAME,
+      workflowId: workflowId,
+      cronSchedule: "0 * * * *", // every hour, on the hour
+    });
+    logger.info(
+      {
+        workflowId,
+      },
+      `Started workflow.`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      `Failed starting workflow.`
     );
     return new Err(e as Error);
   }
