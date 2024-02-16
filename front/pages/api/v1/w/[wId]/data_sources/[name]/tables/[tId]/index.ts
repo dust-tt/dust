@@ -6,6 +6,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { handleDeleteTableByIdRequest } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
 
 export type GetTableResponseBody = {
   table: CoreAPITable;
@@ -37,7 +38,10 @@ async function handler(
     });
   }
 
-  if (!owner.flags.includes("structured_data")) {
+  if (
+    !owner.flags.includes("structured_data") &&
+    !owner.flags.includes("auto_pre_ingest_all_databases")
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -98,6 +102,13 @@ async function handler(
       const { table } = tableRes.value;
 
       return res.status(200).json({ table });
+
+    case "DELETE":
+      return handleDeleteTableByIdRequest(req, res, {
+        owner,
+        dataSource,
+        tableId,
+      });
 
     default:
       return apiError(req, res, {
