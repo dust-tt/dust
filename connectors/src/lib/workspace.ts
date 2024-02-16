@@ -1,3 +1,4 @@
+import type { WhitelistableFeature } from "@dust-tt/types";
 import { cacheWithRedis, DustAPI } from "@dust-tt/types";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -6,7 +7,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 
 async function getEnabledFeatureFlags(
   connector: ConnectorResource
-): Promise<string[]> {
+): Promise<WhitelistableFeature[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
   // List the feature flags enabled for the workspace.
@@ -40,3 +41,11 @@ export const getEnabledFeatureFlagsMemoized = cacheWithRedis(
   // Note: Updates (e.g., feature flags update) may take up to 15 minutes to be reflected.
   15 * 10 * 1000
 );
+
+export async function connectorHasAutoPreIngestAllDatabasesFF(
+  connector: ConnectorResource
+) {
+  const workspaceFeatureFlags = await getEnabledFeatureFlagsMemoized(connector);
+
+  return workspaceFeatureFlags.includes("auto_pre_ingest_all_databases");
+}

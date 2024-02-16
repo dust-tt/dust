@@ -771,7 +771,9 @@ export class DustAPI {
     return new Ok(r.value.verified_domains);
   }
 
-  async getWorkspaceFeatureFlags() {
+  async getWorkspaceFeatureFlags(): Promise<
+    DustAPIResponse<WhitelistableFeature[]>
+  > {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/feature_flags`;
 
     const res = await fetch(endpoint, {
