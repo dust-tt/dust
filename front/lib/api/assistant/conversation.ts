@@ -44,7 +44,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderRetrievalActionByModelId } from "@app/lib/api/assistant/actions/retrieval";
+import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -313,14 +313,10 @@ async function batchRenderAgentMessages(
       return agents;
     })(),
     (async () => {
-      return Promise.all(
+      return renderRetrievalActionsByModelId(
         agentMessages
           .filter((m) => m.agentMessage?.agentRetrievalActionId)
-          .map((m) => {
-            return renderRetrievalActionByModelId(
-              m.agentMessage?.agentRetrievalActionId as number
-            );
-          })
+          .map((m) => m.agentMessage?.agentRetrievalActionId as number)
       );
     })(),
     (async () => {
