@@ -18,6 +18,7 @@ import { CoreAPITokenType } from "../../front/lib/core_api";
 import { Err, Ok, Result } from "../../front/lib/result";
 import { RunType } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
+import { WhitelistableFeature } from "../feature_flags";
 import { WorkspaceDomain } from "../workspace";
 import {
   AgentActionSuccessEvent,
@@ -768,6 +769,28 @@ export class DustAPI {
     }
 
     return new Ok(r.value.verified_domains);
+  }
+
+  async getWorkspaceFeatureFlags(): Promise<
+    DustAPIResponse<WhitelistableFeature[]>
+  > {
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/feature_flags`;
+
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this._credentials.apiKey}`,
+      },
+    });
+
+    const r: DustAPIResponse<{ feature_flags: WhitelistableFeature[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.feature_flags);
   }
 
   private async _resultFromResponse<T>(
