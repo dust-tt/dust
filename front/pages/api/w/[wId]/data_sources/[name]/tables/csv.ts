@@ -1,4 +1,4 @@
-import { assertNever } from "@dust-tt/types";
+import { assertNever, slugify } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -147,12 +147,13 @@ export async function handlePostTableCsvUpsertRequest(
 
   const { name, description, csv } = bodyValidation.right;
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
+  const slugifyName = slugify(name);
 
   const tableRes = await upsertTableFromCsv({
     owner,
     projectId: dataSource.dustAPIProjectId,
     dataSourceName,
-    tableName: name,
+    tableName: slugifyName,
     tableDescription: description,
     tableId,
     csv: csv ?? null,
