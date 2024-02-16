@@ -119,6 +119,7 @@ export async function upsertTableFromCsv({
   tableDescription,
   tableId,
   csv,
+  truncate,
 }: {
   owner: WorkspaceType;
   projectId: string;
@@ -127,6 +128,7 @@ export async function upsertTableFromCsv({
   tableDescription: string;
   tableId: string;
   csv: string | null;
+  truncate: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
 
@@ -186,7 +188,7 @@ export async function upsertTableFromCsv({
       dataSourceName,
       tableId,
       rows: csvRows,
-      truncate: true,
+      truncate,
     });
     if (rowsRes.isErr()) {
       logger.error(

@@ -18,20 +18,24 @@ export const config = {
   },
 };
 
-export const CreateTableFromCsvSchema = t.intersection([
+export const UpsertTableFromCsvSchema = t.intersection([
   t.type({
     name: t.string,
     description: t.string,
+    truncate: t.boolean,
   }),
   // csv is optional when editing an existing table.
   t.union([
     t.type({ csv: t.string, tableId: t.undefined }),
-    t.type({ csv: t.union([t.string, t.undefined]), tableId: t.string }),
+    t.type({
+      csv: t.union([t.string, t.undefined]),
+      tableId: t.string,
+    }),
   ]),
 ]);
 
 export type UpsertTableFromCsvRequestBody = t.TypeOf<
-  typeof CreateTableFromCsvSchema
+  typeof UpsertTableFromCsvSchema
 >;
 
 async function handler(
@@ -136,7 +140,7 @@ export async function handlePostTableCsvUpsertRequest(
     });
   }
 
-  const bodyValidation = CreateTableFromCsvSchema.decode(req.body);
+  const bodyValidation = UpsertTableFromCsvSchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
@@ -148,7 +152,16 @@ export async function handlePostTableCsvUpsertRequest(
     });
   }
 
-  const { name, description, csv } = bodyValidation.right;
+  const { name, description, csv, truncate } = bodyValidation.right;
+  if (!csv && truncate) {
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Cannot truncate a table without providing a CSV.",
+      },
+      status_code: 400,
+    });
+  }
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
   const slugifyName = slugify(name);
 
@@ -160,6 +173,7 @@ export async function handlePostTableCsvUpsertRequest(
     tableDescription: description,
     tableId,
     csv: csv ?? null,
+    truncate,
   });
 
   if (tableRes.isErr()) {
