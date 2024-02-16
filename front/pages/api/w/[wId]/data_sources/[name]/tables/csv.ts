@@ -101,7 +101,7 @@ export async function handlePostTableCsvUpsertRequest(
   }
 
   if (
-    !owner.flags.includes("structured_data") ||
+    !owner.flags.includes("structured_data") &&
     !owner.flags.includes("auto_pre_ingest_all_databases")
   ) {
     return apiError(req, res, {
