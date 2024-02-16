@@ -27,12 +27,6 @@ type Sheet = sheets_v4.Schema$ValueRange & {
   title: string;
 };
 
-export function isGoogleDriveSpreadSheetFile(
-  file: GoogleDriveObjectType | GoogleDriveFiles
-) {
-  return file.mimeType === "application/vnd.google-apps.spreadsheet";
-}
-
 function makeTableIdFromSheetId(spreadsheetId: string, sheetId: number) {
   return `google-spreadsheet-${spreadsheetId}-sheet-${sheetId}`;
 }

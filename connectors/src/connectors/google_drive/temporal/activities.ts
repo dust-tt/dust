@@ -12,11 +12,11 @@ import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
-import { getMimesTypeToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
-  deleteSpreadsheet,
+  getMimesTypeToSync,
   isGoogleDriveSpreadSheetFile,
-} from "@connectors/connectors/google_drive/temporal/spreadsheets";
+} from "@connectors/connectors/google_drive/temporal/mime_types";
+import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   driveObjectToDustType,
   getAuthObject,

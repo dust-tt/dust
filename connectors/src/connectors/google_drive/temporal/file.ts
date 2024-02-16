@@ -8,12 +8,10 @@ import type { CreationAttributes } from "sequelize";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
+  isGoogleDriveSpreadSheetFile,
   MIME_TYPES_TO_EXPORT,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
-import {
-  isGoogleDriveSpreadSheetFile,
-  syncSpreadSheet,
-} from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   getDocumentId,
   getDriveClient,
