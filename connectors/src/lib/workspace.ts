@@ -9,7 +9,7 @@ async function getEnabledFeatureFlags(
 ): Promise<string[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
-  // List the emails of all active members in the workspace.
+  // List the feature flags enabled for the workspace.
   const dustAPI = new DustAPI(
     {
       apiKey: ds.workspaceAPIKey,
