@@ -17,6 +17,7 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
+  GoogleDriveSheet,
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
@@ -71,6 +72,7 @@ async function main(): Promise<void> {
   await GithubCodeDirectory.sync({ alter: true });
   await GoogleDriveFolders.sync({ alter: true });
   await GoogleDriveFiles.sync({ alter: true });
+  await GoogleDriveSheet.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await GoogleDriveWebhook.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
