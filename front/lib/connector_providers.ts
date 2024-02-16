@@ -51,7 +51,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     hide: false,
     description:
-      "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexation.",
+      "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexing.",
     limitations:
       "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at team@dust.tt to enable PDF indexing.",
     logoComponent: DriveLogo,
@@ -74,7 +74,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     hide: false,
     description:
-      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexation can be controlled on-demand.",
+      "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
     logoComponent: GithubLogo,

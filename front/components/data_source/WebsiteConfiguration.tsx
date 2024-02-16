@@ -243,10 +243,10 @@ export default function WebsiteConfiguration({
           <Page.Layout direction="vertical" gap="md">
             <Page.H variant="h3">Website Entry Point</Page.H>
             <Page.P>
-              Enter the address of the website you'd like to explore.
+              Enter the address of the website you'd like to index.
             </Page.P>
             <Input
-              placeholder="https://example.com/acticles"
+              placeholder="https://example.com/articles"
               value={dataSourceUrl}
               onChange={(value) => setDataSourceUrl(value)}
               error={dataSourceNameError}
@@ -254,16 +254,15 @@ export default function WebsiteConfiguration({
               showErrorLabel
               className="text-sm"
             />
-            <ContentMessage title="Ensure the webpage is public" variant="pink">
-              Only directly accessible (without authetification), public
-              websites will work here.
+            <ContentMessage title="Ensure the website is public" variant="pink">
+              Only public websites accessible without authentication will work.
             </ContentMessage>
           </Page.Layout>
 
           <Page.Layout direction="vertical" gap="md">
-            <Page.H variant="h3">Importation settings</Page.H>
+            <Page.H variant="h3">Indexing settings</Page.H>
             <Page.P>
-              Adjust the settings in order to import only the data you are
+              Adjust the settings in order to only index the data you are
               interested in.
             </Page.P>
           </Page.Layout>
@@ -271,7 +270,7 @@ export default function WebsiteConfiguration({
             <Page.Layout direction="vertical" sizing="grow">
               <Page.SectionHeader
                 title="Crawling strategy"
-                description="Do you want to stay on the domain or expend outside?"
+                description="Do you want to limit to child pages or not?"
               />
               <RadioButton
                 value={crawlMode}
@@ -282,12 +281,12 @@ export default function WebsiteConfiguration({
                 name="crawlMode"
                 choices={[
                   {
-                    label: "Only children pages",
+                    label: "Only child pages of the provided URL",
                     value: "child",
                     disabled: false,
                   },
                   {
-                    label: "Follow all the links",
+                    label: "Follow all the links within the domain",
                     value: "website",
                     disabled: false,
                   },
@@ -328,7 +327,7 @@ export default function WebsiteConfiguration({
             <Page.Layout direction="vertical" sizing="grow">
               <Page.SectionHeader
                 title="Depth of Search"
-                description="How far from the starting page should we go?"
+                description="How far from the initial page would you like to go?"
               />
               {(() => {
                 return (
@@ -355,7 +354,7 @@ export default function WebsiteConfiguration({
             <Page.Layout direction="vertical" sizing="grow">
               <Page.SectionHeader
                 title="Page Limit"
-                description="What is the maximum number of pages you'd like to import?"
+                description="What is the maximum number of pages you'd like to index?"
               />
               <Input
                 placeholder={WEBCRAWLER_MAX_PAGES.toString()}
