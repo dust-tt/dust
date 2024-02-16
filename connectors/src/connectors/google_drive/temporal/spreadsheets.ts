@@ -4,6 +4,7 @@ import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
+import { v4 as uuidv4 } from "uuid";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -75,19 +76,70 @@ async function upsertTable(
   });
 }
 
-function getValidRows(allRows: string[][], loggerArgs: object) {
-  // We assume that the first row is always the headers.
-  // Headers are used to assert the number of cells per row.
-  const [headers] = allRows;
-  if (!headers || headers.length === 0) {
-    return [];
+function makeRandomString(length: number) {
+  return uuidv4.toString().substring(0, length);
+}
+
+function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
+  // Find the first row with data to determine the range.
+  const firstNonEmptyRow = allRows.find((row) =>
+    row.some((cell) => cell.trim() !== "")
+  );
+  if (!firstNonEmptyRow) {
+    return []; // No data found.
   }
 
-  const validRows: string[][] = allRows.map((row, index) => {
-    // We slugify the headers.
+  // Identify the range of data: Start at the first non-empty cell and end at the nearest following empty cell or row end.
+  const startIndex = firstNonEmptyRow.findIndex((cell) => cell.trim() !== "");
+  let endIndex = firstNonEmptyRow.findIndex(
+    (cell, idx) => idx > startIndex && cell.trim() === ""
+  );
+  if (endIndex === -1) {
+    endIndex = firstNonEmptyRow.length;
+  }
+
+  // Select only rows and columns within the data range.
+  return allRows
+    .map((row) => row.slice(startIndex, endIndex))
+    .filter((row) => row.some((cell) => cell.trim() !== ""));
+}
+
+function getSanitizedHeaders(rawHeaders: string[], loggerArgs: object) {
+  return rawHeaders.reduce<string[]>((acc, curr) => {
+    const slugifiedName = slugify(curr);
+
+    if (!acc.includes(slugifiedName)) {
+      acc.push(slugifiedName);
+    } else {
+      logger.info(
+        loggerArgs,
+        "Duplicated headers detected; suffixes added for uniqueness."
+      );
+
+      // Append a 4-character suffix to duplicate header names for uniqueness.
+      const randomSuffix = makeRandomString(4);
+      acc.push(slugify(`${slugifiedName}_${randomSuffix}`));
+    }
+    return acc;
+  }, []);
+}
+
+function getValidRows(allRows: string[][], loggerArgs: object) {
+  const filteredRows = findDataRangeAndSelectRows(allRows);
+
+  // We assume that the first row is always the headers.
+  // Headers are used to assert the number of cells per row.
+  const [rawHeaders] = filteredRows;
+  if (!rawHeaders || rawHeaders.length === 0) {
+    logger.info(loggerArgs, "Skipping due to empty initial rows.");
+    return [];
+  }
+  const headers = getSanitizedHeaders(rawHeaders, loggerArgs);
+
+  const validRows: string[][] = filteredRows.map((row, index) => {
+    // Return headers unchanged.
     if (index === 0) {
-      // TODO(2024-02-16 flav) Move this to another place to slugify all table headers.
-      return row.map(slugify);
+      return row;
     }
 
     // If a row has less cells than headers, we fill the gap with empty strings.
