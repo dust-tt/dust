@@ -1,5 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
@@ -28,4 +30,14 @@ export async function getMimesTypeToSync(connectorId: ModelId) {
   mimeTypes.push("application/vnd.google-apps.spreadsheet");
 
   return mimeTypes;
+}
+
+export function isGoogleDriveFolder(file: GoogleDriveFiles) {
+  return file.mimeType === "application/vnd.google-apps.folder";
+}
+
+export function isGoogleDriveSpreadSheetFile(
+  file: GoogleDriveObjectType | GoogleDriveFiles
+) {
+  return file.mimeType === "application/vnd.google-apps.spreadsheet";
 }

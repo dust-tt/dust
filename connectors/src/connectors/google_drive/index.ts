@@ -40,6 +40,10 @@ import { v4 as uuidv4 } from "uuid";
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
+  getGoogleDriveEntityDocumentId,
+  getPermissionViewType,
+} from "@connectors/connectors/google_drive/lib/permissions";
+import {
   driveObjectToDustType,
   getAuthObject,
   getDocumentId,
@@ -399,15 +403,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
             provider: c.type,
             internalId: f.driveFileId,
             parentInternalId: null,
-            type:
-              f.mimeType === "application/vnd.google-apps.folder"
-                ? "folder"
-                : "file",
+            type: getPermissionViewType(f),
             title: f.name || "",
-            dustDocumentId:
-              f.mimeType === "application/vnd.google-apps.folder"
-                ? null
-                : getDocumentId(f.driveFileId),
+            dustDocumentId: getGoogleDriveEntityDocumentId(f),
             lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
             sourceUrl: null,
             expandable:
