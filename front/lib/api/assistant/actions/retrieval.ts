@@ -360,8 +360,9 @@ export async function renderRetrievalActionsByModelId(
   for (const id of ids) {
     const action = actionById[id];
     const documentRows = documentRowsByActionId[id] ?? [];
-    const chunkRows =
-      documentRows.flatMap((d) => chunkRowsByDocumentId[d.id]) ?? [];
+    const chunkRows = documentRows.flatMap(
+      (d) => chunkRowsByDocumentId[d.id] ?? []
+    );
 
     let relativeTimeFrame: TimeFrame | null = null;
     if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
