@@ -171,9 +171,7 @@ export const subNavigationBuild = ({
         current === "data_sources_static" ? subMenuLabel : undefined,
       subMenu: current === "data_sources_static" ? subMenu : undefined,
     },
-  ];
-  if (owner.flags.includes("crawler")) {
-    dataSourceItems.push({
+    {
       id: "data_sources_url",
       label: "Websites",
       icon: GlobeAltIcon,
@@ -181,8 +179,9 @@ export const subNavigationBuild = ({
       current: current === "data_sources_url",
       subMenuLabel: current === "data_sources_url" ? subMenuLabel : undefined,
       subMenu: current === "data_sources_url" ? subMenu : undefined,
-    });
-  }
+    },
+  ];
+
   nav.push({
     id: "data_sources",
     label: "Data Sources",
