@@ -363,21 +363,28 @@ export function useConnectorConfig({
 export function useConnector({
   workspaceId,
   dataSourceName,
-  refreshInterval,
 }: {
   workspaceId: string;
   dataSourceName: string;
-  refreshInterval: number;
 }) {
-  if (refreshInterval < 1000) {
-    throw new Error("refreshInterval must be at least 1000ms");
-  }
   const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
 
   const url = `/api/w/${workspaceId}/data_sources/${dataSourceName}/connector`;
 
   const { data, error, mutate } = useSWR(url, configFetcher, {
-    refreshInterval,
+    refreshInterval: (connectorResBody) => {
+      if (connectorResBody?.connector.errorType !== undefined) {
+        // We have an error, no need to auto refresh.
+        return 0;
+      }
+      if (connectorResBody?.connector.lastSyncSuccessfulTime) {
+        // no sync in progress, no need to auto refresh.
+        return 0;
+      }
+
+      // We have a synchronization in progress, we'll refresh every 3 seconds.
+      return 3000;
+    },
   });
 
   return {

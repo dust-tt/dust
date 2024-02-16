@@ -1,37 +1,44 @@
 import { Chip } from "@dust-tt/sparkle";
-import type { ConnectorType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import { useEffect, useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useConnector } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 
 export default function ConnectorSyncingChip({
-  connector,
+  workspaceId,
+  dataSourceName,
 }: {
-  connector: ConnectorType;
+  workspaceId: string;
+  dataSourceName: string;
 }) {
-  const [computedTimeAgo, setComputedTimeAgo] = useState<string | null>(null);
-  const refreshedConnector = useConnector({
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-    refreshInterval: 3000,
+  const { connector, isConnectorLoading, isConnectorError } = useConnector({
+    workspaceId: workspaceId,
+    dataSourceName: dataSourceName,
   });
 
-  useEffect(() => {
-    if (refreshedConnector.connector?.lastSyncSuccessfulTime) {
-      setComputedTimeAgo(
-        timeAgoFrom(refreshedConnector.connector.lastSyncSuccessfulTime)
+  if (!connector) {
+    if (isConnectorError) {
+      return (
+        <Chip color="warning">Error loading synchronization information</Chip>
       );
+    } else if (isConnectorLoading) {
+      return (
+        <Chip color="amber" isBusy>
+          Loading
+        </Chip>
+      );
+    } else {
+      // This should never happen, but is a typescript possible case
+      return <Chip color="warning">Connector not found</Chip>;
     }
-  }, [refreshedConnector.connector?.lastSyncSuccessfulTime]);
+  }
 
-  if (refreshedConnector.connector?.errorType) {
+  if (connector.errorType) {
     return (
       <Chip color="warning">
         {(() => {
-          switch (refreshedConnector.connector?.errorType) {
+          switch (connector.errorType) {
             case "oauth_token_revoked":
               return (
                 <>
@@ -44,30 +51,31 @@ export default function ConnectorSyncingChip({
               return (
                 <>
                   We have encountered an error talking to{" "}
-                  {
-                    CONNECTOR_CONFIGURATIONS[refreshedConnector.connector.type]
-                      .name
-                  }
-                  . We sent you an email with more details to resolve the issue.
+                  {CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you
+                  an email with more details to resolve the issue.
                 </>
               );
             default:
-              assertNever(refreshedConnector.connector?.errorType);
+              assertNever(connector.errorType);
           }
           return <></>;
         })()}
       </Chip>
     );
-  } else if (!refreshedConnector.connector?.lastSyncSuccessfulTime) {
+  } else if (!connector.lastSyncSuccessfulTime) {
     return (
       <Chip color="amber" isBusy>
         Synchronizing
-        {refreshedConnector.connector?.firstSyncProgress
-          ? ` (${refreshedConnector.connector.firstSyncProgress})`
+        {connector.firstSyncProgress
+          ? ` (${connector.firstSyncProgress})`
           : null}
       </Chip>
     );
   } else {
-    return <Chip color="slate">Last Sync ~ {computedTimeAgo} ago</Chip>;
+    return (
+      <Chip color="slate">
+        Last Sync ~ {timeAgoFrom(connector.lastSyncSuccessfulTime)} ago
+      </Chip>
+    );
   }
 }
