@@ -38,3 +38,13 @@ function isTrailingLoneSurrogate(code: number): boolean {
 export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
+
+export function slugify(text: string) {
+  return text
+    .replace(/([a-z])([A-Z0-9])/g, "$1_$2") // Get all lowercase letters that are near to uppercase ones and replace with _.
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_") // Replace spaces with _.
+    .replace(/[\W]+/g, "") // Replace all non-word characters with _.
+    .replace(/__+/g, "_"); // Replace multiple _ with single _.
+}
