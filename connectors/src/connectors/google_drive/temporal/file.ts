@@ -11,6 +11,10 @@ import {
   MIME_TYPES_TO_EXPORT,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
+  isGoogleDriveSpreadSheetFile,
+  syncSpreadSheet,
+} from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
@@ -234,85 +238,98 @@ export async function syncOneFile(
         await fs.unlink(pdf_path);
       }
     }
+  } else if (isGoogleDriveSpreadSheetFile(file)) {
+    // If Google Spreadsheet FF is not enabled, it returns false.
+    const isSupported = await syncSpreadSheet(oauth2client, connectorId, file);
+    if (!isSupported) {
+      return false;
+    }
   } else {
-    // We do not support this file type
+    // We do not support this file type.
     return false;
   }
 
-  documentContent = documentContent?.trim();
-
-  const content = await renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title: file.name,
-    updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
-    createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
-    lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
-    content: documentContent
-      ? { prefix: null, content: documentContent, sections: [] }
-      : null,
-  });
-
-  if (documentContent === undefined) {
-    logger.error(
-      {
-        connectorId: connectorId,
-        documentId,
-        fileMimeType: file.mimeType,
-        fileId: file.id,
-        title: file.name,
-      },
-      "documentContent is undefined"
-    );
-    throw new Error("documentContent is undefined");
-  }
-  const tags = [`title:${file.name}`];
-  if (file.updatedAtMs) {
-    tags.push(`updatedAt:${file.updatedAtMs}`);
-  }
-  if (file.createdAtMs) {
-    tags.push(`createdAt:${file.createdAtMs}`);
-  }
-  if (file.lastEditor) {
-    tags.push(`lastEditor:${file.lastEditor.displayName}`);
-  }
-  tags.push(`mimeType:${file.mimeType}`);
-
   let upsertTimestampMs: number | undefined = undefined;
+  // We only upsert the document if it's not a google drive spreadsheet.
+  if (!isGoogleDriveSpreadSheetFile(file)) {
+    documentContent = documentContent?.trim();
 
-  if (
-    documentContent.length > 0 &&
-    documentContent.length <= MAX_DOCUMENT_TXT_LEN
-  ) {
-    const parents = (
-      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
-    ).map((f) => f.id);
-    parents.push(file.id);
-    parents.reverse();
-
-    await upsertToDatasource({
+    const content = await renderDocumentTitleAndContent({
       dataSourceConfig,
-      documentId,
-      documentContent: content,
-      documentUrl: file.webViewLink,
-      timestampMs: file.updatedAtMs,
-      tags,
-      parents: parents,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
+      title: file.name,
+      updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
+      createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
+      lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
+      content: documentContent
+        ? { prefix: null, content: documentContent, sections: [] }
+        : null,
     });
 
-    upsertTimestampMs = file.updatedAtMs;
-  } else {
-    logger.info(
-      {
-        documentId,
+    if (documentContent === undefined) {
+      logger.error(
+        {
+          connectorId: connectorId,
+          documentId,
+          fileMimeType: file.mimeType,
+          fileId: file.id,
+          title: file.name,
+        },
+        "documentContent is undefined"
+      );
+      throw new Error("documentContent is undefined");
+    }
+    const tags = [`title:${file.name}`];
+    if (file.updatedAtMs) {
+      tags.push(`updatedAt:${file.updatedAtMs}`);
+    }
+    if (file.createdAtMs) {
+      tags.push(`createdAt:${file.createdAtMs}`);
+    }
+    if (file.lastEditor) {
+      tags.push(`lastEditor:${file.lastEditor.displayName}`);
+    }
+    tags.push(`mimeType:${file.mimeType}`);
+
+    if (
+      documentContent.length > 0 &&
+      documentContent.length <= MAX_DOCUMENT_TXT_LEN
+    ) {
+      const parents = (
+        await getFileParentsMemoized(
+          connectorId,
+          oauth2client,
+          file,
+          startSyncTs
+        )
+      ).map((f) => f.id);
+      parents.push(file.id);
+      parents.reverse();
+
+      await upsertToDatasource({
         dataSourceConfig,
-        documentLen: documentContent.length,
-        title: file.name,
-      },
-      `Document is empty or too big to be upserted. Skipping`
-    );
+        documentId,
+        documentContent: content,
+        documentUrl: file.webViewLink,
+        timestampMs: file.updatedAtMs,
+        tags,
+        parents: parents,
+        upsertContext: {
+          sync_type: isBatchSync ? "batch" : "incremental",
+        },
+      });
+
+      upsertTimestampMs = file.updatedAtMs;
+    } else {
+      logger.info(
+        {
+          documentId,
+          dataSourceConfig,
+          documentLen: documentContent.length,
+          title: file.name,
+        },
+        `Document is empty or too big to be upserted. Skipping`
+      );
+    }
   }
 
   const params: CreationAttributes<GoogleDriveFiles> = {

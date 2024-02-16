@@ -182,6 +182,63 @@ GoogleDriveFiles.init(
   }
 );
 ConnectorModel.hasOne(GoogleDriveFiles);
+
+export class GoogleDriveSheet extends Model<
+  InferAttributes<GoogleDriveSheet>,
+  InferCreationAttributes<GoogleDriveSheet>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
+  declare driveFileId: string;
+  declare driveSheetId: number;
+  declare name: string;
+}
+GoogleDriveSheet.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    connectorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    driveFileId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    driveSheetId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "google_drive_sheets",
+    indexes: [
+      { fields: ["connectorId", "driveFileId", "driveSheetId"], unique: true },
+    ],
+  }
+);
+ConnectorModel.hasOne(GoogleDriveSheet);
+
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
 

@@ -14,6 +14,10 @@ import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import { getMimesTypeToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
+  deleteSpreadsheet,
+  isGoogleDriveSpreadSheetFile,
+} from "@connectors/connectors/google_drive/temporal/spreadsheets";
+import {
   driveObjectToDustType,
   getAuthObject,
   getDocumentId,
@@ -692,7 +696,11 @@ async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     `Deleting Google Drive file.`
   );
 
-  if (googleDriveFile.mimeType !== "application/vnd.google-apps.folder") {
+  if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
+    await deleteSpreadsheet(connector, googleDriveFile);
+  } else if (
+    googleDriveFile.mimeType !== "application/vnd.google-apps.folder"
+  ) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
   }
