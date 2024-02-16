@@ -261,7 +261,7 @@ export default function WebsiteConfiguration({
           </Page.Layout>
 
           <Page.Layout direction="vertical" gap="md">
-            <Page.H variant="h3">Importation settings</Page.H>
+            <Page.H variant="h3">Import settings</Page.H>
             <Page.P>
               Adjust the settings in order to import only the data you are
               interested in.
