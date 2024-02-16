@@ -1,4 +1,4 @@
-import type { ModelId, Result } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { slugify } from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
@@ -59,6 +59,8 @@ async function upsertTable(
 
   const csv = stringify(rows);
 
+  // Upserting is safe: Core truncates any previous table with the same Id before
+  // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
   await upsertTableFromCsv({
     dataSourceConfig,
     tableId: makeTableIdFromSheetId(spreadsheet.id, id),
