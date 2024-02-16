@@ -4,6 +4,7 @@ import { assertNever } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { useConnector } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 
 export default function ConnectorSyncingChip({
@@ -12,17 +13,25 @@ export default function ConnectorSyncingChip({
   connector: ConnectorType;
 }) {
   const [computedTimeAgo, setComputedTimeAgo] = useState<string | null>(null);
+  const refreshedConnector = useConnector({
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+    refreshInterval: 3000,
+  });
 
   useEffect(() => {
-    if (connector.lastSyncSuccessfulTime) {
-      setComputedTimeAgo(timeAgoFrom(connector.lastSyncSuccessfulTime));
+    if (refreshedConnector.connector?.lastSyncSuccessfulTime) {
+      setComputedTimeAgo(
+        timeAgoFrom(refreshedConnector.connector.lastSyncSuccessfulTime)
+      );
     }
-  }, [connector.lastSyncSuccessfulTime]);
-  if (connector.errorType) {
+  }, [refreshedConnector.connector?.lastSyncSuccessfulTime]);
+
+  if (refreshedConnector.connector?.errorType) {
     return (
       <Chip color="warning">
         {(() => {
-          switch (connector.errorType) {
+          switch (refreshedConnector.connector?.errorType) {
             case "oauth_token_revoked":
               return (
                 <>
@@ -35,23 +44,26 @@ export default function ConnectorSyncingChip({
               return (
                 <>
                   We have ecountered an error talking to{" "}
-                  {CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you
-                  an email with more details to resolve the issue.
+                  {
+                    CONNECTOR_CONFIGURATIONS[refreshedConnector.connector.type]
+                      .name
+                  }
+                  . We sent you an email with more details to resolve the issue.
                 </>
               );
             default:
-              assertNever(connector.errorType);
+              assertNever(refreshedConnector.connector?.errorType);
           }
           return <></>;
         })()}
       </Chip>
     );
-  } else if (!connector.lastSyncSuccessfulTime) {
+  } else if (!refreshedConnector.connector?.lastSyncSuccessfulTime) {
     return (
       <Chip color="amber" isBusy>
         Synchronizing
-        {connector?.firstSyncProgress
-          ? ` (${connector?.firstSyncProgress})`
+        {refreshedConnector.connector?.firstSyncProgress
+          ? ` (${refreshedConnector.connector.firstSyncProgress})`
           : null}
       </Chip>
     );
