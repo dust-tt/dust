@@ -272,6 +272,10 @@ NotionDatabase.init(
 );
 ConnectorModel.hasMany(NotionDatabase);
 
+// This table is unlogged, meaning it doesn't generate WAL entries.
+// This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
+// It's also a cache table, so we don't care if we lose data.
+// This table is not replicated to the read replica, and all data is lost on a failover.
 export class NotionConnectorPageCacheEntry extends Model<
   InferAttributes<NotionConnectorPageCacheEntry>,
   InferCreationAttributes<NotionConnectorPageCacheEntry>
@@ -375,6 +379,10 @@ NotionConnectorPageCacheEntry.init(
 );
 ConnectorModel.hasMany(NotionConnectorPageCacheEntry);
 
+// This table is unlogged, meaning it doesn't generate WAL entries.
+// This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
+// It's also a cache table, so we don't care if we lose data.
+// This table is not replicated to the read replica, and all data is lost on a failover.
 export class NotionConnectorBlockCacheEntry extends Model<
   InferAttributes<NotionConnectorBlockCacheEntry>,
   InferCreationAttributes<NotionConnectorBlockCacheEntry>
@@ -465,6 +473,10 @@ NotionConnectorBlockCacheEntry.init(
 );
 ConnectorModel.hasMany(NotionConnectorBlockCacheEntry);
 
+// This table is unlogged, meaning it doesn't generate WAL entries.
+// This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
+// It's also a cache table, so we don't care if we lose data.
+// This table is not replicated to the read replica, and all data is lost on a failover.
 export class NotionConnectorResourcesToCheckCacheEntry extends Model<
   InferAttributes<NotionConnectorResourcesToCheckCacheEntry>,
   InferCreationAttributes<NotionConnectorResourcesToCheckCacheEntry>
