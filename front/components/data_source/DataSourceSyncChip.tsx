@@ -43,7 +43,7 @@ export default function ConnectorSyncingChip({
             case "third_party_internal_error":
               return (
                 <>
-                  We have ecountered an error talking to{" "}
+                  We have encountered an error talking to{" "}
                   {
                     CONNECTOR_CONFIGURATIONS[refreshedConnector.connector.type]
                       .name
