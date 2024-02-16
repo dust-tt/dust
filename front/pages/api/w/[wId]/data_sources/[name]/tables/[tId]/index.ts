@@ -1,4 +1,9 @@
-import type { CoreAPITable, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  CoreAPITable,
+  DataSourceType,
+  WithAPIErrorReponse,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -44,7 +49,10 @@ async function handler(
     });
   }
 
-  if (!owner.flags.includes("structured_data")) {
+  if (
+    !owner.flags.includes("structured_data") &&
+    !owner.flags.includes("auto_pre_ingest_all_databases")
+  ) {
     res.status(404).end();
     return;
   }
@@ -112,39 +120,11 @@ async function handler(
       return res.status(200).json({ table });
 
     case "DELETE":
-      const delRes = await deleteTable({
+      return handleDeleteTableByIdRequest(req, res, {
         owner,
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSource,
         tableId,
       });
-
-      if (delRes.isErr()) {
-        switch (delRes.error.type) {
-          case "not_found_error":
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: delRes.error.notFoundError.type,
-                message: delRes.error.notFoundError.message,
-              },
-            });
-          case "invalid_request_error":
-          case "internal_server_error":
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to delete table.",
-              },
-            });
-          default:
-            assertNever(delRes.error);
-        }
-      }
-
-      res.status(200).end();
-      return;
 
     default:
       return apiError(req, res, {
@@ -159,3 +139,50 @@ async function handler(
 }
 
 export default withLogging(handler);
+
+export async function handleDeleteTableByIdRequest(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  {
+    owner,
+    dataSource,
+    tableId,
+  }: {
+    owner: WorkspaceType;
+    dataSource: DataSourceType;
+    tableId: string;
+  }
+) {
+  const delRes = await deleteTable({
+    owner,
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceName: dataSource.name,
+    tableId,
+  });
+
+  if (delRes.isErr()) {
+    switch (delRes.error.type) {
+      case "not_found_error":
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: delRes.error.notFoundError.type,
+            message: delRes.error.notFoundError.message,
+          },
+        });
+      case "invalid_request_error":
+      case "internal_server_error":
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to delete table.",
+          },
+        });
+      default:
+        assertNever(delRes.error);
+    }
+  }
+
+  res.status(200).end();
+}

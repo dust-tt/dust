@@ -40,7 +40,10 @@ async function handler(
     });
   }
 
-  if (!owner.flags.includes("structured_data")) {
+  if (
+    !owner.flags.includes("structured_data") &&
+    !owner.flags.includes("auto_pre_ingest_all_databases")
+  ) {
     res.status(404).end();
     return;
   }
