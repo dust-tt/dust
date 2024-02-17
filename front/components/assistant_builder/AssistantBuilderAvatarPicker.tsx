@@ -166,30 +166,24 @@ export function AvatarPicker({
             tabs={[
               {
                 label: "Droids",
+                id: "droids",
                 current: currentTab === "droids",
                 icon: ImageIcon,
               },
               {
                 label: "Spirits",
+                id: "spirits",
                 current: currentTab === "spirits",
                 icon: ImageIcon,
               },
               {
                 label: "Upload",
+                id: "upload",
                 current: currentTab === "upload",
                 icon: ArrowUpOnSquareIcon,
               },
             ]}
-            onTabClick={(tab) => {
-              if (tab === currentTab) return;
-              if (tab === "Droids") {
-                setCurrentTab("droids");
-              } else if (tab === "Spirits") {
-                setCurrentTab("spirits");
-              } else {
-                setCurrentTab("upload");
-              }
-            }}
+            setCurrentTab={setCurrentTab}
           />
         </div>
         {currentTab === "droids" && (
