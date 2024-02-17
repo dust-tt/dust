@@ -20,67 +20,77 @@ const meta = {
 
 export default meta;
 
-export const TabExample = () => (
-  <div className="s-flex s-flex-col s-gap-10">
-    <div className="s-w-[320px]">
-      <Tab
-        tabs={[
-          {
-            label: "Chat",
-            current: true,
-            icon: ChatBubbleBottomCenterTextIcon,
-            sizing: "expand",
-          },
-          {
-            label: "Build",
-            current: false,
-            icon: RobotIcon,
-            sizing: "expand",
-            hasSeparator: true,
-          },
-          {
-            label: "Settings",
-            hideLabel: true,
-            current: false,
-            icon: Cog6ToothIcon,
-          },
-        ]}
-        onTabClick={(tabName, event) => {
-          // add logic here
-          event.preventDefault();
-          console.log(tabName);
-        }}
-      />
+export const TabExample = () => {
+  const [currentTab, setCurrentTab] = React.useState("chat");
+  const [currentTab2, setCurrentTab2] = React.useState("instructions");
+  return (
+    <div className="s-flex s-flex-col s-gap-10">
+      <div className="s-w-[320px]">
+        <Tab
+          tabs={[
+            {
+              label: "Chat",
+              id: "chat",
+              current: currentTab === "chat",
+              icon: ChatBubbleBottomCenterTextIcon,
+              sizing: "expand",
+            },
+            {
+              label: "Build",
+              id: "build",
+              current: currentTab === "build",
+              icon: RobotIcon,
+              sizing: "expand",
+              hasSeparator: true,
+            },
+            {
+              label: "Settings",
+              id: "settings",
+              hideLabel: true,
+              current: false,
+              icon: Cog6ToothIcon,
+            },
+          ]}
+          setCurrentTab={(tabId, event) => {
+            // add logic here
+            event.preventDefault();
+            setCurrentTab(tabId);
+          }}
+        />
+      </div>
+      <div className="s-w-full">
+        <Tab
+          variant="stepper"
+          tabs={[
+            {
+              label: "Instructions",
+              id: "instructions",
+              current: currentTab2 === "instructions",
+              icon: SquareIcon,
+              sizing: "hug",
+            },
+            {
+              label: "Data sources & Actions",
+              id: "data",
+              current: currentTab2 === "data",
+              icon: CircleIcon,
+              sizing: "hug",
+            },
+            {
+              label: "Naming",
+              id: "naming",
+              current: currentTab2 === "naming",
+              icon: TriangleIcon,
+              sizing: "hug",
+            },
+          ]}
+          setCurrentTab={(tabId, event) => {
+            // add logic here
+            event.preventDefault();
+            setCurrentTab2(tabId);
+          }}
+        />
+      </div>
     </div>
-    <div className="s-w-full">
-      <Tab
-        variant="stepper"
-        tabs={[
-          {
-            label: "Instructions",
-            current: true,
-            icon: SquareIcon,
-            sizing: "hug",
-          },
-          {
-            label: "Data sources & Actions",
-            current: false,
-            icon: CircleIcon,
-            sizing: "hug",
-          },
-          {
-            label: "Naming",
-            current: false,
-            icon: TriangleIcon,
-            sizing: "hug",
-          },
-        ]}
-        onTabClick={(tabName, event) => {
-          // add logic here
-          event.preventDefault();
-          console.log(tabName);
-        }}
-      />
-    </div>
-  </div>
-);
+  );
+};
