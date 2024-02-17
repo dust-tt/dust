@@ -11,9 +11,9 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
-type TabType = {
+type TabType<E> = {
   label: string;
-  id?: string;
+  id?: E;
   hideLabel?: boolean;
   current: boolean;
   sizing?: "hug" | "expand";
@@ -24,10 +24,10 @@ type TabType = {
   | { onClick?: never; href: string }
 );
 
-type TabProps = {
+type TabProps<E> = {
   variant?: "default" | "stepper";
-  tabs: Array<TabType>;
-  setCurrentTab?: (tabId: string, e: MouseEvent<HTMLAnchorElement>) => void;
+  tabs: Array<TabType<E>>;
+  setCurrentTab?: (tabId: E, e: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
 };
 
@@ -99,12 +99,12 @@ const tabSizingClasses = {
  * - or globally, by providing a setCurrentTab function.
  * Both per-tab and global actions can be set, the per-tab action taking precedence.
  */
-export function Tab({
+export function Tab<E>({
   variant = "default",
   tabs,
   setCurrentTab,
   className = "",
-}: TabProps) {
+}: TabProps<E>) {
   const { components } = React.useContext(SparkleContext);
 
   const renderTabs = () =>
