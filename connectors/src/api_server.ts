@@ -64,6 +64,10 @@ export function startServer(port: number) {
       if (remainingRequests > 0) {
         next();
       } else {
+        logger.info(
+          { clientIp, url: req.originalUrl },
+          "Connector query rate limited."
+        );
         res.status(429).send("Too many requests");
       }
     } catch (error) {
