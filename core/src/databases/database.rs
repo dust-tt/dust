@@ -43,7 +43,7 @@ impl From<SqliteWorkerError> for QueryDatabaseError {
         match &e {
             SqliteWorkerError::ServerError(_, code, _) => match code.as_str() {
                 "too_many_result_rows" => QueryDatabaseError::TooManyResultRows,
-                _ => e.into(),
+                _ => QueryDatabaseError::GenericError(e.into()),
             },
             _ => e.into(),
         }
