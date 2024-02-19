@@ -94,6 +94,15 @@ Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=mistral model=
 Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=mistral model=mistral-medium check=68.00 total=128.00
 Final stats: rate=0.65/s promptTokensTotal=10630571 completionTokensTotal=1076930
 
+Finished run: algorithm=CoT-consensus dataset=MATH provider=mistral model=mistral-next
+Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=mistral model=mistral-next check=59.31 total=128.00
+Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=mistral model=mistral-next check=59.63 total=128.00
+Result: algorithm=CoT-consensus poolSize=4 dataset=MATH provider=mistral model=mistral-next check=65.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=8 dataset=MATH provider=mistral model=mistral-next check=73.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=16 dataset=MATH provider=mistral model=mistral-next check=75.50 total=128.00
+Result: algorithm=CoT-consensus poolSize=32 dataset=MATH provider=mistral model=mistral-next check=81.00 total=128.00
+Final stats: rate=0.46/s promptTokensTotal=10739425 completionTokensTotal=816247
+
 Finished run: algorithm=CoT-consensus dataset=MATH provider=anthropic model=claude-instant-1.2
 Result: algorithm=CoT-consensus poolSize=1 dataset=MATH provider=anthropic model=claude-instant-1.2 check=40.00 total=128.00
 Result: algorithm=CoT-consensus poolSize=2 dataset=MATH provider=anthropic model=claude-instant-1.2 check=40.00 total=128.00

@@ -7,7 +7,8 @@ import { ChatCompletion, ChatQuery, Model } from "@app/lib/models";
 export type MistralModelType =
   | "mistral-tiny"
   | "mistral-small"
-  | "mistral-medium";
+  | "mistral-medium"
+  | "mistral-next";
 
 export class MistralModel extends Model {
   readonly provider = "mistral";
