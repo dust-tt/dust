@@ -47,6 +47,7 @@ import {
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { UserMessageClassification } from "@app/lib/models/user_message_classification";
 
 async function main() {
   await User.sync({ alter: true });
@@ -99,6 +100,7 @@ async function main() {
 
   await FeatureFlag.sync({ alter: true });
 
+  await UserMessageClassification.sync({ alter: true });
   process.exit(0);
 }
 
