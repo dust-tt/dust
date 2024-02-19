@@ -4,6 +4,7 @@ import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
+import { classifyWorkspace } from "@app/admin/tools/message_classification";
 import { subscriptionForWorkspace } from "@app/lib/auth";
 import {
   DataSource,
@@ -268,6 +269,17 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       m.role = role;
       await m.save();
+      return;
+    }
+
+    case "classify-messages": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.limit) {
+        throw new Error("Missing --limit argument");
+      }
+      await classifyWorkspace({ workspaceId: args.wId, limit: args.limit });
       return;
     }
 
