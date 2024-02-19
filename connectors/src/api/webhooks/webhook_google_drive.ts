@@ -14,6 +14,10 @@ const _webhookGoogleDriveAPIHandler = async (
   res: Response<GoogleDriveWebhookResBody>
 ) => {
   const channelId = req.headers["x-goog-channel-id"];
+  logger.info(
+    { channelId, url: req.originalUrl },
+    "Processing Google Drive webhook."
+  );
   if (!channelId) {
     return apiError(req, res, {
       status_code: 400,
