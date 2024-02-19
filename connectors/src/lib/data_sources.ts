@@ -693,6 +693,11 @@ export async function deleteTable({
 
   const elapsed = new Date().getTime() - now.getTime();
 
+  if (dustRequestResult.status === 404) {
+    localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+    return;
+  }
+
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
     statsDClient.increment(
       "data_source_structured_data_deletes_success.count",
