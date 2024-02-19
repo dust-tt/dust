@@ -218,7 +218,13 @@ async function getAllSheetsFromSpreadSheet(
 
     const { sheetId, sheetType, title } = properties;
     // We only support "GRID" sheet.
-    if (sheetType !== "GRID" || !title || !sheetId) {
+    // For spreadsheet with one unique sheet, sheetId will be zero.
+    if (
+      sheetType !== "GRID" ||
+      !title ||
+      sheetId === undefined ||
+      sheetId === null
+    ) {
       continue;
     }
 
