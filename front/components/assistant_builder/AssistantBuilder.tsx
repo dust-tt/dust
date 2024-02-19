@@ -22,6 +22,7 @@ import type {
   ConnectorProvider,
   DataSourceType,
   LightAgentConfigurationType,
+  ModelConfig,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
@@ -29,13 +30,15 @@ import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import { GEMINI_PRO_DEFAULT_MODEL_CONFIG, isBuilder } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  isBuilder,
   MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -92,16 +95,6 @@ type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
 };
-
-const usedModelConfigs = [
-  GPT_4_TURBO_MODEL_CONFIG,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  CLAUDE_DEFAULT_MODEL_CONFIG,
-  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  MISTRAL_MEDIUM_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-];
 
 // Avatar URLs
 const BASE_URL = "https://dust.tt/";
@@ -740,6 +733,7 @@ export default function AssistantBuilder({
                 />
               </div>
               <AdvancedSettings
+                owner={owner}
                 plan={plan}
                 generationSettings={builderState.generationSettings}
                 setGenerationSettings={(generationSettings) => {
@@ -1566,16 +1560,31 @@ function AssistantBuilderTextArea({
 }
 
 function AdvancedSettings({
+  owner,
   plan,
   generationSettings,
   setGenerationSettings,
 }: {
+  owner: WorkspaceType;
   plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
 }) {
+  const usedModelConfigs: ModelConfig[] = [
+    GPT_4_TURBO_MODEL_CONFIG,
+    GPT_3_5_TURBO_MODEL_CONFIG,
+    CLAUDE_DEFAULT_MODEL_CONFIG,
+    CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+    MISTRAL_MEDIUM_MODEL_CONFIG,
+    MISTRAL_SMALL_MODEL_CONFIG,
+    GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  ];
+  if (owner.flags.includes("mistral_next")) {
+    usedModelConfigs.push(MISTRAL_NEXT_MODEL_CONFIG);
+  }
+
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
