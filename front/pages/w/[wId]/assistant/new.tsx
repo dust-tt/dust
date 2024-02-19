@@ -99,7 +99,8 @@ export default function AssistantNew({
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
-  const [showHelperModal, setShowHelperModal] = useState<boolean>(false);
+  const [conversationHelperModal, setConversationHelperModal] =
+    useState<ConversationType | null>(null);
 
   // No limit on global assistants call as they include both active and inactive.
   const globalAgentConfigurations = useAgentConfigurations({
@@ -190,6 +191,51 @@ export default function AssistantNew({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
+  function StartHelperConversationButton({
+    content,
+    variant = "tertiary",
+    size = "xs",
+  }: {
+    content: string;
+    variant?: "primary" | "secondary" | "tertiary";
+    size?: "sm" | "xs";
+  }) {
+    return (
+      <Button
+        variant={variant}
+        icon={ChatBubbleBottomCenterTextIcon}
+        label={content}
+        size={size}
+        hasMagnifying={false}
+        onClick={async () => {
+          // We create a new test conversation with the helper and we open it in the Drawer
+          const conversationRes = await createConversationWithMessage({
+            owner,
+            user,
+            messageData: {
+              input: content.replace("@help", ":mention[help]{sId=helper}"),
+              mentions: [{ configurationId: "helper" }],
+            },
+            visibility: "test",
+          });
+          if (conversationRes.isErr()) {
+            if (conversationRes.error.type === "plan_limit_reached_error") {
+              setPlanLimitReached(true);
+            } else {
+              sendNotification({
+                title: conversationRes.error.title,
+                description: conversationRes.error.message,
+                type: "error",
+              });
+            }
+          } else {
+            setConversationHelperModal(conversationRes.value);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <InputBarContext.Provider
       value={{ animate: shouldAnimateInput, selectedAssistant }}
@@ -209,12 +255,14 @@ export default function AssistantNew({
             />
           }
         >
-          {showHelperModal && helper && (
+          {conversationHelperModal && helper && (
             <TryAssistantModal
               owner={owner}
               user={user}
+              title="Getting @help"
               assistant={helper}
-              onClose={() => setShowHelperModal(false)}
+              openWithConversation={conversationHelperModal}
+              onClose={() => setConversationHelperModal(null)}
             />
           )}
           <AssistantDetails
@@ -299,22 +347,8 @@ export default function AssistantNew({
                         </div>
                         <Button.List isWrapping={true}>
                           <div className="flex flex-wrap gap-2">
-                            <Button
-                              variant="tertiary"
-                              icon={ChatBubbleBottomCenterTextIcon}
-                              label="@help, what can I use the assistants for?"
-                              size="xs"
-                              hasMagnifying={false}
-                              onClick={() => setShowHelperModal(true)}
-                            />
-                            <Button
-                              variant="tertiary"
-                              icon={ChatBubbleBottomCenterTextIcon}
-                              label="@help, what are the limitations of assistants?"
-                              size="xs"
-                              hasMagnifying={false}
-                              onClick={() => setShowHelperModal(true)}
-                            />
+                            <StartHelperConversationButton content="@help, what can I use the assistants for?" />
+                            <StartHelperConversationButton content="@help, what are the limitations of assistants?" />
                           </div>
                         </Button.List>
                       </div>
@@ -379,14 +413,7 @@ export default function AssistantNew({
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="tertiary"
-                                icon={ChatBubbleBottomCenterTextIcon}
-                                label="@help, tell me about Data Sources"
-                                size="xs"
-                                hasMagnifying={false}
-                                onClick={() => setShowHelperModal(true)}
-                              />
+                              <StartHelperConversationButton content="@help, tell me about Data Sources" />
                             </div>
                           </Button.List>
                         </div>
