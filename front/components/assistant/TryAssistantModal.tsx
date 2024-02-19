@@ -22,11 +22,15 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 export function TryAssistantModal({
   owner,
   user,
+  title,
   assistant,
+  openWithConversation,
   onClose,
 }: {
   owner: WorkspaceType;
   user: UserType;
+  title?: string;
+  openWithConversation?: ConversationType;
   assistant: LightAgentConfigurationType;
   onClose: () => void;
 }) {
@@ -34,7 +38,7 @@ export function TryAssistantModal({
     { configurationId: assistant?.sId as string },
   ]);
   const [conversation, setConversation] = useState<ConversationType | null>(
-    null
+    openWithConversation ?? null
   );
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -87,7 +91,7 @@ export function TryAssistantModal({
   return (
     <Modal
       isOpen={!!assistant}
-      title={`Trying @${assistant?.name}`}
+      title={title ?? `Trying @${assistant?.name}`}
       onClose={async () => {
         onClose();
         if (conversation && "sId" in conversation) {
