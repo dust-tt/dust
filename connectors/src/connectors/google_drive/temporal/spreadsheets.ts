@@ -72,7 +72,7 @@ async function upsertTable(
 }
 
 function makeRandomString(length: number) {
-  return uuidv4.toString().substring(0, length);
+  return uuidv4().toString().substring(0, length);
 }
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
