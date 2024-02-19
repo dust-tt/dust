@@ -113,7 +113,7 @@ export default function Subscription({
       if (!res.ok) {
         sendNotification({
           type: "error",
-          title: "Subscribtion failed",
+          title: "Subscription failed",
           description: "Failed to subscribe to a new plan.",
         });
         // Then we remove the query params to avoid going through this logic again.
