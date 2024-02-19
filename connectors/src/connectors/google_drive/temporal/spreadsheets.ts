@@ -132,9 +132,9 @@ function getValidRows(allRows: string[][], loggerArgs: object) {
   const headers = getSanitizedHeaders(rawHeaders, loggerArgs);
 
   const validRows: string[][] = filteredRows.map((row, index) => {
-    // Return headers unchanged.
+    // Return sanitized headers.
     if (index === 0) {
-      return row;
+      return headers;
     }
 
     // If a row has less cells than headers, we fill the gap with empty strings.

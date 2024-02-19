@@ -45,6 +45,6 @@ export function slugify(text: string) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "_") // Replace spaces with _.
-    .replace(/[\W]+/g, "") // Replace all non-word characters with _.
+    .replace(/[\W]+/g, "_") // Replace all non-word characters with _.
     .replace(/__+/g, "_"); // Replace multiple _ with single _.
 }
