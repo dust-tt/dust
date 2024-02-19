@@ -2353,6 +2353,11 @@ export async function upsertDatabaseStructuredDataFromCache({
     },
   });
 
+  if (!pageCacheEntries.length) {
+    localLogger.info("No pages found in cache (skipping).");
+    return;
+  }
+
   const csv = await renderDatabaseFromPages({
     databaseTitle: null,
     pagesProperties: pageCacheEntries.map(
