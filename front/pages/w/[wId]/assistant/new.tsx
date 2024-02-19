@@ -170,6 +170,34 @@ export default function AssistantNew({
     }
   );
 
+  const { submit: handleOpenHelpConversation } = useSubmitFunction(
+    async (content: string) => {
+      // We create a new test conversation with the helper and we open it in the Drawer
+      const conversationRes = await createConversationWithMessage({
+        owner,
+        user,
+        messageData: {
+          input: content.replace("@help", ":mention[help]{sId=helper}"),
+          mentions: [{ configurationId: "helper" }],
+        },
+        visibility: "test",
+      });
+      if (conversationRes.isErr()) {
+        if (conversationRes.error.type === "plan_limit_reached_error") {
+          setPlanLimitReached(true);
+        } else {
+          sendNotification({
+            title: conversationRes.error.title,
+            description: conversationRes.error.message,
+            type: "error",
+          });
+        }
+      } else {
+        setConversationHelperModal(conversationRes.value);
+      }
+    }
+  );
+
   const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
   const [greeting, setGreeting] = useState<string>("");
   const [selectedAssistant, setSelectedAssistant] =
@@ -190,51 +218,6 @@ export default function AssistantNew({
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
-
-  function StartHelperConversationButton({
-    content,
-    variant = "tertiary",
-    size = "xs",
-  }: {
-    content: string;
-    variant?: "primary" | "secondary" | "tertiary";
-    size?: "sm" | "xs";
-  }) {
-    return (
-      <Button
-        variant={variant}
-        icon={ChatBubbleBottomCenterTextIcon}
-        label={content}
-        size={size}
-        hasMagnifying={false}
-        onClick={async () => {
-          // We create a new test conversation with the helper and we open it in the Drawer
-          const conversationRes = await createConversationWithMessage({
-            owner,
-            user,
-            messageData: {
-              input: content.replace("@help", ":mention[help]{sId=helper}"),
-              mentions: [{ configurationId: "helper" }],
-            },
-            visibility: "test",
-          });
-          if (conversationRes.isErr()) {
-            if (conversationRes.error.type === "plan_limit_reached_error") {
-              setPlanLimitReached(true);
-            } else {
-              sendNotification({
-                title: conversationRes.error.title,
-                description: conversationRes.error.message,
-                type: "error",
-              });
-            }
-          } else {
-            setConversationHelperModal(conversationRes.value);
-          }
-        }}
-      />
-    );
-  }
 
   return (
     <InputBarContext.Provider
@@ -347,8 +330,34 @@ export default function AssistantNew({
                         </div>
                         <Button.List isWrapping={true}>
                           <div className="flex flex-wrap gap-2">
-                            <StartHelperConversationButton content="@help, what can I use the assistants for?" />
-                            <StartHelperConversationButton content="@help, what are the limitations of assistants?" />
+                            <Button
+                              variant="tertiary"
+                              icon={ChatBubbleBottomCenterTextIcon}
+                              label={
+                                "@help, what can I use the assistants for?"
+                              }
+                              size="xs"
+                              hasMagnifying={false}
+                              onClick={async () => {
+                                await handleOpenHelpConversation(
+                                  "@help, what can I use the assistants for?"
+                                );
+                              }}
+                            />
+                            <Button
+                              variant="tertiary"
+                              icon={ChatBubbleBottomCenterTextIcon}
+                              label={
+                                "@help, what are the limitations of assistants?"
+                              }
+                              size="xs"
+                              hasMagnifying={false}
+                              onClick={async () => {
+                                await handleOpenHelpConversation(
+                                  "@help, what are the limitations of assistants?"
+                                );
+                              }}
+                            />
                           </div>
                         </Button.List>
                       </div>
@@ -413,7 +422,18 @@ export default function AssistantNew({
                           </div>
                           <Button.List isWrapping={true}>
                             <div className="flex flex-wrap gap-2">
-                              <StartHelperConversationButton content="@help, tell me about Data Sources" />
+                              <Button
+                                variant="tertiary"
+                                icon={ChatBubbleBottomCenterTextIcon}
+                                label={"@help, tell me about Data Sources"}
+                                size="xs"
+                                hasMagnifying={false}
+                                onClick={async () => {
+                                  await handleOpenHelpConversation(
+                                    "@help, tell me about Data Sources"
+                                  );
+                                }}
+                              />
                             </div>
                           </Button.List>
                         </div>
