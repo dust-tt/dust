@@ -1,6 +1,5 @@
 export const WHITELISTABLE_FEATURES = [
   "auto_pre_ingest_all_databases",
-  "crawler",
   "intercom_connection",
   "mistral_next",
   "structured_data",
