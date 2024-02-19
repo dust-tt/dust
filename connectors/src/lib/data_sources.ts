@@ -574,6 +574,7 @@ export async function deleteTableRow({
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
     },
+    validateStatus: null,
   };
 
   let dustRequestResult: AxiosResponse;
@@ -600,6 +601,11 @@ export async function deleteTableRow({
 
   const elapsed = new Date().getTime() - now.getTime();
 
+  if (dustRequestResult.status === 404) {
+    localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+    return;
+  }
+
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
     statsDClient.increment(
       "data_source_structured_data_deletes_success.count",
@@ -609,10 +615,6 @@ export async function deleteTableRow({
 
     localLogger.info("Successfully deleted structured data from Dust.");
   } else {
-    if (dustRequestResult.status === 404) {
-      localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
-      return;
-    }
     statsDClient.increment(
       "data_source_structured_data_deletes_error.count",
       1,
@@ -667,6 +669,7 @@ export async function deleteTable({
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
     },
+    validateStatus: null,
   };
 
   let dustRequestResult: AxiosResponse;
