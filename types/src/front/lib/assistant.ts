@@ -109,6 +109,8 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ] as const;
 
+export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
+
 // this creates a union type of all the {providerId: string, modelId: string}
 // pairs that are in SUPPORTED_MODELS
 export type SupportedModel = ExtractSpecificKeys<
