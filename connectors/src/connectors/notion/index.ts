@@ -325,9 +325,16 @@ export async function cleanupNotionConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await connector.delete();
-
   await deleteNangoConnection(connector.connectionId);
+
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Notion connector."
+    );
+    return res;
+  }
 
   return new Ok(undefined);
 }

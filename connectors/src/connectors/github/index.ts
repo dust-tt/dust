@@ -219,17 +219,16 @@ export async function cleanupGithubConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  try {
-    await connector.delete();
-
-    return new Ok(undefined);
-  } catch (err) {
+  const res = await connector.delete();
+  if (res.isErr()) {
     logger.error(
-      { connectorId, error: err },
-      "Error cleaning up github connector"
+      { connectorId, error: res.error },
+      "Error cleaning up Github connector."
     );
-    return new Err(err as Error);
+    return res;
   }
+
+  return new Ok(undefined);
 }
 
 export async function retrieveGithubConnectorPermissions({

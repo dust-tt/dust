@@ -344,7 +344,14 @@ export async function cleanupSlackConnector(
     );
   }
 
-  await connector.delete();
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Slack connector."
+    );
+    return res;
+  }
 
   return new Ok(undefined);
 }

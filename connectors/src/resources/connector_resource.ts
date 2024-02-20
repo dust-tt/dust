@@ -1,4 +1,5 @@
-import type { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic } from "sequelize";
 
 import { BaseResource } from "@connectors/resources/base_resource";
@@ -43,16 +44,22 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     );
   }
 
-  async delete(): Promise<void> {
+  async delete(): Promise<Result<undefined, Error>> {
     return sequelizeConnection.transaction(async (transaction) => {
-      await this.providerStrategy.delete(this, transaction);
+      try {
+        await this.providerStrategy.delete(this, transaction);
 
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
+        await this.model.destroy({
+          where: {
+            id: this.id,
+          },
+          transaction,
+        });
+
+        return new Ok(undefined);
+      } catch (err) {
+        return new Err(err as Error);
+      }
     });
   }
 }

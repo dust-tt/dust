@@ -1,3 +1,4 @@
+import type { Result } from "@dust-tt/types";
 import type { Attributes, Model, ModelStatic, Transaction } from "sequelize";
 
 interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
@@ -41,7 +42,7 @@ export abstract class BaseResource<M extends Model> {
     return new this(this.model, blob.get());
   }
 
-  abstract delete(transaction?: Transaction): Promise<void>;
+  abstract delete(transaction?: Transaction): Promise<Result<undefined, Error>>;
 
   async update(
     blob: Partial<Attributes<M>>

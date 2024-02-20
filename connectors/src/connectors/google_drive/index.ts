@@ -293,7 +293,14 @@ export async function cleanupGoogleDriveConnector(
     }
   }
 
-  await connector.delete();
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Google Drive connector."
+    );
+    return res;
+  }
 
   return new Ok(undefined);
 }

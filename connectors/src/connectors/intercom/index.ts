@@ -220,14 +220,21 @@ export async function cleanupIntercomConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await connector.delete();
-
   const nangoRes = await nangoDeleteConnection(
     connector.connectionId,
     NANGO_INTERCOM_CONNECTOR_ID
   );
   if (nangoRes.isErr()) {
     throw nangoRes.error;
+  }
+
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Intercom connector."
+    );
+    return res;
   }
 
   return new Ok(undefined);

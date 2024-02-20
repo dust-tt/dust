@@ -235,14 +235,21 @@ export async function cleanupConfluenceConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await connector.delete();
-
   const nangoRes = await nangoDeleteConnection(
     connector.connectionId,
     getRequiredNangoConfluenceConnectorId()
   );
   if (nangoRes.isErr()) {
     throw nangoRes.error;
+  }
+
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Confluence connector."
+    );
+    return res;
   }
 
   return new Ok(undefined);

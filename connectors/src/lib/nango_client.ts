@@ -93,13 +93,18 @@ export async function nangoDeleteConnection(
   } else {
     logger.error({ connectionId }, "Could not delete Nango connection.");
     if (res) {
+      if (res.status === 404) {
+        logger.error({ connectionId }, "Connection not found on Nango.");
+        return new Ok(undefined);
+      }
+
       return new Err(
         new Error(
           `Could not delete connection. ${res.statusText}, ${await res.text()}`
         )
       );
-    } else {
-      return new Err(new Error(`Could not delete connection.`));
     }
+
+    return new Err(new Error(`Could not delete connection.`));
   }
 }
