@@ -5,7 +5,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
+import { CoreAPI, Err, Ok, slugify } from "@dust-tt/types";
 import { parse } from "csv-parse";
 
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -307,6 +307,7 @@ async function rowsFromCsv(
         0,
         firstEmptyCellIndex === -1 ? undefined : firstEmptyCellIndex
       );
+      header = getSanitizedHeader(header);
       const headerSet = new Set<string>();
       for (const h of header) {
         if (headerSet.has(h)) {
@@ -443,4 +444,30 @@ async function rowsFromCsv(
   }
 
   return new Ok(rows);
+}
+
+function getSanitizedHeader(rawHeader: string[]) {
+  return rawHeader.reduce<string[]>((acc, curr) => {
+    const slugifiedName = slugify(curr);
+
+    if (!acc.includes(slugifiedName)) {
+      acc.push(slugifiedName);
+    } else {
+      let conflictResolved = false;
+      for (let i = 2; i < 10000; i++) {
+        if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
+          acc.push(slugify(`${slugifiedName}_${i}`));
+          conflictResolved = true;
+          break;
+        }
+      }
+
+      if (!conflictResolved) {
+        throw new Error(
+          `Could not resolve conflict for header ${curr} in table creation.`
+        );
+      }
+    }
+    return acc;
+  }, []);
 }
