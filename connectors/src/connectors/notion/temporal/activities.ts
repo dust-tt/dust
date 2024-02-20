@@ -1648,7 +1648,11 @@ export async function renderAndUpsertPageFromCache({
     if (parentDb) {
       const autoIngestAllDatabases =
         await connectorHasAutoPreIngestAllDatabasesFF(connector);
-      if (autoIngestAllDatabases || parentDb.structuredDataEnabled) {
+      if (
+        (autoIngestAllDatabases || parentDb.structuredDataEnabled) &&
+        // Only do structured data incremental sync if the DB has already been synced as structured data.
+        !!parentDb.structuredDataUpsertedTs
+      ) {
         const { tableId, tableName, tableDescription } =
           getTableInfoFromDatabase(parentDb);
         const rowId = `notion-${pageId}`;
@@ -2381,6 +2385,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     // We overwrite the whole table since we just fetched all child pages.
     truncate: true,
   });
+  await dbModel.update({ structuredDataUpsertedTs: new Date() });
 }
 
 function getTableInfoFromDatabase(database: NotionDatabase): {
