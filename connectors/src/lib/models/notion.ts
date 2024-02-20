@@ -187,6 +187,8 @@ export class NotionDatabase extends Model<
   declare notionUrl?: string | null;
 
   declare structuredDataEnabled: CreationOptional<boolean>;
+  declare structuredDataUpsertedTs: CreationOptional<Date | null>;
+
   declare connectorId: ForeignKey<ConnectorModel["id"]> | null;
 }
 
@@ -251,6 +253,11 @@ NotionDatabase.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    structuredDataUpsertedTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
