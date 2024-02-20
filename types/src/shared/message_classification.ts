@@ -4,7 +4,7 @@ export const MESSAGE_CLASSES = [
   "sales",
   "engineering",
   "coding",
-  "data",
+  "data-analysis",
   "customer support",
   "product",
   "product marketing",
@@ -14,6 +14,12 @@ export const MESSAGE_CLASSES = [
   "hiring",
   "ops",
   "security compliance",
+  "summarization",
+  "translation",
+  "joking",
+  "how-dust-works",
+  "writing-compagnion",
+  "search",
   "unknown",
 ] as const;
 

@@ -8,11 +8,11 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import { UserMessage } from "@app/lib/models/assistant/conversation";
+import { Conversation } from "@app/lib/models/assistant/conversation";
 
-export class UserMessageClassification extends Model<
-  InferAttributes<UserMessageClassification>,
-  InferCreationAttributes<UserMessageClassification>
+export class ConversationClassification extends Model<
+  InferAttributes<ConversationClassification>,
+  InferCreationAttributes<ConversationClassification>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -20,10 +20,10 @@ export class UserMessageClassification extends Model<
 
   declare messageClass: MESSAGE_CLASS;
 
-  declare userMessageId: ForeignKey<UserMessage["id"]> | null;
+  declare conversationId: ForeignKey<Conversation["id"]> | null;
 }
 
-UserMessageClassification.init(
+ConversationClassification.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -49,10 +49,10 @@ UserMessageClassification.init(
   },
   {
     sequelize: front_sequelize,
-    modelName: "UserMessageClassification",
-    tableName: "user_message_classifications",
+    modelName: "ConversationClassification",
+    tableName: "conversation_classifications",
   }
 );
 
-UserMessage.hasMany(UserMessageClassification);
-UserMessageClassification.belongsTo(UserMessage);
+Conversation.hasMany(ConversationClassification);
+ConversationClassification.belongsTo(Conversation);
