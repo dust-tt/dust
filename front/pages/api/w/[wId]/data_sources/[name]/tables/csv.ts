@@ -164,7 +164,7 @@ export async function handlePostTableCsvUpsertRequest(
   }
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
   // Generate a slug combining the name and the last 4 characters of tableId for uniqueness.
-  const slugifyName = slugify(`${name} (${tableId.slice(-4)})`);
+  const slugifyName = slugify(`${name}_${tableId.slice(-4)}`);
 
   const tableRes = await upsertTableFromCsv({
     owner,
