@@ -1,10 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
-import { slugify } from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
-import { v4 as uuidv4 } from "uuid";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -71,10 +69,6 @@ async function upsertTable(
   });
 }
 
-function makeRandomString(length: number) {
-  return uuidv4().toString().substring(0, length);
-}
-
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
   // Find the first row with data to determine the range.
   const firstNonEmptyRow = allRows.find((row) =>
@@ -99,43 +93,22 @@ function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
     .filter((row) => row.some((cell) => cell.trim() !== ""));
 }
 
-function getSanitizedHeaders(rawHeaders: string[], loggerArgs: object) {
-  return rawHeaders.reduce<string[]>((acc, curr) => {
-    const slugifiedName = slugify(curr);
-
-    if (!acc.includes(slugifiedName)) {
-      acc.push(slugifiedName);
-    } else {
-      logger.info(
-        loggerArgs,
-        "[Spreadsheet] Duplicated headers detected; suffixes added for uniqueness."
-      );
-
-      // Append a 4-character suffix to duplicate header names for uniqueness.
-      const randomSuffix = makeRandomString(4);
-      acc.push(slugify(`${slugifiedName}_${randomSuffix}`));
-    }
-    return acc;
-  }, []);
-}
-
 function getValidRows(allRows: string[][], loggerArgs: object) {
   const filteredRows = findDataRangeAndSelectRows(allRows);
 
   // We assume that the first row is always the headers.
   // Headers are used to assert the number of cells per row.
-  const [rawHeaders] = filteredRows;
-  if (!rawHeaders || rawHeaders.length === 0) {
+  const [headers] = filteredRows;
+  if (!headers || headers.length === 0) {
     logger.info(
       loggerArgs,
       "[Spreadsheet] Skipping due to empty initial rows."
     );
     return [];
   }
-  const headers = getSanitizedHeaders(rawHeaders, loggerArgs);
 
   const validRows: string[][] = filteredRows.map((row, index) => {
-    // Return sanitized headers.
+    // Return raw headers.
     if (index === 0) {
       return headers;
     }
