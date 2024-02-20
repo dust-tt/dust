@@ -6,7 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { getUsageData } from "@app/lib/workspace_usage";
+import { unsafeGetUsageData } from "@app/lib/workspace_usage";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const MonthSchema = t.refinement(
@@ -104,7 +104,7 @@ async function handler(
         }
       })();
 
-      const csvData = await getUsageData(startDate, endDate, owner.sId);
+      const csvData = await unsafeGetUsageData(startDate, endDate, owner.sId);
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", `attachment; filename="usage.csv"`);
       res.status(200).send(csvData);

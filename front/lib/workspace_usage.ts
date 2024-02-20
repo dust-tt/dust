@@ -18,7 +18,7 @@ export interface WorkpsaceUsageQueryResult {
   source: string;
 }
 
-export async function getUsageData(
+export async function unsafeGetUsageData(
   startDate: Date,
   endDate: Date,
   wId: string
