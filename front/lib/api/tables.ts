@@ -255,6 +255,11 @@ async function rowsFromCsv(
     }
 
     const [firstRecord, secondRecord] = records;
+    // Check for more than one line to ensure sufficient data for accurate delimiter detection.
+    if (!secondRecord) {
+      continue;
+    }
+
     if (!!firstRecord.length && firstRecord.length === secondRecord.length) {
       if (firstRecord.length > delimiterColsCount) {
         delimiterColsCount = firstRecord.length;
