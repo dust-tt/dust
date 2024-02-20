@@ -18,7 +18,7 @@ async function classifyConversation(content: string) {
   )}:`;
   const promptWithContent = `${prompt}\n${content}`;
   const chatCompletion = await openai.chat.completions.create({
-    messages: [{ role: "user", content: promptWithMessage }],
+    messages: [{ role: "user", content: promptWithContent }],
     model: "gpt-3.5-turbo",
     functions: [
       {
