@@ -30,7 +30,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     hide: false,
     description:
       "Grant tailored access to your organization's Confluence shared spaces.",
-    limitations: null,
+    limitations:
+      "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
     logoComponent: ConfluenceLogo,
     isNested: true,
   },
