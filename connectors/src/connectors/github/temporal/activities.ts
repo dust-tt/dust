@@ -37,7 +37,7 @@ import {
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({
@@ -257,13 +257,10 @@ export async function githubUpsertIssueActivity(
     },
   });
 
-  const connector = await ConnectorModel.findOne({
-    where: {
-      connectionId: installationId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-  });
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig,
+    { connectionId: installationId }
+  );
   if (!connector) {
     throw new Error(`Connector not found (installationId: ${installationId})`);
   }
@@ -454,13 +451,10 @@ export async function githubUpsertDiscussionActivity(
     },
   });
 
-  const connector = await ConnectorModel.findOne({
-    where: {
-      connectionId: installationId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-  });
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig,
+    { connectionId: installationId }
+  );
   if (!connector) {
     throw new Error("Connector not found");
   }
@@ -503,14 +497,9 @@ export async function githubGetRepoDiscussionsResultPageActivity(
 export async function githubSaveStartSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "github",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    },
-  });
-
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig
+  );
   if (!connector) {
     throw new Error("Could not find connector");
   }
@@ -523,14 +512,9 @@ export async function githubSaveStartSyncActivity(
 export async function githubSaveSuccessSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "github",
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    },
-  });
-
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig
+  );
   if (!connector) {
     throw new Error("Could not find connector");
   }
@@ -579,11 +563,10 @@ export async function githubRepoGarbageCollectActivity(
   repoId: string,
   loggerArgs: Record<string, string | number>
 ) {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      connectionId: installationId,
-    },
-  });
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig,
+    { connectionId: installationId }
+  );
 
   if (!connector) {
     throw new Error("Connector not found");
@@ -646,13 +629,10 @@ async function deleteIssue(
 ) {
   const localLogger = logger.child({ ...loggerArgs, issueNumber });
 
-  const connector = await ConnectorModel.findOne({
-    where: {
-      connectionId: installationId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-  });
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig,
+    { connectionId: installationId }
+  );
   if (!connector) {
     throw new Error(`Connector not found (installationId: ${installationId})`);
   }
@@ -699,13 +679,10 @@ async function deleteDiscussion(
 ) {
   const localLogger = logger.child({ ...loggerArgs, discussionNumber });
 
-  const connector = await ConnectorModel.findOne({
-    where: {
-      connectionId: installationId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-  });
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig,
+    { connectionId: installationId }
+  );
   if (!connector) {
     throw new Error(`Connector not found (installationId: ${installationId})`);
   }
@@ -783,7 +760,7 @@ export function formatCodeContentForUpsert(
 
 async function garbageCollectCodeSync(
   dataSourceConfig: DataSourceConfig,
-  connector: ConnectorModel,
+  connector: ConnectorResource,
   repoId: number,
   codeSyncStartedAt: Date,
   loggerArgs: Record<string, string | number>
@@ -868,13 +845,10 @@ export async function githubCodeSyncActivity({
   const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
 
-  const connector = await ConnectorModel.findOne({
-    where: {
-      connectionId: installationId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-  });
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceConfig,
+    { connectionId: installationId }
+  );
   if (!connector) {
     throw new Error(`Connector not found (installationId: ${installationId})`);
   }

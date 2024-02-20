@@ -2,7 +2,6 @@ import type { ModelId } from "@dust-tt/types";
 
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 // Note: this function does not let you "remove" a skipReason.
@@ -29,14 +28,10 @@ export async function upsertNotionPageInConnectorsDb({
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
 }): Promise<NotionPage> {
-  const connector = await ConnectorModel.findOne({
-    where: {
-      type: "notion",
-      workspaceId: dataSourceInfo.workspaceId,
-      dataSourceName: dataSourceInfo.dataSourceName,
-    },
-  });
-  if (!connector) {
+  const connector = await ConnectorResource.findByDataSourceAndConnection(
+    dataSourceInfo
+  );
+  if (!connector || connector.type !== "notion") {
     throw new Error("Could not find connector");
   }
   const page = await NotionPage.findOne({
