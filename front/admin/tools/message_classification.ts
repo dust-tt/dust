@@ -16,7 +16,7 @@ async function classifyConversation(content: string) {
   const prompt = `Classify this message as one class of the following classes: ${MESSAGE_CLASSES.join(
     ", "
   )}:`;
-  const promptWithMessage = `${prompt}\n${content}`;
+  const promptWithContent = `${prompt}\n${content}`;
   const chatCompletion = await openai.chat.completions.create({
     messages: [{ role: "user", content: promptWithMessage }],
     model: "gpt-3.5-turbo",
