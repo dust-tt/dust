@@ -208,7 +208,18 @@ export async function syncConversation({
 
   // Building the markdown content for the conversation
   let markdown = "";
-  const convoTitle = turndownService.turndown(conversation.source.subject);
+  let convoTitle = "No title";
+
+  if (typeof conversation.source.subject === "string") {
+    convoTitle = turndownService.turndown(conversation.source.subject);
+  } else {
+    logger.warn("[Intercom] Conversation has no title", {
+      conversationId: conversation.id,
+      conversationSource: conversation.source,
+      loggerArgs,
+    });
+  }
+
   const tags = conversation.tags?.tags
     .map((tag: IntercomTagType) => tag.name)
     .join(", ");
