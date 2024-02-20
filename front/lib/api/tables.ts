@@ -336,6 +336,14 @@ async function rowsFromCsv(
     }
   }
 
+  // Drop empty columns.
+  for (const [col, values] of Object.entries(valuesByCol)) {
+    if (values.every((v) => v === "")) {
+      delete valuesByCol[col];
+    }
+  }
+  header = header?.filter((h) => !!valuesByCol[h]?.length);
+
   if (!header || !Object.values(valuesByCol).some((vs) => vs.length > 0)) {
     return new Err({
       type: "empty_csv",
