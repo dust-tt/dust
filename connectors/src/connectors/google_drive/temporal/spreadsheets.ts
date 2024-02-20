@@ -47,7 +47,7 @@ async function upsertTable(
 
   const { id, spreadsheet, title } = sheet;
   // Table name will be slugify in front.
-  const tableName = `${spreadsheet.title} - ${title} (${spreadsheet.id})`;
+  const tableName = `${spreadsheet.title} - ${title}`;
   const tableDescription = `Structured data from the Google Spreadsheet (${spreadsheet.title}) and sheet (${title}`;
 
   const csv = stringify(rows);
