@@ -8,7 +8,6 @@ import { getConnectorProviderStrategy } from "@connectors/resources/connector/st
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
