@@ -1,6 +1,6 @@
 import type { ConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic } from "sequelize";
+import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
 
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
@@ -35,11 +35,16 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     type: ConnectorProvider,
     { connectionId }: { connectionId?: string }
   ) {
+    const where: WhereOptions<ConnectorModel> = {
+      type,
+    };
+
+    if (connectionId) {
+      where.connectionId = connectionId;
+    }
+
     const blobs = await ConnectorResource.model.findAll({
-      where: {
-        type,
-        connectionId,
-      },
+      where,
     });
 
     return blobs.map(
@@ -55,12 +60,17 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     },
     { connectionId }: { connectionId?: string } = {}
   ) {
+    const where: WhereOptions<ConnectorModel> = {
+      workspaceId: dataSource.workspaceId,
+      dataSourceName: dataSource.dataSourceName,
+    };
+
+    if (connectionId) {
+      where.connectionId = connectionId;
+    }
+
     const blob = await ConnectorResource.model.findOne({
-      where: {
-        workspaceId: dataSource.workspaceId,
-        dataSourceName: dataSource.dataSourceName,
-        connectionId,
-      },
+      where,
     });
     if (!blob) {
       return null;
