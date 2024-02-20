@@ -5,6 +5,25 @@ import { UserMessage } from "@app/lib/models";
 import { Conversation, Message, Workspace } from "@app/lib/models";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 
+function cleanupAssistantMentions(message: string) {
+  let shouldContinue = true;
+  do {
+    const mentionCandidates = message.match(/:mention\[(.*)\]{sId=(.*)}/);
+
+    if (mentionCandidates && mentionCandidates.length >= 2) {
+      shouldContinue = true;
+      message = message.replace(
+        mentionCandidates[0],
+        `@${mentionCandidates[1]}`
+      );
+    } else {
+      shouldContinue = false;
+    }
+  } while (shouldContinue);
+
+  return message;
+}
+
 async function classifyConversation(content: string) {
   if (!process.env.DUST_MANAGED_OPENAI_API_KEY) {
     throw new Error("DUST_MANAGED_OPENAI_API_KEY is not set");
@@ -15,8 +34,10 @@ async function classifyConversation(content: string) {
 
   const prompt = `Classify this message as one class of the following classes: ${MESSAGE_CLASSES.join(
     ", "
-  )}:`;
+  )}:\n\n`;
+
   const promptWithContent = `${prompt}\n${content}`;
+  console.log("promptWithContent", promptWithContent);
   const chatCompletion = await openai.chat.completions.create({
     messages: [{ role: "user", content: promptWithContent }],
     model: "gpt-3.5-turbo",
@@ -102,17 +123,13 @@ export async function classifyWorkspace({
       }
     }
     if (renderedConversation.length > 0) {
-      const existingClassification = await ConversationClassification.findOne({
-        where: { conversationId: conversation.id },
-      });
-      if (existingClassification) {
-        console.log("already classified", conversation.id);
-        continue;
-      }
-
-      const renderedConversationString = renderedConversation
+      let renderedConversationString = renderedConversation
         .map((message) => `${message.username}: ${message.content}`)
         .join("\n");
+
+      renderedConversationString = cleanupAssistantMentions(
+        renderedConversationString
+      );
       const result = await classifyConversation(renderedConversationString);
       console.log(
         `[%s] [%s]\n\n--------------\n\n`,

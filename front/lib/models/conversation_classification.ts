@@ -51,6 +51,12 @@ ConversationClassification.init(
     sequelize: front_sequelize,
     modelName: "ConversationClassification",
     tableName: "conversation_classifications",
+    indexes: [
+      {
+        fields: ["conversationId"],
+        unique: true,
+      },
+    ],
   }
 );
 
