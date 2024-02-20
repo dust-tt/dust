@@ -98,8 +98,8 @@ function getValidRows(allRows: string[][], loggerArgs: object) {
 
   // We assume that the first row is always the headers.
   // Headers are used to assert the number of cells per row.
-  const [rawHeaders] = filteredRows;
-  if (!rawHeaders || rawHeaders.length === 0) {
+  const [headers] = filteredRows;
+  if (!headers || headers.length === 0) {
     logger.info(
       loggerArgs,
       "[Spreadsheet] Skipping due to empty initial rows."
