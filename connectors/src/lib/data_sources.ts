@@ -477,6 +477,7 @@ export async function upsertTableFromCsv({
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
     },
+    validateStatus: null,
   };
 
   let dustRequestResult: AxiosResponse;
