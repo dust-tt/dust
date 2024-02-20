@@ -49,7 +49,7 @@ async function upsertTable(
 
   const { id, spreadsheet, title } = sheet;
   // Table name will be slugify in front.
-  const tableName = `${spreadsheet.title} - ${title}`;
+  const tableName = `${spreadsheet.title} - ${title} (${spreadsheet.id})`;
   const tableDescription = `Structured data from the Google Spreadsheet (${spreadsheet.title}) and sheet (${title}`;
 
   const csv = stringify(rows);
@@ -108,7 +108,7 @@ function getSanitizedHeaders(rawHeaders: string[], loggerArgs: object) {
     } else {
       logger.info(
         loggerArgs,
-        "Duplicated headers detected; suffixes added for uniqueness."
+        "[Spreadsheet] Duplicated headers detected; suffixes added for uniqueness."
       );
 
       // Append a 4-character suffix to duplicate header names for uniqueness.
@@ -126,7 +126,10 @@ function getValidRows(allRows: string[][], loggerArgs: object) {
   // Headers are used to assert the number of cells per row.
   const [rawHeaders] = filteredRows;
   if (!rawHeaders || rawHeaders.length === 0) {
-    logger.info(loggerArgs, "Skipping due to empty initial rows.");
+    logger.info(
+      loggerArgs,
+      "[Spreadsheet] Skipping due to empty initial rows."
+    );
     return [];
   }
   const headers = getSanitizedHeaders(rawHeaders, loggerArgs);
@@ -154,7 +157,7 @@ function getValidRows(allRows: string[][], loggerArgs: object) {
   if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
     logger.info(
       { ...loggerArgs, rowCount: validRows.length },
-      `Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}`
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}`
     );
   }
 
@@ -176,10 +179,14 @@ async function processSheet(connector: ConnectorResource, sheet: Sheet) {
     },
   };
 
-  logger.info(loggerArgs, "Processing sheet in Google Spreadsheet.");
+  logger.info(
+    loggerArgs,
+    "[Spreadsheet] Processing sheet in Google Spreadsheet."
+  );
 
   const rows = await getValidRows(sheet.values, loggerArgs);
-  if (rows.length > 0) {
+  // Assuming the first line as headers, at least one additional data line is required.
+  if (rows.length > 1) {
     await upsertTable(connector, sheet, rows);
 
     await upsertSheetInDb(connector, sheet);
@@ -206,7 +213,7 @@ async function getAllSheetsFromSpreadSheet(
       },
       sheetCount: spreadsheet.sheets?.length,
     },
-    "List sheets in spreadsheet."
+    "[Spreadsheet] List sheets in spreadsheet."
   );
 
   const sheets: Sheet[] = [];
@@ -274,7 +281,7 @@ export async function syncSpreadSheet(
         id: file.id,
       },
     },
-    "Syncing Google Spreadsheet."
+    "[Spreadsheet] Syncing Google Spreadsheet."
   );
 
   const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
@@ -324,7 +331,7 @@ async function deleteSheetForSpreadsheet(
       sheet,
       spreadsheetFileId,
     },
-    "Deleting google drive sheet."
+    "[Spreadsheet] Deleting google drive sheet."
   );
 
   // First remove the upserted table in core.
@@ -372,7 +379,7 @@ export async function deleteSpreadsheet(
       connectorId: connector.id,
       spreadsheet: file,
     },
-    "Deleting Google Spreadsheet."
+    "[Spreadsheet] Deleting Google Spreadsheet."
   );
 
   if (sheetsInSpreadsheet.length > 0) {
