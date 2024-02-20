@@ -4,6 +4,7 @@ export const WHITELISTABLE_FEATURES = [
   "mistral_next",
   "structured_data",
   "workspace_analytics",
+  "usage_data_api",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
