@@ -246,7 +246,6 @@ export async function cleanupGoogleDriveConnector(
   );
 
   try {
-    console.log("> connector:", connector);
     const credentials = await getGoogleCredentials(connector.connectionId);
 
     const revokeTokenRes = await authClient.revokeToken(
