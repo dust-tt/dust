@@ -337,14 +337,6 @@ async function rowsFromCsv(
     }
   }
 
-  // Drop empty columns.
-  for (const [col, values] of Object.entries(valuesByCol)) {
-    if (values.every((v) => v === "")) {
-      delete valuesByCol[col];
-    }
-  }
-  header = header?.filter((h) => !!valuesByCol[h]?.length);
-
   if (!header || !Object.values(valuesByCol).some((vs) => vs.length > 0)) {
     return new Err({
       type: "empty_csv",
@@ -354,7 +346,9 @@ async function rowsFromCsv(
 
   // Parse values and infer types for each column.
   const parsedValuesByCol: Record<string, RowValue[]> = {};
-  for (const [col, values] of Object.entries(valuesByCol)) {
+  for (const [col, valuesRaw] of Object.entries(valuesByCol)) {
+    const values = valuesRaw.map((v) => v.trim());
+
     if (values.every((v) => v === "")) {
       // All values are empty, we skip this column.
       continue;
@@ -454,7 +448,7 @@ function getSanitizedHeader(rawHeader: string[]) {
       acc.push(slugifiedName);
     } else {
       let conflictResolved = false;
-      for (let i = 2; i < 10000; i++) {
+      for (let i = 2; i < 64; i++) {
         if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
           acc.push(slugify(`${slugifiedName}_${i}`));
           conflictResolved = true;
