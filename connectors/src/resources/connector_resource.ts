@@ -31,10 +31,14 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     this.providerStrategy = getConnectorProviderStrategy(type);
   }
 
-  static async listByType(type: ConnectorProvider) {
+  static async listByType(
+    type: ConnectorProvider,
+    { connectionId }: { connectionId?: string }
+  ) {
     const blobs = await ConnectorResource.model.findAll({
       where: {
         type,
+        connectionId,
       },
     });
 
