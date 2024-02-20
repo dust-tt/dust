@@ -15,7 +15,7 @@ interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
  *
  * For now, this class is designed to be extended by specific resource classes, each tied to a Sequelize model.
  */
-export class BaseResource<M extends Model> {
+export abstract class BaseResource<M extends Model> {
   readonly id: number;
 
   constructor(readonly model: ModelStatic<M>, blob: Attributes<M>) {
@@ -41,16 +41,7 @@ export class BaseResource<M extends Model> {
     return new this(this.model, blob.get());
   }
 
-  // Temporary, until we move the deletion logic in the resource framework, support a transaction.
-  async delete(transaction?: Transaction): Promise<number> {
-    return this.model.destroy({
-      // @ts-expect-error TS cannot infer the presence of 'id' in Sequelize models, but our models always include 'id'.
-      where: {
-        id: this.id,
-      },
-      transaction,
-    });
-  }
+  abstract delete(transaction?: Transaction): Promise<void>;
 
   async update(
     blob: Partial<Attributes<M>>

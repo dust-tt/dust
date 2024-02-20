@@ -273,6 +273,10 @@ export async function stopWebcrawlerConnector(
 export async function cleanupWebcrawlerConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Connector not found.");
+  }
   return sequelizeConnection.transaction(async (transaction) => {
     await WebCrawlerPage.destroy({
       where: {
