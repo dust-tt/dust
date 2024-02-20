@@ -14,7 +14,7 @@ export const MESSAGE_CLASSES = [
   "hiring",
   "ops",
   "security compliance",
-  "undetermined",
+  "unknown",
 ] as const;
 
 export type MESSAGE_CLASS = (typeof MESSAGE_CLASSES)[number];

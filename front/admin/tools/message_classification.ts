@@ -13,10 +13,9 @@ async function classifyUserMessage(userMessage: UserMessage) {
     apiKey: process.env.DUST_MANAGED_OPENAI_API_KEY,
   });
 
-  const prompt =
-    `Classify this message as one class of the following classes: ${MESSAGE_CLASSES.join(
-      ", "
-    )}:` as const;
+  const prompt = `Classify this message as one class of the following classes: ${MESSAGE_CLASSES.join(
+    ", "
+  )}:`;
   const promptWithMessage = `${prompt}\n${userMessage.content}`;
   const chatCompletion = await openai.chat.completions.create({
     messages: [{ role: "user", content: promptWithMessage }],
@@ -84,11 +83,6 @@ export async function classifyWorkspace({
       if (message.userMessageId) {
         const userMessage = await UserMessage.findByPk(message.userMessageId);
         if (userMessage) {
-          console.log(
-            "working with message id",
-            userMessage.id,
-            userMessage.content
-          );
           if (
             await UserMessageClassification.findOne({
               where: { userMessageId: userMessage.id },
@@ -98,7 +92,11 @@ export async function classifyWorkspace({
             continue;
           }
           const result = await classifyUserMessage(userMessage);
-          console.log(`[%s] [%s]`, userMessage.content, result);
+          console.log(
+            `[%s] [%s]`,
+            userMessage.content.substring(0, 10),
+            result
+          );
           if (result && isMessageClassification(result)) {
             await UserMessageClassification.upsert({
               messageClass: result,
