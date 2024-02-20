@@ -4,7 +4,8 @@ import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Subscription, Workspace } from "@app/lib/models";
+import { Membership, Subscription, User, Workspace } from "@app/lib/models";
+import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetWorkspacesResponseBody = {
@@ -109,20 +110,45 @@ async function handler(
       }
 
       if (search) {
-        conditions.push({
-          [Op.or]: [
-            {
-              sId: {
-                [Op.iLike]: `${search}%`,
-              },
+        let isSearchByEmail = false;
+        if (isEmailValid(search)) {
+          const user = await User.findOne({
+            where: {
+              email: search,
             },
-            {
-              name: {
-                [Op.iLike]: `${search}%`,
+            include: [
+              {
+                model: Membership,
+                attributes: ["workspaceId"],
               },
-            },
-          ],
-        });
+            ],
+          });
+          if (user?.memberships) {
+            conditions.push({
+              id: {
+                [Op.in]: user?.memberships.map((m) => m.workspaceId),
+              },
+            });
+            isSearchByEmail = true;
+          }
+        }
+
+        if (!isSearchByEmail) {
+          conditions.push({
+            [Op.or]: [
+              {
+                sId: {
+                  [Op.iLike]: `${search}%`,
+                },
+              },
+              {
+                name: {
+                  [Op.iLike]: `${search}%`,
+                },
+              },
+            ],
+          });
+        }
       }
 
       const where: FindOptions<Workspace>["where"] = conditions.length
