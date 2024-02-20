@@ -787,7 +787,11 @@ export async function renderDatabaseFromPages({
     );
   }
 
-  let header = Object.entries(pagesProperties[0]).map(([key]) => key);
+  let header = Object.entries(pagesProperties[0])
+    .map(([key]) => key)
+    // We remove empty keys.
+    .filter((k) => !!k.trim());
+
   if (dustIdColumn) {
     header = ["__dust_id", ...header];
   }
