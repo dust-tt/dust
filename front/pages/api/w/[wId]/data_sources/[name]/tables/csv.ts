@@ -163,7 +163,7 @@ export async function handlePostTableCsvUpsertRequest(
     });
   }
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
-  const slugifyName = slugify(name);
+  const slugifyName = slugify(`${name} (${tableId.substring(0, 4)})`);
 
   const tableRes = await upsertTableFromCsv({
     owner,
