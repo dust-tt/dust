@@ -1,11 +1,6 @@
 import type { ConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type {
-  Attributes,
-  FindOptions,
-  ModelStatic,
-  WhereOptions,
-} from "sequelize";
+import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
 
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
