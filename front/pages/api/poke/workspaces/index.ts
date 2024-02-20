@@ -112,24 +112,29 @@ async function handler(
       if (search) {
         let isSearchByEmail = false;
         if (isEmailValid(search)) {
-          const user = await User.findOne({
+          // We can have 2 users with the same email if a Google user and a Github user have the same email.
+          const users = await User.findAll({
             where: {
               email: search,
             },
-            include: [
-              {
-                model: Membership,
-                attributes: ["workspaceId"],
-              },
-            ],
           });
-          if (user?.memberships) {
-            conditions.push({
-              id: {
-                [Op.in]: user?.memberships.map((m) => m.workspaceId),
+          if (users.length) {
+            const memberships = await Membership.findAll({
+              where: {
+                userId: {
+                  [Op.in]: users.map((u) => u.id),
+                },
               },
+              attributes: ["workspaceId"],
             });
-            isSearchByEmail = true;
+            if (memberships.length) {
+              conditions.push({
+                id: {
+                  [Op.in]: memberships.map((m) => m.workspaceId),
+                },
+              });
+              isSearchByEmail = true;
+            }
           }
         }
 

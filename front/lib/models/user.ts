@@ -3,12 +3,10 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { front_sequelize } from "@app/lib/databases";
-import type { Membership } from "@app/lib/models";
 
 export class User extends Model<
   InferAttributes<User>,
@@ -27,8 +25,6 @@ export class User extends Model<
   declare imageUrl: string | null;
 
   declare isDustSuperUser: CreationOptional<boolean>;
-
-  declare memberships: NonAttribute<Membership[]>;
 }
 User.init(
   {
