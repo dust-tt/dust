@@ -2389,8 +2389,9 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   tableDescription: string;
 } {
   const tableId = `notion-${database.notionDatabaseId}`;
-  const tableName =
-    database.title ?? `Untitled Database (${database.notionDatabaseId})`;
+  const tableName = `${database.title ?? "Untitled Database"} (${
+    database.notionDatabaseId
+  })`;
   const tableDescription = `Structured data from Notion Database ${tableName}`;
   return { tableId, tableName, tableDescription };
 }
