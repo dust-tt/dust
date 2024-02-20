@@ -4,7 +4,6 @@ import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
-import { classifyWorkspace } from "@app/admin/tools/message_classification";
 import { subscriptionForWorkspace } from "@app/lib/auth";
 import {
   DataSource,
