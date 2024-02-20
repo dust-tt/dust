@@ -3,9 +3,9 @@ import OpenAI from "openai";
 
 import { UserMessage } from "@app/lib/models";
 import { Conversation, Message, Workspace } from "@app/lib/models";
-import { UserMessageClassification } from "@app/lib/models/user_message_classification";
+import { ConversationClassification } from "@app/lib/models/conversation_classification";
 
-async function classifyUserMessage(userMessage: UserMessage) {
+async function classifyConversation(content: string) {
   if (!process.env.DUST_MANAGED_OPENAI_API_KEY) {
     throw new Error("DUST_MANAGED_OPENAI_API_KEY is not set");
   }
@@ -16,9 +16,9 @@ async function classifyUserMessage(userMessage: UserMessage) {
   const prompt = `Classify this message as one class of the following classes: ${MESSAGE_CLASSES.join(
     ", "
   )}:`;
-  const promptWithMessage = `${prompt}\n${userMessage.content}`;
+  const promptWithContent = `${prompt}\n${content}`;
   const chatCompletion = await openai.chat.completions.create({
-    messages: [{ role: "user", content: promptWithMessage }],
+    messages: [{ role: "user", content: promptWithContent }],
     model: "gpt-3.5-turbo",
     functions: [
       {
@@ -53,7 +53,6 @@ export async function classifyWorkspace({
   workspaceId: string;
   limit: number;
 }) {
-  let count = 0;
   const workspace = await Workspace.findOne({
     where: {
       sId: workspaceId,
@@ -71,6 +70,7 @@ export async function classifyWorkspace({
     limit: limit,
     order: [["id", "DESC"]],
   });
+  console.log("conversations", conversations.length);
 
   for (const conversation of conversations) {
     const messages = await Message.findAll({
@@ -78,39 +78,54 @@ export async function classifyWorkspace({
         conversationId: conversation.id,
       },
       attributes: ["id", "userMessageId"],
+      order: [["id", "ASC"]],
     });
+    if (messages.length > 30) {
+      console.log("too many messages", conversation.id);
+      continue;
+    }
+    const renderedConversation: { username: string; content: string }[] = [];
     for (const message of messages) {
       if (message.userMessageId) {
         const userMessage = await UserMessage.findByPk(message.userMessageId);
-        if (userMessage) {
-          if (
-            await UserMessageClassification.findOne({
-              where: { userMessageId: userMessage.id },
-            })
-          ) {
-            console.log("already classified", userMessage.id);
-            continue;
-          }
-          const result = await classifyUserMessage(userMessage);
-          console.log(
-            `[%s] [%s]`,
-            userMessage.content.substring(0, 10),
-            result
-          );
-          if (result && isMessageClassification(result)) {
-            await UserMessageClassification.upsert({
-              messageClass: result,
-              userMessageId: userMessage.id,
-            });
-            count++;
-            if (count >= limit) {
-              console.log("limit reached");
-              return;
-            }
-          } else {
-            console.log("could not classify message", userMessage.id);
-          }
+        if (!userMessage) {
+          console.log("user message not found", message.userMessageId);
+          continue;
         }
+        renderedConversation.push({
+          username:
+            userMessage.userContextFullName ||
+            userMessage.userContextEmail ||
+            userMessage.userContextUsername,
+          content: userMessage.content,
+        });
+      }
+    }
+    if (renderedConversation.length > 0) {
+      const existingClassification = await ConversationClassification.findOne({
+        where: { conversationId: conversation.id },
+      });
+      if (existingClassification) {
+        console.log("already classified", conversation.id);
+        continue;
+      }
+
+      const renderedConversationString = renderedConversation
+        .map((message) => `${message.username}: ${message.content}`)
+        .join("\n");
+      const result = await classifyConversation(renderedConversationString);
+      console.log(
+        `[%s] [%s]\n\n--------------\n\n`,
+        renderedConversationString.substring(0, 250),
+        result
+      );
+      if (result && isMessageClassification(result)) {
+        await ConversationClassification.upsert({
+          messageClass: result,
+          conversationId: conversation.id,
+        });
+      } else {
+        console.log("could not classify message", conversation.id);
       }
     }
   }
