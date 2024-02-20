@@ -102,11 +102,10 @@ export async function classifyWorkspace({
       }
     }
     if (renderedConversation.length > 0) {
-      if (
-        await ConversationClassification.findOne({
-          where: { conversationId: conversation.id },
-        })
-      ) {
+      const existingClassification = await ConversationClassification.findOne({
+        where: { conversationId: conversation.id },
+      });
+      if (existingClassification) {
         console.log("already classified", conversation.id);
         continue;
       }
