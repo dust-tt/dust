@@ -29,7 +29,7 @@ import {
 } from "@connectors/lib/models/github";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const HANDLED_WEBHOOKS = {
   installation_repositories: new Set(["added", "removed"]),
@@ -110,11 +110,8 @@ const _webhookGithubAPIHandler = async (
 
   const installationId = payload.installation.id.toString();
 
-  const connectors = await ConnectorModel.findAll({
-    where: {
-      connectionId: installationId,
-      type: "github",
-    },
+  const connectors = await ConnectorResource.listByType("github", {
+    connectionId: installationId,
   });
 
   if (!connectors.length) {
@@ -122,7 +119,7 @@ const _webhookGithubAPIHandler = async (
       {
         installationId,
       },
-      "No GitHub connectors found for installation"
+      "No GitHub connectors found for installation."
     );
     // return 200 to avoid github retrying
     return res.status(200);
@@ -141,7 +138,7 @@ const _webhookGithubAPIHandler = async (
     {} as Record<string, GithubConnectorState>
   );
 
-  const enabledConnectors: ConnectorModel[] = [];
+  const enabledConnectors: ConnectorResource[] = [];
   for (const connector of connectors) {
     const connectorState = githubConnectorStates[connector.id];
     if (!connectorState) {
@@ -326,7 +323,7 @@ const _webhookGithubAPIHandler = async (
 };
 
 async function syncRepos(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repos: { name: string; id: number }[],
   res: Response<GithubWebhookResBody>
@@ -358,7 +355,7 @@ async function syncRepos(
 }
 
 async function garbageCollectRepos(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repos: { name: string; id: number }[],
   res: Response<GithubWebhookResBody>
@@ -399,7 +396,7 @@ async function garbageCollectRepos(
 }
 
 async function syncCode(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repoName: string,
   repoId: number,
@@ -494,7 +491,7 @@ async function syncCode(
 }
 
 async function syncIssue(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repoName: string,
   repoId: number,
@@ -536,7 +533,7 @@ async function syncIssue(
 }
 
 async function syncDiscussion(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repoName: string,
   repoId: number,
@@ -578,7 +575,7 @@ async function syncDiscussion(
 }
 
 async function garbageCollectIssue(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repoName: string,
   repoId: number,
@@ -620,7 +617,7 @@ async function garbageCollectIssue(
 }
 
 async function garbageCollectDiscussion(
-  connectors: ConnectorModel[],
+  connectors: ConnectorResource[],
   orgLogin: string,
   repoName: string,
   repoId: number,

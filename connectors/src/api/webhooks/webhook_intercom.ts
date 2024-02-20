@@ -10,7 +10,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const logger = mainLogger.child({ provider: "intercom" });
 
@@ -70,13 +70,10 @@ const _webhookIntercomAPIHandler = async (
   }
 
   // Find Connector
-  const connector = await ConnectorModel.findOne({
-    where: {
-      id: intercomWorskpace.connectorId,
-      type: "intercom",
-    },
-  });
-  if (!connector) {
+  const connector = await ConnectorResource.fetchById(
+    intercomWorskpace.connectorId
+  );
+  if (!connector || connector.type !== "intercom") {
     logger.error("[Intercom] Received Intercom webhook for unknown connector", {
       event,
     });

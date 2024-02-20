@@ -31,10 +31,14 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     this.providerStrategy = getConnectorProviderStrategy(type);
   }
 
-  static async listByType(type: ConnectorProvider) {
+  static async listByType(
+    type: ConnectorProvider,
+    { connectionId }: { connectionId?: string }
+  ) {
     const blobs = await ConnectorResource.model.findAll({
       where: {
         type,
+        connectionId,
       },
     });
 
@@ -42,6 +46,28 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
       (b: ConnectorModel) => new ConnectorResource(ConnectorModel, b.get())
     );
+  }
+
+  static async findByDataSourceAndConnection(
+    dataSource: {
+      workspaceId: string;
+      dataSourceName: string;
+    },
+    { connectionId }: { connectionId?: string } = {}
+  ) {
+    const blob = await ConnectorResource.model.findOne({
+      where: {
+        workspaceId: dataSource.workspaceId,
+        dataSourceName: dataSource.dataSourceName,
+        connectionId,
+      },
+    });
+    if (!blob) {
+      return null;
+    }
+
+    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
+    return new this(this.model, blob.get());
   }
 
   async delete(): Promise<Result<undefined, Error>> {
