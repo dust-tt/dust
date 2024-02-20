@@ -13,9 +13,6 @@ import {
 } from "@connectors/connectors/notion/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  NotionConnectorBlockCacheEntry,
-  NotionConnectorPageCacheEntry,
-  NotionConnectorResourcesToCheckCacheEntry,
   NotionConnectorState,
   NotionDatabase,
   NotionPage,
@@ -328,42 +325,16 @@ export async function cleanupNotionConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await sequelizeConnection.transaction(async (transaction) => {
-    await NotionPage.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await NotionConnectorState.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await NotionConnectorBlockCacheEntry.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await NotionConnectorPageCacheEntry.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await NotionConnectorResourcesToCheckCacheEntry.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-
-    await connector.delete(transaction);
-  });
-
   await deleteNangoConnection(connector.connectionId);
+
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Notion connector."
+    );
+    return res;
+  }
 
   return new Ok(undefined);
 }

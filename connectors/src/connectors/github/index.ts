@@ -219,31 +219,16 @@ export async function cleanupGithubConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  return sequelizeConnection.transaction(async (transaction) => {
-    try {
-      await GithubIssue.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      });
-      await GithubConnectorState.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      });
-      await connector.delete(transaction);
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Github connector."
+    );
+    return res;
+  }
 
-      return new Ok(undefined);
-    } catch (err) {
-      logger.error(
-        { connectorId, error: err },
-        "Error cleaning up github connector"
-      );
-      return new Err(err as Error);
-    }
-  });
+  return new Ok(undefined);
 }
 
 export async function retrieveGithubConnectorPermissions({

@@ -11,7 +11,6 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
-  GoogleDriveSyncToken,
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
@@ -241,90 +240,69 @@ export async function cleanupGoogleDriveConnector(
     );
   }
 
-  return sequelizeConnection.transaction(async (transaction) => {
-    const authClient = new google.auth.OAuth2(
-      googleDriveConfig.getRequiredGoogleDriveClientId(),
-      googleDriveConfig.getRequiredGoogleDriveClientSecret()
+  const authClient = new google.auth.OAuth2(
+    googleDriveConfig.getRequiredGoogleDriveClientId(),
+    googleDriveConfig.getRequiredGoogleDriveClientSecret()
+  );
+
+  try {
+    const credentials = await getGoogleCredentials(connector.connectionId);
+
+    const revokeTokenRes = await authClient.revokeToken(
+      credentials.credentials.refresh_token
     );
 
-    try {
-      const credentials = await getGoogleCredentials(connector.connectionId);
-
-      const revokeTokenRes = await authClient.revokeToken(
-        credentials.credentials.refresh_token
+    if (revokeTokenRes.status !== 200) {
+      logger.error(
+        {
+          error: revokeTokenRes.data,
+        },
+        "Could not revoke token"
       );
-
-      if (revokeTokenRes.status !== 200) {
-        logger.error(
-          {
-            error: revokeTokenRes.data,
-          },
-          "Could not revoke token"
-        );
-        if (!force) {
-          return new Err(new Error("Could not revoke token"));
-        }
-      }
-    } catch (err) {
       if (!force) {
-        throw err;
-      } else {
-        logger.error(
-          {
-            err,
-          },
-          "Error revoking token"
-        );
+        return new Err(new Error("Could not revoke token"));
       }
     }
+  } catch (err) {
+    if (!force) {
+      throw err;
+    } else {
+      logger.error(
+        {
+          err,
+        },
+        "Error revoking token"
+      );
+    }
+  }
 
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
+  const nangoRes = await nangoDeleteConnection(
+    connector.connectionId,
+    googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
+  );
+  if (nangoRes.isErr()) {
+    if (!force) {
+      return nangoRes;
+    } else {
+      logger.error(
+        {
+          err: nangoRes.error,
+        },
+        "Error deleting connection from Nango"
+      );
+    }
+  }
+
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Google Drive connector."
     );
-    if (nangoRes.isErr()) {
-      if (!force) {
-        return nangoRes;
-      } else {
-        logger.error(
-          {
-            err: nangoRes.error,
-          },
-          "Error deleting connection from Nango"
-        );
-      }
-    }
+    return res;
+  }
 
-    await GoogleDriveFolders.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
-    await GoogleDriveFiles.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
-
-    await GoogleDriveSyncToken.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
-    await GoogleDriveWebhook.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
-
-    await connector.delete(transaction);
-
-    return new Ok(undefined);
-  });
+  return new Ok(undefined);
 }
 
 export async function retrieveGoogleDriveConnectorPermissions({

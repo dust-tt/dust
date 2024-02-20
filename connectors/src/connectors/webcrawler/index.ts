@@ -273,34 +273,21 @@ export async function stopWebcrawlerConnector(
 export async function cleanupWebcrawlerConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  return sequelizeConnection.transaction(async (transaction) => {
-    await WebCrawlerPage.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Connector not found.");
+  }
 
-    await WebCrawlerFolder.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
-    await WebCrawlerConfiguration.destroy({
-      where: {
-        connectorId: connectorId,
-      },
-      transaction,
-    });
-    await ConnectorModel.destroy({
-      where: {
-        id: connectorId,
-      },
-      transaction,
-    });
-    return new Ok(undefined);
-  });
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Webcrawler connector."
+    );
+    return res;
+  }
+
+  return new Ok(undefined);
 }
 
 export async function retrieveWebCrawlerObjectsTitles(
