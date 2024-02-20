@@ -272,17 +272,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
-    case "classify-messages": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.limit) {
-        throw new Error("Missing --limit argument");
-      }
-      await classifyWorkspace({ workspaceId: args.wId, limit: args.limit });
-      return;
-    }
-
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
