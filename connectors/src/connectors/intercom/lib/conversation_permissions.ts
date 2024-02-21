@@ -141,11 +141,17 @@ export async function retrieveIntercomConversationsPermissions({
       });
     }
   } else {
+    const teams = await fetchIntercomTeams(intercomClient);
     if (isRootLevel) {
+      // This is an ugly hack
+      // Since we only sync conversations attached to a Team, if there are no teams, we display "No conversations"
+      if (teams.length === 0) {
+        rootConversationNode.title = "No conversations available for sync";
+        rootConversationNode.expandable = false;
+      }
       nodes.push(rootConversationNode);
     }
     if (parentInternalId === teamsInternalId) {
-      const teams = await fetchIntercomTeams(intercomClient);
       teams.forEach((team) => {
         const isTeamInDb = teamsWithReadPermission.some((teamFromDb) => {
           return teamFromDb.teamId === team.id;
