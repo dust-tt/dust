@@ -141,6 +141,7 @@ pub struct Table {
     name: String,
     description: String,
     schema: Option<TableSchema>,
+    schema_stale_at: Option<u64>,
 }
 
 pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
@@ -156,6 +157,7 @@ impl Table {
         name: &str,
         description: &str,
         schema: &Option<TableSchema>,
+        schema_stale_at: Option<u64>,
     ) -> Self {
         Table {
             project: project.clone(),
@@ -165,6 +167,7 @@ impl Table {
             name: name.to_string(),
             description: description.to_string(),
             schema: schema.clone(),
+            schema_stale_at,
         }
     }
 
@@ -186,7 +189,7 @@ impl Table {
     pub fn description(&self) -> &str {
         &self.description
     }
-    pub fn schema(&self) -> Option<&TableSchema> {
+    pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }
     pub fn unique_id(&self) -> String {
@@ -206,6 +209,29 @@ impl Table {
                     .join("\n"),
                 self.description()
             ),
+        }
+    }
+
+    pub async fn schema(
+        &mut self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<Option<TableSchema>> {
+        match &self.schema_stale_at {
+            Some(_) => {
+                let schema = self.compute_schema(databases_store).await?;
+                store
+                    .update_table_schema(
+                        &self.project,
+                        &self.data_source_id,
+                        &self.table_id,
+                        &schema,
+                    )
+                    .await?;
+                self.schema = Some(schema.clone());
+                Ok(Some(schema.clone()))
+            }
+            None => Ok(self.schema.clone()),
         }
     }
 
@@ -265,11 +291,10 @@ impl Table {
             }
         }
 
-        // Validate the tables schema, merge it if necessary and store it in the schema cache.
-        let table_schema = match truncate {
+        let new_table_schema = match truncate {
             // If the new rows replace existing ones, we need to clear the schema cache.
             true => TableSchema::from_rows(&rows)?,
-            false => match self.schema() {
+            false => match self.schema_cached() {
                 // If there is no existing schema cache, simply use the new schema.
                 None => TableSchema::from_rows(&rows)?,
                 Some(existing_table_schema) => {
@@ -284,9 +309,19 @@ impl Table {
                 &self.project,
                 &self.data_source_id,
                 &self.table_id,
-                &table_schema,
+                &new_table_schema,
             )
             .await?;
+
+        if !truncate {
+            // When doing incremental updates to a table's rows, the schema may become too wide.
+            // For example, if a column has only integers, it's an integer column. If a new row has a string in that column, the column becomes a string column.
+            // However, if that row is later updated to have an integer, the column should become an integer column again, but we cannot know that without looking at all the rows.
+            // This is why we invalidate the schema when doing incremental updates, and next time the schema is requested, it will be recomputed from all the rows.
+            store
+                .invalidate_table_schema(&self.project, &self.data_source_id, &self.table_id)
+                .await?;
+        }
 
         // Upsert the rows in the table.
         // Note: if this fails, the Table will still contain the new schema, but the rows will not be updated.
@@ -343,6 +378,33 @@ impl Table {
         databases_store
             .list_table_rows(&self.unique_id(), limit_offset)
             .await
+    }
+
+    async fn compute_schema(
+        &self,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<TableSchema> {
+        let mut schema: TableSchema = TableSchema::empty();
+        let limit = 500;
+        let mut offset = 0;
+        loop {
+            let (rows, total) = self
+                .list_rows(databases_store.clone(), Some((limit, offset)))
+                .await?;
+
+            if offset == 0 {
+                schema = TableSchema::from_rows(&rows)?;
+            } else {
+                schema = schema.merge(&TableSchema::from_rows(&rows)?)?;
+            }
+
+            offset += limit;
+            if offset >= total {
+                break;
+            }
+        }
+
+        Ok(schema)
     }
 }
 
@@ -421,6 +483,7 @@ mod tests {
             "test_dbml",
             "Test records for DBML rendering",
             &Some(schema),
+            None,
         );
 
         let expected = r#"Table test_dbml {

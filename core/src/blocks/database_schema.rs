@@ -72,7 +72,16 @@ impl Block for DatabaseSchema {
             _ => Err(anyhow!(err_msg.clone()))?,
         };
 
-        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
+        let mut tables = load_tables_from_identifiers(&table_identifiers, env).await?;
+
+        // Load the schema for each table.
+        // If the schema cache is stale, this will update it in place.
+        try_join_all(
+            tables
+                .iter_mut()
+                .map(|t| t.schema(env.store.clone(), env.databases_store.clone())),
+        )
+        .await?;
 
         Ok(BlockResult {
             value: serde_json::to_value(
@@ -80,7 +89,7 @@ impl Block for DatabaseSchema {
                     .into_iter()
                     .map(|t| {
                         json!({
-                            "table_schema": t.schema(),
+                            "table_schema": t.schema_cached(),
                             "dbml": t.render_dbml(),
                         })
                     })

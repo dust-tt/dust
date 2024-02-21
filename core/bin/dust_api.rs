@@ -112,13 +112,18 @@ impl APIState {
             };
             apps.into_iter().for_each(|mut app| {
                 let store = self.store.clone();
+                let databases_store = self.databases_store.clone();
                 let qdrant_clients = self.qdrant_clients.clone();
                 let manager = self.run_manager.clone();
 
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
                     let now = std::time::Instant::now();
-                    match app.0.run(app.1, store, qdrant_clients, None).await {
+                    match app
+                        .0
+                        .run(app.1, store, databases_store, qdrant_clients, None)
+                        .await
+                    {
                         Ok(()) => {
                             info!(
                                 run = app.0.run_ref().unwrap().run_id(),
@@ -807,13 +812,20 @@ async fn runs_create_stream(
             // The run is empty for now, we can clone it for the response.
             // let run = app.run_ref().unwrap().clone();
             let store = state.store.clone();
+            let databases_store = state.databases_store.clone();
             let qdrant_clients = state.qdrant_clients.clone();
 
             // Start a task that will run the app in the background.
             tokio::task::spawn(async move {
                 let now = std::time::Instant::now();
                 match app
-                    .run(credentials, store, qdrant_clients, Some(tx.clone()))
+                    .run(
+                        credentials,
+                        store,
+                        databases_store,
+                        qdrant_clients,
+                        Some(tx.clone()),
+                    )
                     .await
                 {
                     Ok(()) => {

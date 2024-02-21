@@ -208,7 +208,7 @@ async fn create_in_memory_sqlite_db(
         let generate_create_table_sql_start = utils::now();
         let create_tables_sql: String = tables
             .into_iter()
-            .filter_map(|t| match t.schema() {
+            .filter_map(|t| match t.schema_cached() {
                 Some(s) => {
                     if s.is_empty() {
                         None
@@ -240,10 +240,10 @@ async fn create_in_memory_sqlite_db(
             .iter()
             .filter(|(_, rows)| !rows.is_empty())
             .map(|(table, rows)| {
-                if table.schema().is_none() {
-                    Err(anyhow!("No schema found for table {}", table.name()))?;
+                if table.schema_cached().is_none() {
+                    Err(anyhow!("No cached schema found for table {}", table.name()))?;
                 }
-                let table_schema = table.schema().unwrap();
+                let table_schema = table.schema_cached().unwrap();
                 let (sql, field_names) = table_schema.get_insert_sql(table.name());
                 let mut stmt = conn.prepare(&sql)?;
 

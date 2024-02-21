@@ -189,6 +189,12 @@ pub trait Store {
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
+    async fn invalidate_table_schema(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()>;
     async fn load_table(
         &self,
         project: &Project,
@@ -403,6 +409,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        name                     TEXT NOT NULL, -- unique within datasource
        description              TEXT NOT NULL,
        schema                   TEXT, -- json, kept up-to-date automatically with the last insert
+       schema_stale_at          BIGINT, -- timestamp when the schema was last invalidated
        data_source              BIGINT NOT NULL,
        FOREIGN KEY(data_source) REFERENCES data_sources(id)
     );",
