@@ -5,6 +5,7 @@ import {
   ElementModal,
   Page,
   ServerIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -344,36 +345,28 @@ function TablesQuerySection({
       .finally(() => setIsLoading(false));
   }, [getTables, isLoading, tablesQueryConfig.tables, tables?.length, isError]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div>Loading...</div>;
-      </div>
-    );
-  }
-
-  if (!tables) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div>Error loading tables.</div>;
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-2">
-      <div>The following tables are queried before answering:</div>
-      {tables.map((t) => (
-        <div
-          className="flex flex-row items-center gap-2"
-          key={`${t.data_source_id}/${t.table_id}`}
-        >
-          <div>
-            <ServerIcon />
-          </div>
-          <div key={`${t.data_source_id}/${t.table_id}`}>{t.name}</div>
-        </div>
-      ))}
+      {isLoading ? (
+        <Spinner />
+      ) : tables ? (
+        <>
+          <div>The following tables are queried before answering:</div>
+          {tables.map((t) => (
+            <div
+              className="flex flex-row items-center gap-2"
+              key={`${t.data_source_id}/${t.table_id}`}
+            >
+              <div>
+                <ServerIcon />
+              </div>
+              <div key={`${t.data_source_id}/${t.table_id}`}>{t.name}</div>
+            </div>
+          ))}
+        </>
+      ) : (
+        <div>Error loading tables.</div>
+      )}
     </div>
   );
 }
