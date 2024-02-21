@@ -42,23 +42,21 @@ export default function ConnectorSyncingChip({
             case "oauth_token_revoked":
               return (
                 <>
-                  Oops! It seems that our access to your account has been
-                  revoked. Please re-authorize this Data Source to keep your
-                  data up to date on Dust.
+                  Our access to your account has been revoked. Re-authorize to
+                  keep the connection up-to-date.
                 </>
               );
             case "third_party_internal_error":
               return (
                 <>
-                  We have encountered an error talking to{" "}
+                  We have encountered an error with{" "}
                   {CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you
-                  an email with more details to resolve the issue.
+                  an email to resolve the issue.
                 </>
               );
             default:
               assertNever(connector.errorType);
           }
-          return <></>;
         })()}
       </Chip>
     );
