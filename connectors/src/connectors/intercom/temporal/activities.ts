@@ -258,6 +258,7 @@ export async function syncCollectionActivity({
   await syncCollection({
     connectorId,
     connectionId: connector.connectionId,
+    helpCenterId,
     isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
     collection,
     dataSourceConfig,

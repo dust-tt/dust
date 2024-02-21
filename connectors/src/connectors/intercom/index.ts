@@ -19,10 +19,7 @@ import {
   revokeSyncCollection,
   revokeSyncHelpCenter,
 } from "@connectors/connectors/intercom/lib/help_center_permissions";
-import {
-  fetchIntercomWorkspace,
-  getIntercomClient,
-} from "@connectors/connectors/intercom/lib/intercom_api";
+import { fetchIntercomWorkspace } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getHelpCenterArticleIdFromInternalId,
   getHelpCenterArticleInternalId,
@@ -355,8 +352,8 @@ export async function setIntercomConnectorPermissions(
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err(new Error("Connector not found"));
   }
+  const connectionId = connector.connectionId;
 
-  const intercomClient = await getIntercomClient(connector.connectionId);
   const toBeSignaledHelpCenterIds = new Set<string>();
   const toBeSignaledTeamIds = new Set<string>();
 
@@ -381,14 +378,14 @@ export async function setIntercomConnectorPermissions(
         toBeSignaledHelpCenterIds.add(helpCenterId);
         if (permission === "none") {
           await revokeSyncHelpCenter({
-            connector,
+            connectorId,
             helpCenterId,
           });
         }
         if (permission === "read") {
           await allowSyncHelpCenter({
-            connector,
-            intercomClient,
+            connectorId,
+            connectionId,
             helpCenterId,
             withChildren: true,
           });
@@ -396,7 +393,7 @@ export async function setIntercomConnectorPermissions(
       } else if (collectionId) {
         if (permission === "none") {
           const revokedCollection = await revokeSyncCollection({
-            connector,
+            connectorId,
             collectionId,
           });
           if (revokedCollection) {
@@ -405,8 +402,8 @@ export async function setIntercomConnectorPermissions(
         }
         if (permission === "read") {
           const newCollection = await allowSyncCollection({
-            connector,
-            intercomClient,
+            connectorId,
+            connectionId,
             collectionId,
           });
           if (newCollection) {
@@ -416,7 +413,7 @@ export async function setIntercomConnectorPermissions(
       } else if (teamId) {
         if (permission === "none") {
           const revokedTeam = await revokeSyncTeam({
-            connector,
+            connectorId,
             teamId,
           });
           if (revokedTeam) {
@@ -425,7 +422,8 @@ export async function setIntercomConnectorPermissions(
         }
         if (permission === "read") {
           const newTeam = await allowSyncTeam({
-            connector,
+            connectorId,
+            connectionId,
             teamId,
           });
           if (newTeam) {
