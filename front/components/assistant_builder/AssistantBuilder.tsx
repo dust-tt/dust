@@ -529,59 +529,6 @@ export default function AssistantBuilder({
   );
   const modalTitle = agentConfigurationId ? "Edit Assistant" : "New Assistant";
 
-  function InstructionScreen() {
-    return (
-      <div className="flex w-full flex-row items-start">
-        <div className="flex w-full flex-col gap-4">
-          <div className="text-2xl font-bold text-element-900">
-            Instructions
-          </div>
-          <div className="flex-grow gap-y-4 self-stretch text-sm font-normal text-element-700">
-            <p>This is your assistant’s heart and soul.</p>
-            <p className="pt-2">
-              Describe, as is you were addressing them, their purpose. Be
-              specific on the role (
-              <span className="italic">I want you to act as&nbsp;…</span>
-              ), their expected output, and&nbsp;any formatting requirements you
-              have (
-              <span className="italic">
-                ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
-              </span>
-              ).
-            </p>
-          </div>
-          <div className="text-sm">
-            <AssistantBuilderTextArea
-              placeholder="I want you to act as…"
-              value={builderState.instructions}
-              onChange={(value) => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  instructions: value,
-                }));
-              }}
-              error={null}
-              name="assistantInstructions"
-            />
-          </div>
-          <AdvancedSettings
-            owner={owner}
-            plan={plan}
-            generationSettings={builderState.generationSettings}
-            setGenerationSettings={(generationSettings) => {
-              setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                generationSettings,
-              }));
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
   function ActionScreen() {
     return (
       <>
@@ -1118,7 +1065,15 @@ export default function AssistantBuilder({
           {(() => {
             switch (screen) {
               case "instructions":
-                return <InstructionScreen />;
+                return (
+                  <InstructionScreen
+                    owner={owner}
+                    plan={plan}
+                    builderState={builderState}
+                    setBuilderState={setBuilderState}
+                    setEdited={setEdited}
+                  />
+                );
               case "actions":
                 return <ActionScreen />;
               case "naming":
@@ -1132,6 +1087,71 @@ export default function AssistantBuilder({
         {false && <div className="flex flex-col space-y-8 pb-16 pt-8"></div>}
       </AppLayout>
     </>
+  );
+}
+
+function InstructionScreen({
+  owner,
+  plan,
+  builderState,
+  setBuilderState,
+  setEdited,
+}: {
+  owner: WorkspaceType;
+  plan: PlanType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    statefn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+}) {
+  return (
+    <div className="flex w-full flex-row items-start">
+      <div className="flex w-full flex-col gap-4">
+        <div className="text-2xl font-bold text-element-900">Instructions</div>
+        <div className="flex-grow gap-y-4 self-stretch text-sm font-normal text-element-700">
+          <p>This is your assistant’s heart and soul.</p>
+          <p className="pt-2">
+            Describe, as is you were addressing them, their purpose. Be specific
+            on the role (
+            <span className="italic">I want you to act as&nbsp;…</span>
+            ), their expected output, and&nbsp;any formatting requirements you
+            have (
+            <span className="italic">
+              ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
+            </span>
+            ).
+          </p>
+        </div>
+        <div className="text-sm">
+          <AssistantBuilderTextArea
+            placeholder="I want you to act as…"
+            value={builderState.instructions}
+            onChange={(value) => {
+              setEdited(true);
+              setBuilderState((state) => ({
+                ...state,
+                instructions: value,
+              }));
+            }}
+            error={null}
+            name="assistantInstructions"
+          />
+        </div>
+        <AdvancedSettings
+          owner={owner}
+          plan={plan}
+          generationSettings={builderState.generationSettings}
+          setGenerationSettings={(generationSettings) => {
+            setEdited(true);
+            setBuilderState((state) => ({
+              ...state,
+              generationSettings,
+            }));
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
