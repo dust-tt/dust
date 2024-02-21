@@ -9,7 +9,7 @@ const {
   DUST_CONNECTORS_SECRET,
   DUST_CONNECTORS_WEBHOOKS_SECRET,
   GITHUB_WEBHOOK_SECRET,
-  INTERCOM_WEBHOOK_SECRET,
+  INTERCOM_CLIENT_SECRET,
 } = process.env;
 
 if (!DUST_CONNECTORS_SECRET) {
@@ -27,7 +27,10 @@ export const authMiddleware = (
   if (req.path.startsWith("/webhooks")) {
     if (req.path.endsWith("/github")) {
       return _authMiddlewareWebhooksGithub(req, res, next);
-    } else if (req.path.endsWith("/intercom")) {
+    } else if (
+      req.path.endsWith("/intercom") ||
+      req.path.endsWith("/intercom/uninstall")
+    ) {
       return _authMiddlewareWebhooksIntercom(req, res, next);
     }
     return _authMiddlewareWebhooks(req, res, next);
@@ -214,8 +217,8 @@ const _authMiddlewareWebhooksIntercom = (
     });
   }
 
-  if (!INTERCOM_WEBHOOK_SECRET) {
-    logger.error("INTERCOM_WEBHOOK_SECRET is not defined");
+  if (!INTERCOM_CLIENT_SECRET) {
+    logger.error("INTERCOM_CLIENT_SECRET is not defined");
     return apiError(req, res, {
       status_code: 500,
       api_error: {
@@ -225,60 +228,69 @@ const _authMiddlewareWebhooksIntercom = (
     });
   }
 
-  // check webhook signature
-  // @ts-expect-error -- rawBody is not defined on Request
-  // but it is added by a previous middleware
-  const body = req.rawBody as Buffer;
-
-  if (!req.headers["x-hub-signature"]) {
-    logger.error("x-hub-signature header is missing.");
-    return apiError(req, res, {
-      api_error: {
-        type: "not_found",
-        message: "Not found.",
-      },
-      status_code: 404,
-    });
-  }
-
-  const signatureHeader = req.headers["x-hub-signature"];
-  const computedSignature = `sha1=${crypto
-    .createHmac("sha1", INTERCOM_WEBHOOK_SECRET)
-    .update(body)
-    .digest("hex")}`;
-
-  if (Array.isArray(signatureHeader)) {
-    logger.error(
-      { signatureHeader },
-      `Unexpected x-hub-signature header format`
-    );
-    return apiError(req, res, {
-      api_error: {
-        type: "connector_not_found",
-        message: "Not found.",
-      },
-      status_code: 404,
-    });
-  }
-
   if (
-    !crypto.timingSafeEqual(
-      Buffer.from(signatureHeader),
-      Buffer.from(computedSignature)
-    )
+    req.path ===
+    `/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/intercom/uninstall`
   ) {
-    logger.error(
-      { signatureHeader, computedSignature },
-      `x-hub-signature header does not match computed signature`
-    );
-    return apiError(req, res, {
-      api_error: {
-        type: "not_found",
-        message: "Not found.",
-      },
-      status_code: 404,
-    });
-  }
+    // This is a special case for the uninstall webhook whose signature is not documented on
+    // Interom. We solely rely on the webhook secret to authenticate the request.
+    next();
+  } else {
+    // check webhook signature
+    // @ts-expect-error -- rawBody is not defined on Request
+    // but it is added by a previous middleware
+    const body = req.rawBody as Buffer;
 
-  next();
+    if (!req.headers["x-hub-signature"]) {
+      logger.error("x-hub-signature header is missing.");
+      return apiError(req, res, {
+        api_error: {
+          type: "not_found",
+          message: "Not found.",
+        },
+        status_code: 404,
+      });
+    }
+
+    const signatureHeader = req.headers["x-hub-signature"];
+    const computedSignature = `sha1=${crypto
+      .createHmac("sha1", INTERCOM_CLIENT_SECRET)
+      .update(body)
+      .digest("hex")}`;
+
+    if (Array.isArray(signatureHeader)) {
+      logger.error(
+        { signatureHeader },
+        `Unexpected x-hub-signature header format`
+      );
+      return apiError(req, res, {
+        api_error: {
+          type: "connector_not_found",
+          message: "Not found.",
+        },
+        status_code: 404,
+      });
+    }
+
+    if (
+      !crypto.timingSafeEqual(
+        Buffer.from(signatureHeader),
+        Buffer.from(computedSignature)
+      )
+    ) {
+      logger.error(
+        { signatureHeader, computedSignature },
+        `x-hub-signature header does not match computed signature`
+      );
+      return apiError(req, res, {
+        api_error: {
+          type: "not_found",
+          message: "Not found.",
+        },
+        status_code: 404,
+      });
+    }
+
+    next();
+  }
 };
