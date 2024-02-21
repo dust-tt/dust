@@ -372,7 +372,7 @@ GPT-4 Turbo is OpenAI’s top model and is good for tasks needing advanced think
 
 GPT-4 Turbo can use basic real-time data like date and time, and can give output in multiple languages.
 
-It was trained on public data until April 2023, so it doesn't know about events after that. @gpt4 uses GPT-4 Turbo.
+It was trained on public data until December 2023, so it doesn't know about events after that. @gpt4 uses GPT-4 Turbo.
 
 For builder roles, GPT-4 Turbo offers 128k tokens context window or 300 pages of text.
 
