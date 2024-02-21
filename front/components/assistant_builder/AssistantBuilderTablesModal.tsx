@@ -11,7 +11,7 @@ import type { CoreAPITable, DataSourceType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
@@ -163,9 +163,13 @@ const PickTable = ({
         `${owner.sId}/${dataSource.name}/${t.table_id}`
       ]
   );
-  const filtered = tablesToDisplay.filter((t) => {
-    return subFilter(query.toLowerCase(), t.name.toLowerCase());
-  });
+  const filtered = useMemo(
+    () =>
+      tablesToDisplay.filter((t) => {
+        return subFilter(query.toLowerCase(), t.name.toLowerCase());
+      }),
+    [query, tablesToDisplay]
+  );
 
   const isAllSelected = !!tables.length && !tablesToDisplay.length;
 
