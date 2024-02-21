@@ -56,10 +56,10 @@ import { ConnectorModel } from "@connectors/resources/storage/models/connector_m
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 async function getConnectorOrThrow({
-  connectorType,
+  connectorProvider,
   workspaceId,
 }: {
-  connectorType: ConnectorProvider;
+  connectorProvider: ConnectorProvider;
   workspaceId: string;
 }): Promise<ConnectorModel> {
   if (!workspaceId) {
@@ -67,14 +67,14 @@ async function getConnectorOrThrow({
   }
   const connector = await ConnectorModel.findOne({
     where: {
-      type: connectorType,
+      type: connectorProvider,
       workspaceId: workspaceId,
-      dataSourceName: "managed-" + connectorType,
+      dataSourceName: "managed-" + connectorProvider,
     },
   });
   if (!connector) {
     throw new Error(
-      `No connector found for ${connectorType} workspace with ID ${workspaceId}`
+      `No connector found for ${connectorProvider} workspace with ID ${workspaceId}`
     );
   }
   return connector;
@@ -271,7 +271,7 @@ const confluence = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 
   const connector = await getConnectorOrThrow({
-    connectorType: "confluence",
+    connectorProvider: "confluence",
     workspaceId: wId,
   });
   if (!connector) {
@@ -601,7 +601,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const connector = await getConnectorOrThrow({
-        connectorType: "notion",
+        connectorProvider: "notion",
         workspaceId: args.wId,
       });
 
@@ -663,7 +663,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const { query, wId } = args;
 
       const connector = await getConnectorOrThrow({
-        connectorType: "notion",
+        connectorProvider: "notion",
         workspaceId: wId,
       });
 
