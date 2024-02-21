@@ -21,7 +21,6 @@ import {
   TriangleIcon,
 } from "@dust-tt/sparkle";
 import type {
-  AgentConfigurationScope,
   AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
@@ -54,7 +53,6 @@ import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
 
-import { SharingSection } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -981,9 +979,6 @@ export default function AssistantBuilder({
                     builderState={builderState}
                     setBuilderState={setBuilderState}
                     setEdited={setEdited}
-                    agentConfigurationId={agentConfigurationId}
-                    initialBuilderState={initialBuilderState}
-                    defaultScope={defaultScope}
                     assistantHandleError={assistantHandleError}
                   />
                 );
@@ -1069,9 +1064,6 @@ function NamingScreen({
   builderState,
   setBuilderState,
   setEdited,
-  agentConfigurationId,
-  initialBuilderState,
-  defaultScope,
   assistantHandleError,
 }: {
   owner: WorkspaceType;
@@ -1080,9 +1072,6 @@ function NamingScreen({
     statefn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  agentConfigurationId: string | null;
-  initialBuilderState: AssistantBuilderInitialState | null;
-  defaultScope: AgentConfigurationScope;
   assistantHandleError: string | null;
 }) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
