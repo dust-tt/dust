@@ -20,6 +20,7 @@ import {
   TriangleIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationScope,
   AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
@@ -91,6 +92,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { SharingButton } from "../assistant/Sharing";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -1002,7 +1004,23 @@ export default function AssistantBuilder({
         }
       >
         <div className="flex h-full flex-col gap-5 py-4">
-          <Tab tabs={tabs} variant="stepper" />
+          <div className="flex flex-row justify-between">
+            <Tab tabs={tabs} variant="stepper" />
+            <div className="pt-0.5">
+              <SharingButton
+                owner={owner}
+                agentConfigurationId={agentConfigurationId}
+                initialScope={initialBuilderState?.scope ?? defaultScope}
+                newScope={builderState.scope}
+                setNewScope={(
+                  scope: Exclude<AgentConfigurationScope, "global">
+                ) => {
+                  setEdited(scope !== initialBuilderState?.scope);
+                  setBuilderState((state) => ({ ...state, scope }));
+                }}
+              />
+            </div>
+          </div>
           {(() => {
             switch (screen) {
               case "instructions":
