@@ -529,133 +529,6 @@ export default function AssistantBuilder({
   );
   const modalTitle = agentConfigurationId ? "Edit Assistant" : "New Assistant";
 
-  return (
-    <>
-      <AssistantBuilderDataSourceModal
-        isOpen={showDataSourcesModal}
-        setOpen={(isOpen) => {
-          setShowDataSourcesModal(isOpen);
-          if (!isOpen) {
-            setDataSourceToManage(null);
-          }
-        }}
-        owner={owner}
-        dataSources={configurableDataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dataSourceConfigurations: {
-              ...state.dataSourceConfigurations,
-              [dataSource.name]: {
-                dataSource,
-                selectedResources,
-                isSelectAll,
-              },
-            },
-          }));
-        }}
-        dataSourceToManage={dataSourceToManage}
-      />
-      <TryModalInBuilder
-        owner={owner}
-        builderState={builderState}
-        disabled={!submitEnabled}
-      />
-      <AssistantBuilderDustAppModal
-        isOpen={showDustAppsModal}
-        setOpen={(isOpen) => {
-          setShowDustAppsModal(isOpen);
-          if (!isOpen) {
-            setDataSourceToManage(null);
-          }
-        }}
-        dustApps={dustApps}
-        onSave={({ app }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dustAppConfiguration: {
-              app,
-            },
-          }));
-        }}
-      />
-      <AssistantBuilderTablesModal
-        isOpen={showTableModal}
-        setOpen={(isOpen) => setShowTableModal(isOpen)}
-        owner={owner}
-        dataSources={dataSources}
-        onSave={(t) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            tablesQueryConfiguration: {
-              ...state.tablesQueryConfiguration,
-              [tableKey(t)]: t,
-            },
-          }));
-        }}
-        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
-      />
-      <AvatarPicker
-        owner={owner}
-        isOpen={isAvatarModalOpen}
-        setOpen={setIsAvatarModalOpen}
-        onPick={(avatarUrl) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            avatarUrl,
-          }));
-        }}
-        droidAvatarUrls={DROID_AVATAR_URLS}
-        spiritAvatarUrls={SPIRIT_AVATAR_URLS}
-      />
-      <AppLayout
-        subscription={subscription}
-        hideSidebar
-        owner={owner}
-        gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistants"
-        subNavigation={subNavigationBuild({
-          owner,
-          current: "workspace_assistants",
-        })}
-        titleChildren={
-          !edited ? (
-            <AppLayoutSimpleCloseTitle title={modalTitle} onClose={onClose} />
-          ) : (
-            <AppLayoutSimpleSaveCancelTitle
-              title={modalTitle}
-              onCancel={onClose}
-              onSave={submitEnabled ? onAssistantSave : undefined}
-              isSaving={isSavingOrDeleting}
-            />
-          )
-        }
-      >
-        <div className="flex flex-col gap-5 pt-4">
-          <Tab tabs={tabs} variant="stepper" />
-          {(() => {
-            switch (screen) {
-              case "instructions":
-                return <InstructionScreen />;
-              case "actions":
-                return <ActionScreen />;
-              case "naming":
-                return <NamingScreen />;
-              default:
-                assertNever(screen);
-            }
-          })()}
-          <PrevNextButtons screen={screen} setScreen={setScreen} />
-        </div>
-        {false && <div className="flex flex-col space-y-8 pb-16 pt-8"></div>}
-      </AppLayout>
-    </>
-  );
-
   function InstructionScreen() {
     return (
       <div className="flex w-full flex-row items-start">
@@ -1133,6 +1006,133 @@ export default function AssistantBuilder({
       </>
     );
   }
+
+  return (
+    <>
+      <AssistantBuilderDataSourceModal
+        isOpen={showDataSourcesModal}
+        setOpen={(isOpen) => {
+          setShowDataSourcesModal(isOpen);
+          if (!isOpen) {
+            setDataSourceToManage(null);
+          }
+        }}
+        owner={owner}
+        dataSources={configurableDataSources}
+        onSave={({ dataSource, selectedResources, isSelectAll }) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            dataSourceConfigurations: {
+              ...state.dataSourceConfigurations,
+              [dataSource.name]: {
+                dataSource,
+                selectedResources,
+                isSelectAll,
+              },
+            },
+          }));
+        }}
+        dataSourceToManage={dataSourceToManage}
+      />
+      <TryModalInBuilder
+        owner={owner}
+        builderState={builderState}
+        disabled={!submitEnabled}
+      />
+      <AssistantBuilderDustAppModal
+        isOpen={showDustAppsModal}
+        setOpen={(isOpen) => {
+          setShowDustAppsModal(isOpen);
+          if (!isOpen) {
+            setDataSourceToManage(null);
+          }
+        }}
+        dustApps={dustApps}
+        onSave={({ app }) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            dustAppConfiguration: {
+              app,
+            },
+          }));
+        }}
+      />
+      <AssistantBuilderTablesModal
+        isOpen={showTableModal}
+        setOpen={(isOpen) => setShowTableModal(isOpen)}
+        owner={owner}
+        dataSources={dataSources}
+        onSave={(t) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            tablesQueryConfiguration: {
+              ...state.tablesQueryConfiguration,
+              [tableKey(t)]: t,
+            },
+          }));
+        }}
+        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
+      />
+      <AvatarPicker
+        owner={owner}
+        isOpen={isAvatarModalOpen}
+        setOpen={setIsAvatarModalOpen}
+        onPick={(avatarUrl) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            avatarUrl,
+          }));
+        }}
+        droidAvatarUrls={DROID_AVATAR_URLS}
+        spiritAvatarUrls={SPIRIT_AVATAR_URLS}
+      />
+      <AppLayout
+        subscription={subscription}
+        hideSidebar
+        owner={owner}
+        gaTrackingId={gaTrackingId}
+        topNavigationCurrent="assistants"
+        subNavigation={subNavigationBuild({
+          owner,
+          current: "workspace_assistants",
+        })}
+        titleChildren={
+          !edited ? (
+            <AppLayoutSimpleCloseTitle title={modalTitle} onClose={onClose} />
+          ) : (
+            <AppLayoutSimpleSaveCancelTitle
+              title={modalTitle}
+              onCancel={onClose}
+              onSave={submitEnabled ? onAssistantSave : undefined}
+              isSaving={isSavingOrDeleting}
+            />
+          )
+        }
+      >
+        <div className="flex flex-col gap-5 pt-4">
+          <Tab tabs={tabs} variant="stepper" />
+          {(() => {
+            switch (screen) {
+              case "instructions":
+                return <InstructionScreen />;
+              case "actions":
+                return <ActionScreen />;
+              case "naming":
+                return <NamingScreen />;
+              default:
+                assertNever(screen);
+            }
+          })()}
+          <PrevNextButtons screen={screen} setScreen={setScreen} />
+        </div>
+        {false && <div className="flex flex-col space-y-8 pb-16 pt-8"></div>}
+      </AppLayout>
+    </>
+  );
 }
 
 function PrevNextButtons({
