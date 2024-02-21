@@ -1,3 +1,4 @@
+import type { ConnectorProvider } from "@dust-tt/types";
 import { isConnectorError } from "@dust-tt/types";
 import parseArgs from "minimist";
 import PQueue from "p-queue";
@@ -10,6 +11,7 @@ import {
   STOP_CONNECTOR_BY_TYPE,
   SYNC_CONNECTOR_BY_TYPE,
 } from "@connectors/connectors";
+import { launchConfluenceSyncWorkflow } from "@connectors/connectors/confluence/temporal/client";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
   launchGithubCodeSyncWorkflow,
@@ -57,7 +59,7 @@ async function getConnectorOrThrow({
   connectorType,
   workspaceId,
 }: {
-  connectorType: string;
+  connectorType: ConnectorProvider;
   workspaceId: string;
 }): Promise<ConnectorModel> {
   if (!workspaceId) {
@@ -259,6 +261,35 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
     }
     default:
       throw new Error("Unknown github command: " + command);
+  }
+};
+
+const confluence = async (command: string, args: parseArgs.ParsedArgs) => {
+  const { wId } = args;
+  if (!wId) {
+    throw new Error("Missing --wId argument");
+  }
+
+  const connector = await getConnectorOrThrow({
+    connectorType: "confluence",
+    workspaceId: wId,
+  });
+  if (!connector) {
+    throw new Error("Confluence connector not found.");
+  }
+
+  switch (command) {
+    case "restart-sync-workflow": {
+      const res = await launchConfluenceSyncWorkflow(connector.id, null, []);
+      if (res.isErr()) {
+        throw new Error("Could not start confluence sync workflow.");
+      }
+      logger.info({ connectorId: connector.id }, "Workflow started.");
+      break;
+    }
+
+    default:
+      throw new Error(`Unknown Confluence command: ${command}.`);
   }
 };
 
@@ -1072,6 +1103,8 @@ const main = async () => {
     case "batch":
       await batch(command, argv);
       return;
+    case "confluence":
+      return confluence(command, argv);
     case "notion":
       await notion(command, argv);
       return;
