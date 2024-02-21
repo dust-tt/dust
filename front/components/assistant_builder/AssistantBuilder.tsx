@@ -191,6 +191,45 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
   return closest;
 };
 
+const useNavigationLock = (
+  isEnabled = true,
+  warningText = "You have unsaved changes - are you sure you wish to leave this page?"
+) => {
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleWindowClose = (e: BeforeUnloadEvent) => {
+      if (!isEnabled) return;
+      e.preventDefault();
+      return (e.returnValue = warningText);
+    };
+
+    const handleBrowseAway = (url: string) => {
+      if (!isEnabled) return;
+      if (!window.confirm(warningText)) {
+        router.events.emit(
+          "routeChangeError",
+          new Error("Navigation cancelled by the user"),
+          url
+        );
+        // This is required, otherwise the URL will change.
+        history.pushState(null, "", document.location.href);
+        // And this is required to actually cancel the navigation.
+        throw "Navigation cancelled by the user (this is not an error)";
+      }
+    };
+
+    // We need both for different browsers.
+    window.addEventListener("beforeunload", handleWindowClose);
+    router.events.on("routeChangeStart", handleBrowseAway);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleWindowClose);
+      router.events.off("routeChangeStart", handleBrowseAway);
+    };
+  }, [isEnabled, warningText, router.events, router.asPath]);
+};
+
 const screens = {
   instructions: { label: "Instructions", icon: CircleIcon },
   actions: { label: "Actions & Data sources", icon: SquareIcon },
@@ -300,6 +339,11 @@ export default function AssistantBuilder({
     });
   const [slackChannelsInitialized, setSlackChannelsInitialized] =
     useState(false);
+
+  const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
+    useState(false);
+
+  useNavigationLock(edited && !disableUnsavedChangesPrompt);
 
   // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
   useEffect(() => {
@@ -465,6 +509,7 @@ export default function AssistantBuilder({
   };
 
   const onClose = async () => {
+    setDisableUnsavedChangesPrompt(true);
     // TODO(2024-02-08 flav) Remove once internal router is in better shape.
     // Opening a new tab/window counts the default page as an entry in the
     // history stack, leading to a history length of 2. Directly opening a link
@@ -481,6 +526,7 @@ export default function AssistantBuilder({
   };
 
   const onAssistantSave = async () => {
+    setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
     try {
       await submitForm({
