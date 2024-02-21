@@ -11,7 +11,7 @@ import type { CoreAPITable, DataSourceType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
@@ -155,6 +155,7 @@ const PickTable = ({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });
+  const [query, setQuery] = useState<string>("");
 
   const tablesToDisplay = tables.filter(
     (t) =>
@@ -162,13 +163,20 @@ const PickTable = ({
         `${owner.sId}/${dataSource.name}/${t.table_id}`
       ]
   );
+  const filtered = useMemo(
+    () =>
+      tablesToDisplay.filter((t) => {
+        return subFilter(query.toLowerCase(), t.name.toLowerCase());
+      }),
+    [query, tablesToDisplay]
+  );
+
   const isAllSelected = !!tables.length && !tablesToDisplay.length;
 
   return (
     <Transition show={true} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table" icon={ServerIcon} />
-
         {isAllSelected && (
           <div className="flex h-full w-full flex-col">
             <div className=" text-gray-500">
@@ -185,26 +193,35 @@ const PickTable = ({
           </div>
         )}
 
-        {!!tablesToDisplay.length &&
-          tablesToDisplay
-            .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0))
-            .map((table) => {
-              return (
-                <Item.Navigation
-                  label={table.name}
-                  icon={
-                    dataSource.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
-                          .logoComponent
-                      : ServerIcon
-                  }
-                  key={`${table.data_source_id}/${table.table_id}`}
-                  onClick={() => {
-                    onPick(table);
-                  }}
-                />
-              );
-            })}
+        {!!tablesToDisplay.length && (
+          <>
+            <Searchbar
+              name="search"
+              onChange={setQuery}
+              value={query}
+              placeholder="Search..."
+            />
+            {filtered
+              .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0))
+              .map((table) => {
+                return (
+                  <Item.Navigation
+                    label={table.name}
+                    icon={
+                      dataSource.connectorProvider
+                        ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
+                            .logoComponent
+                        : ServerIcon
+                    }
+                    key={`${table.data_source_id}/${table.table_id}`}
+                    onClick={() => {
+                      onPick(table);
+                    }}
+                  />
+                );
+              })}
+          </>
+        )}
 
         <div className="flex pt-8">
           <Button label="Back" onClick={onBack} variant="secondary" />
