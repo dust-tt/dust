@@ -274,10 +274,6 @@ const confluence = async (command: string, args: parseArgs.ParsedArgs) => {
     connectorProvider: "confluence",
     workspaceId: wId,
   });
-  if (!connector) {
-    throw new Error("Confluence connector not found.");
-  }
-
   switch (command) {
     case "restart-sync-workflow": {
       const res = await launchConfluenceSyncWorkflow(connector.id, null, []);
