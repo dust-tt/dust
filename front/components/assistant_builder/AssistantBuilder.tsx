@@ -92,6 +92,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+
 import { SharingButton } from "../assistant/Sharing";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
