@@ -35,6 +35,7 @@ import {
 } from "@connectors/lib/models/webcrawler";
 import {
   reportInitialSyncProgress,
+  syncFailed,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
@@ -258,6 +259,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   if (pageCount > 0) {
     await syncSucceeded(connector.id);
+  } else {
+    await syncFailed(connector.id, "webcrawling_error");
   }
   if (upsertingError > 0) {
     throw new Error(

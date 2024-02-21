@@ -62,6 +62,8 @@ export default function ConnectorSyncingChip({
                   an email to resolve the issue.
                 </>
               );
+            case "webcrawling_error":
+              return <>Synchronization failed</>;
             default:
               assertNever(connector.errorType);
           }

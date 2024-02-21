@@ -19,6 +19,7 @@ export type ConnectorSyncStatus = "succeeded" | "failed";
 const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "third_party_internal_error",
+  "webcrawling_error",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
