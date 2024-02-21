@@ -558,6 +558,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
+    secrets: HashMap<String, String>,
 }
 
 async fn run_helper(
@@ -734,6 +735,7 @@ async fn run_helper(
             project.clone(),
             d,
             state.store.clone(),
+            payload.secrets,
         )
         .await
     {

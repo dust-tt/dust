@@ -33,6 +33,7 @@ pub struct App {
     project: Option<Project>,
     run_config: Option<RunConfig>,
     dataset: Option<Dataset>,
+    secrets: Option<HashMap<String, String>>,
 }
 
 impl App {
@@ -264,6 +265,7 @@ impl App {
             project: None,
             run_config: None,
             dataset: None,
+            secrets: None,
         })
     }
 
@@ -274,12 +276,14 @@ impl App {
         project: Project,
         dataset: Option<Dataset>,
         store: Box<dyn Store + Sync + Send>,
+        secrets: HashMap<String, String>,
     ) -> Result<()> {
         assert!(self.run.is_none());
 
         self.project = Some(project);
         self.run_config = Some(run_config);
         self.dataset = dataset;
+        self.secrets = Some(secrets);
 
         if self.dataset.is_none() && self.has_input() {
             Err(anyhow!("Found input block but no dataset was provided"))?;
@@ -314,6 +318,9 @@ impl App {
 
         let project = self.project.as_ref().unwrap().clone();
         let run_id = self.run.as_ref().unwrap().run_id().to_string();
+        let mut secrets = self.secrets.as_ref().unwrap().clone();
+
+        secrets.retain(|k, _| k.to_uppercase() == *k);
 
         info!(
             project_id = project.project_id(),
@@ -350,6 +357,7 @@ impl App {
             databases_store: databases_store.clone(),
             qdrant_clients: qdrant_clients,
             credentials: credentials.clone(),
+            secrets: secrets,
         }]];
 
         let mut current_map: Option<String> = None;

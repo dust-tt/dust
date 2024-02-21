@@ -259,6 +259,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
+          secrets: { "SECRET": "ValidSecretValue", "secret": "InvalidSecretBecauseLowercase"}
         }),
       }
     );
@@ -298,6 +299,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
+          secrets: { "secret": "Hello World" }
         }),
       }
     );

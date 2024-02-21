@@ -53,6 +53,7 @@ pub struct Env {
     pub project: Project,
     #[serde(skip_serializing)]
     pub credentials: Credentials,
+    pub secrets: HashMap<String, String>,
 }
 
 // pub enum Expectations {
@@ -229,7 +230,15 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
 
     // Run Tera templating engine one_off on the result (before replacing variables but after
     // looking for them).
-    let context = Context::from_value(json!(env.state))?;
+    let mut full_env: HashMap<String, Value> = HashMap::new();
+    for (key, value) in &env.secrets {
+        full_env.insert(key.clone(), Value::String(value.to_string().clone()));
+    }
+    for (key, value) in &env.state {
+        full_env.insert(key.clone(), value.clone());
+    }
+
+    let context = Context::from_value(json!(full_env))?;
 
     let mut result = match Tera::one_off(text, &context, false) {
         Ok(r) => r,
