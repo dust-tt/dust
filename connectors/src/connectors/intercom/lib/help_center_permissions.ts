@@ -3,8 +3,6 @@ import type { Client as IntercomClient } from "intercom-client";
 import { Op } from "sequelize";
 
 import {
-  fetchIntercomArticle,
-  fetchIntercomArticles,
   fetchIntercomCollection,
   fetchIntercomCollections,
   fetchIntercomHelpCenter,
@@ -12,7 +10,6 @@ import {
   getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
-  getArticleInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
   getHelpCenterCollectionInternalId,
@@ -216,35 +213,20 @@ export async function allowSyncCollection({
     throw new Error(" Collection not found.");
   }
 
-  // We create the Help Center if it doesn't exist.
-  const helpCenter = await allowSyncHelpCenter({
-    connector,
-    intercomClient,
-    helpCenterId: collection.helpCenterId,
-    withChildren: false,
-  });
-  const isHelpCenterWebsiteTurnedOn = helpCenter.websiteTurnedOn;
-
-  // We  set all children (collections & articles) to "read" and create them if they don't exist.
-  const childrenArticles = await fetchIntercomArticles(
-    intercomClient,
-    collection.collectionId
-  );
-  const articlePermissionPromises = childrenArticles.map((a) =>
-    allowSyncArticle({
+  // We create the Help Center if it doesn't exist and fetch the children collections
+  const [, childrenCollections] = await Promise.all([
+    allowSyncHelpCenter({
       connector,
       intercomClient,
-      articleId: a.id,
-      isHelpCenterWebsiteTurnedOn,
-    })
-  );
-  await Promise.all(articlePermissionPromises);
+      helpCenterId: collection.helpCenterId,
+    }),
+    fetchIntercomCollections(
+      intercomClient,
+      collection.helpCenterId,
+      collection.collectionId
+    ),
+  ]);
 
-  const childrenCollections = await fetchIntercomCollections(
-    intercomClient,
-    collection.helpCenterId,
-    collection.collectionId
-  );
   const collectionPermissionPromises = childrenCollections.map((c) =>
     allowSyncCollection({
       connector,
@@ -343,69 +325,6 @@ export async function revokeSyncCollection({
   }
 
   return collection;
-}
-
-/**
- * Mark an article as permission "read"
- */
-export async function allowSyncArticle({
-  connector,
-  intercomClient,
-  articleId,
-  isHelpCenterWebsiteTurnedOn,
-}: {
-  connector: ConnectorResource;
-  intercomClient: IntercomClient;
-  articleId: string;
-  isHelpCenterWebsiteTurnedOn: boolean;
-}): Promise<IntercomArticle | null> {
-  const article = await IntercomArticle.findOne({
-    where: {
-      connectorId: connector.id,
-      articleId,
-    },
-  });
-
-  if (article?.permission === "read") {
-    return article;
-  }
-  if (article) {
-    await article.update({
-      permission: "read",
-    });
-    return article;
-  }
-
-  const intercomArticle = await fetchIntercomArticle(intercomClient, articleId);
-  if (!intercomArticle) {
-    logger.error(
-      { articleId },
-      "[Intercom] Article not found in Intercom API."
-    );
-    return null;
-  }
-
-  // Article url is working only if the help center has activated the website feature
-  // Otherwise they generate an url that is not working
-  // So as a workaround we use the url of the article in the intercom app
-  const articleUrl = isHelpCenterWebsiteTurnedOn
-    ? intercomArticle.url
-    : getArticleInAppUrl(intercomArticle);
-
-  return IntercomArticle.create({
-    connectorId: connector.id,
-    articleId: intercomArticle.id,
-    title: intercomArticle.title,
-    url: articleUrl,
-    intercomWorkspaceId: intercomArticle.workspace_id,
-    authorId: intercomArticle.author_id,
-    parentId: intercomArticle.parent_id,
-    parentType:
-      intercomArticle.parent_type === "collection" ? "collection" : null,
-    parents: intercomArticle.parent_ids,
-    state: intercomArticle.state === "published" ? "published" : "draft",
-    permission: "read",
-  });
 }
 
 export async function retrieveIntercomHelpCentersPermissions({
