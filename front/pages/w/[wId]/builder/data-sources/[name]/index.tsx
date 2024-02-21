@@ -29,7 +29,7 @@ import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
@@ -150,6 +150,8 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   };
 });
 
+const tabIds = ["documents", "tables"];
+
 function StandardDataSourceView({
   owner,
   plan,
@@ -162,11 +164,22 @@ function StandardDataSourceView({
   dataSource: DataSourceType;
 }) {
   const router = useRouter();
-  const [currentTab, setCurrentTab] = useState("Documents");
+
+  type TabId = (typeof tabIds)[number];
+  const [currentTab, setCurrentTab] = useState<TabId>("documents");
+  const tabs = useMemo(
+    () =>
+      tabIds.map((tabId) => ({
+        label: tabId.charAt(0).toUpperCase() + tabId.slice(1),
+        id: tabId,
+        current: currentTab === tabId,
+      })),
+    [currentTab]
+  );
 
   useEffect(() => {
     if (router.query.tab === "tables") {
-      setCurrentTab("Tables");
+      setCurrentTab("tables");
       const newQuery = { ...router.query };
       delete newQuery.tab;
       void router.replace(
@@ -209,29 +222,10 @@ function StandardDataSourceView({
         />
 
         {structuredDataEnabled && (
-          <Tab
-            tabs={[
-              {
-                label: "Documents",
-                current: currentTab === "Documents",
-              },
-              {
-                label: "Tables",
-                current: currentTab === "Tables",
-              },
-            ]}
-            onTabClick={(tab) => {
-              if (tab === currentTab) return;
-              if (tab === "Documents") {
-                setCurrentTab("Documents");
-              } else if (tab === "Tables") {
-                setCurrentTab("Tables");
-              }
-            }}
-          />
+          <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
         )}
 
-        {currentTab === "Documents" && (
+        {currentTab === "documents" && (
           <DatasourceDocumentsTabView
             owner={owner}
             plan={plan}
@@ -240,7 +234,7 @@ function StandardDataSourceView({
             router={router}
           />
         )}
-        {currentTab === "Tables" && (
+        {currentTab === "tables" && (
           <DatasourceTablesTabView
             owner={owner}
             readOnly={readOnly}

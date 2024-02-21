@@ -20,7 +20,7 @@ import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
@@ -143,33 +143,36 @@ export default function AssistantsGallery({
   const tabs: {
     label: string;
     current: boolean;
-    viewId: AgentsGetViewType;
+    id: AgentsGetViewType;
     icon?: ComponentType<{ className?: string }>;
-  }[] = [
-    {
-      label: "All",
-      current: agentsGetView === "all",
-      viewId: "all",
-    },
-    {
-      label: "Shared",
-      current: agentsGetView === "published",
-      icon: UserGroupIcon,
-      viewId: "published",
-    },
-    {
-      label: "Company",
-      current: agentsGetView === "workspace",
-      icon: PlanetIcon,
-      viewId: "workspace",
-    },
-    {
-      label: "Default",
-      current: agentsGetView === "global",
-      icon: DustIcon,
-      viewId: "global",
-    },
-  ];
+  }[] = useMemo(
+    () => [
+      {
+        label: "All",
+        current: agentsGetView === "all",
+        id: "all",
+      },
+      {
+        label: "Shared",
+        current: agentsGetView === "published",
+        icon: UserGroupIcon,
+        id: "published",
+      },
+      {
+        label: "Company",
+        current: agentsGetView === "workspace",
+        icon: PlanetIcon,
+        id: "workspace",
+      },
+      {
+        label: "Default",
+        current: agentsGetView === "global",
+        icon: DustIcon,
+        id: "global",
+      },
+    ],
+    [agentsGetView]
+  );
 
   // Headless UI does not inherently handle Portal-based rendering,
   // leading to dropdown menus being hidden by parent divs with overflow settings.
@@ -248,13 +251,7 @@ export default function AssistantsGallery({
           </div>
           <div className="flex flex-row space-x-4">
             <div className="grow overflow-x-auto scrollbar-hide">
-              <Tab
-                tabs={tabs}
-                onTabClick={(tabName) => {
-                  const newView = tabs.find((t) => t.label === tabName)?.viewId;
-                  newView && setAgentsGetView(newView);
-                }}
-              />
+              <Tab tabs={tabs} setCurrentTab={setAgentsGetView} />
             </div>
             <div className="hidden md:block">{SearchOrderDropdown}</div>
           </div>
