@@ -33,4 +33,4 @@ RUN npm run build
 EXPOSE 3002
 
 # Set a default command, it will start the API service if no command is provided
-CMD ["npx", "tsx", "./src/start_server.ts", "-p", "3002"]
+CMD ["npm", "run", "start:web"]

@@ -20,7 +20,7 @@ spec:
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
-          command: ["npx", "tsx", "./src/start_server.ts", "-p", "3002"]
+          command: ["npm", "run", "start:web"]
           imagePullPolicy: Always
           ports:
             - containerPort: 3002
