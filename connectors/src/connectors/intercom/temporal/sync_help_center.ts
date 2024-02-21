@@ -290,9 +290,10 @@ export async function _upsertCollection({
       });
     }
 
-    const articleContentInMarkdown = turndownService.turndown(
-      articleOnIntercom.body
-    );
+    const articleContentInMarkdown =
+      typeof articleOnIntercom.body === "string"
+        ? turndownService.turndown(articleOnIntercom.body)
+        : "";
     // append the collection description at the beginning of the article
     const markdown = `CATEGORY: ${collection.description}\n\n${articleContentInMarkdown}`;
 
