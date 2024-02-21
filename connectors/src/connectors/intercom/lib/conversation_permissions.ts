@@ -146,8 +146,7 @@ export async function retrieveIntercomConversationsPermissions({
       // This is an ugly hack
       // Since we only sync conversations attached to a Team, if there are no teams, we display "No conversations"
       if (teams.length === 0) {
-        rootConversationNode.title =
-          "No conversations available for sync (Dust only supports conversations attached to a Team)";
+        rootConversationNode.title = "No conversations available for sync";
         rootConversationNode.expandable = false;
       }
       nodes.push(rootConversationNode);
