@@ -2,6 +2,7 @@ import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/intercom_api";
+import { stopIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import { syncConversation } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -9,11 +10,10 @@ import {
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
+import { syncFailed } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { stopIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
-import { syncFailed } from "@connectors/lib/sync_status";
 
 const { NANGO_INTERCOM_CONNECTOR_ID = "" } = process.env;
 
