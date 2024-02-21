@@ -310,6 +310,10 @@ function TablesQuerySection({
   const [isError, setIsError] = useState<boolean>(false);
 
   const getTables = useCallback(async () => {
+    if (!tablesQueryConfig.tables.length) {
+      return;
+    }
+
     const tableEndpoints = tablesQueryConfig.tables.map(
       (t) =>
         `/api/w/${t.workspaceId}/data_sources/${t.dataSourceId}/tables/${t.tableId}`
@@ -349,6 +353,8 @@ function TablesQuerySection({
     <div className="flex flex-col gap-2">
       {isLoading ? (
         <Spinner />
+      ) : !tablesQueryConfig.tables.length ? (
+        <span>No tables are currently linked to this assistant.</span>
       ) : tables ? (
         <>
           <div>The following tables are queried before answering:</div>
