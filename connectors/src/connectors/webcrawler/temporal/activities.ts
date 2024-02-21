@@ -231,7 +231,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         pageCount++;
         await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
       },
-      failedRequestHandler: async () => {
+      failedRequestHandler: async (context, err) => {
+        logger.error(
+          { error: err, connectorId: connector.id },
+          "webcrawler failedRequestHandler"
+        );
         crawlingError++;
       },
     },
