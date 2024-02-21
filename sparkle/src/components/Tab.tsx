@@ -11,18 +11,23 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
-type TabProps = {
+type TabType<E> = {
+  label: string;
+  id?: E;
+  hideLabel?: boolean;
+  current: boolean;
+  sizing?: "hug" | "expand";
+  icon?: ComponentType<{ className?: string }>;
+  hasSeparator?: boolean;
+} & (
+  | { onClick?: (event: MouseEvent<HTMLAnchorElement>) => void; href?: never }
+  | { onClick?: never; href: string }
+);
+
+type TabProps<E> = {
   variant?: "default" | "stepper";
-  tabs: Array<{
-    label: string;
-    hideLabel?: boolean;
-    current: boolean;
-    sizing?: "hug" | "expand";
-    icon?: ComponentType<{ className?: string }>;
-    href?: string;
-    hasSeparator?: boolean;
-  }>;
-  onTabClick?: (tabName: string, event: MouseEvent<HTMLAnchorElement>) => void;
+  tabs: Array<TabType<E>>;
+  setCurrentTab?: (tabId: E, e: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
 };
 
@@ -85,12 +90,21 @@ const tabSizingClasses = {
   expand: "s-flex-1",
 };
 
-export function Tab({
+/**
+ * Tab component displaying a list of tabs.
+ *
+ * Tab click action is specified:
+ * - either per tab, by providing either an href or an onClick handler in tab
+ *   data (mutually exclusive);
+ * - or globally, by providing a setCurrentTab function.
+ * Both per-tab and global actions can be set, the per-tab action taking precedence.
+ */
+export function Tab<E>({
   variant = "default",
   tabs,
-  onTabClick,
+  setCurrentTab,
   className = "",
-}: TabProps) {
+}: TabProps<E>) {
   const { components } = React.useContext(SparkleContext);
 
   const renderTabs = () =>
@@ -137,12 +151,23 @@ export function Tab({
         ? components.link
         : noHrefLink;
 
+      // precedence on href and onClick (mutually exclusive), then setCurrentTab
+      const setCurrentTabFn = (e: MouseEvent<HTMLAnchorElement>) => {
+        if (!tab.id) {
+          throw new Error("Tab id is required to use setCurrentTab");
+        }
+        setCurrentTab?.(tab.id, e);
+      };
+      const onClickAction = tab.href
+        ? undefined
+        : tab.onClick ?? setCurrentTabFn;
+
       const content: ReactNode = (
         <Link
           key={tab.label}
           className={finalTabClasses}
           aria-current={tab.current ? "page" : undefined}
-          onClick={(event) => onTabClick?.(tab.label ? tab.label : "", event)}
+          onClick={onClickAction}
           href={tab.href || "#"}
         >
           <div
