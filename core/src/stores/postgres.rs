@@ -2280,10 +2280,10 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "UPDATE tables SET schema_stale_at = $1 \
-                   WHERE data_source = $1 AND table_id = $2",
+                   WHERE data_source = $2 AND table_id = $3",
             )
             .await?;
-        c.query(&stmt, &[&data_source_row_id, &table_id, &schema_stale_at])
+        c.query(&stmt, &[&schema_stale_at, &data_source_row_id, &table_id])
             .await?;
 
         Ok(())
@@ -2393,7 +2393,7 @@ impl Store for PostgresStore {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema FROM tables \
+                        "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
                         WHERE data_source = $1",
                     )
                     .await?;
