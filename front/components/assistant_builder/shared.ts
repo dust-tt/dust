@@ -232,3 +232,18 @@ export const SPIRIT_AVATAR_FILES = [
   "Spirit_Yellow_7.jpg",
   "Spirit_Yellow_8.jpg",
 ];
+
+// Avatar URLs
+const BASE_URL = "https://dust.tt/";
+const buildAvatarUrl = (basePath: string, fileName: string) => {
+  const url = new URL(BASE_URL);
+  url.pathname = `${basePath}${fileName}`;
+  return url.toString();
+};
+
+export const DROID_AVATAR_URLS = DROID_AVATAR_FILES.map((f) =>
+  buildAvatarUrl(DROID_AVATARS_BASE_PATH, f)
+);
+export const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
+  buildAvatarUrl(SPIRIT_AVATARS_BASE_PATH, f)
+);
