@@ -3,6 +3,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   Avatar,
   Button,
+  CircleIcon,
   Collapsible,
   ContentMessage,
   ContextItem,
@@ -14,10 +15,12 @@ import {
   PlayIcon,
   PlusIcon,
   SlackLogo,
+  SquareIcon,
+  Tab,
   TrashIcon,
+  TriangleIcon,
 } from "@dust-tt/sparkle";
 import type {
-  AgentConfigurationScope,
   AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
@@ -31,6 +34,7 @@ import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import {
+  assertNever,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
@@ -44,13 +48,11 @@ import {
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
-import { SharingSection } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -190,6 +192,13 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
   return closest;
 };
 
+const screens = {
+  instructions: { label: "Instructions", icon: CircleIcon },
+  actions: { label: "Actions & Data sources", icon: SquareIcon },
+  naming: { label: "Naming", icon: TriangleIcon },
+};
+type BuilderScreen = keyof typeof screens;
+
 export default function AssistantBuilder({
   owner,
   subscription,
@@ -257,7 +266,6 @@ export default function AssistantBuilder({
 
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
-  const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
 
   const [assistantHandleError, setAssistantHandleError] = useState<
@@ -265,7 +273,6 @@ export default function AssistantBuilder({
   >(null);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -503,6 +510,359 @@ export default function AssistantBuilder({
       });
     }
   };
+  const [screen, setScreen] = useState<BuilderScreen>("instructions");
+  const tabs = useMemo(
+    () =>
+      Object.entries(screens).map(([key, { label, icon }]) => ({
+        label,
+        current: screen === key,
+        onClick: () => {
+          setScreen(key as BuilderScreen);
+          console.log("key", key);
+        },
+        icon,
+      })),
+    [screen]
+  );
+  const modalTitle = agentConfigurationId ? "Edit Assistant" : "New Assistant";
+
+  function ActionScreen() {
+    return (
+      <>
+        <div className="flex flex-col gap-6 text-sm text-element-700">
+          <div className="text-2xl font-bold text-element-900">
+            Action & Data sources
+          </div>
+          {configurableDataSources.length === 0 &&
+            Object.keys(builderState.dataSourceConfigurations).length === 0 && (
+              <ContentMessage title="You don't have any active data source">
+                <div className="flex flex-col gap-y-3">
+                  <div>
+                    Assistants can incorporate existing company data and
+                    knowledge to formulate answers.
+                  </div>
+                  <div>
+                    There are two types of data sources:{" "}
+                    <strong>Folders</strong> (Files you can upload) and{" "}
+                    <strong>Connections</strong> (Automatically synchronized
+                    with platforms like Notion, Slack, ...).
+                  </div>
+                  {(() => {
+                    switch (owner.role) {
+                      case "admin":
+                        return (
+                          <div>
+                            <strong>
+                              Visit the "Connections" and "Folders" sections in
+                              the Assistants panel to add new data sources.
+                            </strong>
+                          </div>
+                        );
+                      case "builder":
+                        return (
+                          <div>
+                            <strong>
+                              Only Admins can activate Connections.
+                              <br />
+                              You can add Data Sources by visiting "Folders" in
+                              the Assistants panel.
+                            </strong>
+                          </div>
+                        );
+                      case "user":
+                        return (
+                          <div>
+                            <strong>
+                              Only Admins and Builders can activate Connections
+                              or create Folders.
+                            </strong>
+                          </div>
+                        );
+                      case "none":
+                        return <></>;
+                      default:
+                        ((x: never) => {
+                          throw new Error("Unkonwn role " + x);
+                        })(owner.role);
+                    }
+                  })()}
+                </div>
+              </ContentMessage>
+            )}
+          <div>
+            Choose the action the assistant will perform and take into account
+            before replying:
+          </div>
+          <div className="flex flex-row items-center space-x-2">
+            <div className="text-sm font-semibold text-element-900">
+              Action:
+            </div>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={ACTION_MODE_TO_LABEL[builderState.actionMode]}
+                  variant="secondary"
+                  hasMagnifying={false}
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topLeft" width={260}>
+                {BASIC_ACTION_MODES.map((key) => (
+                  <DropdownMenu.Item
+                    key={key}
+                    label={ACTION_MODE_TO_LABEL[key]}
+                    onClick={() => {
+                      setEdited(true);
+                      setBuilderState((state) => ({
+                        ...state,
+                        actionMode: key,
+                      }));
+                    }}
+                  />
+                ))}
+                <DropdownMenu.SectionHeader label="Advanced actions" />
+                {ADVANCED_ACTION_MODES.filter((key) => {
+                  return key !== "TABLES_QUERY" || structuredDataEnabled;
+                }).map((key) => (
+                  <DropdownMenu.Item
+                    key={key}
+                    label={ACTION_MODE_TO_LABEL[key]}
+                    onClick={() => {
+                      setEdited(true);
+                      setBuilderState((state) => ({
+                        ...state,
+                        actionMode: key,
+                      }));
+                    }}
+                  />
+                ))}
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </div>
+          <ActionModeSection show={builderState.actionMode === "GENERIC"}>
+            <div className="text-sm text-element-700">
+              No action is set. The assistant will use the instructions only to
+              answer.
+            </div>
+          </ActionModeSection>
+          <ActionModeSection
+            show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
+          >
+            <div>
+              The assistant will include as many documents as possible from the
+              data sources, using reverse chronological order.
+            </div>
+            <div className="grid grid-cols-2 gap-8">
+              <div className="col-span-1">
+                <strong>
+                  <span className="text-warning-500">Warning!</span> Assistants
+                  are limited in the amount of data they can process.
+                </strong>{" "}
+                Select data sources with care, and limit processing to the
+                shortest relevant time frame.
+              </div>
+              <div className="col-span-1">
+                <strong>Note:</strong> The available data sources are managed by
+                administrators.
+              </div>
+            </div>
+            <DataSourceSelectionSection
+              dataSourceConfigurations={builderState.dataSourceConfigurations}
+              openDataSourceModal={() => {
+                setShowDataSourcesModal(true);
+              }}
+              canAddDataSource={configurableDataSources.length > 0}
+              onManageDataSource={(name) => {
+                setDataSourceToManage(
+                  builderState.dataSourceConfigurations[name]
+                );
+                setShowDataSourcesModal(true);
+              }}
+              onDelete={deleteDataSource}
+            />
+            <div className={"flex flex-row items-center gap-4 pb-4"}>
+              <div className="text-sm font-semibold text-element-900">
+                Collect data from the last
+              </div>
+              <input
+                type="text"
+                className={classNames(
+                  "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
+                  !timeFrameError
+                    ? "focus:border-action-500 focus:ring-action-500"
+                    : "border-red-500 focus:border-red-500 focus:ring-red-500",
+                  "bg-structure-50 stroke-structure-50"
+                )}
+                value={builderState.timeFrame.value || ""}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) || !e.target.value) {
+                    setEdited(true);
+                    setBuilderState((state) => ({
+                      ...state,
+                      timeFrame: {
+                        value,
+                        unit: builderState.timeFrame.unit,
+                      },
+                    }));
+                  }
+                }}
+              />
+              <DropdownMenu>
+                <DropdownMenu.Button tooltipPosition="above">
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={
+                      TIME_FRAME_UNIT_TO_LABEL[builderState.timeFrame.unit]
+                    }
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomLeft">
+                  {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                    ([key, value]) => (
+                      <DropdownMenu.Item
+                        key={key}
+                        label={value}
+                        onClick={() => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            timeFrame: {
+                              value: builderState.timeFrame.value,
+                              unit: key as TimeframeUnit,
+                            },
+                          }));
+                        }}
+                      />
+                    )
+                  )}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+          </ActionModeSection>
+          <ActionModeSection
+            show={builderState.actionMode === "RETRIEVAL_SEARCH"}
+          >
+            <div>
+              The assistant will perform a search on the selected data sources,
+              and run the instructions on the results.{" "}
+              <span className="font-semibold">
+                It’s the best approach with large quantities of data.
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p>
+                  <strong>Select your sources with care</strong> The quality of
+                  the answers to specific questions will depend on the quality
+                  of the data.
+                </p>
+                <p className="mt-1">
+                  <strong>
+                    You can narrow your search on most recent documents
+                  </strong>{" "}
+                  by adding instructions in your prompt such as 'Only search in
+                  documents from the last 3 months', 'Only look at data from the
+                  last 2 days', etc.
+                </p>
+              </div>
+              <div>
+                <p>
+                  <strong>Note:</strong> The available data sources are managed
+                  by administrators.
+                </p>
+              </div>
+            </div>
+
+            <DataSourceSelectionSection
+              dataSourceConfigurations={builderState.dataSourceConfigurations}
+              openDataSourceModal={() => {
+                setShowDataSourcesModal(true);
+              }}
+              canAddDataSource={configurableDataSources.length > 0}
+              onManageDataSource={(name) => {
+                setDataSourceToManage(
+                  builderState.dataSourceConfigurations[name]
+                );
+                setShowDataSourcesModal(true);
+              }}
+              onDelete={deleteDataSource}
+            />
+          </ActionModeSection>
+          <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
+            <div className="text-sm text-element-700">
+              The assistant will execute a Dust Application of your design
+              before answering. The output of the app (last block) is injected
+              in context for the model to generate an answer. The inputs of the
+              app will be automatically generated from the context of the
+              conversation based on the descriptions you provided in the
+              application's input block dataset schema.
+            </div>
+            <DustAppSelectionSection
+              show={builderState.actionMode === "DUST_APP_RUN"}
+              dustAppConfiguration={builderState.dustAppConfiguration}
+              openDustAppModal={() => {
+                setShowDustAppsModal(true);
+              }}
+              onDelete={deleteDustApp}
+              canSelectDustApp={dustApps.length !== 0}
+            />
+          </ActionModeSection>
+          <ActionModeSection show={builderState.actionMode === "TABLES_QUERY"}>
+            <div className="text-sm text-element-700">
+              The assistant will generate a SQL query from your request, execute
+              it on the tables selected and use the results to generate an
+              answer.
+            </div>
+            <TablesSelectionSection
+              show={builderState.actionMode === "TABLES_QUERY"}
+              tablesQueryConfiguration={builderState.tablesQueryConfiguration}
+              openTableModal={() => {
+                setShowTableModal(true);
+              }}
+              onDelete={(key) => {
+                setEdited(true);
+                setBuilderState((state) => {
+                  const tablesQueryConfiguration =
+                    state.tablesQueryConfiguration;
+                  delete tablesQueryConfiguration[key];
+                  return {
+                    ...state,
+                    tablesQueryConfiguration,
+                  };
+                });
+              }}
+              canSelectTable={dataSources.length !== 0}
+            />
+          </ActionModeSection>
+        </div>
+        <div className="flex flex-row items-start">
+          <div className="flex flex-col gap-4">
+            {slackDataSource &&
+              isBuilder(owner) &&
+              builderState.scope !== "private" &&
+              initialBuilderState?.scope !== "private" && (
+                <SlackIntegration
+                  slackDataSource={slackDataSource}
+                  owner={owner}
+                  onSave={(channels) => {
+                    setEdited(true);
+                    setSelectedSlackChannels(channels);
+                  }}
+                  existingSelection={selectedSlackChannels}
+                  assistantHandle={builderState.handle ?? undefined}
+                />
+              )}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -573,6 +933,151 @@ export default function AssistantBuilder({
         }}
         tablesQueryConfiguration={builderState.tablesQueryConfiguration}
       />
+      <AppLayout
+        subscription={subscription}
+        hideSidebar
+        owner={owner}
+        gaTrackingId={gaTrackingId}
+        topNavigationCurrent="assistants"
+        subNavigation={subNavigationBuild({
+          owner,
+          current: "workspace_assistants",
+        })}
+        titleChildren={
+          !edited ? (
+            <AppLayoutSimpleCloseTitle title={modalTitle} onClose={onClose} />
+          ) : (
+            <AppLayoutSimpleSaveCancelTitle
+              title={modalTitle}
+              onCancel={onClose}
+              onSave={submitEnabled ? onAssistantSave : undefined}
+              isSaving={isSavingOrDeleting}
+            />
+          )
+        }
+      >
+        <div className="flex flex-col gap-5 pt-4">
+          <Tab tabs={tabs} variant="stepper" />
+          {(() => {
+            switch (screen) {
+              case "instructions":
+                return (
+                  <InstructionScreen
+                    owner={owner}
+                    plan={plan}
+                    builderState={builderState}
+                    setBuilderState={setBuilderState}
+                    setEdited={setEdited}
+                  />
+                );
+              case "actions":
+                return <ActionScreen />;
+              case "naming":
+                return (
+                  <NamingScreen
+                    owner={owner}
+                    builderState={builderState}
+                    setBuilderState={setBuilderState}
+                    setEdited={setEdited}
+                    assistantHandleError={assistantHandleError}
+                  />
+                );
+              default:
+                assertNever(screen);
+            }
+          })()}
+          <PrevNextButtons screen={screen} setScreen={setScreen} />
+        </div>
+        {false && <div className="flex flex-col space-y-8 pb-16 pt-8"></div>}
+      </AppLayout>
+    </>
+  );
+}
+
+function InstructionScreen({
+  owner,
+  plan,
+  builderState,
+  setBuilderState,
+  setEdited,
+}: {
+  owner: WorkspaceType;
+  plan: PlanType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    statefn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+}) {
+  return (
+    <div className="flex w-full flex-row items-start">
+      <div className="flex w-full flex-col gap-4">
+        <div className="text-2xl font-bold text-element-900">Instructions</div>
+        <div className="flex-grow gap-y-4 self-stretch text-sm font-normal text-element-700">
+          <p>This is your assistant’s heart and soul.</p>
+          <p className="pt-2">
+            Describe, as is you were addressing them, their purpose. Be specific
+            on the role (
+            <span className="italic">I want you to act as&nbsp;…</span>
+            ), their expected output, and&nbsp;any formatting requirements you
+            have (
+            <span className="italic">
+              ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
+            </span>
+            ).
+          </p>
+        </div>
+        <div className="text-sm">
+          <AssistantBuilderTextArea
+            placeholder="I want you to act as…"
+            value={builderState.instructions}
+            onChange={(value) => {
+              setEdited(true);
+              setBuilderState((state) => ({
+                ...state,
+                instructions: value,
+              }));
+            }}
+            error={null}
+            name="assistantInstructions"
+          />
+        </div>
+        <AdvancedSettings
+          owner={owner}
+          plan={plan}
+          generationSettings={builderState.generationSettings}
+          setGenerationSettings={(generationSettings) => {
+            setEdited(true);
+            setBuilderState((state) => ({
+              ...state,
+              generationSettings,
+            }));
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function NamingScreen({
+  owner,
+  builderState,
+  setBuilderState,
+  setEdited,
+  assistantHandleError,
+}: {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    statefn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+  assistantHandleError: string | null;
+}) {
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  return (
+    <>
       <AvatarPicker
         owner={owner}
         isOpen={isAvatarModalOpen}
@@ -587,548 +1092,120 @@ export default function AssistantBuilder({
         droidAvatarUrls={DROID_AVATAR_URLS}
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
       />
-      <AppLayout
-        subscription={subscription}
-        hideSidebar
-        owner={owner}
-        gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistants"
-        subNavigation={subNavigationBuild({
-          owner,
-          current: "workspace_assistants",
-        })}
-        titleChildren={
-          !edited ? (
-            <AppLayoutSimpleCloseTitle
-              title="Create an assistant"
-              onClose={onClose}
-            />
-          ) : (
-            <AppLayoutSimpleSaveCancelTitle
-              title="Edit an Assistant"
-              onCancel={onClose}
-              onSave={submitEnabled ? onAssistantSave : undefined}
-              isSaving={isSavingOrDeleting}
-            />
-          )
-        }
-      >
-        <div className="flex flex-col space-y-8 pb-16 pt-8">
-          <div className="flex w-full flex-col gap-4">
-            <div className="text-2xl font-bold text-element-900">Identity</div>
-            <div className="flex flex-row items-start gap-8">
-              <div className="flex flex-col gap-4">
-                <div className="text-lg font-bold text-element-900">Name</div>
-                <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                  Choose a name reflecting the expertise, knowledge access or
-                  function of your&nbsp;assistant. Mentioning the&nbsp;assistant
-                  in a conversation, like{" "}
-                  <span className="italic">"@help"</span> will prompt
-                  a&nbsp;response from&nbsp;them.
-                </div>
-                <div className="text-sm">
-                  <Input
-                    placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
-                    value={builderState.handle}
-                    onChange={(value) => {
-                      setEdited(true);
-                      setBuilderState((state) => ({
-                        ...state,
-                        handle: value.trim(),
-                      }));
-                    }}
-                    error={assistantHandleError}
-                    name="assistantName"
-                    showErrorLabel
-                    className="text-sm"
-                  />
-                </div>
-                <div className="text-lg font-bold text-element-900">
-                  Description
-                </div>
-                <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-                  Add a short description that will help Dust and other
-                  workspace members understand
-                  the&nbsp;assistant’s&nbsp;purpose.
-                </div>
-                <div className="text-sm">
-                  <Input
-                    placeholder="Answer questions about sales, translate from English to French…"
-                    value={builderState.description}
-                    onChange={(value) => {
-                      setEdited(true);
-                      setBuilderState((state) => ({
-                        ...state,
-                        description: value,
-                      }));
-                    }}
-                    error={null} // TODO ?
-                    name="assistantDescription"
-                    className="text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col items-center space-y-2">
-                <Avatar
-                  size="xl"
-                  visual={<img src={builderState.avatarUrl || ""} />}
-                />
-                <Button
-                  labelVisible={true}
-                  label={"Change"}
-                  variant="tertiary"
-                  size="xs"
-                  icon={PencilSquareIcon}
-                  onClick={() => {
-                    setIsAvatarModalOpen(true);
-                  }}
-                />
-              </div>
+
+      <div className="flex w-full flex-col gap-4">
+        <div className="text-2xl font-bold text-element-900">Identity</div>
+        <div className="flex flex-row items-start gap-8">
+          <div className="flex flex-col gap-4">
+            <div className="text-lg font-bold text-element-900">Name</div>
+            <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+              Choose a name reflecting the expertise, knowledge access or
+              function of your&nbsp;assistant. Mentioning the&nbsp;assistant in
+              a conversation, like <span className="italic">"@help"</span> will
+              prompt a&nbsp;response from&nbsp;them.
             </div>
-          </div>
-          <SharingSection
-            owner={owner}
-            agentConfigurationId={agentConfigurationId}
-            initialScope={initialBuilderState?.scope ?? defaultScope}
-            newScope={builderState.scope}
-            setNewScope={(
-              scope: Exclude<AgentConfigurationScope, "global">
-            ) => {
-              setEdited(scope !== initialBuilderState?.scope);
-              setBuilderState((state) => ({ ...state, scope }));
-            }}
-          />
-          <div className="mt-8 flex w-full flex-row items-start">
-            <div className="flex w-full flex-col gap-4">
-              <div className="text-2xl font-bold text-element-900">
-                Instructions
-              </div>
-              <div className="flex-grow gap-y-4 self-stretch text-sm font-normal text-element-700">
-                <p>This is your assistant’s heart and soul.</p>
-                <p className="pt-2">
-                  Describe, as is you were addressing them, their purpose. Be
-                  specific on the role (
-                  <span className="italic">I want you to act as&nbsp;…</span>),
-                  their expected output, and&nbsp;any formatting requirements
-                  you have (
-                  <span className="italic">
-                    ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
-                  </span>
-                  ).
-                </p>
-              </div>
-              <div className="text-sm">
-                <AssistantBuilderTextArea
-                  placeholder="I want you to act as…"
-                  value={builderState.instructions}
-                  onChange={(value) => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      instructions: value,
-                    }));
-                  }}
-                  error={null}
-                  name="assistantInstructions"
-                />
-              </div>
-              <AdvancedSettings
-                owner={owner}
-                plan={plan}
-                generationSettings={builderState.generationSettings}
-                setGenerationSettings={(generationSettings) => {
+            <div className="text-sm">
+              <Input
+                placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
+                value={builderState.handle}
+                onChange={(value) => {
                   setEdited(true);
                   setBuilderState((state) => ({
                     ...state,
-                    generationSettings,
+                    handle: value.trim(),
                   }));
                 }}
+                error={assistantHandleError}
+                name="assistantName"
+                showErrorLabel
+                className="text-sm"
               />
             </div>
-          </div>
-
-          <div className="flex flex-col gap-6 text-sm text-element-700">
-            <div className="text-2xl font-bold text-element-900">
-              Action & Data sources
+            <div className="text-lg font-bold text-element-900">
+              Description
             </div>
-            {configurableDataSources.length === 0 &&
-              Object.keys(builderState.dataSourceConfigurations).length ===
-                0 && (
-                <ContentMessage title="You don't have any active data source">
-                  <div className="flex flex-col gap-y-3">
-                    <div>
-                      Assistants can incorporate existing company data and
-                      knowledge to formulate answers.
-                    </div>
-                    <div>
-                      There are two types of data sources:{" "}
-                      <strong>Folders</strong> (Files you can upload) and{" "}
-                      <strong>Connections</strong> (Automatically synchronized
-                      with platforms like Notion, Slack, ...).
-                    </div>
-                    {(() => {
-                      switch (owner.role) {
-                        case "admin":
-                          return (
-                            <div>
-                              <strong>
-                                Visit the "Connections" and "Folders" sections
-                                in the Assistants panel to add new data sources.
-                              </strong>
-                            </div>
-                          );
-                        case "builder":
-                          return (
-                            <div>
-                              <strong>
-                                Only Admins can activate Connections.
-                                <br />
-                                You can add Data Sources by visiting "Folders"
-                                in the Assistants panel.
-                              </strong>
-                            </div>
-                          );
-                        case "user":
-                          return (
-                            <div>
-                              <strong>
-                                Only Admins and Builders can activate
-                                Connections or create Folders.
-                              </strong>
-                            </div>
-                          );
-                        case "none":
-                          return <></>;
-                        default:
-                          ((x: never) => {
-                            throw new Error("Unkonwn role " + x);
-                          })(owner.role);
-                      }
-                    })()}
-                  </div>
-                </ContentMessage>
-              )}
-            <div>
-              Choose the action the assistant will perform and take into account
-              before replying:
+            <div className="flex-grow self-stretch text-sm font-normal text-element-700">
+              Add a short description that will help Dust and other workspace
+              members understand the&nbsp;assistant’s&nbsp;purpose.
             </div>
-            <div className="flex flex-row items-center space-x-2">
-              <div className="text-sm font-semibold text-element-900">
-                Action:
-              </div>
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    type="select"
-                    labelVisible={true}
-                    label={ACTION_MODE_TO_LABEL[builderState.actionMode]}
-                    variant="secondary"
-                    hasMagnifying={false}
-                    size="sm"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="topLeft" width={260}>
-                  {BASIC_ACTION_MODES.map((key) => (
-                    <DropdownMenu.Item
-                      key={key}
-                      label={ACTION_MODE_TO_LABEL[key]}
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          actionMode: key,
-                        }));
-                      }}
-                    />
-                  ))}
-                  <DropdownMenu.SectionHeader label="Advanced actions" />
-                  {ADVANCED_ACTION_MODES.filter((key) => {
-                    return key !== "TABLES_QUERY" || structuredDataEnabled;
-                  }).map((key) => (
-                    <DropdownMenu.Item
-                      key={key}
-                      label={ACTION_MODE_TO_LABEL[key]}
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          actionMode: key,
-                        }));
-                      }}
-                    />
-                  ))}
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
-            <ActionModeSection show={builderState.actionMode === "GENERIC"}>
-              <div className="text-sm text-element-700">
-                No action is set. The assistant will use the instructions only
-                to answer.
-              </div>
-            </ActionModeSection>
-            <ActionModeSection
-              show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
-            >
-              <div>
-                The assistant will include as many documents as possible from
-                the data sources, using reverse chronological order.
-              </div>
-              <div className="grid grid-cols-2 gap-8">
-                <div className="col-span-1">
-                  <strong>
-                    <span className="text-warning-500">Warning!</span>{" "}
-                    Assistants are limited in the amount of data they can
-                    process.
-                  </strong>{" "}
-                  Select data sources with care, and limit processing to the
-                  shortest relevant time frame.
-                </div>
-                <div className="col-span-1">
-                  <strong>Note:</strong> The available data sources are managed
-                  by administrators.
-                </div>
-              </div>
-              <DataSourceSelectionSection
-                dataSourceConfigurations={builderState.dataSourceConfigurations}
-                openDataSourceModal={() => {
-                  setShowDataSourcesModal(true);
-                }}
-                canAddDataSource={configurableDataSources.length > 0}
-                onManageDataSource={(name) => {
-                  setDataSourceToManage(
-                    builderState.dataSourceConfigurations[name]
-                  );
-                  setShowDataSourcesModal(true);
-                }}
-                onDelete={deleteDataSource}
-              />
-              <div className={"flex flex-row items-center gap-4 pb-4"}>
-                <div className="text-sm font-semibold text-element-900">
-                  Collect data from the last
-                </div>
-                <input
-                  type="text"
-                  className={classNames(
-                    "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
-                    !timeFrameError
-                      ? "focus:border-action-500 focus:ring-action-500"
-                      : "border-red-500 focus:border-red-500 focus:ring-red-500",
-                    "bg-structure-50 stroke-structure-50"
-                  )}
-                  value={builderState.timeFrame.value || ""}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value, 10);
-                    if (!isNaN(value) || !e.target.value) {
-                      setEdited(true);
-                      setBuilderState((state) => ({
-                        ...state,
-                        timeFrame: {
-                          value,
-                          unit: builderState.timeFrame.unit,
-                        },
-                      }));
-                    }
-                  }}
-                />
-                <DropdownMenu>
-                  <DropdownMenu.Button tooltipPosition="above">
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label={
-                        TIME_FRAME_UNIT_TO_LABEL[builderState.timeFrame.unit]
-                      }
-                      variant="secondary"
-                      size="sm"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="bottomLeft">
-                    {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                      ([key, value]) => (
-                        <DropdownMenu.Item
-                          key={key}
-                          label={value}
-                          onClick={() => {
-                            setEdited(true);
-                            setBuilderState((state) => ({
-                              ...state,
-                              timeFrame: {
-                                value: builderState.timeFrame.value,
-                                unit: key as TimeframeUnit,
-                              },
-                            }));
-                          }}
-                        />
-                      )
-                    )}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-              </div>
-            </ActionModeSection>
-            <ActionModeSection
-              show={builderState.actionMode === "RETRIEVAL_SEARCH"}
-            >
-              <div>
-                The assistant will perform a search on the selected data
-                sources, and run the instructions on the results.{" "}
-                <span className="font-semibold">
-                  It’s the best approach with large quantities of data.
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p>
-                    <strong>Select your sources with care</strong> The quality
-                    of the answers to specific questions will depend on the
-                    quality of the data.
-                  </p>
-                  <p className="mt-1">
-                    <strong>
-                      You can narrow your search on most recent documents
-                    </strong>{" "}
-                    by adding instructions in your prompt such as 'Only search
-                    in documents from the last 3 months', 'Only look at data
-                    from the last 2 days', etc.
-                  </p>
-                </div>
-                <div>
-                  <p>
-                    <strong>Note:</strong> The available data sources are
-                    managed by administrators.
-                  </p>
-                </div>
-              </div>
-
-              <DataSourceSelectionSection
-                dataSourceConfigurations={builderState.dataSourceConfigurations}
-                openDataSourceModal={() => {
-                  setShowDataSourcesModal(true);
-                }}
-                canAddDataSource={configurableDataSources.length > 0}
-                onManageDataSource={(name) => {
-                  setDataSourceToManage(
-                    builderState.dataSourceConfigurations[name]
-                  );
-                  setShowDataSourcesModal(true);
-                }}
-                onDelete={deleteDataSource}
-              />
-            </ActionModeSection>
-            <ActionModeSection
-              show={builderState.actionMode === "DUST_APP_RUN"}
-            >
-              <div className="text-sm text-element-700">
-                The assistant will execute a Dust Application of your design
-                before answering. The output of the app (last block) is injected
-                in context for the model to generate an answer. The inputs of
-                the app will be automatically generated from the context of the
-                conversation based on the descriptions you provided in the
-                application's input block dataset schema.
-              </div>
-              <DustAppSelectionSection
-                show={builderState.actionMode === "DUST_APP_RUN"}
-                dustAppConfiguration={builderState.dustAppConfiguration}
-                openDustAppModal={() => {
-                  setShowDustAppsModal(true);
-                }}
-                onDelete={deleteDustApp}
-                canSelectDustApp={dustApps.length !== 0}
-              />
-            </ActionModeSection>
-            <ActionModeSection
-              show={builderState.actionMode === "TABLES_QUERY"}
-            >
-              <div className="text-sm text-element-700">
-                The assistant will generate a SQL query from your request,
-                execute it on the tables selected and use the results to
-                generate an answer.
-              </div>
-              <TablesSelectionSection
-                show={builderState.actionMode === "TABLES_QUERY"}
-                tablesQueryConfiguration={builderState.tablesQueryConfiguration}
-                openTableModal={() => {
-                  setShowTableModal(true);
-                }}
-                onDelete={(key) => {
+            <div className="text-sm">
+              <Input
+                placeholder="Answer questions about sales, translate from English to French…"
+                value={builderState.description}
+                onChange={(value) => {
                   setEdited(true);
-                  setBuilderState((state) => {
-                    const tablesQueryConfiguration =
-                      state.tablesQueryConfiguration;
-                    delete tablesQueryConfiguration[key];
-                    return {
-                      ...state,
-                      tablesQueryConfiguration,
-                    };
-                  });
+                  setBuilderState((state) => ({
+                    ...state,
+                    description: value,
+                  }));
                 }}
-                canSelectTable={dataSources.length !== 0}
+                error={null} // TODO ?
+                name="assistantDescription"
+                className="text-sm"
               />
-            </ActionModeSection>
-          </div>
-
-          <div className="flex flex-row items-start">
-            <div className="flex flex-col gap-4">
-              {slackDataSource &&
-                isBuilder(owner) &&
-                builderState.scope !== "private" &&
-                initialBuilderState?.scope !== "private" && (
-                  <SlackIntegration
-                    slackDataSource={slackDataSource}
-                    owner={owner}
-                    onSave={(channels) => {
-                      setEdited(true);
-                      setSelectedSlackChannels(channels);
-                    }}
-                    existingSelection={selectedSlackChannels}
-                    assistantHandle={builderState.handle ?? undefined}
-                  />
-                )}
             </div>
           </div>
-
-          {agentConfigurationId && (
-            <div className="flex w-full justify-start pt-8">
-              <DeleteAssistantDialog
-                owner={owner}
-                agentConfigurationId={agentConfigurationId}
-                show={showDeletionModal}
-                onClose={() => setShowDeletionModal(false)}
-                onDelete={async () => {
-                  setShowDeletionModal(false);
-                  await onClose();
-                }}
-              />
-              <Button
-                size="md"
-                variant="primaryWarning"
-                label="Delete this Assistant"
-                icon={TrashIcon}
-                onClick={() => {
-                  setShowDeletionModal(true);
-                }}
-              />
-            </div>
-          )}
-          <div className="flex w-full justify-end pt-4">
-            <Button.List>
-              <Button
-                size="md"
-                variant="tertiary"
-                label="Cancel"
-                onClick={onClose}
-              />
-              <Button
-                size="md"
-                variant="primary"
-                label="Save"
-                disabled={!edited || !submitEnabled}
-                onClick={onAssistantSave}
-              />
-            </Button.List>
+          <div className="flex flex-col items-center space-y-2">
+            <Avatar
+              size="xl"
+              visual={<img src={builderState.avatarUrl || ""} />}
+            />
+            <Button
+              labelVisible={true}
+              label={"Change"}
+              variant="tertiary"
+              size="xs"
+              icon={PencilSquareIcon}
+              onClick={() => {
+                setIsAvatarModalOpen(true);
+              }}
+            />
           </div>
         </div>
-      </AppLayout>
+      </div>
     </>
+  );
+}
+
+function PrevNextButtons({
+  screen,
+  setScreen,
+}: {
+  screen: BuilderScreen;
+  setScreen: (screen: BuilderScreen) => void;
+}) {
+  return (
+    <div className="flex pt-6">
+      {screen !== "instructions" && (
+        <Button
+          label="Previous"
+          size="md"
+          variant="secondary"
+          onClick={() => {
+            if (screen === "actions") {
+              setScreen("instructions");
+            } else if (screen === "naming") {
+              setScreen("actions");
+            }
+          }}
+        />
+      )}
+      <div className="flex-grow" />
+      {screen !== "naming" && (
+        <Button
+          label="Next"
+          size="md"
+          variant="primary"
+          onClick={() => {
+            if (screen === "instructions") {
+              setScreen("actions");
+            } else if (screen === "actions") {
+              setScreen("naming");
+            }
+          }}
+        />
+      )}
+    </div>
   );
 }
 
