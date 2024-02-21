@@ -53,6 +53,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 
 const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 
@@ -220,12 +221,49 @@ export async function cleanupIntercomConnector(
     return new Err(new Error("Connector not found"));
   }
 
+  try {
+    const accessToken = await getAccessTokenFromNango({
+      connectionId: connector.connectionId,
+      integrationId: NANGO_INTERCOM_CONNECTOR_ID,
+      useCache: true,
+    });
+
+    const resp = await fetch(`https://api.intercom.io/auth/uninstall`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: `application/json`,
+        ContentType: `application/json`,
+      },
+    });
+
+    if (!resp.ok) {
+      throw new Error(resp.statusText);
+    } else {
+      logger.info({ connectorId }, "Uninstalled Intercom.");
+    }
+  } catch (e) {
+    // If we error we still continue the process, as it's likely the fact that the nango connection
+    // was already deleted or the intercom app was already uninstalled.
+    logger.error(
+      { connectorId, error: e },
+      "Error uninstalling Intercom, continuing..."
+    );
+  }
+
   const nangoRes = await nangoDeleteConnection(
     connector.connectionId,
     NANGO_INTERCOM_CONNECTOR_ID
   );
   if (nangoRes.isErr()) {
-    throw nangoRes.error;
+    logger.error(
+      {
+        error: nangoRes.error,
+        connectorId: connector.id,
+        connectionId: connector.connectionId,
+      },
+      "Error deleting old Nango connection (intercom uninstall webhook)"
+    );
   }
 
   const res = await connector.delete();
