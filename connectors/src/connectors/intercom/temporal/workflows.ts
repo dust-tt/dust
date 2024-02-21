@@ -139,7 +139,7 @@ export async function intercomSyncWorkflow({
     connectorId,
   });
 
-  await await saveIntercomConnectorSuccessSync({ connectorId });
+  await saveIntercomConnectorSuccessSync({ connectorId });
 }
 
 /**

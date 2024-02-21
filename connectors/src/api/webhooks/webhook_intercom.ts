@@ -8,9 +8,14 @@ import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
+import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { stopIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
+import { syncFailed } from "@connectors/lib/sync_status";
+
+const { NANGO_INTERCOM_CONNECTOR_ID = "" } = process.env;
 
 const logger = mainLogger.child({ provider: "intercom" });
 
@@ -35,24 +40,34 @@ const _webhookIntercomAPIHandler = async (
   logger.info("[Intercom] Received Intercom webhook", { event });
 
   if (event.topic !== "conversation.admin.closed") {
-    logger.error("[Intercom] Received Intercom webhook with unknown topic", {
-      event,
-    });
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom webhook with unknown topic"
+    );
+    return res.status(200).end();
   }
 
   const intercomWorkspaceId = event.app_id;
   if (!intercomWorkspaceId) {
-    logger.error("[Intercom] Received Intercom webhook with no workspace id", {
-      event,
-    });
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom webhook with no workspace id"
+    );
     return res.status(200).end();
   }
 
   const conversation = event.data?.item;
   if (!conversation) {
-    logger.error("[Intercom] Received Intercom webhook with no conversation", {
-      event,
-    });
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom webhook with no conversation"
+    );
     return res.status(200).end();
   }
 
@@ -63,9 +78,12 @@ const _webhookIntercomAPIHandler = async (
     },
   });
   if (!intercomWorskpace) {
-    logger.error("[Intercom] Received Intercom webhook for unknown workspace", {
-      event,
-    });
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom webhook for unknown workspace"
+    );
     return res.status(200).end();
   }
 
@@ -74,9 +92,12 @@ const _webhookIntercomAPIHandler = async (
     intercomWorskpace.connectorId
   );
   if (!connector || connector.type !== "intercom") {
-    logger.error("[Intercom] Received Intercom webhook for unknown connector", {
-      event,
-    });
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom webhook for unknown connector"
+    );
     return res.status(200).end();
   }
 
@@ -121,11 +142,116 @@ const _webhookIntercomAPIHandler = async (
     loggerArgs,
   });
 
-  logger.info("[Intercom] Upserted conversation from webhook", { loggerArgs });
+  logger.info(loggerArgs, "[Intercom] Upserted conversation from webhook");
 
   return res.status(200).end();
 };
 
 export const webhookIntercomAPIHandler = withLogging(
   _webhookIntercomAPIHandler
+);
+
+const _webhookIntercomUninstallAPIHandler = async (
+  req: Request<
+    Record<string, string>,
+    IntercombWebhookResBody,
+    {
+      app_id: string; // That's the Intercom workspace id
+    }
+  >,
+  res: Response<IntercombWebhookResBody>
+) => {
+  const event = req.body;
+  logger.info({ event }, "[Intercom] Received Intercom uninstall webhook");
+
+  const intercomWorkspaceId = event.app_id;
+  if (!intercomWorkspaceId) {
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom uninstall webhook with no workspace id"
+    );
+    return res.status(200).end();
+  }
+
+  const intercomWorskpace = await IntercomWorkspace.findOne({
+    where: {
+      intercomWorkspaceId,
+    },
+  });
+  if (!intercomWorskpace) {
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom uninstall webhook for unknown workspace"
+    );
+    return res.status(200).end();
+  }
+
+  // Find Connector
+  const connector = await ConnectorResource.fetchById(
+    intercomWorskpace.connectorId
+  );
+  if (!connector || connector.type !== "intercom") {
+    logger.error(
+      {
+        event,
+      },
+      "[Intercom] Received Intercom uninstall webhook for unknown connector"
+    );
+    return res.status(200).end();
+  }
+
+  // Stop the underlying sync workflow to avoid churning.
+  const stopRes = await stopIntercomSyncWorkflow(connector.id);
+  if (stopRes.isErr()) {
+    logger.error(
+      {
+        connectorId: connector.id,
+        error: stopRes.error,
+      },
+      "Failed to stop Intercom sync workflow (intercom uninstall webhook)"
+    );
+    return res.status(200).end();
+  }
+
+  // Mark the connector as errored so that the user is notified.
+  await syncFailed(connector.id, "oauth_token_revoked");
+
+  // Attempt to delete the nango connection Id. But fail silently if it fails.
+  nangoDeleteConnection(
+    connector.connectionId,
+    NANGO_INTERCOM_CONNECTOR_ID
+  ).catch((e) => {
+    logger.error(
+      {
+        error: e,
+        connectorId: connector.id,
+        connectionId: connector.connectionId,
+      },
+      "Error deleting old Nango connection (intercom uninstall webhook)"
+    );
+  });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId: connector.id,
+    provider: "intercom",
+    dataSourceName: dataSourceConfig.dataSourceName,
+    intercomWorkspaceId,
+  };
+
+  logger.info(
+    loggerArgs,
+    "[Intercom] Errored connector from uninstall webhook"
+  );
+
+  return res.status(200).end();
+};
+
+export const webhookIntercomUninstallAPIHandler = withLogging(
+  _webhookIntercomUninstallAPIHandler
 );
