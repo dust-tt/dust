@@ -98,6 +98,7 @@ export async function syncCollection({
     if (collectionOnIntercom) {
       await _upsertCollection({
         connectorId,
+        connectionId,
         collection: collectionOnIntercom,
         isHelpCenterWebsiteTurnedOn,
         parents: [],
@@ -192,6 +193,7 @@ export async function _deleteCollection({
 export async function _upsertCollection({
   connectorId,
   intercomClient,
+  connectionId,
   dataSourceConfig,
   loggerArgs,
   collection,
@@ -200,6 +202,7 @@ export async function _upsertCollection({
   currentSyncMs,
 }: {
   connectorId: ModelId;
+  connectionId: string;
   intercomClient: IntercomClient;
   dataSourceConfig: DataSourceConfig;
   collection: IntercomCollectionType;
@@ -357,7 +360,7 @@ export async function _upsertCollection({
 
   // Then we call ourself recursively on the children collections
   const childrenCollectionsOnIntercom = await fetchIntercomCollections(
-    intercomClient,
+    connectionId,
     collection.help_center_id,
     collection.id
   );
@@ -366,6 +369,7 @@ export async function _upsertCollection({
     childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
       await _upsertCollection({
         connectorId,
+        connectionId,
         intercomClient,
         dataSourceConfig,
         loggerArgs,

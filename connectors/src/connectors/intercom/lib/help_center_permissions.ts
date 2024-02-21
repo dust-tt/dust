@@ -7,7 +7,6 @@ import {
   fetchIntercomCollections,
   fetchIntercomHelpCenter,
   fetchIntercomHelpCenters,
-  getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getHelpCenterArticleInternalId,
@@ -86,7 +85,7 @@ export async function allowSyncHelpCenter({
   // If withChildren we are allowing the full Help Center.
   if (withChildren) {
     const level1Collections = await fetchIntercomCollections(
-      intercomClient,
+      connector.connectionId,
       helpCenter.helpCenterId,
       null
     );
@@ -221,7 +220,7 @@ export async function allowSyncCollection({
       helpCenterId: collection.helpCenterId,
     }),
     fetchIntercomCollections(
-      intercomClient,
+      connector.connectionId,
       collection.helpCenterId,
       collection.collectionId
     ),
@@ -338,7 +337,6 @@ export async function retrieveIntercomHelpCentersPermissions({
     throw new Error("Connector not found");
   }
 
-  const intercomClient = await getIntercomClient(connector.connectionId);
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
   let nodes: ConnectorNode[] = [];
@@ -436,7 +434,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       }));
     } else {
       const collectionsInIntercom = await fetchIntercomCollections(
-        intercomClient,
+        connector.connectionId,
         helpCenterParentId,
         parentId
       );

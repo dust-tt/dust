@@ -242,19 +242,37 @@ export async function fetchIntercomHelpCenter(
  * Return the list of Collections filtered by Help Center and parent Collection.
  */
 export async function fetchIntercomCollections(
-  intercomClient: Client,
+  nangoConnectionId: string,
   helpCenterId: string,
   parentId: string | null
 ): Promise<IntercomCollectionType[]> {
+  if (!NANGO_INTERCOM_CONNECTOR_ID) {
+    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
+  }
+
+  const accessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: NANGO_INTERCOM_CONNECTOR_ID,
+    useCache: true,
+  });
+
   let response, hasMore;
   let page = 1;
   const collections: IntercomCollectionType[] = [];
   do {
-    response = await intercomClient.helpCenter.collections.list({
-      page,
-      perPage: 12,
-    });
-    // @ts-expect-error Argument of type 'CollectionObject' is not assignable to parameter of type 'IntercomCollectionType'.
+    const resp = await fetch(
+      `https://api.intercom.io/help_center/collections?page=${page}&per_page=12`,
+      {
+        method: "GET",
+        headers: {
+          "Intercom-Version": "2.10",
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    response = await resp.json();
+
     collections.push(...response.data);
     if (response.pages.total_pages > page) {
       hasMore = true;
