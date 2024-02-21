@@ -4,7 +4,13 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { Avatar, Input, Button, PencilSquareIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Input,
+  Button,
+  PencilSquareIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import { WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
@@ -42,18 +48,18 @@ export default function NamingScreen({
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
       />
 
-      <div className="flex w-full flex-col gap-4">
-        <div className="text-2xl font-bold text-element-900">Identity</div>
-        <div className="flex flex-row items-start gap-8">
-          <div className="flex flex-col gap-4">
-            <div className="text-lg font-bold text-element-900">Name</div>
-            <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-              Choose a name reflecting the expertise, knowledge access or
-              function of your&nbsp;assistant. Mentioning the&nbsp;assistant in
-              a conversation, like <span className="italic">"@help"</span> will
-              prompt a&nbsp;response from&nbsp;them.
+      <div className="flex w-full flex-col gap-5">
+        <Page.Header title="Naming" />
+        <div className="flex gap-8">
+          <div className="flex flex-grow flex-col gap-4">
+            <div>
+              <Page.SectionHeader title="Handle" />
+              <div className="text-sm font-normal text-element-700">
+                Handles are used to mention (call) an assistant. They must be
+                descriptive and unique.
+              </div>
             </div>
-            <div className="text-sm">
+            <div>
               <Input
                 placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
                 value={builderState.handle}
@@ -67,29 +73,6 @@ export default function NamingScreen({
                 error={assistantHandleError}
                 name="assistantName"
                 showErrorLabel
-                className="text-sm"
-              />
-            </div>
-            <div className="text-lg font-bold text-element-900">
-              Description
-            </div>
-            <div className="flex-grow self-stretch text-sm font-normal text-element-700">
-              Add a short description that will help Dust and other workspace
-              members understand the&nbsp;assistant’s&nbsp;purpose.
-            </div>
-            <div className="text-sm">
-              <Input
-                placeholder="Answer questions about sales, translate from English to French…"
-                value={builderState.description}
-                onChange={(value) => {
-                  setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    description: value,
-                  }));
-                }}
-                error={null} // TODO ?
-                name="assistantDescription"
                 className="text-sm"
               />
             </div>
@@ -108,6 +91,30 @@ export default function NamingScreen({
               onClick={() => {
                 setIsAvatarModalOpen(true);
               }}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-4">
+          <div>
+            <Page.SectionHeader title="Description" />
+            <div className="text-sm font-normal text-element-700">
+              Describe for others the assistant’s purpose.
+            </div>
+          </div>
+          <div>
+            <Input
+              placeholder="Answer questions about sales, translate from English to French…"
+              value={builderState.description}
+              onChange={(value) => {
+                setEdited(true);
+                setBuilderState((state) => ({
+                  ...state,
+                  description: value,
+                }));
+              }}
+              error={null} // TODO ?
+              name="assistantDescription"
+              className="text-sm"
             />
           </div>
         </div>
