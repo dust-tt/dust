@@ -221,19 +221,20 @@ const _webhookIntercomUninstallAPIHandler = async (
   await syncFailed(connector.id, "oauth_token_revoked");
 
   // Attempt to delete the nango connection Id. But fail silently if it fails.
-  nangoDeleteConnection(
+  const nangoRes = await nangoDeleteConnection(
     connector.connectionId,
     NANGO_INTERCOM_CONNECTOR_ID
-  ).catch((e) => {
+  );
+  if (nangoRes.isErr()) {
     logger.error(
       {
-        error: e,
+        error: nangoRes.error,
         connectorId: connector.id,
         connectionId: connector.connectionId,
       },
       "Error deleting old Nango connection (intercom uninstall webhook)"
     );
-  });
+  }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {

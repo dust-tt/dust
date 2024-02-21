@@ -20,7 +20,10 @@ import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
-import { webhookIntercomAPIHandler, webhookIntercomUninstallAPIHandler } from "@connectors/api/webhooks/webhook_intercom";
+import {
+  webhookIntercomAPIHandler,
+  webhookIntercomUninstallAPIHandler,
+} from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { getWebcrawlerConfiguration } from "@connectors/connectors/webcrawler";
 import logger from "@connectors/logger/logger";
@@ -130,7 +133,7 @@ export function startServer(port: number) {
   app.post(
     "/webhooks/:webhooks_secret/intercom/uninstall",
     bodyParser.raw({ type: "application/json" }),
-    webhookIntercomUninstallAPIHandler,
+    webhookIntercomUninstallAPIHandler
   );
 
   app.post(
