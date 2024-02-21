@@ -369,7 +369,7 @@ DropdownMenu.Items = function ({
       case "visible":
         return "s-overflow-visible";
       case "auto":
-        return "s-overflow-auto";
+        return "s-overflow-auto s-max-h-[344px]";
       default:
         return "s-overflow-auto";
     }
@@ -411,10 +411,7 @@ DropdownMenu.Items = function ({
       >
         {topBar}
         <div
-          className={classNames(
-            "s-max-h-[344px] s-px-5 s-py-1.5",
-            getOverflowClass(overflow)
-          )}
+          className={classNames("s-px-5 s-py-1.5", getOverflowClass(overflow))}
         >
           <StandardItem.List>{children}</StandardItem.List>
         </div>
