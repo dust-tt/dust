@@ -470,7 +470,7 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
       quantity: activeSeats,
     });
   } catch (err) {
-    logger.error(
+    logger.warn(
       `Error while updating Stripe subscription quantity for workspace ${workspaceId}: ${err}`
     );
   }
