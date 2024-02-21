@@ -209,6 +209,7 @@ export default function DataSourcesView({
               }
             >
               <ConnectorSyncingChip
+                initialState={ds.connector}
                 workspaceId={ds.connector.workspaceId}
                 dataSourceName={ds.connector.dataSourceName}
               />
