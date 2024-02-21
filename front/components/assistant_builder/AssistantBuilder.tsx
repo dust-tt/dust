@@ -527,6 +527,7 @@ export default function AssistantBuilder({
       })),
     [screen]
   );
+  const modalTitle = agentConfigurationId ? "Edit Assistant" : "New Assistant";
 
   return (
     <>
@@ -622,14 +623,11 @@ export default function AssistantBuilder({
           current: "workspace_assistants",
         })}
         titleChildren={
-          !agentConfigurationId ? (
-            <AppLayoutSimpleCloseTitle
-              title="New assistant"
-              onClose={onClose}
-            />
+          !edited ? (
+            <AppLayoutSimpleCloseTitle title={modalTitle} onClose={onClose} />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
-              title="Edit assistant"
+              title={modalTitle}
               onCancel={onClose}
               onSave={submitEnabled ? onAssistantSave : undefined}
               isSaving={isSavingOrDeleting}
