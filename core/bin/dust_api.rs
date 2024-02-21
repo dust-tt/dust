@@ -728,6 +728,17 @@ async fn run_helper(
         }
     }
 
+    for (k, _) in &payload.secrets {
+        if k.to_uppercase() != *k {
+            Err(error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_env_variables_error",
+                "Invalid Env Variable: expected UPPERCASE",
+                None,
+            ))?
+        }
+    }
+
     match app
         .prepare_run(
             payload.run_type,

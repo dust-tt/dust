@@ -230,13 +230,12 @@ pub fn replace_variables_in_string(text: &str, field: &str, env: &Env) -> Result
 
     // Run Tera templating engine one_off on the result (before replacing variables but after
     // looking for them).
-    let mut full_env: HashMap<String, Value> = HashMap::new();
-    for (key, value) in &env.secrets {
-        full_env.insert(key.clone(), Value::String(value.to_string().clone()));
-    }
-    for (key, value) in &env.state {
-        full_env.insert(key.clone(), value.clone());
-    }
+    let mut full_env = env
+        .secrets
+        .iter()
+        .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+        .collect::<HashMap<String, Value>>();
+    full_env.extend(env.state.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     let context = Context::from_value(json!(full_env))?;
 

@@ -318,9 +318,7 @@ impl App {
 
         let project = self.project.as_ref().unwrap().clone();
         let run_id = self.run.as_ref().unwrap().run_id().to_string();
-        let mut secrets = self.secrets.as_ref().unwrap().clone();
-
-        secrets.retain(|k, _| k.to_uppercase() == *k);
+        let secrets = self.secrets.as_ref().unwrap().clone();
 
         info!(
             project_id = project.project_id(),
