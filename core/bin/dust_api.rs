@@ -558,7 +558,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
-    secrets: HashMap<String, String>,
+    secrets: Option<HashMap<String, String>>,
 }
 
 async fn run_helper(
@@ -728,7 +728,12 @@ async fn run_helper(
         }
     }
 
-    for (k, _) in &payload.secrets {
+    let secrets = match payload.secrets {
+        Some(s) => s,
+        None => HashMap::new(),
+    };
+
+    for (k, _) in &secrets {
         if k.to_uppercase() != *k {
             Err(error_response(
                 StatusCode::BAD_REQUEST,
@@ -746,7 +751,7 @@ async fn run_helper(
             project.clone(),
             d,
             state.store.clone(),
-            payload.secrets,
+            secrets,
         )
         .await
     {
