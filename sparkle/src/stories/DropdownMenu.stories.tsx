@@ -388,6 +388,22 @@ export const DropdownExample = () => {
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+      <div className="s-h-12" />
+      <div className="s-flex s-gap-6">
+        <div className="s-text-sm">With nested dropdown</div>
+        <DropdownMenu>
+          <DropdownMenu.Button icon={RobotIcon} />
+          <DropdownMenu.Items origin="topRight" overflow="visible">
+            <DropdownMenu>
+              <DropdownMenu.Button label="Nested" />
+              <DropdownMenu.Items origin="topRight">
+                <DropdownMenu.Item label="item 1" href="#" />
+                <DropdownMenu.Item label="item 2" href="#" />
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
       <div className="w-full s-flex s-justify-end s-gap-6">
         <div className="s-text-sm">Auto menu</div>
         <DropdownMenu>
