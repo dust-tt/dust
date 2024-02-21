@@ -2198,6 +2198,7 @@ impl Store for PostgresStore {
             &table_name,
             &table_description,
             &None,
+            None,
         ))
     }
 
@@ -2231,7 +2232,7 @@ impl Store for PostgresStore {
         // Update the schema.
         let stmt = c
             .prepare(
-                "UPDATE tables SET schema = $1 \
+                "UPDATE tables SET schema = $1, schema_stale_at = NULL \
                    WHERE data_source = $2 AND table_id = $3",
             )
             .await?;
@@ -2244,6 +2245,46 @@ impl Store for PostgresStore {
             ],
         )
         .await?;
+
+        Ok(())
+    }
+
+    async fn invalidate_table_schema(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Invalidate the schema.
+        let schema_stale_at = utils::now() as i64;
+        let stmt = c
+            .prepare(
+                "UPDATE tables SET schema_stale_at = $1 \
+                   WHERE data_source = $2 AND table_id = $3",
+            )
+            .await?;
+        c.query(&stmt, &[&schema_stale_at, &data_source_row_id, &table_id])
+            .await?;
 
         Ok(())
     }
@@ -2276,13 +2317,13 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, schema FROM tables \
+                "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
                 WHERE data_source = $1 AND table_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
 
-        let d: Option<(i64, String, String, String, Option<String>)> = match r.len() {
+        let d: Option<(i64, String, String, String, Option<String>, Option<i64>)> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -2290,13 +2331,14 @@ impl Store for PostgresStore {
                 r[0].get(2),
                 r[0].get(3),
                 r[0].get(4),
+                r[0].get(5),
             )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((created, table_id, name, description, schema)) => {
+            Some((created, table_id, name, description, schema, schema_stale_at)) => {
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
                     Some(schema) => {
@@ -2315,6 +2357,7 @@ impl Store for PostgresStore {
                     &name,
                     &description,
                     &parsed_schema,
+                    schema_stale_at.map(|t| t as u64),
                 )))
             }
         }
@@ -2350,7 +2393,7 @@ impl Store for PostgresStore {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema FROM tables \
+                        "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
                         WHERE data_source = $1",
                     )
                     .await?;
@@ -2359,7 +2402,7 @@ impl Store for PostgresStore {
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema FROM tables \
+                        "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
                         WHERE data_source = $1 LIMIT $2 OFFSET $3",
                     )
                     .await?;
@@ -2379,6 +2422,7 @@ impl Store for PostgresStore {
                 let name: String = r.get(2);
                 let description: String = r.get(3);
                 let schema: Option<String> = r.get(4);
+                let schema_stale_at: Option<i64> = r.get(5);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2399,6 +2443,7 @@ impl Store for PostgresStore {
                     &name,
                     &description,
                     &parsed_schema,
+                    schema_stale_at.map(|t| t as u64),
                 ))
             })
             .collect::<Result<Vec<_>>>()?;

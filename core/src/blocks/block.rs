@@ -4,6 +4,7 @@ use crate::blocks::{
     map::Map, r#while::While, reduce::Reduce, search::Search,
 };
 use crate::data_sources::qdrant::QdrantClients;
+use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
 use crate::run::{Credentials, RunConfig};
 use crate::stores::store::Store;
@@ -44,6 +45,8 @@ pub struct Env {
     pub map: Option<MapState>,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
+    #[serde(skip_serializing)]
+    pub databases_store: Box<dyn DatabasesStore + Sync + Send>,
     #[serde(skip_serializing)]
     pub qdrant_clients: QdrantClients,
     #[serde(skip_serializing)]
