@@ -49,7 +49,6 @@ import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
-import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
 
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
@@ -1785,7 +1784,7 @@ function AssistantBuilderTextArea({
   name: string;
 }) {
   return (
-    <ReactTextareaAutosize
+    <textarea
       name="name"
       id={name}
       className={classNames(
