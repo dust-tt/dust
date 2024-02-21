@@ -1,4 +1,5 @@
 import { Chip } from "@dust-tt/sparkle";
+import type { ConnectorType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -8,15 +9,22 @@ import { timeAgoFrom } from "@app/lib/utils";
 export default function ConnectorSyncingChip({
   workspaceId,
   dataSourceName,
+  initialState,
 }: {
   workspaceId: string;
   dataSourceName: string;
+  initialState: ConnectorType;
 }) {
-  const { connector, isConnectorLoading, isConnectorError } = useConnector({
+  const {
+    connector: refreshedConnector,
+    isConnectorLoading,
+    isConnectorError,
+  } = useConnector({
     workspaceId: workspaceId,
     dataSourceName: dataSourceName,
   });
 
+  const connector = refreshedConnector || initialState;
   if (!connector) {
     if (isConnectorError) {
       return (

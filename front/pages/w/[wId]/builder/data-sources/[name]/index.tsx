@@ -1012,6 +1012,7 @@ function ManagedDataSourceView({
         </div>
         <div className="pt-2">
           <ConnectorSyncingChip
+            initialState={connector}
             workspaceId={connector.workspaceId}
             dataSourceName={connector.dataSourceName}
           />

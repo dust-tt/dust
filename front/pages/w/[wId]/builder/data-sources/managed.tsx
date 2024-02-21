@@ -700,6 +700,7 @@ export default function DataSourcesView({
                         } else {
                           return (
                             <ConnectorSyncingChip
+                              initialState={ds.connector}
                               workspaceId={ds.connector.workspaceId}
                               dataSourceName={ds.connector.dataSourceName}
                             />
