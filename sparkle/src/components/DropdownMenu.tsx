@@ -369,9 +369,9 @@ DropdownMenu.Items = function ({
       case "visible":
         return "s-overflow-visible";
       case "auto":
-        return "s-overflow-auto s-max-h-[344px]";
+        return "s-max-h-[344px] s-overflow-auto";
       default:
-        return "s-overflow-auto";
+        return "s-max-h-[344px] s-overflow-auto";
     }
   };
 
