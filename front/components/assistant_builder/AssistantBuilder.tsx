@@ -4,7 +4,6 @@ import {
   Avatar,
   Button,
   CircleIcon,
-  Collapsible,
   ContentMessage,
   ContextItem,
   DropdownMenu,
@@ -956,7 +955,7 @@ export default function AssistantBuilder({
           )
         }
       >
-        <div className="flex flex-col gap-5 pt-4">
+        <div className="flex h-full flex-col gap-5 py-4">
           <Tab tabs={tabs} variant="stepper" />
           {(() => {
             switch (screen) {
@@ -1010,52 +1009,175 @@ function InstructionScreen({
   setEdited: (edited: boolean) => void;
 }) {
   return (
-    <div className="flex w-full flex-row items-start">
-      <div className="flex w-full flex-col gap-4">
-        <div className="text-2xl font-bold text-element-900">Instructions</div>
-        <div className="flex-grow gap-y-4 self-stretch text-sm font-normal text-element-700">
-          <p>This is your assistant’s heart and soul.</p>
-          <p className="pt-2">
-            Describe, as is you were addressing them, their purpose. Be specific
-            on the role (
-            <span className="italic">I want you to act as&nbsp;…</span>
-            ), their expected output, and&nbsp;any formatting requirements you
-            have (
-            <span className="italic">
-              ”Present your&nbsp;answer as&nbsp;a&nbsp;table”
+    <div className="flex h-full w-full flex-col gap-4">
+      <div className="flex">
+        <div className="flex flex-col gap-2">
+          <Page.Header title="Instructions" />
+          <Page.P>
+            <span className="text-sm text-element-700">
+              Command or guideline you provide to your assistant to direct its
+              responses.
             </span>
-            ).
-          </p>
+          </Page.P>
         </div>
-        <div className="text-sm">
-          <AssistantBuilderTextArea
-            placeholder="I want you to act as…"
-            value={builderState.instructions}
-            onChange={(value) => {
+        <div className="flex-grow" />
+        <div className="self-end">
+          <AdvancedSettings
+            owner={owner}
+            plan={plan}
+            generationSettings={builderState.generationSettings}
+            setGenerationSettings={(generationSettings) => {
               setEdited(true);
               setBuilderState((state) => ({
                 ...state,
-                instructions: value,
+                generationSettings,
               }));
             }}
-            error={null}
-            name="assistantInstructions"
           />
         </div>
-        <AdvancedSettings
-          owner={owner}
-          plan={plan}
-          generationSettings={builderState.generationSettings}
-          setGenerationSettings={(generationSettings) => {
-            setEdited(true);
-            setBuilderState((state) => ({
-              ...state,
-              generationSettings,
-            }));
-          }}
-        />
       </div>
+      <AssistantBuilderTextArea
+        placeholder="I want you to act as…"
+        value={builderState.instructions}
+        onChange={(value) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            instructions: value,
+          }));
+        }}
+        error={null}
+        name="assistantInstructions"
+      />
     </div>
+  );
+}
+
+function AdvancedSettings({
+  owner,
+  plan,
+  generationSettings,
+  setGenerationSettings,
+}: {
+  owner: WorkspaceType;
+  plan: PlanType;
+  generationSettings: AssistantBuilderState["generationSettings"];
+  setGenerationSettings: (
+    generationSettingsSettings: AssistantBuilderState["generationSettings"]
+  ) => void;
+}) {
+  const usedModelConfigs: ModelConfig[] = [
+    GPT_4_TURBO_MODEL_CONFIG,
+    GPT_3_5_TURBO_MODEL_CONFIG,
+    CLAUDE_DEFAULT_MODEL_CONFIG,
+    CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+    MISTRAL_MEDIUM_MODEL_CONFIG,
+    MISTRAL_SMALL_MODEL_CONFIG,
+    GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  ];
+  if (owner.flags.includes("mistral_next")) {
+    usedModelConfigs.push(MISTRAL_NEXT_MODEL_CONFIG);
+  }
+
+  const supportedModelConfig = getSupportedModelConfig(
+    generationSettings.modelSettings
+  );
+  if (!supportedModelConfig) {
+    // unreachable
+    alert("Unsupported model");
+  }
+  return (
+    <DropdownMenu className="[&>*:nth-child(2)>*:first-child]:overflow-visible">
+      <DropdownMenu.Button>
+        <Button
+          label="Advanced settings"
+          variant="tertiary"
+          size="sm"
+          type="select"
+        />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items width={330}>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-row items-center gap-2">
+            <div className="grow text-sm text-element-900">
+              Model selection:
+            </div>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={
+                    getSupportedModelConfig(generationSettings.modelSettings)
+                      .displayName
+                  }
+                  variant="tertiary"
+                  hasMagnifying={false}
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topRight">
+                <div className="z-[120]">
+                  {usedModelConfigs
+                    .filter((m) => !(m.largeModel && !isUpgraded(plan)))
+                    .map((modelConfig) => (
+                      <DropdownMenu.Item
+                        key={modelConfig.modelId}
+                        label={modelConfig.displayName}
+                        onClick={() => {
+                          setGenerationSettings({
+                            ...generationSettings,
+                            modelSettings: {
+                              modelId: modelConfig.modelId,
+                              providerId: modelConfig.providerId,
+                              // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                            } as SupportedModel,
+                          });
+                        }}
+                      />
+                    ))}
+                </div>
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </div>
+          <div className="flex flex-row items-center gap-2">
+            <div className="grow text-sm text-element-900">
+              Creativity level:
+            </div>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={
+                    getCreativityLevelFromTemperature(
+                      generationSettings?.temperature
+                    ).label
+                  }
+                  variant="tertiary"
+                  hasMagnifying={false}
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="topRight">
+                {CREATIVITY_LEVELS.map(({ label, value }) => (
+                  <DropdownMenu.Item
+                    key={label}
+                    label={label}
+                    onClick={() => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        temperature: value,
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </div>
+        </div>
+      </DropdownMenu.Items>
+    </DropdownMenu>
   );
 }
 
@@ -1621,11 +1743,12 @@ function AssistantBuilderTextArea({
       name="name"
       id={name}
       className={classNames(
-        "block max-h-64 min-h-48 w-full min-w-0 rounded-md text-sm",
+        "block max-h-full min-h-48 w-full min-w-0 grow rounded-md text-sm text-sm",
         !error
           ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
           : "border-red-500 focus:border-red-500 focus:ring-red-500",
-        "bg-structure-50 stroke-structure-50"
+        "bg-structure-50 stroke-structure-50",
+        "resize-none"
       )}
       placeholder={placeholder}
       value={value ?? ""}
@@ -1633,125 +1756,6 @@ function AssistantBuilderTextArea({
         onChange(e.target.value);
       }}
     />
-  );
-}
-
-function AdvancedSettings({
-  owner,
-  plan,
-  generationSettings,
-  setGenerationSettings,
-}: {
-  owner: WorkspaceType;
-  plan: PlanType;
-  generationSettings: AssistantBuilderState["generationSettings"];
-  setGenerationSettings: (
-    generationSettingsSettings: AssistantBuilderState["generationSettings"]
-  ) => void;
-}) {
-  const usedModelConfigs: ModelConfig[] = [
-    GPT_4_TURBO_MODEL_CONFIG,
-    GPT_3_5_TURBO_MODEL_CONFIG,
-    CLAUDE_DEFAULT_MODEL_CONFIG,
-    CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-    MISTRAL_MEDIUM_MODEL_CONFIG,
-    MISTRAL_SMALL_MODEL_CONFIG,
-    GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  ];
-  if (owner.flags.includes("mistral_next")) {
-    usedModelConfigs.push(MISTRAL_NEXT_MODEL_CONFIG);
-  }
-
-  const supportedModelConfig = getSupportedModelConfig(
-    generationSettings.modelSettings
-  );
-  if (!supportedModelConfig) {
-    // unreachable
-    alert("Unsupported model");
-  }
-  return (
-    <Collapsible>
-      <Collapsible.Button label="Advanced settings" />
-      <Collapsible.Panel>
-        <div className="flex flex-row items-center gap-12">
-          <div className="flex flex-1 flex-row items-center gap-2">
-            <div className="text-sm font-semibold text-element-900">
-              Underlying model:
-            </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    getSupportedModelConfig(generationSettings.modelSettings)
-                      .displayName
-                  }
-                  variant="secondary"
-                  hasMagnifying={false}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="bottomRight">
-                {usedModelConfigs
-                  .filter((m) => !(m.largeModel && !isUpgraded(plan)))
-                  .map((modelConfig) => (
-                    <DropdownMenu.Item
-                      key={modelConfig.modelId}
-                      label={modelConfig.displayName}
-                      onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                          } as SupportedModel,
-                        });
-                      }}
-                    />
-                  ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
-          <div className="flex flex-1 flex-row items-center gap-2">
-            <div className="text-sm font-semibold text-element-900">
-              Creativity level:
-            </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
-                    ).label
-                  }
-                  variant="secondary"
-                  hasMagnifying={false}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="bottomRight">
-                {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenu.Item
-                    key={label}
-                    label={label}
-                    onClick={() => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        temperature: value,
-                      });
-                    }}
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
-        </div>
-      </Collapsible.Panel>
-    </Collapsible>
   );
 }
 
