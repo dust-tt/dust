@@ -311,6 +311,7 @@ interface DropdownItemsProps {
   children: React.ReactNode;
   topBar?: React.ReactNode;
   bottomBar?: React.ReactNode;
+  overflow?: "visible" | "auto";
 }
 
 DropdownMenu.Items = function ({
@@ -320,6 +321,7 @@ DropdownMenu.Items = function ({
   children,
   topBar,
   bottomBar,
+  overflow = "auto",
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
   const [buttonHeight, setButtonHeight] = useState(0);
@@ -362,6 +364,17 @@ DropdownMenu.Items = function ({
     }
   };
 
+  const getOverflowClass = (overflow: string) => {
+    switch (overflow) {
+      case "visible":
+        return "s-overflow-visible";
+      case "auto":
+        return "s-max-h-[344px] s-overflow-auto";
+      default:
+        return "s-max-h-[344px] s-overflow-auto";
+    }
+  };
+
   const styleInsert = (origin: string, marginLeft?: number) => {
     const style: { width: string; top?: string; left?: string } = {
       width: `${width}px`,
@@ -397,7 +410,9 @@ DropdownMenu.Items = function ({
         style={styleInsert(origin, marginLeft)}
       >
         {topBar}
-        <div className="s-max-h-[344px] s-overflow-auto s-px-5 s-py-1.5">
+        <div
+          className={classNames("s-px-5 s-py-1.5", getOverflowClass(overflow))}
+        >
           <StandardItem.List>{children}</StandardItem.List>
         </div>
         {bottomBar}
