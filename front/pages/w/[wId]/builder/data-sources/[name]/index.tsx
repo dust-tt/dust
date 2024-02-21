@@ -150,6 +150,8 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   };
 });
 
+const tabIds = ["documents", "tables"];
+
 function StandardDataSourceView({
   owner,
   plan,
@@ -163,7 +165,6 @@ function StandardDataSourceView({
 }) {
   const router = useRouter();
 
-  const tabIds = ["documents", "tables"];
   type TabId = (typeof tabIds)[number];
   const [currentTab, setCurrentTab] = useState<TabId>("documents");
   const tabs = useMemo(
@@ -173,7 +174,7 @@ function StandardDataSourceView({
         id: tabId,
         current: currentTab === tabId,
       })),
-    [currentTab, tabIds]
+    [currentTab]
   );
 
   useEffect(() => {

@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { ChangeEvent } from "react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import React from "react";
 import type { Crop } from "react-image-crop";
 import ReactCrop, { centerCrop, makeAspectCrop } from "react-image-crop";
@@ -46,6 +46,37 @@ export function AvatarPicker({
   );
   const [crop, setCrop] = useState<Crop>(DEFAULT_CROP);
   const [src, setSrc] = useState<string | null>(null);
+
+  const tabs: {
+    label: string;
+    id: "droids" | "spirits" | "upload";
+    current: boolean;
+    icon: React.ComponentType<{
+      className?: string;
+    }>;
+  }[] = useMemo(
+    () => [
+      {
+        label: "Droids",
+        id: "droids",
+        current: currentTab === "droids",
+        icon: ImageIcon,
+      },
+      {
+        label: "Spirits",
+        id: "spirits",
+        current: currentTab === "spirits",
+        icon: ImageIcon,
+      },
+      {
+        label: "Upload",
+        id: "upload",
+        current: currentTab === "upload",
+        icon: ArrowUpOnSquareIcon,
+      },
+    ],
+    [currentTab]
+  );
 
   const onClose = () => {
     setOpen(false);
@@ -162,29 +193,7 @@ export function AvatarPicker({
       />
       <div className="mx-auto max-w-4xl px-8 pt-6">
         <div className="overflow-x-auto">
-          <Tab
-            tabs={[
-              {
-                label: "Droids",
-                id: "droids",
-                current: currentTab === "droids",
-                icon: ImageIcon,
-              },
-              {
-                label: "Spirits",
-                id: "spirits",
-                current: currentTab === "spirits",
-                icon: ImageIcon,
-              },
-              {
-                label: "Upload",
-                id: "upload",
-                current: currentTab === "upload",
-                icon: ArrowUpOnSquareIcon,
-              },
-            ]}
-            setCurrentTab={setCurrentTab}
-          />
+          <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
         </div>
         {currentTab === "droids" && (
           <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">

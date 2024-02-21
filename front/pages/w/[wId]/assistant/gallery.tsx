@@ -20,7 +20,7 @@ import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
@@ -145,31 +145,34 @@ export default function AssistantsGallery({
     current: boolean;
     id: AgentsGetViewType;
     icon?: ComponentType<{ className?: string }>;
-  }[] = [
-    {
-      label: "All",
-      current: agentsGetView === "all",
-      id: "all",
-    },
-    {
-      label: "Shared",
-      current: agentsGetView === "published",
-      icon: UserGroupIcon,
-      id: "published",
-    },
-    {
-      label: "Company",
-      current: agentsGetView === "workspace",
-      icon: PlanetIcon,
-      id: "workspace",
-    },
-    {
-      label: "Default",
-      current: agentsGetView === "global",
-      icon: DustIcon,
-      id: "global",
-    },
-  ];
+  }[] = useMemo(
+    () => [
+      {
+        label: "All",
+        current: agentsGetView === "all",
+        id: "all",
+      },
+      {
+        label: "Shared",
+        current: agentsGetView === "published",
+        icon: UserGroupIcon,
+        id: "published",
+      },
+      {
+        label: "Company",
+        current: agentsGetView === "workspace",
+        icon: PlanetIcon,
+        id: "workspace",
+      },
+      {
+        label: "Default",
+        current: agentsGetView === "global",
+        icon: DustIcon,
+        id: "global",
+      },
+    ],
+    [agentsGetView]
+  );
 
   // Headless UI does not inherently handle Portal-based rendering,
   // leading to dropdown menus being hidden by parent divs with overflow settings.
