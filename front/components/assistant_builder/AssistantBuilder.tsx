@@ -53,6 +53,7 @@ import React from "react";
 import ReactTextareaAutosize from "react-textarea-autosize";
 import { useSWRConfig } from "swr";
 
+import { SharingButton } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -92,8 +93,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-
-import { SharingButton } from "../assistant/Sharing";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {

@@ -116,8 +116,6 @@ export function SharingButton({
   });
   const assistantName = agentConfiguration?.name;
 
-  console.log(agentUsage);
-
   const usageText = assistantName
     ? assistantUsageMessage({
         assistantName: null,
@@ -150,8 +148,7 @@ export function SharingButton({
             <div>
               {SCOPE_INFO[newScope].text}{" "}
               {agentUsage &&
-              agentUsage.userCount &&
-              agentUsage.userCount > 0 &&
+              agentUsage.usersWithAgentInListCount > 0 &&
               newScope !== "private"
                 ? usageText
                 : null}
