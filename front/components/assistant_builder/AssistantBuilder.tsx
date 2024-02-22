@@ -20,6 +20,7 @@ import {
   TriangleIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AgentConfigurationScope,
   AgentConfigurationType,
   ConnectorProvider,
   DataSourceType,
@@ -51,6 +52,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
+import { SharingButton } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -1001,7 +1003,23 @@ export default function AssistantBuilder({
         }
       >
         <div className="flex h-full flex-col gap-5 py-4">
-          <Tab tabs={tabs} variant="stepper" />
+          <div className="flex flex-row justify-between">
+            <Tab tabs={tabs} variant="stepper" />
+            <div className="pt-0.5">
+              <SharingButton
+                owner={owner}
+                agentConfigurationId={agentConfigurationId}
+                initialScope={initialBuilderState?.scope ?? defaultScope}
+                newScope={builderState.scope}
+                setNewScope={(
+                  scope: Exclude<AgentConfigurationScope, "global">
+                ) => {
+                  setEdited(scope !== initialBuilderState?.scope);
+                  setBuilderState((state) => ({ ...state, scope }));
+                }}
+              />
+            </div>
+          </div>
           {(() => {
             switch (screen) {
               case "instructions":

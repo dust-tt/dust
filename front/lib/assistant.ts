@@ -113,7 +113,7 @@ export function assistantUsageMessage({
   isError,
   shortVersion,
 }: {
-  assistantName: string;
+  assistantName: string | null;
   usage: AgentUsageType | null;
   isLoading: boolean;
   isError: boolean;
@@ -146,7 +146,9 @@ export function assistantUsageMessage({
     )}`;
     const userCount = `${usage.userCount} member${pluralize(usage.userCount)}`;
 
-    return `@${assistantName} is active for ${usersWithAgentInListCount} and has been used ${messageCount} by ${userCount} in the last ${
+    return `${
+      assistantName ? "@" + assistantName : "This assistant"
+    } is active for ${usersWithAgentInListCount} and has been used ${messageCount} by ${userCount} in the last ${
       usage.timePeriodSec / (60 * 60 * 24)
     } days.`;
   }

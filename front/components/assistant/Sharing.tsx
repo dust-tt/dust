@@ -1,4 +1,5 @@
 import {
+  Button,
   ChevronDownIcon,
   Chip,
   Dialog,
@@ -7,6 +8,7 @@ import {
   IconButton,
   LockIcon,
   PlanetIcon,
+  ShapesIcon,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -91,7 +93,7 @@ export const SCOPE_INFO: Record<
 
 type NonGlobalScope = Exclude<AgentConfigurationScope, "global">;
 
-export function SharingSection({
+export function SharingButton({
   owner,
   agentConfigurationId,
   initialScope,
@@ -104,7 +106,7 @@ export function SharingSection({
   newScope: NonGlobalScope;
   setNewScope: (scope: NonGlobalScope) => void;
 }) {
-  const agentUsage = useAgentUsage({
+  const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId,
   });
@@ -116,32 +118,45 @@ export function SharingSection({
 
   const usageText = assistantName
     ? assistantUsageMessage({
-        assistantName,
-        usage: agentUsage.agentUsage,
-        isLoading: agentUsage.isAgentUsageLoading,
-        isError: agentUsage.isAgentUsageError,
+        assistantName: null,
+        usage: agentUsage,
+        isLoading: isAgentUsageLoading,
+        isError: isAgentUsageError,
       })
     : "";
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="text-lg font-bold text-element-900">Sharing</div>
-      <SharingDropdown
-        owner={owner}
-        agentConfiguration={agentConfiguration}
-        initialScope={initialScope}
-        newScope={newScope}
-        setNewScope={setNewScope}
-      />
-      <div className="text-sm text-element-700">
-        <div>{SCOPE_INFO[newScope].text}</div>
-        {agentUsage &&
-        agentUsage.agentUsage?.userCount &&
-        agentUsage.agentUsage.userCount > 1
-          ? usageText
-          : null}
-      </div>
-    </div>
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <Button
+          size="sm"
+          label="Sharing"
+          icon={ShapesIcon}
+          variant="tertiary"
+        />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items width={319} overflow="visible">
+        <div className="flex flex-col gap-y-2 py-2">
+          <SharingDropdown
+            owner={owner}
+            agentConfiguration={agentConfiguration}
+            initialScope={initialScope}
+            newScope={newScope}
+            setNewScope={setNewScope}
+          />
+          <div className="text-sm text-element-700">
+            <div>
+              {SCOPE_INFO[newScope].text}{" "}
+              {agentUsage &&
+              agentUsage.usersWithAgentInListCount > 0 &&
+              newScope !== "private"
+                ? usageText
+                : null}
+            </div>
+          </div>
+        </div>
+      </DropdownMenu.Items>
+    </DropdownMenu>
   );
 }
 
