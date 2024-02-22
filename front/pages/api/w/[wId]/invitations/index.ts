@@ -6,7 +6,10 @@ import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getPendingInvitations } from "@app/lib/api/workspace";
+import {
+  checkWorkspaceSeatAvailabilityUsingAuth,
+  getPendingInvitations,
+} from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
 import { isEmailValid } from "@app/lib/utils";
@@ -53,7 +56,8 @@ async function handler(
   }
 
   const subscription = auth.subscription();
-  if (!subscription) {
+  const plan = auth.plan();
+  if (!subscription || !plan) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -80,6 +84,20 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "The request body is invalid, expects { email: string }.",
+          },
+        });
+      }
+
+      const hasAvailableSeats = await checkWorkspaceSeatAvailabilityUsingAuth(
+        auth
+      );
+      if (!hasAvailableSeats) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "plan_limit_error",
+            message:
+              "Workspace has reached its member limit. Please upgrade or remove inactive members to add more.",
           },
         });
       }

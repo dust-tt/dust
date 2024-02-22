@@ -26,13 +26,16 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import {
+  checkWorkspaceSeatAvailabilityUsingAuth,
+  getWorkspaceVerifiedDomain,
+} from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
@@ -49,6 +52,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
+  workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomain: WorkspaceDomain | null;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -66,8 +70,10 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       notFound: true,
     };
   }
-  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
 
+  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+  const workspaceHasAvailableSeats =
+    await checkWorkspaceSeatAvailabilityUsingAuth(auth);
   return {
     props: {
       user,
@@ -75,10 +81,29 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       subscription,
       plan,
       gaTrackingId: GA_TRACKING_ID,
+      workspaceHasAvailableSeats,
       workspaceVerifiedDomain,
     },
   };
 });
+
+const workspaceInviteLimitsPopup = {
+  no_seats_available: {
+    chipLabel: "Plan Limits",
+    description:
+      "Workspace has reached its member limit. Please upgrade or remove inactive members to add more.",
+  },
+  free_plan: {
+    chipLabel: "Free plan",
+    description:
+      "You cannot invite other members with the free plan. Upgrade your plan for unlimited members.",
+  },
+  payment_failure: {
+    chipLabel: "Failed Payment",
+    description:
+      "You cannot invite other members while your workspace has a failed payment.",
+  },
+};
 
 export default function WorkspaceAdmin({
   user,
@@ -87,6 +112,7 @@ export default function WorkspaceAdmin({
   plan,
   gaTrackingId,
   workspaceVerifiedDomain,
+  workspaceHasAvailableSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
@@ -183,10 +209,9 @@ export default function WorkspaceAdmin({
       builder: "amber",
       user: "emerald",
     };
-    const [showNoInviteFreePlanPopup, setShowNoInviteFreePlanPopup] =
-      useState(false);
-    const [showNoInviteFailedPaymentPopup, setShowNoInviteFailedPaymentPopup] =
-      useState(false);
+    const [inviteBlockedPopupReason, setInviteBlockedPopupReason] = useState<
+      keyof typeof workspaceInviteLimitsPopup | null
+    >(null);
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
@@ -228,6 +253,30 @@ export default function WorkspaceAdmin({
             i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
         ),
     ];
+
+    const popup = useMemo(() => {
+      if (!inviteBlockedPopupReason) {
+        return <></>;
+      }
+
+      const { chipLabel, description } =
+        workspaceInviteLimitsPopup[inviteBlockedPopupReason];
+
+      return (
+        <Popup
+          show={inviteBlockedPopupReason !== null}
+          chipLabel={chipLabel}
+          description={description}
+          buttonLabel="Check Dust plans"
+          buttonClick={() => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          }}
+          className="absolute bottom-8 right-0"
+          onClose={() => setInviteBlockedPopupReason(null)}
+        />
+      );
+    }, [inviteBlockedPopupReason, setInviteBlockedPopupReason]);
+
     return (
       <>
         <InviteEmailModal
@@ -265,34 +314,18 @@ export default function WorkspaceAdmin({
                 size="sm"
                 icon={PlusIcon}
                 onClick={() => {
-                  if (!isUpgraded(plan)) setShowNoInviteFreePlanPopup(true);
-                  else if (subscription.paymentFailingSince)
-                    setShowNoInviteFailedPaymentPopup(true);
-                  else setInviteEmailModalOpen(true);
+                  if (!isUpgraded(plan)) {
+                    setInviteBlockedPopupReason("free_plan");
+                  } else if (subscription.paymentFailingSince) {
+                    setInviteBlockedPopupReason("payment_failure");
+                  } else if (!workspaceHasAvailableSeats) {
+                    setInviteBlockedPopupReason("no_seats_available");
+                  } else {
+                    setInviteEmailModalOpen(true);
+                  }
                 }}
               />
-              <Popup
-                show={showNoInviteFreePlanPopup}
-                chipLabel="Free plan"
-                description="You cannot invite other members with the free plan. Upgrade your plan for unlimited members."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteFreePlanPopup(false)}
-              />
-              <Popup
-                show={showNoInviteFailedPaymentPopup}
-                chipLabel="Failed Payment"
-                description="You cannot invite other members while your workspace has a failed payment."
-                buttonLabel="Check Subscription"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteFailedPaymentPopup(false)}
-              />
+              {popup}
             </div>
           </div>
           <div className="s-w-full">

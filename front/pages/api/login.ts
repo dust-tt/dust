@@ -5,7 +5,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
-import { getUserFromSession } from "@app/lib/auth";
+import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
+import { getUserFromSession, subscriptionForWorkspace } from "@app/lib/auth";
 import {
   Membership,
   MembershipInvitation,
@@ -223,17 +224,27 @@ async function handleRegularSignupFlow(
     session
   );
 
-  if (workspaceWithVerifiedDomain && workspaceWithVerifiedDomain.workspace) {
-    if (workspaceWithVerifiedDomain.domainAutoJoinEnabled === false) {
+  const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
+  if (workspaceWithVerifiedDomain && existingWorkspace) {
+    const workspaceSubscription = await subscriptionForWorkspace(
+      existingWorkspace
+    );
+    const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
+      existingWorkspace,
+      workspaceSubscription
+    );
+    // Redirect to existing workspace if no seats available, requiring an invite.
+    if (
+      !hasAvailableSeats ||
+      workspaceWithVerifiedDomain.domainAutoJoinEnabled === false
+    ) {
       return { flow: "no-auto-join", workspace: null };
     }
-
-    const { workspace } = workspaceWithVerifiedDomain;
 
     const m = await Membership.findOne({
       where: {
         userId: user.id,
-        workspaceId: workspace.id,
+        workspaceId: existingWorkspace.id,
       },
     });
 
@@ -243,13 +254,13 @@ async function handleRegularSignupFlow(
 
     if (!m) {
       await createAndLogMembership({
-        workspace,
+        workspace: existingWorkspace,
         userId: user.id,
         role: "user",
       });
     }
 
-    return { flow: null, workspace };
+    return { flow: null, workspace: existingWorkspace };
   } else {
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
