@@ -26,7 +26,7 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -85,6 +85,24 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     },
   };
 });
+
+const workspaceInviteLimitsPopup = {
+  no_seats_available: {
+    chipLabel: "Plan Limits",
+    description:
+      "Workspace has reached its member limit. Please upgrade or remove inactive members to add more.",
+  },
+  free_plan: {
+    chipLabel: "Free plan",
+    description:
+      "You cannot invite other members with the free plan. Upgrade your plan for unlimited members.",
+  },
+  payment_failure: {
+    chipLabel: "Failed Payment",
+    description:
+      "You cannot invite other members while your workspace has a failed payment.",
+  },
+};
 
 export default function WorkspaceAdmin({
   user,
@@ -190,14 +208,9 @@ export default function WorkspaceAdmin({
       builder: "amber",
       user: "emerald",
     };
-    const [showNoInviteFreePlanPopup, setShowNoInviteFreePlanPopup] =
-      useState(false);
-    const [showNoInviteFailedPaymentPopup, setShowNoInviteFailedPaymentPopup] =
-      useState(false);
-    const [
-      showMaximumNumberOfActiveMembers,
-      setShowMaximumNumberOfActiveMembers,
-    ] = useState(false);
+    const [inviteBlockedPopupReason, setInviteBlockedPopupReason] = useState<
+      keyof typeof workspaceInviteLimitsPopup | null
+    >(null);
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
@@ -239,6 +252,30 @@ export default function WorkspaceAdmin({
             i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
         ),
     ];
+
+    const popup = useMemo(() => {
+      if (!inviteBlockedPopupReason) {
+        return <></>;
+      }
+
+      const { chipLabel, description } =
+        workspaceInviteLimitsPopup[inviteBlockedPopupReason];
+
+      return (
+        <Popup
+          show={inviteBlockedPopupReason !== null}
+          chipLabel={chipLabel}
+          description={description}
+          buttonLabel="Check Dust plans"
+          buttonClick={() => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          }}
+          className="absolute bottom-8 right-0"
+          onClose={() => setInviteBlockedPopupReason(null)}
+        />
+      );
+    }, [inviteBlockedPopupReason, setInviteBlockedPopupReason]);
+
     return (
       <>
         <InviteEmailModal
@@ -277,49 +314,17 @@ export default function WorkspaceAdmin({
                 icon={PlusIcon}
                 onClick={() => {
                   if (!isUpgraded(plan)) {
-                    setShowNoInviteFreePlanPopup(true);
+                    setInviteBlockedPopupReason("free_plan");
                   } else if (subscription.paymentFailingSince) {
-                    setShowNoInviteFailedPaymentPopup(true);
+                    setInviteBlockedPopupReason("payment_failure");
                   } else if (!workspaceHasAvailableSeats) {
-                    setShowMaximumNumberOfActiveMembers(true);
+                    setInviteBlockedPopupReason("no_seats_available");
                   } else {
                     setInviteEmailModalOpen(true);
                   }
                 }}
               />
-              <Popup
-                show={showMaximumNumberOfActiveMembers}
-                chipLabel="Plan Limits"
-                description="Workspace has reached its member limit. Please upgrade or remove inactive members to add more."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowMaximumNumberOfActiveMembers(false)}
-              />
-              <Popup
-                show={showNoInviteFreePlanPopup}
-                chipLabel="Free plan"
-                description="You cannot invite other members with the free plan. Upgrade your plan for unlimited members."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteFreePlanPopup(false)}
-              />
-              <Popup
-                show={showNoInviteFailedPaymentPopup}
-                chipLabel="Failed Payment"
-                description="You cannot invite other members while your workspace has a failed payment."
-                buttonLabel="Check Subscription"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteFailedPaymentPopup(false)}
-              />
+              {popup}
             </div>
           </div>
           <div className="s-w-full">
