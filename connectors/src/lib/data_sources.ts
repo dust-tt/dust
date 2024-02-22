@@ -5,6 +5,7 @@ import type {
 import {
   DustAPI,
   EMBEDDING_CONFIG,
+  isValidDate,
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
@@ -396,10 +397,10 @@ export async function renderDocumentTitleAndContent({
   }
   const c = await renderPrefixSection(dataSourceConfig, title);
   let metaPrefix: string | null = "";
-  if (createdAt) {
+  if (createdAt && isValidDate(createdAt)) {
     metaPrefix += `$createdAt: ${createdAt.toISOString()}\n`;
   }
-  if (updatedAt) {
+  if (updatedAt && isValidDate(updatedAt)) {
     metaPrefix += `$updatedAt: ${updatedAt.toISOString()}\n`;
   }
   if (author && lastEditor && author === lastEditor) {

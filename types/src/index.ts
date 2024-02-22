@@ -56,6 +56,7 @@ export * from "./shared/rate_limiter";
 export * from "./shared/user_operation";
 export * from "./shared/utils/assert_never";
 export * from "./shared/utils/config";
+export * from "./shared/utils/date_utils";
 export * from "./shared/utils/general";
 export * from "./shared/utils/global_error_handler";
 export * from "./shared/utils/hashing";

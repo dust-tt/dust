@@ -117,7 +117,7 @@ async function renderIssue(
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
     title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
-    createdAt: issue.createdAt,
+    createdAt: issue.createdAt || issue.updatedAt,
     updatedAt: issue.updatedAt,
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
       flavor: "gfm",
