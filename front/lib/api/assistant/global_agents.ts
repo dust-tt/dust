@@ -12,6 +12,7 @@ import type {
 import type { GlobalAgentStatus } from "@dust-tt/types";
 import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
 } from "@dust-tt/types";
 import {
@@ -130,8 +131,7 @@ async function _getGPT35TurboGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gpt3.5-turbo",
-    description:
-      "OpenAI's cost-effective and high throughput model (16k context).",
+    description: GPT_3_5_TURBO_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
     status,
     scope: "global",
@@ -162,7 +162,7 @@ async function _getGPT4GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gpt4",
-    description: "OpenAI's most powerful and recent model (128k context).",
+    description: GPT_4_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
@@ -194,8 +194,7 @@ async function _getClaudeInstantGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "claude-instant",
-    description:
-      "Anthropic's low-latency and high throughput model (100k context).",
+    description: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -228,7 +227,7 @@ async function _getClaudeGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "claude",
-    description: "Anthropic's superior performance model (200k context).",
+    description: CLAUDE_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status: settings ? settings.status : status,
     scope: "global",
@@ -262,7 +261,7 @@ async function _getMistralNextGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "mistral-next",
-    description: "Mistral model (32k context).",
+    description: MISTRAL_NEXT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status: settings ? settings.status : status,
     scope: "global",
@@ -299,7 +298,7 @@ async function _getMistralMediumGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "mistral-medium",
-    description: "Mistral latest `medium` model (32k context).",
+    description: MISTRAL_MEDIUM_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
@@ -330,7 +329,7 @@ async function _getMistralSmallGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "mistral-small",
-    description: "Mistral latest model (8x7B Instruct, 32k context).",
+    description: MISTRAL_SMALL_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
@@ -361,8 +360,7 @@ async function _getGeminiProGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gemini-pro",
-    description:
-      "Google's our best model for scaling across a wide range of tasks (8k context).",
+    description: GEMINI_PRO_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
     status,
     scope: "global",

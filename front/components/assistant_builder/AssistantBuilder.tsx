@@ -1,14 +1,18 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  AnthropicLogo,
   Avatar,
   Button,
   CircleIcon,
   ContentMessage,
   ContextItem,
   DropdownMenu,
+  GoogleLogo,
   Input,
+  MistralLogo,
   Modal,
+  OpenaiLogo,
   Page,
   PencilSquareIcon,
   PlayIcon,
@@ -26,6 +30,7 @@ import type {
   DataSourceType,
   LightAgentConfigurationType,
   ModelConfig,
+  SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
@@ -47,7 +52,7 @@ import {
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
@@ -182,6 +187,13 @@ const CREATIVITY_LEVELS = [
   { label: "Balanced", value: 0.7 },
   { label: "Creative", value: 1 },
 ];
+type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
+const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
+  openai: OpenaiLogo,
+  anthropic: AnthropicLogo,
+  mistral: MistralLogo,
+  google_vertex_ai: GoogleLogo,
+};
 
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
@@ -1179,13 +1191,15 @@ function AdvancedSettings({
                   size="sm"
                 />
               </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight">
+              <DropdownMenu.Items origin="topRight" width={250}>
                 <div className="z-[120]">
                   {usedModelConfigs
                     .filter((m) => !(m.largeModel && !isUpgraded(plan)))
                     .map((modelConfig) => (
                       <DropdownMenu.Item
                         key={modelConfig.modelId}
+                        icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+                        description={modelConfig.shortDescription}
                         label={modelConfig.displayName}
                         onClick={() => {
                           setGenerationSettings({
