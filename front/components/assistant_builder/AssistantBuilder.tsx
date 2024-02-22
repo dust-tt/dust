@@ -582,7 +582,9 @@ export default function AssistantBuilder({
       })),
     [screen]
   );
-  const modalTitle = agentConfigurationId ? "Edit Assistant" : "New Assistant";
+  const modalTitle = agentConfigurationId
+    ? `Edit @${builderState.handle}`
+    : "New Assistant";
 
   function ActionScreen() {
     return (
