@@ -1599,15 +1599,16 @@ function TryModalInBuilder({
           }}
         />
       )}
-      <Button
-        label="Try"
-        onClick={onTryClick}
-        size="md"
-        className="fixed bottom-8 right-8"
-        icon={PlayIcon}
-        disabled={disabled}
-        variant="primary"
-      />
+      <div className="fixed bottom-8 flex w-full justify-center">
+        <Button
+          label="Try"
+          onClick={onTryClick}
+          size="md"
+          icon={PlayIcon}
+          disabled={disabled}
+          variant="primary"
+        />
+      </div>
     </>
   );
 }
