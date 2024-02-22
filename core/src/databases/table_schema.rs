@@ -191,18 +191,12 @@ impl TableSchema {
                         use TableSchemaFieldType::*;
                         match (&column.value_type, &value_type) {
                             // Ints and Floats can be merged into Floats.
-                            // Other types are incompatible.
                             (Int, Float) | (Float, Int) => {
                                 column.value_type = Float;
                             }
+                            // Otherwise we default to Text.
                             _ => {
-                                return Err(anyhow!(
-                                    "Field {} has conflicting types on row {}: {:?} and {:?}",
-                                    k,
-                                    row_index,
-                                    column.value_type,
-                                    value_type
-                                ))
+                                column.value_type = Text;
                             }
                         }
                     }
