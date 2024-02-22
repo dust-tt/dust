@@ -182,7 +182,7 @@ export class MembershipInvitation extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare inviteEmail: "string";
+  declare inviteEmail: string;
   declare status: "pending" | "consumed" | "revoked";
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
