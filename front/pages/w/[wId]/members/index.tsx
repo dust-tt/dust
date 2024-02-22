@@ -32,7 +32,10 @@ import { useSWRConfig } from "swr";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import {
+  getWorkspaceVerifiedDomain,
+  hasAvailableSeats,
+} from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
@@ -49,6 +52,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
+  workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomain: WorkspaceDomain | null;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
@@ -66,8 +70,9 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       notFound: true,
     };
   }
-  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
 
+  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+  const workspaceHasAvailableSeats = await hasAvailableSeats(auth);
   return {
     props: {
       user,
@@ -75,6 +80,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       subscription,
       plan,
       gaTrackingId: GA_TRACKING_ID,
+      workspaceHasAvailableSeats,
       workspaceVerifiedDomain,
     },
   };
@@ -87,6 +93,7 @@ export default function WorkspaceAdmin({
   plan,
   gaTrackingId,
   workspaceVerifiedDomain,
+  workspaceHasAvailableSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
@@ -187,6 +194,10 @@ export default function WorkspaceAdmin({
       useState(false);
     const [showNoInviteFailedPaymentPopup, setShowNoInviteFailedPaymentPopup] =
       useState(false);
+    const [
+      showMaximumNumberOfActiveMembers,
+      setShowMaximumNumberOfActiveMembers,
+    ] = useState(false);
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
@@ -265,11 +276,27 @@ export default function WorkspaceAdmin({
                 size="sm"
                 icon={PlusIcon}
                 onClick={() => {
-                  if (!isUpgraded(plan)) setShowNoInviteFreePlanPopup(true);
-                  else if (subscription.paymentFailingSince)
+                  if (!isUpgraded(plan)) {
+                    setShowNoInviteFreePlanPopup(true);
+                  } else if (subscription.paymentFailingSince) {
                     setShowNoInviteFailedPaymentPopup(true);
-                  else setInviteEmailModalOpen(true);
+                  } else if (!workspaceHasAvailableSeats) {
+                    setShowMaximumNumberOfActiveMembers(true);
+                  } else {
+                    setInviteEmailModalOpen(true);
+                  }
                 }}
+              />
+              <Popup
+                show={showMaximumNumberOfActiveMembers}
+                chipLabel="Plan Limits"
+                description="Workspace has reached its member limit. Please upgrade or remove inactive members to add more."
+                buttonLabel="Check Dust plans"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                className="absolute bottom-8 right-0"
+                onClose={() => setShowMaximumNumberOfActiveMembers(false)}
               />
               <Popup
                 show={showNoInviteFreePlanPopup}

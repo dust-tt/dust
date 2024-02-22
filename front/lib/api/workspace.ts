@@ -2,9 +2,11 @@ import type {
   LightWorkspaceType,
   ModelId,
   RoleType,
+  SubscriptionType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import { Op } from "sequelize";
@@ -178,6 +180,13 @@ export async function getMembersCount(
     return 0;
   }
 
+  return getMembersCountForWorkspace(owner, { activeOnly });
+}
+
+export async function getMembersCountForWorkspace(
+  workspace: WorkspaceType | Workspace,
+  { activeOnly }: { activeOnly?: boolean } = {}
+): Promise<number> {
   const whereClause = activeOnly
     ? {
         role: {
@@ -188,10 +197,36 @@ export async function getMembersCount(
 
   return Membership.count({
     where: {
-      workspaceId: owner.id,
+      workspaceId: workspace.id,
       ...whereClause,
     },
   });
+}
+
+export async function hasAvailableSeats(auth: Authenticator): Promise<boolean> {
+  const owner = auth.workspace();
+  const subscription = auth.subscription();
+  if (!owner || !subscription) {
+    return false;
+  }
+
+  return workspaceHasAvailableSeats(owner, subscription);
+}
+
+export async function workspaceHasAvailableSeats(
+  workspace: WorkspaceType | Workspace,
+  subscription: SubscriptionType
+): Promise<boolean> {
+  const { maxUsers } = subscription.plan.limits.users;
+  if (maxUsers === -1) {
+    return true;
+  }
+
+  const activeMembersCount = await getMembersCountForWorkspace(workspace, {
+    activeOnly: true,
+  });
+
+  return activeMembersCount < maxUsers;
 }
 
 /**
