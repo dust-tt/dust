@@ -1159,8 +1159,8 @@ function AdvancedSettings({
           type="select"
         />
       </DropdownMenu.Button>
-      <DropdownMenu.Items width={330} overflow="visible">
-        <div className="flex flex-col gap-2">
+      <DropdownMenu.Items width={300} overflow="visible">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-row items-center gap-2">
             <div className="grow text-sm text-element-900">
               Model selection:

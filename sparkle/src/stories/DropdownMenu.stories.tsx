@@ -93,6 +93,89 @@ export const DropdownExample = () => {
         </DropdownMenu>
       </div>
       <div className="s-h-12" />
+
+      <div className="s-flex s-gap-6 s-pb-8">
+        <div className="s-text-sm">Custom Dropdown:</div>
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Button
+              label="Advanced settings"
+              variant="tertiary"
+              size="sm"
+              type="select"
+            />
+          </DropdownMenu.Button>
+          <DropdownMenu.Items width={300} overflow="visible">
+            <div className="s-flex s-flex-col s-gap-4">
+              <div className="s-flex s-flex-row s-items-center s-gap-2">
+                <div className="s-grow s-text-sm s-text-element-900">
+                  Model selection:
+                </div>
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      type="select"
+                      labelVisible={true}
+                      label="GPT4"
+                      variant="tertiary"
+                      hasMagnifying={false}
+                      size="sm"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items origin="topRight">
+                    {["GPT4", "GPT3", "GPT2", "GPT1"].map((item) => (
+                      <DropdownMenu.Item
+                        key={item}
+                        label={item}
+                        onClick={() => {
+                          // setGenerationSettings({
+                          //   ...generationSettings,
+                          //   model: item,
+                          // });
+                        }}
+                      />
+                    ))}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+              <div className="s-flex s-flex-row s-items-center s-gap-2">
+                <div className="s-grow s-text-sm s-text-element-900">
+                  Creativity level:
+                </div>
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      type="select"
+                      labelVisible={true}
+                      label="Balanced"
+                      variant="tertiary"
+                      hasMagnifying={false}
+                      size="sm"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items origin="topRight">
+                    {["Deterministic", "Factual", "Balanced", "Creative"].map(
+                      (item) => (
+                        <DropdownMenu.Item
+                          key={item}
+                          label={item}
+                          onClick={() => {
+                            // setGenerationSettings({
+                            //   ...generationSettings,
+                            //   model: item,
+                            // });
+                          }}
+                        />
+                      )
+                    )}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+            </div>
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+
       <div className="s-flex s-gap-6">
         <div className="s-text-sm">Assistant selector menu example:</div>
         <DropdownMenu>

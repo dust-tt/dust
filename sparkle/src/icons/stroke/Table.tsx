@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgFolderOpen = (props: SVGProps<SVGSVGElement>) => (
+const SvgTable = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -12,9 +12,9 @@ const SvgFolderOpen = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M20.533 10H24l-2 11H2L0 3h5.563a3 3 0 0 1 2.338 1.12L9.414 6H20l.533 4ZM8.457 8 6.343 5.373A1 1 0 0 0 5.563 5H2.235l1.014 9.13L4 10h14.516l-.267-2H8.457Zm-4.06 11 1.272-7h15.935l-1.273 7H4.396Z"
+      d="M2 22h20V2H2v20Zm9-18v4H4V4h7ZM4 14v-4h7v4H4Zm0 2h7v4H4v-4Zm9 0h7v4h-7v-4Zm7-2h-7v-4h7v4Zm0-10v4h-7V4h7Z"
       clipRule="evenodd"
     />
   </svg>
 );
-export default SvgFolderOpen;
+export default SvgTable;
