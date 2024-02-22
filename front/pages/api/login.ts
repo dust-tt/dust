@@ -243,7 +243,7 @@ async function handleRegularSignupFlow(
 }> {
   const activeMemberships = await getActiveMembershipsForUser(user.id);
   // Return early if the user is already a member of a workspace and is not attempting to join another one.
-  if (activeMemberships.length === 0 && !targetWorkspaceId) {
+  if (activeMemberships.length !== 0 && !targetWorkspaceId) {
     return {
       flow: null,
       workspace: null,
