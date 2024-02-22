@@ -814,6 +814,7 @@ export class DustAPI {
           parseError: e,
           rawText: text,
           status: response.status,
+          url: response.url,
         },
         "DustAPI error"
       );
