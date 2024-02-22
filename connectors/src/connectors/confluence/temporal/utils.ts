@@ -1,9 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
 
-export function makeConfluenceSyncWorkflowId(connectorId: ModelId) {
-  return `confluence-sync-${connectorId}`;
-}
-
 export function makeConfluenceSpaceSyncWorkflowIdFromParentId(
   parentWorkflowId: string,
   spaceId: string

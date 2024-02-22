@@ -1,5 +1,5 @@
 import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, makeConfluenceSyncWorkflowId, Ok } from "@dust-tt/types";
 import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
 import {
   ScheduleOverlapPolicy,
@@ -12,7 +12,6 @@ import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/s
 import {
   makeConfluencePersonalDataWorkflowId,
   makeConfluenceRemoveSpacesWorkflowId,
-  makeConfluenceSyncWorkflowId,
 } from "@connectors/connectors/confluence/temporal/utils";
 import {
   confluencePersonalDataReportingWorkflow,

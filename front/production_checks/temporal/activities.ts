@@ -2,6 +2,7 @@ import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 import mainLogger from "@app/logger/logger";
+import { checkActiveWorkflows } from "@app/production_checks/checks/check_active_workflows_for_connectors";
 import { checkNotionActiveWorkflows } from "@app/production_checks/checks/check_notion_active_workflows";
 import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
 import { nangoConnectionIdCleanupSlack } from "@app/production_checks/checks/nango_connection_id_cleanup_slack";
@@ -28,6 +29,11 @@ export async function runAllChecksActivity() {
     {
       name: "check_notion_active_workflows",
       check: checkNotionActiveWorkflows,
+      everyHour: 1,
+    },
+    {
+      name: "check_active_workflows_for_connector",
+      check: checkActiveWorkflows,
       everyHour: 1,
     },
   ];
