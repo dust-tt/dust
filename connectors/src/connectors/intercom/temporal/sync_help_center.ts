@@ -1,12 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
-import {
-  fetchIntercomArticles,
-  fetchIntercomCollection,
-  fetchIntercomCollections,
-} from "@connectors/connectors/intercom/lib/intercom_api";
-import type { IntercomCollectionType } from "@connectors/connectors/intercom/lib/types";
+import { fetchIntercomCollections } from "@connectors/connectors/intercom/lib/intercom_api";
+import type {
+  IntercomArticleType,
+  IntercomCollectionType,
+} from "@connectors/connectors/intercom/lib/types";
 import {
   getArticleInAppUrl,
   getCollectionInAppUrl,
@@ -53,7 +52,7 @@ export async function removeHelpCenter({
   });
   await Promise.all(
     level1Collections.map(async (collection) => {
-      await _deleteCollection({
+      await deleteCollectionWithChildren({
         connectorId,
         dataSourceConfig,
         collection,
@@ -64,64 +63,10 @@ export async function removeHelpCenter({
   await helpCenter.destroy();
 }
 
-export async function syncCollection({
-  connectorId,
-  connectionId,
-  helpCenterId,
-  isHelpCenterWebsiteTurnedOn,
-  collection,
-  dataSourceConfig,
-  loggerArgs,
-  currentSyncMs,
-}: {
-  connectorId: ModelId;
-  connectionId: string;
-  helpCenterId: string;
-  isHelpCenterWebsiteTurnedOn: boolean;
-  collection: IntercomCollection;
-  dataSourceConfig: DataSourceConfig;
-  loggerArgs: Record<string, string | number>;
-  currentSyncMs: number;
-}) {
-  if (collection.permission === "none") {
-    await _deleteCollection({
-      connectorId,
-      collection,
-      dataSourceConfig,
-      loggerArgs,
-    });
-  } else {
-    const collectionOnIntercom = await fetchIntercomCollection(
-      connectionId,
-      collection.collectionId
-    );
-    if (collectionOnIntercom) {
-      await _upsertCollection({
-        connectorId,
-        connectionId,
-        helpCenterId,
-        collection: collectionOnIntercom,
-        isHelpCenterWebsiteTurnedOn,
-        parents: [],
-        dataSourceConfig,
-        loggerArgs,
-        currentSyncMs,
-      });
-    } else {
-      await _deleteCollection({
-        connectorId,
-        collection,
-        dataSourceConfig,
-        loggerArgs,
-      });
-    }
-  }
-}
-
 /**
  * Deletes a collection and its children (collection & articles) from the database and the core data source.
  */
-export async function _deleteCollection({
+export async function deleteCollectionWithChildren({
   connectorId,
   dataSourceConfig,
   collection,
@@ -177,7 +122,7 @@ export async function _deleteCollection({
   });
   await Promise.all(
     childrenCollections.map(async (collection) => {
-      await _deleteCollection({
+      await deleteCollectionWithChildren({
         connectorId,
         dataSourceConfig,
         collection,
@@ -190,25 +135,17 @@ export async function _deleteCollection({
 /**
  * Syncs a collection and its children (collection & articles) from the database and the core data source.
  */
-export async function _upsertCollection({
+export async function upsertCollectionWithChildren({
   connectorId,
   connectionId,
   helpCenterId,
-  dataSourceConfig,
-  loggerArgs,
   collection,
-  isHelpCenterWebsiteTurnedOn,
-  parents,
   currentSyncMs,
 }: {
   connectorId: ModelId;
   connectionId: string;
   helpCenterId: string;
-  dataSourceConfig: DataSourceConfig;
   collection: IntercomCollectionType;
-  isHelpCenterWebsiteTurnedOn: boolean;
-  loggerArgs: Record<string, string | number>;
-  parents: string[];
   currentSyncMs: number;
 }) {
   // Sync the Collection
@@ -244,123 +181,6 @@ export async function _upsertCollection({
     });
   }
 
-  // Sync the Collection's articles
-  const [childrenArticlesOnIntercom, childrenArticlesOnDb] = await Promise.all([
-    fetchIntercomArticles(connectionId, helpCenterId, collection.id),
-    IntercomArticle.findAll({
-      where: { connectorId, parentId: collection.id },
-    }),
-  ]);
-
-  const promises = childrenArticlesOnIntercom.map(async (articleOnIntercom) => {
-    const matchingArticleOnDb = childrenArticlesOnDb.find(
-      (article) => article.articleId === articleOnIntercom.id
-    );
-    let article = null;
-
-    // Article url is working only if the help center has activated the website feature
-    // Otherwise they generate an url that is not working
-    // So as a workaround we use the url of the article in the intercom app
-    const articleUrl = isHelpCenterWebsiteTurnedOn
-      ? articleOnIntercom.url
-      : getArticleInAppUrl(articleOnIntercom);
-
-    if (matchingArticleOnDb) {
-      article = await matchingArticleOnDb.update({
-        title: articleOnIntercom.title,
-        url: articleUrl,
-        authorId: articleOnIntercom.author_id,
-        parentId: articleOnIntercom.parent_id,
-        parentType:
-          articleOnIntercom.parent_type === "collection" ? "collection" : null,
-        parents: articleOnIntercom.parent_ids,
-        state: articleOnIntercom.state === "published" ? "published" : "draft",
-        lastUpsertedTs: new Date(currentSyncMs),
-      });
-    } else {
-      article = await IntercomArticle.create({
-        connectorId: connectorId,
-        articleId: articleOnIntercom.id,
-        title: articleOnIntercom.title,
-        url: articleUrl,
-        intercomWorkspaceId: articleOnIntercom.workspace_id,
-        authorId: articleOnIntercom.author_id,
-        parentId: articleOnIntercom.parent_id,
-        parentType:
-          articleOnIntercom.parent_type === "collection" ? "collection" : null,
-        parents: articleOnIntercom.parent_ids,
-        state: articleOnIntercom.state === "published" ? "published" : "draft",
-        permission: "read",
-        lastUpsertedTs: new Date(currentSyncMs),
-      });
-    }
-
-    const articleContentInMarkdown =
-      typeof articleOnIntercom.body === "string"
-        ? turndownService.turndown(articleOnIntercom.body)
-        : "";
-    // append the collection description at the beginning of the article
-    const markdown = `CATEGORY: ${collection.description}\n\n${articleContentInMarkdown}`;
-
-    if (articleContentInMarkdown) {
-      const createdAtDate = new Date(articleOnIntercom.created_at * 1000);
-      const updatedAtDate = new Date(articleOnIntercom.updated_at * 1000);
-
-      const renderedMarkdown = await renderMarkdownSection(
-        dataSourceConfig,
-        markdown
-      );
-      const renderedPage = await renderDocumentTitleAndContent({
-        dataSourceConfig,
-        title: articleOnIntercom.title,
-        content: renderedMarkdown,
-        createdAt: createdAtDate,
-        updatedAt: updatedAtDate,
-      });
-
-      // Parents in the Core datasource should map the internal ids that we use in the permission modal
-      // Parents of an article are all the collections above it and the help center
-      const parentsInternalsIds = articleOnIntercom.parent_ids.map((id) =>
-        getHelpCenterCollectionInternalId(connectorId, id)
-      );
-      parentsInternalsIds.push(
-        getHelpCenterInternalId(connectorId, helpCenterId)
-      );
-
-      return upsertToDatasource({
-        dataSourceConfig,
-        documentId: getHelpCenterArticleInternalId(
-          connectorId,
-          articleOnIntercom.id
-        ),
-        documentContent: renderedPage,
-        documentUrl: articleUrl,
-        timestampMs: updatedAtDate.getTime(),
-        tags: [
-          `title:${articleOnIntercom.title}`,
-          `createdAt:${createdAtDate.getTime()}`,
-          `updatedAt:${updatedAtDate.getTime()}`,
-        ],
-        parents: parentsInternalsIds,
-        retries: 3,
-        delayBetweenRetriesMs: 500,
-        loggerArgs: {
-          ...loggerArgs,
-          articleId: article.id,
-        },
-        upsertContext: {
-          sync_type: "batch",
-        },
-      });
-    }
-  });
-  await Promise.all(promises);
-
-  logger.info(
-    { ...loggerArgs, collectionId: collection.id },
-    "[Intercom] Collection synced."
-  );
-
   // Then we call ourself recursively on the children collections
   const childrenCollectionsOnIntercom = await fetchIntercomCollections(
     connectionId,
@@ -370,17 +190,165 @@ export async function _upsertCollection({
 
   await Promise.all(
     childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
-      await _upsertCollection({
+      await upsertCollectionWithChildren({
         connectorId,
         connectionId,
         helpCenterId,
-        dataSourceConfig,
-        loggerArgs,
         collection: collectionOnIntercom,
-        isHelpCenterWebsiteTurnedOn,
-        parents: [...parents, collection.id],
         currentSyncMs,
       });
     })
   );
+}
+
+/**
+ * Syncs an Article on the database, and the core data source if not up to date.
+ */
+export async function upsertArticle({
+  connectorId,
+  helpCenterId,
+  article,
+  parentCollection,
+  isHelpCenterWebsiteTurnedOn,
+  currentSyncMs,
+  dataSourceConfig,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  helpCenterId: string;
+  article: IntercomArticleType;
+  parentCollection: IntercomCollection;
+  isHelpCenterWebsiteTurnedOn: boolean;
+  currentSyncMs: number;
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number>;
+}) {
+  let articleOnDb = await IntercomArticle.findOne({
+    where: {
+      connectorId,
+      articleId: article.id,
+    },
+  });
+
+  const shouldUpsertDatasource =
+    articleOnDb &&
+    articleOnDb.lastUpsertedTs &&
+    articleOnDb.lastUpsertedTs < new Date(article.updated_at * 1000);
+
+  // Article url is working only if the help center has activated the website feature
+  // Otherwise they generate an url that is not working
+  // So as a workaround we use the url of the article in the intercom app
+  const articleUrl = isHelpCenterWebsiteTurnedOn
+    ? article.url
+    : getArticleInAppUrl(article);
+
+  const parentCollectionId = article.parent_id?.toString();
+  const parentCollectionIds = article.parent_ids.map((id) => id.toString());
+
+  if (!parentCollectionId) {
+    logger.error(
+      {
+        connectorId,
+        helpCenterId,
+        articleId: article.id,
+        loggerArgs,
+      },
+      "[Intercom] Article has no parent. Skipping sync"
+    );
+  }
+
+  if (articleOnDb) {
+    articleOnDb = await articleOnDb.update({
+      title: article.title,
+      url: articleUrl,
+      authorId: article.author_id,
+      parentId: parentCollectionId,
+      parentType: article.parent_type === "collection" ? "collection" : null,
+      parents: parentCollectionIds,
+      state: article.state === "published" ? "published" : "draft",
+      lastUpsertedTs: new Date(currentSyncMs),
+    });
+  } else {
+    articleOnDb = await IntercomArticle.create({
+      connectorId: connectorId,
+      articleId: article.id,
+      title: article.title,
+      url: articleUrl,
+      intercomWorkspaceId: article.workspace_id,
+      authorId: article.author_id,
+      parentId: parentCollectionId,
+      parentType: article.parent_type === "collection" ? "collection" : null,
+      parents: parentCollectionIds,
+      state: article.state === "published" ? "published" : "draft",
+      permission: "read",
+      lastUpsertedTs: new Date(currentSyncMs),
+    });
+  }
+
+  if (!shouldUpsertDatasource) {
+    // Article is already up to date, we don't need to update the datasource
+    return;
+  }
+
+  const categoryContent =
+    parentCollection.name + parentCollection.description
+      ? ` - ${parentCollection.description}`
+      : "";
+
+  const articleContentInMarkdown =
+    typeof article.body === "string"
+      ? turndownService.turndown(article.body)
+      : "";
+
+  // append the collection description at the beginning of the article
+  const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
+
+  if (articleContentInMarkdown) {
+    const createdAtDate = new Date(article.created_at * 1000);
+    const updatedAtDate = new Date(article.updated_at * 1000);
+
+    const renderedMarkdown = await renderMarkdownSection(
+      dataSourceConfig,
+      markdown
+    );
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: article.title,
+      content: renderedMarkdown,
+      createdAt: createdAtDate,
+      updatedAt: updatedAtDate,
+    });
+
+    // Parents in the Core datasource should map the internal ids that we use in the permission modal
+    // Parents of an article are all the collections above it and the help center
+    const parentsInternalsIds = article.parent_ids.map((id) =>
+      getHelpCenterCollectionInternalId(connectorId, id.toString())
+    );
+    parentsInternalsIds.push(
+      getHelpCenterInternalId(connectorId, helpCenterId)
+    );
+
+    return upsertToDatasource({
+      dataSourceConfig,
+      documentId: getHelpCenterArticleInternalId(connectorId, article.id),
+      documentContent: renderedPage,
+      documentUrl: articleUrl,
+      timestampMs: updatedAtDate.getTime(),
+      tags: [
+        `title:${article.title}`,
+        `createdAt:${createdAtDate.getTime()}`,
+        `updatedAt:${updatedAtDate.getTime()}`,
+      ],
+      parents: parentsInternalsIds,
+      retries: 3,
+      delayBetweenRetriesMs: 500,
+      loggerArgs: {
+        ...loggerArgs,
+        articleId: article.id,
+      },
+      upsertContext: {
+        sync_type: "batch",
+      },
+    });
+  }
 }

@@ -197,30 +197,36 @@ export async function fetchIntercomCollection(
 /**
  * Return the Articles that are children of a given Collection.
  */
-export async function fetchIntercomArticles(
-  nangoConnectionId: string,
-  helpCenterId: string,
-  parentId: string | null
-): Promise<IntercomArticleType[]> {
-  let response, hasMore;
-  let page = 1;
-  const articles: IntercomArticleType[] = [];
-  do {
-    response = await queryIntercomAPI({
-      nangoConnectionId,
-      path: `articles/search?help_center_id=${helpCenterId}&state=published&page=${page}&per_page=12`,
-      method: "GET",
-    });
-    articles.push(...response.data.articles);
-    if (response.pages.total_pages > page) {
-      hasMore = true;
-      page += 1;
-    } else {
-      hasMore = false;
-    }
-  } while (hasMore);
+export async function fetchIntercomArticles({
+  nangoConnectionId,
+  helpCenterId,
+  page = 1,
+  pageSize = 12,
+}: {
+  nangoConnectionId: string;
+  helpCenterId: string;
+  page: number;
+  pageSize?: number;
+}): Promise<{
+  data: {
+    articles: IntercomArticleType[];
+  };
+  pages: {
+    type: "pages";
+    prev?: "string";
+    next?: "string";
+    page: number;
+    total_pages: number;
+    per_page: number;
+  };
+}> {
+  const response = await queryIntercomAPI({
+    nangoConnectionId,
+    path: `articles/search?help_center_id=${helpCenterId}&state=published&page=${page}&per_page=${pageSize}`,
+    method: "GET",
+  });
 
-  return articles.filter((article) => article.parent_id == parentId);
+  return response;
 }
 
 /**

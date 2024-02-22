@@ -2,6 +2,8 @@ import type { ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
+  fetchIntercomArticles,
+  fetchIntercomCollection,
   fetchIntercomConversationsForTeamId,
   fetchIntercomHelpCenter,
   fetchIntercomTeam,
@@ -12,8 +14,10 @@ import {
   fetchAndSyncConversation,
 } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import {
+  deleteCollectionWithChildren,
   removeHelpCenter,
-  syncCollection,
+  upsertArticle,
+  upsertCollectionWithChildren,
 } from "@connectors/connectors/intercom/temporal/sync_help_center";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -31,6 +35,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
+const INTERCOM_ARTICLE_BATCH_SIZE = 20;
 
 async function _getIntercomConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -181,11 +186,10 @@ export async function syncHelpCenterOnlyActivity({
 }
 
 /**
- * This activity is responsible for retrieving the list of
- * Collections ids to sync for a given Help Center.
- * They are the level 1 Collections, i.e. the ones that have no parent.
+ * This activity is responsible for retrieving the list of level 1 Collections,
+ * i.e. the ones that have no parent.
  */
-export async function getCollectionsIdsToSyncActivity({
+export async function getLevel1CollectionsIdsActivity({
   connectorId,
   helpCenterId,
 }: {
@@ -207,7 +211,7 @@ export async function getCollectionsIdsToSyncActivity({
  * It will either upsert the Collection or delete it if it's not allowed anymore
  * or not present on Intercom.
  */
-export async function syncCollectionActivity({
+export async function syncLevel1CollectionWithChildrenActivity({
   connectorId,
   helpCenterId,
   collectionId,
@@ -227,20 +231,6 @@ export async function syncCollectionActivity({
     dataSourceName: dataSourceConfig.dataSourceName,
   };
 
-  const helpCenter = await IntercomHelpCenter.findOne({
-    where: {
-      connectorId,
-      helpCenterId,
-    },
-  });
-  if (!helpCenter) {
-    logger.error(
-      { loggerArgs, helpCenterId },
-      "[Intercom] Collection to sync is missing a Help Center"
-    );
-    return;
-  }
-
   const collection = await IntercomCollection.findOne({
     where: {
       connectorId,
@@ -255,16 +245,124 @@ export async function syncCollectionActivity({
     );
     return;
   }
-  await syncCollection({
+
+  // If our rights were revoked we delete the collection and its children
+  if (collection.permission === "none") {
+    await deleteCollectionWithChildren({
+      connectorId,
+      collection,
+      dataSourceConfig,
+      loggerArgs,
+    });
+    return;
+  }
+
+  // If the collection is not present on Intercom anymore we delete the collection and its children
+  const intercomCollection = await fetchIntercomCollection(
+    connector.connectionId,
+    collection.collectionId
+  );
+  if (!intercomCollection) {
+    await deleteCollectionWithChildren({
+      connectorId,
+      collection,
+      dataSourceConfig,
+      loggerArgs,
+    });
+    return;
+  }
+
+  // Otherwise we upsert the collection and its children collections
+  await upsertCollectionWithChildren({
     connectorId,
     connectionId: connector.connectionId,
     helpCenterId,
-    isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
-    collection,
-    dataSourceConfig,
-    loggerArgs,
+    collection: intercomCollection,
     currentSyncMs,
   });
+}
+
+export async function syncArticleBatchActivity({
+  connectorId,
+  helpCenterId,
+  page,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  helpCenterId: string;
+  page: number;
+  currentSyncMs: number;
+}): Promise<{ nextPage: number | null }> {
+  const connector = await _getIntercomConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "intercom",
+    dataSourceName: dataSourceConfig.dataSourceName,
+  };
+
+  const helpCenter = await IntercomHelpCenter.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!helpCenter) {
+    throw new Error("[Intercom] HelpCenter not found");
+  }
+
+  const result = await fetchIntercomArticles({
+    nangoConnectionId: connector.connectionId,
+    helpCenterId,
+    page,
+    pageSize: INTERCOM_ARTICLE_BATCH_SIZE,
+  });
+
+  if (!Array.isArray(result?.data?.articles)) {
+    return { nextPage: null };
+  }
+
+  const articles = result.data.articles;
+  const nextPage =
+    result.pages.next && result.pages.page + 1 <= result.pages.total_pages
+      ? result.pages.page + 1
+      : null;
+
+  const collectionsInRead = await IntercomCollection.findAll({
+    where: {
+      connectorId,
+      helpCenterId,
+      permission: "read",
+    },
+  });
+
+  // We upsert the articles
+  await concurrentExecutor(
+    articles,
+    async (article) => {
+      const parentCollectionIdAsString = article.parent_id
+        ? article.parent_id.toString()
+        : null;
+      const parentCollection = collectionsInRead.find(
+        (c) => c.collectionId === parentCollectionIdAsString
+      );
+      if (parentCollection) {
+        await upsertArticle({
+          connectorId,
+          helpCenterId,
+          article,
+          parentCollection,
+          isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
+          currentSyncMs,
+          dataSourceConfig,
+          loggerArgs,
+        });
+      }
+    },
+    { concurrency: 4 }
+  );
+
+  return { nextPage };
 }
 
 /**
