@@ -422,7 +422,7 @@ export default function AssistantBuilder({
         }
         valid = false;
       } else if (!(await assistantHandleIsAvailable(builderState.handle))) {
-        setAssistantHandleError("Assistant handle is already taken");
+        setAssistantHandleError("\u26a0 This handle is already taken");
         valid = false;
       } else {
         setAssistantHandleError(null);
