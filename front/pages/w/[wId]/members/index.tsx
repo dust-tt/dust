@@ -33,8 +33,8 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
+  checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
-  hasWorkspaceAvailableSeats,
 } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -72,7 +72,8 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   }
 
   const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
-  const workspaceHasAvailableSeats = await hasWorkspaceAvailableSeats(auth);
+  const workspaceHasAvailableSeats =
+    await checkWorkspaceSeatAvailabilityUsingAuth(auth);
   return {
     props: {
       user,

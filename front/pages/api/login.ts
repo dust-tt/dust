@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { Op } from "sequelize";
 
-import { workspaceHasAvailableSeats } from "@app/lib/api/workspace";
+import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getUserFromSession, subscriptionForWorkspace } from "@app/lib/auth";
 import {
   Membership,
@@ -229,7 +229,7 @@ async function handleRegularSignupFlow(
     const workspaceSubscription = await subscriptionForWorkspace(
       existingWorkspace
     );
-    const hasAvailableSeats = await workspaceHasAvailableSeats(
+    const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
       workspaceSubscription
     );

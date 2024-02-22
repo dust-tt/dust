@@ -203,7 +203,7 @@ export async function getMembersCountForWorkspace(
   });
 }
 
-export async function hasWorkspaceAvailableSeats(
+export async function checkWorkspaceSeatAvailabilityUsingAuth(
   auth: Authenticator
 ): Promise<boolean> {
   const owner = auth.workspace();
@@ -212,10 +212,10 @@ export async function hasWorkspaceAvailableSeats(
     return false;
   }
 
-  return workspaceHasAvailableSeats(owner, subscription);
+  return evaluateWorkspaceSeatAvailability(owner, subscription);
 }
 
-export async function workspaceHasAvailableSeats(
+export async function evaluateWorkspaceSeatAvailability(
   workspace: WorkspaceType | Workspace,
   subscription: SubscriptionType
 ): Promise<boolean> {
