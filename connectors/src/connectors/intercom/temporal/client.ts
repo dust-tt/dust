@@ -1,5 +1,5 @@
 import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, getIntercomSyncWorkflowId, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
@@ -10,10 +10,6 @@ import { intercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/w
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-
-function getIntercomSyncWorkflowId(connectorId: ModelId) {
-  return `intercom-sync-${connectorId}`;
-}
 
 export async function launchIntercomSyncWorkflow(
   connectorId: ModelId,
