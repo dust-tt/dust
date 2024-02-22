@@ -1,18 +1,19 @@
+import {
+  Avatar,
+  Button,
+  Input,
+  Page,
+  PencilSquareIcon,
+} from "@dust-tt/sparkle";
+import type { WorkspaceType } from "@dust-tt/types";
+import { useState } from "react";
+
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
-import { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import {
-  Avatar,
-  Input,
-  Button,
-  PencilSquareIcon,
-  Page,
-} from "@dust-tt/sparkle";
-import { WorkspaceType } from "@dust-tt/types";
-import { useState } from "react";
+import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 
 export default function NamingScreen({
   owner,

@@ -2,14 +2,12 @@ import "react-image-crop/dist/ReactCrop.css";
 
 import {
   AnthropicLogo,
-  Avatar,
   Button,
   CircleIcon,
   ContentMessage,
   ContextItem,
   DropdownMenu,
   GoogleLogo,
-  Input,
   MistralLogo,
   Modal,
   OpenaiLogo,
@@ -64,6 +62,7 @@ import AssistantBuilderDustAppModal from "@app/components/assistant_builder/Assi
 import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
+import NamingScreen from "@app/components/assistant_builder/NamingScreen";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -94,7 +93,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import NamingScreen from "@app/components/assistant_builder/NamingScreen";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
