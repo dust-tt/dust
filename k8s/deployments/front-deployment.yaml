@@ -60,11 +60,11 @@ spec:
 
           resources:
             requests:
-              cpu: 1000m
+              cpu: 2000m
               memory: 2.5Gi
 
             limits:
-              cpu: 1000m
+              cpu: 2000m
               memory: 2.5Gi
 
       volumes:
