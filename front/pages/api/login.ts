@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { ModelId, WithAPIErrorReponse } from "@dust-tt/types";
 import { FrontApiError } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -194,26 +194,56 @@ async function handleMembershipInvite(
   return workspace;
 }
 
-// Regular flow, only if the user is a newly created user.
-// Verify if there's an existing workspace with the same verified domain that allows auto-joining.
-// The user will join this workspace if it exists; otherwise, a new workspace is created.
-async function handleRegularSignupFlow(
-  session: any,
-  user: User
-): Promise<{
-  flow: "no-auto-join" | "revoked" | null;
-  workspace: Workspace | null;
-}> {
-  // If the user already has an active membership in a workspace, return early.
-  const allMemberships = await Membership.findOne({
+async function getActiveMembershipsForUser(userId: ModelId) {
+  return Membership.findAll({
     where: {
-      userId: user.id,
+      userId,
       role: {
         [Op.ne]: "revoked",
       },
     },
   });
-  if (allMemberships) {
+}
+
+function canJoinTargetWorkspace(
+  targetWorkspaceId: string | undefined,
+  workspace: Workspace | undefined,
+  activeMemberships: Membership[]
+) {
+  // If there is no target workspace id, return true.
+  if (!targetWorkspaceId) {
+    return true;
+  }
+
+  if (!workspace) {
+    return false;
+  }
+
+  // Verify that the user is not already a member of the workspace.
+  const alreadyInWorkspace = activeMemberships.find(
+    (m) => m.workspaceId === workspace.id
+  );
+  if (alreadyInWorkspace) {
+    return false;
+  }
+
+  return targetWorkspaceId === workspace.sId;
+}
+
+// Regular flow, only if the user is a newly created user.
+// Verify if there's an existing workspace with the same verified domain that allows auto-joining.
+// The user will join this workspace if it exists; otherwise, a new workspace is created.
+async function handleRegularSignupFlow(
+  session: any,
+  user: User,
+  targetWorkspaceId?: string
+): Promise<{
+  flow: "no-auto-join" | "revoked" | null;
+  workspace: Workspace | null;
+}> {
+  const activeMemberships = await getActiveMembershipsForUser(user.id);
+  // Return early if the user is already a member of a workspace and is not attempting to join another one.
+  if (activeMemberships.length === 0 && !targetWorkspaceId) {
     return {
       flow: null,
       workspace: null,
@@ -223,9 +253,19 @@ async function handleRegularSignupFlow(
   const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
     session
   );
-
   const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
-  if (workspaceWithVerifiedDomain && existingWorkspace) {
+
+  // Verify that the user is allowed to join the specified workspace.
+  const joinTargetWorkspaceAllowed = canJoinTargetWorkspace(
+    targetWorkspaceId,
+    existingWorkspace,
+    activeMemberships
+  );
+  if (
+    workspaceWithVerifiedDomain &&
+    existingWorkspace &&
+    joinTargetWorkspaceAllowed
+  ) {
     const workspaceSubscription = await subscriptionForWorkspace(
       existingWorkspace
     );
@@ -261,7 +301,7 @@ async function handleRegularSignupFlow(
     }
 
     return { flow: null, workspace: existingWorkspace };
-  } else {
+  } else if (!targetWorkspaceId) {
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
       workspace,
@@ -274,6 +314,9 @@ async function handleRegularSignupFlow(
     });
 
     return { flow: null, workspace };
+  } else {
+    // Redirect the user to their existing workspace if they are not allowed to join the target workspace.
+    return { flow: null, workspace: null };
   }
 }
 
@@ -297,7 +340,8 @@ async function handler(
     });
   }
 
-  const { inviteToken } = req.query;
+  const { inviteToken, wId } = req.query;
+  const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
 
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
   // `inviteToken`, meaning the user is going through the invite by email flow.
@@ -333,7 +377,11 @@ async function handler(
     if (membershipInvite) {
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
     } else {
-      const { flow, workspace } = await handleRegularSignupFlow(session, user);
+      const { flow, workspace } = await handleRegularSignupFlow(
+        session,
+        user,
+        targetWorkspaceId
+      );
       if (flow) {
         res.redirect(`/no-workspace?flow=${flow}`);
         return;

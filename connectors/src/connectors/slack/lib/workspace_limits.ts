@@ -125,43 +125,48 @@ async function isAutoJoinEnabledForDomain(
   return isDomainAutoJoinEnabled?.domainAutoJoinEnabled ?? false;
 }
 
-const slackMembershipAccessBlocks = {
-  autojoin_enabled: [
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator.",
-      },
-    },
-    {
-      type: "actions",
-      elements: [
-        {
-          type: "button",
-          text: {
-            type: "plain_text",
-            text: "Join My Workspace",
-            emoji: true,
-          },
-          style: "primary",
-          value: "join_my_workspace_cta",
-          action_id: "actionId-0",
-          url: "https://dust.tt/",
+function makeSlackMembershipAccessBlocksForConnector(
+  connector: ConnectorResource
+) {
+  return {
+    autojoin_enabled: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator.",
         },
-      ],
-    },
-  ],
-  autojoin_disabled: [
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack.",
       },
-    },
-  ],
-};
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "Join My Workspace",
+              emoji: true,
+            },
+            style: "primary",
+            value: "join_my_workspace_cta",
+            action_id: "actionId-0",
+            // TODO(2024-02-01 flav) don't hardcode URL.
+            url: `https://dust.tt/w/${connector.workspaceId}/join?wId=${connector.workspaceId}`,
+          },
+        ],
+      },
+    ],
+    autojoin_disabled: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack.",
+        },
+      },
+    ],
+  };
+}
 
 async function postMessageForUnhautorizedUser(
   connector: ConnectorResource,
@@ -177,7 +182,7 @@ async function postMessageForUnhautorizedUser(
   );
 
   const slackMessageBlocks =
-    slackMembershipAccessBlocks[
+    makeSlackMembershipAccessBlocksForConnector(connector)[
       autoJoinEnabled ? "autojoin_enabled" : "autojoin_disabled"
     ];
 

@@ -26,9 +26,17 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
  *   url = /w/[wId]/join?cId=[conversationId]
  *      -> you're redirected to this page from trying to access a conversation if you're not logged in and the workspace has a verified domain.
  *      -> the workspace needs to have a verified domain with auto-join enabled. *
+ *
+ * Case 3: "join_workspace"
+ *   url = /w/[wId]/join?wId=[workspaceId]
+ *      -> you're redirected to this page from trying to join a workspace and the workspace has a verified domain.
+ *      -> the workspace needs to have a verified domain with auto-join enabled. *
  */
 
-type OnboardingType = "email_invite" | "domain_conversation_link";
+type OnboardingType =
+  | "email_invite"
+  | "domain_conversation_link"
+  | "domain_invite_link";
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   onboardingType: OnboardingType;
@@ -53,7 +61,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
-
   let onboardingType: OnboardingType | null = null;
 
   if (cId) {
@@ -61,13 +68,13 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   } else if (token) {
     onboardingType = "email_invite";
   } else {
-    throw new Error("Unsupported onboarding type.");
+    onboardingType = "domain_invite_link";
   }
 
   // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
     !workspaceDomain?.domainAutoJoinEnabled &&
-    onboardingType === "domain_conversation_link"
+    ["domain_conversation_link", "domain_invite_link"].includes(onboardingType)
   ) {
     return {
       notFound: true,
@@ -81,6 +88,9 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       break;
     case "email_invite":
       signUpCallbackUrl = `/api/login?inviteToken=${token}`;
+      break;
+    case "domain_invite_link":
+      signUpCallbackUrl = `/api/login?wId=${wId}`;
       break;
     default:
       return {
