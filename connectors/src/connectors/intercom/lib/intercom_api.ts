@@ -8,6 +8,7 @@ import type {
 } from "@connectors/connectors/intercom/lib/types";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import logger from "@connectors/logger/logger";
 
 const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 
@@ -161,8 +162,14 @@ export async function fetchIntercomCollections(
       path: `help_center/collections?page=${page}&per_page=12`,
       method: "GET",
     });
-
-    collections.push(...response.data);
+    if (response?.data && Array.isArray(response.data)) {
+      collections.push(...response.data);
+    } else {
+      logger.error(
+        { helpCenterId, page, response },
+        "[Intercom] No collections found in the list collections response"
+      );
+    }
     if (response.pages.total_pages > page) {
       hasMore = true;
       page += 1;
