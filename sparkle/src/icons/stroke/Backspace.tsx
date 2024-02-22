@@ -16,7 +16,7 @@ const SvgBackspace = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M8.108 3a3 3 0 0 0-2.544 1.41l-3.75 6a3 3 0 0 0 0 3.18l3.75 6A3 3 0 0 0 8.108 21H22V3H8.108ZM7.26 5.47A1 1 0 0 1 8.108 5H20v14H8.108a1 1 0 0 1-.848-.47l-3.75-6a1 1 0 0 1 0-1.06l3.75-6Z"
+      d="M8.109 3a3 3 0 0 0-2.544 1.41l-3.75 6a3 3 0 0 0 0 3.18l3.75 6A3 3 0 0 0 8.109 21H22V3H8.109ZM7.26 5.47A1 1 0 0 1 8.109 5H20v14H8.109a1 1 0 0 1-.848-.47l-3.75-6a1 1 0 0 1 0-1.06l3.75-6Z"
       clipRule="evenodd"
     />
   </svg>
