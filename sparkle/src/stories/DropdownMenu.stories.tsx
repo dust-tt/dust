@@ -105,8 +105,8 @@ export const DropdownExample = () => {
               type="select"
             />
           </DropdownMenu.Button>
-          <DropdownMenu.Items width={330} overflow="visible">
-            <div className="s-flex s-flex-col s-gap-2">
+          <DropdownMenu.Items width={300} overflow="visible">
+            <div className="s-flex s-flex-col s-gap-4">
               <div className="s-flex s-flex-row s-items-center s-gap-2">
                 <div className="s-grow s-text-sm s-text-element-900">
                   Model selection:

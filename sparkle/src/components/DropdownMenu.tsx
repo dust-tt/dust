@@ -334,6 +334,14 @@ DropdownMenu.Items = function ({
       setButtonHeight(buttonRef.current.offsetHeight);
     }
   }, []);
+
+  // Check if any child is a Dropdown.Item
+  const hasDropdownItem = React.Children.toArray(children).some(
+    (child) =>
+      React.isValidElement(child) &&
+      (child.type === DropdownMenu.Item || child.props?.hasChildren)
+  );
+
   const getOriginClass = (origin: string) => {
     switch (origin) {
       case "topLeft":
@@ -411,7 +419,11 @@ DropdownMenu.Items = function ({
       >
         {topBar}
         <div
-          className={classNames("s-px-5 s-py-1.5", getOverflowClass(overflow))}
+          className={classNames(
+            "s-px-5",
+            hasDropdownItem ? "s-py-1.5" : "s-py-4",
+            getOverflowClass(overflow)
+          )}
         >
           <StandardItem.List>{children}</StandardItem.List>
         </div>
