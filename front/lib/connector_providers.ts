@@ -20,6 +20,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
     description: string;
     limitations: string | null;
+    guideLink: string | null;
     isNested: boolean;
   }
 > = {
@@ -32,6 +33,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Grant tailored access to your organization's Confluence shared spaces.",
     limitations:
       "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
+    guideLink: null,
     logoComponent: ConfluenceLogo,
     isNested: true,
   },
@@ -43,6 +45,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize granular access to your company's Notion workspace, by top-level pages.",
     limitations: "External files and content behind links are not indexed.",
+    guideLink: null,
     logoComponent: NotionLogo,
     isNested: true,
   },
@@ -55,6 +58,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your company's Google Drive, by drives and folders. Supported files include GDocs, GSlides, and .txt files. Email us for .pdf indexing.",
     limitations:
       "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at team@dust.tt to enable PDF indexing.",
+    guideLink: null,
     logoComponent: DriveLogo,
     isNested: true,
   },
@@ -66,6 +70,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
+    guideLink: null,
     logoComponent: SlackLogo,
     isNested: false,
   },
@@ -78,6 +83,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
+    guideLink: null,
     logoComponent: GithubLogo,
     isNested: true,
   },
@@ -91,6 +97,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",
     limitations:
       "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
+    guideLink:
+      "https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84",
     logoComponent: IntercomLogo,
     isNested: true,
   },
@@ -101,6 +109,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     hide: true,
     description: "Crawl a website.",
     limitations: null,
+    guideLink: null,
     logoComponent: GlobeAltIcon,
     isNested: true,
   },
