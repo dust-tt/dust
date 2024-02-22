@@ -2,6 +2,7 @@ import { rateLimiter, setupGlobalErrorHandler } from "@dust-tt/types";
 import bodyParser from "body-parser";
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
+import morgan from "morgan";
 
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
@@ -37,6 +38,10 @@ import {
 export function startServer(port: number) {
   setupGlobalErrorHandler(logger);
   const app = express();
+
+  // Initialize logger.
+  app.use(morgan("tiny"));
+
   // Indicates that the app is behind a proxy / LB. req.ip will be the left-most entry in the X-Forwarded-* header.
   app.set("trust proxy", true);
 

@@ -44,6 +44,7 @@
     "mdast-util-gfm": "^3.0.0",
     "micromark-extension-gfm": "^3.0.0",
     "minimist": "^1.2.8",
+    "morgan": "^1.10.0",
     "octokit": "^3.1.2",
     "p-queue": "^7.3.4",
     "pg": "^8.8.0",
@@ -61,6 +62,7 @@
   "devDependencies": {
     "@types/eslint": "^8.21.3",
     "@types/fast-levenshtein": "^0.0.2",
+    "@types/morgan": "^1.9.9",
     "@types/node": "^18.15.5",
     "@types/tar": "^6.1.10",
     "@types/turndown": "^5.0.4",
