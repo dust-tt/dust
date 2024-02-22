@@ -1,9 +1,8 @@
-import type { ConnectorNode } from "@dust-tt/types";
+import type { ConnectorNode, ModelId } from "@dust-tt/types";
 
 import {
   fetchIntercomTeam,
   fetchIntercomTeams,
-  getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getTeamInternalId,
@@ -15,16 +14,18 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function allowSyncTeam({
-  connector,
+  connectorId,
+  connectionId,
   teamId,
 }: {
-  connector: ConnectorResource;
+  connectorId: ModelId;
+  connectionId: string;
   teamId: string;
 }): Promise<IntercomTeam> {
   let team = await IntercomTeam.findOne({
     where: {
-      connectorId: connector.id,
-      teamId: teamId,
+      connectorId,
+      teamId,
     },
   });
   if (team?.permission === "none") {
@@ -33,13 +34,10 @@ export async function allowSyncTeam({
     });
   }
   if (!team) {
-    const teamOnIntercom = await fetchIntercomTeam(
-      connector.connectionId,
-      teamId
-    );
+    const teamOnIntercom = await fetchIntercomTeam(connectionId, teamId);
     if (teamOnIntercom) {
       team = await IntercomTeam.create({
-        connectorId: connector.id,
+        connectorId,
         teamId: teamOnIntercom.id,
         name: teamOnIntercom.name,
         permission: "read",
@@ -49,7 +47,7 @@ export async function allowSyncTeam({
 
   if (!team) {
     logger.error(
-      { connector, teamId },
+      { connectorId, connectionId, teamId },
       "[Intercom] Failed to sync team. Team not found."
     );
     throw new Error("Team not found.");
@@ -59,15 +57,15 @@ export async function allowSyncTeam({
 }
 
 export async function revokeSyncTeam({
-  connector,
+  connectorId,
   teamId,
 }: {
-  connector: ConnectorResource;
+  connectorId: ModelId;
   teamId: string;
 }): Promise<IntercomTeam | null> {
   const team = await IntercomTeam.findOne({
     where: {
-      connectorId: connector.id,
+      connectorId,
       teamId: teamId,
     },
   });
@@ -90,7 +88,6 @@ export async function retrieveIntercomConversationsPermissions({
     throw new Error("Connector not found");
   }
 
-  const intercomClient = await getIntercomClient(connector.connectionId);
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
   const teamsInternalId = getTeamsInternalId(connectorId);
@@ -141,7 +138,7 @@ export async function retrieveIntercomConversationsPermissions({
       });
     }
   } else {
-    const teams = await fetchIntercomTeams(intercomClient);
+    const teams = await fetchIntercomTeams(connector.connectionId);
     if (isRootLevel) {
       // This is an ugly hack
       // Since we only sync conversations attached to a Team, if there are no teams, we display "No conversations"

@@ -1,12 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
+import { fetchIntercomConversation } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
   ConversationPartType,
   IntercomConversationWithPartsType,
   IntercomTagType,
-} from "@connectors/connectors/intercom/lib/intercom_api";
-import { fetchIntercomConversation } from "@connectors/connectors/intercom/lib/intercom_api";
+} from "@connectors/connectors/intercom/lib/types";
 import {
   getConversationInternalId,
   getTeamInternalId,

@@ -36,7 +36,6 @@
     "fs-extra": "^11.1.1",
     "googleapis": "^118.0.0",
     "hot-shots": "^10.0.0",
-    "intercom-client": "^5.0.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
     "lodash.get": "^4.4.2",

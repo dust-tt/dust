@@ -1,16 +1,15 @@
 import type { ModelId } from "@dust-tt/types";
-import type { Client as IntercomClient } from "intercom-client";
 import TurndownService from "turndown";
 
-import type { IntercomCollectionType } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   fetchIntercomArticles,
   fetchIntercomCollection,
   fetchIntercomCollections,
-  getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
+import type { IntercomCollectionType } from "@connectors/connectors/intercom/lib/types";
 import {
   getArticleInAppUrl,
+  getCollectionInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
@@ -68,6 +67,7 @@ export async function removeHelpCenter({
 export async function syncCollection({
   connectorId,
   connectionId,
+  helpCenterId,
   isHelpCenterWebsiteTurnedOn,
   collection,
   dataSourceConfig,
@@ -76,6 +76,7 @@ export async function syncCollection({
 }: {
   connectorId: ModelId;
   connectionId: string;
+  helpCenterId: string;
   isHelpCenterWebsiteTurnedOn: boolean;
   collection: IntercomCollection;
   dataSourceConfig: DataSourceConfig;
@@ -90,19 +91,19 @@ export async function syncCollection({
       loggerArgs,
     });
   } else {
-    const intercomClient = await getIntercomClient(connectionId);
     const collectionOnIntercom = await fetchIntercomCollection(
-      intercomClient,
+      connectionId,
       collection.collectionId
     );
     if (collectionOnIntercom) {
       await _upsertCollection({
         connectorId,
+        connectionId,
+        helpCenterId,
         collection: collectionOnIntercom,
         isHelpCenterWebsiteTurnedOn,
         parents: [],
         dataSourceConfig,
-        intercomClient,
         loggerArgs,
         currentSyncMs,
       });
@@ -191,7 +192,8 @@ export async function _deleteCollection({
  */
 export async function _upsertCollection({
   connectorId,
-  intercomClient,
+  connectionId,
+  helpCenterId,
   dataSourceConfig,
   loggerArgs,
   collection,
@@ -200,7 +202,8 @@ export async function _upsertCollection({
   currentSyncMs,
 }: {
   connectorId: ModelId;
-  intercomClient: IntercomClient;
+  connectionId: string;
+  helpCenterId: string;
   dataSourceConfig: DataSourceConfig;
   collection: IntercomCollectionType;
   isHelpCenterWebsiteTurnedOn: boolean;
@@ -216,12 +219,14 @@ export async function _upsertCollection({
     },
   });
 
+  const fallbackCollectionUrl = getCollectionInAppUrl(collection);
+
   if (collectionOnDb) {
     await collectionOnDb.update({
       name: collection.name,
       description: collection.description,
       parentId: collection.parent_id,
-      url: collection.url,
+      url: collection.url || fallbackCollectionUrl,
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
@@ -229,11 +234,11 @@ export async function _upsertCollection({
       connectorId: connectorId,
       collectionId: collection.id,
       intercomWorkspaceId: collection.workspace_id,
-      helpCenterId: collection.help_center_id,
+      helpCenterId: helpCenterId,
       parentId: collection.parent_id,
       name: collection.name,
       description: collection.description,
-      url: collection.url,
+      url: collection.url || fallbackCollectionUrl,
       permission: "read",
       lastUpsertedTs: new Date(currentSyncMs),
     });
@@ -241,7 +246,7 @@ export async function _upsertCollection({
 
   // Sync the Collection's articles
   const [childrenArticlesOnIntercom, childrenArticlesOnDb] = await Promise.all([
-    fetchIntercomArticles(intercomClient, collection.id),
+    fetchIntercomArticles(connectionId, helpCenterId, collection.id),
     IntercomArticle.findAll({
       where: { connectorId, parentId: collection.id },
     }),
@@ -319,7 +324,7 @@ export async function _upsertCollection({
         getHelpCenterCollectionInternalId(connectorId, id)
       );
       parentsInternalsIds.push(
-        getHelpCenterInternalId(connectorId, collection.help_center_id)
+        getHelpCenterInternalId(connectorId, helpCenterId)
       );
 
       return upsertToDatasource({
@@ -358,8 +363,8 @@ export async function _upsertCollection({
 
   // Then we call ourself recursively on the children collections
   const childrenCollectionsOnIntercom = await fetchIntercomCollections(
-    intercomClient,
-    collection.help_center_id,
+    connectionId,
+    helpCenterId,
     collection.id
   );
 
@@ -367,7 +372,8 @@ export async function _upsertCollection({
     childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
       await _upsertCollection({
         connectorId,
-        intercomClient,
+        connectionId,
+        helpCenterId,
         dataSourceConfig,
         loggerArgs,
         collection: collectionOnIntercom,

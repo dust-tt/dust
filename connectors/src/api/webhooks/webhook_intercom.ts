@@ -1,7 +1,7 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/intercom_api";
+import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/types";
 import { stopIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import { syncConversation } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";

@@ -1,6 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 
-import type { IntercomArticleType } from "@connectors/connectors/intercom/lib/intercom_api";
+import type {
+  IntercomArticleType,
+  IntercomCollectionType,
+} from "@connectors/connectors/intercom/lib/types";
 
 /**
  * From id to internalId
@@ -72,4 +75,8 @@ export function getTeamIdFromInternalId(
 
 export function getArticleInAppUrl(article: IntercomArticleType) {
   return `https://app.intercom.com/a/apps/${article.workspace_id}/articles/articles/${article.id}/show`;
+}
+
+export function getCollectionInAppUrl(collection: IntercomCollectionType) {
+  return `https://app.intercom.com/a/apps/${collection.workspace_id}/articles/site/collections`;
 }

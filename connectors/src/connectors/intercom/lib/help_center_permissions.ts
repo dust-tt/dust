@@ -1,5 +1,4 @@
-import type { ConnectorNode } from "@dust-tt/types";
-import type { Client as IntercomClient } from "intercom-client";
+import type { ConnectorNode, ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -7,9 +6,9 @@ import {
   fetchIntercomCollections,
   fetchIntercomHelpCenter,
   fetchIntercomHelpCenters,
-  getIntercomClient,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  getCollectionInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
   getHelpCenterCollectionInternalId,
@@ -38,19 +37,19 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
  * Mark a help center as permission "read" and all children (collections & articles) if specified.
  */
 export async function allowSyncHelpCenter({
-  connector,
-  intercomClient,
+  connectorId,
+  connectionId,
   helpCenterId,
   withChildren = false,
 }: {
-  connector: ConnectorResource;
-  intercomClient: IntercomClient;
+  connectorId: ModelId;
+  connectionId: string;
   helpCenterId: string;
   withChildren?: boolean;
 }): Promise<IntercomHelpCenter> {
   let helpCenter = await IntercomHelpCenter.findOne({
     where: {
-      connectorId: connector.id,
+      connectorId,
       helpCenterId,
     },
   });
@@ -62,12 +61,12 @@ export async function allowSyncHelpCenter({
   }
   if (!helpCenter) {
     const helpCenterOnIntercom = await fetchIntercomHelpCenter(
-      connector.connectionId,
+      connectionId,
       helpCenterId
     );
     if (helpCenterOnIntercom) {
       helpCenter = await IntercomHelpCenter.create({
-        connectorId: connector.id,
+        connectorId: connectorId,
         helpCenterId: helpCenterOnIntercom.id,
         name: helpCenterOnIntercom.display_name || "Help Center",
         identifier: helpCenterOnIntercom.identifier,
@@ -86,14 +85,14 @@ export async function allowSyncHelpCenter({
   // If withChildren we are allowing the full Help Center.
   if (withChildren) {
     const level1Collections = await fetchIntercomCollections(
-      intercomClient,
+      connectionId,
       helpCenter.helpCenterId,
       null
     );
     const permissionUpdatePromises = level1Collections.map((c1) =>
       allowSyncCollection({
-        connector,
-        intercomClient,
+        connectorId,
+        connectionId,
         collectionId: c1.id,
       })
     );
@@ -107,15 +106,15 @@ export async function allowSyncHelpCenter({
  * Mark a help center as permission "none" and all children (collections & articles).
  */
 export async function revokeSyncHelpCenter({
-  connector,
+  connectorId,
   helpCenterId,
 }: {
-  connector: ConnectorResource;
+  connectorId: ModelId;
   helpCenterId: string;
 }): Promise<IntercomHelpCenter | null> {
   const helpCenter = await IntercomHelpCenter.findOne({
     where: {
-      connectorId: connector.id,
+      connectorId,
       helpCenterId,
     },
   });
@@ -166,17 +165,17 @@ export async function revokeSyncHelpCenter({
  * Mark a collection as permission "read" and all children (collections & articles)
  */
 export async function allowSyncCollection({
-  connector,
-  intercomClient,
+  connectorId,
+  connectionId,
   collectionId,
 }: {
-  connector: ConnectorResource;
-  intercomClient: IntercomClient;
+  connectorId: ModelId;
+  connectionId: string;
   collectionId: string;
 }): Promise<IntercomCollection | null> {
   let collection = await IntercomCollection.findOne({
     where: {
-      connectorId: connector.id,
+      connectorId: connectorId,
       collectionId,
     },
   });
@@ -187,19 +186,20 @@ export async function allowSyncCollection({
     });
   } else if (!collection) {
     const intercomCollection = await fetchIntercomCollection(
-      intercomClient,
+      connectionId,
       collectionId
     );
-    if (intercomCollection) {
+    if (intercomCollection && intercomCollection.help_center_id) {
       collection = await IntercomCollection.create({
-        connectorId: connector.id,
+        connectorId,
         collectionId: intercomCollection.id,
         intercomWorkspaceId: intercomCollection.workspace_id,
         helpCenterId: intercomCollection.help_center_id,
         parentId: intercomCollection.parent_id,
         name: intercomCollection.name,
         description: intercomCollection.description,
-        url: intercomCollection.url,
+        url:
+          intercomCollection.url || getCollectionInAppUrl(intercomCollection),
         permission: "read",
       });
     }
@@ -216,12 +216,12 @@ export async function allowSyncCollection({
   // We create the Help Center if it doesn't exist and fetch the children collections
   const [, childrenCollections] = await Promise.all([
     allowSyncHelpCenter({
-      connector,
-      intercomClient,
+      connectorId,
+      connectionId,
       helpCenterId: collection.helpCenterId,
     }),
     fetchIntercomCollections(
-      intercomClient,
+      connectionId,
       collection.helpCenterId,
       collection.collectionId
     ),
@@ -229,8 +229,8 @@ export async function allowSyncCollection({
 
   const collectionPermissionPromises = childrenCollections.map((c) =>
     allowSyncCollection({
-      connector,
-      intercomClient,
+      connectorId,
+      connectionId,
       collectionId: c.id,
     })
   );
@@ -243,16 +243,16 @@ export async function allowSyncCollection({
  * Mark a collection as permission "none" and all children (collections & articles)
  */
 export async function revokeSyncCollection({
-  connector,
+  connectorId,
   collectionId,
 }: {
-  connector: ConnectorResource;
+  connectorId: ModelId;
   collectionId: string;
 }): Promise<IntercomCollection | null> {
   // Revoke permission for this level 1 collection
   const collection = await IntercomCollection.findOne({
     where: {
-      connectorId: connector.id,
+      connectorId,
       collectionId,
     },
   });
@@ -319,7 +319,7 @@ export async function revokeSyncCollection({
   });
   if (level1Collections.length === 0) {
     await revokeSyncHelpCenter({
-      connector,
+      connectorId,
       helpCenterId: collection.helpCenterId,
     });
   }
@@ -338,7 +338,6 @@ export async function retrieveIntercomHelpCentersPermissions({
     throw new Error("Connector not found");
   }
 
-  const intercomClient = await getIntercomClient(connector.connectionId);
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
   let nodes: ConnectorNode[] = [];
@@ -436,7 +435,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       }));
     } else {
       const collectionsInIntercom = await fetchIntercomCollections(
-        intercomClient,
+        connector.connectionId,
         helpCenterParentId,
         parentId
       );
