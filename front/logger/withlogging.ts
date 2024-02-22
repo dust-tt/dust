@@ -34,6 +34,14 @@ export function withLogging<T>(
     }
     const now = new Date();
 
+    logger.info(
+      {
+        method: req.method,
+        url: req.url,
+      },
+      "Begin Request Processing."
+    );
+
     let route = req.url;
     if (route) {
       route = route.split("?")[0];
