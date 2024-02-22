@@ -256,12 +256,16 @@ async function handleRegularSignupFlow(
   const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
 
   // Verify that the user is allowed to join the specified workspace.
-  const isAllowed = canJoinTargetWorkspace(
+  const joinTargetWorkspaceAllowed = canJoinTargetWorkspace(
     targetWorkspaceId,
     existingWorkspace,
     activeMemberships
   );
-  if (workspaceWithVerifiedDomain && existingWorkspace && isAllowed) {
+  if (
+    workspaceWithVerifiedDomain &&
+    existingWorkspace &&
+    joinTargetWorkspaceAllowed
+  ) {
     const workspaceSubscription = await subscriptionForWorkspace(
       existingWorkspace
     );
