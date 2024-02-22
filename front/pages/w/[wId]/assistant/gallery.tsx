@@ -20,7 +20,7 @@ import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
@@ -135,42 +135,10 @@ export default function AssistantsGallery({
       assertNever(orderBy);
   }
 
+  const [showDetails, setShowDetails] =
+    useState<LightAgentConfigurationType | null>(null);
   const [testModalAssistant, setTestModalAssistant] =
     useState<LightAgentConfigurationType | null>(null);
-
-  const [showDetails, setShowDetails] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const assistantSId = router.query.assistantDetails ?? [];
-      if (assistantSId && typeof assistantSId === "string") {
-        setShowDetails(assistantSId);
-      } else {
-        setShowDetails(null);
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.query, router.events]);
-
-  const handleCloseAssistantDetails = () => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { assistantDetails, ...restQuery } = router.query;
-    void router.push(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  };
 
   const tabs: {
     label: string;
@@ -256,8 +224,8 @@ export default function AssistantsGallery({
     >
       <AssistantDetails
         owner={owner}
-        assistantId={showDetails}
-        onClose={handleCloseAssistantDetails}
+        assistantId={showDetails?.sId || null}
+        onClose={() => setShowDetails(null)}
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
       {testModalAssistant && (
@@ -295,15 +263,8 @@ export default function AssistantsGallery({
                   owner={owner}
                   plan={plan}
                   agentConfiguration={a}
-                  onShowDetails={async () => {
-                    const href = {
-                      pathname: router.pathname,
-                      query: {
-                        ...router.query,
-                        assistantDetails: a.sId,
-                      },
-                    };
-                    await router.push(href);
+                  onShowDetails={() => {
+                    setShowDetails(a);
                   }}
                   onUpdate={() => {
                     void mutateAgentConfigurations();
