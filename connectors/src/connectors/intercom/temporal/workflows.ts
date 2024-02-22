@@ -14,8 +14,9 @@ import { intercomUpdatesSignal } from "./signals";
 const {
   getHelpCenterIdsToSyncActivity,
   syncHelpCenterOnlyActivity,
-  getCollectionsIdsToSyncActivity,
-  syncCollectionActivity,
+  getLevel1CollectionsIdsActivity,
+  syncLevel1CollectionWithChildrenActivity,
+  syncArticleBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -167,19 +168,32 @@ export async function intercomHelpCenterSyncWorklow({
     return;
   }
 
-  const collectionIds = await getCollectionsIdsToSyncActivity({
+  // First we sync the collections
+  const collectionIds = await getLevel1CollectionsIdsActivity({
     connectorId,
     helpCenterId,
   });
-
   for (const collectionId of collectionIds) {
-    await syncCollectionActivity({
+    await syncLevel1CollectionWithChildrenActivity({
       connectorId,
       helpCenterId,
       collectionId,
       currentSyncMs,
     });
   }
+
+  // Then we sync the articles
+  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+  let page: number | null = 1;
+  do {
+    const { nextPage } = await syncArticleBatchActivity({
+      connectorId,
+      helpCenterId,
+      page,
+      currentSyncMs,
+    });
+    page = nextPage;
+  } while (page);
 }
 
 /**

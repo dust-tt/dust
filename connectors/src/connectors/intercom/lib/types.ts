@@ -34,9 +34,9 @@ export type IntercomArticleType = {
   created_at: number;
   updated_at: number;
   url: string;
-  parent_id: string;
+  parent_id: number | null;
   parent_type: string;
-  parent_ids: string[];
+  parent_ids: number[];
 };
 
 export type IntercomTeamType = {
