@@ -203,7 +203,9 @@ export async function getMembersCountForWorkspace(
   });
 }
 
-export async function hasAvailableSeats(auth: Authenticator): Promise<boolean> {
+export async function hasWorkspaceAvailableSeats(
+  auth: Authenticator
+): Promise<boolean> {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   if (!owner || !subscription) {

@@ -7,9 +7,8 @@ import { sign } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  getMembers,
   getPendingInvitations,
-  workspaceHasAvailableSeats,
+  hasWorkspaceAvailableSeats,
 } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
@@ -89,7 +88,7 @@ async function handler(
         });
       }
 
-      const hasAvailableSeats = await workspaceHasAvailableSeats(auth);
+      const hasAvailableSeats = await hasWorkspaceAvailableSeats(auth);
       if (!hasAvailableSeats) {
         return apiError(req, res, {
           status_code: 400,
