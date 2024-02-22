@@ -68,6 +68,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   plan: PlanType;
   readOnly: boolean;
   isAdmin: boolean;
+  isBuilder: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType | null;
   standardView: boolean;
@@ -121,6 +122,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
+  const isBuilder = auth.isBuilder();
 
   // `standardView` is used to force the presentation of a managed data source as a standard one so
   // that it can be explored.
@@ -133,6 +135,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       plan,
       readOnly,
       isAdmin,
+      isBuilder,
       dataSource,
       connector,
       standardView,
@@ -781,6 +784,7 @@ function ManagedDataSourceView({
   owner,
   readOnly,
   isAdmin,
+  isBuilder,
   dataSource,
   connector,
   nangoConfig,
@@ -790,6 +794,7 @@ function ManagedDataSourceView({
   owner: WorkspaceType;
   readOnly: boolean;
   isAdmin: boolean;
+  isBuilder: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType;
   nangoConfig: {
@@ -992,7 +997,7 @@ function ManagedDataSourceView({
           ) : (
             <></>
           )}
-          {isAdmin && displaySettingsButton ? (
+          {isBuilder && displaySettingsButton ? (
             <Link
               className="ml-auto"
               href={`/w/${owner.sId}/builder/data-sources/${encodeURIComponent(
@@ -1003,7 +1008,7 @@ function ManagedDataSourceView({
                 label="Settings"
                 variant="tertiary"
                 icon={LockIcon}
-                disabled={readOnly || !isAdmin}
+                disabled={readOnly || !isBuilder}
               />
             </Link>
           ) : (
@@ -1109,6 +1114,7 @@ export default function DataSourceView({
   plan,
   readOnly,
   isAdmin,
+  isBuilder,
   dataSource,
   connector,
   standardView,
@@ -1158,6 +1164,7 @@ export default function DataSourceView({
             owner,
             readOnly,
             isAdmin,
+            isBuilder,
             dataSource,
             connector,
             nangoConfig,

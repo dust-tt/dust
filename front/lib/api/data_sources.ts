@@ -19,6 +19,10 @@ import { DataSource, User } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
+export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
+  "webcrawler",
+];
+
 function makeEditedBy(
   editedByUser: User | undefined,
   editedAt: Date | undefined
@@ -191,7 +195,11 @@ export async function deleteDataSource(
 
   const dustAPIProjectId = dataSource.dustAPIProjectId;
 
-  if (dataSource.connectorId) {
+  if (
+    dataSource.connectorId &&
+    dataSource.connectorProvider &&
+    !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
+  ) {
     if (!auth.isAdmin()) {
       return new Err({
         type: "workspace_auth_error",

@@ -29,7 +29,6 @@ export const provider2createConnectorType: Record<
 } as const;
 
 export const PROVIDERS_WITH_SETTINGS: ConnectorProvider[] = ["webcrawler"];
-export const DELETION_ALLOWED_BY_TYPE: ConnectorProvider[] = ["webcrawler"];
 
 interface EditedByUser {
   editedAt: number | null;
