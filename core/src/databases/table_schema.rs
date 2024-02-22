@@ -482,7 +482,7 @@ mod tests {
     }
 
     #[test]
-    fn test_table_schema_from_rows_conflicting_types() {
+    fn test_table_schema_from_rows_conflicting_types_merged_to_text() {
         let row_1 = json!({
             "field1": 1,
             "field2": 1.2,
@@ -508,9 +508,17 @@ mod tests {
         let schema = TableSchema::from_rows(rows);
 
         assert!(
-            schema.is_err(),
-            "Schema should have failed due to conflicting types."
+            schema.is_ok(),
+            "Schema from conflicting types should be valid."
         );
+        let schema = schema.unwrap();
+        println!("{:?}", schema.clone());
+        assert_eq!(schema.columns().len(), 5);
+        assert_eq!(schema.columns()[0].value_type, TableSchemaFieldType::Text);
+        assert_eq!(schema.columns()[1].value_type, TableSchemaFieldType::Float);
+        assert_eq!(schema.columns()[2].value_type, TableSchemaFieldType::Text);
+        assert_eq!(schema.columns()[3].value_type, TableSchemaFieldType::Text);
+        assert_eq!(schema.columns()[4].value_type, TableSchemaFieldType::Text);
     }
 
     #[test]
