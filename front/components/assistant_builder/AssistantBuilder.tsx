@@ -194,21 +194,6 @@ const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   mistral: MistralLogo,
   google_vertex_ai: GoogleLogo,
 };
-type ModelId = (typeof SUPPORTED_MODEL_CONFIGS)[number]["modelId"];
-
-const GPT_4_SHORT_DESCRIPTION = "Most polyvalent model";
-
-const MODEL_SHORT_DESCRIPTIONS: Record<ModelId, string> = {
-  "gpt-3.5-turbo-1106": "OpenAI's fastest model.",
-  "gpt-4-turbo-preview": GPT_4_SHORT_DESCRIPTION,
-  "gpt-4": GPT_4_SHORT_DESCRIPTION,
-  "gemini-pro": "Scales across a wide range of tasks.",
-  "mistral-small": "Very fast and effective.",
-  "mistral-medium": "One of the most powerful OSS model.",
-  "mistral-next": "Le gros modèle.",
-  "claude-2.1": "Great at writing.",
-  "claude-instant-1.2": "Great at writing.",
-};
 
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
@@ -1214,9 +1199,7 @@ function AdvancedSettings({
                       <DropdownMenu.Item
                         key={modelConfig.modelId}
                         icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                        description={
-                          MODEL_SHORT_DESCRIPTIONS[modelConfig.modelId]
-                        }
+                        description={modelConfig.shortDescription}
                         label={modelConfig.displayName}
                         onClick={() => {
                           setGenerationSettings({
