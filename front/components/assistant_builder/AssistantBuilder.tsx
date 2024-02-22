@@ -1072,7 +1072,7 @@ function InstructionScreen({
   setEdited: (edited: boolean) => void;
 }) {
   return (
-    <div className="flex h-full w-full flex-col gap-4">
+    <div className="flex h-full max-h-[800px] w-full flex-col gap-4">
       <div className="flex">
         <div className="flex flex-col gap-2">
           <Page.Header title="Instructions" />
