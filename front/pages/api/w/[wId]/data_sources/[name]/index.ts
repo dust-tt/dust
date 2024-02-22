@@ -1,8 +1,12 @@
 import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
-import { ConnectorsAPI, DELETION_ALLOWED_BY_TYPE } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { deleteDataSource, getDataSource } from "@app/lib/api/data_sources";
+import {
+  deleteDataSource,
+  getDataSource,
+  MANAGED_DS_DELETABLE_AS_BUILDER,
+} from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
@@ -174,7 +178,7 @@ async function handler(
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
-        !DELETION_ALLOWED_BY_TYPE.includes(dataSource.connectorProvider)
+        !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
       ) {
         return apiError(req, res, {
           status_code: 400,
