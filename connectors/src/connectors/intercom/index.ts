@@ -90,6 +90,7 @@ export async function createIntercomConnector(
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
       conversationsSlidingWindow: 90,
+      region: intercomWorkspace.region,
     });
 
     const workflowStarted = await launchIntercomSyncWorkflow(
@@ -188,6 +189,7 @@ export async function updateIntercomConnector(
       {
         intercomWorkspaceId: newIntercomWorkspace.id,
         name: newIntercomWorkspace.name,
+        region: newIntercomWorkspace.region,
       },
       {
         where: { connectorId: connector.id },
@@ -389,6 +391,20 @@ export async function setIntercomConnectorPermissions(
     logger.error({ connectorId }, "[Intercom] Connector not found.");
     return new Err(new Error("Connector not found"));
   }
+
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!intercomWorkspace) {
+    logger.error(
+      { connectorId },
+      "[Intercom] IntercomWorkspace not found. Cannot set permissions."
+    );
+    return new Err(new Error("IntercomWorkspace not found"));
+  }
+
   const connectionId = connector.connectionId;
 
   const toBeSignaledHelpCenterIds = new Set<string>();
@@ -424,6 +440,7 @@ export async function setIntercomConnectorPermissions(
             connectorId,
             connectionId,
             helpCenterId,
+            region: intercomWorkspace.region,
             withChildren: true,
           });
         }
@@ -442,6 +459,7 @@ export async function setIntercomConnectorPermissions(
             connectorId,
             connectionId,
             collectionId,
+            region: intercomWorkspace.region,
           });
           if (newCollection) {
             toBeSignaledHelpCenterIds.add(newCollection.helpCenterId);

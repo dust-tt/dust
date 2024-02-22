@@ -40,11 +40,13 @@ export async function allowSyncHelpCenter({
   connectorId,
   connectionId,
   helpCenterId,
+  region,
   withChildren = false,
 }: {
   connectorId: ModelId;
   connectionId: string;
   helpCenterId: string;
+  region: string;
   withChildren?: boolean;
 }): Promise<IntercomHelpCenter> {
   let helpCenter = await IntercomHelpCenter.findOne({
@@ -94,6 +96,7 @@ export async function allowSyncHelpCenter({
         connectorId,
         connectionId,
         collectionId: c1.id,
+        region,
       })
     );
     await Promise.all(permissionUpdatePromises);
@@ -168,10 +171,12 @@ export async function allowSyncCollection({
   connectorId,
   connectionId,
   collectionId,
+  region,
 }: {
   connectorId: ModelId;
   connectionId: string;
   collectionId: string;
+  region: string;
 }): Promise<IntercomCollection | null> {
   let collection = await IntercomCollection.findOne({
     where: {
@@ -199,7 +204,8 @@ export async function allowSyncCollection({
         name: intercomCollection.name,
         description: intercomCollection.description,
         url:
-          intercomCollection.url || getCollectionInAppUrl(intercomCollection),
+          intercomCollection.url ||
+          getCollectionInAppUrl(intercomCollection, region),
         permission: "read",
       });
     }
@@ -219,6 +225,7 @@ export async function allowSyncCollection({
       connectorId,
       connectionId,
       helpCenterId: collection.helpCenterId,
+      region,
     }),
     fetchIntercomCollections(
       connectionId,
@@ -232,6 +239,7 @@ export async function allowSyncCollection({
       connectorId,
       connectionId,
       collectionId: c.id,
+      region,
     })
   );
   await Promise.all(collectionPermissionPromises);

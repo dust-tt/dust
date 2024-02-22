@@ -148,12 +148,14 @@ export async function upsertCollectionWithChildren({
   connectionId,
   helpCenterId,
   collection,
+  region,
   currentSyncMs,
 }: {
   connectorId: ModelId;
   connectionId: string;
   helpCenterId: string;
   collection: IntercomCollectionType;
+  region: string;
   currentSyncMs: number;
 }) {
   const collectionId = collection.id;
@@ -173,7 +175,7 @@ export async function upsertCollectionWithChildren({
     },
   });
 
-  const fallbackCollectionUrl = getCollectionInAppUrl(collection);
+  const fallbackCollectionUrl = getCollectionInAppUrl(collection, region);
 
   if (collectionOnDb) {
     await collectionOnDb.update({
@@ -212,6 +214,7 @@ export async function upsertCollectionWithChildren({
         connectionId,
         helpCenterId,
         collection: collectionOnIntercom,
+        region,
         currentSyncMs,
       });
     })
@@ -225,6 +228,7 @@ export async function upsertArticle({
   connectorId,
   helpCenterId,
   article,
+  region,
   parentCollection,
   isHelpCenterWebsiteTurnedOn,
   currentSyncMs,
@@ -234,6 +238,7 @@ export async function upsertArticle({
   connectorId: ModelId;
   helpCenterId: string;
   article: IntercomArticleType;
+  region: string;
   parentCollection: IntercomCollection;
   isHelpCenterWebsiteTurnedOn: boolean;
   currentSyncMs: number;
@@ -257,7 +262,7 @@ export async function upsertArticle({
   // So as a workaround we use the url of the article in the intercom app
   const articleUrl = isHelpCenterWebsiteTurnedOn
     ? article.url
-    : getArticleInAppUrl(article);
+    : getArticleInAppUrl(article, region);
 
   const parentCollectionId = article.parent_id?.toString();
   const parentCollectionIds = article.parent_ids.map((id) => id.toString());

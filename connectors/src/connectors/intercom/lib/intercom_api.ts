@@ -50,6 +50,8 @@ async function queryIntercomAPI({
     useCache: true,
   });
 
+  // Intercom will route to the correct region based on the token.
+  // https://developers.intercom.com/docs/build-an-integration/learn-more/rest-apis/#regional-hosting
   const rawResponse = await fetch(`https://api.intercom.io/${path}`, {
     method,
     headers: {
@@ -91,6 +93,7 @@ export async function fetchIntercomWorkspace(
 ): Promise<{
   id: string;
   name: string;
+  region: string;
 } | null> {
   const response = await queryIntercomAPI({
     nangoConnectionId,
@@ -100,14 +103,16 @@ export async function fetchIntercomWorkspace(
 
   const workspaceId = response?.app?.id_code;
   const workspaceName = response?.app?.name;
+  const region = response?.app?.region;
 
-  if (!workspaceId || !workspaceName) {
+  if (!workspaceId || !workspaceName || !region) {
     return null;
   }
 
   return {
     id: workspaceId,
     name: workspaceName,
+    region,
   };
 }
 

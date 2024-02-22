@@ -238,6 +238,22 @@ export async function syncLevel1CollectionWithChildrenActivity({
     dataSourceName: dataSourceConfig.dataSourceName,
   };
 
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!intercomWorkspace) {
+    logger.error(
+      { loggerArgs, collectionId },
+      "[Intercom] IntercomWorkspace not found"
+    );
+    return {
+      collectionId,
+      action: "not_found_db",
+    };
+  }
+
   const collectionOnDB = await IntercomCollection.findOne({
     where: {
       connectorId,
@@ -294,6 +310,7 @@ export async function syncLevel1CollectionWithChildrenActivity({
     connectionId: connector.connectionId,
     helpCenterId,
     collection: collectionOnIntercom,
+    region: intercomWorkspace.region,
     currentSyncMs,
   });
   return {
@@ -321,6 +338,15 @@ export async function syncArticleBatchActivity({
     provider: "intercom",
     dataSourceName: dataSourceConfig.dataSourceName,
   };
+
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!intercomWorkspace) {
+    throw new Error("[Intercom] IntercomWorkspace not found");
+  }
 
   const helpCenter = await IntercomHelpCenter.findOne({
     where: {
@@ -372,6 +398,7 @@ export async function syncArticleBatchActivity({
           helpCenterId,
           article,
           parentCollection,
+          region: intercomWorkspace.region,
           isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
           currentSyncMs,
           dataSourceConfig,
