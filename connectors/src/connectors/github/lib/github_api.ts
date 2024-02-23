@@ -674,6 +674,8 @@ export async function processRepository({
     ).data;
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
+      localLogger.info({ err }, "Missing Github repository tarball. Skipping.");
+
       throw ApplicationFailure.nonRetryable(
         err.message,
         "GithubNotFoundNonRetryableError",
