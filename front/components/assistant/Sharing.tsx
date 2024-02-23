@@ -2,11 +2,13 @@ import {
   Button,
   ChevronDownIcon,
   Chip,
+  ClipboardCheckIcon,
   Dialog,
   DropdownMenu,
   DustIcon,
   IconButton,
   LinkIcon,
+  LinkStrokeIcon,
   LockIcon,
   Page,
   PlanetIcon,
@@ -131,6 +133,7 @@ export function SharingButton({
     : "";
 
   const shareLink = `${baseUrl}/w/${owner.sId}/assistant/gallery?assistantDetails=${agentConfigurationId}`;
+  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
 
   return (
     <DropdownMenu>
@@ -163,30 +166,32 @@ export function SharingButton({
               </div>
             </div>
           </div>
-          <div className="flex flex-row justify-between">
-            <div>
-              <div className="text-base font-bold text-element-800">Link</div>
-              <div className="text-sm text-element-700">
-                Shareable direct URL
+          {agentConfigurationId && (
+            <div className="flex flex-row justify-between">
+              <div>
+                <div className="text-base font-bold text-element-800">Link</div>
+                <div className="text-sm text-element-700">
+                  Shareable direct URL
+                </div>
+              </div>
+              <div>
+                <Button
+                  size="sm"
+                  icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
+                  label={copyLinkSuccess ? "Copied!" : "Copy link"}
+                  variant="secondary"
+                  className="w-full"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(shareLink);
+                    setCopyLinkSuccess(true);
+                    setTimeout(() => {
+                      setCopyLinkSuccess(false);
+                    }, 1000);
+                  }}
+                />
               </div>
             </div>
-            <div>
-              <Button
-                size="sm"
-                icon={LinkIcon}
-                label="Copy Link"
-                variant="secondary"
-                className="w-full"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(shareLink);
-                  // setCopyLinkSuccess(true);
-                  // setTimeout(() => {
-                  //   setCopyLinkSuccess(false);
-                  // }, 1000);
-                }}
-              />
-            </div>
-          </div>
+          )}
         </div>
       </DropdownMenu.Items>
     </DropdownMenu>
