@@ -14,13 +14,28 @@ import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/AssistantBuilder";
 import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
 import type { GetConnectorNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
+
+export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
+  ConnectorProvider,
+  {
+    singular: string;
+    plural: string;
+  }
+> = {
+  confluence: { singular: "space", plural: "spaces" },
+  notion: { singular: "page", plural: "pages" },
+  google_drive: { singular: "folder", plural: "folders" },
+  slack: { singular: "channel", plural: "channels" },
+  github: { singular: "repository", plural: "repositories" },
+  intercom: { singular: "article", plural: "articles" },
+  webcrawler: { singular: "page", plural: "pages" },
+};
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,
