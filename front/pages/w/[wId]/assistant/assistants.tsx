@@ -130,7 +130,7 @@ export default function MyAssistants({
               </Link>
             </Tooltip>
           )}
-          <Link href={`/w/${owner.sId}/assistant/gallery?flow=personal_add`}>
+          <Link href={`/w/${owner.sId}/assistant/gallery`}>
             <Button
               variant="primary"
               icon={BookOpenIcon}
