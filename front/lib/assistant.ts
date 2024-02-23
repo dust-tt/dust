@@ -1,10 +1,9 @@
 import type {
-  AgentUsageType,
   DataSourceType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
-import { pluralize, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
@@ -104,54 +103,6 @@ export function compareAgentsForSort(
   if (bIndex !== -1) return 1; // Only b is in customOrder, it comes first
 
   return 0; // Default: keep the original order
-}
-
-export function assistantUsageMessage({
-  assistantName,
-  usage,
-  isLoading,
-  isError,
-  shortVersion,
-}: {
-  assistantName: string | null;
-  usage: AgentUsageType | null;
-  isLoading: boolean;
-  isError: boolean;
-  shortVersion?: boolean;
-}) {
-  if (isError) {
-    return "Error loading usage data.";
-  }
-
-  if (isLoading) {
-    return "Loading usage data...";
-  }
-
-  if (usage) {
-    const days = usage.timePeriodSec / (60 * 60 * 24);
-
-    if (shortVersion) {
-      const messageCount = `${usage.messageCount} message${pluralize(
-        usage.messageCount
-      )}`;
-
-      return `${messageCount} over the last ${days} days`;
-    }
-
-    const usersWithAgentInListCount = `${
-      usage.usersWithAgentInListCount
-    } member${pluralize(usage.usersWithAgentInListCount)}`;
-    const messageCount = `${usage.messageCount} time${pluralize(
-      usage.messageCount
-    )}`;
-    const userCount = `${usage.userCount} member${pluralize(usage.userCount)}`;
-
-    return `${
-      assistantName ? "@" + assistantName : "This assistant"
-    } is active for ${usersWithAgentInListCount} and has been used ${messageCount} by ${userCount} in the last ${
-      usage.timePeriodSec / (60 * 60 * 24)
-    } days.`;
-  }
 }
 
 // Order in the following format : connectorProvider > empty > webcrawler

@@ -6,8 +6,8 @@ import type {
 import type { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { assistantUsageMessage } from "@app/lib/assistant";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
