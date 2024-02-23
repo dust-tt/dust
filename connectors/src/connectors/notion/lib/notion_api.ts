@@ -1,4 +1,4 @@
-import { cacheWithRedis } from "@dust-tt/types";
+import { assertNever, cacheWithRedis } from "@dust-tt/types";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
@@ -630,6 +630,13 @@ export async function validateAccessToken(notionAccessToken: string) {
 export function parsePropertyText(
   property: PageObjectProperties[PropertyKeys]
 ): string | null {
+  const parseDateProp = (d?: { start: string; end: string | null } | null) => {
+    if (d?.start && d?.end) {
+      return `${d.start} - ${d.end}`;
+    }
+    return d?.start || null;
+  };
+
   switch (property.type) {
     case "number":
       return property.number?.toString() || null;
@@ -644,10 +651,7 @@ export function parsePropertyText(
     case "status":
       return property.status?.name || null;
     case "date":
-      if (property.date?.start && property.date?.end) {
-        return `${property.date.start} - ${property.date.end}`;
-      }
-      return property.date?.start || null;
+      return parseDateProp(property.date);
     case "email":
       return property.email || null;
     case "phone_number":
@@ -686,9 +690,23 @@ export function parsePropertyText(
       return property.people.length > 0
         ? property.people.map((p) => ("name" in p ? p.name : p.id)).join(", ")
         : null;
+    case "formula":
+      return (() => {
+        switch (property.formula.type) {
+          case "string":
+            return property.formula.string;
+          case "boolean":
+            return `${property.formula.boolean}`;
+          case "date":
+            return parseDateProp(property.formula.date);
+          case "number":
+            return `${property.formula.number}`;
+          default:
+            assertNever(property.formula);
+        }
+      })();
     case "relation":
     case "rollup":
-    case "formula":
     // @ts-expect-error missing from Notion package
     // eslint-disable-next-line no-fallthrough
     case "verification":
