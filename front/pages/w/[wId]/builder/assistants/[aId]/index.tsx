@@ -28,7 +28,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-const { GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
 export const getServerSideProps = withGetServerSidePropsLogging<{
   owner: WorkspaceType;
@@ -45,6 +45,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
+  baseUrl: string;
 }>(async (context) => {
   const session = await getSession(context.req, context.res);
   const auth = await Authenticator.fromSession(
@@ -120,6 +121,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       tablesQueryConfiguration,
       agentConfiguration: config,
       flow,
+      baseUrl: URL,
     },
   };
 });
@@ -136,6 +138,7 @@ export default function EditAssistant({
   tablesQueryConfiguration,
   agentConfiguration,
   flow,
+  baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
@@ -202,6 +205,7 @@ export default function EditAssistant({
           : null,
       }}
       agentConfigurationId={agentConfiguration.sId}
+      baseUrl={baseUrl}
     />
   );
 }

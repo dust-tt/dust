@@ -6,7 +6,9 @@ import {
   DropdownMenu,
   DustIcon,
   IconButton,
+  LinkIcon,
   LockIcon,
+  Page,
   PlanetIcon,
   ShapesIcon,
   UserGroupIcon,
@@ -99,12 +101,14 @@ export function SharingButton({
   initialScope,
   newScope,
   setNewScope,
+  baseUrl,
 }: {
   owner: WorkspaceType;
   agentConfigurationId: string | null;
   initialScope: NonGlobalScope;
   newScope: NonGlobalScope;
   setNewScope: (scope: NonGlobalScope) => void;
+  baseUrl: string;
 }) {
   const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
     workspaceId: owner.sId,
@@ -126,6 +130,8 @@ export function SharingButton({
       })
     : "";
 
+  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/gallery?assistantDetails=${agentConfigurationId}`;
+
   return (
     <DropdownMenu>
       <DropdownMenu.Button>
@@ -137,22 +143,48 @@ export function SharingButton({
         />
       </DropdownMenu.Button>
       <DropdownMenu.Items width={319} overflow="visible">
-        <div className="flex flex-col gap-y-2 py-2">
-          <SharingDropdown
-            owner={owner}
-            agentConfiguration={agentConfiguration}
-            initialScope={initialScope}
-            newScope={newScope}
-            setNewScope={setNewScope}
-          />
-          <div className="text-sm text-element-700">
+        <div className="-mx-1 flex flex-col gap-y-4 pb-2 pt-3">
+          <div className="flex flex-col gap-y-2">
+            <SharingDropdown
+              owner={owner}
+              agentConfiguration={agentConfiguration}
+              initialScope={initialScope}
+              newScope={newScope}
+              setNewScope={setNewScope}
+            />
+            <div className="text-sm text-element-700">
+              <div>
+                {SCOPE_INFO[newScope].text}{" "}
+                {agentUsage &&
+                agentUsage.usersWithAgentInListCount > 0 &&
+                newScope !== "private"
+                  ? usageText
+                  : null}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-row justify-between">
             <div>
-              {SCOPE_INFO[newScope].text}{" "}
-              {agentUsage &&
-              agentUsage.usersWithAgentInListCount > 0 &&
-              newScope !== "private"
-                ? usageText
-                : null}
+              <div className="text-base font-bold text-element-800">Link</div>
+              <div className="text-sm text-element-700">
+                Shareable direct URL
+              </div>
+            </div>
+            <div>
+              <Button
+                size="sm"
+                icon={LinkIcon}
+                label="Copy Link"
+                variant="secondary"
+                className="w-full"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(shareLink);
+                  // setCopyLinkSuccess(true);
+                  // setTimeout(() => {
+                  //   setCopyLinkSuccess(false);
+                  // }, 1000);
+                }}
+              />
             </div>
           </div>
         </div>
