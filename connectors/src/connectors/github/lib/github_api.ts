@@ -1,17 +1,23 @@
 import { createAppAuth } from "@octokit/auth-app";
+import { ApplicationFailure } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
-import { Octokit } from "octokit";
+import { Octokit, RequestError } from "octokit";
 import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
+import {
+  GithubNotFoundError,
+  isGithubNotFoundError,
+  isGithubRequestErrorNotFound,
+} from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
   DiscussionNode,
@@ -23,6 +29,7 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
+import { isNotFoundError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 const API_PAGE_SIZE = 100;
@@ -658,17 +665,32 @@ export async function processRepository({
     },
   });
 
-  const { data: tarballStream } = (await octokit.request(
-    "GET /repos/{owner}/{repo}/tarball/{ref}",
-    {
-      owner: repoLogin,
-      repo: repoName,
-      ref: defaultBranch,
-      request: {
-        parseSuccessResponseBody: false,
-      },
+  let tarballStream;
+  try {
+    tarballStream = (
+      (await octokit.request("GET /repos/{owner}/{repo}/tarball/{ref}", {
+        owner: repoLogin,
+        repo: repoName,
+        ref: defaultBranch,
+        request: {
+          parseSuccessResponseBody: false,
+        },
+      })) as { data: Readable }
+    ).data;
+  } catch (err) {
+    if (isGithubRequestErrorNotFound(err)) {
+      throw ApplicationFailure.nonRetryable(
+        err.message,
+        "GithubNotFoundNonRetryableError",
+        [
+          "Could not find tarball.",
+          `/repos/${repoLogin}/${repoName}/tarball/${defaultBranch}`,
+        ]
+      );
     }
-  )) as { data: Readable };
+
+    throw err;
+  }
 
   // Create a temp directory.
   const tempDir = await mkdtemp(join(tmpdir(), "repo-"));
