@@ -618,6 +618,14 @@ export async function githubRepoGarbageCollectActivity(
   }
 
   await Promise.all(promises);
+
+  await garbageCollectCodeSync(
+    dataSourceConfig,
+    connector,
+    parseInt(repoId, 10),
+    new Date(),
+    loggerArgs
+  );
 }
 
 async function deleteIssue(
