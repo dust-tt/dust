@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -163,7 +163,7 @@ export default function AssistantsGallery({
     const currentPathname = router.pathname;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { assistantDetails, ...restQuery } = router.query;
-    void router.push(
+    void router.replace(
       { pathname: currentPathname, query: restQuery },
       undefined,
       {
@@ -250,7 +250,9 @@ export default function AssistantsGallery({
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Assistant Gallery"
-          onClose={() => router.back()}
+          onClose={async () => {
+            await appLayoutBack(owner, router);
+          }}
         />
       }
     >
@@ -303,7 +305,7 @@ export default function AssistantsGallery({
                         assistantDetails: a.sId,
                       },
                     };
-                    await router.push(href);
+                    await router.replace(href);
                   }}
                   onUpdate={() => {
                     void mutateAgentConfigurations();
