@@ -6,18 +6,14 @@ import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
 import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
-import { Octokit, RequestError } from "octokit";
+import { Octokit } from "octokit";
 import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
-import {
-  GithubNotFoundError,
-  isGithubNotFoundError,
-  isGithubRequestErrorNotFound,
-} from "@connectors/connectors/github/lib/errors";
+import { isGithubRequestErrorNotFound } from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
   DiscussionNode,
@@ -29,7 +25,6 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
-import { isNotFoundError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 const API_PAGE_SIZE = 100;
