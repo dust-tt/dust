@@ -27,10 +27,6 @@ const ConfluenceSpaceCodec = t.intersection([
 ]);
 export type ConfluenceSpaceType = t.TypeOf<typeof ConfluenceSpaceCodec>;
 
-const ConfluenceListSpacesCodec = t.type({
-  results: t.array(ConfluenceSpaceCodec),
-});
-
 const ConfluencePaginatedResults = <C extends t.Mixed>(codec: C) =>
   t.type({
     results: t.array(codec),
@@ -270,12 +266,17 @@ export class ConfluenceClient {
       status: "current",
     });
 
-    return (
-      await this.request(
-        `${this.restApiBaseUrl}/spaces?${params.toString()}`,
-        ConfluenceListSpacesCodec
-      )
-    ).results;
+    const spaces = await this.request(
+      `${this.restApiBaseUrl}/spaces?${params.toString()}`,
+      ConfluencePaginatedResults(ConfluenceSpaceCodec)
+    );
+
+    const nextPageCursor = extractCursorFromLinks(spaces._links);
+
+    return {
+      spaces: spaces.results,
+      nextPageCursor,
+    };
   }
 
   async getSpaceById(spaceId: string) {
