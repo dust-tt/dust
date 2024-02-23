@@ -209,8 +209,16 @@ export async function syncConversation({
 
   // Building the markdown content for the conversation
   let markdown = "";
-  const convoTitle = conversation.title || "No title";
+  let convoTitle = conversation.title;
 
+  if (!convoTitle) {
+    const formattedDate = createdAtDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    convoTitle = `Conversation from ${formattedDate}`;
+  }
   const tags = conversation.tags?.tags
     .map((tag: IntercomTagType) => tag.name)
     .join(", ");
@@ -267,7 +275,7 @@ export async function syncConversation({
     documentUrl: conversationUrl,
     timestampMs: updatedAtDate.getTime(),
     tags: [
-      `title:${conversation.title}`,
+      `title:${convoTitle}`,
       `createdAt:${createdAtDate.getTime()}`,
       `updatedAt:${updatedAtDate.getTime()}`,
     ],
