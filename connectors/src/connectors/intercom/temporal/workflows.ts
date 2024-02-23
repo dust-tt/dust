@@ -18,7 +18,7 @@ const {
   syncLevel1CollectionWithChildrenActivity,
   syncArticleBatchActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
+  startToCloseTimeout: "5 minutes",
 });
 
 const {
@@ -28,7 +28,7 @@ const {
   getNextConversationsBatchToDeleteActivity,
   deleteConversationBatchActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
+  startToCloseTimeout: "5 minutes",
 });
 
 const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
