@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
+import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
@@ -57,7 +58,18 @@ export async function listConfluenceSpaces(
     cloudId: config?.cloudId,
   });
 
-  return client.getGlobalSpaces();
+  const allSpaces = new Map<string, ConfluenceSpaceType>();
+  let nextPageCursor: string | null = "";
+  do {
+    const { spaces, nextPageCursor: nextCursor } =
+      await client.getGlobalSpaces();
+
+    spaces.forEach((s) => allSpaces.set(s.id, s));
+
+    nextPageCursor = nextCursor;
+  } while (nextPageCursor);
+
+  return [...allSpaces.values()];
 }
 
 export async function pageHasReadRestrictions(
