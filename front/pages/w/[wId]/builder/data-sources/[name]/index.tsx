@@ -730,7 +730,7 @@ interface ConnectorUiConfig {
   displayManagePermissionButton: boolean;
   addDataButtonLabel: string | null;
   displaySettingsButton: boolean;
-  guideLink?: string;
+  guideLink: string | null;
 }
 
 function getRenderingConfigForConnectorProvider(
@@ -748,6 +748,7 @@ function getRenderingConfigForConnectorProvider(
       return {
         ...commonConfig,
         displayDataSourceDetailsModal: true,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
 
     case "slack":
@@ -755,8 +756,7 @@ function getRenderingConfigForConnectorProvider(
       return {
         ...commonConfig,
         displayDataSourceDetailsModal: false,
-        guideLink:
-          "https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84",
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "notion":
       return {
@@ -764,6 +764,7 @@ function getRenderingConfigForConnectorProvider(
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
         displaySettingsButton: false,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "github":
       return {
@@ -771,6 +772,7 @@ function getRenderingConfigForConnectorProvider(
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
         displaySettingsButton: false,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "webcrawler":
       return {
@@ -778,6 +780,7 @@ function getRenderingConfigForConnectorProvider(
         displayManagePermissionButton: false,
         addDataButtonLabel: null,
         displaySettingsButton: true,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     default:
       assertNever(connectorProvider);
