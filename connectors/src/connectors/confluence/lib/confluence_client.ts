@@ -163,6 +163,8 @@ export class ConfluenceClient {
         Authorization: `Bearer ${this.authToken}`,
         "Content-Type": "application/json",
       },
+      // Timeout after 30 seconds.
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {
