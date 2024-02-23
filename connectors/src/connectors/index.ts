@@ -41,6 +41,7 @@ import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google
 import {
   cleanupIntercomConnector,
   createIntercomConnector,
+  fullResyncIntercomSyncWorkflow,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
   retrieveIntercomNodesTitles,
@@ -49,7 +50,6 @@ import {
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
-import { launchIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import type {
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
@@ -188,7 +188,7 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
-    intercom: launchIntercomSyncWorkflow,
+    intercom: fullResyncIntercomSyncWorkflow,
     webcrawler: launchCrawlWebsiteWorkflow,
   };
 

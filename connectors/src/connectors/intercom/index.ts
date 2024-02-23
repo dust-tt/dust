@@ -312,6 +312,43 @@ export async function resumeIntercomConnector(
   return new Ok(undefined);
 }
 
+export async function fullResyncIntercomSyncWorkflow(
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Notion connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  const helpCentersIds = await IntercomHelpCenter.findAll({
+    where: {
+      connectorId,
+    },
+    attributes: ["helpCenterId"],
+  });
+  const teamsIds = await IntercomTeam.findAll({
+    where: {
+      connectorId,
+    },
+    attributes: ["teamId"],
+  });
+
+  const toBeSignaledHelpCenterIds = helpCentersIds.map((hc) => hc.helpCenterId);
+  const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
+
+  const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow(
+    connectorId,
+    null,
+    toBeSignaledHelpCenterIds,
+    toBeSignaledTeamIds
+  );
+  if (sendSignalToWorkflowResult.isErr()) {
+    return new Err(sendSignalToWorkflowResult.error);
+  }
+  return new Ok(connector.id.toString());
+}
+
 export async function retrieveIntercomConnectorPermissions({
   connectorId,
   parentInternalId,
