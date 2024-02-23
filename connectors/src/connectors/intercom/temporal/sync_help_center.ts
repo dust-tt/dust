@@ -79,6 +79,14 @@ export async function deleteCollectionWithChildren({
 }) {
   const collectionId = collection.collectionId;
 
+  if (!collectionId) {
+    logger.error(
+      { connectorId, collection },
+      "[Intercom] Collection has no id. Skipping deleteCollectionWithChildren."
+    );
+    return;
+  }
+
   // We delete all articles in the collection
   const articles = await IntercomArticle.findAll({
     where: {
@@ -121,11 +129,11 @@ export async function deleteCollectionWithChildren({
     },
   });
   await Promise.all(
-    childrenCollections.map(async (collection) => {
+    childrenCollections.map(async (c) => {
       await deleteCollectionWithChildren({
         connectorId,
         dataSourceConfig,
-        collection,
+        collection: c,
         loggerArgs,
       });
     })
@@ -148,11 +156,20 @@ export async function upsertCollectionWithChildren({
   collection: IntercomCollectionType;
   currentSyncMs: number;
 }) {
+  const collectionId = collection.id;
+  if (!collectionId) {
+    logger.error(
+      { connectorId, helpCenterId, collection },
+      "[Intercom] Collection has no id. Skipping upsertCollectionWithChildren."
+    );
+    return;
+  }
+
   // Sync the Collection
   let collectionOnDb = await IntercomCollection.findOne({
     where: {
       connectorId,
-      collectionId: collection.id,
+      collectionId,
     },
   });
 

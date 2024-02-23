@@ -195,7 +195,7 @@ export async function getLevel1CollectionsIdsActivity({
 }: {
   connectorId: ModelId;
   helpCenterId: string;
-}) {
+}): Promise<string[]> {
   const level1Collections = await IntercomCollection.findAll({
     where: {
       connectorId,
@@ -221,7 +221,14 @@ export async function syncLevel1CollectionWithChildrenActivity({
   helpCenterId: string;
   collectionId: string;
   currentSyncMs: number;
-}) {
+}): Promise<{
+  collectionId: string;
+  action:
+    | "upserted"
+    | "not_found_db"
+    | "deleted_no_permission"
+    | "deleted_not_found_intercom";
+}> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
@@ -231,45 +238,54 @@ export async function syncLevel1CollectionWithChildrenActivity({
     dataSourceName: dataSourceConfig.dataSourceName,
   };
 
-  const collection = await IntercomCollection.findOne({
+  const collectionOnDB = await IntercomCollection.findOne({
     where: {
       connectorId,
       helpCenterId,
       collectionId,
     },
   });
-  if (!collection) {
+  if (!collectionOnDB) {
     logger.error(
       { loggerArgs, collectionId },
-      "[Intercom] Collection to sync not found"
+      "[Intercom] Level 1 Collection to sync not found"
     );
-    return;
+    return {
+      collectionId,
+      action: "not_found_db",
+    };
   }
 
   // If our rights were revoked we delete the collection and its children
-  if (collection.permission === "none") {
+  if (collectionOnDB.permission === "none") {
     await deleteCollectionWithChildren({
       connectorId,
-      collection,
+      collection: collectionOnDB,
       dataSourceConfig,
       loggerArgs,
     });
-    return;
+    return {
+      collectionId,
+      action: "deleted_no_permission",
+    };
   }
 
   // If the collection is not present on Intercom anymore we delete the collection and its children
-  const intercomCollection = await fetchIntercomCollection(
+  const collectionOnIntercom = await fetchIntercomCollection(
     connector.connectionId,
-    collection.collectionId
+    collectionOnDB.collectionId
   );
-  if (!intercomCollection) {
+  if (collectionOnIntercom === null) {
     await deleteCollectionWithChildren({
       connectorId,
-      collection,
+      collection: collectionOnDB,
       dataSourceConfig,
       loggerArgs,
     });
-    return;
+    return {
+      collectionId,
+      action: "deleted_not_found_intercom",
+    };
   }
 
   // Otherwise we upsert the collection and its children collections
@@ -277,9 +293,13 @@ export async function syncLevel1CollectionWithChildrenActivity({
     connectorId,
     connectionId: connector.connectionId,
     helpCenterId,
-    collection: intercomCollection,
+    collection: collectionOnIntercom,
     currentSyncMs,
   });
+  return {
+    collectionId,
+    action: "upserted",
+  };
 }
 
 export async function syncArticleBatchActivity({
