@@ -141,6 +141,7 @@ type AssistantBuilderProps = {
   agentConfigurationId: string | null;
   flow: BuilderFlow;
   defaultIsEdited?: boolean;
+  baseUrl: string;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -243,6 +244,7 @@ export default function AssistantBuilder({
   agentConfigurationId,
   flow,
   defaultIsEdited,
+  baseUrl,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -1003,6 +1005,7 @@ export default function AssistantBuilder({
                   setEdited(scope !== initialBuilderState?.scope);
                   setBuilderState((state) => ({ ...state, scope }));
                 }}
+                baseUrl={baseUrl}
               />
             </div>
           </div>
