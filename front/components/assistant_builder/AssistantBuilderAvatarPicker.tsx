@@ -185,7 +185,7 @@ export function AvatarPicker({
       isOpen={isOpen}
       onClose={onClose}
       title=""
-      variant="side-sm"
+      variant="side-md"
       hasChanged={currentTab === "upload" && !!src}
       onSave={isUploadingAvatar ? undefined : onUpload}
     >
@@ -195,75 +195,78 @@ export function AvatarPicker({
         onChange={onFileChange}
         ref={fileInputRef}
       />
-      <div className="mx-auto flex h-full max-w-4xl flex-col gap-4">
-        <div className="overflow-x-auto">
+
+      <div className="h-full w-full overflow-visible">
+        <div className="overflow-x-auto pt-3">
           <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
         </div>
-        {["droids", "spirits"].includes(currentTab) ? (
-          <div className="grid h-96 w-full grow grid-cols-6 gap-2 overflow-y-auto lg:grid-cols-8">
-            {avatarUrls[currentTab].map((url) => (
-              <div
-                key={url}
-                className="cursor-pointer"
-                onClick={() => {
-                  onPick(url);
-                  onClose();
-                }}
-              >
-                <Avatar size="auto" visual={<img src={url} />} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            className={classNames(
-              "flex items-center justify-center",
-              !src ? "min-h-64 bg-slate-50" : ""
-            )}
-          >
-            {src ? (
-              <div>
-                <ReactCrop
-                  crop={crop}
-                  aspect={1}
-                  onChange={(_, pC) => setCrop(pC)}
+        <div className="h-full w-full overflow-y-auto">
+          {["droids", "spirits"].includes(currentTab) ? (
+            <div className="mb-16 mt-3 grid w-full grid-cols-8 gap-2 overflow-y-auto">
+              {avatarUrls[currentTab].map((url) => (
+                <div
+                  key={url}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    onPick(url);
+                    onClose();
+                  }}
                 >
-                  <img
-                    src={src}
-                    alt="Profile"
-                    onLoad={(event) => {
-                      const { naturalWidth: width, naturalHeight: height } =
-                        event.currentTarget;
+                  <Avatar size="auto" visual={<img src={url} />} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className={classNames(
+                "my-3 flex items-center justify-center rounded-xl",
+                !src ? "min-h-64 bg-slate-50" : ""
+              )}
+            >
+              {src ? (
+                <div>
+                  <ReactCrop
+                    crop={crop}
+                    aspect={1}
+                    onChange={(_, pC) => setCrop(pC)}
+                  >
+                    <img
+                      src={src}
+                      alt="Profile"
+                      onLoad={(event) => {
+                        const { naturalWidth: width, naturalHeight: height } =
+                          event.currentTarget;
 
-                      const newCrop = centerCrop(
-                        makeAspectCrop(
-                          {
-                            unit: "%",
-                            width: 100,
-                          },
-                          1,
+                        const newCrop = centerCrop(
+                          makeAspectCrop(
+                            {
+                              unit: "%",
+                              width: 100,
+                            },
+                            1,
+                            width,
+                            height
+                          ),
                           width,
                           height
-                        ),
-                        width,
-                        height
-                      );
+                        );
 
-                      setCrop(newCrop);
-                    }}
-                    ref={imageRef}
-                  />
-                </ReactCrop>
-              </div>
-            ) : (
-              <Button
-                label="Upload"
-                icon={ArrowUpOnSquareIcon}
-                onClick={() => fileInputRef?.current?.click()}
-              />
-            )}
-          </div>
-        )}
+                        setCrop(newCrop);
+                      }}
+                      ref={imageRef}
+                    />
+                  </ReactCrop>
+                </div>
+              ) : (
+                <Button
+                  label="Upload"
+                  icon={ArrowUpOnSquareIcon}
+                  onClick={() => fileInputRef?.current?.click()}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   );
