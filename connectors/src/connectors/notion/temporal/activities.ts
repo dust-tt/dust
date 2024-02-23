@@ -1446,7 +1446,7 @@ async function cacheDatabaseChildPages({
         url: page.url,
         workflowId: topLevelWorkflowId,
       }),
-    { concurrency: 20 }
+    { concurrency: 5 }
   );
 }
 
