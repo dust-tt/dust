@@ -26,13 +26,11 @@ import { useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { SCOPE_INFO } from "@app/components/assistant/Sharing";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
-import {
-  assistantUsageMessage,
-  compareAgentsForSort,
-} from "@app/lib/assistant";
+import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, subFilter } from "@app/lib/utils";

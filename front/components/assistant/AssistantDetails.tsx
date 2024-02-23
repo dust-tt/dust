@@ -29,8 +29,8 @@ import type { KeyedMutator } from "swr";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { assistantUsageMessage } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
@@ -164,7 +164,9 @@ export function AssistantDetails({
               {agentConfiguration.lastAuthors.join(", ")}
             </div>
           )}
-          <div>{editedSentence + ", " + usageSentence}</div>
+          <div>
+            {editedSentence + ", "} {usageSentence}
+          </div>
         </div>
       )}
       <Page.Separator />

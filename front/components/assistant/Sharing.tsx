@@ -19,7 +19,7 @@ import type {
 import { isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
-import { assistantUsageMessage } from "@app/lib/assistant";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 type ConfirmationModalDataType = {
@@ -122,6 +122,7 @@ export function SharingButton({
         usage: agentUsage,
         isLoading: isAgentUsageLoading,
         isError: isAgentUsageError,
+        boldVersion: true,
       })
     : "";
 
@@ -195,6 +196,7 @@ export function SharingDropdown({
         usage: agentUsage.agentUsage,
         isLoading: agentUsage.isAgentUsageLoading,
         isError: agentUsage.isAgentUsageError,
+        boldVersion: true,
       })
     : "";
 
@@ -317,7 +319,7 @@ function ScopeChangeModal({
 }: {
   show: boolean;
   confirmationModalData: ConfirmationModalDataType;
-  usageText?: string;
+  usageText?: React.ReactNode;
   onClose: () => void;
   setSharingScope: () => void;
 }) {
