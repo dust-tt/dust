@@ -12,6 +12,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
 import Link from "next/link";
+import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import { signOut } from "next-auth/react";
@@ -203,6 +204,22 @@ export const SidebarProvider = ({
       {children}
     </SidebarContext.Provider>
   );
+};
+
+// This function is used to navigate back to the previous page (eg modal like page close) and
+// fallback to the landing if we linked directly to that modal.
+export const appLayoutBack = async (
+  owner: WorkspaceType,
+  router: NextRouter
+) => {
+  // TODO(2024-02-08 flav) Remove once internal router is in better shape. Opening a new tab/window
+  // counts the default page as an entry in the history stack, leading to a history length of 2.
+  // Directly opening a link without the "new tab" page results in a history length of 1.
+  if (window.history.length < 3) {
+    await router.push(`/w/${owner.sId}/assistant/new`);
+  } else {
+    router.back();
+  }
 };
 
 export default function AppLayout({

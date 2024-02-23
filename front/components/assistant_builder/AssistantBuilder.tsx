@@ -80,7 +80,7 @@ import {
   BASIC_ACTION_MODES,
 } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
@@ -503,23 +503,6 @@ export default function AssistantBuilder({
     });
   };
 
-  const onClose = async () => {
-    setDisableUnsavedChangesPrompt(true);
-    // TODO(2024-02-08 flav) Remove once internal router is in better shape.
-    // Opening a new tab/window counts the default page as an entry in the
-    // history stack, leading to a history length of 2. Directly opening a link
-    // without the "new tab" page results in a history length of 1.
-    if (window.history.length < 3) {
-      if (flow === "workspace_assistants") {
-        await router.push(`/w/${owner.sId}/builder/assistants`);
-      } else {
-        await router.push(`/w/${owner.sId}/assistant/assistants`);
-      }
-    } else {
-      router.back();
-    }
-  };
-
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
@@ -538,7 +521,7 @@ export default function AssistantBuilder({
       );
 
       setIsSavingOrDeleting(false);
-      await onClose();
+      await appLayoutBack(owner, router);
     } catch (e) {
       setIsSavingOrDeleting(false);
       sendNotification({
@@ -987,11 +970,18 @@ export default function AssistantBuilder({
         })}
         titleChildren={
           !edited ? (
-            <AppLayoutSimpleCloseTitle title={modalTitle} onClose={onClose} />
+            <AppLayoutSimpleCloseTitle
+              title={modalTitle}
+              onClose={async () => {
+                await appLayoutBack(owner, router);
+              }}
+            />
           ) : (
             <AppLayoutSimpleSaveCancelTitle
               title={modalTitle}
-              onCancel={onClose}
+              onCancel={async () => {
+                await appLayoutBack(owner, router);
+              }}
               onSave={submitEnabled ? onAssistantSave : undefined}
               isSaving={isSavingOrDeleting}
             />
