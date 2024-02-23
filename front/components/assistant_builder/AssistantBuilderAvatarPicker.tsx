@@ -40,16 +40,20 @@ export function AvatarPicker({
   droidAvatarUrls: string[];
   spiritAvatarUrls: string[];
 }) {
+  type TabId = "droids" | "spirits" | "upload";
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [currentTab, setCurrentTab] = useState<"droids" | "spirits" | "upload">(
-    "droids"
-  );
+  const [currentTab, setCurrentTab] = useState<TabId>("droids");
   const [crop, setCrop] = useState<Crop>(DEFAULT_CROP);
   const [src, setSrc] = useState<string | null>(null);
 
+  const avatarUrls: Record<TabId, string[]> = {
+    droids: droidAvatarUrls,
+    spirits: spiritAvatarUrls,
+    upload: [],
+  };
   const tabs: {
     label: string;
-    id: "droids" | "spirits" | "upload";
+    id: TabId;
     current: boolean;
     icon: React.ComponentType<{
       className?: string;
@@ -180,8 +184,8 @@ export function AvatarPicker({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Select an avatar for your assistant:"
-      variant="full-screen"
+      title=""
+      variant="side-sm"
       hasChanged={currentTab === "upload" && !!src}
       onSave={isUploadingAvatar ? undefined : onUpload}
     >
@@ -191,13 +195,13 @@ export function AvatarPicker({
         onChange={onFileChange}
         ref={fileInputRef}
       />
-      <div className="mx-auto max-w-4xl px-8 pt-6">
+      <div className="mx-auto flex h-full max-w-4xl flex-col gap-4">
         <div className="overflow-x-auto">
           <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
         </div>
-        {currentTab === "droids" && (
-          <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
-            {droidAvatarUrls.map((url) => (
+        {["droids", "spirits"].includes(currentTab) ? (
+          <div className="grid h-96 w-full grow grid-cols-6 gap-2 overflow-y-auto lg:grid-cols-8">
+            {avatarUrls[currentTab].map((url) => (
               <div
                 key={url}
                 className="cursor-pointer"
@@ -210,72 +214,56 @@ export function AvatarPicker({
               </div>
             ))}
           </div>
-        )}
-        {currentTab === "spirits" && (
-          <div className="grid grid-cols-4 gap-4 pt-8 lg:grid-cols-8">
-            {spiritAvatarUrls.map((url) => (
-              <div
-                key={url}
-                className="cursor-pointer"
-                onClick={() => {
-                  onPick(url);
-                  onClose();
-                }}
-              >
-                <Avatar size="auto" visual={<img src={url} />} />
-              </div>
-            ))}
-          </div>
-        )}
-        <div
-          className={classNames(
-            "mt-8 flex items-center justify-center",
-            currentTab !== "upload" ? "hidden" : "",
-            !src ? "min-h-64 bg-slate-50" : ""
-          )}
-        >
-          {src ? (
-            <div>
-              <ReactCrop
-                crop={crop}
-                aspect={1}
-                onChange={(_, pC) => setCrop(pC)}
-              >
-                <img
-                  src={src}
-                  alt="Profile"
-                  onLoad={(event) => {
-                    const { naturalWidth: width, naturalHeight: height } =
-                      event.currentTarget;
+        ) : (
+          <div
+            className={classNames(
+              "flex items-center justify-center",
+              !src ? "min-h-64 bg-slate-50" : ""
+            )}
+          >
+            {src ? (
+              <div>
+                <ReactCrop
+                  crop={crop}
+                  aspect={1}
+                  onChange={(_, pC) => setCrop(pC)}
+                >
+                  <img
+                    src={src}
+                    alt="Profile"
+                    onLoad={(event) => {
+                      const { naturalWidth: width, naturalHeight: height } =
+                        event.currentTarget;
 
-                    const newCrop = centerCrop(
-                      makeAspectCrop(
-                        {
-                          unit: "%",
-                          width: 100,
-                        },
-                        1,
+                      const newCrop = centerCrop(
+                        makeAspectCrop(
+                          {
+                            unit: "%",
+                            width: 100,
+                          },
+                          1,
+                          width,
+                          height
+                        ),
                         width,
                         height
-                      ),
-                      width,
-                      height
-                    );
+                      );
 
-                    setCrop(newCrop);
-                  }}
-                  ref={imageRef}
-                />
-              </ReactCrop>
-            </div>
-          ) : (
-            <Button
-              label="Upload"
-              icon={ArrowUpOnSquareIcon}
-              onClick={() => fileInputRef?.current?.click()}
-            />
-          )}
-        </div>
+                      setCrop(newCrop);
+                    }}
+                    ref={imageRef}
+                  />
+                </ReactCrop>
+              </div>
+            ) : (
+              <Button
+                label="Upload"
+                icon={ArrowUpOnSquareIcon}
+                onClick={() => fileInputRef?.current?.click()}
+              />
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );
