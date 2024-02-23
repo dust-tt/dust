@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   Button,
   Cog6ToothIcon,
   ContextItem,
@@ -729,6 +730,7 @@ interface ConnectorUiConfig {
   displayManagePermissionButton: boolean;
   addDataButtonLabel: string | null;
   displaySettingsButton: boolean;
+  guideLink?: string;
 }
 
 function getRenderingConfigForConnectorProvider(
@@ -753,6 +755,8 @@ function getRenderingConfigForConnectorProvider(
       return {
         ...commonConfig,
         displayDataSourceDetailsModal: false,
+        guideLink:
+          "https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84",
       };
     case "notion":
       return {
@@ -938,6 +942,7 @@ function ManagedDataSourceView({
     displayManagePermissionButton,
     addDataButtonLabel,
     displaySettingsButton,
+    guideLink,
   } = getRenderingConfigForConnectorProvider(connectorProvider);
 
   return (
@@ -1044,6 +1049,17 @@ function ManagedDataSourceView({
                       } else {
                         void handleUpdatePermissions();
                       }
+                    }}
+                  />
+                )}
+
+                {guideLink && (
+                  <Button
+                    label="Read our guide"
+                    variant="tertiary"
+                    icon={BookOpenIcon}
+                    onClick={() => {
+                      window.open(guideLink, "_blank");
                     }}
                   />
                 )}

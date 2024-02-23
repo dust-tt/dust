@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   Button,
   Chip,
   CloudArrowLeftRightIcon,
@@ -60,6 +61,7 @@ type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
   description: string;
   limitations: string | null;
+  guideLink: string | null;
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
 };
@@ -170,6 +172,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       rollingOutFlag: integration.rollingOutFlag || null,
       description: integration.description,
       limitations: integration.limitations,
+      guideLink: integration.guideLink,
       dataSourceName: mc.dataSourceName,
       connector: mc.connector,
       fetchConnectorError: mc.fetchConnectorError,
@@ -214,6 +217,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
         rollingOutFlag: integration.rollingOutFlag || null,
         description: integration.description,
         limitations: integration.limitations,
+        guideLink: integration.guideLink,
         dataSourceName: null,
         connector: null,
         fetchConnectorError: false,
@@ -331,24 +335,40 @@ function ConfirmationModal({
               </div>
             </>
           )}
+
           <div className="flex justify-center pt-2">
-            <Button
-              variant="primary"
-              size="md"
-              icon={CloudArrowLeftRightIcon}
-              onClick={() => {
-                setIsLoading(true);
-                onConfirm();
-              }}
-              disabled={isLoading}
-              label={
-                isLoading
-                  ? "Connecting..."
-                  : dataSource.connectorProvider === "google_drive"
-                  ? "Acknowledge and Connect"
-                  : "Connect"
-              }
-            />
+            <Button.List isWrapping={true}>
+              <Button
+                variant="primary"
+                size="md"
+                icon={CloudArrowLeftRightIcon}
+                onClick={() => {
+                  setIsLoading(true);
+                  onConfirm();
+                }}
+                disabled={isLoading}
+                label={
+                  isLoading
+                    ? "Connecting..."
+                    : dataSource.connectorProvider === "google_drive"
+                    ? "Acknowledge and Connect"
+                    : "Connect"
+                }
+              />
+              {dataSource.guideLink && (
+                <Button
+                  label="Read our guide"
+                  size="md"
+                  variant="tertiary"
+                  icon={BookOpenIcon}
+                  onClick={() => {
+                    if (dataSource.guideLink) {
+                      window.open(dataSource.guideLink, "_blank");
+                    }
+                  }}
+                />
+              )}
+            </Button.List>
           </div>
         </Page.Vertical>
       </div>
