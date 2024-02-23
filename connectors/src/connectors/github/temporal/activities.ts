@@ -626,6 +626,14 @@ export async function githubRepoGarbageCollectActivity(
     new Date(),
     loggerArgs
   );
+
+  // Finally delete the repository object if it exists.
+  await GithubCodeRepository.destroy({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+    },
+  });
 }
 
 async function deleteIssue(
