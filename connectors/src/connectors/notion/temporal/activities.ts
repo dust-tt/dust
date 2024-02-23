@@ -1427,8 +1427,9 @@ async function cacheDatabaseChildPages({
     return true;
   });
 
-  await Promise.all(
-    pages.map((page) =>
+  await concurrentExecutor(
+    pages,
+    async (page) =>
       NotionConnectorPageCacheEntry.upsert({
         notionPageId: page.id,
         connectorId: connector.id,
@@ -1444,8 +1445,8 @@ async function cacheDatabaseChildPages({
         lastEditedTime: page.last_edited_time,
         url: page.url,
         workflowId: topLevelWorkflowId,
-      })
-    )
+      }),
+    { concurrency: 5 }
   );
 }
 
