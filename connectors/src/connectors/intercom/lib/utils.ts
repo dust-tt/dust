@@ -73,10 +73,37 @@ export function getTeamIdFromInternalId(
   return _getIdFromInternal(internalId, `intercom-team-${connectorId}-`);
 }
 
-export function getArticleInAppUrl(article: IntercomArticleType) {
-  return `https://app.intercom.com/a/apps/${article.workspace_id}/articles/articles/${article.id}/show`;
+function getIntercomDomain(region: string): string {
+  if (region === "EU") {
+    return "https://app.eu.intercom.com";
+  }
+  if (region === "AU") {
+    return "https://app.au.intercom.com";
+  }
+  return "https://app.intercom.com";
 }
 
-export function getCollectionInAppUrl(collection: IntercomCollectionType) {
-  return `https://app.intercom.com/a/apps/${collection.workspace_id}/articles/site/collections`;
+export function getArticleInAppUrl(
+  article: IntercomArticleType,
+  region: string
+): string {
+  const domain = getIntercomDomain(region);
+  return `${domain}/a/apps/${article.workspace_id}/articles/articles/${article.id}/show`;
+}
+
+export function getCollectionInAppUrl(
+  collection: IntercomCollectionType,
+  region: string
+): string {
+  const domain = getIntercomDomain(region);
+  return `${domain}/a/apps/${collection.workspace_id}/articles/site/collections`;
+}
+
+export function getConversationInAppUrl(
+  workspaceId: string,
+  conversationId: string,
+  region: string
+): string {
+  const domain = getIntercomDomain(region);
+  return `${domain}/a/inbox/${workspaceId}/inbox/conversation/${conversationId}`;
 }

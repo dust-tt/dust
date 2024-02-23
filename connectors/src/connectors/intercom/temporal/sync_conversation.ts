@@ -8,6 +8,7 @@ import type {
   IntercomTagType,
 } from "@connectors/connectors/intercom/lib/types";
 import {
+  getConversationInAppUrl,
   getConversationInternalId,
   getTeamInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -253,7 +254,11 @@ export async function syncConversation({
     updatedAt: updatedAtDate,
   });
 
-  const conversationUrl = `https://app.intercom.com/a/inbox/${intercomWorkspace.intercomWorkspaceId}/inbox/conversation/${conversation.id}`;
+  const conversationUrl = getConversationInAppUrl(
+    intercomWorkspace.intercomWorkspaceId,
+    conversation.id,
+    intercomWorkspace.region
+  );
 
   await upsertToDatasource({
     dataSourceConfig,

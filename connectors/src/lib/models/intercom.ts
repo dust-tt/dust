@@ -20,6 +20,7 @@ export class IntercomWorkspace extends Model<
   declare intercomWorkspaceId: string;
   declare name: string;
   declare conversationsSlidingWindow: number;
+  declare region: string;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -52,6 +53,11 @@ IntercomWorkspace.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 90,
+    },
+    region: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "US",
     },
   },
   {
