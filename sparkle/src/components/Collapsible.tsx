@@ -18,13 +18,14 @@ const useOpenState = (): boolean => {
 
 export interface CollapsibleProps {
   children: React.ReactNode;
+  defaultOpen?: boolean;
 }
 
 export const Collapsible: React.FC<CollapsibleProps> & {
   Button: React.FC<CollapsibleButtonProps>;
   Panel: React.FC<CollapsiblePanelProps>;
-} = ({ children }) => (
-  <Disclosure>
+} = ({ children, defaultOpen }) => (
+  <Disclosure defaultOpen={defaultOpen}>
     {({ open }) => (
       <OpenStateContext.Provider value={open}>
         {children}
@@ -32,13 +33,6 @@ export const Collapsible: React.FC<CollapsibleProps> & {
     )}
   </Disclosure>
 );
-
-export interface CollapsibleButtonProps {
-  label?: string;
-  className?: string;
-  disabled?: boolean;
-  children?: React.ReactNode;
-}
 
 export interface CollapsibleButtonProps {
   label?: string;
@@ -132,27 +126,21 @@ Collapsible.Button = function ({
   );
 
   return (
-    <>
-      {children ? (
-        children
-      ) : (
-        <Disclosure.Button
-          disabled={disabled}
-          className={classNames(
-            disabled ? "s-cursor-default" : "s-cursor-pointer",
-            className,
-            "s-group s-flex s-justify-items-center s-gap-1 s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0"
-          )}
-        >
-          <Icon
-            visual={open ? ChevronDown : ChevronRight}
-            size="sm"
-            className={finalChevronClasses}
-          />
-          <span className={finalLabelClasses}>{label}</span>
-        </Disclosure.Button>
+    <Disclosure.Button
+      disabled={disabled}
+      className={classNames(
+        disabled ? "s-cursor-default" : "s-cursor-pointer",
+        className,
+        "s-group s-flex s-items-center s-justify-items-center s-gap-1 s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0"
       )}
-    </>
+    >
+      <Icon
+        visual={open ? ChevronDown : ChevronRight}
+        size="sm"
+        className={finalChevronClasses}
+      />
+      {children ? children : <span className={finalLabelClasses}>{label}</span>}
+    </Disclosure.Button>
   );
 };
 
