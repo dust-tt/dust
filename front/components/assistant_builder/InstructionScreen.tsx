@@ -1,4 +1,14 @@
-import { Button, DropdownMenu, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  Collapsible,
+  ContentMessage,
+  DropdownMenu,
+  Page,
+} from "@dust-tt/sparkle";
+import type {   ModelConfig,
+PlanType ,
+  SupportedModel} from "@dust-tt/types";
+import type {WorkspaceType} from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -7,22 +17,20 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_NEXT_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
-  ModelConfig,
-  SupportedModel,
-  type WorkspaceType,
+  MISTRAL_SMALL_MODEL_CONFIG
 } from "@dust-tt/types";
-import type { PlanType } from "@dust-tt/types";
+import React from "react";
+
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import {
-  MODEL_PROVIDER_LOGOS,
-  getCreativityLevelFromTemperature,
-  CREATIVITY_LEVELS,
-} from "./AssistantBuilder";
-import React from "react";
 import { classNames } from "@app/lib/utils";
+
+import {
+  CREATIVITY_LEVELS,
+  getCreativityLevelFromTemperature,
+  MODEL_PROVIDER_LOGOS,
+} from "./AssistantBuilder";
 
 export function InstructionScreen({
   owner,
@@ -80,6 +88,7 @@ export function InstructionScreen({
         error={null}
         name="assistantInstructions"
       />
+      <Suggestions />
     </div>
   );
 }
@@ -245,5 +254,32 @@ function AssistantBuilderTextArea({
         onChange(e.target.value);
       }}
     />
+  );
+}
+
+function Suggestions() {
+  return (
+    <Collapsible defaultOpen>
+      <div className="flex flex-col gap-2">
+        <Collapsible.Button>
+          <div className="text-base font-bold text-element-800">
+            Suggestions
+          </div>
+        </Collapsible.Button>
+        <Collapsible.Panel>
+          <div className="flex gap-2">
+            <ContentMessage size="sm" title="First suggestion" variant="pink">
+              "I want you to act as the king of the bongo"
+            </ContentMessage>
+            <ContentMessage size="sm" title="Lol" variant="pink">
+              "I want you to act as the king of the bongo"
+            </ContentMessage>
+            <ContentMessage size="sm" title="Lol" variant="pink">
+              "I want you to act as the king of the bongo"
+            </ContentMessage>
+          </div>
+        </Collapsible.Panel>
+      </div>
+    </Collapsible>
   );
 }

@@ -5,6 +5,7 @@ import {
   Button,
   CircleIcon,
   DropdownMenu,
+  ContextItem,
   GoogleLogo,
   MistralLogo,
   OpenaiLogo,
@@ -22,7 +23,6 @@ import type {
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import type { SupportedModel, TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
@@ -46,6 +46,7 @@ import { useSWRConfig } from "swr";
 import { SharingButton } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import ActionScreen from "@app/components/assistant_builder/ActionScreen";
+import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen from "@app/components/assistant_builder/NamingScreen";
 import {
   DROID_AVATAR_URLS,
@@ -62,14 +63,9 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getSupportedModelConfig } from "@app/lib/assistant";
-import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
-
-import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
