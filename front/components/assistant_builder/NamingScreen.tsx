@@ -25,7 +25,7 @@ export default function NamingScreen({
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
-    statefn: (state: AssistantBuilderState) => AssistantBuilderState
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;

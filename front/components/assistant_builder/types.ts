@@ -6,16 +6,15 @@ import type {
   TimeframeUnit,
 } from "@dust-tt/types";
 
-export const BASIC_ACTION_MODES = ["GENERIC", "RETRIEVAL_SEARCH"] as const;
-export const ADVANCED_ACTION_MODES = [
+export const ACTION_MODES = [
+  "GENERIC",
+  "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
   "TABLES_QUERY",
 ] as const;
 
-export type ActionMode =
-  | (typeof BASIC_ACTION_MODES)[number]
-  | (typeof ADVANCED_ACTION_MODES)[number];
+export type ActionMode = (typeof ACTION_MODES)[number];
 
 export type AssistantBuilderDataSourceConfiguration = {
   dataSource: DataSourceType;

@@ -4,7 +4,6 @@ import {
   AnthropicLogo,
   Button,
   CircleIcon,
-  ContentMessage,
   ContextItem,
   DropdownMenu,
   GoogleLogo,
@@ -24,7 +23,6 @@ import {
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  ConnectorProvider,
   DataSourceType,
   LightAgentConfigurationType,
   ModelConfig,
@@ -32,7 +30,6 @@ import type {
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
-import type { TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
@@ -50,34 +47,22 @@ import {
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
-import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
-import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
+import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import NamingScreen from "@app/components/assistant_builder/NamingScreen";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
-  TIME_FRAME_UNIT_TO_LABEL,
 } from "@app/components/assistant_builder/shared";
-import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import type {
-  ActionMode,
-  AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
   AssistantBuilderState,
-} from "@app/components/assistant_builder/types";
-import {
-  ADVANCED_ACTION_MODES,
-  BASIC_ACTION_MODES,
 } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
@@ -88,7 +73,6 @@ import {
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
@@ -97,32 +81,6 @@ import { classNames } from "@app/lib/utils";
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
-};
-
-const ACTION_MODE_TO_LABEL: Record<ActionMode, string> = {
-  GENERIC: "Reply only",
-  RETRIEVAL_SEARCH: "Search in data sources",
-  RETRIEVAL_EXHAUSTIVE: "Use most recent in data sources",
-  DUST_APP_RUN: "Run a Dust app",
-  TABLES_QUERY: "Query a set of tables",
-};
-
-// Retrieval Action
-
-export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
-  ConnectorProvider,
-  {
-    singular: string;
-    plural: string;
-  }
-> = {
-  confluence: { singular: "space", plural: "spaces" },
-  notion: { singular: "page", plural: "pages" },
-  google_drive: { singular: "folder", plural: "folders" },
-  slack: { singular: "channel", plural: "channels" },
-  github: { singular: "repository", plural: "repositories" },
-  intercom: { singular: "article", plural: "articles" },
-  webcrawler: { singular: "page", plural: "pages" },
 };
 
 export const BUILDER_FLOWS = [
@@ -254,7 +212,6 @@ export default function AssistantBuilder({
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-  const structuredDataEnabled = owner.flags.includes("structured_data");
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
@@ -290,14 +247,6 @@ export default function AssistantBuilder({
           },
         }
   );
-
-  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-  const [dataSourceToManage, setDataSourceToManage] =
-    useState<AssistantBuilderDataSourceConfiguration | null>(null);
-
-  const [showDustAppsModal, setShowDustAppsModal] = useState(false);
-
-  const [showTableModal, setShowTableModal] = useState(false);
 
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
@@ -485,26 +434,6 @@ export default function AssistantBuilder({
     void formValidation();
   }, [formValidation]);
 
-  const configurableDataSources = dataSources.filter(
-    (dataSource) => !builderState.dataSourceConfigurations[dataSource.name]
-  );
-
-  const deleteDataSource = (name: string) => {
-    setEdited(true);
-    setBuilderState(({ dataSourceConfigurations, ...rest }) => {
-      const newConfigs = { ...dataSourceConfigurations };
-      delete newConfigs[name];
-      return { ...rest, dataSourceConfigurations: newConfigs };
-    });
-  };
-
-  const deleteDustApp = () => {
-    setEdited(true);
-    setBuilderState((state) => {
-      return { ...state, dustAppConfiguration: null };
-    });
-  };
-
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
@@ -553,412 +482,12 @@ export default function AssistantBuilder({
     ? `Edit @${builderState.handle}`
     : "New Assistant";
 
-  function ActionScreen() {
-    return (
-      <>
-        <div className="flex flex-col gap-6 text-sm text-element-700">
-          <div className="text-2xl font-bold text-element-900">
-            Action & Data sources
-          </div>
-          {configurableDataSources.length === 0 &&
-            Object.keys(builderState.dataSourceConfigurations).length === 0 && (
-              <ContentMessage title="You don't have any active data source">
-                <div className="flex flex-col gap-y-3">
-                  <div>
-                    Assistants can incorporate existing company data and
-                    knowledge to formulate answers.
-                  </div>
-                  <div>
-                    There are two types of data sources:{" "}
-                    <strong>Folders</strong> (Files you can upload) and{" "}
-                    <strong>Connections</strong> (Automatically synchronized
-                    with platforms like Notion, Slack, ...).
-                  </div>
-                  {(() => {
-                    switch (owner.role) {
-                      case "admin":
-                        return (
-                          <div>
-                            <strong>
-                              Visit the "Connections" and "Folders" sections in
-                              the Assistants panel to add new data sources.
-                            </strong>
-                          </div>
-                        );
-                      case "builder":
-                        return (
-                          <div>
-                            <strong>
-                              Only Admins can activate Connections.
-                              <br />
-                              You can add Data Sources by visiting "Folders" in
-                              the Assistants panel.
-                            </strong>
-                          </div>
-                        );
-                      case "user":
-                        return (
-                          <div>
-                            <strong>
-                              Only Admins and Builders can activate Connections
-                              or create Folders.
-                            </strong>
-                          </div>
-                        );
-                      case "none":
-                        return <></>;
-                      default:
-                        ((x: never) => {
-                          throw new Error("Unkonwn role " + x);
-                        })(owner.role);
-                    }
-                  })()}
-                </div>
-              </ContentMessage>
-            )}
-          <div>
-            Choose the action the assistant will perform and take into account
-            before replying:
-          </div>
-          <div className="flex flex-row items-center space-x-2">
-            <div className="text-sm font-semibold text-element-900">
-              Action:
-            </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={ACTION_MODE_TO_LABEL[builderState.actionMode]}
-                  variant="secondary"
-                  hasMagnifying={false}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft" width={260}>
-                {BASIC_ACTION_MODES.map((key) => (
-                  <DropdownMenu.Item
-                    key={key}
-                    label={ACTION_MODE_TO_LABEL[key]}
-                    onClick={() => {
-                      setEdited(true);
-                      setBuilderState((state) => ({
-                        ...state,
-                        actionMode: key,
-                      }));
-                    }}
-                  />
-                ))}
-                <DropdownMenu.SectionHeader label="Advanced actions" />
-                {ADVANCED_ACTION_MODES.filter((key) => {
-                  return key !== "TABLES_QUERY" || structuredDataEnabled;
-                }).map((key) => (
-                  <DropdownMenu.Item
-                    key={key}
-                    label={ACTION_MODE_TO_LABEL[key]}
-                    onClick={() => {
-                      setEdited(true);
-                      setBuilderState((state) => ({
-                        ...state,
-                        actionMode: key,
-                      }));
-                    }}
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
-          <ActionModeSection show={builderState.actionMode === "GENERIC"}>
-            <div className="text-sm text-element-700">
-              No action is set. The assistant will use the instructions only to
-              answer.
-            </div>
-          </ActionModeSection>
-          <ActionModeSection
-            show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
-          >
-            <div>
-              The assistant will include as many documents as possible from the
-              data sources, using reverse chronological order.
-            </div>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="col-span-1">
-                <strong>
-                  <span className="text-warning-500">Warning!</span> Assistants
-                  are limited in the amount of data they can process.
-                </strong>{" "}
-                Select data sources with care, and limit processing to the
-                shortest relevant time frame.
-              </div>
-              <div className="col-span-1">
-                <strong>Note:</strong> The available data sources are managed by
-                administrators.
-              </div>
-            </div>
-            <DataSourceSelectionSection
-              dataSourceConfigurations={builderState.dataSourceConfigurations}
-              openDataSourceModal={() => {
-                setShowDataSourcesModal(true);
-              }}
-              canAddDataSource={configurableDataSources.length > 0}
-              onManageDataSource={(name) => {
-                setDataSourceToManage(
-                  builderState.dataSourceConfigurations[name]
-                );
-                setShowDataSourcesModal(true);
-              }}
-              onDelete={deleteDataSource}
-            />
-            <div className={"flex flex-row items-center gap-4 pb-4"}>
-              <div className="text-sm font-semibold text-element-900">
-                Collect data from the last
-              </div>
-              <input
-                type="text"
-                className={classNames(
-                  "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
-                  !timeFrameError
-                    ? "focus:border-action-500 focus:ring-action-500"
-                    : "border-red-500 focus:border-red-500 focus:ring-red-500",
-                  "bg-structure-50 stroke-structure-50"
-                )}
-                value={builderState.timeFrame.value || ""}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value, 10);
-                  if (!isNaN(value) || !e.target.value) {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      timeFrame: {
-                        value,
-                        unit: builderState.timeFrame.unit,
-                      },
-                    }));
-                  }
-                }}
-              />
-              <DropdownMenu>
-                <DropdownMenu.Button tooltipPosition="above">
-                  <Button
-                    type="select"
-                    labelVisible={true}
-                    label={
-                      TIME_FRAME_UNIT_TO_LABEL[builderState.timeFrame.unit]
-                    }
-                    variant="secondary"
-                    size="sm"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="bottomLeft">
-                  {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                    ([key, value]) => (
-                      <DropdownMenu.Item
-                        key={key}
-                        label={value}
-                        onClick={() => {
-                          setEdited(true);
-                          setBuilderState((state) => ({
-                            ...state,
-                            timeFrame: {
-                              value: builderState.timeFrame.value,
-                              unit: key as TimeframeUnit,
-                            },
-                          }));
-                        }}
-                      />
-                    )
-                  )}
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
-          </ActionModeSection>
-          <ActionModeSection
-            show={builderState.actionMode === "RETRIEVAL_SEARCH"}
-          >
-            <div>
-              The assistant will perform a search on the selected data sources,
-              and run the instructions on the results.{" "}
-              <span className="font-semibold">
-                It’s the best approach with large quantities of data.
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p>
-                  <strong>Select your sources with care</strong> The quality of
-                  the answers to specific questions will depend on the quality
-                  of the data.
-                </p>
-                <p className="mt-1">
-                  <strong>
-                    You can narrow your search on most recent documents
-                  </strong>{" "}
-                  by adding instructions in your prompt such as 'Only search in
-                  documents from the last 3 months', 'Only look at data from the
-                  last 2 days', etc.
-                </p>
-              </div>
-              <div>
-                <p>
-                  <strong>Note:</strong> The available data sources are managed
-                  by administrators.
-                </p>
-              </div>
-            </div>
-
-            <DataSourceSelectionSection
-              dataSourceConfigurations={builderState.dataSourceConfigurations}
-              openDataSourceModal={() => {
-                setShowDataSourcesModal(true);
-              }}
-              canAddDataSource={configurableDataSources.length > 0}
-              onManageDataSource={(name) => {
-                setDataSourceToManage(
-                  builderState.dataSourceConfigurations[name]
-                );
-                setShowDataSourcesModal(true);
-              }}
-              onDelete={deleteDataSource}
-            />
-          </ActionModeSection>
-          <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
-            <div className="text-sm text-element-700">
-              The assistant will execute a Dust Application of your design
-              before answering. The output of the app (last block) is injected
-              in context for the model to generate an answer. The inputs of the
-              app will be automatically generated from the context of the
-              conversation based on the descriptions you provided in the
-              application's input block dataset schema.
-            </div>
-            <DustAppSelectionSection
-              show={builderState.actionMode === "DUST_APP_RUN"}
-              dustAppConfiguration={builderState.dustAppConfiguration}
-              openDustAppModal={() => {
-                setShowDustAppsModal(true);
-              }}
-              onDelete={deleteDustApp}
-              canSelectDustApp={dustApps.length !== 0}
-            />
-          </ActionModeSection>
-          <ActionModeSection show={builderState.actionMode === "TABLES_QUERY"}>
-            <div className="text-sm text-element-700">
-              The assistant will generate a SQL query from your request, execute
-              it on the tables selected and use the results to generate an
-              answer.
-            </div>
-            <TablesSelectionSection
-              show={builderState.actionMode === "TABLES_QUERY"}
-              tablesQueryConfiguration={builderState.tablesQueryConfiguration}
-              openTableModal={() => {
-                setShowTableModal(true);
-              }}
-              onDelete={(key) => {
-                setEdited(true);
-                setBuilderState((state) => {
-                  const tablesQueryConfiguration =
-                    state.tablesQueryConfiguration;
-                  delete tablesQueryConfiguration[key];
-                  return {
-                    ...state,
-                    tablesQueryConfiguration,
-                  };
-                });
-              }}
-              canSelectTable={dataSources.length !== 0}
-            />
-          </ActionModeSection>
-        </div>
-        <div className="flex flex-row items-start">
-          <div className="flex flex-col gap-4">
-            {slackDataSource &&
-              isBuilder(owner) &&
-              builderState.scope !== "private" &&
-              initialBuilderState?.scope !== "private" && (
-                <SlackIntegration
-                  slackDataSource={slackDataSource}
-                  owner={owner}
-                  onSave={(channels) => {
-                    setEdited(true);
-                    setSelectedSlackChannels(channels);
-                  }}
-                  existingSelection={selectedSlackChannels}
-                  assistantHandle={builderState.handle ?? undefined}
-                />
-              )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
-      <AssistantBuilderDataSourceModal
-        isOpen={showDataSourcesModal}
-        setOpen={(isOpen) => {
-          setShowDataSourcesModal(isOpen);
-          if (!isOpen) {
-            setDataSourceToManage(null);
-          }
-        }}
-        owner={owner}
-        dataSources={configurableDataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dataSourceConfigurations: {
-              ...state.dataSourceConfigurations,
-              [dataSource.name]: {
-                dataSource,
-                selectedResources,
-                isSelectAll,
-              },
-            },
-          }));
-        }}
-        dataSourceToManage={dataSourceToManage}
-      />
       <TryModalInBuilder
         owner={owner}
         builderState={builderState}
         disabled={!submitEnabled}
-      />
-      <AssistantBuilderDustAppModal
-        isOpen={showDustAppsModal}
-        setOpen={(isOpen) => {
-          setShowDustAppsModal(isOpen);
-          if (!isOpen) {
-            setDataSourceToManage(null);
-          }
-        }}
-        dustApps={dustApps}
-        onSave={({ app }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dustAppConfiguration: {
-              app,
-            },
-          }));
-        }}
-      />
-      <AssistantBuilderTablesModal
-        isOpen={showTableModal}
-        setOpen={(isOpen) => setShowTableModal(isOpen)}
-        owner={owner}
-        dataSources={dataSources}
-        onSave={(t) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            tablesQueryConfiguration: {
-              ...state.tablesQueryConfiguration,
-              [tableKey(t)]: t,
-            },
-          }));
-        }}
-        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
       />
       <AppLayout
         subscription={subscription}
@@ -1022,7 +551,38 @@ export default function AssistantBuilder({
                   />
                 );
               case "actions":
-                return <ActionScreen />;
+                return (
+                  <>
+                    <ActionScreen
+                      owner={owner}
+                      builderState={builderState}
+                      setBuilderState={setBuilderState}
+                      setEdited={setEdited}
+                      dataSources={dataSources}
+                      dustApps={dustApps}
+                      timeFrameError={timeFrameError}
+                    />
+                    <div className="flex flex-row items-start pt-8">
+                      <div className="flex flex-col gap-4">
+                        {slackDataSource &&
+                          isBuilder(owner) &&
+                          builderState.scope !== "private" &&
+                          initialBuilderState?.scope !== "private" && (
+                            <SlackIntegration
+                              slackDataSource={slackDataSource}
+                              owner={owner}
+                              onSave={(channels) => {
+                                setEdited(true);
+                                setSelectedSlackChannels(channels);
+                              }}
+                              existingSelection={selectedSlackChannels}
+                              assistantHandle={builderState.handle ?? undefined}
+                            />
+                          )}
+                      </div>
+                    </div>
+                  </>
+                );
               case "naming":
                 return (
                   <NamingScreen
@@ -1706,15 +1266,6 @@ function AssistantBuilderTextArea({
   );
 }
 
-function ActionModeSection({
-  children,
-  show,
-}: {
-  children: ReactNode;
-  show: boolean;
-}) {
-  return show && <div className="flex flex-col gap-6">{children}</div>;
-}
 function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
 }
