@@ -56,7 +56,6 @@ import {
   upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
