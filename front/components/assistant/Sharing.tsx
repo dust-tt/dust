@@ -50,19 +50,6 @@ export const SCOPE_INFO: Record<
     confirmationModalData: ConfirmationModalDataType | null;
   }
 > = {
-  published: {
-    shortLabel: "Shared",
-    label: "Shared Assistant",
-    color: "pink",
-    icon: UserGroupIcon,
-    text: "Anyone in the workspace can view and edit.",
-    confirmationModalData: {
-      title: "Moving to Shared Assistants",
-      text: "The assistant is editable and viewable by all workspace members.",
-      confirmText: "Move to Shared",
-      variant: "primary",
-    },
-  },
   workspace: {
     shortLabel: "Company",
     label: "Company Assistant",
@@ -73,6 +60,19 @@ export const SCOPE_INFO: Record<
       title: "Moving to Company Assistants",
       text: "The assistant automatically appears in every member's 'My Assistants' list. It's editable by Admins and Builders only.",
       confirmText: "Move to Company",
+      variant: "primary",
+    },
+  },
+  published: {
+    shortLabel: "Shared",
+    label: "Shared Assistant",
+    color: "pink",
+    icon: UserGroupIcon,
+    text: "Anyone in the workspace can view and edit.",
+    confirmationModalData: {
+      title: "Moving to Shared Assistants",
+      text: "The assistant is editable and viewable by all workspace members.",
+      confirmText: "Move to Shared",
       variant: "primary",
     },
   },
