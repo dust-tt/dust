@@ -21,7 +21,8 @@ spec:
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
-          args: ["--workers", "$WORKERS"]
+          command: ["npm", "run", "start:worker"]
+          args: ["--", "--workers", "$WORKERS"]
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
