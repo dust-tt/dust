@@ -1,6 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import { setupGlobalErrorHandler } from "@dust-tt/types";
-import type { Options } from "yargs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
