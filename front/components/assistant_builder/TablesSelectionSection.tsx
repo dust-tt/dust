@@ -44,6 +44,9 @@ export default function TablesSelectionSection({
     >
       <div>
         <div className="flex flex-row items-start">
+          <div className="pb-3 text-sm font-bold text-element-900">
+            Select Tables:
+          </div>
           <div className="flex-grow" />
           {Object.keys(tablesQueryConfiguration).length > 0 && (
             <Button
@@ -60,7 +63,7 @@ export default function TablesSelectionSection({
         </div>
         {!Object.keys(tablesQueryConfiguration).length ? (
           <EmptyCallToAction
-            label="Select Tables"
+            label="Add Tables"
             disabled={!canSelectTable}
             onClick={openTableModal}
           />
