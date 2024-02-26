@@ -85,6 +85,7 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
       });
+
       if (tablesRes.isErr()) {
         logger.error(
           {
@@ -98,7 +99,8 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to get tables.",
+            message: "Failed to retrieve tables.",
+            data_source_error: tablesRes.error,
           },
         });
       }
@@ -126,7 +128,44 @@ async function handler(
         description,
         table_id: maybeTableId,
       } = bodyValidation.right;
+
       const tableId = maybeTableId || generateModelSId();
+
+      const tRes = await coreAPI.getTables({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+      });
+
+      if (tRes.isErr()) {
+        logger.error(
+          {
+            dataSourcename: dataSource.name,
+            workspaceId: owner.id,
+            error: tRes.error,
+          },
+          "Failed to retrieve tables."
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve tables.",
+            data_source_error: tRes.error,
+          },
+        });
+      }
+
+      const tableWithSameName = tRes.value.tables.find((t) => t.name === name);
+      if (tableWithSameName && tableWithSameName.table_id !== tableId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Tables names must be unique within a data source.",
+          },
+        });
+      }
+
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
@@ -152,7 +191,8 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to upsert table.",
+            message: "Failed to upsert table (table names must be unique).",
+            data_source_error: upsertRes.error,
           },
         });
       }
