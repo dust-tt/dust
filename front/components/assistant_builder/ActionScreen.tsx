@@ -195,9 +195,10 @@ export default function ActionScreen({
     }
   };
 
-  const noDataSources =
+  const noDataSources = !(
     configurableDataSources.length === 0 &&
-    Object.keys(builderState.dataSourceConfigurations).length === 0;
+    Object.keys(builderState.dataSourceConfigurations).length === 0
+  );
   const noDustApp = dustApps.length === 0;
 
   return (
@@ -361,11 +362,9 @@ export default function ActionScreen({
                         return (
                           <div>
                             <strong>
-                              Only Admins can activate Connections.
-                              <br />
-                              You can add Data Sources by visiting the
-                              "Websites" and "Folders" sections in the Build
-                              panel.
+                              Only Admins can activate Connections. You can add
+                              Data Sources by visiting the "Websites" and
+                              "Folders" sections in the Build panel.
                             </strong>
                           </div>
                         );
@@ -373,8 +372,9 @@ export default function ActionScreen({
                         return (
                           <div>
                             <strong>
-                              Only Admins and Builders can activate Connections,
-                              add public Websites or create Folders.
+                              Contact an Admin or Builder to activate
+                              Connections, add public Websites or create
+                              Folders.
                             </strong>
                           </div>
                         );
