@@ -7,11 +7,15 @@ import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "./config";
 import { upsertDocumentWorkflow } from "./workflows";
 
-export async function launchUpsertDocumentWorkflow(
-  workspaceId: string,
-  dataSourceName: string,
-  upsertQueueId: string
-): Promise<Result<string, Error>> {
+export async function launchUpsertDocumentWorkflow({
+  workspaceId,
+  dataSourceName,
+  upsertQueueId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  upsertQueueId: string;
+}): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
   const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;

@@ -12,14 +12,14 @@ const UpsertContextSchema = t.type({
 
 export type UpsertContext = t.TypeOf<typeof UpsertContextSchema>;
 
-const Section: t.RecursiveType<
+export const FrontDataSourceDocumentSection: t.RecursiveType<
   t.Type<CoreAPIDataSourceDocumentSection>,
   CoreAPIDataSourceDocumentSection
 > = t.recursion("Section", () =>
   t.type({
     prefix: t.union([t.string, t.null]),
     content: t.union([t.string, t.null]),
-    sections: t.array(Section),
+    sections: t.array(FrontDataSourceDocumentSection),
   })
 );
 
@@ -30,7 +30,7 @@ export const PostDataSourceDocumentRequestBodySchema = t.type({
   source_url: t.union([t.string, t.undefined, t.null]),
   upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
   text: t.union([t.string, t.undefined, t.null]),
-  section: t.union([Section, t.undefined, t.null]),
+  section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
   light_document_output: t.union([t.boolean, t.undefined]),
 });
 
