@@ -8,6 +8,7 @@ import {
   MistralLogo,
   OpenaiLogo,
   Page,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   ModelConfig,
@@ -26,7 +27,8 @@ import {
   MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import React, { ComponentType } from "react";
+import type { ComponentType } from "react";
+import React, { useEffect, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -113,7 +115,7 @@ export function InstructionScreen({
         error={null}
         name="assistantInstructions"
       />
-      <Suggestions />
+      <Suggestions instructions={builderState.instructions} />
     </div>
   );
 }
@@ -282,7 +284,40 @@ function AssistantBuilderTextArea({
   );
 }
 
-function Suggestions() {
+const STATIC_SUGGESTIONS = [
+  "I want you to act as the king of the bongo.",
+  "I want you to act as the king of the bongo, Bong.",
+  "I want you to act as the king of the cats, Soupinou.",
+];
+const SUGGESTION_DEBOUNCE_DELAY = 2000;
+function Suggestions({ instructions }: { instructions: string | null }) {
+  const [suggestions, setSuggestions] = useState<string[]>(STATIC_SUGGESTIONS);
+  const [loading, setLoading] = useState(false);
+  const [debounceHandle, setDebounceHandle] = useState<NodeJS.Timeout | null>(
+    null
+  );
+  useEffect(() => {
+    if (debounceHandle) {
+      clearTimeout(debounceHandle);
+    }
+
+    if (!instructions) {
+      setSuggestions(STATIC_SUGGESTIONS);
+    }
+
+    if (instructions) {
+      // Debounced request to generate suggestions
+      const newHandle = setTimeout(async () => {
+        setLoading(true);
+        const suggestions = await getInstructionsSuggestions(instructions);
+        setSuggestions(suggestions);
+        setLoading(false);
+        setDebounceHandle(null);
+      }, SUGGESTION_DEBOUNCE_DELAY);
+      setDebounceHandle(newHandle);
+    }
+  }, [instructions, debounceHandle]);
+
   return (
     <Collapsible defaultOpen>
       <div className="flex flex-col gap-2">
@@ -293,18 +328,39 @@ function Suggestions() {
         </Collapsible.Button>
         <Collapsible.Panel>
           <div className="flex gap-2">
-            <ContentMessage size="sm" title="First suggestion" variant="pink">
-              "I want you to act as the king of the bongo"
-            </ContentMessage>
-            <ContentMessage size="sm" title="Lol" variant="pink">
-              "I want you to act as the king of the bongo"
-            </ContentMessage>
-            <ContentMessage size="sm" title="Lol" variant="pink">
-              "I want you to act as the king of the bongo"
-            </ContentMessage>
+            {loading && <Spinner size="sm" />}
+            {!loading &&
+              suggestions.map((suggestion, index) => (
+                <ContentMessage
+                  size="sm"
+                  title="First suggestion"
+                  variant="pink"
+                  key={`suggestion-${index}`}
+                >
+                  {suggestion}
+                </ContentMessage>
+              ))}
+            {!loading && suggestions.length === 0 && "Looking good! 🎉"}
           </div>
         </Collapsible.Panel>
       </div>
     </Collapsible>
   );
+}
+
+async function getInstructionsSuggestions(
+  instructions: string
+): Promise<string[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (instructions.endsWith("testgood")) {
+        resolve([]);
+      } else {
+        resolve([
+          "A first suggestion related to " + instructions.substring(0, 20),
+          "A second suggestion at time " + new Date().toLocaleTimeString(),
+        ]);
+      }
+    }, 1000);
+  });
 }
