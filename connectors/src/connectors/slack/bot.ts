@@ -16,6 +16,7 @@ import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type * as t from "io-ts";
+import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
@@ -264,9 +265,13 @@ async function botAnswerMessage(
       }
     }
   }
+
+  // Remove markdown to extract mentions.
+  const messageWithoutMarkdown = removeMarkdown(message);
+
   // Extract all ~mentions.
   const mentionCandidates =
-    message.match(/(?<!\S)~(?!~)([a-zA-Z0-9_-]{1,20})(?!\S)/g) || [];
+    messageWithoutMarkdown.match(/(?<!\S)~([a-zA-Z0-9_-]{1,20})(?!\S)/g) || [];
 
   const mentions: { assistantName: string; assistantId: string }[] = [];
   if (mentionCandidates.length > 1) {
