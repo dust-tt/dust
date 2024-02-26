@@ -41,16 +41,12 @@ export default function DustAppSelectionSection({
       }}
     >
       <div>
-        <div className="flex flex-row items-start">
-          <div className="pb-3 text-sm font-bold text-element-900">
-            Select a Dust App:
-          </div>
-        </div>
         {!dustAppConfiguration ? (
           <EmptyCallToAction
             label="Select Dust App"
             disabled={!canSelectDustApp}
             onClick={openDustAppModal}
+            icon={null}
           />
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">

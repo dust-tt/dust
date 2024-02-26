@@ -14,24 +14,24 @@ export function EmptyCallToAction({
 }: {
   label: string;
   disabled?: boolean;
-  icon?: ComponentType;
+  icon?: ComponentType | null;
   href?: string;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const button = (
     <Button
       disabled={disabled}
-      size="md"
+      size="sm"
       label={label}
       variant="primary"
-      icon={icon}
+      icon={icon || undefined}
       onClick={onClick}
     />
   );
   return (
     <div
       className={classNames(
-        "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+        "flex h-full min-h-40 items-center justify-center rounded-lg bg-structure-50"
       )}
     >
       {href ? <Link href={href}>{button}</Link> : button}
