@@ -195,6 +195,12 @@ export default function ActionScreen({
     }
   };
 
+  const noDataSources = !(
+    configurableDataSources.length === 0 &&
+    Object.keys(builderState.dataSourceConfigurations).length === 0
+  );
+  const noDustApp = dustApps.length === 0;
+
   return (
     <>
       <AssistantBuilderDustAppModal
@@ -334,142 +340,137 @@ export default function ActionScreen({
 
         {getActionType(builderState.actionMode) === "USE_DATA_SOURCES" && (
           <>
-            <div className="flex flex-row items-center space-x-2">
-              <div className="text-sm font-semibold text-element-900">
-                Method:
-              </div>
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    type="select"
-                    labelVisible={true}
-                    label={
-                      SEARCH_MODE_SPECIFICATIONS[
-                        getSearchMode(builderState.actionMode)
-                      ].label
+            {noDataSources ? (
+              <ContentMessage
+                title="You don't have any Data source available"
+                variant="warning"
+              >
+                <div className="flex flex-col gap-y-3">
+                  {(() => {
+                    switch (owner.role) {
+                      case "admin":
+                        return (
+                          <div>
+                            <strong>
+                              Visit the "Connections", "Websites" and "Folders"
+                              sections in the Build panel to add new data
+                              sources.
+                            </strong>
+                          </div>
+                        );
+                      case "builder":
+                        return (
+                          <div>
+                            <strong>
+                              Only Admins can activate Connections. You can add
+                              Data Sources by visiting the "Websites" and
+                              "Folders" sections in the Build panel.
+                            </strong>
+                          </div>
+                        );
+                      case "user":
+                        return (
+                          <div>
+                            <strong>
+                              Contact an Admin or Builder to activate
+                              Connections, add public Websites or create
+                              Folders.
+                            </strong>
+                          </div>
+                        );
+                      case "none":
+                        return <></>;
+                      default:
+                        assertNever(owner.role);
                     }
-                    icon={
-                      SEARCH_MODE_SPECIFICATIONS[
-                        getSearchMode(builderState.actionMode)
-                      ].icon
-                    }
-                    variant="tertiary"
-                    hasMagnifying={false}
-                    size="sm"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="topLeft" width={260}>
-                  {SEARCH_MODES.filter((key) => {
-                    const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
-                    console.log(owner.flags);
-                    return flag === null || owner.flags.includes(flag);
-                  }).map((key) => (
-                    <DropdownMenu.Item
-                      key={key}
-                      label={SEARCH_MODE_SPECIFICATIONS[key].label}
-                      icon={SEARCH_MODE_SPECIFICATIONS[key].icon}
-                      description={SEARCH_MODE_SPECIFICATIONS[key].description}
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          actionMode:
-                            SEARCH_MODE_SPECIFICATIONS[key].actionMode,
-                        }));
-                      }}
-                    />
-                  ))}
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
-            {configurableDataSources.length === 0 &&
-              Object.keys(builderState.dataSourceConfigurations).length ===
-                0 && (
-                <ContentMessage title="You don't have any active Data source">
-                  <div className="flex flex-col gap-y-3">
-                    <div>
-                      Assistants can incorporate existing company data and
-                      knowledge to formulate answers.
-                    </div>
-                    <div>
-                      There are two types of data sources:{" "}
-                      <strong>Folders</strong> (Files you can upload) and{" "}
-                      <strong>Connections</strong> (Automatically synchronized
-                      with platforms like Notion, Slack, ...).
-                    </div>
-                    {(() => {
-                      switch (owner.role) {
-                        case "admin":
-                          return (
-                            <div>
-                              <strong>
-                                Visit the "Connections" and "Folders" sections
-                                in the Assistants panel to add new data sources.
-                              </strong>
-                            </div>
-                          );
-                        case "builder":
-                          return (
-                            <div>
-                              <strong>
-                                Only Admins can activate Connections.
-                                <br />
-                                You can add Data Sources by visiting "Folders"
-                                in the Assistants panel.
-                              </strong>
-                            </div>
-                          );
-                        case "user":
-                          return (
-                            <div>
-                              <strong>
-                                Only Admins and Builders can activate
-                                Connections or create Folders.
-                              </strong>
-                            </div>
-                          );
-                        case "none":
-                          return <></>;
-                        default:
-                          ((x: never) => {
-                            throw new Error("Unkonwn role " + x);
-                          })(owner.role);
+                  })()}
+                </div>
+              </ContentMessage>
+            ) : (
+              <div className="flex flex-row items-center space-x-2">
+                <div className="text-sm font-semibold text-element-900">
+                  Method:
+                </div>
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <Button
+                      type="select"
+                      labelVisible={true}
+                      label={
+                        SEARCH_MODE_SPECIFICATIONS[
+                          getSearchMode(builderState.actionMode)
+                        ].label
                       }
-                    })()}
-                  </div>
-                </ContentMessage>
-              )}
+                      icon={
+                        SEARCH_MODE_SPECIFICATIONS[
+                          getSearchMode(builderState.actionMode)
+                        ].icon
+                      }
+                      variant="tertiary"
+                      hasMagnifying={false}
+                      size="sm"
+                    />
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items origin="topLeft" width={260}>
+                    {SEARCH_MODES.filter((key) => {
+                      const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
+                      console.log(owner.flags);
+                      return flag === null || owner.flags.includes(flag);
+                    }).map((key) => (
+                      <DropdownMenu.Item
+                        key={key}
+                        label={SEARCH_MODE_SPECIFICATIONS[key].label}
+                        icon={SEARCH_MODE_SPECIFICATIONS[key].icon}
+                        description={
+                          SEARCH_MODE_SPECIFICATIONS[key].description
+                        }
+                        onClick={() => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            actionMode:
+                              SEARCH_MODE_SPECIFICATIONS[key].actionMode,
+                          }));
+                        }}
+                      />
+                    ))}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+            )}
           </>
         )}
 
         <ActionModeSection show={builderState.actionMode === "GENERIC"}>
-          <div className="text-sm text-element-700">
-            No action is set. The assistant will use the instructions only to
-            answer.
-          </div>
+          <div className="pb-16"></div>
         </ActionModeSection>
 
         <ActionModeSection
-          show={builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"}
+          show={
+            builderState.actionMode === "RETRIEVAL_SEARCH" && !noDataSources
+          }
         >
-          <div>
-            The assistant will include as many documents as possible from the
-            data sources, using reverse chronological order.
-          </div>
-          <div className="grid grid-cols-2 gap-8">
-            <div className="col-span-1">
-              <strong>
-                <span className="text-warning-500">Warning!</span> Assistants
-                are limited in the amount of data they can process.
-              </strong>{" "}
-              Select data sources with care, and limit processing to the
-              shortest relevant time frame.
-            </div>
-            <div className="col-span-1">
-              <strong>Note:</strong> The available data sources are managed by
-              administrators.
-            </div>
-          </div>
+          <DataSourceSelectionSection
+            dataSourceConfigurations={builderState.dataSourceConfigurations}
+            openDataSourceModal={() => {
+              setShowDataSourcesModal(true);
+            }}
+            canAddDataSource={configurableDataSources.length > 0}
+            onManageDataSource={(name) => {
+              setDataSourceToManage(
+                builderState.dataSourceConfigurations[name]
+              );
+              setShowDataSourcesModal(true);
+            }}
+            onDelete={deleteDataSource}
+          />
+        </ActionModeSection>
+
+        <ActionModeSection
+          show={
+            builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" && !noDataSources
+          }
+        >
           <DataSourceSelectionSection
             dataSourceConfigurations={builderState.dataSourceConfigurations}
             openDataSourceModal={() => {
@@ -547,80 +548,13 @@ export default function ActionScreen({
         </ActionModeSection>
 
         <ActionModeSection
-          show={builderState.actionMode === "RETRIEVAL_SEARCH"}
+          show={builderState.actionMode === "TABLES_QUERY" && !noDataSources}
         >
-          <div>
-            The assistant will perform a search on the selected data sources,
-            and run the instructions on the results.{" "}
-            <span className="font-semibold">
-              It’s the best approach with large quantities of data.
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p>
-                <strong>Select your sources with care</strong> The quality of
-                the answers to specific questions will depend on the quality of
-                the data.
-              </p>
-              <p className="mt-1">
-                <strong>
-                  You can narrow your search on most recent documents
-                </strong>{" "}
-                by adding instructions in your prompt such as 'Only search in
-                documents from the last 3 months', 'Only look at data from the
-                last 2 days', etc.
-              </p>
-            </div>
-            <div>
-              <p>
-                <strong>Note:</strong> The available data sources are managed by
-                administrators.
-              </p>
-            </div>
-          </div>
-
-          <DataSourceSelectionSection
-            dataSourceConfigurations={builderState.dataSourceConfigurations}
-            openDataSourceModal={() => {
-              setShowDataSourcesModal(true);
-            }}
-            canAddDataSource={configurableDataSources.length > 0}
-            onManageDataSource={(name) => {
-              setDataSourceToManage(
-                builderState.dataSourceConfigurations[name]
-              );
-              setShowDataSourcesModal(true);
-            }}
-            onDelete={deleteDataSource}
-          />
-        </ActionModeSection>
-
-        <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
-          <div className="text-sm text-element-700">
-            The assistant will execute a Dust Application of your design before
-            answering. The output of the app (last block) is injected in context
-            for the model to generate an answer. The inputs of the app will be
-            automatically generated from the context of the conversation based
-            on the descriptions you provided in the application's input block
-            dataset schema.
-          </div>
-          <DustAppSelectionSection
-            show={builderState.actionMode === "DUST_APP_RUN"}
-            dustAppConfiguration={builderState.dustAppConfiguration}
-            openDustAppModal={() => {
-              setShowDustAppsModal(true);
-            }}
-            onDelete={deleteDustApp}
-            canSelectDustApp={dustApps.length !== 0}
-          />
-        </ActionModeSection>
-
-        <ActionModeSection show={builderState.actionMode === "TABLES_QUERY"}>
           <div className="text-sm text-element-700">
             The assistant will generate a SQL query from your request, execute
             it on the tables selected and use the results to generate an answer.
           </div>
+
           <TablesSelectionSection
             show={builderState.actionMode === "TABLES_QUERY"}
             tablesQueryConfiguration={builderState.tablesQueryConfiguration}
@@ -640,6 +574,72 @@ export default function ActionScreen({
             }}
             canSelectTable={dataSources.length !== 0}
           />
+        </ActionModeSection>
+
+        <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
+          {noDustApp ? (
+            <ContentMessage
+              title="You don't have any Dust Application available"
+              variant="warning"
+            >
+              <div className="flex flex-col gap-y-3">
+                {(() => {
+                  switch (owner.role) {
+                    case "admin":
+                    case "builder":
+                      return (
+                        <div>
+                          <strong>
+                            Visit the "Developer Tools" section in the Build
+                            panel to build your first Dust Application.
+                          </strong>
+                        </div>
+                      );
+                    case "user":
+                      return (
+                        <div>
+                          <strong>
+                            Only Admins and Builders can build Dust
+                            Applications.
+                          </strong>
+                        </div>
+                      );
+                    case "none":
+                      return <></>;
+                    default:
+                      assertNever(owner.role);
+                  }
+                })()}
+              </div>
+            </ContentMessage>
+          ) : (
+            <>
+              <div className="text-sm text-element-700">
+                The assistant will execute a{" "}
+                <a
+                  className="font-bold"
+                  href="https://docs.dust.tt"
+                  target="_blank"
+                >
+                  Dust Application
+                </a>{" "}
+                of your design before replying. The output of the app (last
+                block) is injected in context for the model to generate an
+                answer. The inputs of the app will be automatically generated
+                from the context of the conversation based on the descriptions
+                you provided in the application's input block dataset schema.
+              </div>
+              <DustAppSelectionSection
+                show={builderState.actionMode === "DUST_APP_RUN"}
+                dustAppConfiguration={builderState.dustAppConfiguration}
+                openDustAppModal={() => {
+                  setShowDustAppsModal(true);
+                }}
+                onDelete={deleteDustApp}
+                canSelectDustApp={dustApps.length !== 0}
+              />
+            </>
+          )}
         </ActionModeSection>
       </div>
     </>

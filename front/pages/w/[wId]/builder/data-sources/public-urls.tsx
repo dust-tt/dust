@@ -174,6 +174,7 @@ export default function DataSourcesView({
           <EmptyCallToAction
             label="Create a new Public URL"
             onClick={handleCreateDataSource}
+            icon={PlusIcon}
           />
         )}
 

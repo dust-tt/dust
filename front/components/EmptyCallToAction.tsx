@@ -1,4 +1,4 @@
-import { Button, PlusIcon } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ComponentType, MouseEvent } from "react";
 import React from "react";
@@ -8,7 +8,7 @@ import { classNames } from "@app/lib/utils";
 export function EmptyCallToAction({
   label,
   disabled = false,
-  icon = PlusIcon,
+  icon,
   href,
   onClick,
 }: {
@@ -21,7 +21,7 @@ export function EmptyCallToAction({
   const button = (
     <Button
       disabled={disabled}
-      size="md"
+      size="sm"
       label={label}
       variant="primary"
       icon={icon}
@@ -31,7 +31,7 @@ export function EmptyCallToAction({
   return (
     <div
       className={classNames(
-        "flex h-full min-h-48 items-center justify-center rounded-lg bg-structure-50"
+        "flex h-full min-h-40 items-center justify-center rounded-lg bg-structure-50"
       )}
     >
       {href ? <Link href={href}>{button}</Link> : button}
