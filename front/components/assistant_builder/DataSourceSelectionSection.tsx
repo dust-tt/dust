@@ -3,6 +3,7 @@ import {
   CloudArrowDownIcon,
   Cog6ToothIcon,
   ContextItem,
+  PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 
@@ -29,8 +30,11 @@ export default function DataSourceSelectionSection({
   onDelete?: (name: string) => void;
 }) {
   return (
-    <div className="overflow-hidden pt-6">
+    <div className="overflow-hidden">
       <div className="flex flex-row items-start">
+        <div className="pb-3 text-sm font-bold text-element-900">
+          Select Data Sources:
+        </div>
         <div className="flex-grow" />
         {Object.keys(dataSourceConfigurations).length > 0 && (
           <Button
@@ -38,6 +42,7 @@ export default function DataSourceSelectionSection({
             label="Add data sources"
             variant="primary"
             size="sm"
+            icon={PlusIcon}
             onClick={openDataSourceModal}
             disabled={!canAddDataSource}
             hasMagnifying={false}
@@ -46,9 +51,9 @@ export default function DataSourceSelectionSection({
       </div>
       {!Object.keys(dataSourceConfigurations).length ? (
         <EmptyCallToAction
-          label="Select Data Sources"
-          onClick={openDataSourceModal}
+          label="Add Data Sources"
           disabled={!canAddDataSource}
+          onClick={openDataSourceModal}
         />
       ) : (
         <ContextItem.List className="mt-6 border-b border-t border-structure-200">
