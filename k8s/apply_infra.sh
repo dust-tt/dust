@@ -52,6 +52,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/front-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-specific-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/docs-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
@@ -94,6 +95,7 @@ apply_deployment front-worker-deployment
 apply_deployment front-edge-deployment
 apply_deployment connectors-deployment
 apply_deployment connectors-worker-deployment
+apply_deployment connectors-worker-notion-deployment
 apply_deployment connectors-edge-deployment
 apply_deployment docs-deployment
 apply_deployment metabase-deployment
