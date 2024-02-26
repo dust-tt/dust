@@ -69,8 +69,7 @@ export async function launchNotionSyncWorkflow(
       connectorId: [connectorId],
     },
     memo: {
-      connectorId: connectorId,
-      doNotCancelOnTokenRevoked: true,
+      connectorId,
     },
   });
 
@@ -121,8 +120,7 @@ export async function launchNotionGarbageCollectorWorkflow(
       connectorId: [connectorId],
     },
     memo: {
-      connectorId: connectorId,
-      doNotCancelOnTokenRevoked: true,
+      connectorId,
     },
   });
 

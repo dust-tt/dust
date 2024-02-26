@@ -13,11 +13,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
-import {
-  cancelWorkflow,
-  getConnectorId,
-  getDoNotCancelOnTokenRevoked,
-} from "./temporal";
+import { cancelWorkflow, getConnectorId } from "./temporal";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -108,24 +104,15 @@ export class ActivityInboundLogInterceptor
 
       if (err instanceof ExternalOauthTokenError) {
         // We have a connector working on an expired token, we need to cancel the workflow.
-        const workflowId = this.context.info.workflowExecution.workflowId;
+        const { workflowId } = this.context.info.workflowExecution;
 
         const connectorId = await getConnectorId(workflowId);
         if (connectorId) {
           await syncFailed(connectorId, "oauth_token_revoked");
 
-          const doNotCancelOnTokenRevoked = await getDoNotCancelOnTokenRevoked(
-            workflowId
-          );
-          if (doNotCancelOnTokenRevoked) {
-            this.logger.info(
-              "Skipping cancelling workflow because of expired token."
-            );
-          } else {
-            // We cancel the workflow only if it's not a long running workflow
-            this.logger.info("Cancelling workflow because of expired token.");
-            await cancelWorkflow(workflowId);
-          }
+          // In case of an invalid token, abort the workflow.
+          this.logger.info("Cancelling workflow because of expired token.");
+          await cancelWorkflow(workflowId);
         }
       }
       throw err;

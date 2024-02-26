@@ -6,6 +6,7 @@ import {
   isFullBlock,
   isFullDatabase,
   isFullPage,
+  isNotionClientError,
 } from "@notionhq/client";
 import type {
   BlockObjectResponse,
@@ -27,6 +28,7 @@ import type {
   PropertyKeys,
 } from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -38,6 +40,22 @@ const notionClientLogger = (
 ) => {
   logger.info(`[Log from Notion Client] Level ${level}: ${message}`, extraInfo);
 };
+
+async function wrapNotionAPITokenErrors<T>(
+  worker: () => Promise<T>
+): Promise<T> {
+  try {
+    return await worker();
+  } catch (err) {
+    if (isNotionClientError(err)) {
+      if (err.code === "unauthorized") {
+        throw new ExternalOauthTokenError(err);
+      }
+    }
+
+    throw err;
+  }
+}
 
 /**
  * @param notionAccessToken the access token to use to access the Notion API
@@ -80,14 +98,16 @@ export async function getPagesAndDatabasesEditedSince(
     const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
     tryLogger.info("Fetching result page from Notion API.");
     try {
-      resultsPage = await notionClient.search({
-        sort: sinceTs
-          ? {
-              timestamp: "last_edited_time",
-              direction: "descending",
-            }
-          : undefined,
-        start_cursor: cursor || undefined,
+      resultsPage = await wrapNotionAPITokenErrors(async () => {
+        return notionClient.search({
+          sort: sinceTs
+            ? {
+                timestamp: "last_edited_time",
+                direction: "descending",
+              }
+            : undefined,
+          start_cursor: cursor || undefined,
+        });
       });
       tryLogger.info(
         { count: resultsPage.results.length },
@@ -243,16 +263,20 @@ export async function isAccessibleAndUnarchived(
     try {
       tryLogger.info("Checking if page is accessible and unarchived.");
       if (objectType === "page") {
-        const page = await notionClient.pages.retrieve({ page_id: objectId });
+        const page = await wrapNotionAPITokenErrors(async () =>
+          notionClient.pages.retrieve({ page_id: objectId })
+        );
         if (!isFullPage(page)) {
           return false;
         }
         return !page.archived;
       }
       if (objectType === "database") {
-        const db = await notionClient.databases.retrieve({
-          database_id: objectId,
-        });
+        const db = await wrapNotionAPITokenErrors(async () =>
+          notionClient.databases.retrieve({
+            database_id: objectId,
+          })
+        );
         if (!isFullDatabase(db)) {
           return false;
         }
@@ -317,9 +341,11 @@ async function getBlockParent(
   for (;;) {
     localLogger.info({ blockId }, "Looking up block parent");
     try {
-      const block = await notionClient.blocks.retrieve({
-        block_id: blockId,
-      });
+      const block = await wrapNotionAPITokenErrors(async () =>
+        notionClient.blocks.retrieve({
+          block_id: blockId,
+        })
+      );
 
       if (!isFullBlock(block)) {
         // Not much we can do here to get the parent page.
@@ -389,9 +415,11 @@ export async function getParsedDatabase(
 
   try {
     localLogger.info("Fetching database from Notion API.");
-    database = await notionClient.databases.retrieve({
-      database_id: databaseId,
-    });
+    database = await wrapNotionAPITokenErrors(async () =>
+      notionClient.databases.retrieve({
+        database_id: databaseId,
+      })
+    );
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
@@ -482,7 +510,9 @@ export async function retrievePage({
   let page: GetPageResponse | null = null;
   try {
     localLogger.info("Fetching page from Notion API.");
-    page = await notionClient.pages.retrieve({ page_id: pageId });
+    page = await wrapNotionAPITokenErrors(async () =>
+      notionClient.pages.retrieve({ page_id: pageId })
+    );
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
@@ -535,10 +565,12 @@ export async function retrieveBlockChildrenResultPage({
     localLogger.info(
       "Fetching block or page children result page from Notion API."
     );
-    const resultPage = await notionClient.blocks.children.list({
-      block_id: blockOrPageId,
-      start_cursor: cursor ?? undefined,
-    });
+    const resultPage = await wrapNotionAPITokenErrors(async () =>
+      notionClient.blocks.children.list({
+        block_id: blockOrPageId,
+        start_cursor: cursor ?? undefined,
+      })
+    );
     localLogger.info(
       { count: resultPage.results.length },
       "Received block or page children result page from Notion API."
@@ -743,10 +775,12 @@ export async function retrieveDatabaseChildrenResultPage({
 
   localLogger.info("Fetching database children result page from Notion API.");
   try {
-    const resultPage = await notionClient.databases.query({
-      database_id: databaseId,
-      start_cursor: cursor || undefined,
-    });
+    const resultPage = await wrapNotionAPITokenErrors(async () =>
+      notionClient.databases.query({
+        database_id: databaseId,
+        start_cursor: cursor || undefined,
+      })
+    );
 
     localLogger.info(
       { count: resultPage.results.length },
@@ -880,9 +914,11 @@ export async function getUserName(
 
   try {
     pageLogger.info({ user_id: userId }, "Fetching user name from Notion API.");
-    const user = await notionClient.users.retrieve({
-      user_id: userId,
-    });
+    const user = await wrapNotionAPITokenErrors(async () =>
+      notionClient.users.retrieve({
+        user_id: userId,
+      })
+    );
     if (!user) {
       return null;
     }

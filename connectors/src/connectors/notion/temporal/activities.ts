@@ -56,7 +56,6 @@ import {
   upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -343,9 +342,6 @@ export async function getPagesAndDatabasesToSync({
             };
           }
           throw e;
-
-        case "unauthorized":
-          throw new ExternalOauthTokenError(e);
 
         default:
           throw e;

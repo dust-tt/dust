@@ -8,7 +8,6 @@ import fs from "fs-extra";
 let TEMPORAL_CLIENT: Client | undefined;
 
 const CONNECTOR_ID_CACHE: Record<string, ModelId> = {};
-const DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE: Record<string, boolean> = {};
 
 export async function getTemporalClient(): Promise<Client> {
   if (TEMPORAL_CLIENT) {
@@ -90,26 +89,6 @@ export async function getConnectorId(
     }
   }
   return CONNECTOR_ID_CACHE[workflowRunId] || null;
-}
-
-export async function getDoNotCancelOnTokenRevoked(
-  workflowRunId: string
-): Promise<boolean> {
-  if (!(workflowRunId in DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE)) {
-    const client = await getTemporalClient();
-    const workflowHandle = client.workflow.getHandle(workflowRunId);
-    const described = await workflowHandle.describe();
-    if (described.memo && described.memo.doNotCancelOnTokenRevoked) {
-      if (typeof described.memo.doNotCancelOnTokenRevoked === "boolean") {
-        DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] =
-          described.memo.doNotCancelOnTokenRevoked;
-      } else if (typeof described.memo.doNotCancelOnTokenRevoked === "string") {
-        DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] =
-          described.memo.doNotCancelOnTokenRevoked === "true";
-      }
-    }
-  }
-  return DO_NOT_CANCEL_ON_TOKEN_REVOKED_CACHE[workflowRunId] ?? false;
 }
 
 export async function cancelWorkflow(workflowId: string) {
