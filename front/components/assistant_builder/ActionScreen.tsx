@@ -195,10 +195,9 @@ export default function ActionScreen({
     }
   };
 
-  const noDataSources = !(
+  const noDataSources =
     configurableDataSources.length === 0 &&
-    Object.keys(builderState.dataSourceConfigurations).length === 0
-  );
+    Object.keys(builderState.dataSourceConfigurations).length === 0;
   const noDustApp = dustApps.length === 0;
 
   return (
