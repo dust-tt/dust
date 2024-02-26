@@ -445,7 +445,8 @@ export async function renderRetrievalActionByModelId(
 
 export function retrievalMetaPrompt() {
   return (
-    "To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +
+    "Focus on retrieved data and be factual." +
+    " To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +
     " (eg :cite[XX] or :cite[XX,XX] but not :site[XX][XX])." +
     " Use citations as close as possible to the information you are citing."
   );
