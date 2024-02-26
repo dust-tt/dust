@@ -73,9 +73,21 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   shortDescription: "Anthropic's fast model.",
 } as const;
 
-export const MISTRAL_NEXT_MODEL_ID = "mistral-next" as const;
+export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
+export const MISTRAL_NEXT_MODEL_ID = "mistral-next" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
+
+export const MISTRAL_LARGE_MODEL_CONFIG = {
+  providerId: "mistral" as const,
+  modelId: MISTRAL_LARGE_MODEL_ID,
+  displayName: "Mistral Large",
+  contextSize: 31500,
+  recommendedTopK: 16,
+  largeModel: true,
+  description: "Mistral latest `large` model (32k context).",
+  shortDescription: "Mistral's large model.",
+} as const;
 
 export const MISTRAL_NEXT_MODEL_CONFIG = {
   providerId: "mistral" as const,
@@ -128,8 +140,9 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_4_TURBO_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  MISTRAL_NEXT_MODEL_CONFIG,
+  MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ] as const;
