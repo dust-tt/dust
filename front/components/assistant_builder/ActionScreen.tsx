@@ -10,7 +10,11 @@ import {
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AppType, TimeframeUnit } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
@@ -28,7 +32,6 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { ACTION_MODES } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { classNames } from "@app/lib/utils";
 
@@ -46,52 +49,66 @@ const SEARCH_MODES = [
 ] as const;
 type SearchMode = (typeof SEARCH_MODES)[number];
 
-const ACTION_TYPE_TO_LABEL: Record<ActionType, string> = {
-  REPLY_ONLY: "Reply only",
-  USE_DATA_SOURCES: "Use Data sources",
-  RUN_DUST_APP: "Run a Dust app",
+const ACTION_TYPE_SPECIFICATIONS: Record<
+  ActionType,
+  {
+    label: string;
+    icon: ComponentType;
+    description: string;
+    defaultActionMode: ActionMode;
+  }
+> = {
+  REPLY_ONLY: {
+    label: "Reply only",
+    icon: ChatBubbleBottomCenterTextIcon,
+    description: "Direct answer from the model",
+    defaultActionMode: "GENERIC",
+  },
+  USE_DATA_SOURCES: {
+    label: "Use Data sources",
+    icon: Square3Stack3DIcon,
+    description: "Use Data sources to reply",
+    defaultActionMode: "RETRIEVAL_SEARCH",
+  },
+  RUN_DUST_APP: {
+    label: "Run a Dust app",
+    icon: CommandLineIcon,
+    description: "Run a Dust app, then reply",
+    defaultActionMode: "DUST_APP_RUN",
+  },
 };
 
-const ACTION_TYPE_TO_DESCRIPTION: Record<ActionType, string> = {
-  REPLY_ONLY: "Direct answer from the model",
-  USE_DATA_SOURCES: "Use Data sources to reply",
-  RUN_DUST_APP: "Run a Dust app, then reply",
-};
-
-const ACTION_TYPE_TO_ICON: Record<ActionType, ComponentType> = {
-  REPLY_ONLY: ChatBubbleBottomCenterTextIcon,
-  USE_DATA_SOURCES: Square3Stack3DIcon,
-  RUN_DUST_APP: CommandLineIcon,
-};
-
-const DEFAULT_ACTION_MODE_FOR_ACTION_TYPE: Record<ActionType, ActionMode> = {
-  REPLY_ONLY: "GENERIC",
-  USE_DATA_SOURCES: "RETRIEVAL_SEARCH",
-  RUN_DUST_APP: "DUST_APP_RUN",
-};
-
-const SEARCH_MODE_TO_LABEL: Record<SearchMode, string> = {
-  RETRIEVAL_SEARCH: "Search",
-  RETRIEVAL_EXHAUSTIVE: "Most recent data",
-  TABLES_QUERY: "Query Tables",
-};
-
-const SEARCH_MODE_TO_ICON: Record<SearchMode, ComponentType> = {
-  RETRIEVAL_SEARCH: MagnifyingGlassIcon,
-  RETRIEVAL_EXHAUSTIVE: TimeIcon,
-  TABLES_QUERY: TableIcon,
-};
-
-const SEARCH_MODE_TO_DESCRIPTION: Record<SearchMode, string> = {
-  RETRIEVAL_SEARCH: "Search through selected Data sources",
-  RETRIEVAL_EXHAUSTIVE: "Include as much data as possible",
-  TABLES_QUERY: "Tables, Spreadsheets, Notion DBs",
-};
-
-const SEARCH_MODE_TO_ACTION_MODE: Record<SearchMode, ActionMode> = {
-  RETRIEVAL_SEARCH: "RETRIEVAL_SEARCH",
-  RETRIEVAL_EXHAUSTIVE: "RETRIEVAL_EXHAUSTIVE",
-  TABLES_QUERY: "TABLES_QUERY",
+const SEARCH_MODE_SPECIFICATIONS: Record<
+  SearchMode,
+  {
+    actionMode: ActionMode;
+    icon: ComponentType;
+    label: string;
+    description: string;
+    flag: WhitelistableFeature | null;
+  }
+> = {
+  RETRIEVAL_SEARCH: {
+    actionMode: "RETRIEVAL_SEARCH",
+    icon: MagnifyingGlassIcon,
+    label: "Search",
+    description: "Search through selected Data sources",
+    flag: null,
+  },
+  RETRIEVAL_EXHAUSTIVE: {
+    actionMode: "RETRIEVAL_EXHAUSTIVE",
+    icon: TimeIcon,
+    label: "Most recent data",
+    description: "Include as much data as possible",
+    flag: null,
+  },
+  TABLES_QUERY: {
+    actionMode: "TABLES_QUERY",
+    icon: TableIcon,
+    label: "Query Tables",
+    description: "Tables, Spreadsheets, Notion DBs",
+    flag: "structured_data",
+  },
 };
 
 function ActionModeSection({
@@ -123,8 +140,6 @@ export default function ActionScreen({
   dustApps: AppType[];
   timeFrameError: string | null;
 }) {
-  const structuredDataEnabled = owner.flags.includes("structured_data");
-
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceToManage, setDataSourceToManage] =
     useState<AssistantBuilderDataSourceConfiguration | null>(null);
@@ -322,10 +337,14 @@ export default function ActionScreen({
                 type="select"
                 labelVisible={true}
                 label={
-                  ACTION_TYPE_TO_LABEL[getActionType(builderState.actionMode)]
+                  ACTION_TYPE_SPECIFICATIONS[
+                    getActionType(builderState.actionMode)
+                  ].label
                 }
                 icon={
-                  ACTION_TYPE_TO_ICON[getActionType(builderState.actionMode)]
+                  ACTION_TYPE_SPECIFICATIONS[
+                    getActionType(builderState.actionMode)
+                  ].icon
                 }
                 variant="primary"
                 hasMagnifying={false}
@@ -336,14 +355,15 @@ export default function ActionScreen({
               {BASIC_ACTION_TYPES.map((key) => (
                 <DropdownMenu.Item
                   key={key}
-                  label={ACTION_TYPE_TO_LABEL[key]}
-                  icon={ACTION_TYPE_TO_ICON[key]}
-                  description={ACTION_TYPE_TO_DESCRIPTION[key]}
+                  label={ACTION_TYPE_SPECIFICATIONS[key].label}
+                  icon={ACTION_TYPE_SPECIFICATIONS[key].icon}
+                  description={ACTION_TYPE_SPECIFICATIONS[key].description}
                   onClick={() => {
                     setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
-                      actionMode: DEFAULT_ACTION_MODE_FOR_ACTION_TYPE[key],
+                      actionMode:
+                        ACTION_TYPE_SPECIFICATIONS[key].defaultActionMode,
                     }));
                   }}
                 />
@@ -352,14 +372,15 @@ export default function ActionScreen({
               {ADVANCED_ACTION_TYPES.map((key) => (
                 <DropdownMenu.Item
                   key={key}
-                  label={ACTION_TYPE_TO_LABEL[key]}
-                  icon={ACTION_TYPE_TO_ICON[key]}
-                  description={ACTION_TYPE_TO_DESCRIPTION[key]}
+                  label={ACTION_TYPE_SPECIFICATIONS[key].label}
+                  icon={ACTION_TYPE_SPECIFICATIONS[key].icon}
+                  description={ACTION_TYPE_SPECIFICATIONS[key].description}
                   onClick={() => {
                     setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
-                      actionMode: DEFAULT_ACTION_MODE_FOR_ACTION_TYPE[key],
+                      actionMode:
+                        ACTION_TYPE_SPECIFICATIONS[key].defaultActionMode,
                     }));
                   }}
                 />
@@ -379,10 +400,14 @@ export default function ActionScreen({
                   type="select"
                   labelVisible={true}
                   label={
-                    SEARCH_MODE_TO_LABEL[getSearchMode(builderState.actionMode)]
+                    SEARCH_MODE_SPECIFICATIONS[
+                      getSearchMode(builderState.actionMode)
+                    ].label
                   }
                   icon={
-                    SEARCH_MODE_TO_ICON[getSearchMode(builderState.actionMode)]
+                    SEARCH_MODE_SPECIFICATIONS[
+                      getSearchMode(builderState.actionMode)
+                    ].icon
                   }
                   variant="tertiary"
                   hasMagnifying={false}
@@ -390,17 +415,21 @@ export default function ActionScreen({
                 />
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topLeft" width={260}>
-                {SEARCH_MODES.map((key) => (
+                {SEARCH_MODES.filter((key) => {
+                  const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
+                  console.log(owner.flags);
+                  return flag === null || owner.flags.includes(flag);
+                }).map((key) => (
                   <DropdownMenu.Item
                     key={key}
-                    label={SEARCH_MODE_TO_LABEL[key]}
-                    icon={SEARCH_MODE_TO_ICON[key]}
-                    description={SEARCH_MODE_TO_DESCRIPTION[key]}
+                    label={SEARCH_MODE_SPECIFICATIONS[key].label}
+                    icon={SEARCH_MODE_SPECIFICATIONS[key].icon}
+                    description={SEARCH_MODE_SPECIFICATIONS[key].description}
                     onClick={() => {
                       setEdited(true);
                       setBuilderState((state) => ({
                         ...state,
-                        actionMode: SEARCH_MODE_TO_ACTION_MODE[key],
+                        actionMode: SEARCH_MODE_SPECIFICATIONS[key].actionMode,
                       }));
                     }}
                   />
