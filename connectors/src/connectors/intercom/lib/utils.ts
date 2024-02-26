@@ -74,10 +74,10 @@ export function getTeamIdFromInternalId(
 }
 
 function getIntercomDomain(region: string): string {
-  if (region === "EU") {
+  if (region === "Europe") {
     return "https://app.eu.intercom.com";
   }
-  if (region === "AU") {
+  if (region === "Australia") {
     return "https://app.au.intercom.com";
   }
   return "https://app.intercom.com";

@@ -350,7 +350,7 @@ export async function upsertArticle({
       getHelpCenterInternalId(connectorId, helpCenterId)
     );
 
-    return upsertToDatasource({
+    await upsertToDatasource({
       dataSourceConfig,
       documentId: getHelpCenterArticleInternalId(connectorId, article.id),
       documentContent: renderedPage,
