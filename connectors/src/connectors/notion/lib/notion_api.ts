@@ -722,7 +722,7 @@ export function parsePropertyText(
       return property.people.length > 0
         ? property.people.map((p) => ("name" in p ? p.name : p.id)).join(", ")
         : null;
-    case "formula":
+    case "formula": {
       if (property.formula.type) {
         switch (property.formula.type) {
           case "string":
@@ -741,6 +741,7 @@ export function parsePropertyText(
         return null;
       }
       break;
+    }
 
     case "relation":
     case "rollup":
