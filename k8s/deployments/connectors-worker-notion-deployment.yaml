@@ -22,7 +22,7 @@ spec:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
           command: ["npm", "run", "start:worker"]
-          args: ["--", "--workers", "$WORKERS"]
+          args: ["--", "--workers", "notion"]
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
@@ -34,8 +34,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            - name: WORKERS
-              value: "notion"
 
           volumeMounts:
             - name: cert-volume
