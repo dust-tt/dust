@@ -146,6 +146,7 @@ export default function DataSourcesView({
         ) : (
           <EmptyCallToAction
             label="Create a new Folder"
+            icon={PlusIcon}
             onClick={async () => {
               await handleCreateDataSource();
             }}
