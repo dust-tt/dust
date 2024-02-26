@@ -34,7 +34,7 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
             - name: WORKERS
-              value: notion
+              value: "notion"
 
           volumeMounts:
             - name: cert-volume
