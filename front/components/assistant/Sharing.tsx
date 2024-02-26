@@ -157,7 +157,7 @@ export function SharingButton({
           onSave={(slackChannels: SlackChannel[]) => {
             setNewLinkedSlackChannels(slackChannels);
           }}
-          assistantHandle="@dust"
+          assistantHandle="@Dust"
           show={slackDrawerOpened}
           onClose={() => setSlackDrawerOpened(false)}
         />
@@ -503,8 +503,8 @@ function SlackIntegrationDrawer({
               <div className="text-sm font-normal text-element-900">
                 Set this assistant as the default assistant on one or several of
                 your Slack channels. It will answer by default when the{" "}
-                <span className="font-bold">@Dust</span> Slack bot is mentionned
-                in these channels.
+                <span className="font-bold">{assistantHandle}</span> Slack bot
+                is mentionned in these channels.
               </div>
               <div className="justify-end pt-2">
                 <Button

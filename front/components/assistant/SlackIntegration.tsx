@@ -47,7 +47,7 @@ export function SlackIntegration({
   };
 
   const assistantName = assistantHandle
-    ? `@${assistantHandle}`
+    ? `${assistantHandle}`
     : "This assistant";
 
   return (
