@@ -74,22 +74,6 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
       ? context.query.flow
       : null;
 
-  if (user.workspaces.length) {
-    const message = "Unreachable: user already has a workspace.";
-    logger.error(
-      {
-        flow,
-        panic: true,
-        userId: user.id,
-        workspaceIds: user.workspaces.map((w) => w.id),
-      },
-      message
-    );
-    return {
-      notFound: true,
-    };
-  }
-
   let workspace: Workspace | null = null;
   let workspaceVerifiedDomain: string | null = null;
   let status: "auto-join-disabled" | "revoked";
