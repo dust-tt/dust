@@ -16,27 +16,19 @@ import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-const ALL_WORKERS: ConnectorProvider[] = [
-  "confluence",
-  "slack",
-  "notion",
-  "github",
-  "google_drive",
-  "intercom",
-  "webcrawler",
-];
+const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
+  confluence: runConfluenceWorker,
+  github: runGithubWorker,
+  google_drive: runGoogleWorker,
+  intercom: runIntercomWorker,
+  notion: runNotionWorker,
+  slack: runSlackWorker,
+  webcrawler: runWebCrawlerWorker,
+};
+
+const ALL_WORKERS = Object.keys(workerFunctions) as ConnectorProvider[];
 
 async function runWorkers(workers: ConnectorProvider[]) {
-  const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
-    confluence: runConfluenceWorker,
-    github: runGithubWorker,
-    google_drive: runGoogleWorker,
-    intercom: runIntercomWorker,
-    notion: runNotionWorker,
-    slack: runSlackWorker,
-    webcrawler: runWebCrawlerWorker,
-  };
-
   for (const worker of workers) {
     workerFunctions[worker]().catch((err) =>
       logger.error(errorFromAny(err), `Error running ${worker} worker.`)
