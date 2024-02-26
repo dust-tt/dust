@@ -272,63 +272,6 @@ export default function ActionScreen({
           </Page.P>
         </div>
 
-        {configurableDataSources.length === 0 &&
-          Object.keys(builderState.dataSourceConfigurations).length === 0 && (
-            <ContentMessage title="You don't have any active Data source">
-              <div className="flex flex-col gap-y-3">
-                <div>
-                  Assistants can incorporate existing company data and knowledge
-                  to formulate answers.
-                </div>
-                <div>
-                  There are two types of data sources: <strong>Folders</strong>{" "}
-                  (Files you can upload) and <strong>Connections</strong>{" "}
-                  (Automatically synchronized with platforms like Notion, Slack,
-                  ...).
-                </div>
-                {(() => {
-                  switch (owner.role) {
-                    case "admin":
-                      return (
-                        <div>
-                          <strong>
-                            Visit the "Connections" and "Folders" sections in
-                            the Assistants panel to add new data sources.
-                          </strong>
-                        </div>
-                      );
-                    case "builder":
-                      return (
-                        <div>
-                          <strong>
-                            Only Admins can activate Connections.
-                            <br />
-                            You can add Data Sources by visiting "Folders" in
-                            the Assistants panel.
-                          </strong>
-                        </div>
-                      );
-                    case "user":
-                      return (
-                        <div>
-                          <strong>
-                            Only Admins and Builders can activate Connections or
-                            create Folders.
-                          </strong>
-                        </div>
-                      );
-                    case "none":
-                      return <></>;
-                    default:
-                      ((x: never) => {
-                        throw new Error("Unkonwn role " + x);
-                      })(owner.role);
-                  }
-                })()}
-              </div>
-            </ContentMessage>
-          )}
-
         <div className="flex flex-row items-center space-x-2">
           <div className="text-sm font-semibold text-element-900">Action:</div>
           <DropdownMenu>
@@ -390,53 +333,113 @@ export default function ActionScreen({
         </div>
 
         {getActionType(builderState.actionMode) === "USE_DATA_SOURCES" && (
-          <div className="flex flex-row items-center space-x-2">
-            <div className="text-sm font-semibold text-element-900">
-              Method:
-            </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    SEARCH_MODE_SPECIFICATIONS[
-                      getSearchMode(builderState.actionMode)
-                    ].label
-                  }
-                  icon={
-                    SEARCH_MODE_SPECIFICATIONS[
-                      getSearchMode(builderState.actionMode)
-                    ].icon
-                  }
-                  variant="tertiary"
-                  hasMagnifying={false}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft" width={260}>
-                {SEARCH_MODES.filter((key) => {
-                  const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
-                  console.log(owner.flags);
-                  return flag === null || owner.flags.includes(flag);
-                }).map((key) => (
-                  <DropdownMenu.Item
-                    key={key}
-                    label={SEARCH_MODE_SPECIFICATIONS[key].label}
-                    icon={SEARCH_MODE_SPECIFICATIONS[key].icon}
-                    description={SEARCH_MODE_SPECIFICATIONS[key].description}
-                    onClick={() => {
-                      setEdited(true);
-                      setBuilderState((state) => ({
-                        ...state,
-                        actionMode: SEARCH_MODE_SPECIFICATIONS[key].actionMode,
-                      }));
-                    }}
+          <>
+            <div className="flex flex-row items-center space-x-2">
+              <div className="text-sm font-semibold text-element-900">
+                Method:
+              </div>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={
+                      SEARCH_MODE_SPECIFICATIONS[
+                        getSearchMode(builderState.actionMode)
+                      ].label
+                    }
+                    icon={
+                      SEARCH_MODE_SPECIFICATIONS[
+                        getSearchMode(builderState.actionMode)
+                      ].icon
+                    }
+                    variant="tertiary"
+                    hasMagnifying={false}
+                    size="sm"
                   />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="topLeft" width={260}>
+                  {SEARCH_MODES.filter((key) => {
+                    const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
+                    console.log(owner.flags);
+                    return flag === null || owner.flags.includes(flag);
+                  }).map((key) => (
+                    <DropdownMenu.Item
+                      key={key}
+                      label={SEARCH_MODE_SPECIFICATIONS[key].label}
+                      icon={SEARCH_MODE_SPECIFICATIONS[key].icon}
+                      description={SEARCH_MODE_SPECIFICATIONS[key].description}
+                      onClick={() => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          actionMode:
+                            SEARCH_MODE_SPECIFICATIONS[key].actionMode,
+                        }));
+                      }}
+                    />
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
+            {configurableDataSources.length === 0 &&
+              Object.keys(builderState.dataSourceConfigurations).length ===
+                0 && (
+                <ContentMessage title="You don't have any active Data source">
+                  <div className="flex flex-col gap-y-3">
+                    <div>
+                      Assistants can incorporate existing company data and
+                      knowledge to formulate answers.
+                    </div>
+                    <div>
+                      There are two types of data sources:{" "}
+                      <strong>Folders</strong> (Files you can upload) and{" "}
+                      <strong>Connections</strong> (Automatically synchronized
+                      with platforms like Notion, Slack, ...).
+                    </div>
+                    {(() => {
+                      switch (owner.role) {
+                        case "admin":
+                          return (
+                            <div>
+                              <strong>
+                                Visit the "Connections" and "Folders" sections
+                                in the Assistants panel to add new data sources.
+                              </strong>
+                            </div>
+                          );
+                        case "builder":
+                          return (
+                            <div>
+                              <strong>
+                                Only Admins can activate Connections.
+                                <br />
+                                You can add Data Sources by visiting "Folders"
+                                in the Assistants panel.
+                              </strong>
+                            </div>
+                          );
+                        case "user":
+                          return (
+                            <div>
+                              <strong>
+                                Only Admins and Builders can activate
+                                Connections or create Folders.
+                              </strong>
+                            </div>
+                          );
+                        case "none":
+                          return <></>;
+                        default:
+                          ((x: never) => {
+                            throw new Error("Unkonwn role " + x);
+                          })(owner.role);
+                      }
+                    })()}
+                  </div>
+                </ContentMessage>
+              )}
+          </>
         )}
 
         <ActionModeSection show={builderState.actionMode === "GENERIC"}>
