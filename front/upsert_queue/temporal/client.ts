@@ -1,33 +1,31 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
 import { QUEUE_NAME } from "./config";
-import { runAllChecksWorkflow } from "./workflows";
+import { upsertDocumentWorkflow } from "./workflows";
 
-export async function launchProductionChecksWorkflow(): Promise<
-  Result<string, Error>
-> {
+export async function launchUpsertDocumentWorkflow(
+  workspaceId: string,
+  dataSourceName: string,
+  upsertQueueId: string
+): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = "production_checks";
+  const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
+
   try {
-    const handle = client.workflow.getHandle(workflowId);
-    await handle.terminate();
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
-      throw e;
-    }
-  }
-  try {
-    await client.workflow.start(runAllChecksWorkflow, {
-      args: [],
+    await client.workflow.start(upsertDocumentWorkflow, {
+      args: [upsertQueueId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "0 * * * *", // every hour, on the hour
+      memo: {
+        workspaceId,
+        dataSourceName,
+        upsertQueueId,
+      },
     });
     logger.info(
       {

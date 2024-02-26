@@ -4,6 +4,7 @@ import { runPostUpsertHooksWorker } from "@app/documents_post_process_hooks/temp
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runProductionChecksWorker } from "@app/production_checks/temporal/worker";
+import { runUpsertQueueWorker } from "@app/upsert_queue/temporal/worker";
 
 setupGlobalErrorHandler(logger);
 
@@ -16,4 +17,8 @@ runPokeWorker().catch((err) =>
 
 runProductionChecksWorker().catch((err) =>
   logger.error({ error: err }, "Error running production checks worker")
+);
+
+runUpsertQueueWorker().catch((err) =>
+  logger.error({ error: err }, "Error running upsert queue worker")
 );
