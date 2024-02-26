@@ -9,6 +9,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import { makeStructuredDataTableName } from "@connectors/lib/structured_data/helpers";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -46,8 +47,11 @@ async function upsertTable(
   const dataSourceConfig = await dataSourceConfigFromConnector(connector);
 
   const { id, spreadsheet, title } = sheet;
-  // Table name will be slugify in front.
-  const tableName = `${spreadsheet.title} - ${title}`;
+  const tableId = makeTableIdFromSheetId(spreadsheet.id, id);
+
+  const name = `${spreadsheet.title} - ${title}`;
+  const tableName = makeStructuredDataTableName(name, tableId);
+
   const tableDescription = `Structured data from the Google Spreadsheet (${spreadsheet.title}) and sheet (${title}`;
 
   const csv = stringify(rows);
@@ -56,7 +60,7 @@ async function upsertTable(
   // the operation. Note: Renaming a sheet in Google Drive retains its original Id.
   await upsertTableFromCsv({
     dataSourceConfig,
-    tableId: makeTableIdFromSheetId(spreadsheet.id, id),
+    tableId,
     tableName,
     tableDescription,
     tableCsv: csv,
