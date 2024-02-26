@@ -28,13 +28,13 @@ import {
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import type { ComponentType } from "react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 export const CREATIVITY_LEVELS = [
   { label: "Deterministic", value: 0 },
@@ -296,30 +296,25 @@ const SUGGESTION_DEBOUNCE_DELAY = 2000;
 function Suggestions({ instructions }: { instructions: string | null }) {
   const [suggestions, setSuggestions] = useState<string[]>(STATIC_SUGGESTIONS);
   const [loading, setLoading] = useState(false);
-  const [debounceHandle, setDebounceHandle] = useState<NodeJS.Timeout | null>(
-    null
-  );
+  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   useEffect(() => {
-    if (debounceHandle) {
-      clearTimeout(debounceHandle);
+    if (debounceHandle.current) {
+      clearTimeout(debounceHandle.current);
+      debounceHandle.current = undefined;
     }
-
     if (!instructions) {
       setSuggestions(STATIC_SUGGESTIONS);
     }
-
     if (instructions) {
       // Debounced request to generate suggestions
-      const newHandle = setTimeout(async () => {
+      debounceHandle.current = setTimeout(async () => {
         setLoading(true);
         const suggestions = await getInstructionsSuggestions(instructions);
         setSuggestions(suggestions);
         setLoading(false);
-        setDebounceHandle(null);
       }, SUGGESTION_DEBOUNCE_DELAY);
-      setDebounceHandle(newHandle);
     }
-  }, [instructions, debounceHandle]);
+  }, [instructions]);
 
   return (
     <Collapsible defaultOpen>
