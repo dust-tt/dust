@@ -19,9 +19,10 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
  */
 async function getPriceId(productId: string): Promise<string | null> {
   const prices = await stripe.prices.list({ product: productId });
-  if (prices.data.length > 0) {
-    const priceId = prices.data[0].id;
-    return priceId;
+  const activePrice = prices.data.find((p) => p.active === true);
+
+  if (activePrice) {
+    return activePrice.id;
   }
   return null;
 }
