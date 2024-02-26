@@ -3,10 +3,6 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   Button,
   CircleIcon,
-  DropdownMenu,
-  ContextItem,
-  Modal,
-  Page,
   PlayIcon,
   SquareIcon,
   Tab,
@@ -58,7 +54,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 
@@ -810,50 +805,6 @@ function TryModalInBuilder({
       </div>
     </>
   );
-}
-
-function AssistantBuilderTextArea({
-  placeholder,
-  value,
-  onChange,
-  error,
-  name,
-}: {
-  placeholder: string;
-  value: string | null;
-  onChange: (value: string) => void;
-  error?: string | null;
-  name: string;
-}) {
-  return (
-    <textarea
-      name="name"
-      id={name}
-      className={classNames(
-        "block max-h-full min-h-48 w-full min-w-0 grow rounded-md text-sm text-sm",
-        !error
-          ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
-          : "border-red-500 focus:border-red-500 focus:ring-red-500",
-        "bg-structure-50 stroke-structure-50",
-        "resize-none"
-      )}
-      placeholder={placeholder}
-      value={value ?? ""}
-      onChange={(e) => {
-        onChange(e.target.value);
-      }}
-    />
-  );
-}
-
-function ActionModeSection({
-  children,
-  show,
-}: {
-  children: ReactNode;
-  show: boolean;
-}) {
-  return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 
 function removeLeadingAt(handle: string) {
