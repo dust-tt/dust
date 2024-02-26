@@ -24,7 +24,7 @@ export function EmptyCallToAction({
       size="sm"
       label={label}
       variant="primary"
-      icon={icon || undefined}
+      icon={icon}
       onClick={onClick}
     />
   );
