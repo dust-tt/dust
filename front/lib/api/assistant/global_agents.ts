@@ -253,7 +253,7 @@ async function _getMistralLargeGlobalAgent({
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  let status = settings?.status ?? "disabled_by_admin";
+  let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
