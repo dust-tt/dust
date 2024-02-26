@@ -46,7 +46,6 @@ export default function DustAppSelectionSection({
             label="Select Dust App"
             disabled={!canSelectDustApp}
             onClick={openDustAppModal}
-            icon={null}
           />
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">

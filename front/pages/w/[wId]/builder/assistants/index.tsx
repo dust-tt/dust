@@ -251,6 +251,7 @@ export default function WorkspaceAssistants({
                   <EmptyCallToAction
                     href={`/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`}
                     label="Create an Assistant"
+                    icon={PlusIcon}
                   />
                 </div>
               )

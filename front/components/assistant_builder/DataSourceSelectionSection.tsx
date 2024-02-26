@@ -49,7 +49,6 @@ export default function DataSourceSelectionSection({
           label="Select Data Sources"
           onClick={openDataSourceModal}
           disabled={!canAddDataSource}
-          icon={null}
         />
       ) : (
         <ContextItem.List className="mt-6 border-b border-t border-structure-200">

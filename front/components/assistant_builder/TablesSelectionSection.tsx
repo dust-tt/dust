@@ -63,7 +63,6 @@ export default function TablesSelectionSection({
             label="Select Tables"
             disabled={!canSelectTable}
             onClick={openTableModal}
-            icon={null}
           />
         ) : (
           <ContextItem.List className="mt-6 border-b border-t border-structure-200">

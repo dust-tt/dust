@@ -1,4 +1,4 @@
-import { Button, PlusIcon } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ComponentType, MouseEvent } from "react";
 import React from "react";
@@ -8,13 +8,13 @@ import { classNames } from "@app/lib/utils";
 export function EmptyCallToAction({
   label,
   disabled = false,
-  icon = PlusIcon,
+  icon,
   href,
   onClick,
 }: {
   label: string;
   disabled?: boolean;
-  icon?: ComponentType | null;
+  icon?: ComponentType;
   href?: string;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
