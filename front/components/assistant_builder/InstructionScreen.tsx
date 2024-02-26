@@ -292,7 +292,9 @@ const STATIC_SUGGESTIONS = [
   "I want you to act as the king of the bongo, Bong.",
   "I want you to act as the king of the cats, Soupinou.",
 ];
-const SUGGESTION_DEBOUNCE_DELAY = 2000;
+
+const SUGGESTION_DEBOUNCE_DELAY = 1500;
+
 function Suggestions({ instructions }: { instructions: string | null }) {
   const [suggestions, setSuggestions] = useState<string[]>(STATIC_SUGGESTIONS);
   const [loading, setLoading] = useState(false);
