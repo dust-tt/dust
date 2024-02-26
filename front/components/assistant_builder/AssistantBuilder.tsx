@@ -552,36 +552,15 @@ export default function AssistantBuilder({
                 );
               case "actions":
                 return (
-                  <>
-                    <ActionScreen
-                      owner={owner}
-                      builderState={builderState}
-                      setBuilderState={setBuilderState}
-                      setEdited={setEdited}
-                      dataSources={dataSources}
-                      dustApps={dustApps}
-                      timeFrameError={timeFrameError}
-                    />
-                    <div className="flex flex-row items-start pt-8">
-                      <div className="flex flex-col gap-4">
-                        {slackDataSource &&
-                          isBuilder(owner) &&
-                          builderState.scope !== "private" &&
-                          initialBuilderState?.scope !== "private" && (
-                            <SlackIntegration
-                              slackDataSource={slackDataSource}
-                              owner={owner}
-                              onSave={(channels) => {
-                                setEdited(true);
-                                setSelectedSlackChannels(channels);
-                              }}
-                              existingSelection={selectedSlackChannels}
-                              assistantHandle={builderState.handle ?? undefined}
-                            />
-                          )}
-                      </div>
-                    </div>
-                  </>
+                  <ActionScreen
+                    owner={owner}
+                    builderState={builderState}
+                    setBuilderState={setBuilderState}
+                    setEdited={setEdited}
+                    dataSources={dataSources}
+                    dustApps={dustApps}
+                    timeFrameError={timeFrameError}
+                  />
                 );
               case "naming":
                 return (
@@ -1056,6 +1035,7 @@ function TryModalInBuilder({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SlackIntegration({
   slackDataSource,
   owner,
