@@ -264,7 +264,7 @@ async function _getMistralLargeGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral",
+    name: "mistral-large",
     description: MISTRAL_LARGE_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
