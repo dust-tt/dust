@@ -99,7 +99,7 @@ export async function getPagesAndDatabasesEditedSince(
     tryLogger.info("Fetching result page from Notion API.");
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
-        const t = notionClient.search({
+        return notionClient.search({
           sort: sinceTs
             ? {
                 timestamp: "last_edited_time",
@@ -108,8 +108,6 @@ export async function getPagesAndDatabasesEditedSince(
             : undefined,
           start_cursor: cursor || undefined,
         });
-
-        return t;
       });
       tryLogger.info(
         { count: resultsPage.results.length },
