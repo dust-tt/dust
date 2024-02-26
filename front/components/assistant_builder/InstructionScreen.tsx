@@ -34,6 +34,7 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 export const CREATIVITY_LEVELS = [
   { label: "Deterministic", value: 0 },
@@ -115,7 +116,9 @@ export function InstructionScreen({
         error={null}
         name="assistantInstructions"
       />
-      <Suggestions instructions={builderState.instructions} />
+      {isDevelopmentOrDustWorkspace(owner) && (
+        <Suggestions instructions={builderState.instructions} />
+      )}
     </div>
   );
 }
