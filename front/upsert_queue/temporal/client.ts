@@ -21,6 +21,11 @@ export async function launchUpsertDocumentWorkflow(
       args: [upsertQueueId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
+      memo: {
+        workspaceId,
+        dataSourceName,
+        upsertQueueId,
+      },
     });
     logger.info(
       {
