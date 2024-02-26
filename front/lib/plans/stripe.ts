@@ -18,11 +18,10 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
  * Calls the Stripe API to get the price ID for a given product ID.
  */
 async function getPriceId(productId: string): Promise<string | null> {
-  const prices = await stripe.prices.list({ product: productId });
-  const activePrice = prices.data.find((p) => p.active === true);
-
-  if (activePrice) {
-    return activePrice.id;
+  const prices = await stripe.prices.list({ product: productId, active: true });
+  if (prices.data.length > 0) {
+    const [firstActivePrice] = prices.data;
+    return firstActivePrice.id;
   }
   return null;
 }
