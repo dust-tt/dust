@@ -1,4 +1,7 @@
+import type { ConnectorProvider } from "@dust-tt/types";
 import { setupGlobalErrorHandler } from "@dust-tt/types";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
@@ -13,24 +16,40 @@ import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-runConfluenceWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running confluence worker")
-);
-runSlackWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running slack worker")
-);
-runNotionWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running notion worker")
-);
-runGithubWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running github worker")
-);
-runGoogleWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running google worker")
-);
-runIntercomWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running intercom worker")
-);
-runWebCrawlerWorker().catch((err) =>
-  logger.error(errorFromAny(err), "Error running webcrawler worker")
-);
+const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
+  confluence: runConfluenceWorker,
+  github: runGithubWorker,
+  google_drive: runGoogleWorker,
+  intercom: runIntercomWorker,
+  notion: runNotionWorker,
+  slack: runSlackWorker,
+  webcrawler: runWebCrawlerWorker,
+};
+
+const ALL_WORKERS = Object.keys(workerFunctions) as ConnectorProvider[];
+
+async function runWorkers(workers: ConnectorProvider[]) {
+  for (const worker of workers) {
+    workerFunctions[worker]().catch((err) =>
+      logger.error(errorFromAny(err), `Error running ${worker} worker.`)
+    );
+  }
+}
+
+yargs(hideBin(process.argv))
+  .option("workers", {
+    alias: "w",
+    type: "array",
+    choices: ALL_WORKERS,
+    default: ALL_WORKERS,
+    demandOption: true,
+    description: "Choose one or multiple workers to run.",
+  })
+  .help()
+  .alias("help", "h")
+  .parseAsync()
+  .then(async (args) => runWorkers(args.workers as ConnectorProvider[]))
+  .catch((err) => {
+    logger.error(errorFromAny(err), "Error running workers");
+    process.exit(1);
+  });

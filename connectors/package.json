@@ -57,7 +57,8 @@
     "tar": "^6.2.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "turndown": "^7.1.2",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/eslint": "^8.21.3",
@@ -66,6 +67,7 @@
     "@types/node": "^18.15.5",
     "@types/tar": "^6.1.10",
     "@types/turndown": "^5.0.4",
+    "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^5.56.0",
     "@typescript-eslint/parser": "^5.56.0",
     "eslint": "^8.36.0",
