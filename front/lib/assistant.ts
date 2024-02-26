@@ -46,8 +46,9 @@ export enum GLOBAL_AGENTS_SID {
   GPT35_TURBO = "gpt-3.5-turbo",
   CLAUDE = "claude-2",
   CLAUDE_INSTANT = "claude-instant-1",
-  MISTRAL_NEXT = "mistral-next",
+  MISTRAL_LARGE = "mistral-large",
   MISTRAL_MEDIUM = "mistral-medium",
+  MISTRAL_NEXT = "mistral-next",
   //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
   // it interferes with the retrieval of ongoing conversations involving this agent.
   // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
@@ -66,8 +67,9 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.CLAUDE,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-  GLOBAL_AGENTS_SID.MISTRAL_NEXT,
+  GLOBAL_AGENTS_SID.MISTRAL_LARGE,
   GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.MISTRAL_NEXT,
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.HELPER,
