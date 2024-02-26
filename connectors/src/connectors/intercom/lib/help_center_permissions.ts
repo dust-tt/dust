@@ -96,6 +96,7 @@ export async function allowSyncHelpCenter({
         connectorId,
         connectionId,
         collectionId: c1.id,
+        helpCenterId,
         region,
       })
     );
@@ -171,11 +172,13 @@ export async function allowSyncCollection({
   connectorId,
   connectionId,
   collectionId,
+  helpCenterId,
   region,
 }: {
   connectorId: ModelId;
   connectionId: string;
   collectionId: string;
+  helpCenterId?: string;
   region: string;
 }): Promise<IntercomCollection | null> {
   let collection = await IntercomCollection.findOne({
@@ -194,12 +197,15 @@ export async function allowSyncCollection({
       connectionId,
       collectionId
     );
-    if (intercomCollection && intercomCollection.help_center_id) {
+
+    const hpId = helpCenterId || intercomCollection?.help_center_id;
+
+    if (intercomCollection && hpId) {
       collection = await IntercomCollection.create({
         connectorId,
         collectionId: intercomCollection.id,
         intercomWorkspaceId: intercomCollection.workspace_id,
-        helpCenterId: intercomCollection.help_center_id,
+        helpCenterId: hpId,
         parentId: intercomCollection.parent_id,
         name: intercomCollection.name,
         description: intercomCollection.description,
@@ -239,6 +245,7 @@ export async function allowSyncCollection({
       connectorId,
       connectionId,
       collectionId: c.id,
+      helpCenterId,
       region,
     })
   );

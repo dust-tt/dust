@@ -185,8 +185,8 @@ export async function fetchIntercomCollections(
 
   return collections.filter(
     (collection) =>
-      collection.help_center_id == helpCenterId &&
-      collection.parent_id == parentId
+      collection.parent_id == parentId &&
+      (parentId === null ? collection.help_center_id == helpCenterId : true)
   );
 }
 
