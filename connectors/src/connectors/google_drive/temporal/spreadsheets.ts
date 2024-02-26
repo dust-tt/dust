@@ -9,7 +9,10 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
-import { makeStructuredDataTableName } from "@connectors/lib/structured_data/helpers";
+import {
+  getSanitizedHeaders,
+  makeStructuredDataTableName,
+} from "@connectors/lib/structured_data/helpers";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -102,14 +105,16 @@ function getValidRows(allRows: string[][], loggerArgs: object) {
 
   // We assume that the first row is always the headers.
   // Headers are used to assert the number of cells per row.
-  const [headers] = filteredRows;
-  if (!headers || headers.length === 0) {
+  const [rawHeaders] = filteredRows;
+  if (!rawHeaders || rawHeaders.length === 0) {
     logger.info(
       loggerArgs,
       "[Spreadsheet] Skipping due to empty initial rows."
     );
     return [];
   }
+
+  const headers = getSanitizedHeaders(rawHeaders);
 
   const validRows: string[][] = filteredRows.map((row, index) => {
     // Return raw headers.
