@@ -723,7 +723,7 @@ export function parsePropertyText(
         ? property.people.map((p) => ("name" in p ? p.name : p.id)).join(", ")
         : null;
     case "formula":
-      return (() => {
+      if (property.formula.type) {
         switch (property.formula.type) {
           case "string":
             return property.formula.string;
@@ -736,7 +736,12 @@ export function parsePropertyText(
           default:
             assertNever(property.formula);
         }
-      })();
+      } else {
+        // If the formula is an expression type, return null.
+        return null;
+      }
+      break;
+
     case "relation":
     case "rollup":
     // @ts-expect-error missing from Notion package
