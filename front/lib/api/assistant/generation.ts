@@ -266,6 +266,14 @@ export async function renderConversationForModel({
  * Generation execution.
  */
 
+// Meta prompt used to incentivize the model to answer with brieviety.
+function brievietyPrompt() {
+  return (
+    "When replying to the user, go straight to the point." +
+    " Answer with precision and brieviety."
+  );
+}
+
 // Construct the full prompt from the agent configuration.
 // - Meta data about the agent and current time.
 // - Insructions from the agent configuration (in case of generation)
@@ -277,27 +285,39 @@ export async function constructPrompt(
   fallbackPrompt?: string
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
+  const owner = auth.workspace();
 
-  let meta = "";
-  meta += `ASSISTANT: @${configuration.name}\n`;
-  meta += `LOCAL_TIME: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
+  let context = "CONTEXT:\n";
+  context += `{\n`;
+  context += `  "assistant": "@${configuration.name}",\n`;
+  context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
+  if (owner) {
+    context += `  "workspace": "${owner.name}",\n`;
+  }
+  context += "}\n";
+
+  let instructions = "INSTRUCTIONS:\n";
   if (configuration.generation) {
-    meta += `INSTRUCTIONS:\n${configuration.generation.prompt}`;
+    instructions += `${configuration.generation.prompt}`;
   } else if (fallbackPrompt) {
-    meta += `INSTRUCTIONS:\n${fallbackPrompt}`;
+    instructions += `${fallbackPrompt}`;
   }
 
+  if (owner?.flags?.includes("brieviety_prompt")) {
+    instructions += "\n" + brievietyPrompt();
+  }
   if (isRetrievalConfiguration(configuration.action)) {
-    meta += "\n" + retrievalMetaPrompt();
+    instructions += "\n" + retrievalMetaPrompt();
   }
 
-  meta = meta.replaceAll(
+  // Replacement if instructions include "{USER_FULL_NAME}".
+  instructions = instructions.replaceAll(
     "{USER_FULL_NAME}",
     userMessage.context.fullName || "Unknown user"
   );
 
-  // if meta includes the string "{ASSISTANTS_LIST}"
-  if (meta.includes("{ASSISTANTS_LIST}")) {
+  // Replacement if instructions includes "{ASSISTANTS_LIST}"
+  if (instructions.includes("{ASSISTANTS_LIST}")) {
     if (!auth.isUser())
       throw new Error("Unexpected unauthenticated call to `constructPrompt`");
     const agents = await getAgentConfigurations({
@@ -305,7 +325,7 @@ export async function constructPrompt(
       agentsGetView: auth.user() ? "list" : "all",
       variant: "light",
     });
-    meta = meta.replaceAll(
+    instructions = instructions.replaceAll(
       "{ASSISTANTS_LIST}",
       agents
         .map((agent) => {
@@ -318,7 +338,7 @@ export async function constructPrompt(
     );
   }
 
-  return meta;
+  return `${context}\n${instructions}`;
 }
 
 // This function is in charge of running the generation of a message from the agent. It does not
