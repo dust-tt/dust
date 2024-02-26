@@ -250,12 +250,6 @@ export default function AssistantBuilder({
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
-  const { slackChannels: slackExistingSelection } =
-    useSlackChannelsLinkedWithAgent({
-      workspaceId: owner.sId,
-      dataSourceName: slackDataSource?.name ?? undefined,
-      disabled: !isBuilder(owner),
-    });
 
   useEffect(() => {
     const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
@@ -441,8 +435,7 @@ export default function AssistantBuilder({
         builderState,
         agentConfigurationId,
         slackData: {
-          selectedSlackChannels:
-            selectedSlackChannels || slackExistingSelection,
+          selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
       });
@@ -527,9 +520,7 @@ export default function AssistantBuilder({
                 owner={owner}
                 agentConfigurationId={agentConfigurationId}
                 initialScope={initialBuilderState?.scope ?? defaultScope}
-                slackChannelSelected={
-                  selectedSlackChannels || slackExistingSelection
-                }
+                slackChannelSelected={selectedSlackChannels || []}
                 newScope={builderState.scope}
                 setNewScope={(
                   scope: Exclude<AgentConfigurationScope, "global">

@@ -205,7 +205,7 @@ export function SharingButton({
                     <>
                       Default assistant for{" "}
                       {slackChannelSelected
-                        .map((c) => `#` + c.slackChannelName)
+                        .map((c) => c.slackChannelName)
                         .join(", ")}
                     </>
                   )}

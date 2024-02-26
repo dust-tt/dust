@@ -188,7 +188,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
   res.status(200).json({
     slackChannels: slackChannels.map((c) => ({
       slackChannelId: c.slackChannelId,
-      slackChannelName: c.slackChannelName,
+      slackChannelName: "#" + c.slackChannelName,
       // We know that agentConfigurationId is not null because of the where clause above
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       agentConfigurationId: c.agentConfigurationId!,
