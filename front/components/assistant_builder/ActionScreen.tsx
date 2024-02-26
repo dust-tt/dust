@@ -198,6 +198,7 @@ export default function ActionScreen({
   const noDataSources =
     configurableDataSources.length === 0 &&
     Object.keys(builderState.dataSourceConfigurations).length === 0;
+  const noDustApp = dustApps.length === 0;
 
   return (
     <>
@@ -576,23 +577,69 @@ export default function ActionScreen({
         </ActionModeSection>
 
         <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
-          <div className="text-sm text-element-700">
-            The assistant will execute a Dust Application of your design before
-            answering. The output of the app (last block) is injected in context
-            for the model to generate an answer. The inputs of the app will be
-            automatically generated from the context of the conversation based
-            on the descriptions you provided in the application's input block
-            dataset schema.
-          </div>
-          <DustAppSelectionSection
-            show={builderState.actionMode === "DUST_APP_RUN"}
-            dustAppConfiguration={builderState.dustAppConfiguration}
-            openDustAppModal={() => {
-              setShowDustAppsModal(true);
-            }}
-            onDelete={deleteDustApp}
-            canSelectDustApp={dustApps.length !== 0}
-          />
+          {noDustApp ? (
+            <ContentMessage
+              title="You don't have any Dust Application available"
+              variant="warning"
+            >
+              <div className="flex flex-col gap-y-3">
+                {(() => {
+                  switch (owner.role) {
+                    case "admin":
+                    case "builder":
+                      return (
+                        <div>
+                          <strong>
+                            Visit the "Developer Tools" section in the Build
+                            panel to build your first Dust Application.
+                          </strong>
+                        </div>
+                      );
+                    case "user":
+                      return (
+                        <div>
+                          <strong>
+                            Only Admins and Builders can build Dust
+                            Applications.
+                          </strong>
+                        </div>
+                      );
+                    case "none":
+                      return <></>;
+                    default:
+                      assertNever(owner.role);
+                  }
+                })()}
+              </div>
+            </ContentMessage>
+          ) : (
+            <>
+              <div className="text-sm text-element-700">
+                The assistant will execute a{" "}
+                <a
+                  className="font-bold"
+                  href="https://docs.dust.tt"
+                  target="_blank"
+                >
+                  Dust Application
+                </a>{" "}
+                of your design before replying. The output of the app (last
+                block) is injected in context for the model to generate an
+                answer. The inputs of the app will be automatically generated
+                from the context of the conversation based on the descriptions
+                you provided in the application's input block dataset schema.
+              </div>
+              <DustAppSelectionSection
+                show={builderState.actionMode === "DUST_APP_RUN"}
+                dustAppConfiguration={builderState.dustAppConfiguration}
+                openDustAppModal={() => {
+                  setShowDustAppsModal(true);
+                }}
+                onDelete={deleteDustApp}
+                canSelectDustApp={dustApps.length !== 0}
+              />
+            </>
+          )}
         </ActionModeSection>
       </div>
     </>
