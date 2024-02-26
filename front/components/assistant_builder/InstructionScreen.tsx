@@ -1,14 +1,21 @@
 import {
+  AnthropicLogo,
   Button,
   Collapsible,
   ContentMessage,
   DropdownMenu,
+  GoogleLogo,
+  MistralLogo,
+  OpenaiLogo,
   Page,
 } from "@dust-tt/sparkle";
-import type {   ModelConfig,
-PlanType ,
-  SupportedModel} from "@dust-tt/types";
-import type {WorkspaceType} from "@dust-tt/types";
+import type {
+  ModelConfig,
+  PlanType,
+  SUPPORTED_MODEL_CONFIGS,
+  SupportedModel,
+} from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -17,20 +24,38 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_NEXT_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG
+  MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import React from "react";
+import React, { ComponentType } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
-import {
-  CREATIVITY_LEVELS,
-  getCreativityLevelFromTemperature,
-  MODEL_PROVIDER_LOGOS,
-} from "./AssistantBuilder";
+export const CREATIVITY_LEVELS = [
+  { label: "Deterministic", value: 0 },
+  { label: "Factual", value: 0.2 },
+  { label: "Balanced", value: 0.7 },
+  { label: "Creative", value: 1 },
+];
+
+type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
+export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
+  openai: OpenaiLogo,
+  anthropic: AnthropicLogo,
+  mistral: MistralLogo,
+  google_vertex_ai: GoogleLogo,
+};
+
+const getCreativityLevelFromTemperature = (temperature: number) => {
+  const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
+    Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
+      ? curr
+      : prev
+  );
+  return closest;
+};
 
 export function InstructionScreen({
   owner,

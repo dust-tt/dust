@@ -1,14 +1,11 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
-  AnthropicLogo,
   Button,
   CircleIcon,
   DropdownMenu,
   ContextItem,
-  GoogleLogo,
-  MistralLogo,
-  OpenaiLogo,
+  Modal,
   Page,
   PlayIcon,
   SquareIcon,
@@ -20,7 +17,6 @@ import type {
   AgentConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
-  SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
@@ -38,7 +34,6 @@ import {
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
@@ -109,29 +104,6 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
     modelSettings: { modelId: "gpt-4", providerId: "openai" },
     temperature: 0.7,
   },
-};
-
-export const CREATIVITY_LEVELS = [
-  { label: "Deterministic", value: 0 },
-  { label: "Factual", value: 0.2 },
-  { label: "Balanced", value: 0.7 },
-  { label: "Creative", value: 1 },
-];
-type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
-export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
-  openai: OpenaiLogo,
-  anthropic: AnthropicLogo,
-  mistral: MistralLogo,
-  google_vertex_ai: GoogleLogo,
-};
-
-export const getCreativityLevelFromTemperature = (temperature: number) => {
-  const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
-    Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
-      ? curr
-      : prev
-  );
-  return closest;
 };
 
 const useNavigationLock = (
