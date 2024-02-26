@@ -41,6 +41,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 export const CREATIVITY_LEVELS = [
   { label: "Deterministic", value: 0 },
