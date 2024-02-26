@@ -344,9 +344,6 @@ export async function getPagesAndDatabasesToSync({
           }
           throw e;
 
-        case "unauthorized":
-          throw new ExternalOauthTokenError(e);
-
         default:
           throw e;
       }
