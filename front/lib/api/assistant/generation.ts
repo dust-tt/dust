@@ -296,18 +296,20 @@ export async function constructPrompt(
   }
   context += "}\n";
 
-  let instructions = "INSTRUCTIONS:\n";
+  let instructions = "";
   if (configuration.generation) {
-    instructions += `${configuration.generation.prompt}`;
+    instructions += `\n${configuration.generation.prompt}`;
   } else if (fallbackPrompt) {
-    instructions += `${fallbackPrompt}`;
+    instructions += `\n${fallbackPrompt}`;
   }
-
   if (owner?.flags?.includes("brieviety_prompt")) {
-    instructions += "\n" + brievietyPrompt();
+    instructions += `\n${brievietyPrompt()}`;
   }
   if (isRetrievalConfiguration(configuration.action)) {
-    instructions += "\n" + retrievalMetaPrompt();
+    instructions += `\n${retrievalMetaPrompt()}`;
+  }
+  if (instructions.length > 0) {
+    instructions = "\nINSTRUCTIONS:" + instructions;
   }
 
   // Replacement if instructions include "{USER_FULL_NAME}".
@@ -338,7 +340,7 @@ export async function constructPrompt(
     );
   }
 
-  return `${context}\n${instructions}`;
+  return `${context}${instructions}`;
 }
 
 // This function is in charge of running the generation of a message from the agent. It does not
