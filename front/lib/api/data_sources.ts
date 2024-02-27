@@ -195,12 +195,11 @@ export async function deleteDataSource(
 
   const dustAPIProjectId = dataSource.dustAPIProjectId;
 
-  if (
-    dataSource.connectorId &&
-    dataSource.connectorProvider &&
-    !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
-  ) {
-    if (!auth.isAdmin()) {
+  if (dataSource.connectorId && dataSource.connectorProvider) {
+    if (
+      !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider) &&
+      !auth.isAdmin()
+    ) {
       return new Err({
         type: "workspace_auth_error",
         message:
