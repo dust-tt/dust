@@ -14,7 +14,8 @@ export async function runUpsertQueueWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 64,
+    // At the time of edit we have 2 front-worker. We target 64 overall concurrency.
+    maxConcurrentActivityTaskExecutions: 32,
     connection,
     namespace,
     interceptors: {
