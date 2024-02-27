@@ -44,3 +44,36 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.undefined,
   ]),
 });
+
+export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
+  t.type({
+    type: t.literal("name"),
+    inputs: t.type({ instructions: t.string, description: t.string }),
+  }),
+  t.type({
+    type: t.literal("instructions"),
+    inputs: t.type({ current_instructions: t.string }),
+  }),
+]);
+
+export type BuilderSuggestionsRequestType = t.TypeOf<
+  typeof InternalPostBuilderSuggestionsRequestBodySchema
+>;
+
+export const BuilderSuggestionsResponseBodySchema = t.union([
+  t.type({
+    status: t.literal("ok"),
+    suggestions: t.array(t.string),
+  }),
+  t.type({
+    status: t.literal("unavailable"),
+    reason: t.union([
+      t.literal("user_not_finished"), // The user has not finished inputing data for suggestions to make sense
+      t.literal("irrelevant"),
+    ]),
+  }),
+]);
+
+export type BuilderSuggestionsType = t.TypeOf<
+  typeof BuilderSuggestionsResponseBodySchema
+>;

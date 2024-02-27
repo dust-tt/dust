@@ -11,8 +11,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
+  BuilderSuggestionsType,
   ModelConfig,
   PlanType,
+  Result,
   SUPPORTED_MODEL_CONFIGS,
   SupportedModel,
 } from "@dust-tt/types";
@@ -20,6 +23,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import {
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  Err,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -27,9 +31,10 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  Ok,
 } from "@dust-tt/types";
 import type { ComponentType } from "react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -118,7 +123,10 @@ export function InstructionScreen({
         name="assistantInstructions"
       />
       {isDevelopmentOrDustWorkspace(owner) && (
-        <Suggestions instructions={builderState.instructions} />
+        <Suggestions
+          owner={owner}
+          instructions={builderState.instructions || ""}
+        />
       )}
     </div>
   );
@@ -289,36 +297,64 @@ function AssistantBuilderTextArea({
   );
 }
 
-const STATIC_SUGGESTIONS = [
-  "I want you to act as the king of the bongo.",
-  "I want you to act as the king of the bongo, Bong.",
-  "I want you to act as the king of the cats, Soupinou.",
-];
+const STATIC_SUGGESTIONS = {
+  status: "ok" as const,
+  suggestions: [
+    "I want you to act as the king of the bongo.",
+    "I want you to act as the king of the bongo, Bong.",
+    "I want you to act as the king of the cats, Soupinou.",
+  ],
+};
 
 const SUGGESTION_DEBOUNCE_DELAY = 1500;
 
-function Suggestions({ instructions }: { instructions: string | null }) {
-  const [suggestions, setSuggestions] = useState<string[]>(STATIC_SUGGESTIONS);
+function Suggestions({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}) {
+  const [suggestions, setSuggestions] =
+    useState<BuilderSuggestionsType>(STATIC_SUGGESTIONS);
+
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<APIError | null>(null);
+
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const updateSuggestions = useCallback(async () => {
+    setLoading(true);
+    const suggestions = await getInstructionsSuggestions(owner, instructions);
+    if (suggestions.isErr()) {
+      setError(suggestions.error);
+      setLoading(false);
+      return;
+    }
+
+    setSuggestions(suggestions.value);
+    setError(null);
+    setLoading(false);
+  }, [owner, instructions]);
+
   useEffect(() => {
     if (debounceHandle.current) {
       clearTimeout(debounceHandle.current);
       debounceHandle.current = undefined;
     }
     if (!instructions) {
+      setError(null);
+      setLoading(false);
       setSuggestions(STATIC_SUGGESTIONS);
     }
     if (instructions) {
       // Debounced request to generate suggestions
-      debounceHandle.current = setTimeout(async () => {
-        setLoading(true);
-        const suggestions = await getInstructionsSuggestions(instructions);
-        setSuggestions(suggestions);
-        setLoading(false);
-      }, SUGGESTION_DEBOUNCE_DELAY);
+      debounceHandle.current = setTimeout(
+        updateSuggestions,
+        SUGGESTION_DEBOUNCE_DELAY
+      );
     }
-  }, [instructions]);
+  }, [instructions, updateSuggestions]);
 
   return (
     <Collapsible defaultOpen>
@@ -330,19 +366,46 @@ function Suggestions({ instructions }: { instructions: string | null }) {
         </Collapsible.Button>
         <Collapsible.Panel>
           <div className="flex gap-2">
-            {loading && <Spinner size="sm" />}
-            {!loading &&
-              suggestions.map((suggestion, index) => (
-                <ContentMessage
-                  size="sm"
-                  title="First suggestion"
-                  variant="pink"
-                  key={`suggestion-${index}`}
-                >
-                  {suggestion}
-                </ContentMessage>
-              ))}
-            {!loading && suggestions.length === 0 && "Looking good! 🎉"}
+            {(() => {
+              if (loading) {
+                return <Spinner size="sm" />;
+              }
+              if (error) {
+                return (
+                  <ContentMessage size="sm" title="Error" variant="red">
+                    {error.message}
+                  </ContentMessage>
+                );
+              }
+              if (suggestions.status === "ok") {
+                if (suggestions.suggestions.length === 0) {
+                  return (
+                    <ContentMessage size="sm" variant="slate" title="">
+                      Looking good! 🎉
+                    </ContentMessage>
+                  );
+                }
+                return suggestions.suggestions
+                  .slice(0, 3)
+                  .map((suggestion, index) => (
+                    <ContentMessage
+                      size="sm"
+                      title=""
+                      variant="pink"
+                      key={`suggestion-${index}`}
+                    >
+                      {suggestion}
+                    </ContentMessage>
+                  ));
+              }
+              if (suggestions.status === "unavailable") {
+                return (
+                  <ContentMessage size="sm" variant="slate" title="">
+                    Suggestions will appear when you're done writing.
+                  </ContentMessage>
+                );
+              }
+            })()}
           </div>
         </Collapsible.Panel>
       </div>
@@ -351,18 +414,24 @@ function Suggestions({ instructions }: { instructions: string | null }) {
 }
 
 async function getInstructionsSuggestions(
+  owner: WorkspaceType,
   instructions: string
-): Promise<string[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (instructions.endsWith("testgood")) {
-        resolve([]);
-      } else {
-        resolve([
-          "A first suggestion related to " + instructions.substring(0, 20),
-          "A second suggestion at time " + new Date().toLocaleTimeString(),
-        ]);
-      }
-    }, 1000);
+): Promise<Result<BuilderSuggestionsType, APIError>> {
+  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "instructions",
+      inputs: { current_instructions: instructions },
+    }),
   });
+  if (!res.ok) {
+    return new Err({
+      type: "internal_server_error",
+      message: "Failed to get suggestions",
+    });
+  }
+  return new Ok(await res.json());
 }
