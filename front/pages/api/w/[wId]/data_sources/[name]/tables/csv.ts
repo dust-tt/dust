@@ -1,4 +1,4 @@
-import { assertNever, SlugifiedString, slugify } from "@dust-tt/types";
+import { assertNever, SlugifiedString } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -34,9 +34,16 @@ export const UpsertTableFromCsvSchema = t.intersection([
   ]),
 ]);
 
-export type UpsertTableFromCsvRequestBody = t.TypeOf<
+type UpsertTableFromCsvRequestBodyRaw = t.TypeOf<
   typeof UpsertTableFromCsvSchema
 >;
+
+export type UpsertTableFromCsvRequestBody = Omit<
+  UpsertTableFromCsvRequestBodyRaw,
+  "name"
+> & {
+  name: string; // Manually map the 'name' field from SlugifiedString to string.
+};
 
 async function handler(
   req: NextApiRequest,
