@@ -66,7 +66,6 @@ import {
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
-import { makeStructuredDataTableName } from "@connectors/lib/structured_data/helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import mainLogger from "@connectors/logger/logger";

@@ -33,7 +33,6 @@ import type {
 } from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
-import { getSanitizedHeaders } from "@connectors/lib/structured_data/helpers";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });

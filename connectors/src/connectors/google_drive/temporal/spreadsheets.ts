@@ -13,10 +13,6 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
-import {
-  getSanitizedHeaders,
-  makeStructuredDataTableName,
-} from "@connectors/lib/structured_data/helpers";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
