@@ -212,6 +212,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                 configId: webCrawlerConfig.id,
                 documentLen: extracted.length,
                 title: pageTitle,
+                url,
               },
               `Document is empty or too big to be upserted. Skipping`
             );
