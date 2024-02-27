@@ -225,6 +225,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               error: e,
               connectorId: connector.id,
               configId: webCrawlerConfig.id,
+              url,
             },
             "Webcrawler error while upserting document"
           );
