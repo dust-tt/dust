@@ -22,7 +22,7 @@ export async function upsertDocumentActivity(upsertQueueId: string) {
   }
 
   let logger = mainLogger.child({ upsertQueueId });
-  logger.info("[UpsertQueue] Retrieving item");
+  logger.info({}, "[UpsertQueue] Retrieving item");
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
@@ -82,7 +82,7 @@ export async function upsertDocumentActivity(upsertQueueId: string) {
     throw new Error(`Upsert error: ${upsertRes.error}`);
   }
 
-  logger.info("[UpsertQueue] Successful upsert");
+  logger.info({}, "[UpsertQueue] Successful upsert");
 
   await runPostUpsertHooks({
     workspaceId: upsertQueueItem.workspaceId,
@@ -91,8 +91,8 @@ export async function upsertDocumentActivity(upsertQueueId: string) {
     section: upsertQueueItem.section,
     document: upsertRes.value.document,
     sourceUrl: upsertQueueItem.sourceUrl,
-    upsertContext: upsertQueueItem.upsertContext,
+    upsertContext: upsertQueueItem.upsertContext || undefined,
   });
 
-  logger.info("[UpsertQueue] Successful runPostUpsertHooks");
+  logger.info({}, "[UpsertQueue] Successful runPostUpsertHooks");
 }
