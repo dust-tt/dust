@@ -359,6 +359,7 @@ export async function upsertArticle({
       upsertContext: {
         sync_type: "batch",
       },
+      async: false,
     });
     await articleOnDb.update({
       lastUpsertedTs: new Date(currentSyncMs),

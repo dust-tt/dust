@@ -44,6 +44,7 @@ type UpsertToDataSourceParams = {
   parents: string[];
   loggerArgs?: Record<string, string | number>;
   upsertContext: UpsertContext;
+  async: boolean;
 };
 
 export const upsertToDatasource = withRetries(_upsertToDatasource);
@@ -58,6 +59,7 @@ async function _upsertToDatasource({
   parents,
   loggerArgs = {},
   upsertContext,
+  async,
 }: UpsertToDataSourceParams) {
   const localLogger = logger.child({
     ...loggerArgs,
@@ -89,7 +91,7 @@ async function _upsertToDatasource({
     parents,
     light_document_output: true,
     upsert_context: upsertContext,
-    async: undefined,
+    async,
   };
 
   const dustRequestConfig: AxiosRequestConfig = {

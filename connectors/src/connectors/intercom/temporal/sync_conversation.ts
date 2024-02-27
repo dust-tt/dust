@@ -289,5 +289,6 @@ export async function syncConversation({
     upsertContext: {
       sync_type: syncType,
     },
+    async: false,
   });
 }

@@ -314,6 +314,7 @@ export async function syncOneFile(
         upsertContext: {
           sync_type: isBatchSync ? "batch" : "incremental",
         },
+        async: false,
       });
 
       upsertTimestampMs = file.updatedAtMs;
