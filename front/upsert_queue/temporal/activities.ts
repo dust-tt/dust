@@ -107,6 +107,15 @@ export async function upsertDocumentActivity(
     []
   );
 
+  await bucket.file(`${upsertQueueId}.json`).delete();
+  logger.info(
+    {
+      delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      path: `${upsertQueueId}.json`,
+    },
+    "[UpsertQueue] Deleted GCS file"
+  );
+
   await runPostUpsertHooks({
     workspaceId: upsertQueueItem.workspaceId,
     dataSource,
