@@ -57,3 +57,5 @@ jobs:
           kubectl rollout status deployment/connectors-deployment --timeout=10m
           echo "Waiting for rollout to complete (worker)"
           kubectl rollout status deployment/connectors-worker-deployment --timeout=10m
+          echo "Waiting for rollout to complete (notion worker)"
+          kubectl rollout status deployment/connectors-worker-notion-deployment --timeout=10m
