@@ -8,7 +8,11 @@ import type {
 } from "sequelize";
 
 import { BaseResource } from "@connectors/resources/base_resource";
-import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
+import type {
+  ConnectorProviderModelMapping,
+  ConnectorProviderModelMappingType,
+  ConnectorProviderStrategy,
+} from "@connectors/resources/connector/strategy";
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -39,9 +43,10 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     this.providerStrategy = getConnectorProviderStrategy(type);
   }
 
-  static async makeNew(
-    type: ConnectorProvider,
-    blob: Omit<CreationAttributes<ConnectorModel>, "type">
+  static async makeNew<T extends keyof ConnectorProviderModelMapping>(
+    type: T,
+    blob: Omit<CreationAttributes<ConnectorModel>, "type">,
+    specificBlob: ConnectorProviderModelMapping[T]
   ) {
     return sequelizeConnection.transaction(async (transaction) => {
       const connector = await ConnectorModel.create(

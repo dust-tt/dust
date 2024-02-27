@@ -1,7 +1,9 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import type { Transaction } from "sequelize";
+import type { CreationAttributes, Transaction } from "sequelize";
 
+import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import type { GithubConnectorState } from "@connectors/lib/models/github";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
@@ -10,6 +12,20 @@ import { NotionConnectorStrategy } from "@connectors/resources/connector/notion"
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+export interface ConnectorProviderModelMapping {
+  confluence: CreationAttributes<ConfluenceConfiguration>;
+  github: CreationAttributes<GithubConnectorState>;
+  // google_drive: GoogleDriveConfig;
+  // intercom: IntercomWorkspace;
+  // notion: NotionConnectorState;
+  // slack: SlackConfiguration;
+  // webcrawler: WebCrawlerConfiguration;
+}
+
+// export interface ConnectorProviderToSpecificBlobs {
+//   [K in keyof typeof ConnectorProviderModelMappingType]: AttributesType<connectorProviderModelMapping[K]>;
+// }
 
 export interface ConnectorProviderStrategy {
   // TODO(2024-02-20 flav) Add more methods.
