@@ -16,7 +16,6 @@ async function main() {
   );
   console.log("Will check this number of connectors:", connectors.length);
   for (const connector of connectors) {
-    // console.log("Processing connector", connector);
     const dataSource = await DataSource.findOne({
       where: {
         connectorId: connector.id.toString(),
