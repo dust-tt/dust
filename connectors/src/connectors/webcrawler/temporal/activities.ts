@@ -241,6 +241,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         );
         crawlingError++;
       },
+      errorHandler: () => {
+        // Errors are already logged by the crawler, so we are not re-logging them here.
+        Context.current().heartbeat({
+          type: "error_handler",
+        });
+      },
     },
     new Configuration({
       purgeOnStart: true,
