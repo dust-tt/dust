@@ -1,4 +1,8 @@
-import { assertNever, cacheWithRedis } from "@dust-tt/types";
+import {
+  assertNever,
+  cacheWithRedis,
+  getSanitizedHeaders,
+} from "@dust-tt/types";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,

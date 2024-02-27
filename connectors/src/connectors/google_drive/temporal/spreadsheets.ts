@@ -1,4 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
+import {
+  getSanitizedHeaders,
+  makeStructuredDataTableName,
+} from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";

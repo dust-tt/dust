@@ -62,3 +62,4 @@ export * from "./shared/utils/global_error_handler";
 export * from "./shared/utils/hashing";
 export * from "./shared/utils/iots_utils";
 export * from "./shared/utils/string_utils";
+export * from "./shared/utils/structured_data";
