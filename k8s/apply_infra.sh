@@ -58,6 +58,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/docs-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/prodbox-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
@@ -102,6 +103,7 @@ apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
 apply_deployment core-deployment
 apply_deployment core-sqlite-worker-deployment
+apply_deployment prodbox-deployment
 
 
 echo "-----------------------------------"
