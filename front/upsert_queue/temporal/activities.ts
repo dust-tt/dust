@@ -62,10 +62,17 @@ export async function upsertDocumentActivity(
     documentId: upsertQueueItem.documentId,
   });
 
+  const statsDTags = [
+    `data_source_name:${dataSource.name}`,
+    `workspace_id:${upsertQueueItem.workspaceId}`,
+  ];
+
   // Dust managed credentials: all data sources.
   const credentials = dustManagedCredentials();
 
   const coreAPI = new CoreAPI(logger);
+
+  const upsertTimestamp = Date.now();
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
@@ -89,7 +96,12 @@ export async function upsertDocumentActivity(
       },
       "[UpsertQueue] Failed upsert"
     );
-    statsDClient.increment("upsert_queue.enqueue.error", 1, []);
+    statsDClient.increment("upsert_queue_error.count", 1, statsDTags);
+    statsDClient.distribution(
+      "upsert_queue_upsert_error.duration.distribution",
+      Date.now() - upsertTimestamp,
+      []
+    );
 
     throw new Error(`Upsert error: ${upsertRes.error}`);
   }
@@ -100,7 +112,12 @@ export async function upsertDocumentActivity(
     },
     "[UpsertQueue] Successful upsert"
   );
-  statsDClient.increment("upsert_queue.enqueue.success", 1, []);
+  statsDClient.increment("upsert_queue_success.count", 1, statsDTags);
+  statsDClient.distribution(
+    "upsert_queue_upsert_success.duration.distribution",
+    Date.now() - upsertTimestamp,
+    []
+  );
   statsDClient.distribution(
     "upsert_queue.duration.distribution",
     Date.now() - enqueueTimestamp,

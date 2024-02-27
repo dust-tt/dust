@@ -313,6 +313,7 @@ export async function confluenceCheckAndUpsertPageActivity({
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
+      async: false,
     });
   }
 

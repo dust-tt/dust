@@ -1946,12 +1946,13 @@ export async function renderAndUpsertPageFromCache({
       }),
 
       parents,
-      retries: 3,
-      delayBetweenRetriesMs: 5000,
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
       },
+      async: false,
+      retries: 3,
+      delayBetweenRetriesMs: 5000,
     });
   }
 
