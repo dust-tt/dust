@@ -6,7 +6,6 @@ import {
   GithubWhiteLogo,
   GoogleLogo,
   Hover3D,
-  IntercomLogo,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
   LogoHorizontalWhiteLogo,
