@@ -300,20 +300,18 @@ export async function confluenceCheckAndUpsertPageActivity({
 
     await upsertToDatasource({
       dataSourceConfig,
-      delayBetweenRetriesMs: 500,
       documentContent: renderedPage,
       documentId,
       documentUrl,
       loggerArgs,
       // Parent Ids will be computed after all page imports within the space have been completed.
       parents: [],
-      retries: 3,
       tags,
       timestampMs: lastPageVersionCreatedAt.getTime(),
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
-      async: false,
+      async: true,
     });
   }
 
