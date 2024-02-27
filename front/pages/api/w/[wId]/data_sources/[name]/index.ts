@@ -174,7 +174,7 @@ async function handler(
         });
       }
 
-      // We only expose deleted non-managed data sources.
+      // We only allow deleteing selected managed data sources as builder.
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
@@ -187,27 +187,6 @@ async function handler(
             message: "Managed data sources cannot be deleted.",
           },
         });
-      }
-
-      if (dataSource.connectorId && !dataSource.connectorProvider) {
-        const connectorsAPI = new ConnectorsAPI(logger);
-        const deleteRes = await connectorsAPI.deleteConnector(
-          dataSource.connectorId
-        );
-        if (deleteRes.isErr()) {
-          return apiError(
-            req,
-            res,
-            {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: deleteRes.error.message,
-              },
-            },
-            new Error(deleteRes.error.message)
-          );
-        }
       }
 
       const dRes = await deleteDataSource(auth, dataSource.name);
