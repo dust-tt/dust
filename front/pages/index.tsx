@@ -14,6 +14,7 @@ import {
   MoreIcon,
   NotionLogo,
   OpenaiWhiteLogo,
+  SalesforceLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -431,15 +432,21 @@ export default function Home({
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Notion">
                 <NotionLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Github">
-                <GithubWhiteLogo />
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Salesforce">
+                <SalesforceLogo />
               </ReactiveIcon>
               <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Slack">
                 <SlackLogo />
               </ReactiveIcon>
-              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="More coming…">
-                <MoreIcon className="text-slate-50" />
+              {/* <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Intercom">
+                <IntercomLogo />
+              </ReactiveIcon> */}
+              <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="Github">
+                <GithubWhiteLogo />
               </ReactiveIcon>
+              {/* <ReactiveIcon colorHEX="#1E3A8A" tooltipLabel="More coming…">
+                <MoreIcon className="text-slate-50" />
+              </ReactiveIcon> */}
             </div>
             <P
               dotCSS="text-sky-400"
