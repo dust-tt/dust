@@ -280,8 +280,6 @@ export async function syncConversation({
       `updatedAt:${updatedAtDate.getTime()}`,
     ],
     parents: [getTeamInternalId(connectorId, team.teamId)],
-    retries: 3,
-    delayBetweenRetriesMs: 500,
     loggerArgs: {
       ...loggerArgs,
       conversationId: conversation.id,
@@ -289,6 +287,6 @@ export async function syncConversation({
     upsertContext: {
       sync_type: syncType,
     },
-    async: false,
+    async: true,
   });
 }
