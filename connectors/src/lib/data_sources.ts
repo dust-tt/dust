@@ -89,7 +89,9 @@ async function _upsertToDatasource({
     parents,
     light_document_output: true,
     upsert_context: upsertContext,
+    async: undefined,
   };
+
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
