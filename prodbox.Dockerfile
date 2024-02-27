@@ -17,31 +17,37 @@ RUN chmod +x ./install_poppler_tools.sh && \
 # Set library path for Poppler
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
-# types
-WORKDIR /types
-COPY /types/package*.json ./
-COPY /types/ .
-RUN npm ci && \
-    npm run build
+# Set the working directory to /dust
+WORKDIR /dust
 
-# connectors
-WORKDIR /connectors
-COPY ./connectors/package*.json ./
-RUN npm ci
-COPY ./connectors/ .
-RUN npm run build
+# Types dependencies
+COPY /types/package*.json ./types/
+RUN cd types && npm ci
 
-# front
-WORKDIR /front
-COPY /front/package*.json ./
-RUN npm ci
-COPY /front .
-RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+# Connectors dependencies
+COPY ./connectors/package*.json ./connectors/
+RUN cd connectors && npm ci
 
-# core
-WORKDIR /core
-COPY /core .
-RUN cargo build --release
+# Front dependencies
+COPY /front/package*.json ./front/
+RUN cd front && npm ci
+
+# Now copy the rest of the code
+COPY /types ./types/
+RUN cd types && npm run build
+
+COPY ./connectors ./connectors/
+RUN cd connectors && npm run build
+
+COPY /front ./front/
+RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+
+# Core code and build
+COPY /core ./core/
+RUN cd core && cargo build --release
+
+# Set the default start directory to /dust when SSH into the container
+WORKDIR /dust
 
 # Set a default command
 CMD ["bash"]
