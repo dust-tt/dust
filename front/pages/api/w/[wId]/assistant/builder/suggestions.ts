@@ -25,28 +25,19 @@ async function handler(
     req.query.wId as string
   );
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
+        type: "app_auth_error",
+        message:
+          "Workspace not found or user not authenticated to this workspace.",
       },
     });
   }
 
   switch (req.method) {
     case "POST":
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only users of the workspace can use suggestions.",
-          },
-        });
-      }
-
       const bodyValidation =
         InternalPostBuilderSuggestionsRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
