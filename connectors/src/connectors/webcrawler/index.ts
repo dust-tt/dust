@@ -24,8 +24,6 @@ import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import type { ConnectorPermissionRetriever } from "../interface";
@@ -42,52 +40,37 @@ export async function createWebcrawlerConnector(
   if (!isDepthOption(depth)) {
     return new Err(new Error("Invalid depth option"));
   }
-  const res = await sequelizeConnection.transaction(
-    async (t): Promise<Result<ConnectorModel, Error>> => {
-      const connector = await ConnectorModel.create(
-        {
-          type: "webcrawler",
-          connectionId: urlConfig.url,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
-        },
-        { transaction: t }
-      );
 
-      await WebCrawlerConfiguration.create(
-        {
-          connectorId: connector.id,
-          url: urlConfig.url,
-          maxPageToCrawl: urlConfig.maxPages,
-          crawlMode: urlConfig.crawlMode,
-          depth: depth,
-          crawlFrequency: urlConfig.crawlFrequency,
-          lastCrawledAt: null,
-        },
-        {
-          transaction: t,
-        }
-      );
+  const webCrawlerConfigurationBlob = {
+    url: urlConfig.url,
+    maxPageToCrawl: urlConfig.maxPages,
+    crawlMode: urlConfig.crawlMode,
+    depth: depth,
+    crawlFrequency: urlConfig.crawlFrequency,
+    lastCrawledAt: null,
+  };
 
-      return new Ok(connector);
-    }
+  const connector = await ConnectorResource.makeNew(
+    "webcrawler",
+    {
+      connectionId: urlConfig.url,
+      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    webCrawlerConfigurationBlob
   );
 
-  if (res.isErr()) {
-    return res;
-  }
-
-  const workflowRes = await launchCrawlWebsiteWorkflow(res.value.id);
+  const workflowRes = await launchCrawlWebsiteWorkflow(connector.id);
   if (workflowRes.isErr()) {
     return workflowRes;
   }
   logger.info(
-    { connectorId: res.value.id },
+    { connectorId: connector.id },
     `Launched crawl website workflow for connector`
   );
 
-  return new Ok(res.value.id.toString());
+  return new Ok(connector.id.toString());
 }
 
 export async function updateWebcrawlerConnector(

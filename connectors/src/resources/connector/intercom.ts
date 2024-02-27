@@ -1,4 +1,4 @@
-import type { Transaction } from "sequelize";
+import type { CreationAttributes, Transaction } from "sequelize";
 
 import {
   IntercomArticle,
@@ -12,6 +12,20 @@ import type { ConnectorProviderStrategy } from "@connectors/resources/connector/
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export class IntercomConnectorStrategy implements ConnectorProviderStrategy {
+  async makeNew(
+    connector: ConnectorResource,
+    blob: CreationAttributes<IntercomWorkspace>,
+    transaction: Transaction
+  ): Promise<void> {
+    await IntercomWorkspace.create(
+      {
+        ...blob,
+        connectorId: connector.id,
+      },
+      { transaction }
+    );
+  }
+
   async delete(
     connector: ConnectorResource,
     transaction: Transaction

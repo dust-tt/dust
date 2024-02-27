@@ -32,8 +32,6 @@ import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -46,76 +44,51 @@ export async function createSlackConnector(
 ): Promise<Result<string, Error>> {
   const nangoConnectionId = connectionId;
 
-  const res = await sequelizeConnection.transaction(
-    async (t): Promise<Result<ConnectorModel, Error>> => {
-      const nango = nango_client();
-      if (!NANGO_SLACK_CONNECTOR_ID) {
-        throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
-      }
-      const slackAccessToken = (await nango.getToken(
-        NANGO_SLACK_CONNECTOR_ID,
-        nangoConnectionId
-      )) as string;
-      const client = new WebClient(slackAccessToken);
+  const nango = nango_client();
+  if (!NANGO_SLACK_CONNECTOR_ID) {
+    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
+  }
+  const slackAccessToken = (await nango.getToken(
+    NANGO_SLACK_CONNECTOR_ID,
+    nangoConnectionId
+  )) as string;
+  const client = new WebClient(slackAccessToken);
 
-      const teamInfo = await client.team.info();
-      if (teamInfo.ok !== true) {
-        return new Err(
-          new Error(
-            `Could not get slack team info. Error message: ${
-              teamInfo.error || "unknown"
-            }`
-          )
-        );
-      }
-      if (!teamInfo.team?.id) {
-        return new Err(
-          new Error(
-            `Could not get slack team id. Error message: ${
-              teamInfo.error || "unknown"
-            }`
-          )
-        );
-      }
+  const teamInfo = await client.team.info();
+  if (teamInfo.ok !== true) {
+    return new Err(
+      new Error(
+        `Could not get slack team info. Error message: ${
+          teamInfo.error || "unknown"
+        }`
+      )
+    );
+  }
+  if (!teamInfo.team?.id) {
+    return new Err(
+      new Error(
+        `Could not get slack team id. Error message: ${
+          teamInfo.error || "unknown"
+        }`
+      )
+    );
+  }
 
-      const connector = await ConnectorModel.create(
-        {
-          type: "slack",
-          connectionId: nangoConnectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
-        },
-        { transaction: t }
-      );
-
-      const otherSlackConfigurationWithBotEnabled =
-        await SlackConfiguration.findOne({
-          where: {
-            slackTeamId: teamInfo.team.id,
-            botEnabled: true,
-          },
-          transaction: t,
-        });
-
-      await SlackConfiguration.create(
-        {
-          slackTeamId: teamInfo.team.id,
-          connectorId: connector.id,
-          botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
-        },
-        { transaction: t }
-      );
-
-      return new Ok(connector);
+  const connector = await ConnectorResource.makeNew(
+    "slack",
+    {
+      connectionId: nangoConnectionId,
+      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    {
+      slackTeamId: teamInfo.team.id,
+      botEnabled: true,
     }
   );
 
-  if (res.isErr()) {
-    return res;
-  }
-
-  return new Ok(res.value.id.toString());
+  return new Ok(connector.id.toString());
 }
 
 export async function updateSlackConnector(

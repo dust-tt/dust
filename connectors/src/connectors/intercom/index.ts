@@ -65,7 +65,6 @@ export async function createIntercomConnector(
   }
 
   let connector = null;
-  let intercomWorkpace = null;
 
   try {
     const intercomWorkspace = await fetchIntercomWorkspace(nangoConnectionId);
@@ -77,29 +76,30 @@ export async function createIntercomConnector(
       );
     }
 
-    connector = await ConnectorModel.create({
-      type: "intercom",
-      connectionId: nangoConnectionId,
-      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-      dataSourceName: dataSourceConfig.dataSourceName,
-    });
-
-    intercomWorkpace = await IntercomWorkspace.create({
-      connectorId: connector.id,
+    const intercomConfigurationBlob = {
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
       conversationsSlidingWindow: 90,
       region: intercomWorkspace.region,
-    });
+    };
+
+    connector = await ConnectorResource.makeNew(
+      "intercom",
+      {
+        connectionId: nangoConnectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      intercomConfigurationBlob
+    );
 
     const workflowStarted = await launchIntercomSyncWorkflow(
       connector.id,
       null
     );
     if (workflowStarted.isErr()) {
-      await connector.destroy();
-      await intercomWorkpace.destroy();
+      await connector.delete();
       logger.error(
         {
           workspaceId: dataSourceConfig.workspaceId,
@@ -116,10 +116,7 @@ export async function createIntercomConnector(
       "[Intercom] Unknown Error creating connector."
     );
     if (connector) {
-      await connector.destroy();
-    }
-    if (intercomWorkpace) {
-      await intercomWorkpace.destroy();
+      await connector.delete();
     }
     return new Err(e as Error);
   }

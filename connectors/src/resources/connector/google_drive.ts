@@ -1,5 +1,6 @@
-import type { Transaction } from "sequelize";
+import type { CreationAttributes, Transaction } from "sequelize";
 
+import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import {
   GoogleDriveFiles,
   GoogleDriveFolders,
@@ -10,6 +11,20 @@ import type { ConnectorProviderStrategy } from "@connectors/resources/connector/
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
+  async makeNew(
+    connector: ConnectorResource,
+    blob: CreationAttributes<GoogleDriveConfig>,
+    transaction: Transaction
+  ): Promise<void> {
+    await GoogleDriveConfig.create(
+      {
+        ...blob,
+        connectorId: connector.id,
+      },
+      { transaction }
+    );
+  }
+
   async delete(
     connector: ConnectorResource,
     transaction: Transaction

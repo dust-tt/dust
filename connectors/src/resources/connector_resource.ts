@@ -57,7 +57,15 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         { transaction }
       );
 
-      return new this(ConnectorModel, connector);
+      const connectorRes = new this(ConnectorModel, connector);
+
+      await connectorRes.providerStrategy.makeNew(
+        connectorRes,
+        specificBlob,
+        transaction
+      );
+
+      return connectorRes;
     });
   }
 
