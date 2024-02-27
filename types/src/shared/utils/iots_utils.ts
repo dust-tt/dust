@@ -29,3 +29,13 @@ export function createRangeCodec(min: number, max: number) {
     "Range"
   );
 }
+
+interface SlugifiedStringBrand {
+  readonly SlugifiedString: unique symbol;
+}
+
+export const SlugifiedString = t.brand(
+  t.string,
+  (s): s is t.Branded<string, SlugifiedStringBrand> => /^[a-z0-9_]+$/.test(s),
+  "SlugifiedString"
+);

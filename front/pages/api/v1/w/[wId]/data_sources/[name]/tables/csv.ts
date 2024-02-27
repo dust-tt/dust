@@ -26,6 +26,19 @@ async function handler(
     req.query.wId as string
   );
 
+  const owner = auth.workspace();
+  const plan = auth.plan();
+  const isSystemKey = keyRes.value.isSystem;
+  if (!owner || !plan || !auth.isBuilder() || !isSystemKey) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
       return handlePostTableCsvUpsertRequest(auth, req, res);

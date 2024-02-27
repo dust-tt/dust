@@ -1,4 +1,4 @@
-import { assertNever, slugify } from "@dust-tt/types";
+import { assertNever, SlugifiedString } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -20,7 +20,7 @@ export const config = {
 
 export const UpsertTableFromCsvSchema = t.intersection([
   t.type({
-    name: t.string,
+    name: SlugifiedString,
     description: t.string,
     truncate: t.boolean,
   }),
@@ -34,9 +34,16 @@ export const UpsertTableFromCsvSchema = t.intersection([
   ]),
 ]);
 
-export type UpsertTableFromCsvRequestBody = t.TypeOf<
+type UpsertTableFromCsvRequestBodyRaw = t.TypeOf<
   typeof UpsertTableFromCsvSchema
 >;
+
+export type UpsertTableFromCsvRequestBody = Omit<
+  UpsertTableFromCsvRequestBodyRaw,
+  "name"
+> & {
+  name: string; // Manually map the 'name' field from SlugifiedString to string.
+};
 
 async function handler(
   req: NextApiRequest,
@@ -163,14 +170,12 @@ export async function handlePostTableCsvUpsertRequest(
     });
   }
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
-  // Generate a slug combining the name and the last 4 characters of tableId for uniqueness.
-  const slugifyName = slugify(`${name}_${tableId.slice(-4)}`);
 
   const tableRes = await upsertTableFromCsv({
     owner,
     projectId: dataSource.dustAPIProjectId,
     dataSourceName,
-    tableName: slugifyName,
+    tableName: name,
     tableDescription: description,
     tableId,
     csv: csv ?? null,

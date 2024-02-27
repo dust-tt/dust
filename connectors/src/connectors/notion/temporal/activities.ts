@@ -66,6 +66,7 @@ import {
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
+import { makeStructuredDataTableName } from "@connectors/lib/structured_data/helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import mainLogger from "@connectors/logger/logger";
@@ -2391,8 +2392,10 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   tableDescription: string;
 } {
   const tableId = `notion-${database.notionDatabaseId}`;
-  const tableName =
+  const name =
     database.title ?? `Untitled Database (${database.notionDatabaseId})`;
+  const tableName = makeStructuredDataTableName(name, tableId);
+
   const tableDescription = `Structured data from Notion Database ${tableName}`;
   return { tableId, tableName, tableDescription };
 }

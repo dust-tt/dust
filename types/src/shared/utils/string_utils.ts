@@ -48,3 +48,7 @@ export function slugify(text: string) {
     .replace(/[\W]+/g, "_") // Replace all non-word characters with _.
     .replace(/__+/g, "_"); // Replace multiple _ with single _.
 }
+
+export function isSlugified(text: string) {
+  return /^[a-z0-9_]+$/.test(text);
+}

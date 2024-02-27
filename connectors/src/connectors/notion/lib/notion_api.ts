@@ -29,6 +29,7 @@ import type {
 } from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { getSanitizedHeaders } from "@connectors/lib/structured_data/helpers";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -873,10 +874,19 @@ export async function renderDatabaseFromPages({
     )
   );
 
+  const sanitizedHeaders = getSanitizedHeaders(header);
+
   let csv = await new Promise<string>((resolve, reject) => {
     stringify(
       content,
-      { header: true, delimiter: cellSeparator },
+      {
+        header: true,
+        delimiter: cellSeparator,
+        columns: header.map((h, idx) => ({
+          key: h,
+          header: sanitizedHeaders[idx],
+        })),
+      },
       (err, output) => {
         if (err) {
           reject(err);
