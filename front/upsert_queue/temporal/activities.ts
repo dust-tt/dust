@@ -92,6 +92,7 @@ export async function upsertDocumentActivity(
     logger.error(
       {
         error: upsertRes.error,
+        latencyMs: Date.now() - upsertTimestamp,
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
       },
       "[UpsertQueue] Failed upsert"
@@ -108,6 +109,7 @@ export async function upsertDocumentActivity(
 
   logger.info(
     {
+      latencyMs: Date.now() - upsertTimestamp,
       delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
     },
     "[UpsertQueue] Successful upsert"
