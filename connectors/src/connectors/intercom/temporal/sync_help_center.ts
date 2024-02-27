@@ -350,8 +350,6 @@ export async function upsertArticle({
         `updatedAt:${updatedAtDate.getTime()}`,
       ],
       parents: parentsInternalsIds,
-      retries: 3,
-      delayBetweenRetriesMs: 500,
       loggerArgs: {
         ...loggerArgs,
         articleId: article.id,
@@ -359,7 +357,7 @@ export async function upsertArticle({
       upsertContext: {
         sync_type: "batch",
       },
-      async: false,
+      async: true,
     });
     await articleOnDb.update({
       lastUpsertedTs: new Date(currentSyncMs),

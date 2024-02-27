@@ -1950,9 +1950,7 @@ export async function renderAndUpsertPageFromCache({
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
       },
-      async: false,
-      retries: 3,
-      delayBetweenRetriesMs: 5000,
+      async: true,
     });
   }
 
