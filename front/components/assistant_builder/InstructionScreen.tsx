@@ -385,16 +385,18 @@ function Suggestions({
                     </ContentMessage>
                   );
                 }
-                return suggestions.suggestions.map((suggestion, index) => (
-                  <ContentMessage
-                    size="sm"
-                    title=""
-                    variant="pink"
-                    key={`suggestion-${index}`}
-                  >
-                    {suggestion}
-                  </ContentMessage>
-                ));
+                return suggestions.suggestions
+                  .slice(0, 3)
+                  .map((suggestion, index) => (
+                    <ContentMessage
+                      size="sm"
+                      title=""
+                      variant="pink"
+                      key={`suggestion-${index}`}
+                    >
+                      {suggestion}
+                    </ContentMessage>
+                  ));
               }
               if (suggestions.status === "unavailable") {
                 return (
