@@ -20,7 +20,6 @@ import type {
 import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
-import { saveIntercomConnectorStartSync } from "@connectors/connectors/intercom/temporal/activities";
 import type {
   PageObjectProperties,
   ParsedNotionBlock,
