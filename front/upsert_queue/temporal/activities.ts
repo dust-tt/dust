@@ -10,10 +10,14 @@ import {
   runPostUpsertHooks,
 } from "@app/lib/upsert_document";
 import mainLogger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/withlogging";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
-export async function upsertDocumentActivity(upsertQueueId: string) {
+export async function upsertDocumentActivity(
+  upsertQueueId: string,
+  enqueueTimestamp: number
+) {
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }
@@ -22,7 +26,12 @@ export async function upsertDocumentActivity(upsertQueueId: string) {
   }
 
   let logger = mainLogger.child({ upsertQueueId });
-  logger.info({}, "[UpsertQueue] Retrieving item");
+  logger.info(
+    {
+      delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+    },
+    "[UpsertQueue] Retrieving item"
+  );
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
@@ -76,13 +85,27 @@ export async function upsertDocumentActivity(upsertQueueId: string) {
     logger.error(
       {
         error: upsertRes.error,
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
       },
       "[UpsertQueue] Failed upsert"
     );
+    statsDClient.increment("upsert_queue.enqueue.error", 1, []);
+
     throw new Error(`Upsert error: ${upsertRes.error}`);
   }
 
-  logger.info({}, "[UpsertQueue] Successful upsert");
+  logger.info(
+    {
+      delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+    },
+    "[UpsertQueue] Successful upsert"
+  );
+  statsDClient.increment("upsert_queue.enqueue.success", 1, []);
+  statsDClient.distribution(
+    "upsert_queue.duration.distribution",
+    Date.now() - enqueueTimestamp,
+    []
+  );
 
   await runPostUpsertHooks({
     workspaceId: upsertQueueItem.workspaceId,

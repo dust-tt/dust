@@ -8,6 +8,7 @@ import type {
 import {
   Err,
   FrontDataSourceDocumentSection,
+  Ok,
   sectionFullText,
   UpsertContextSchema,
 } from "@dust-tt/types";
@@ -18,6 +19,8 @@ import { v4 as uuidv4 } from "uuid";
 import { getDocumentsPostUpsertHooksToRun } from "@app/documents_post_process_hooks/hooks";
 import { launchRunPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
 import { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/withlogging";
 import { launchUpsertDocumentWorkflow } from "@app/upsert_queue/temporal/client";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -46,19 +49,43 @@ export async function enqueueUpsertDocument({
     throw new Error("SERVICE_ACCOUNT is not set");
   }
 
-  const uuid = uuidv4();
+  const upsertQueueId = uuidv4();
+  const now = Date.now();
+
+  logger.info(
+    {
+      upsertQueueId,
+      workspaceId: upsertDocument.workspaceId,
+      dataSourceName: upsertDocument.dataSourceName,
+      documentId: upsertDocument.documentId,
+      enqueueTimestamp: now,
+    },
+    "[UpsertQueue] Enqueueing item"
+  );
+
   try {
     const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
     const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
-    await bucket.file(`${uuid}.json`).save(JSON.stringify(upsertDocument), {
-      contentType: "application/json",
-    });
+    await bucket
+      .file(`${upsertQueueId}.json`)
+      .save(JSON.stringify(upsertDocument), {
+        contentType: "application/json",
+      });
 
-    return await launchUpsertDocumentWorkflow({
+    const launchRes = await launchUpsertDocumentWorkflow({
       workspaceId: upsertDocument.workspaceId,
       dataSourceName: upsertDocument.dataSourceName,
-      upsertQueueId: uuid,
+      upsertQueueId,
+      enqueueTimestamp: now,
     });
+
+    if (launchRes.isErr()) {
+      return launchRes;
+    }
+
+    statsDClient.increment("upsert_queue.enqueue.count", 1, []);
+
+    return new Ok(upsertQueueId);
   } catch (e) {
     if (e instanceof Error) {
       return new Err(e);
