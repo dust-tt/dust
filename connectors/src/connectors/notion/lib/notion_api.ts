@@ -1,4 +1,8 @@
-import { assertNever, cacheWithRedis } from "@dust-tt/types";
+import {
+  assertNever,
+  cacheWithRedis,
+  getSanitizedHeaders,
+} from "@dust-tt/types";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
@@ -29,7 +33,6 @@ import type {
 } from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
-import { getSanitizedHeaders } from "@connectors/lib/structured_data/helpers";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });

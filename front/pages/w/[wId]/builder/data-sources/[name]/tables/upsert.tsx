@@ -7,9 +7,15 @@ import {
   Page,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { DataSourceType, Result, WorkspaceType } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  Result,
+  SubscriptionType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { Err, getSanitizedHeaders, isSlugified, Ok } from "@dust-tt/types";
+import { parse } from "csv-parse/sync";
+import { stringify } from "csv-stringify/sync";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -134,8 +140,7 @@ export default function TableUpsert({
   }, [dataSource.name, loadTableId, owner.sId, table, tableId]);
 
   // Not empty, only alphanumeric, and not too long
-  const isNameValid = (name: string) =>
-    name !== "" && /^[a-zA-Z0-9_-]{1,32}$/.test(name);
+  const isNameValid = (name: string) => name.trim() !== "" && isSlugified(name);
 
   const redirectToDataSourcePage = () => {
     void router.push(
@@ -180,7 +185,34 @@ export default function TableUpsert({
           }
 
           const { content } = res.value;
-          return new Ok(content);
+          try {
+            const records = parse(content, {
+              columns: (c) => {
+                return getSanitizedHeaders(c);
+              },
+              delimiter: [";", ",", "\t"],
+            });
+
+            const stringifiedContent = stringify(records, { header: true });
+
+            return new Ok(stringifiedContent);
+          } catch (err) {
+            if (err instanceof Error) {
+              sendNotification({
+                type: "error",
+                title: "Error uploading file",
+                description: `Invalid headers: ${err.message}.`,
+              });
+              return new Err(null);
+            }
+
+            sendNotification({
+              type: "error",
+              title: "Error uploading file",
+              description: `An error occured: ${err}.`,
+            });
+            return new Err(null);
+          }
         }
 
         return new Ok(null);

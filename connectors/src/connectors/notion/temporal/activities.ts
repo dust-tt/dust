@@ -3,7 +3,7 @@ import type {
   ModelId,
   NotionGarbageCollectionMode,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, makeStructuredDataTableName } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -66,7 +66,6 @@ import {
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
-import { makeStructuredDataTableName } from "@connectors/lib/structured_data/helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import mainLogger from "@connectors/logger/logger";
