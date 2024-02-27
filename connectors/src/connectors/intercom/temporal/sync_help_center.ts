@@ -252,11 +252,6 @@ export async function upsertArticle({
     },
   });
 
-  const shouldUpsertDatasource =
-    articleOnDb &&
-    articleOnDb.lastUpsertedTs &&
-    articleOnDb.lastUpsertedTs < new Date(article.updated_at * 1000);
-
   // Article url is working only if the help center has activated the website feature
   // Otherwise they generate an url that is not working
   // So as a workaround we use the url of the article in the intercom app
@@ -288,7 +283,6 @@ export async function upsertArticle({
       parentType: article.parent_type === "collection" ? "collection" : null,
       parents: parentCollectionIds,
       state: article.state === "published" ? "published" : "draft",
-      lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
     articleOnDb = await IntercomArticle.create({
@@ -303,13 +297,7 @@ export async function upsertArticle({
       parents: parentCollectionIds,
       state: article.state === "published" ? "published" : "draft",
       permission: "read",
-      lastUpsertedTs: new Date(currentSyncMs),
     });
-  }
-
-  if (!shouldUpsertDatasource) {
-    // Article is already up to date, we don't need to update the datasource
-    return;
   }
 
   const categoryContent =
@@ -372,5 +360,13 @@ export async function upsertArticle({
         sync_type: "batch",
       },
     });
+    await articleOnDb.update({
+      lastUpsertedTs: new Date(currentSyncMs),
+    });
+  } else {
+    logger.error(
+      { ...loggerArgs, connectorId, articleId: article.id },
+      "[Intercom] Article has no content. Skipping sync."
+    );
   }
 }
