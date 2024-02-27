@@ -11,10 +11,12 @@ export async function launchUpsertDocumentWorkflow({
   workspaceId,
   dataSourceName,
   upsertQueueId,
+  enqueueTimestamp,
 }: {
   workspaceId: string;
   dataSourceName: string;
   upsertQueueId: string;
+  enqueueTimestamp: number;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
@@ -22,7 +24,7 @@ export async function launchUpsertDocumentWorkflow({
 
   try {
     await client.workflow.start(upsertDocumentWorkflow, {
-      args: [upsertQueueId],
+      args: [upsertQueueId, enqueueTimestamp],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       memo: {

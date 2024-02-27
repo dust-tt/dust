@@ -6,6 +6,9 @@ const { upsertDocumentActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
-export async function upsertDocumentWorkflow(upsertQueueId: string) {
-  await upsertDocumentActivity(upsertQueueId);
+export async function upsertDocumentWorkflow(
+  upsertQueueId: string,
+  enqueueTimestamp: number
+) {
+  await upsertDocumentActivity(upsertQueueId, enqueueTimestamp);
 }
