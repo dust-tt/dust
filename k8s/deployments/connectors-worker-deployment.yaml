@@ -26,7 +26,7 @@ spec:
               "--workers",
               "confluence",
               "github",
-              " google_drive",
+              "google_drive",
               "intercom",
               "slack",
               "webcrawler",
