@@ -151,6 +151,7 @@ import {
   Openai as OpenaiLogo,
   OpenaiWhite as OpenaiWhiteLogo,
   Replicate as ReplicateLogo,
+  Salesforce as SalesforceLogo,
   Slack as SlackLogo,
 } from "./logo/platforms";
 
@@ -176,6 +177,7 @@ export {
   OpenaiLogo,
   OpenaiWhiteLogo,
   ReplicateLogo,
+  SalesforceLogo,
   SlackLogo,
 };
 

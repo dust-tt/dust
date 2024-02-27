@@ -19,4 +19,5 @@ export { default as Notion } from "./Notion";
 export { default as Openai } from "./Openai";
 export { default as OpenaiWhite } from "./OpenaiWhite";
 export { default as Replicate } from "./Replicate";
+export { default as Salesforce } from "./Salesforce";
 export { default as Slack } from "./Slack";
