@@ -19,19 +19,15 @@ import type {
   AgentConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
-  ModelConfig,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import type { SupportedModel } from "@dust-tt/types";
+import type { SupportedModel, TimeframeUnit } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import {
   assertNever,
-  CLAUDE_DEFAULT_MODEL_CONFIG,
-  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
@@ -67,9 +63,13 @@ import {
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import { tableKey } from "@app/lib/client/tables_query";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+
+import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -115,21 +115,21 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   },
 };
 
-const CREATIVITY_LEVELS = [
+export const CREATIVITY_LEVELS = [
   { label: "Deterministic", value: 0 },
   { label: "Factual", value: 0.2 },
   { label: "Balanced", value: 0.7 },
   { label: "Creative", value: 1 },
 ];
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
-const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
+export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   openai: OpenaiLogo,
   anthropic: AnthropicLogo,
   mistral: MistralLogo,
   google_vertex_ai: GoogleLogo,
 };
 
-const getCreativityLevelFromTemperature = (temperature: number) => {
+export const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
     Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
       ? curr
@@ -583,197 +583,6 @@ export default function AssistantBuilder({
   );
 }
 
-function InstructionScreen({
-  owner,
-  plan,
-  builderState,
-  setBuilderState,
-  setEdited,
-}: {
-  owner: WorkspaceType;
-  plan: PlanType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    statefn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-}) {
-  return (
-    <div className="flex h-full max-h-[800px] w-full flex-col gap-4">
-      <div className="flex">
-        <div className="flex flex-col gap-2">
-          <Page.Header title="Instructions" />
-          <Page.P>
-            <span className="text-sm text-element-700">
-              Command or guideline you provide to your assistant to direct its
-              responses.
-            </span>
-          </Page.P>
-        </div>
-        <div className="flex-grow" />
-        <div className="self-end">
-          <AdvancedSettings
-            owner={owner}
-            plan={plan}
-            generationSettings={builderState.generationSettings}
-            setGenerationSettings={(generationSettings) => {
-              setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                generationSettings,
-              }));
-            }}
-          />
-        </div>
-      </div>
-      <AssistantBuilderTextArea
-        placeholder="I want you to act as…"
-        value={builderState.instructions}
-        onChange={(value) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            instructions: value,
-          }));
-        }}
-        error={null}
-        name="assistantInstructions"
-      />
-    </div>
-  );
-}
-
-function AdvancedSettings({
-  owner,
-  plan,
-  generationSettings,
-  setGenerationSettings,
-}: {
-  owner: WorkspaceType;
-  plan: PlanType;
-  generationSettings: AssistantBuilderState["generationSettings"];
-  setGenerationSettings: (
-    generationSettingsSettings: AssistantBuilderState["generationSettings"]
-  ) => void;
-}) {
-  const usedModelConfigs: ModelConfig[] = [
-    GPT_4_TURBO_MODEL_CONFIG,
-    GPT_3_5_TURBO_MODEL_CONFIG,
-    CLAUDE_DEFAULT_MODEL_CONFIG,
-    CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-    MISTRAL_LARGE_MODEL_CONFIG,
-    MISTRAL_MEDIUM_MODEL_CONFIG,
-    MISTRAL_SMALL_MODEL_CONFIG,
-    GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  ];
-  if (owner.flags.includes("mistral_next")) {
-    usedModelConfigs.push(MISTRAL_NEXT_MODEL_CONFIG);
-  }
-
-  const supportedModelConfig = getSupportedModelConfig(
-    generationSettings.modelSettings
-  );
-  if (!supportedModelConfig) {
-    // unreachable
-    alert("Unsupported model");
-  }
-  return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
-        <Button
-          label="Advanced settings"
-          variant="tertiary"
-          size="sm"
-          type="select"
-        />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items width={300} overflow="visible">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-row items-center gap-2">
-            <div className="grow text-sm text-element-900">
-              Model selection:
-            </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    getSupportedModelConfig(generationSettings.modelSettings)
-                      .displayName
-                  }
-                  variant="tertiary"
-                  hasMagnifying={false}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight" width={250}>
-                <div className="z-[120]">
-                  {usedModelConfigs
-                    .filter((m) => !(m.largeModel && !isUpgraded(plan)))
-                    .map((modelConfig) => (
-                      <DropdownMenu.Item
-                        key={modelConfig.modelId}
-                        icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                        description={modelConfig.shortDescription}
-                        label={modelConfig.displayName}
-                        onClick={() => {
-                          setGenerationSettings({
-                            ...generationSettings,
-                            modelSettings: {
-                              modelId: modelConfig.modelId,
-                              providerId: modelConfig.providerId,
-                              // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                            } as SupportedModel,
-                          });
-                        }}
-                      />
-                    ))}
-                </div>
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
-          <div className="flex flex-row items-center gap-2">
-            <div className="grow text-sm text-element-900">
-              Creativity level:
-            </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
-                    ).label
-                  }
-                  variant="tertiary"
-                  hasMagnifying={false}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight">
-                {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenu.Item
-                    key={label}
-                    label={label}
-                    onClick={() => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        temperature: value,
-                      });
-                    }}
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
-        </div>
-      </DropdownMenu.Items>
-    </DropdownMenu>
-  );
-}
-
 function PrevNextButtons({
   screen,
   setScreen,
@@ -1067,6 +876,16 @@ function AssistantBuilderTextArea({
       }}
     />
   );
+}
+
+function ActionModeSection({
+  children,
+  show,
+}: {
+  children: ReactNode;
+  show: boolean;
+}) {
+  return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 
 function removeLeadingAt(handle: string) {
