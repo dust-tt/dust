@@ -900,13 +900,6 @@ export async function getGlobalAgents(
 
   let agentsIdsToFetch = Object.values(agentIds ?? GLOBAL_AGENTS_SID);
 
-  // Intercom flag.
-  if (!owner.flags.includes("intercom_connection")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (agentId) => agentId !== GLOBAL_AGENTS_SID.INTERCOM
-    );
-  }
-
   // Mistral-next flag.
   if (!owner.flags.includes("mistral_next")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

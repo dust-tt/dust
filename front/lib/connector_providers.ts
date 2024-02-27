@@ -90,8 +90,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   intercom: {
     name: "Intercom",
     connectorProvider: "intercom",
-    status: "rolling_out",
-    rollingOutFlag: "intercom_connection",
+    status: "built",
     hide: false,
     description:
       "Authorize granular access to your Intercom workspace. Access your Conversations at the Team level and Help Center Articles at the main Collection level.",
