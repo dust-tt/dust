@@ -2,7 +2,7 @@ import * as t from "io-ts";
 
 import { CoreAPIDataSourceDocumentSection } from "../../../core/data_source";
 
-const UpsertContextSchema = t.type({
+export const UpsertContextSchema = t.type({
   sync_type: t.union([
     t.literal("batch"),
     t.literal("incremental"),

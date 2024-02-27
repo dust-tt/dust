@@ -14,17 +14,14 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getDocumentsPostDeleteHooksToRun,
-  getDocumentsPostUpsertHooksToRun,
-} from "@app/documents_post_process_hooks/hooks";
-import {
-  launchRunPostDeleteHooksWorkflow,
-  launchRunPostUpsertHooksWorkflow,
-} from "@app/documents_post_process_hooks/temporal/client";
+import { getDocumentsPostDeleteHooksToRun } from "@app/documents_post_process_hooks/hooks";
+import { launchRunPostDeleteHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { enqueueUpsertDocument } from "@app/lib/upsert_document";
+import {
+  enqueueUpsertDocument,
+  runPostUpsertHooks,
+} from "@app/lib/upsert_document";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -244,14 +241,15 @@ async function handler(
       if (bodyValidation.right.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
-            projectId: dataSource.dustAPIProjectId,
             workspaceId: owner.sId,
             dataSourceName: dataSource.name,
             documentId: req.query.documentId as string,
             tags: bodyValidation.right.tags || [],
             parents: bodyValidation.right.parents || [],
+            timestamp: bodyValidation.right.timestamp || null,
             sourceUrl,
             section,
+            upsertContext: bodyValidation.right.upsert_context || null,
           },
         });
         if (enqueueRes.isErr()) {
@@ -274,65 +272,52 @@ async function handler(
             document_id: req.query.documentId as string,
           },
         });
-      }
-      // Dust managed credentials: all data sources.
-      const credentials = dustManagedCredentials();
+      } else {
+        // Dust managed credentials: all data sources.
+        const credentials = dustManagedCredentials();
 
-      // Create document with the Dust internal API.
-      const upsertRes = await coreAPI.upsertDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
-        documentId: req.query.documentId as string,
-        tags: bodyValidation.right.tags || [],
-        parents: bodyValidation.right.parents || [],
-        sourceUrl,
-        timestamp: bodyValidation.right.timestamp || null,
-        section,
-        credentials,
-        lightDocumentOutput:
-          bodyValidation.right.light_document_output === true,
-      });
-
-      if (upsertRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "There was an error upserting the document.",
-            data_source_error: upsertRes.error,
-          },
+        // Create document with the Dust internal API.
+        const upsertRes = await coreAPI.upsertDataSourceDocument({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceName: dataSource.name,
+          documentId: req.query.documentId as string,
+          tags: bodyValidation.right.tags || [],
+          parents: bodyValidation.right.parents || [],
+          sourceUrl,
+          timestamp: bodyValidation.right.timestamp || null,
+          section,
+          credentials,
+          lightDocumentOutput:
+            bodyValidation.right.light_document_output === true,
         });
+
+        if (upsertRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "There was an error upserting the document.",
+              data_source_error: upsertRes.error,
+            },
+          });
+        }
+
+        res.status(200).json({
+          document: upsertRes.value.document,
+          data_source: dataSource,
+        });
+
+        await runPostUpsertHooks({
+          workspaceId: owner.sId,
+          dataSource,
+          documentId: req.query.documentId as string,
+          section,
+          document: upsertRes.value.document,
+          sourceUrl,
+          upsertContext: bodyValidation.right.upsert_context || undefined,
+        });
+        return;
       }
-
-      res.status(200).json({
-        document: upsertRes.value.document,
-        data_source: dataSource,
-      });
-
-      const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
-        auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
-        dataSourceName: dataSource.name,
-        documentId: req.query.documentId as string,
-        documentText: fullText,
-        documentHash: upsertRes.value.document.hash,
-        dataSourceConnectorProvider: dataSource.connectorProvider || null,
-        documentSourceUrl: sourceUrl || undefined,
-        upsertContext: bodyValidation.right.upsert_context || undefined,
-      });
-
-      // TODO: parallel.
-      for (const { type: hookType, debounceMs } of postUpsertHooksToRun) {
-        await launchRunPostUpsertHooksWorkflow(
-          dataSource.name,
-          owner.sId,
-          req.query.documentId as string,
-          upsertRes.value.document.hash,
-          dataSource.connectorProvider || null,
-          hookType,
-          debounceMs
-        );
-      }
-      return;
 
     case "DELETE":
       if (!auth.isBuilder()) {
