@@ -21,8 +21,15 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
+  const { auth } = await Authenticator.fromKey(
+    keyRes.value,
+    req.query.wId as string
+  );
+
+  const owner = auth.workspace();
+  const plan = auth.plan();
   const isSystemKey = keyRes.value.isSystem;
-  if (!isSystemKey) {
+  if (!owner || !plan || !auth.isBuilder() || !isSystemKey) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -31,11 +38,6 @@ async function handler(
       },
     });
   }
-
-  const { auth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
 
   switch (req.method) {
     case "POST":
