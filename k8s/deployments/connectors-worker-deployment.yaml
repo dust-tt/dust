@@ -24,7 +24,12 @@ spec:
             [
               "--",
               "--workers",
-              "confluence github google_drive intercom slack webcrawler",
+              "confluence",
+              "github",
+              "google_drive",
+              "intercom",
+              "slack",
+              "webcrawler",
             ]
           imagePullPolicy: Always
           envFrom:
