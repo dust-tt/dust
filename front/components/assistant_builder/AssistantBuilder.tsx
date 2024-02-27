@@ -23,10 +23,6 @@ import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
-  MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_MEDIUM_MODEL_CONFIG,
-  MISTRAL_NEXT_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
