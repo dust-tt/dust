@@ -203,7 +203,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               upsertContext: {
                 sync_type: "batch",
               },
-              async: false,
+              async: true,
             });
           } else {
             logger.info(

@@ -253,9 +253,7 @@ export async function githubUpsertIssueActivity(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
-    async: false,
-    retries: 3,
-    delayBetweenRetriesMs: 500,
+    async: true,
   });
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
@@ -448,9 +446,7 @@ export async function githubUpsertDiscussionActivity(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
-    async: false,
-    retries: 3,
-    delayBetweenRetriesMs: 500,
+    async: true,
   });
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
@@ -1048,9 +1044,7 @@ export async function githubCodeSyncActivity({
             upsertContext: {
               sync_type: isBatchSync ? "batch" : "incremental",
             },
-            async: false,
-            retries: 3,
-            delayBetweenRetriesMs: 1000,
+            async: true,
           });
 
           // Finally update the file.
