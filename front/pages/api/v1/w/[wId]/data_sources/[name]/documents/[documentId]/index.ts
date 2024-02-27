@@ -24,6 +24,7 @@ import {
 } from "@app/documents_post_process_hooks/temporal/client";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { enqueueUpsertDocument } from "@app/lib/upsert_document";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -46,7 +47,7 @@ export type DeleteDocumentResponseBody = {
 };
 export type UpsertDocumentResponseBody = {
   // depending on `light_document_output` in the request body
-  document: DocumentType | CoreAPILightDocument;
+  document: DocumentType | CoreAPILightDocument | { document_id: string };
   data_source: DataSourceType;
 };
 
@@ -240,6 +241,40 @@ async function handler(
         });
       }
 
+      if (bodyValidation.right.async === true) {
+        const enqueueRes = await enqueueUpsertDocument({
+          upsertDocument: {
+            projectId: dataSource.dustAPIProjectId,
+            workspaceId: owner.sId,
+            dataSourceName: dataSource.name,
+            documentId: req.query.documentId as string,
+            tags: bodyValidation.right.tags || [],
+            parents: bodyValidation.right.parents || [],
+            sourceUrl,
+            section,
+          },
+        });
+        if (enqueueRes.isErr()) {
+          return apiError(
+            req,
+            res,
+            {
+              status_code: 500,
+              api_error: {
+                type: "data_source_error",
+                message:
+                  "There was an error enqueueing the the document for asynchronous upsert.",
+              },
+            },
+            enqueueRes.error
+          );
+        }
+        return res.status(200).json({
+          document: {
+            document_id: req.query.documentId as string,
+          },
+        });
+      }
       // Dust managed credentials: all data sources.
       const credentials = dustManagedCredentials();
 

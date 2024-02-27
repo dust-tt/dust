@@ -32,6 +32,7 @@ export const PostDataSourceDocumentRequestBodySchema = t.type({
   text: t.union([t.string, t.undefined, t.null]),
   section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
   light_document_output: t.union([t.boolean, t.undefined]),
+  async: t.union([t.boolean, t.undefined, t.null]),
 });
 
 export type PostDataSourceDocumentRequestBody = t.TypeOf<
