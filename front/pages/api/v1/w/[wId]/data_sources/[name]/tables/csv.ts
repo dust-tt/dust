@@ -21,6 +21,17 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
+  const isSystemKey = keyRes.value.isSystem;
+  if (!isSystemKey) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    });
+  }
+
   const { auth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
