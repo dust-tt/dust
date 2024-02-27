@@ -241,7 +241,7 @@ async function handler(
         });
       }
 
-      if (bodyValidation.right.sync === false) {
+      if (bodyValidation.right.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             projectId: dataSource.dustAPIProjectId,
@@ -261,8 +261,9 @@ async function handler(
             {
               status_code: 500,
               api_error: {
-                type: "internal_server_error",
-                message: "There was an error enqueuing the document.",
+                type: "data_source_error",
+                message:
+                  "There was an error enqueueing the the document for asynchronous upsert.",
               },
             },
             enqueueRes.error

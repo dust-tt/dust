@@ -161,7 +161,7 @@ export default function DatasourceUpsert({
       tags: tags.filter((tag) => tag),
       light_document_output: true,
       upsert_context: null,
-      sync: true,
+      async: false,
     };
 
     const res = await fetch(
