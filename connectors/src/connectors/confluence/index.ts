@@ -76,6 +76,13 @@ export async function createConfluenceConnector(
 
   const { id: cloudId, url: cloudUrl } = confluenceCloudInformation;
   try {
+    // const connector = await ConnectorResource.makeNew("confluence", {
+    //   connectionId: nangoConnectionId,
+    //   workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+    //   workspaceId: dataSourceConfig.workspaceId,
+    //   dataSourceName: dataSourceConfig.dataSourceName,
+    // });
+
     const connector = await sequelizeConnection.transaction(
       async (transaction) => {
         const connector = await ConnectorModel.create(

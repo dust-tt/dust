@@ -1,13 +1,21 @@
 import type { ConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  WhereOptions,
+} from "sequelize";
 
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type {
+  AttributesType,
+  ReadonlyAttributesType,
+} from "@connectors/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -29,6 +37,23 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     const { type } = blob;
 
     this.providerStrategy = getConnectorProviderStrategy(type);
+  }
+
+  static async makeNew(
+    type: ConnectorProvider,
+    blob: Omit<CreationAttributes<ConnectorModel>, "type">
+  ) {
+    return sequelizeConnection.transaction(async (transaction) => {
+      const connector = await ConnectorModel.create(
+        {
+          ...blob,
+          type,
+        },
+        { transaction }
+      );
+
+      return new this(ConnectorModel, connector);
+    });
   }
 
   static async listByType(
