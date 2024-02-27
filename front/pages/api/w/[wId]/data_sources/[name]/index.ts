@@ -1,5 +1,4 @@
 import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -9,7 +8,6 @@ import {
 } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetOrPostDataSourceResponseBody = {
