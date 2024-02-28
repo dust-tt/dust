@@ -96,10 +96,11 @@ type GetDatasetsResponse = {
   datasets: { [key: string]: CoreAPIDatasetVersion[] };
 };
 
-export type CoreAPITableSchema = Record<
-  string,
-  "int" | "float" | "text" | "bool" | "datetime"
->;
+export type CoreAPITableSchema = {
+  name: string;
+  value_type: "int" | "float" | "text" | "bool" | "datetime";
+  possible_values: string[] | null;
+}[];
 
 export type CoreAPITable = {
   created: number;
@@ -107,7 +108,7 @@ export type CoreAPITable = {
   data_source_id: string;
   name: string;
   description: string;
-  schema: CoreAPITableSchema;
+  schema: CoreAPITableSchema | null;
 };
 
 export type CoreAPIRow = {

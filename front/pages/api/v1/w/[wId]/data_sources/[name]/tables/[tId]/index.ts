@@ -1,4 +1,4 @@
-import type { CoreAPITable, WithAPIErrorReponse } from "@dust-tt/types";
+import type { CoreAPITableSchema, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -9,7 +9,12 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { handleDeleteTableByIdRequest } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
 
 export type GetTableResponseBody = {
-  table: CoreAPITable;
+  table: {
+    name: string;
+    table_id: string;
+    description: string;
+    schema: CoreAPITableSchema | null;
+  };
 };
 
 async function handler(
@@ -101,7 +106,14 @@ async function handler(
 
       const { table } = tableRes.value;
 
-      return res.status(200).json({ table });
+      return res.status(200).json({
+        table: {
+          name: table.name,
+          table_id: table.table_id,
+          description: table.description,
+          schema: table.schema,
+        },
+      });
 
     case "DELETE":
       return handleDeleteTableByIdRequest(req, res, {

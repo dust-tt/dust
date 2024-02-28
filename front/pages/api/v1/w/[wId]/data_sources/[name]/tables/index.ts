@@ -1,4 +1,4 @@
-import type { CoreAPITable, WithAPIErrorReponse } from "@dust-tt/types";
+import type { CoreAPITableSchema, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -12,7 +12,12 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type ListTablesResponseBody = {
-  tables: CoreAPITable[];
+  tables: {
+    name: string;
+    table_id: string;
+    description: string;
+    schema: CoreAPITableSchema | null;
+  }[];
 };
 
 const UpsertDatabaseTableRequestBodySchema = t.type({
@@ -22,7 +27,12 @@ const UpsertDatabaseTableRequestBodySchema = t.type({
 });
 
 type UpsertTableResponseBody = {
-  table: CoreAPITable;
+  table: {
+    name: string;
+    table_id: string;
+    description: string;
+    schema: CoreAPITableSchema | null;
+  };
 };
 
 async function handler(
@@ -107,7 +117,16 @@ async function handler(
 
       const { tables } = tablesRes.value;
 
-      return res.status(200).json({ tables });
+      return res.status(200).json({
+        tables: tables.map((table) => {
+          return {
+            name: table.name,
+            table_id: table.table_id,
+            description: table.description,
+            schema: table.schema,
+          };
+        }),
+      });
 
     case "POST":
       const bodyValidation = UpsertDatabaseTableRequestBodySchema.decode(
@@ -199,7 +218,14 @@ async function handler(
 
       const { table } = upsertRes.value;
 
-      return res.status(200).json({ table });
+      return res.status(200).json({
+        table: {
+          name: table.name,
+          table_id: table.table_id,
+          description: table.description,
+          schema: table.schema,
+        },
+      });
 
     default:
       return apiError(req, res, {
