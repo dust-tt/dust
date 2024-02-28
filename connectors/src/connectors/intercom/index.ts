@@ -48,7 +48,6 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
