@@ -11,19 +11,26 @@ async function enableFeatureFlag(
 ) {
   const { id: workspaceId, name } = workspace;
 
-  if (execute) {
-    try {
-      await FeatureFlag.create({
-        workspaceId,
-        name: featureFlag as WhitelistableFeature,
-      });
-    } catch (err) {
-      console.log(
-        `Workspace ${name}(${workspaceId}) already has ${featureFlag} enabled -- Skipping.`
-      );
+  const existingFlag = await FeatureFlag.findOne({
+    where: {
+      workspaceId,
+      name: featureFlag,
+    },
+  });
+  if (existingFlag) {
+    console.log(
+      `Workspace ${name}(${workspaceId}) already has ${featureFlag} enabled -- Skipping.`
+    );
+    return;
+  }
 
-      return;
-    }
+  if (execute) {
+    await FeatureFlag.create({
+      workspaceId,
+      name: featureFlag as WhitelistableFeature,
+    });
+
+    return;
   }
 
   console.log(
