@@ -1,5 +1,5 @@
 import type { CoreAPIRow, WithAPIErrorReponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { CoreAPI, isSlugified } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -172,8 +172,10 @@ async function handler(
       let { rows: rowsToUpsert } = bodyValidation.right;
 
       // Make sure every key in the rows are lowercase
-      const allKeys = rowsToUpsert.map((row) => Object.keys(row.value)).flat();
-      if (!allKeys.every((key) => /^[a-z0-9_]+$/.test(key))) {
+      const allKeys = new Set(
+        rowsToUpsert.map((row) => Object.keys(row.value)).flat()
+      );
+      if (!Array.from(allKeys).every(isSlugified)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
