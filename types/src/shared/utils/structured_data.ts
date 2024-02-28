@@ -1,7 +1,9 @@
 import { slugify } from "./string_utils";
 
 export function makeStructuredDataTableName(name: string, tableId: string) {
-  return slugify(`${name}_${tableId.slice(-12)}`);
+  const tableIdPrefix = tableId.substring(0, 4);
+  const tableIdSuffix = tableId.slice(-4);
+  return slugify(`${name}_${tableIdPrefix}_${tableIdSuffix}`);
 }
 
 export function getSanitizedHeaders(rawHeaders: string[]) {
