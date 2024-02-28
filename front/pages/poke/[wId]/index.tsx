@@ -553,7 +553,7 @@ const WorkspacePage = ({
               </div>
             </div>
 
-            <div className="flex flex-col space-y-2 pt-4">
+            <div className="flex flex-col space-y-8 pt-4">
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}

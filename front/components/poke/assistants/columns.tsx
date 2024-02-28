@@ -1,23 +1,24 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type {
-  AgentConfigurationType,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import type { KeyedMutator } from "swr";
 
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 type AgentConfigurationDisplayType = {
-  sId: string;
-  scope: string;
+  // TODO(2024-02-28 flav) Add description preview.
+  // description: string;
   name: string;
+  scope: string;
+  sId: string;
   status: string;
-  // createdAt: Date;
+  versionCreatedAt: string;
 };
 
 export function makeColumnsForAssistants(
@@ -72,6 +73,15 @@ export function makeColumnsForAssistants(
     {
       accessorKey: "status",
       header: "Status",
+    },
+    {
+      accessorKey: "versionCreatedAt",
+      header: "Created at",
+      cell: ({ row }) => {
+        const createdAt: string = row.getValue("versionCreatedAt");
+
+        return formatTimestampToFriendlyDate(new Date(createdAt).getTime());
+      },
     },
     {
       id: "actions",
