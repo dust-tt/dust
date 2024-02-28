@@ -32,7 +32,7 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
   });
 
   return (
-    <div className="flex flex-col">
+    <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
       <h2 className="text-md mb-4 font-bold">Assistants:</h2>
       <DataTable
         columns={makeColumnsForAssistants(
