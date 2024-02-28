@@ -41,6 +41,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import { debounce } from "@app/lib/utils/debounce";
 
 export const CREATIVITY_LEVELS = [
   { label: "Deterministic", value: 0 },
@@ -305,19 +306,6 @@ const STATIC_SUGGESTIONS = {
     "I want you to act as the king of the cats, Soupinou.",
   ],
 };
-
-const SUGGESTION_DEBOUNCE_DELAY = 1500;
-
-export function debounce(
-  debounceHandle: React.MutableRefObject<NodeJS.Timeout | undefined>,
-  func: () => void
-) {
-  if (debounceHandle.current) {
-    clearTimeout(debounceHandle.current);
-    debounceHandle.current = undefined;
-  }
-  debounceHandle.current = setTimeout(func, SUGGESTION_DEBOUNCE_DELAY);
-}
 
 function Suggestions({
   owner,

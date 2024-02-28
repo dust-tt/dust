@@ -15,13 +15,13 @@ import { Err, Ok } from "@dust-tt/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
-import { debounce } from "@app/components/assistant_builder/InstructionScreen";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { debounce } from "@app/lib/utils/debounce";
 
 export default function NamingScreen({
   owner,
