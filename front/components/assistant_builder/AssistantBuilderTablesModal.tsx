@@ -7,7 +7,11 @@ import {
   Searchbar,
   ServerIcon,
 } from "@dust-tt/sparkle";
-import type { CoreAPITable, DataSourceType } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  CoreAPITable,
+  DataSourceType,
+} from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
@@ -19,6 +23,8 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useTables } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
+
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
 
 export default function AssistantBuilderTablesModal({
   isOpen,
@@ -35,6 +41,17 @@ export default function AssistantBuilderTablesModal({
   dataSources: DataSourceType[];
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
 }) {
+  const supportedDataSources = useMemo(
+    () =>
+      dataSources.filter(
+        (ds) =>
+          // If there is no connectorProvider, it's a folder.
+          ds.connectorProvider === null ||
+          STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider)
+      ),
+    [dataSources]
+  );
+
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
 
@@ -42,21 +59,23 @@ export default function AssistantBuilderTablesModal({
     useState<AssistantBuilderTableConfiguration | null>(null);
 
   const onClose = () => {
-    if (selectedDataSource !== null) {
+    setOpen(false);
+    setTimeout(() => {
       setSelectedDataSource(null);
-    } else {
-      setOpen(false);
-      setTimeout(() => {
-        setSelectedDataSource(null);
-        setSelectedTable(null);
-      }, 200);
-    }
+      setSelectedTable(null);
+    }, 200);
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (selectedDataSource !== null) {
+          setSelectedDataSource(null);
+        } else {
+          onClose();
+        }
+      }}
       onSave={() => {
         if (selectedTable) {
           onSave(selectedTable);
@@ -69,7 +88,7 @@ export default function AssistantBuilderTablesModal({
       <div className="w-full pt-12">
         {!selectedDataSource ? (
           <PickDataSource
-            dataSources={dataSources}
+            dataSources={supportedDataSources}
             onPick={(ds: DataSourceType) => {
               setSelectedDataSource(ds);
             }}
