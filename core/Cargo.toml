@@ -15,6 +15,11 @@ path = "bin/qdrant_migrator.rs"
 name = "sqlite-worker"
 path = "bin/sqlite_worker.rs"
 
+[[bin]]
+name = "repro-memory-fragmentation"
+path = "bin/repro_memory_fragmentation.rs"
+
+
 [dependencies]
 anyhow = "1.0"
 serde = { version = "1.0", features = ["rc", "derive"] }
@@ -65,3 +70,4 @@ chrono = "0.4.31"
 yup-oauth2 = "8.3.0"
 datadog-formatting-layer = "1.1"
 thiserror = "1.0.57"
+jemallocator = "0.3.2"
