@@ -51,19 +51,21 @@ export async function intercomSyncWorkflow({
 
   const uniqueHelpCenterIds = new Set<string>();
   const uniqueTeamIds = new Set<string>();
+  const signaledHelpCenters: IntercomUpdateSignal[] = [];
 
   // If we get a signal, update the workflow state by adding help center ids.
   // We send a signal when permissions are updated by the admin.
   setHandler(
     intercomUpdatesSignal,
     (intercomUpdates: IntercomUpdateSignal[]) => {
-      for (const { type, intercomId } of intercomUpdates) {
-        if (type === "help_center") {
-          uniqueHelpCenterIds.add(intercomId);
-        } else if (type === "team") {
-          uniqueTeamIds.add(intercomId);
+      intercomUpdates.forEach((signal) => {
+        if (signal.type === "help_center") {
+          uniqueHelpCenterIds.add(signal.intercomId);
+          signaledHelpCenters.push(signal);
+        } else if (signal.type === "team") {
+          uniqueTeamIds.add(signal.intercomId);
         }
-      }
+      });
     }
   );
 
@@ -91,6 +93,11 @@ export async function intercomSyncWorkflow({
       if (!uniqueHelpCenterIds.has(helpCenterId)) {
         continue;
       }
+
+      const relatedSignal = signaledHelpCenters.find((signaledHelpCenter) => {
+        return signaledHelpCenter.intercomId === helpCenterId;
+      });
+
       // Async operation yielding control to the Temporal runtime.
       await executeChild(intercomHelpCenterSyncWorklow, {
         workflowId: `${workflowId}-help-center-${helpCenterId}`,
@@ -100,6 +107,7 @@ export async function intercomSyncWorkflow({
             connectorId,
             helpCenterId,
             currentSyncMs,
+            forceResync: relatedSignal?.forceResync || false,
           },
         ],
         memo,
@@ -152,10 +160,12 @@ export async function intercomHelpCenterSyncWorklow({
   connectorId,
   helpCenterId,
   currentSyncMs,
+  forceResync,
 }: {
   connectorId: ModelId;
   helpCenterId: string;
   currentSyncMs: number;
+  forceResync: boolean;
 }) {
   const hasPermission = await syncHelpCenterOnlyActivity({
     connectorId,
@@ -191,6 +201,7 @@ export async function intercomHelpCenterSyncWorklow({
       helpCenterId,
       page,
       currentSyncMs,
+      forceResync,
     });
     page = nextPage;
   } while (page);

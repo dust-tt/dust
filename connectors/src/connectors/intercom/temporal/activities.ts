@@ -324,11 +324,13 @@ export async function syncArticleBatchActivity({
   helpCenterId,
   page,
   currentSyncMs,
+  forceResync,
 }: {
   connectorId: ModelId;
   helpCenterId: string;
   page: number;
   currentSyncMs: number;
+  forceResync: boolean;
 }): Promise<{ nextPage: number | null }> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -401,6 +403,7 @@ export async function syncArticleBatchActivity({
           region: intercomWorkspace.region,
           isHelpCenterWebsiteTurnedOn: helpCenter.websiteTurnedOn,
           currentSyncMs,
+          forceResync,
           dataSourceConfig,
           loggerArgs,
         });

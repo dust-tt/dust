@@ -11,12 +11,19 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export async function launchIntercomSyncWorkflow(
-  connectorId: ModelId,
-  fromTs: number | null,
-  helpCenterIds: string[] = [],
-  teamIds: string[] = []
-): Promise<Result<string, Error>> {
+export async function launchIntercomSyncWorkflow({
+  connectorId,
+  fromTs = null,
+  helpCenterIds = [],
+  teamIds = [],
+  forceResync = false,
+}: {
+  connectorId: ModelId;
+  fromTs?: number | null;
+  helpCenterIds?: string[];
+  teamIds?: string[];
+  forceResync?: boolean;
+}): Promise<Result<string, Error>> {
   if (fromTs) {
     throw new Error("[Intercom] Workflow does not support fromTs.");
   }
@@ -34,11 +41,13 @@ export async function launchIntercomSyncWorkflow(
     (helpCenterId) => ({
       type: "help_center",
       intercomId: helpCenterId,
+      forceResync,
     })
   );
   const signaledTeamIds: IntercomUpdateSignal[] = teamIds.map((teamId) => ({
     type: "team",
     intercomId: teamId,
+    forceResync,
   }));
   const signals = [...signaledHelpCenterIds, ...signaledTeamIds];
 

@@ -232,6 +232,7 @@ export async function upsertArticle({
   parentCollection,
   isHelpCenterWebsiteTurnedOn,
   currentSyncMs,
+  forceResync,
   dataSourceConfig,
   loggerArgs,
 }: {
@@ -242,6 +243,7 @@ export async function upsertArticle({
   parentCollection: IntercomCollection;
   isHelpCenterWebsiteTurnedOn: boolean;
   currentSyncMs: number;
+  forceResync: boolean;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number>;
 }) {
@@ -251,6 +253,14 @@ export async function upsertArticle({
       articleId: article.id,
     },
   });
+
+  const articleUpdatedAtDate = new Date(article.updated_at * 1000);
+
+  const shouldUpsertDatasource =
+    forceResync ||
+    !articleOnDb ||
+    !articleOnDb.lastUpsertedTs ||
+    articleOnDb.lastUpsertedTs < articleUpdatedAtDate;
 
   // Article url is working only if the help center has activated the website feature
   // Otherwise they generate an url that is not working
@@ -298,6 +308,32 @@ export async function upsertArticle({
       state: article.state === "published" ? "published" : "draft",
       permission: "read",
     });
+  }
+
+  if (!shouldUpsertDatasource) {
+    // Article is already up to date, we don't need to update the datasource
+    logger.info(
+      {
+        ...loggerArgs,
+        connectorId,
+        articleId: article.id,
+        articleUpdatedAt: articleUpdatedAtDate,
+        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+      },
+      "[Intercom] Article already up to date. Skipping sync."
+    );
+    return;
+  } else {
+    logger.info(
+      {
+        ...loggerArgs,
+        connectorId,
+        articleId: article.id,
+        articleUpdatedAt: articleUpdatedAtDate,
+        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+      },
+      "[Intercom] Article to sync."
+    );
   }
 
   const categoryContent =

@@ -93,10 +93,9 @@ export async function createIntercomConnector(
       region: intercomWorkspace.region,
     });
 
-    const workflowStarted = await launchIntercomSyncWorkflow(
-      connector.id,
-      null
-    );
+    const workflowStarted = await launchIntercomSyncWorkflow({
+      connectorId: connector.id,
+    });
     if (workflowStarted.isErr()) {
       await connector.destroy();
       await intercomWorkpace.destroy();
@@ -299,7 +298,9 @@ export async function resumeIntercomConnector(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   try {
-    await launchIntercomSyncWorkflow(connector.id, null);
+    await launchIntercomSyncWorkflow({
+      connectorId,
+    });
   } catch (e) {
     logger.error(
       {
@@ -339,12 +340,12 @@ export async function fullResyncIntercomSyncWorkflow(
   const toBeSignaledHelpCenterIds = helpCentersIds.map((hc) => hc.helpCenterId);
   const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
 
-  const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow(
+  const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow({
     connectorId,
-    null,
-    toBeSignaledHelpCenterIds,
-    toBeSignaledTeamIds
-  );
+    helpCenterIds: toBeSignaledHelpCenterIds,
+    teamIds: toBeSignaledTeamIds,
+    forceResync: true,
+  });
   if (sendSignalToWorkflowResult.isErr()) {
     return new Err(sendSignalToWorkflowResult.error);
   }
@@ -489,12 +490,11 @@ export async function setIntercomConnectorPermissions(
     }
 
     if (toBeSignaledHelpCenterIds.size > 0 || toBeSignaledTeamIds.size > 0) {
-      const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow(
+      const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow({
         connectorId,
-        null,
-        [...toBeSignaledHelpCenterIds],
-        [...toBeSignaledTeamIds]
-      );
+        helpCenterIds: [...toBeSignaledHelpCenterIds],
+        teamIds: [...toBeSignaledTeamIds],
+      });
       if (sendSignalToWorkflowResult.isErr()) {
         return new Err(sendSignalToWorkflowResult.error);
       }
