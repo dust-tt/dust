@@ -172,9 +172,10 @@ impl TableSchema {
                         Some(_) => TableSchemaFieldType::DateTime,
                         None => Err(anyhow!(
                             "Field {} is not a primitive or datetime object type on row {} \
-                            (non datetime object and arrays are not supported)",
+                            (non datetime object and arrays are not supported): {:?}",
                             k,
                             row_index,
+                            v
                         ))?,
                     },
                     Value::Array(_) => Err(anyhow!(
