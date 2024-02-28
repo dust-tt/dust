@@ -34,7 +34,10 @@ import { SharingButton } from "@app/components/assistant/Sharing";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
-import NamingScreen from "@app/components/assistant_builder/NamingScreen";
+import NamingScreen, {
+  removeLeadingAt,
+  validateHandle,
+} from "@app/components/assistant_builder/NamingScreen";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -270,40 +273,6 @@ export default function AssistantBuilder({
     slackChannelsInitialized,
   ]);
 
-  const assistantHandleIsValid = useCallback((handle: string) => {
-    return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
-  }, []);
-
-  const assistantHandleIsAvailable = useCallback(
-    (handle: string) => {
-      if (checkUsernameTimeout.current) {
-        clearTimeout(checkUsernameTimeout.current);
-      }
-      // No check needed if the assistant doesn't change name
-      if (handle === initialBuilderState?.handle) return Promise.resolve(true);
-      return new Promise((resolve, reject) => {
-        checkUsernameTimeout.current = setTimeout(async () => {
-          checkUsernameTimeout.current = null;
-          const res = await fetch(
-            `/api/w/${
-              owner.sId
-            }/assistant/agent_configurations/name_available?handle=${encodeURIComponent(
-              handle
-            )}`
-          );
-          if (!res.ok) {
-            return reject(
-              new Error("An error occurred while checking the handle.")
-            );
-          }
-          const { available } = await res.json();
-          return resolve(available);
-        }, 500);
-      });
-    },
-    [owner.sId, initialBuilderState?.handle]
-  );
-
   const configuredDataSourceCount = Object.keys(
     builderState.dataSourceConfigurations
   ).length;
@@ -311,24 +280,14 @@ export default function AssistantBuilder({
   const formValidation = useCallback(async () => {
     let valid = true;
 
-    if (!builderState.handle || builderState.handle === "@") {
-      setAssistantHandleError(null);
-      valid = false;
-    } else {
-      if (!assistantHandleIsValid(builderState.handle)) {
-        if (builderState.handle.length > 30) {
-          setAssistantHandleError("The name must be 30 characters or less");
-        } else {
-          setAssistantHandleError("Only letters, numbers, _ and - allowed");
-        }
-        valid = false;
-      } else if (!(await assistantHandleIsAvailable(builderState.handle))) {
-        setAssistantHandleError("\u26a0 This handle is already taken");
-        valid = false;
-      } else {
-        setAssistantHandleError(null);
-      }
-    }
+    const { handleValid, handleErrorMessage } = await validateHandle({
+      owner,
+      handle: builderState.handle,
+      initialHandle: initialBuilderState?.handle,
+      checkUsernameTimeout,
+    });
+    valid = handleValid;
+    setAssistantHandleError(handleErrorMessage);
 
     // description
     if (!builderState.description?.trim()) {
@@ -378,8 +337,8 @@ export default function AssistantBuilder({
     builderState.timeFrame.value,
     builderState.dustAppConfiguration,
     builderState.tablesQueryConfiguration,
-    assistantHandleIsAvailable,
-    assistantHandleIsValid,
+    owner,
+    initialBuilderState?.handle,
   ]);
 
   useEffect(() => {
@@ -524,6 +483,7 @@ export default function AssistantBuilder({
                   <NamingScreen
                     owner={owner}
                     builderState={builderState}
+                    initialHandle={initialBuilderState?.handle}
                     setBuilderState={setBuilderState}
                     setEdited={setEdited}
                     assistantHandleError={assistantHandleError}
@@ -800,8 +760,4 @@ function TryModalInBuilder({
       </div>
     </>
   );
-}
-
-function removeLeadingAt(handle: string) {
-  return handle.startsWith("@") ? handle.slice(1) : handle;
 }
