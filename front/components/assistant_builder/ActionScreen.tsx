@@ -4,6 +4,7 @@ import {
   CommandLineIcon,
   ContentMessage,
   DropdownMenu,
+  Hoverable,
   MagnifyingGlassIcon,
   Page,
   Square3Stack3DIcon,
@@ -552,17 +553,18 @@ export default function ActionScreen({
           <div className="text-sm text-element-700">
             The assistant will generate a SQL query from your request, execute
             it on the tables selected and use the results to generate an answer.
-          </div>
-
-          <div>
             Learn more about this feature in the{" "}
-            <a
-              className="font-bold text-action-500"
-              href="https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d"
-              target="_blank"
+            <Hoverable
+              onClick={() => {
+                window.open(
+                  "https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d",
+                  "_blank"
+                );
+              }}
+              className="cursor-pointer font-bold text-action-500"
             >
               documentation
-            </a>
+            </Hoverable>
             .
           </div>
 
