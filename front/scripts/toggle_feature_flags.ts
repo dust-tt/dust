@@ -29,8 +29,6 @@ async function enableFeatureFlag(
       workspaceId,
       name: featureFlag as WhitelistableFeature,
     });
-
-    return;
   }
 
   console.log(
