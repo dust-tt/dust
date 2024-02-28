@@ -1,5 +1,5 @@
 import { classifyWorkspace } from "@app/admin/tools/message_classification";
-import { makeScript } from "@app/migrations/helpers";
+import { makeScript } from "@app/scripts/helpers";
 
 makeScript(
   {
