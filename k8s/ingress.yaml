@@ -43,17 +43,6 @@ spec:
                 port:
                   number: 80
 
-    - host: connectors-edge.dust.tt
-      http:
-        paths:
-          - pathType: Prefix
-            path: "/"
-            backend:
-              service:
-                name: connectors-edge-service
-                port:
-                  number: 80
-
     - host: docs.dust.tt
       http:
         paths:
