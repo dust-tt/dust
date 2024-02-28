@@ -18,7 +18,7 @@ type AgentConfigurationDisplayType = {
   scope: string;
   sId: string;
   status: string;
-  versionCreatedAt: string;
+  versionCreatedAt: string | null;
 };
 
 export function makeColumnsForAssistants(
@@ -78,7 +78,11 @@ export function makeColumnsForAssistants(
       accessorKey: "versionCreatedAt",
       header: "Created at",
       cell: ({ row }) => {
-        const createdAt: string = row.getValue("versionCreatedAt");
+        const createdAt: string | null = row.getValue("versionCreatedAt");
+
+        if (!createdAt) {
+          return;
+        }
 
         return formatTimestampToFriendlyDate(new Date(createdAt).getTime());
       },
