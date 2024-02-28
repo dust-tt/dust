@@ -2,10 +2,15 @@ import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
+import { Dust } from "@sparkle/icons/solid";
+
 import {
   CloudArrowDownIcon,
   IconButton,
+  IntercomLogo,
+  NotionLogo,
   PlusCircleIcon,
+  SlackLogo,
   Tree,
 } from "../index_with_tw_base";
 
@@ -183,6 +188,61 @@ export const TreeExample = () => {
               label="item 5"
               type="item"
               variant="channel"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+          </Tree>
+        </div>
+      </div>
+      <div className="s-flex s-flex-col s-gap-3">
+        <div className="s-text-xl">With custom visual</div>
+        <div>
+          <Tree>
+            <Tree.Item
+              label="Intercom"
+              type="item"
+              visual={<IntercomLogo className="s-h-5 s-w-5" />}
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="Notion"
+              type="item"
+              visual={<NotionLogo className="s-h-5 s-w-5" />}
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="Slack"
+              type="item"
+              visual={<SlackLogo className="s-h-5 s-w-5" />}
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="Dust"
+              type="item"
+              visual={<Dust color="pink" className="s-h-5 s-w-5" />}
               checkbox={{
                 variant: "checkable",
                 checked: false,

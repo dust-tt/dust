@@ -5,7 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   DocumentText,
-  FolderOpen,
+  Folder,
   Square3Stack3D,
 } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
@@ -34,7 +34,7 @@ export function Tree({ children, isLoading }: TreeProps) {
 
 const visualTable = {
   file: DocumentText,
-  folder: FolderOpen,
+  folder: Folder,
   database: Square3Stack3D,
   channel: ChatBubbleBottomCenterText,
 };
@@ -43,6 +43,7 @@ export interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
   variant?: "file" | "folder" | "database" | "channel";
+  visual?: React.ReactNode;
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
   collapsed?: boolean;
@@ -56,6 +57,7 @@ Tree.Item = function ({
   type = "node",
   className = "",
   variant = "file",
+  visual,
   checkbox,
   onChevronClick,
   collapsed,
@@ -83,11 +85,16 @@ Tree.Item = function ({
 
         <div className="s-flex s-w-full s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
           <div className="s-grid s-w-full s-grid-cols-[auto,1fr,auto] s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
-            <Icon
-              visual={visualTable[variant]}
-              size="sm"
-              className="s-flex-shrink-0 s-text-element-700"
-            />
+            {visual ? (
+              visual
+            ) : (
+              <Icon
+                visual={visualTable[variant]}
+                size="sm"
+                className="s-flex-shrink-0 s-text-element-700"
+              />
+            )}
+
             <div className="s-truncate">{label}</div>
             {actions && <div className="s-inline-block s-pl-5">{actions}</div>}
           </div>
