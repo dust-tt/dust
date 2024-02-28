@@ -49,11 +49,6 @@ type UpsertTableRowsResponseBody = {
   };
 };
 
-const ListTableRowsReqQuerySchema = t.type({
-  offset: t.number,
-  limit: t.number,
-});
-
 type ListTableRowsResponseBody = {
   rows: CoreAPIRow[];
   offset: number;
@@ -121,18 +116,10 @@ async function handler(
   const coreAPI = new CoreAPI(logger);
   switch (req.method) {
     case "GET":
-      const queryValidation = ListTableRowsReqQuerySchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request query: ${pathError}`,
-          },
-          status_code: 400,
-        });
-      }
-      const { offset, limit } = queryValidation.right;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const offset = req.query.offset
+        ? parseInt(req.query.offset as string)
+        : 0;
 
       const listRes = await coreAPI.getTableRows({
         projectId: dataSource.dustAPIProjectId,
