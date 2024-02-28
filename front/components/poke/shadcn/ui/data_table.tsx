@@ -1,4 +1,4 @@
-import { Button, Input } from "@dust-tt/sparkle";
+import { Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   ColumnFiltersState,
