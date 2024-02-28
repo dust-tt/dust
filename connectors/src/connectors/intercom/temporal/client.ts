@@ -41,18 +41,20 @@ export async function launchIntercomSyncWorkflow({
     (helpCenterId) => ({
       type: "help_center",
       intercomId: helpCenterId,
+      forceResync,
     })
   );
   const signaledTeamIds: IntercomUpdateSignal[] = teamIds.map((teamId) => ({
     type: "team",
     intercomId: teamId,
+    forceResync,
   }));
   const signals = [...signaledHelpCenterIds, ...signaledTeamIds];
 
   // When the workflow is inactive, we omit passing helpCenterIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(intercomSyncWorkflow, {
-      args: [{ connectorId: connector.id, forceResync }],
+      args: [{ connectorId: connector.id }],
       taskQueue: QUEUE_NAME,
       workflowId,
       searchAttributes: {
