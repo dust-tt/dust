@@ -181,15 +181,15 @@ The Table model represents a Data Source Table.
 
 ---
 
-## Create Rows {{ tag: 'POST', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows' }}
+## Upsert Rows {{ tag: 'POST', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows' }}
 
 <Row>
   <Col>
 
-    This endpoint enables you to add and update rows to an existing Table. Rows are JSON objects
+    This endpoint enables you to add or update rows to an existing Table. Rows are JSON objects
     associating keys to values. The keys and value types (string, number, boolean, datetime) must
     match the Table's schema. New tables don't have a schema and will infer it from the first rows
-    being inserted.
+    inserted.
 
     ### URL attributes
 
@@ -198,10 +198,10 @@ The Table model represents a Data Source Table.
         The ID of your workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the Data Source you want to add a Table to.
+        The name of the Data Source of the Table you want to upsert Rows to.
       </Property>
       <Property name="table_id" type="string">
-        The ID of the Table you want to retrieve.
+        The ID of the Table you want to upsert Rows to.
       </Property>
     </Properties>
 
@@ -301,10 +301,10 @@ The Table model represents a Data Source Table.
         The ID of your workspace (can be found in the Data Source's URL)
       </Property>
       <Property name="data_source_name" type="string">
-        The name of the Data Source you want to add a Table to.
+        The name of the Data Source of the Table.
       </Property>
       <Property name="table_id" type="string">
-        The ID of the Table you want to retrieve.
+        The ID of the Table you want list Rows from.
       </Property>
     </Properties>
 
@@ -332,6 +332,73 @@ The Table model represents a Data Source Table.
     ```
 
     </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "rows": [
+        {
+          "row_id": "1",
+          "value": { "name": "John", "conversations": 129, "paying": true }
+        }, {
+          "row_id": "2",
+          "value": { "name": "Mark", "conversations": 3, "paying": false }
+        }, {
+          "row_id":"3",
+          "value": { "name": "Sally", "conversations": 456, "paying": true }
+        }
+      ],
+      "offset": 0,
+      "limit": 10,
+      "total": 3
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Delete Rows {{ tag: 'DELETE', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows/:row_id' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to delete a particular row from a table.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of your workspace (can be found in the Data Source's URL)
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the Data Source of the Table you want to delete a Row from.
+      </Property>
+      <Property name="table_id" type="string">
+        The ID of the Table from which you want to delete a Row.
+      </Property>
+      <Property name="row_id" type="string">
+        The ID of the Row you want to delete.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="DELETE" label="/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows/:row_id">
+
+    ```bash {{ title: 'cURL' }}
+    curl -XDELETE "https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/tables/015001320f/rows/1" \
+      -H "Authorization: Bearer sk-..."
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "sucess": true
+    }
+    ```
 
   </Col>
 </Row>
