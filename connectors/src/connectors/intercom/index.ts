@@ -601,6 +601,142 @@ export async function retrieveIntercomNodesTitles(
   return new Ok(titles);
 }
 
+export async function retrieveIntercomNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const helpCenterIds: string[] = [];
+  const collectionIds: string[] = [];
+  const articleIds: string[] = [];
+  const teamIds: string[] = [];
+
+  internalIds.forEach((internalId) => {
+    let objectId = getHelpCenterIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      helpCenterIds.push(objectId);
+      return;
+    }
+    objectId = getHelpCenterCollectionIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      collectionIds.push(objectId);
+      return;
+    }
+    objectId = getHelpCenterArticleIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      articleIds.push(objectId);
+      return;
+    }
+    objectId = getTeamIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      teamIds.push(objectId);
+    }
+  });
+
+  const [helpCenters, collections, articles, teams] = await Promise.all([
+    IntercomHelpCenter.findAll({
+      where: {
+        connectorId: connectorId,
+        helpCenterId: { [Op.in]: helpCenterIds },
+      },
+    }),
+    IntercomCollection.findAll({
+      where: {
+        connectorId: connectorId,
+        collectionId: { [Op.in]: collectionIds },
+      },
+    }),
+    IntercomArticle.findAll({
+      where: {
+        connectorId: connectorId,
+        articleId: { [Op.in]: articleIds },
+      },
+    }),
+    IntercomTeam.findAll({
+      where: {
+        connectorId: connectorId,
+        teamId: { [Op.in]: teamIds },
+      },
+    }),
+  ]);
+
+  const nodes: ConnectorNode[] = [];
+  for (const helpCenter of helpCenters) {
+    const helpCenterInternalId = getHelpCenterInternalId(
+      connectorId,
+      helpCenter.helpCenterId
+    );
+    nodes.push({
+      provider: "intercom",
+      internalId: helpCenterInternalId,
+      parentInternalId: null,
+      type: "database",
+      title: helpCenter.name,
+      sourceUrl: null,
+      expandable: true,
+      permission: helpCenter.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  }
+  for (const collection of collections) {
+    const collectionInternalId = getHelpCenterCollectionInternalId(
+      connectorId,
+      collection.collectionId
+    );
+    nodes.push({
+      provider: "intercom",
+      internalId: collectionInternalId,
+      parentInternalId: collection.parentId
+        ? getHelpCenterCollectionInternalId(connectorId, collection.parentId)
+        : null,
+      type: "folder",
+      title: collection.name,
+      sourceUrl: collection.url,
+      expandable: true,
+      permission: collection.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
+    });
+  }
+  for (const article of articles) {
+    const articleInternalId = getHelpCenterArticleInternalId(
+      connectorId,
+      article.articleId
+    );
+    nodes.push({
+      provider: "intercom",
+      internalId: articleInternalId,
+      parentInternalId: article.parentId
+        ? getHelpCenterCollectionInternalId(connectorId, article.parentId)
+        : null,
+      type: "file",
+      title: article.title,
+      sourceUrl: article.url,
+      expandable: false,
+      permission: article.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
+    });
+  }
+  for (const team of teams) {
+    const teamInternalId = getTeamInternalId(connectorId, team.teamId);
+    nodes.push({
+      provider: "intercom",
+      internalId: teamInternalId,
+      parentInternalId: null,
+      type: "channel",
+      title: team.name,
+      sourceUrl: null,
+      expandable: false,
+      permission: team.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  }
+
+  return new Ok(nodes);
+}
+
 export async function retrieveIntercomObjectsParents(
   connectorId: ModelId,
   internalId: string
