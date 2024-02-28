@@ -7,14 +7,13 @@ use axum::{
 use dust::utils::APIResponse;
 use hyper::http::StatusCode;
 
+use jemallocator::Jemalloc;
 use serde_json::{json, Value};
 use tokio::signal::unix::{signal, SignalKind};
 use tracing::{error, info};
 
-// Uncomment the following 3 lines to use jemalloc
-// use jemallocator::Jemalloc;
-// #[global_allocator]
-// static GLOBAL: Jemalloc = Jemalloc;
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 #[derive(serde::Deserialize)]
 struct BigJsonArrayPayload {
