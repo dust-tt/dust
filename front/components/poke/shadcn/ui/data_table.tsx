@@ -1,4 +1,4 @@
-import { Input } from "@dust-tt/sparkle";
+import { Button, Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -8,11 +8,13 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
 
+import { DataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
 import {
   Table,
   TableBody,
@@ -40,6 +42,7 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: setSorting,
     state: {
@@ -108,6 +111,7 @@ export function DataTable<TData, TValue>({
             )}
           </TableBody>
         </Table>
+        <DataTablePagination table={table} />
       </div>
       <div className="text-muted-foreground flex-1 text-sm">
         Total of {table.getFilteredRowModel().rows.length} row(s).
