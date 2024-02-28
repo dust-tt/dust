@@ -1,7 +1,10 @@
 import { slugify } from "./string_utils";
 
-export function makeStructuredDataTableName(name: string, tableId: string) {
-  return slugify(`${name}_${tableId.slice(-12)}`);
+export function makeStructuredDataTableName(name: string, externalId: string) {
+  const lowercasedExternalId = externalId.toLowerCase();
+  const externalIdPrefix = lowercasedExternalId.substring(0, 4);
+  const externalIdSuffix = lowercasedExternalId.slice(-4);
+  return slugify(`${name}_${externalIdPrefix}_${externalIdSuffix}`);
 }
 
 export function getSanitizedHeaders(rawHeaders: string[]) {
