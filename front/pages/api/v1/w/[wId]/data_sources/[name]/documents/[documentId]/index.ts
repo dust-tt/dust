@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/types";
 import {
   PostDataSourceDocumentRequestBodySchema,
+  rateLimiter,
   sectionFullText,
 } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
@@ -125,6 +126,24 @@ async function handler(
             message: "You cannot upsert a document on a managed data source.",
           },
         });
+      }
+
+      if (!keyRes.value.isSystem) {
+        const remaining = await rateLimiter({
+          key: `upsert-document-w-${owner.sId}`,
+          maxPerTimeframe: 120,
+          timeframeSeconds: 60,
+          logger,
+        });
+        if (remaining <= 0) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: `You have reached the maximum number of 120 upserts per minute.`,
+            },
+          });
+        }
       }
 
       const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(

@@ -15,6 +15,7 @@ path = "bin/qdrant_migrator.rs"
 name = "sqlite-worker"
 path = "bin/sqlite_worker.rs"
 
+
 [dependencies]
 anyhow = "1.0"
 serde = { version = "1.0", features = ["rc", "derive"] }

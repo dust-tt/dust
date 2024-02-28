@@ -1946,12 +1946,11 @@ export async function renderAndUpsertPageFromCache({
       }),
 
       parents,
-      retries: 3,
-      delayBetweenRetriesMs: 5000,
       loggerArgs,
       upsertContext: {
         sync_type: isFullSync ? "batch" : "incremental",
       },
+      async: true,
     });
   }
 
@@ -2393,7 +2392,10 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   const tableId = `notion-${database.notionDatabaseId}`;
   const name =
     database.title ?? `Untitled Database (${database.notionDatabaseId})`;
-  const tableName = makeStructuredDataTableName(name, tableId);
+  const tableName = makeStructuredDataTableName(
+    name,
+    database.notionDatabaseId
+  );
 
   const tableDescription = `Structured data from Notion Database ${tableName}`;
   return { tableId, tableName, tableDescription };

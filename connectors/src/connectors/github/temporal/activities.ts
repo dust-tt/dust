@@ -249,12 +249,11 @@ export async function githubUpsertIssueActivity(
     // The repo id from github is globally unique so used as-is, as per
     // convention to use the external id string.
     parents: [documentId, `${repoId}-issues`, repoId.toString()],
-    retries: 3,
-    delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    async: true,
   });
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
@@ -443,12 +442,11 @@ export async function githubUpsertDiscussionActivity(
     // The repo id from github is globally unique so used as-is, as per
     // convention to use the external id string.
     parents: [documentId, `${repoId}-discussions`, repoId.toString()],
-    retries: 3,
-    delayBetweenRetriesMs: 500,
     loggerArgs: { ...loggerArgs, provider: "github" },
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    async: true,
   });
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
@@ -1042,12 +1040,11 @@ export async function githubCodeSyncActivity({
             timestampMs: codeSyncStartedAt.getTime(),
             tags,
             parents: [...f.parents, rootInternalId, repoId.toString()],
-            retries: 3,
-            delayBetweenRetriesMs: 1000,
             loggerArgs: { ...loggerArgs, provider: "github" },
             upsertContext: {
               sync_type: isBatchSync ? "batch" : "incremental",
             },
+            async: true,
           });
 
           // Finally update the file.

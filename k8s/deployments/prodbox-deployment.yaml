@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prodbox-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prodbox
+  template:
+    metadata:
+      labels:
+        app: prodbox
+        name: prodbox-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "prodbox","service": "prodbox","tags": ["env:prod"]}]'
+    spec:
+      terminationGracePeriodSeconds: 180
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/prodbox-image:latest
+          command: ["/bin/sh", "-c", "tail -f /dev/null"]
+          imagePullPolicy: Always
+
+          envFrom:
+            - configMapRef:
+                name: prodbox-config
+            - secretRef:
+                name: core-secrets
+            - secretRef:
+                name: connectors-secrets
+            - secretRef:
+                name: front-secrets
+
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            limits:
+              cpu: 1000m
+              memory: 1Gi

@@ -472,6 +472,7 @@ export async function syncNonThreaded(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    async: true,
   });
 }
 
@@ -619,6 +620,7 @@ export async function syncThread(
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
+    async: true,
   });
 }
 

@@ -149,6 +149,50 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-builder-instructions-suggestions": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "d995d868a8",
+      appHash:
+        "174d83511a51ba35dd57e840a2189a75474695e87b75902c9d04955367804446",
+    },
+    config: {
+      INSTRUCTIONS_FINISHED: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo",
+        function_call: "send_instructions_finished",
+        use_cache: true,
+      },
+      CREATE_SUGGESTIONS: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        function_call: "send_suggestions",
+        use_cache: true,
+      },
+    },
+  },
+  "assistant-builder-name-suggestions": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "34a8c4a2aa",
+      appHash:
+        "bbe701de9cbb4bc3e8670405326eead911dd4bc372de0611779af3aaad44902b",
+    },
+    config: {
+      IS_FINISHED: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo",
+        function_call: "send_creation_finished",
+        use_cache: true,
+      },
+      CREATE_SUGGESTIONS: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        function_call: "send_suggestions",
+        use_cache: true,
+      },
+    },
+  },
 });
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;

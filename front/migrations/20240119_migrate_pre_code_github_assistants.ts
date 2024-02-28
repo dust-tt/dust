@@ -10,7 +10,7 @@ import {
   DataSource,
 } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import { makeScript } from "@app/migrations/helpers";
+import { makeScript } from "@app/scripts/helpers";
 
 makeScript(
   {

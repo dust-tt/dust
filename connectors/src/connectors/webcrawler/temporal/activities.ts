@@ -203,6 +203,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               upsertContext: {
                 sync_type: "batch",
               },
+              async: true,
             });
           } else {
             logger.info(
@@ -240,6 +241,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           "webcrawler failedRequestHandler"
         );
         crawlingError++;
+      },
+      errorHandler: () => {
+        // Errors are already logged by the crawler, so we are not re-logging them here.
+        Context.current().heartbeat({
+          type: "error_handler",
+        });
       },
     },
     new Configuration({
