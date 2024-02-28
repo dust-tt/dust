@@ -8,7 +8,6 @@ import {
 import type {
   AgentConfigurationType,
   DataSourceType,
-  LightAgentConfigurationType,
   WhitelistableFeature,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
