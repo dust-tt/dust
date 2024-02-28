@@ -46,6 +46,9 @@ export { DropdownMenu };
 import { Page } from "./components/Page";
 export { Page };
 
+import { BuilderLayout } from "./components/BuilderLayout";
+export { BuilderLayout };
+
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
 
