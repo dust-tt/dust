@@ -27,12 +27,6 @@ const {
   markFolderAsVisited,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
-  retry: {
-    initialInterval: "10s",
-    backoffCoefficient: 2,
-    maximumAttempts: Infinity,
-    nonRetryableErrorTypes: [],
-  },
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
