@@ -554,6 +554,18 @@ export default function ActionScreen({
             it on the tables selected and use the results to generate an answer.
           </div>
 
+          <div>
+            Learn more about this feature in the{" "}
+            <a
+              className="font-bold text-action-500"
+              href="https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d"
+              target="_blank"
+            >
+              documentation
+            </a>
+            .
+          </div>
+
           <TablesSelectionSection
             show={builderState.actionMode === "TABLES_QUERY"}
             tablesQueryConfiguration={builderState.tablesQueryConfiguration}
