@@ -4,7 +4,7 @@ import { hideBin } from "yargs/helpers";
 
 // Define a type for the argument specification object.
 export type ArgumentSpecs = {
-  [key: string]: Options & { type?: "string" | "boolean" | "number" };
+  [key: string]: Options & { type?: "array" | "string" | "boolean" | "number" };
 };
 
 // Define a type for the worker function.
@@ -18,6 +18,8 @@ type InferArgs<T> = {
     ? boolean
     : T[P] extends { type: "string" }
     ? string
+    : T[P] extends { type: "array" }
+    ? string[]
     : never;
 } & { execute?: boolean };
 
