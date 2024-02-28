@@ -44,8 +44,10 @@ const { saveIntercomConnectorStartSync, saveIntercomConnectorSuccessSync } =
  */
 export async function intercomSyncWorkflow({
   connectorId,
+  forceResync,
 }: {
   connectorId: ModelId;
+  forceResync: boolean;
 }) {
   await saveIntercomConnectorStartSync({ connectorId });
 
@@ -100,6 +102,7 @@ export async function intercomSyncWorkflow({
             connectorId,
             helpCenterId,
             currentSyncMs,
+            forceResync,
           },
         ],
         memo,
@@ -152,10 +155,12 @@ export async function intercomHelpCenterSyncWorklow({
   connectorId,
   helpCenterId,
   currentSyncMs,
+  forceResync,
 }: {
   connectorId: ModelId;
   helpCenterId: string;
   currentSyncMs: number;
+  forceResync: boolean;
 }) {
   const hasPermission = await syncHelpCenterOnlyActivity({
     connectorId,
@@ -191,6 +196,7 @@ export async function intercomHelpCenterSyncWorklow({
       helpCenterId,
       page,
       currentSyncMs,
+      forceResync,
     });
     page = nextPage;
   } while (page);

@@ -15,7 +15,8 @@ export async function launchIntercomSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null,
   helpCenterIds: string[] = [],
-  teamIds: string[] = []
+  teamIds: string[] = [],
+  forceResync = false
 ): Promise<Result<string, Error>> {
   if (fromTs) {
     throw new Error("[Intercom] Workflow does not support fromTs.");
@@ -45,7 +46,7 @@ export async function launchIntercomSyncWorkflow(
   // When the workflow is inactive, we omit passing helpCenterIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(intercomSyncWorkflow, {
-      args: [{ connectorId: connector.id }],
+      args: [{ connectorId: connector.id, forceResync }],
       taskQueue: QUEUE_NAME,
       workflowId,
       searchAttributes: {

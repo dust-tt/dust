@@ -339,17 +339,12 @@ export async function fullResyncIntercomSyncWorkflow(
   const toBeSignaledHelpCenterIds = helpCentersIds.map((hc) => hc.helpCenterId);
   const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
 
-  // We reset the lastUpsertedTs of all Help Center articles to make sure they are resynced
-  await IntercomArticle.update(
-    { lastUpsertedTs: null },
-    { where: { connectorId: connector.id } }
-  );
-
   const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow(
     connectorId,
     null,
     toBeSignaledHelpCenterIds,
-    toBeSignaledTeamIds
+    toBeSignaledTeamIds,
+    true
   );
   if (sendSignalToWorkflowResult.isErr()) {
     return new Err(sendSignalToWorkflowResult.error);

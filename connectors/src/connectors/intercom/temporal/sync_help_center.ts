@@ -232,6 +232,7 @@ export async function upsertArticle({
   parentCollection,
   isHelpCenterWebsiteTurnedOn,
   currentSyncMs,
+  forceResync,
   dataSourceConfig,
   loggerArgs,
 }: {
@@ -242,6 +243,7 @@ export async function upsertArticle({
   parentCollection: IntercomCollection;
   isHelpCenterWebsiteTurnedOn: boolean;
   currentSyncMs: number;
+  forceResync: boolean;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number>;
 }) {
@@ -255,6 +257,7 @@ export async function upsertArticle({
   const articleUpdatedAtDate = new Date(article.updated_at * 1000);
 
   const shouldUpsertDatasource =
+    forceResync ||
     !articleOnDb ||
     !articleOnDb.lastUpsertedTs ||
     articleOnDb.lastUpsertedTs < articleUpdatedAtDate;
