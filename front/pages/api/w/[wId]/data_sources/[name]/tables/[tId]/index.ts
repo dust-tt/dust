@@ -1,5 +1,5 @@
 import type {
-  CoreAPITableSchema,
+  CoreAPITable,
   DataSourceType,
   WithAPIErrorReponse,
   WorkspaceType,
@@ -14,12 +14,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetTableResponseBody = {
-  table: {
-    name: string;
-    table_id: string;
-    description: string;
-    schema: CoreAPITableSchema | null;
-  };
+  table: CoreAPITable;
 };
 
 async function handler(
@@ -122,14 +117,7 @@ async function handler(
 
       const { table } = tableRes.value;
 
-      return res.status(200).json({
-        table: {
-          name: table.name,
-          table_id: table.table_id,
-          description: table.description,
-          schema: table.schema,
-        },
-      });
+      return res.status(200).json({ table });
 
     case "DELETE":
       return handleDeleteTableByIdRequest(req, res, {
