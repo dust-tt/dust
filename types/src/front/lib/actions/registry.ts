@@ -193,6 +193,28 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-builder-description-suggestions": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "aba0057f4c",
+      appHash:
+        "9f927c9386cf4ce85e91e8972b8580a19480805c982754a469511e9f163b08a0",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        function_call: "send_suggestions",
+        use_cache: true,
+      },
+      IS_FINISHED: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo",
+        function_call: "send_instructions_finished",
+        use_cache: true,
+      },
+    },
+  },
 });
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;

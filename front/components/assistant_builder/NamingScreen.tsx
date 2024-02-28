@@ -134,12 +134,12 @@ export default function NamingScreen({
 }) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
+  // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
     useState<BuilderSuggestionsType>({
       status: "unavailable",
       reason: "irrelevant",
     });
-
   const nameDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const checkUsernameTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -157,6 +157,36 @@ export default function NamingScreen({
   useEffect(
     () => debounce(nameDebounceHandle, updateNameSuggestions),
     [updateNameSuggestions, builderState.instructions, builderState.description]
+  );
+
+  // Description suggestions handling
+  const [descriptionSuggestions, setDescriptionSuggestions] =
+    useState<BuilderSuggestionsType>({
+      status: "unavailable",
+      reason: "irrelevant",
+    });
+  const descriptionDebounceHandle = useRef<NodeJS.Timeout | undefined>(
+    undefined
+  );
+
+  const updateDescriptionSuggestions = useCallback(async () => {
+    const descriptionSuggestions = await getDescriptionSuggestions({
+      owner,
+      instructions: builderState.instructions || "",
+      name: builderState.handle || "",
+    });
+    if (descriptionSuggestions.isOk()) {
+      setDescriptionSuggestions(descriptionSuggestions.value);
+    }
+  }, [owner, builderState.instructions, builderState.handle]);
+
+  useEffect(
+    () => debounce(descriptionDebounceHandle, updateDescriptionSuggestions),
+    [
+      updateDescriptionSuggestions,
+      builderState.instructions,
+      builderState.handle,
+    ]
   );
 
   return (
@@ -195,6 +225,7 @@ export default function NamingScreen({
                     Suggestions:
                   </div>
                   {nameSuggestions.suggestions
+		    .slice(0,3)
                     .filter(async () =>
                       validateHandle({
                         owner,
@@ -264,6 +295,34 @@ export default function NamingScreen({
               Describe for others the assistant’s purpose.
             </div>
           </div>
+          {descriptionSuggestions.status === "ok" &&
+            descriptionSuggestions.suggestions.length > 0 &&
+            isDevelopmentOrDustWorkspace(owner) && (
+              <div className="flex items-center gap-2">
+                <div className="text-xs font-semibold text-element-800">
+                  Suggestions:
+                </div>
+                {descriptionSuggestions.suggestions
+                  .slice(0, 2)
+                  .map((suggestion, index) => (
+                    <Button
+                      label={suggestion}
+                      variant="secondary"
+                      key={`description-suggestion-${index}`}
+                      size="xs"
+                      className="!h-auto min-h-7 max-w-[45%] !whitespace-normal"
+                      onClick={() => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          description: suggestion,
+                        }));
+                      }}
+                    />
+                  ))}
+              </div>
+            )}
+
           <div>
             <Input
               placeholder="Answer questions about sales, translate from English to French…"
@@ -303,6 +362,34 @@ async function getNamingSuggestions({
     body: JSON.stringify({
       type: "name",
       inputs: { instructions, description },
+    }),
+  });
+  if (!res.ok) {
+    return new Err({
+      type: "internal_server_error",
+      message: "Failed to get suggestions",
+    });
+  }
+  return new Ok(await res.json());
+}
+
+async function getDescriptionSuggestions({
+  owner,
+  instructions,
+  name,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+  name: string;
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
+  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "description",
+      inputs: { instructions, name },
     }),
   });
   if (!res.ok) {

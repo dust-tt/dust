@@ -54,6 +54,10 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
     type: t.literal("instructions"),
     inputs: t.type({ current_instructions: t.string }),
   }),
+  t.type({
+    type: t.literal("description"),
+    inputs: t.type({ instructions: t.string, name: t.string }),
+  }),
 ]);
 
 export type BuilderSuggestionsRequestType = t.TypeOf<
