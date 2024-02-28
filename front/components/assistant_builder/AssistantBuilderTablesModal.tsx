@@ -42,21 +42,23 @@ export default function AssistantBuilderTablesModal({
     useState<AssistantBuilderTableConfiguration | null>(null);
 
   const onClose = () => {
-    if (selectedDataSource !== null) {
+    setOpen(false);
+    setTimeout(() => {
       setSelectedDataSource(null);
-    } else {
-      setOpen(false);
-      setTimeout(() => {
-        setSelectedDataSource(null);
-        setSelectedTable(null);
-      }, 200);
-    }
+      setSelectedTable(null);
+    }, 200);
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (selectedDataSource !== null) {
+          setSelectedDataSource(null);
+        } else {
+          onClose();
+        }
+      }}
       onSave={() => {
         if (selectedTable) {
           onSave(selectedTable);
