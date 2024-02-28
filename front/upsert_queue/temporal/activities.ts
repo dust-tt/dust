@@ -5,13 +5,13 @@ import * as reporter from "io-ts-reporters";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
+import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import {
   EnqueueUpsertDocument,
   runPostUpsertHooks,
 } from "@app/lib/upsert_document";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-import { WorkflowError } from "@app/lib/temporal_monitoring";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -25,6 +25,12 @@ export async function upsertDocumentActivity(
   if (!SERVICE_ACCOUNT) {
     throw new Error("SERVICE_ACCOUNT is not set");
   }
+
+  statsDClient.distribution(
+    "upsert_queue_dequeue.duration.distribution",
+    Date.now() - enqueueTimestamp,
+    []
+  );
 
   let logger = mainLogger.child({ upsertQueueId });
   logger.info(
@@ -131,15 +137,6 @@ export async function upsertDocumentActivity(
     "upsert_queue.duration.distribution",
     Date.now() - enqueueTimestamp,
     []
-  );
-
-  await bucket.file(`${upsertQueueId}.json`).delete();
-  logger.info(
-    {
-      delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
-      path: `${upsertQueueId}.json`,
-    },
-    "[UpsertQueue] Deleted GCS file"
   );
 
   await runPostUpsertHooks({
