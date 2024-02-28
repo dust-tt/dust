@@ -78,7 +78,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   }
 
   const [dataSources, agentConfigurations, planInvitation] = await Promise.all([
-    getDataSources(auth),
+    getDataSources(auth, { includeEditedBy: true }),
     (async () => {
       return (
         await getAgentConfigurations({

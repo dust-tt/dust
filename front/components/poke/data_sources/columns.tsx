@@ -5,10 +5,14 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+
 export type DataSources = {
   connectorProvider: string | null;
   id: number;
   name: string;
+  editedBy: string | undefined;
+  editedAt: number | undefined;
 };
 
 export function makeColumnsForDataSources(
@@ -61,6 +65,23 @@ export function makeColumnsForDataSources(
     {
       accessorKey: "connectorProvider",
       header: "Provider",
+    },
+    {
+      accessorKey: "editedBy",
+      header: "Last edited by",
+    },
+    {
+      accessorKey: "editedAt",
+      header: "Last edited at",
+      cell: ({ row }) => {
+        const editedAt: number | undefined = row.getValue("editedAt");
+
+        if (!editedAt) {
+          return "";
+        }
+
+        return formatTimestampToFriendlyDate(editedAt);
+      },
     },
     {
       id: "actions",

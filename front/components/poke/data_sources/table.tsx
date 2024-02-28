@@ -14,6 +14,16 @@ interface DataSourceDataTableProps {
   agentConfigurations: AgentConfigurationType[];
 }
 
+function prepareDataSourceForDisplay(dataSources: DataSourceType[]) {
+  return dataSources.map((ds) => {
+    return {
+      ...ds,
+      editedAt: ds.editedByUser?.editedAt ?? undefined,
+      editedBy: ds.editedByUser?.fullName ?? undefined,
+    };
+  });
+}
+
 export function DataSourceDataTable({
   owner,
   dataSources,
@@ -30,7 +40,7 @@ export function DataSourceDataTable({
           agentConfigurations,
           router.reload
         )}
-        data={dataSources}
+        data={prepareDataSourceForDisplay(dataSources)}
       />
     </div>
   );
