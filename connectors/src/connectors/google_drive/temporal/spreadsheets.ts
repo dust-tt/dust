@@ -190,18 +190,20 @@ async function getAllSheetsFromSpreadSheet(
 
   const { title: spreadsheetTitle } = properties;
 
-  logger.info(
-    {
-      ...loggerArgs,
-      spreadsheet: {
-        id: spreadsheet.spreadsheetId,
-      },
-      sheetCount: spreadsheet.sheets?.length,
+  const localLogger = logger.child({
+    ...loggerArgs,
+    spreadsheet: {
+      id: spreadsheet.spreadsheetId,
     },
-    "[Spreadsheet] List sheets in spreadsheet."
-  );
+    sheetCount: spreadsheet.sheets?.length,
+  });
 
-  const sheets: Sheet[] = [];
+  localLogger.info("[Spreadsheet] List sheets in spreadsheet.");
+
+  // Construct the sheet ranges using the sheet name. If we do not provide any
+  // specific A1 notation, the API will capture the maximum range available on
+  // the sheet.
+  const sheetRanges = new Map<string, Sheet>();
   for (const sheet of spreadsheet.sheets ?? []) {
     const { properties } = sheet;
     if (!properties) {
@@ -220,20 +222,54 @@ async function getAllSheetsFromSpreadSheet(
       continue;
     }
 
-    const s = await sheetsAPI.spreadsheets.values.get({
-      range: title,
-      spreadsheetId,
-      valueRenderOption: "FORMATTED_VALUE",
-    });
-
-    sheets.push({
-      ...s.data,
+    sheetRanges.set(title, {
       id: sheetId,
       spreadsheet: {
         id: spreadsheetId,
         title: spreadsheetTitle ?? "Untitled Spreadsheet",
       },
       title,
+    });
+  }
+
+  // Query the API using the previously constructed sheet ranges to fetch
+  // the desired data from each corresponding sheet range.
+  const allSheets = await sheetsAPI.spreadsheets.values.batchGet({
+    ranges: [...sheetRanges.keys()],
+    spreadsheetId,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+
+  const { valueRanges } = allSheets.data;
+  if (!valueRanges) {
+    localLogger.info(
+      "[Spreadsheet] No data ranges found in the spreadsheet, skipping further processing."
+    );
+    return [];
+  }
+
+  const sheets: Sheet[] = [];
+  for (const [sheetName, sheet] of sheetRanges) {
+    // To locate the value range for the current sheet within the batch get response,
+    // we use the sheet name in the format 'Sheet1'!<range>. This notation helps us
+    // match and extract the appropriate range from the response for the current sheet.
+    const valueRangeForSheet = valueRanges.find((s) =>
+      s.range?.startsWith(`'${sheetName}'`)
+    );
+    if (!valueRangeForSheet) {
+      localLogger.info(
+        {
+          sheetId: sheet.id,
+        },
+        "[Spreadsheet] Could not find value range for sheet, skipping further processing."
+      );
+
+      continue;
+    }
+
+    sheets.push({
+      ...valueRangeForSheet,
+      ...sheet,
     });
   }
 
