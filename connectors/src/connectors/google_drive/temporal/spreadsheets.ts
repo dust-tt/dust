@@ -235,7 +235,7 @@ async function getAllSheetsFromSpreadSheet(
   // Query the API using the previously constructed sheet ranges to fetch
   // the desired data from each corresponding sheet range.
   const allSheets = await sheetsAPI.spreadsheets.values.batchGet({
-    ranges: [...sheetRanges.keys()],
+    ranges: [...sheetRanges.keys()].map((k) => `'${k}'`),
     spreadsheetId,
     valueRenderOption: "FORMATTED_VALUE",
   });
