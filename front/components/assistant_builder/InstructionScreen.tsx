@@ -301,9 +301,9 @@ function AssistantBuilderTextArea({
 const STATIC_SUGGESTIONS = {
   status: "ok" as const,
   suggestions: [
-    "I want you to act as the king of the bongo.",
-    "I want you to act as the king of the bongo, Bong.",
-    "I want you to act as the king of the cats, Soupinou.",
+    "Tip: break down your instructions into steps to leverage the model's reasoning capabilities.",
+    "Tip: give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'. This leverages the underlying model's internal knowledge on the expectations of that role.",
+    "Tip: add instructions on the format of the answer you'd like to see: the tone of voice, whether to structure it with bullet points, in code blocks, etc...",
   ],
 };
 
