@@ -1,17 +1,20 @@
-import type { CreationAttributes, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
 
 import {
   SlackChannel,
   SlackConfiguration,
   SlackMessages,
 } from "@connectors/lib/models/slack";
-import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
+import type {
+  ConnectorProviderStrategy,
+  WithCreationAttributes,
+} from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export class SlackConnectorStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: CreationAttributes<SlackConfiguration>,
+    blob: WithCreationAttributes<SlackConfiguration>,
     transaction: Transaction
   ): Promise<void> {
     const { slackTeamId } = blob;

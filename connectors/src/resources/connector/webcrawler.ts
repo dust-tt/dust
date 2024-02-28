@@ -1,17 +1,20 @@
-import type { CreationAttributes, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
 
 import {
   WebCrawlerConfiguration,
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
-import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
+import type {
+  ConnectorProviderStrategy,
+  WithCreationAttributes,
+} from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export class WebCrawlerStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: CreationAttributes<WebCrawlerConfiguration>,
+    blob: WithCreationAttributes<WebCrawlerConfiguration>,
     transaction: Transaction
   ): Promise<void> {
     await WebCrawlerConfiguration.create(

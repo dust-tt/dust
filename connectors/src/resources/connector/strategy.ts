@@ -1,6 +1,6 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import type { CreationAttributes, Transaction } from "sequelize";
+import type { CreationAttributes, Model, Transaction } from "sequelize";
 
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import type { GithubConnectorState } from "@connectors/lib/models/github";
@@ -18,16 +18,23 @@ import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-// TODO: Do WithCreationAttribute<>;
-export interface ConnectorProviderModelMapping {
-  confluence: CreationAttributes<ConfluenceConfiguration>;
-  github: CreationAttributes<GithubConnectorState>;
-  google_drive: CreationAttributes<GoogleDriveConfig>;
-  intercom: CreationAttributes<IntercomWorkspace>;
-  notion: CreationAttributes<NotionConnectorState>;
-  slack: CreationAttributes<SlackConfiguration>;
-  webcrawler: CreationAttributes<WebCrawlerConfiguration>;
+export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
+
+export interface ConnectorProviderModelM {
+  confluence: ConfluenceConfiguration;
+  github: GithubConnectorState;
+  google_drive: GoogleDriveConfig;
+  intercom: IntercomWorkspace;
+  notion: NotionConnectorState;
+  slack: SlackConfiguration;
+  webcrawler: WebCrawlerConfiguration;
 }
+
+export type ConnectorProviderModelMapping = {
+  [K in keyof ConnectorProviderModelM]: WithCreationAttributes<
+    ConnectorProviderModelM[K]
+  >;
+};
 
 export type ConnectorProviderBlob =
   ConnectorProviderModelMapping[keyof ConnectorProviderModelMapping];

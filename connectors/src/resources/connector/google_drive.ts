@@ -1,4 +1,4 @@
-import type { CreationAttributes, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
 
 import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import {
@@ -7,13 +7,16 @@ import {
   GoogleDriveSyncToken,
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
-import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
+import type {
+  ConnectorProviderStrategy,
+  WithCreationAttributes,
+} from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: CreationAttributes<GoogleDriveConfig>,
+    blob: WithCreationAttributes<GoogleDriveConfig>,
     transaction: Transaction
   ): Promise<void> {
     await GoogleDriveConfig.create(
