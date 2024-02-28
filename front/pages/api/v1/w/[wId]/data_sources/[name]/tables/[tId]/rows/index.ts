@@ -171,21 +171,19 @@ async function handler(
       const { truncate } = bodyValidation.right;
       let { rows: rowsToUpsert } = bodyValidation.right;
 
-      // Make every key in the rows lowercase and ensure there are no duplicates.
+      // Make sure every key in the rows are lowercase
       const allKeys = rowsToUpsert.map((row) => Object.keys(row.value)).flat();
-      const keysSet = new Set<string>();
-      for (const key of allKeys) {
-        if (keysSet.has(key)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Duplicate key: ${key}`,
-            },
-          });
-        }
-        keysSet.add(key);
+      if (!allKeys.every((key) => /^[a-z0-9_]+$/.test(key))) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Invalid request body: keys must be lowercase alphanumeric.",
+          },
+        });
       }
+
       rowsToUpsert = rowsToUpsert.map((row) => {
         const value: Record<string, CellValueType> = {};
         for (const [key, val] of Object.entries(row.value)) {
