@@ -424,7 +424,6 @@ export default function AssistantBuilder({
         current: screen === key,
         onClick: () => {
           setScreen(key as BuilderScreen);
-          console.log("key", key);
         },
         icon,
       })),

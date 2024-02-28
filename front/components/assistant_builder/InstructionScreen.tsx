@@ -308,6 +308,17 @@ const STATIC_SUGGESTIONS = {
 
 const SUGGESTION_DEBOUNCE_DELAY = 1500;
 
+export function debounce(
+  debounceHandle: React.MutableRefObject<NodeJS.Timeout | undefined>,
+  func: () => void
+) {
+  if (debounceHandle.current) {
+    clearTimeout(debounceHandle.current);
+    debounceHandle.current = undefined;
+  }
+  debounceHandle.current = setTimeout(func, SUGGESTION_DEBOUNCE_DELAY);
+}
+
 function Suggestions({
   owner,
   instructions,
@@ -324,6 +335,9 @@ function Suggestions({
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const updateSuggestions = useCallback(async () => {
+    if (!instructions) {
+      return;
+    }
     setLoading(true);
     const suggestions = await getInstructionsSuggestions(owner, instructions);
     if (suggestions.isErr()) {
@@ -338,22 +352,13 @@ function Suggestions({
   }, [owner, instructions]);
 
   useEffect(() => {
-    if (debounceHandle.current) {
-      clearTimeout(debounceHandle.current);
-      debounceHandle.current = undefined;
-    }
     if (!instructions) {
       setError(null);
       setLoading(false);
       setSuggestions(STATIC_SUGGESTIONS);
     }
-    if (instructions) {
-      // Debounced request to generate suggestions
-      debounceHandle.current = setTimeout(
-        updateSuggestions,
-        SUGGESTION_DEBOUNCE_DELAY
-      );
-    }
+
+    debounce(debounceHandle, updateSuggestions);
   }, [instructions, updateSuggestions]);
 
   return (
