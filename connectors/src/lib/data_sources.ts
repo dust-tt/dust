@@ -146,7 +146,9 @@ async function _upsertToDatasource({
       },
       "Error uploading document to Dust."
     );
-    throw new Error(`Error uploading to dust: ${dustRequestResult}`);
+    throw new Error(
+      `Error uploading to dust: ${JSON.stringify(dustRequestResult, null, 2)}`
+    );
   }
 }
 
