@@ -303,7 +303,11 @@ async function tokenize(text: string, ds: DataSourceConfig) {
       { error: tokensRes.error },
       `Error tokenizing text for ${ds.dataSourceName}`
     );
-    throw new Error(`Error tokenizing text for ${ds.dataSourceName}`);
+    throw {
+      __is_dust_error: true,
+      message: `Error tokenizing text for ${ds.dataSourceName}`,
+      type: "tokenize_internal_server_error",
+    };
   }
   return tokensRes.value;
 }
