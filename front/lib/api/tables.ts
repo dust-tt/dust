@@ -5,7 +5,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
+import { CoreAPI, Err, isSlugified, isValidDate, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
 
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -369,12 +369,11 @@ async function rowsFromCsv(
         // date/datetime
         (v: string) => {
           const date = new Date(v.trim());
-          const epoch = date.getTime();
-          return isNaN(epoch)
+          return !isValidDate(date)
             ? undefined
             : {
                 type: "datetime" as const,
-                epoch,
+                epoch: date.getTime(),
               };
         },
         // bool
