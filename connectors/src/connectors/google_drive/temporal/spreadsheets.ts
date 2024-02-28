@@ -251,10 +251,11 @@ async function getAllSheetsFromSpreadSheet(
   const sheets: Sheet[] = [];
   for (const [sheetName, sheet] of sheetRanges) {
     // To locate the value range for the current sheet within the batch get response,
-    // we use the sheet name in the format 'Sheet1'!<range>. This notation helps us
+    // we use the sheet name in the format Sheet1!<range> or 'Details-View'!<range>. This notation helps us
     // match and extract the appropriate range from the response for the current sheet.
-    const valueRangeForSheet = valueRanges.find((s) =>
-      s.range?.startsWith(`'${sheetName}'`)
+    const valueRangeForSheet = valueRanges.find(
+      (s) =>
+        s.range?.startsWith(`'${sheetName}'`) || s.range?.startsWith(sheetName)
     );
     if (!valueRangeForSheet) {
       localLogger.info(
