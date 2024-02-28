@@ -127,6 +127,7 @@ The Table model represents a Data Source Table.
 
   </Col>
 </Row>
+
 ---
 
 ## Retrieve a Table {{ tag: 'GET', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id' }}
@@ -179,4 +180,102 @@ The Table model represents a Data Source Table.
 </Row>
 
 ---
+
+## Create Rows {{ tag: 'POST', label: #'/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to add rows to an existing Table. Rows are JSON objects associating
+    keys to values. The keys and value types (string, number, boolean) must match the Table's
+    schema. New tables don't have a schema and will infer it from the first rows being inserted.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of your workspace (can be found in the Data Source's URL)
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the Data Source you want to add a Table to.
+      </Property>
+    </Properties>
+
+    ### Row JSON attributes
+
+    Attributes are passed as a JSON object in the request body.
+
+    <Properties>
+      <Property name="row_id" type="string">
+        A unique ID for the row. It should be unique within the Table and must be specified. You
+        can use a UUID or an incremented integer passed as string. It is used to let you update
+        rows.
+      </Property>
+      <Property name="value" type="{[key: string]: string | number | boolean | null}">
+        The value of the row.
+      </Property>
+    </Properties>
+
+    ### JSON body attributes
+
+    Attributes are passed as a JSON object in the request body.
+
+    <Properties>
+      <Property name="rows" type="Row[]">
+        The rows to insert.
+      </Property>
+    </Properties>
+
+    ### Optional JSON body attributes
+
+    <Properties>
+      <Property name="truncate" type="boolean">
+        If true the content of the Table is erased and replaced by the new rows. Otherwise rows
+        are appended to the Table.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/tables/015001320f/rows \
+      -H "Authorization: Bearer sk-..." \
+      -H "Content-Type: application/json" \
+     -d '{
+       "rows": [
+         {
+           "row_id": "1",
+           "value": { "name": "John", "conversations": 129, "paying": true }
+         }, {
+           "row_id": "2",
+           "value": { "name": "Mark", "conversations": 3, "paying": false }
+         }, {
+           "row_id": "3",
+           "value": { "name": "Sally", "conversations": 456, "paying": true }
+         }
+       ],
+       "truncate": false,
+     }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "table": {
+        "data_source_id": "foo",
+        "created":1709127589841,
+        "table_id":"015001320f",
+        "name":"customers",
+        "description":"Table containing our customer data.",
+        "schema":null
+      }
+    }
+    ```
+
+  </Col>
+</Row>
 
