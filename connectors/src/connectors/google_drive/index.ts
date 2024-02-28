@@ -113,6 +113,8 @@ export async function createGoogleDriveConnector(
 
     const webhookInfo = await registerWebhook(connector);
     if (webhookInfo.isErr()) {
+      await connector.delete();
+
       throw webhookInfo.error;
     } else {
       await GoogleDriveWebhook.create({
