@@ -115,6 +115,7 @@ export class ActivityInboundLogInterceptor
           await cancelWorkflow(workflowId);
         }
       }
+
       throw err;
     } finally {
       const durationMs = new Date().getTime() - startTime.getTime();
@@ -150,11 +151,6 @@ export class ActivityInboundLogInterceptor
       } else {
         this.logger.info({ durationMs: durationMs }, "Activity completed.");
         statsDClient.increment("activities_success.count", 1, tags);
-        // statsDClient.distribution(
-        //   "activities.duration.distribution",
-        //   durationMs,
-        //   tags
-        // );
       }
     }
   }
