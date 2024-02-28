@@ -46,7 +46,7 @@ The Table model represents a Data Source Table.
     The table name as specified at creation.
   </Property>
   <Property name="description" type="string">
-    The description of the table (used by the model to generate SQL query).
+    The description of the table (used by the model to generate SQL queries).
   </Property>
   <Property name="schema" type="Column[]">
     The schema of the table as specified at data upload.
@@ -83,7 +83,7 @@ The Table model represents a Data Source Table.
         The name of the Table to create (must be unique within a Data Source).
       </Property>
       <Property name="description" type="string">
-        The description of the Table (used by the model to generate SQL query).
+        The description of the Table (used by the model to generate SQL queries).
       </Property>
     </Properties>
 
@@ -186,9 +186,10 @@ The Table model represents a Data Source Table.
 <Row>
   <Col>
 
-    This endpoint enables you to add rows to an existing Table. Rows are JSON objects associating
-    keys to values. The keys and value types (string, number, boolean) must match the Table's
-    schema. New tables don't have a schema and will infer it from the first rows being inserted.
+    This endpoint enables you to add and update rows to an existing Table. Rows are JSON objects
+    associating keys to values. The keys and value types (string, number, boolean, datetime) must
+    match the Table's schema. New tables don't have a schema and will infer it from the first rows
+    being inserted.
 
     ### URL attributes
 
@@ -212,7 +213,7 @@ The Table model represents a Data Source Table.
       <Property name="row_id" type="string">
         A unique ID for the row. It should be unique within the Table and must be specified. You
         can use a UUID or an incremented integer passed as string. It is used to let you update
-        rows.
+        rows. If you post a row with an existing `row_id`, the row will be updated.
       </Property>
       <Property name="value" type="{[key: string]: string | number | boolean | null}">
         The value of the row.
@@ -225,7 +226,7 @@ The Table model represents a Data Source Table.
 
     <Properties>
       <Property name="rows" type="Row[]">
-        The rows to insert.
+        The rows to upsert (based on their `row_id`).
       </Property>
     </Properties>
 
@@ -234,7 +235,7 @@ The Table model represents a Data Source Table.
     <Properties>
       <Property name="truncate" type="boolean">
         If true the content of the Table is erased and replaced by the new rows. Otherwise rows
-        are appended to the Table.
+        are upserted to the Table.
       </Property>
     </Properties>
 
