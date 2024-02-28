@@ -174,10 +174,24 @@ export const DustProdActionRegistry = createActionRegistry({
   "assistant-builder-name-suggestions": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "TODO",
-      appHash: "TODO",
+      appId: "34a8c4a2aa",
+      appHash:
+        "bbe701de9cbb4bc3e8670405326eead911dd4bc372de0611779af3aaad44902b",
     },
-    config: {},
+    config: {
+      IS_FINISHED: {
+        provider_id: "openai",
+        model_id: "gpt-3.5-turbo",
+        function_call: "send_creation_finished",
+        use_cache: true,
+      },
+      CREATE_SUGGESTIONS: {
+        provider_id: "openai",
+        model_id: "gpt-4",
+        function_call: "send_suggestions",
+        use_cache: true,
+      },
+    },
   },
 });
 

@@ -5,8 +5,14 @@ import {
   Page,
   PencilSquareIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import { useState } from "react";
+import type {
+  APIError,
+  BuilderSuggestionsType,
+  Result,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import {
@@ -14,6 +20,8 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
+import { debounce } from "@app/lib/utils/debounce";
 
 export default function NamingScreen({
   owner,
@@ -31,6 +39,30 @@ export default function NamingScreen({
   assistantHandleError: string | null;
 }) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
+  const [nameSuggestions, setNameSuggestions] =
+    useState<BuilderSuggestionsType>({
+      status: "unavailable",
+      reason: "irrelevant",
+    });
+
+  const nameDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const updateNameSuggestions = useCallback(async () => {
+    const nameSuggestions = await getNamingSuggestions({
+      owner,
+      instructions: builderState.instructions || "",
+      description: builderState.description || "",
+    });
+    if (nameSuggestions.isOk()) {
+      setNameSuggestions(nameSuggestions.value);
+    }
+  }, [owner, builderState.instructions, builderState.description]);
+
+  useEffect(
+    () => debounce(nameDebounceHandle, updateNameSuggestions),
+    [updateNameSuggestions, builderState.instructions, builderState.description]
+  );
 
   return (
     <>
@@ -60,6 +92,32 @@ export default function NamingScreen({
                 descriptive and unique.
               </div>
             </div>
+            {nameSuggestions.status === "ok" &&
+              nameSuggestions.suggestions.length > 0 &&
+              isDevelopmentOrDustWorkspace(owner) && (
+                <div className="flex items-center gap-2">
+                  <div className="text-xs font-semibold text-element-800">
+                    Suggestions:
+                  </div>
+                  {nameSuggestions.suggestions.map((suggestion, index) => (
+                    <Button
+                      label={`@${suggestion.replace(/\s/g, "")}`}
+                      variant="secondary"
+                      key={`naming-suggestion-${index}`}
+                      size="xs"
+                      onClick={() => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          // remove all whitespaces from suggestion
+                          handle: suggestion.replace(/\s/g, ""),
+                        }));
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
             <div>
               <Input
                 placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
@@ -122,4 +180,32 @@ export default function NamingScreen({
       </div>
     </>
   );
+}
+
+async function getNamingSuggestions({
+  owner,
+  instructions,
+  description,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+  description: string;
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
+  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "name",
+      inputs: { instructions, description },
+    }),
+  });
+  if (!res.ok) {
+    return new Err({
+      type: "internal_server_error",
+      message: "Failed to get suggestions",
+    });
+  }
+  return new Ok(await res.json());
 }

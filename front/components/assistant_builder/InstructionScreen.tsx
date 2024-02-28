@@ -41,6 +41,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import { debounce } from "@app/lib/utils/debounce";
 
 export const CREATIVITY_LEVELS = [
   { label: "Deterministic", value: 0 },
@@ -306,8 +307,6 @@ const STATIC_SUGGESTIONS = {
   ],
 };
 
-const SUGGESTION_DEBOUNCE_DELAY = 1500;
-
 function Suggestions({
   owner,
   instructions,
@@ -324,6 +323,9 @@ function Suggestions({
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const updateSuggestions = useCallback(async () => {
+    if (!instructions) {
+      return;
+    }
     setLoading(true);
     const suggestions = await getInstructionsSuggestions(owner, instructions);
     if (suggestions.isErr()) {
@@ -338,22 +340,13 @@ function Suggestions({
   }, [owner, instructions]);
 
   useEffect(() => {
-    if (debounceHandle.current) {
-      clearTimeout(debounceHandle.current);
-      debounceHandle.current = undefined;
-    }
     if (!instructions) {
       setError(null);
       setLoading(false);
       setSuggestions(STATIC_SUGGESTIONS);
     }
-    if (instructions) {
-      // Debounced request to generate suggestions
-      debounceHandle.current = setTimeout(
-        updateSuggestions,
-        SUGGESTION_DEBOUNCE_DELAY
-      );
-    }
+
+    debounce(debounceHandle, updateSuggestions);
   }, [instructions, updateSuggestions]);
 
   return (
