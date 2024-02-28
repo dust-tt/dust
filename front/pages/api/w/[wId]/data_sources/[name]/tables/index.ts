@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { CoreAPITable, WithAPIErrorReponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -6,7 +6,10 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { ListTablesResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables";
+
+export type ListTablesResponseBody = {
+  tables: CoreAPITable[];
+};
 
 async function handler(
   req: NextApiRequest,
