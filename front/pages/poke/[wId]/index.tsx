@@ -32,6 +32,7 @@ import { useRouter } from "next/router";
 import React, { useContext } from "react";
 import { useSWRConfig } from "swr";
 
+import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -167,56 +168,6 @@ const WorkspacePage = ({
       window.alert("An error occurred while downgrading the workspace.");
     }
   });
-
-  const { submit: onDataSourcesDelete } = useSubmitFunction(
-    async (dataSourceName: string) => {
-      const retrievalAgents = agentConfigurations.filter((a) => {
-        if (isRetrievalConfiguration(a.action)) {
-          return a.action.dataSources.some(
-            (ds) => ds.dataSourceId === dataSourceName
-          );
-        }
-        return false;
-      });
-      if (retrievalAgents.length > 0) {
-        window.alert(
-          "Please archive agents using this data source first: " +
-            retrievalAgents.map((a) => a.name).join(", ")
-        );
-        return;
-      }
-      if (
-        !window.confirm(
-          `Are you sure you want to delete the ${dataSourceName} data source? There is no going back.`
-        )
-      ) {
-        return;
-      }
-
-      if (!window.confirm(`really, Really, REALLY sure ?`)) {
-        return;
-      }
-
-      try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceName}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (!r.ok) {
-          throw new Error("Failed to delete data source.");
-        }
-        router.reload();
-      } catch (e) {
-        console.error(e);
-        window.alert("An error occurred while deleting the data source.");
-      }
-    }
-  );
 
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
@@ -638,34 +589,12 @@ const WorkspacePage = ({
               </div>
             </div>
 
-            <div className="flex flex-row gap-8 pt-4">
-              <div className="mx-2 w-1/3">
-                <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
-                {dataSources.map((ds) => (
-                  <div
-                    key={ds.id}
-                    className="border-material-200 my-4 rounded-lg border p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="mb-2 text-lg font-semibold">
-                        <Link
-                          href={`/poke/${owner.sId}/data_sources/${ds.name}`}
-                        >
-                          {ds.name}
-                        </Link>
-                      </h3>
-                      <Button
-                        label="Delete"
-                        variant="secondaryWarning"
-                        onClick={() => onDataSourcesDelete(ds.name)}
-                      />
-                    </div>
-                    <p className="mb-2 text-sm text-gray-600">
-                      {ds.connectorProvider ? "Connection" : "Folder"}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-col space-y-2 pt-4">
+              <DataSourceDataTable
+                owner={owner}
+                dataSources={dataSources}
+                agentConfigurations={agentConfigurations}
+              />
               <div className="mx-2 w-1/3">
                 <h2 className="text-md mb-4 font-bold">Assistants:</h2>
                 {agentConfigurations.map((a) => (
