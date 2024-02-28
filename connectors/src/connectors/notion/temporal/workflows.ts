@@ -42,10 +42,6 @@ const { saveSuccessSync, saveStartSync, shouldGarbageCollect } =
     startToCloseTimeout: "1 minute",
   });
 
-// soft limit on the number of iterations of the loop that should be ran in a single workflow
-// before "continuing as new" to avoid hitting the workflow log size limit
-const MAX_ITERATIONS_PER_WORKFLOW = 32;
-
 // Notion's "last edited" timestamp is precise to the minute
 const SYNC_PERIOD_DURATION_MS = 60_000;
 
@@ -66,7 +62,7 @@ function preProcessTimestampForNotion(ts: number) {
 }
 
 // This is the main top-level workflow that continuously runs for each notion connector.
-// Each connector has 2 instances of this workflow running in parallel:
+// Each connector has 2 instances of this workflow running concurrently:
 // - one that handles the "incremental" live sync (garbageCollectionMode = "never")
 // - one that continuously runs garbage collection (garbageCollectionMode = "always")
 export async function notionSyncWorkflow({
@@ -80,8 +76,6 @@ export async function notionSyncWorkflow({
   forceResync: boolean;
   garbageCollectionMode: NotionGarbageCollectionMode;
 }) {
-  let iterations = 0;
-
   const topLevelWorkflowId = workflowInfo().workflowId;
 
   let lastSyncedPeriodTs: number | null = startFromTs
@@ -111,122 +105,109 @@ export async function notionSyncWorkflow({
 
   const isInitialSync = !lastSyncedPeriodTs;
 
+  if (!isGarbageCollectionRun) {
+    await saveStartSync(connectorId);
+  }
+
+  // clear the connector cache before each sync
+  await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+  const runTimestamp = Date.now();
+
+  let cursor: string | null = null;
+  let pageIndex = 0;
+  const childWorkflowQueue = new PQueue({
+    concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
+  });
+
+  const promises: Promise<void>[] = [];
+
+  // we go through each result page of the notion  search API
   do {
-    if (!isGarbageCollectionRun) {
-      await saveStartSync(connectorId);
-    }
+    // We only want to fetch pages that were updated since the last sync unless it's a garbage
+    // collection run or a force resync.
+    const skipUpToDatePages = !isGarbageCollectionRun && !forceResync;
 
-    // clear the connector cache before each sync
-    await clearWorkflowCache({ connectorId, topLevelWorkflowId });
-
-    const runTimestamp = Date.now();
-
-    let cursor: string | null = null;
-    let pageIndex = 0;
-    const childWorkflowQueue = new PQueue({
-      concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
-    });
-
-    const promises: Promise<void>[] = [];
-
-    // we go through each result page of the notion  search API
-    do {
-      // We only want to fetch pages that were updated since the last sync unless it's a garbage
-      // collection run or a force resync.
-      const skipUpToDatePages = !isGarbageCollectionRun && !forceResync;
-
-      const { pageIds, databaseIds, nextCursor } =
-        await getPagesAndDatabasesToSync({
-          connectorId,
-          // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
-          // want to fetch pages that were updated since the last sync.
-          lastSyncedAt: !isGarbageCollectionRun ? lastSyncedPeriodTs : null,
-          cursor,
-          excludeUpToDatePages: skipUpToDatePages,
-          loggerArgs: {
-            pageIndex,
-            runType: isGarbageCollectionRun
-              ? "garbageCollection"
-              : isInitialSync
-              ? "initialSync"
-              : "incrementalSync",
-          },
-        });
-      cursor = nextCursor;
-      pageIndex += 1;
-
-      // this function triggers child workflows to process batches of pages and databases.
-      // the worflow that processes databases will itself trigger child workflows to process
-      // batches of child pages.
-      promises.push(
-        performUpserts({
-          connectorId,
-          pageIds,
-          databaseIds,
-          isGarbageCollectionRun: isGarbageCollectionRun,
-          runTimestamp,
-          pageIndex,
-          isBatchSync: isInitialSync,
-          queue: childWorkflowQueue,
-          topLevelWorkflowId,
-          forceResync,
-        })
-      );
-    } while (cursor);
-
-    // wait for all child workflows to finish
-    await Promise.all(promises);
-
-    // these are resources (pages/DBs) that we didn't get from the search API but that are child pages/DBs
-    // of other pages that we did get from the search API.
-    // We upsert those as well.
-    const discoveredResources = await getDiscoveredResourcesFromCache({
-      connectorId,
-      topLevelWorkflowId,
-    });
-    await performUpserts({
-      connectorId,
-      pageIds: discoveredResources.pageIds,
-      databaseIds: discoveredResources.databaseIds,
-      isGarbageCollectionRun: isGarbageCollectionRun,
-      runTimestamp,
-      pageIndex,
-      isBatchSync: isInitialSync,
-      queue: childWorkflowQueue,
-      childWorkflowsNameSuffix: "discovered",
-      topLevelWorkflowId,
-      forceResync,
-    });
-
-    // Compute parents after all documents are added/updated
-    await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
-
-    if (!isGarbageCollectionRun) {
-      await saveSuccessSync(connectorId);
-      lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
-    } else {
-      // Look at pages and databases that were not visited in this run, check with the notion API if
-      // they were really deleted and delete them from the database if they were.
-      await garbageCollect({
+    const { pageIds, databaseIds, nextCursor } =
+      await getPagesAndDatabasesToSync({
         connectorId,
-        runTimestamp,
-        startTs: new Date().getTime(),
+        // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
+        // want to fetch pages that were updated since the last sync.
+        lastSyncedAt: !isGarbageCollectionRun ? lastSyncedPeriodTs : null,
+        cursor,
+        excludeUpToDatePages: skipUpToDatePages,
+        loggerArgs: {
+          pageIndex,
+          runType: isGarbageCollectionRun
+            ? "garbageCollection"
+            : isInitialSync
+            ? "initialSync"
+            : "incrementalSync",
+        },
       });
-    }
+    cursor = nextCursor;
+    pageIndex += 1;
 
-    iterations += 1;
-    await sleep(INTERVAL_BETWEEN_SYNCS_MS);
-  } while (
-    // We run the loop for MAX_ITERATIONS_PER_WORKFLOW iterations to avoid hitting the workflow log
-    // size limit and "continue as new" to start a new workflow.
-    // If it's the initial sync, a force resync, or a garbage collection run, we only do one
-    // iteration.
-    !isInitialSync &&
-    !forceResync &&
-    !isGarbageCollectionRun &&
-    iterations < MAX_ITERATIONS_PER_WORKFLOW
-  );
+    // this function triggers child workflows to process batches of pages and databases.
+    // the worflow that processes databases will itself trigger child workflows to process
+    // batches of child pages.
+    promises.push(
+      performUpserts({
+        connectorId,
+        pageIds,
+        databaseIds,
+        isGarbageCollectionRun: isGarbageCollectionRun,
+        runTimestamp,
+        pageIndex,
+        isBatchSync: isInitialSync,
+        queue: childWorkflowQueue,
+        topLevelWorkflowId,
+        forceResync,
+      })
+    );
+  } while (cursor);
 
+  // wait for all child workflows to finish
+  await Promise.all(promises);
+
+  // these are resources (pages/DBs) that we didn't get from the search API but that are child pages/DBs
+  // of other pages that we did get from the search API.
+  // We upsert those as well.
+  const discoveredResources = await getDiscoveredResourcesFromCache({
+    connectorId,
+    topLevelWorkflowId,
+  });
+  await performUpserts({
+    connectorId,
+    pageIds: discoveredResources.pageIds,
+    databaseIds: discoveredResources.databaseIds,
+    isGarbageCollectionRun: isGarbageCollectionRun,
+    runTimestamp,
+    pageIndex,
+    isBatchSync: isInitialSync,
+    queue: childWorkflowQueue,
+    childWorkflowsNameSuffix: "discovered",
+    topLevelWorkflowId,
+    forceResync,
+  });
+
+  // Compute parents after all documents are added/updated
+  await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
+
+  if (!isGarbageCollectionRun) {
+    await saveSuccessSync(connectorId);
+    lastSyncedPeriodTs = preProcessTimestampForNotion(runTimestamp);
+  } else {
+    // Look at pages and databases that were not visited in this run, check with the notion API if
+    // they were really deleted and delete them from the database if they were.
+    await garbageCollect({
+      connectorId,
+      runTimestamp,
+      startTs: new Date().getTime(),
+    });
+  }
+
+  await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   await continueAsNew<typeof notionSyncWorkflow>({
     connectorId,
     startFromTs: lastSyncedPeriodTs,
