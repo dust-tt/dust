@@ -107,7 +107,7 @@ export type CoreAPITable = {
   data_source_id: string;
   name: string;
   description: string;
-  schema: CoreAPITableSchema;
+  schema: CoreAPITableSchema | null;
 };
 
 export type CoreAPIRow = {

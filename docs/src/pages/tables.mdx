@@ -57,7 +57,126 @@ The Table model represents a Data Source Table.
 
 ## Create a Table {{ tag: 'POST', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables' }}
 
+<Row>
+  <Col>
 
+    This endpoint enables you to create a new Table within an existing Data Source. Table name must
+    be unique within the Data Source.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of your workspace (can be found in the Data Source's URL)
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the Data Source you want to add a Table to.
+      </Property>
+    </Properties>
+
+    ### JSON body attributes
+
+    Attributes are passed as a JSON object in the request body.
+
+    <Properties>
+      <Property name="name" type="string">
+        The name of the Table to create (must be unique within a Data Source).
+      </Property>
+      <Property name="description" type="string">
+        The description of the Table (used by the model to generate SQL query).
+      </Property>
+    </Properties>
+
+    ### Optional JSON body attributes
+
+    <Properties>
+      <Property name="table_id" type="string">
+        A unique ID for the Table. If not specified, a random unique ID will be generated.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/v1/w/:workspace_id/data_sources/:data_source_name/tables">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/tables \
+      -H "Authorization: Bearer sk-..." \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "customers",
+        "description": "Table containing our customer data."
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "table": {
+        "data_source_id": "foo",
+        "created":1709127589841,
+        "table_id":"015001320f",
+        "name":"customers",
+        "description":"Table containing our customer data.",
+        "schema":null
+      }
+    }
+    ```
+
+  </Col>
+</Row>
 ---
 
 ## Retrieve a Table {{ tag: 'GET', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to retrieve a Table by ID.
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of your workspace (can be found in the Data Source's URL)
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the Data Source you want to retrieve the Table from.
+      </Property>
+      <Property name="table_id" type="string">
+        The ID of the Table you want to retrieve.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/data_sources/:data_source_name/talbes/:table_id">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/tables/015001320f \
+      -H "Authorization: Bearer sk-..."
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "table": {
+        "data_source_id": "foo",
+        "created":1709127589841,
+        "table_id":"015001320f",
+        "name":"customers",
+        "description":"Table containing our customer data.",
+        "schema":null
+      }
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
