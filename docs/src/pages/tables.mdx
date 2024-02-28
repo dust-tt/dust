@@ -181,7 +181,7 @@ The Table model represents a Data Source Table.
 
 ---
 
-## Create Rows {{ tag: 'POST', label: #'/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows' }}
+## Create Rows {{ tag: 'POST', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows' }}
 
 <Row>
   <Col>
@@ -198,6 +198,9 @@ The Table model represents a Data Source Table.
       </Property>
       <Property name="data_source_name" type="string">
         The name of the Data Source you want to add a Table to.
+      </Property>
+      <Property name="table_id" type="string">
+        The ID of the Table you want to retrieve.
       </Property>
     </Properties>
 
@@ -266,12 +269,14 @@ The Table model represents a Data Source Table.
     ```json {{ title: 'Response' }}
     {
       "table": {
-        "data_source_id": "foo",
-        "created":1709127589841,
+        "name": "customers",
         "table_id":"015001320f",
-        "name":"customers",
         "description":"Table containing our customer data.",
-        "schema":null
+        "schema": [
+          {"name": "name", "value_type": "text", "possible_values": ["\"Sally\"", "\"John\"", "\"Mark\""]},
+          {"name": "conversations", "value_type":"int", "possible_values": ["456", "129", "3"]},
+          {"name": "paying", "value_type": "bool", "possible_values": ["TRUE", "FALSE"]}
+        ]
       }
     }
     ```
@@ -279,3 +284,58 @@ The Table model represents a Data Source Table.
   </Col>
 </Row>
 
+---
+
+## List Rows {{ tag: 'GET', label: '/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows' }}
+
+<Row>
+  <Col>
+
+    This endpoint enables you to list the rows of a table
+
+    ### URL attributes
+
+    <Properties>
+      <Property name="workspace_id" type="string">
+        The ID of your workspace (can be found in the Data Source's URL)
+      </Property>
+      <Property name="data_source_name" type="string">
+        The name of the Data Source you want to add a Table to.
+      </Property>
+      <Property name="table_id" type="string">
+        The ID of the Table you want to retrieve.
+      </Property>
+    </Properties>
+
+    ### Required Query parameters
+
+    Query attributes are passed as GET parameters.
+
+    <Properties>
+      <Property name="offset" type="integer">
+        The offset to use to retrieve the rows, for paging.
+      </Property>
+      <Property name="limit" type="integer">
+        The maximum number of rows to retrieve, for paging.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/v1/w/:workspace_id/data_sources/:data_source_name/tables/:table_id/rows">
+
+    ```bash {{ title: 'cURL' }}
+    curl "https://dust.tt/api/v1/w/3e26b0e764/data_sources/foo/tables/015001320f/rows?offset=0&limit=10" \
+      -H "Authorization: Bearer sk-..."
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+    }
+    ```
+
+  </Col>
+</Row>

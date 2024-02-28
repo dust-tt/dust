@@ -1,4 +1,8 @@
-import type { CoreAPIRow, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  CoreAPIRow,
+  CoreAPITableSchema,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { CoreAPI, isSlugified } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -37,7 +41,12 @@ type CellValueType = t.TypeOf<
 >["rows"][number]["value"][string];
 
 type UpsertTableRowsResponseBody = {
-  success: true;
+  table: {
+    name: string;
+    table_id: string;
+    description: string;
+    schema: CoreAPITableSchema | null;
+  };
 };
 
 const ListTableRowsReqQuerySchema = t.type({
@@ -221,7 +230,40 @@ async function handler(
         });
       }
 
-      return res.status(200).json({ success: true });
+      // Upsert is succesful, retrieve the updated table.
+      const tableRes = await coreAPI.getTable({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName: dataSource.name,
+        tableId,
+      });
+      if (tableRes.isErr()) {
+        logger.error(
+          {
+            dataSourcename: dataSource.name,
+            workspaceId: owner.id,
+            error: tableRes.error,
+          },
+          "Failed to retrieve updated table."
+        );
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to get table.",
+          },
+        });
+      }
+
+      const { table } = tableRes.value;
+
+      return res.status(200).json({
+        table: {
+          name: table.name,
+          table_id: table.table_id,
+          description: table.description,
+          schema: table.schema,
+        },
+      });
 
     default:
       return apiError(req, res, {
