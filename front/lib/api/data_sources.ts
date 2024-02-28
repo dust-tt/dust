@@ -92,7 +92,10 @@ export async function getDataSource(
 }
 
 export async function getDataSources(
-  auth: Authenticator
+  auth: Authenticator,
+  { includeEditedBy }: { includeEditedBy: boolean } = {
+    includeEditedBy: false,
+  }
 ): Promise<DataSourceType[]> {
   const owner = auth.workspace();
 
@@ -103,10 +106,22 @@ export async function getDataSources(
     return [];
   }
 
+  const includes = includeEditedBy
+    ? {
+        include: [
+          {
+            model: User,
+            as: "editedByUser",
+          },
+        ],
+      }
+    : undefined;
+
   const dataSources = await DataSource.findAll({
     where: {
       workspaceId: owner.id,
     },
+    ...includes,
     order: [["updatedAt", "DESC"]],
   });
 
@@ -119,6 +134,7 @@ export async function getDataSources(
       connectorId: dataSource.connectorId,
       connectorProvider: dataSource.connectorProvider,
       assistantDefaultSelected: dataSource.assistantDefaultSelected,
+      ...makeEditedBy(dataSource.editedByUser, dataSource.editedAt),
     };
   });
 }

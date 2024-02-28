@@ -113,9 +113,6 @@ export function DataTable<TData, TValue>({
         </Table>
         <DataTablePagination table={table} />
       </div>
-      <div className="text-muted-foreground flex-1 text-sm">
-        Total of {table.getFilteredRowModel().rows.length} row(s).
-      </div>
     </div>
   );
 }
