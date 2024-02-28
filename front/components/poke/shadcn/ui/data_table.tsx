@@ -1,5 +1,3 @@
-"use client";
-
 import { Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
