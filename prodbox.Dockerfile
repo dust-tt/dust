@@ -49,5 +49,9 @@ RUN cd core && cargo build --release
 # Set the default start directory to /dust when SSH into the container
 WORKDIR /dust
 
+# Wraning and prompt
+RUN echo -e "echo -e \"\033[0;31mWARNING: This is a PRODUCTION system!\033[0m\"" >> /root/.bashrc
+RUN echo "export PS1='\[\e[0;31m\]prodbox\[\e[0m\]:\w\$ '" >> /root/.bashrc
+
 # Set a default command
 CMD ["bash"]
