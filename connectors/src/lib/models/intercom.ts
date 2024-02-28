@@ -271,7 +271,7 @@ export class IntercomArticle extends Model<
 
   declare state: "draft" | "published";
 
-  declare lastUpsertedTs?: Date;
+  declare lastUpsertedTs?: Date | null;
   declare permission: "read" | "none";
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
