@@ -11,6 +11,7 @@ import {
 } from "@app/lib/upsert_document";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
+import { WorkflowError } from "@app/lib/temporal_monitoring";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -104,7 +105,13 @@ export async function upsertDocumentActivity(
       []
     );
 
-    throw new Error(`Upsert error: ${upsertRes.error}`);
+    const error: WorkflowError = {
+      __is_dust_error: true,
+      message: `Upsert error: ${upsertRes.error.message}`,
+      type: "upsert_queue_upsert_error",
+    };
+
+    throw error;
   }
 
   logger.info(
