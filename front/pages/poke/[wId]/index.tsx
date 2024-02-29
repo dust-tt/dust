@@ -28,6 +28,7 @@ import { useSWRConfig } from "swr";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsList } from "@app/components/poke/features/list";
+import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -251,36 +252,6 @@ const WorkspacePage = ({
       }
     }
   );
-
-  const { submit: onToggleFeature, isSubmitting: isTogglingFeature } =
-    useSubmitFunction(async (feature: WhitelistableFeature, value: boolean) => {
-      try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/features`, {
-          method: value ? "POST" : "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: feature,
-          }),
-        });
-        if (!r.ok) {
-          throw new Error("Failed to disable feature.");
-        }
-
-        await mutate(`/api/poke/workspaces/${owner.sId}/features`);
-      } catch (e) {
-        sendNotification({
-          title: "Error",
-          description: `An error occurred while toggling feature "${feature}": ${JSON.stringify(
-            e,
-            null,
-            2
-          )}`,
-          type: "error",
-        });
-      }
-    });
 
   const [hasCopiedInviteLink, setHasCopiedInviteLink] = React.useState(false);
 
@@ -518,14 +489,11 @@ const WorkspacePage = ({
                 )}
             </div>
 
-            <div>
-              <FeatureFlagsList
+            <div className="flex flex-col space-y-8 pt-4">
+              <FeatureFlagsDataTable
                 owner={owner}
                 whitelistableFeatures={whitelistableFeatures}
               />
-            </div>
-
-            <div className="flex flex-col space-y-8 pt-4">
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
