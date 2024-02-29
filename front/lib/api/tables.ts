@@ -369,12 +369,25 @@ async function rowsFromCsv(
         // date/datetime
         (v: string) => {
           const date = new Date(v.trim());
-          return !isValidDate(date)
-            ? undefined
-            : {
-                type: "datetime" as const,
-                epoch: date.getTime(),
-              };
+          if (!isValidDate(date)) {
+            return undefined;
+          }
+          const epoch = date.getTime();
+          // 3000-01-01
+          if (epoch >= 32503680000000) {
+            logger.warn(
+              {
+                value: v,
+                epoch,
+              },
+              "Date is too far in the future."
+            );
+            return undefined;
+          }
+          return {
+            type: "datetime" as const,
+            epoch,
+          };
         },
         // bool
         (v: string) => {
