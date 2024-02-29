@@ -11,7 +11,7 @@ export function getSanitizedHeaders(rawHeaders: string[]) {
   return rawHeaders.reduce<string[]>((acc, curr) => {
     const slugifiedName = slugify(curr);
 
-    if (!acc.includes(slugifiedName)) {
+    if (!acc.includes(slugifiedName) || !slugifiedName.length) {
       acc.push(slugifiedName);
     } else {
       let conflictResolved = false;

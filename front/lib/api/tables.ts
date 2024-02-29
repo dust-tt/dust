@@ -294,6 +294,7 @@ async function rowsFromCsv(
     if (!header) {
       header = [];
       const firstRecordCells = record.map((h) => h.trim().toLocaleLowerCase());
+      console.log(firstRecordCells);
       const firstEmptyCellIndex = firstRecordCells.indexOf("");
       if (firstEmptyCellIndex !== -1) {
         // Ensure there are no non-empty cells after the first empty cell.
