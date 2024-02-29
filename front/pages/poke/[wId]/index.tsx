@@ -23,10 +23,10 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
-import { useSWRConfig } from "swr";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
+import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -113,7 +113,6 @@ const WorkspacePage = ({
   registry,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
-  const { mutate } = useSWRConfig();
 
   const sendNotification = useContext(SendNotificationsContext);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -250,36 +249,6 @@ const WorkspacePage = ({
       }
     }
   );
-
-  const { submit: onToggleFeature, isSubmitting: isTogglingFeature } =
-    useSubmitFunction(async (feature: WhitelistableFeature, value: boolean) => {
-      try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/features`, {
-          method: value ? "POST" : "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: feature,
-          }),
-        });
-        if (!r.ok) {
-          throw new Error("Failed to disable feature.");
-        }
-
-        await mutate(`/api/poke/workspaces/${owner.sId}/features`);
-      } catch (e) {
-        sendNotification({
-          title: "Error",
-          description: `An error occurred while toggling feature "${feature}": ${JSON.stringify(
-            e,
-            null,
-            2
-          )}`,
-          type: "error",
-        });
-      }
-    });
 
   const [hasCopiedInviteLink, setHasCopiedInviteLink] = React.useState(false);
 
@@ -517,42 +486,11 @@ const WorkspacePage = ({
                 )}
             </div>
 
-            <div>
-              <div className="mx-2 w-1/3">
-                <h2 className="text-md mb-4 font-bold">Features:</h2>
-                {whitelistableFeatures.map((f) => (
-                  <div
-                    key={`feature_${f}`}
-                    className="border-material-200 my-4 rounded-lg border p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="mb-2 text-lg font-semibold">{f}</h3>
-                      {owner.flags.includes(f) ? (
-                        <Button
-                          label="Disable"
-                          variant="secondaryWarning"
-                          onClick={() => {
-                            void onToggleFeature(f, false);
-                          }}
-                          disabled={isTogglingFeature}
-                        />
-                      ) : (
-                        <Button
-                          label="Enable"
-                          variant="secondary"
-                          onClick={() => {
-                            void onToggleFeature(f, true);
-                          }}
-                          disabled={isTogglingFeature}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="flex flex-col space-y-8 pt-4">
+              <FeatureFlagsDataTable
+                owner={owner}
+                whitelistableFeatures={whitelistableFeatures}
+              />
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
