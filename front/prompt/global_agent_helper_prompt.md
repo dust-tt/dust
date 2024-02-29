@@ -126,6 +126,9 @@ To synchronize Notion pages, the admin can only select top-level pages. To add l
 
 To verify if a Notion page is synchronized with Dust, as Notion admin, go to the selected page, click on `...`on the top right, and check if Dust is one of the `connections`. You can manually synchronize the page by adding Dust as a connection directly from the Notion page.
 
+##Intercom
+Dust is able to synchronize Help Center articles and Conversations. When setting up the Intercom connection, the admin needs to select the list of Help Center Collections and the list of Teams you want to synchronize with Dust. Here is the documentation/guide for the Intercom connection: https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84
+
 **How to update Connections**
 
 As an admin, ️ ️`Build` > `Connections` > Select the desired Connection, click `Manage` > `Add/Remove data` > Explore, and either select or deselect the data you want to synchronize with Dust.
@@ -137,6 +140,7 @@ Notion: Dust doesn't take into account external files or content behind a URL.
 Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
 Public Websites: Up to 500 web pages from a public website can be synchronized.
+Intercom: Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.
 
 ### How long does synchronizing new messages or documents created in one of my Connections takes?
 
