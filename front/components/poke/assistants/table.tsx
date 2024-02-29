@@ -1,14 +1,16 @@
 import type {
+  AgentConfigurationType,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { DataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
-import { useAgentConfigurations } from "@app/lib/swr";
 
 interface AssistantsDataTableProps {
+  agentConfigurations: AgentConfigurationType[];
   owner: WorkspaceType;
 }
 
@@ -21,15 +23,11 @@ function prepareAgentConfigurationForDisplay(
   );
 }
 
-export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
-  const {
-    agentConfigurations,
-    isAgentConfigurationsLoading,
-    mutateAgentConfigurations,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "admin_internal",
-  });
+export function AssistantsDataTable({
+  owner,
+  agentConfigurations,
+}: AssistantsDataTableProps) {
+  const router = useRouter();
 
   return (
     <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
@@ -38,10 +36,9 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
         columns={makeColumnsForAssistants(
           owner,
           agentConfigurations,
-          mutateAgentConfigurations
+          router.reload
         )}
         data={prepareAgentConfigurationForDisplay(agentConfigurations)}
-        isLoading={isAgentConfigurationsLoading}
       />
     </div>
   );
