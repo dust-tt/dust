@@ -1,9 +1,11 @@
 import {
   Avatar,
   Button,
+  IconButton,
   Input,
   Page,
   PencilSquareIcon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -165,9 +167,9 @@ export default function NamingScreen({
       status: "unavailable",
       reason: "irrelevant",
     });
-  const descriptionDebounceHandle = useRef<NodeJS.Timeout | undefined>(
-    undefined
-  );
+
+  const [descriptionSuggestionsIndex, setDescriptionSuggestionIndex] =
+    useState(0);
 
   const updateDescriptionSuggestions = useCallback(async () => {
     const descriptionSuggestions = await getDescriptionSuggestions({
@@ -181,13 +183,13 @@ export default function NamingScreen({
   }, [owner, builderState.instructions, builderState.handle]);
 
   useEffect(
-    () => debounce(descriptionDebounceHandle, updateDescriptionSuggestions),
-    [
-      updateDescriptionSuggestions,
-      builderState.instructions,
-      builderState.handle,
-    ]
+    () => void updateDescriptionSuggestions(),
+    [updateDescriptionSuggestions]
   );
+
+  const suggestionsAvailable =
+    descriptionSuggestions.status === "ok" &&
+    descriptionSuggestions.suggestions.length > 0;
 
   return (
     <>
@@ -295,49 +297,59 @@ export default function NamingScreen({
               Describe for others the assistant’s purpose.
             </div>
           </div>
-          {descriptionSuggestions.status === "ok" &&
-            descriptionSuggestions.suggestions.length > 0 &&
-            isDevelopmentOrDustWorkspace(owner) && (
-              <div className="flex items-center gap-2">
-                <div className="text-xs font-semibold text-element-800">
-                  Suggestions:
-                </div>
-                {descriptionSuggestions.suggestions
-                  .slice(0, 2)
-                  .map((suggestion, index) => (
-                    <Button
-                      label={suggestion}
-                      variant="secondary"
-                      key={`description-suggestion-${index}`}
-                      size="xs"
-                      className="!h-auto min-h-7 max-w-[45%] !whitespace-normal"
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          description: suggestion,
-                        }));
-                      }}
-                    />
-                  ))}
-              </div>
-            )}
 
-          <div>
-            <Input
-              placeholder="Answer questions about sales, translate from English to French…"
-              value={builderState.description}
-              onChange={(value) => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  description: value,
-                }));
-              }}
-              error={null} // TODO ?
-              name="assistantDescription"
-              className="text-sm"
-            />
+          <div className="flex items-center gap-2">
+            <div className="flex-grow">
+              <Input
+                placeholder={
+                  suggestionsAvailable
+                    ? "Click on sparkles to generate a description"
+                    : "Answer questions about sales, translate from English to French…"
+                }
+                value={builderState.description}
+                onChange={(value) => {
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    description: value,
+                  }));
+                }}
+                error={null} // TODO ?
+                name="assistantDescription"
+                className="text-sm"
+              />
+            </div>
+            {isDevelopmentOrDustWorkspace(owner) && (
+              <IconButton
+                icon={SparklesIcon}
+                size="md"
+                onClick={async () => {
+                  if (!suggestionsAvailable) return;
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    description:
+                      descriptionSuggestions.suggestions[
+                        descriptionSuggestionsIndex
+                      ],
+                  }));
+                  if (descriptionSuggestionsIndex === 1) {
+                    await updateDescriptionSuggestions();
+                    setDescriptionSuggestionIndex(0);
+                  } else {
+                    setDescriptionSuggestionIndex(
+                      descriptionSuggestionsIndex + 1
+                    );
+                  }
+                }}
+                disabled={!suggestionsAvailable}
+                tooltip={
+                  suggestionsAvailable
+                    ? "Click to generate a description"
+                    : "Description generation not yet available"
+                }
+              />
+            )}
           </div>
         </div>
       </div>
