@@ -84,7 +84,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG = {
   contextSize: 31500,
   recommendedTopK: 16,
   largeModel: true,
-  description: "Mistral latest `large` model (32k context).",
+  description: "Mistral's latest `large` model (32k context).",
   shortDescription: "Mistral's large model.",
 } as const;
 
@@ -95,7 +95,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG = {
   contextSize: 31500,
   recommendedTopK: 16,
   largeModel: true,
-  description: "Mistral latest `medium` model (32k context).",
+  description: "Mistral's latest `medium` model (32k context).",
   shortDescription: "Mistral's smartest model.",
 } as const;
 
@@ -106,7 +106,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG = {
   contextSize: 31500,
   recommendedTopK: 16,
   largeModel: false,
-  description: "Mistral latest model (8x7B Instruct, 32k context).",
+  description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
 } as const;
 
