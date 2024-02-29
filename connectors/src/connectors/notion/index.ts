@@ -26,8 +26,6 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -55,32 +53,22 @@ export async function createNotionConnector(
     return new Err(new Error("Notion access token is invalid"));
   }
 
-  let connector: ConnectorModel;
-  let notionConnectorState: NotionConnectorState;
+  let connector: ConnectorResource;
   try {
-    const txRes = await sequelizeConnection.transaction(async (transaction) => {
-      const connector = await ConnectorModel.create(
-        {
-          type: "notion",
-          connectionId: nangoConnectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
-        },
-        { transaction }
-      );
-      const connectorState = await NotionConnectorState.create(
-        {
-          connectorId: connector.id,
-          useDualWorkflow: true,
-        },
-        { transaction }
-      );
+    const notionConfigurationBlob = {
+      useDualWorkflow: true,
+    };
 
-      return { connector, connectorState };
-    });
-    connector = txRes.connector;
-    notionConnectorState = txRes.connectorState;
+    connector = await ConnectorResource.makeNew(
+      "notion",
+      {
+        connectionId: nangoConnectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      notionConfigurationBlob
+    );
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
     return new Err(e as Error);
@@ -97,8 +85,7 @@ export async function createNotionConnector(
       },
       "Error launching notion sync workflow."
     );
-    await notionConnectorState.destroy();
-    await connector.destroy();
+    await connector.delete();
     return new Err(e as Error);
   }
 

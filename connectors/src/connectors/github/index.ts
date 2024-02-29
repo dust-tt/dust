@@ -28,8 +28,6 @@ import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 type GithubInstallationId = string;
@@ -46,30 +44,22 @@ export async function createGithubConnector(
     return new Err(new Error("Github installation id is invalid"));
   }
   try {
-    const connector = await sequelizeConnection.transaction(
-      async (transaction) => {
-        const connector = await ConnectorModel.create(
-          {
-            type: "github",
-            connectionId: githubInstallationId,
-            workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-            workspaceId: dataSourceConfig.workspaceId,
-            dataSourceName: dataSourceConfig.dataSourceName,
-          },
-          { transaction }
-        );
-        await GithubConnectorState.create(
-          {
-            connectorId: connector.id,
-            webhooksEnabledAt: new Date(),
-            codeSyncEnabled: false,
-          },
-          { transaction }
-        );
+    const githubConfigurationBlob = {
+      webhooksEnabledAt: new Date(),
+      codeSyncEnabled: false,
+    };
 
-        return connector;
-      }
+    const connector = await ConnectorResource.makeNew(
+      "github",
+      {
+        connectionId: githubInstallationId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      githubConfigurationBlob
     );
+
     await launchGithubFullSyncWorkflow({
       connectorId: connector.id,
       syncCodeOnly: false,

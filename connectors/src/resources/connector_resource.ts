@@ -1,9 +1,17 @@
 import type { ConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, WhereOptions } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  WhereOptions,
+} from "sequelize";
 
 import { BaseResource } from "@connectors/resources/base_resource";
-import type { ConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
+import type {
+  ConnectorProviderModelMapping,
+  ConnectorProviderStrategy,
+} from "@connectors/resources/connector/strategy";
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -29,6 +37,32 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     const { type } = blob;
 
     this.providerStrategy = getConnectorProviderStrategy(type);
+  }
+
+  static async makeNew<T extends keyof ConnectorProviderModelMapping>(
+    type: T,
+    blob: Omit<CreationAttributes<ConnectorModel>, "type">,
+    specificBlob: ConnectorProviderModelMapping[T]
+  ) {
+    return sequelizeConnection.transaction(async (transaction) => {
+      const connector = await ConnectorModel.create(
+        {
+          ...blob,
+          type,
+        },
+        { transaction }
+      );
+
+      const connectorRes = new this(ConnectorModel, connector);
+
+      await connectorRes.providerStrategy.makeNew(
+        connectorRes,
+        specificBlob,
+        transaction
+      );
+
+      return connectorRes;
+    });
   }
 
   static async listByType(

@@ -17,7 +17,6 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import type { Result } from "@connectors/lib/result.js";
 import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import { folderHasChildren, getDrivesIds } from "./temporal/activities";
@@ -50,7 +49,6 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
 export async function createGoogleDriveConnector(
@@ -58,89 +56,75 @@ export async function createGoogleDriveConnector(
   nangoConnectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
   try {
-    const connector = await sequelizeConnection.transaction(
-      async (t): Promise<ConnectorModel> => {
-        const driveClient = await getDriveClient(nangoConnectionId);
+    const driveClient = await getDriveClient(nangoConnectionId);
 
-        // Sanity checks to confirm we have sufficient permissions
-        await Promise.all([
-          driveClient.about.get({ fields: "*" }),
-          driveClient.files.get({ fileId: "root" }),
-          driveClient.drives.list({
-            pageSize: 10,
-            fields: "nextPageToken, drives(id, name)",
-          }),
-        ])
-          .then(
-            ([sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList]) => {
-              if (sanityCheckAbout.status !== 200) {
-                throw new Error(
-                  `Could not get google drive info. Error message: ${
-                    sanityCheckAbout.statusText || "unknown"
-                  }`
-                );
-              }
-              if (sanityCheckFilesGet.status !== 200) {
-                throw new Error(
-                  `Could not call google drive files get. Error message: ${
-                    sanityCheckFilesGet.statusText || "unknown"
-                  }`
-                );
-              }
-              if (sanityCheckFilesList.status !== 200) {
-                throw new Error(
-                  `Could not call google drive files list. Error message: ${
-                    sanityCheckFilesList.statusText || "unknown"
-                  }`
-                );
-              }
-            }
-          )
-          .catch(() => {
-            throw new Error(
-              "Error trying to check sufficient permissions from Google."
-            );
-          });
-
-        const connector = await ConnectorModel.create(
-          {
-            type: "google_drive",
-            connectionId: nangoConnectionId,
-            workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-            workspaceId: dataSourceConfig.workspaceId,
-            dataSourceName: dataSourceConfig.dataSourceName,
-          },
-          { transaction: t }
-        );
-
-        await GoogleDriveConfig.create(
-          {
-            connectorId: connector.id,
-            pdfEnabled: false,
-          },
-          {
-            transaction: t,
-          }
-        );
-
-        const webhookInfo = await registerWebhook(connector);
-        if (webhookInfo.isErr()) {
-          throw webhookInfo.error;
-        } else {
-          await GoogleDriveWebhook.create(
-            {
-              webhookId: webhookInfo.value.id,
-              expiresAt: new Date(webhookInfo.value.expirationTsMs),
-              renewAt: new Date(webhookInfo.value.expirationTsMs),
-              connectorId: connector.id,
-            },
-            { transaction: t }
+    // Sanity checks to confirm we have sufficient permissions.
+    await Promise.all([
+      driveClient.about.get({ fields: "*" }),
+      driveClient.files.get({ fileId: "root" }),
+      driveClient.drives.list({
+        pageSize: 10,
+        fields: "nextPageToken, drives(id, name)",
+      }),
+    ])
+      .then(([sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList]) => {
+        if (sanityCheckAbout.status !== 200) {
+          throw new Error(
+            `Could not get google drive info. Error message: ${
+              sanityCheckAbout.statusText || "unknown"
+            }`
           );
         }
+        if (sanityCheckFilesGet.status !== 200) {
+          throw new Error(
+            `Could not call google drive files get. Error message: ${
+              sanityCheckFilesGet.statusText || "unknown"
+            }`
+          );
+        }
+        if (sanityCheckFilesList.status !== 200) {
+          throw new Error(
+            `Could not call google drive files list. Error message: ${
+              sanityCheckFilesList.statusText || "unknown"
+            }`
+          );
+        }
+      })
+      .catch(() => {
+        throw new Error(
+          "Error trying to check sufficient permissions from Google."
+        );
+      });
 
-        return connector;
-      }
+    const googleDriveConfigurationBlob = {
+      pdfEnabled: false,
+    };
+
+    const connector = await ConnectorResource.makeNew(
+      "google_drive",
+      {
+        connectionId: nangoConnectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      googleDriveConfigurationBlob
     );
+
+    const webhookInfo = await registerWebhook(connector);
+    if (webhookInfo.isErr()) {
+      await connector.delete();
+
+      throw webhookInfo.error;
+    } else {
+      await GoogleDriveWebhook.create({
+        webhookId: webhookInfo.value.id,
+        expiresAt: new Date(webhookInfo.value.expirationTsMs),
+        renewAt: new Date(webhookInfo.value.expirationTsMs),
+        connectorId: connector.id,
+      });
+    }
+
     return new Ok(connector.id.toString());
   } catch (err) {
     logger.error(
