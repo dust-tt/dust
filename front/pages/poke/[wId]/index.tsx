@@ -23,11 +23,9 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
-import { useSWRConfig } from "swr";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
-import { FeatureFlagsList } from "@app/components/poke/features/list";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -115,7 +113,6 @@ const WorkspacePage = ({
   registry,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
-  const { mutate } = useSWRConfig();
 
   const sendNotification = useContext(SendNotificationsContext);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
