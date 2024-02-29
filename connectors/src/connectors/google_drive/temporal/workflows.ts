@@ -16,7 +16,6 @@ import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
 import { newWebhookSignal } from "./signals";
 
 const {
-  syncFiles,
   getDrivesIds,
   garbageCollector,
   getFoldersToSync,
@@ -27,6 +26,11 @@ const {
   markFolderAsVisited,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
+});
+
+// Temporarily increase timeout on syncFiles until table upsertion is moved to the upsert queue.
+const { syncFiles } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
