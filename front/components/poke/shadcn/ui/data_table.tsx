@@ -27,11 +27,13 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  isLoading?: boolean;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  isLoading,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -51,12 +53,16 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  if (isLoading) {
+    return <>Loading...</>;
+  }
+
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center py-4">
+      <div className="flex items-center">
         <Input
           name="filter"
-          placeholder="Filter data sources..."
+          placeholder="Filter ..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(value) => table.getColumn("name")?.setFilterValue(value)}
           className="max-w-sm"

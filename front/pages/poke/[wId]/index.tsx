@@ -8,7 +8,6 @@ import {
 import type {
   AgentConfigurationType,
   DataSourceType,
-  LightAgentConfigurationType,
   WhitelistableFeature,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
@@ -18,13 +17,7 @@ import type {
   PlanType,
   SubscriptionType,
 } from "@dust-tt/types";
-import {
-  DustProdActionRegistry,
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  WHITELISTABLE_FEATURES,
-} from "@dust-tt/types";
+import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -32,6 +25,7 @@ import { useRouter } from "next/router";
 import React, { useContext } from "react";
 import { useSWRConfig } from "swr";
 
+import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -77,6 +71,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
     };
   }
 
+  // TODO(2024-02-28 flav) Stop fetching agent configurations on the server side.
   const [dataSources, agentConfigurations, planInvitation] = await Promise.all([
     getDataSources(auth, { includeEditedBy: true }),
     (async () => {
@@ -192,38 +187,6 @@ const WorkspacePage = ({
     }
   );
 
-  const { submit: onAssistantArchive } = useSubmitFunction(
-    async (agentConfiguration: LightAgentConfigurationType) => {
-      if (
-        !window.confirm(
-          `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`
-        )
-      ) {
-        return;
-      }
-
-      try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (!r.ok) {
-          throw new Error("Failed to archive agent configuration.");
-        }
-        router.reload();
-      } catch (e) {
-        console.error(e);
-        window.alert(
-          "An error occurred while archiving the agent configuration."
-        );
-      }
-    }
-  );
   const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
     if (
       !window.confirm(
@@ -589,73 +552,13 @@ const WorkspacePage = ({
               </div>
             </div>
 
-            <div className="flex flex-col space-y-2 pt-4">
+            <div className="flex flex-col space-y-8 pt-4">
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
                 agentConfigurations={agentConfigurations}
               />
-              <div className="mx-2 w-1/3">
-                <h2 className="text-md mb-4 font-bold">Assistants:</h2>
-                {agentConfigurations.map((a) => (
-                  <div
-                    key={a.id}
-                    className="border-material-200 my-4 rounded-lg border p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="mb-2 text-lg font-semibold">
-                        <Link href={`/poke/${owner.sId}/assistants/${a.sId}`}>
-                          {a.name}
-                        </Link>
-                      </h3>
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          label="Archive"
-                          variant="secondaryWarning"
-                          onClick={() => {
-                            void onAssistantArchive(a);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
-                      [{a.scope}] {a.description}
-                    </div>
-                    {a.action && isRetrievalConfiguration(a.action) && (
-                      <div className="mb-2 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Data Sources:</div>
-                        {a.action.dataSources.map((ds) => (
-                          <div key={ds.dataSourceId}>{ds.dataSourceId}</div>
-                        ))}
-                      </div>
-                    )}
-                    {a.action && isDustAppRunConfiguration(a.action) && (
-                      <div className="mb-2 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Dust app:</div>
-                        <div>
-                          {a.action.appWorkspaceId}/{a.action.appId}
-                        </div>
-                      </div>
-                    )}
-                    {a.action && isTablesQueryConfiguration(a.action) && (
-                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Tables:</div>
-                        {a.action.tables.map((t) => (
-                          <div key={t.tableId}>
-                            {t.workspaceId}/{t.dataSourceId}/{t.tableId}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mb-2 flex flex-col text-sm text-gray-600">
-                      <div className="font-bold">Instructions</div>
-                      <div>
-                        {(a.generation?.prompt || "").substring(0, 100)}...
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <AssistantsDataTable owner={owner} />
             </div>
           </div>
         </div>
