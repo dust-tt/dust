@@ -29,7 +29,6 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
-  MISTRAL_NEXT_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   Ok,
 } from "@dust-tt/types";
@@ -156,9 +155,6 @@ function AdvancedSettings({
     MISTRAL_LARGE_MODEL_CONFIG,
     GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   ];
-  if (owner.flags.includes("mistral_next")) {
-    usedModelConfigs.push(MISTRAL_NEXT_MODEL_CONFIG);
-  }
 
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
