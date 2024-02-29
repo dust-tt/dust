@@ -13,7 +13,7 @@ export async function runIntercomWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 4,
+    maxConcurrentActivityTaskExecutions: 16,
     connection,
     namespace,
     interceptors: {

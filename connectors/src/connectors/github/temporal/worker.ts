@@ -14,7 +14,7 @@ export async function runGithubWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 3,
+    maxConcurrentActivityTaskExecutions: 16,
     connection,
     namespace,
     interceptors: {

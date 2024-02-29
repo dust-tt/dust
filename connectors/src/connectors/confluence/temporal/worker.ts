@@ -15,7 +15,7 @@ export async function runConfluenceWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...sync_status },
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 4,
+    maxConcurrentActivityTaskExecutions: 16,
     connection,
     namespace,
     interceptors: {
