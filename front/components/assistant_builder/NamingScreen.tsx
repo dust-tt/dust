@@ -225,7 +225,7 @@ export default function NamingScreen({
                     Suggestions:
                   </div>
                   {nameSuggestions.suggestions
-		    .slice(0,3)
+                    .slice(0, 3)
                     .filter(async () =>
                       validateHandle({
                         owner,
