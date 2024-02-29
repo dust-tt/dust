@@ -546,7 +546,11 @@ export async function upsertTableFromCsv({
       },
       "Error uploading structured data to Dust."
     );
-    throw new Error(`Error uploading to dust: ${dustRequestResult}`);
+    throw new Error(
+      `Error uploading to dust, got ${
+        dustRequestResult.status
+      }: ${JSON.stringify(dustRequestResult.data, null, 2)}`
+    );
   }
 }
 
