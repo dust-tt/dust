@@ -376,7 +376,7 @@ async function rowsFromCsv(
               return {
                 type: "datetime" as const,
                 epoch: parsedDate.toMillis(),
-                string_value: v,
+                string_value: trimmedV,
               };
             }
           }
