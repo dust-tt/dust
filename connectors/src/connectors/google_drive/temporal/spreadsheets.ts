@@ -149,7 +149,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
     return [];
   }
 
-  return validRows.slice(0, MAXIMUM_NUMBER_OF_GSHEET_ROWS);
+  return validRows;
 }
 
 async function processSheet(
