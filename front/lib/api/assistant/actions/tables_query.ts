@@ -62,7 +62,7 @@ function getTablesQueryAppSpecification() {
       {
         name: "question",
         description:
-          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation.",
+          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation. If the user has multiple unanswered questions, make sure to include all of them.",
         type: "string" as const,
       },
       {
