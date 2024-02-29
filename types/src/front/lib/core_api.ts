@@ -115,7 +115,7 @@ export type CoreAPIRowValue =
   | number
   | string
   | boolean
-  | { type: "datetime"; epoch: number; string_value: string }
+  | { type: "datetime"; epoch: number; string_value?: string }
   | null;
 
 export type CoreAPIRow = {
