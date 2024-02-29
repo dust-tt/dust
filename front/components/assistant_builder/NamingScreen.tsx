@@ -23,15 +23,109 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { debounce } from "@app/lib/utils/debounce";
 
+export function removeLeadingAt(handle: string) {
+  return handle.startsWith("@") ? handle.slice(1) : handle;
+}
+
+function assistantHandleIsValid(handle: string) {
+  return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
+}
+
+async function assistantHandleIsAvailable({
+  owner,
+  handle,
+  initialHandle,
+  checkUsernameTimeout,
+}: {
+  owner: WorkspaceType;
+  handle: string;
+  initialHandle: string | undefined;
+  checkUsernameTimeout: React.MutableRefObject<NodeJS.Timeout | null>;
+}) {
+  if (checkUsernameTimeout.current) {
+    clearTimeout(checkUsernameTimeout.current);
+  }
+  // No check needed if the assistant doesn't change name
+  if (handle === initialHandle) return Promise.resolve(true);
+  return new Promise((resolve, reject) => {
+    checkUsernameTimeout.current = setTimeout(async () => {
+      checkUsernameTimeout.current = null;
+      const res = await fetch(
+        `/api/w/${
+          owner.sId
+        }/assistant/agent_configurations/name_available?handle=${encodeURIComponent(
+          handle
+        )}`
+      );
+      if (!res.ok) {
+        return reject(
+          new Error("An error occurred while checking the handle.")
+        );
+      }
+      const { available } = await res.json();
+      return resolve(available);
+    }, 500);
+  });
+}
+
+export async function validateHandle({
+  owner,
+  handle,
+  initialHandle,
+  checkUsernameTimeout,
+}: {
+  owner: WorkspaceType;
+  handle: string | null;
+  initialHandle: string | undefined;
+  checkUsernameTimeout: React.MutableRefObject<NodeJS.Timeout | null>;
+}): Promise<{
+  handleValid: boolean;
+  handleErrorMessage: string | null;
+}> {
+  if (!handle || handle === "@") {
+    return { handleValid: false, handleErrorMessage: null };
+  } else {
+    if (!assistantHandleIsValid(handle)) {
+      if (handle.length > 30) {
+        return {
+          handleValid: false,
+          handleErrorMessage: "The name must be 30 characters or less",
+        };
+      } else {
+        return {
+          handleValid: false,
+          handleErrorMessage: "Only letters, numbers, _ and - allowed",
+        };
+      }
+    } else if (
+      !(await assistantHandleIsAvailable({
+        owner,
+        handle,
+        initialHandle,
+        checkUsernameTimeout,
+      }))
+    ) {
+      return {
+        handleValid: false,
+        handleErrorMessage: "This handle is already taken",
+      };
+    } else {
+      return { handleValid: true, handleErrorMessage: null };
+    }
+  }
+}
+
 export default function NamingScreen({
   owner,
   builderState,
+  initialHandle,
   setBuilderState,
   setEdited,
   assistantHandleError,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
+  initialHandle: string | undefined;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -48,6 +142,7 @@ export default function NamingScreen({
 
   const nameDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  const checkUsernameTimeout = useRef<NodeJS.Timeout | null>(null);
   const updateNameSuggestions = useCallback(async () => {
     const nameSuggestions = await getNamingSuggestions({
       owner,
@@ -99,22 +194,31 @@ export default function NamingScreen({
                   <div className="text-xs font-semibold text-element-800">
                     Suggestions:
                   </div>
-                  {nameSuggestions.suggestions.map((suggestion, index) => (
-                    <Button
-                      label={`@${suggestion.replace(/\s/g, "")}`}
-                      variant="secondary"
-                      key={`naming-suggestion-${index}`}
-                      size="xs"
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          // remove all whitespaces from suggestion
-                          handle: suggestion.replace(/\s/g, ""),
-                        }));
-                      }}
-                    />
-                  ))}
+                  {nameSuggestions.suggestions
+                    .filter(async () =>
+                      validateHandle({
+                        owner,
+                        handle: builderState.handle,
+                        initialHandle,
+                        checkUsernameTimeout,
+                      })
+                    )
+                    .map((suggestion, index) => (
+                      <Button
+                        label={`@${suggestion.replace(/\s/g, "")}`}
+                        variant="secondary"
+                        key={`naming-suggestion-${index}`}
+                        size="xs"
+                        onClick={() => {
+                          setEdited(true);
+                          setBuilderState((state) => ({
+                            ...state,
+                            // remove all whitespaces from suggestion
+                            handle: suggestion.replace(/\s/g, ""),
+                          }));
+                        }}
+                      />
+                    ))}
                 </div>
               )}
 
