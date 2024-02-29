@@ -21,7 +21,7 @@ export function makeColumnsForFeatureFlags(
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">
-            <p>Id</p>
+            <p>Name</p>
             <IconButton
               variant="tertiary"
               icon={ArrowsUpDownIcon}
