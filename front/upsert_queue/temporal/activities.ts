@@ -53,6 +53,12 @@ export async function upsertDocumentActivity(
   }
   const upsertQueueItem = itemValidation.right;
 
+  logger = logger.child({
+    workspaceId: upsertQueueItem.workspaceId,
+    dataSourceName: upsertQueueItem.dataSourceName,
+    documentId: upsertQueueItem.documentId,
+  });
+
   const auth = await Authenticator.internalBuilderForWorkspace(
     upsertQueueItem.workspaceId
   );
@@ -60,14 +66,16 @@ export async function upsertDocumentActivity(
   const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceName);
 
   if (!dataSource) {
-    throw new Error(`Data source ${upsertQueueItem.dataSourceName} not found`);
+    // If the data source was not found, we simply give up and remove the item from the queue as it
+    // means that the data source was deleted.
+    logger.info(
+      {
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Giving up: DataSource not found"
+    );
+    return;
   }
-
-  logger = logger.child({
-    workspaceId: upsertQueueItem.workspaceId,
-    dataSourceName: dataSource.name,
-    documentId: upsertQueueItem.documentId,
-  });
 
   const statsDTags = [
     `data_source_name:${dataSource.name}`,
