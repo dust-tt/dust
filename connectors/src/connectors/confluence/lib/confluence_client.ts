@@ -258,13 +258,17 @@ export class ConfluenceClient {
     };
   }
 
-  async getGlobalSpaces() {
+  async getGlobalSpaces(pageCursor?: string) {
     const params = new URLSearchParams({
       limit: "250",
       type: "global",
       sort: "name",
       status: "current",
     });
+
+    if (pageCursor) {
+      params.append("cursor", pageCursor);
+    }
 
     const spaces = await this.request(
       `${this.restApiBaseUrl}/spaces?${params.toString()}`,
