@@ -1,13 +1,14 @@
 import type {
   CoreAPIError,
   CoreAPIRow,
+  CoreAPIRowValue,
   CoreAPITable,
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
 import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
-import _ from "lodash";
+import { DateTime } from "luxon";
 
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
@@ -32,13 +33,6 @@ type NotFoundError = {
   type: "table_not_found";
   message: string;
 };
-
-export type RowValue =
-  | number
-  | boolean
-  | string
-  | { type: "datetime"; epoch: number }
-  | null;
 
 export type TableOperationError =
   | {
@@ -352,7 +346,7 @@ async function rowsFromCsv(
   }
 
   // Parse values and infer types for each column.
-  const parsedValuesByCol: Record<string, RowValue[]> = {};
+  const parsedValuesByCol: Record<string, CoreAPIRowValue[]> = {};
   for (const [col, valuesRaw] of Object.entries(valuesByCol)) {
     const values = valuesRaw.map((v) => v.trim());
 
@@ -369,13 +363,24 @@ async function rowsFromCsv(
           /^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v.trim()) : undefined,
         // date/datetime
         (v: string) => {
-          const maybeDate = v.trim();
-          return _.isDate(maybeDate)
-            ? {
+          const dateParsers = [
+            DateTime.fromISO,
+            DateTime.fromRFC2822,
+            DateTime.fromHTTP,
+            DateTime.fromSQL,
+          ];
+          const trimmedV = v.trim();
+          for (const parse of dateParsers) {
+            const parsedDate = parse(trimmedV);
+            if (parsedDate.isValid) {
+              return {
                 type: "datetime" as const,
-                epoch: new Date(maybeDate).getTime(),
-              }
-            : undefined;
+                epoch: parsedDate.toMillis(),
+                string_value: trimmedV,
+              };
+            }
+          }
+          return undefined;
         },
         // bool
         (v: string) => {
@@ -427,7 +432,7 @@ async function rowsFromCsv(
       acc[h] =
         parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
       return acc;
-    }, {} as Record<string, RowValue>);
+    }, {} as Record<string, CoreAPIRowValue>);
 
     const rowId = record["__dust_id"] ?? i.toString();
 

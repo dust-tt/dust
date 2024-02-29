@@ -111,9 +111,16 @@ export type CoreAPITable = {
   schema: CoreAPITableSchema | null;
 };
 
+export type CoreAPIRowValue =
+  | number
+  | string
+  | boolean
+  | { type: "datetime"; epoch: number; string_value?: string }
+  | null;
+
 export type CoreAPIRow = {
   row_id: string;
-  value: Record<string, unknown>;
+  value: Record<string, CoreAPIRowValue>;
 };
 
 export type CoreAPIQueryResult = {
