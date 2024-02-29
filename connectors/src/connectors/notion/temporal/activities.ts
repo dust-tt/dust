@@ -2064,7 +2064,7 @@ export async function getDiscoveredResourcesFromCache({
 }: {
   connectorId: ModelId;
   topLevelWorkflowId: string;
-}): Promise<{ pageIds: string[]; databaseIds: string[] }> {
+}): Promise<{ pageIds: string[]; databaseIds: string[] } | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
@@ -2125,15 +2125,18 @@ export async function getDiscoveredResourcesFromCache({
     (id) => !databaseIdsAlreadySeen.has(id)
   );
 
-  if (discoveredPageIds.length || discoveredDatabaseIds.length) {
-    localLogger.info(
-      {
-        discoveredPageIdsCount: discoveredPageIds.length,
-        discoveredDatabaseIdsCount: discoveredDatabaseIds.length,
-      },
-      "Discovered new resources."
-    );
+  if (!discoveredPageIds.length && !discoveredDatabaseIds.length) {
+    localLogger.info("No new resources discovered.");
+    return null;
   }
+
+  localLogger.info(
+    {
+      discoveredPageIdsCount: discoveredPageIds.length,
+      discoveredDatabaseIdsCount: discoveredDatabaseIds.length,
+    },
+    "Discovered new resources."
+  );
 
   return {
     pageIds: discoveredPageIds,
