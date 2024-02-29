@@ -5,7 +5,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CoreAPI, Err, isSlugified, isValidDate, Ok } from "@dust-tt/types";
+import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import _ from "lodash";
 
