@@ -108,7 +108,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
     icon: TableIcon,
     label: "Query Tables",
     description: "Tables, Spreadsheets, Notion DBs",
-    flag: "structured_data",
+    flag: null,
   },
 };
 

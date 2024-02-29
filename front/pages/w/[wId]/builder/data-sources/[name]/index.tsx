@@ -197,17 +197,13 @@ function StandardDataSourceView({
     }
   }, [router]);
 
-  const structuredDataEnabled = owner.flags.includes("structured_data");
-
   return (
     <div className="pt-6">
       <Page.Vertical gap="xl" align="stretch">
         <Page.SectionHeader
           title={dataSource.name}
           description={
-            structuredDataEnabled
-              ? "Use this page to view and upload documents and tables to your Folder."
-              : "Use this page to view and upload documents to your Folder."
+            "Use this page to view and upload documents and tables to your Folder."
           }
           action={
             readOnly
@@ -225,9 +221,7 @@ function StandardDataSourceView({
           }
         />
 
-        {structuredDataEnabled && (
-          <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
-        )}
+        <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
 
         {currentTab === "documents" && (
           <DatasourceDocumentsTabView

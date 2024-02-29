@@ -1,5 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
-import type { SpecificationType, WorkspaceType } from "@dust-tt/types";
+import type { SpecificationType } from "@dust-tt/types";
 import type { BlockType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
@@ -7,14 +7,12 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import { classNames } from "@app/lib/utils";
 
 export default function NewBlock({
-  owner,
   spec,
   disabled,
   onClick,
   direction,
   small,
 }: {
-  owner: WorkspaceType;
   spec: SpecificationType;
   disabled: boolean;
   onClick: (type: BlockType | "map_reduce" | "while_end") => void;
@@ -97,24 +95,19 @@ export default function NewBlock({
       name: "While End",
       description: "Loop over a set of blocks until a condition is met.",
     },
+    {
+      type: "database_schema",
+      typeNames: ["database_schema"],
+      name: "Database Schema",
+      description: "Retrieve the schema of a database.",
+    },
+    {
+      type: "database",
+      typeNames: ["database"],
+      name: "Database",
+      description: "Query a database.",
+    },
   ];
-
-  if (owner.flags.includes("structured_data")) {
-    blocks.push(
-      {
-        type: "database_schema",
-        typeNames: ["database_schema"],
-        name: "Database Schema",
-        description: "Retrieve the schema of a database.",
-      },
-      {
-        type: "database",
-        typeNames: ["database"],
-        name: "Database",
-        description: "Query a database.",
-      }
-    );
-  }
 
   if (!containsInput) {
     blocks.splice(0, 0, {

@@ -1,6 +1,4 @@
 export const WHITELISTABLE_FEATURES = [
-  "auto_pre_ingest_all_databases",
-  "structured_data",
   "workspace_analytics",
   "usage_data_api",
   "brieviety_prompt",

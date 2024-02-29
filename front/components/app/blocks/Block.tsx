@@ -158,7 +158,6 @@ export default function Block({
           >
             <div className="mr-1 mt-1 flex-initial text-gray-400">
               <NewBlock
-                owner={owner}
                 disabled={readOnly}
                 onClick={onBlockNew}
                 spec={spec}

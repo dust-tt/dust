@@ -61,7 +61,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
 
-  if (!dataSource || !owner.flags.includes("structured_data")) {
+  if (!dataSource) {
     return {
       notFound: true,
     };
