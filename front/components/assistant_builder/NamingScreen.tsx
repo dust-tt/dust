@@ -1,9 +1,11 @@
 import {
   Avatar,
   Button,
+  IconButton,
   Input,
   Page,
   PencilSquareIcon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -134,12 +136,12 @@ export default function NamingScreen({
 }) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
+  // Name suggestions handling
   const [nameSuggestions, setNameSuggestions] =
     useState<BuilderSuggestionsType>({
       status: "unavailable",
       reason: "irrelevant",
     });
-
   const nameDebounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const checkUsernameTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -158,6 +160,36 @@ export default function NamingScreen({
     () => debounce(nameDebounceHandle, updateNameSuggestions),
     [updateNameSuggestions, builderState.instructions, builderState.description]
   );
+
+  // Description suggestions handling
+  const [descriptionSuggestions, setDescriptionSuggestions] =
+    useState<BuilderSuggestionsType>({
+      status: "unavailable",
+      reason: "irrelevant",
+    });
+
+  const [descriptionSuggestionsIndex, setDescriptionSuggestionIndex] =
+    useState(0);
+
+  const updateDescriptionSuggestions = useCallback(async () => {
+    const descriptionSuggestions = await getDescriptionSuggestions({
+      owner,
+      instructions: builderState.instructions || "",
+      name: builderState.handle || "",
+    });
+    if (descriptionSuggestions.isOk()) {
+      setDescriptionSuggestions(descriptionSuggestions.value);
+    }
+  }, [owner, builderState.instructions, builderState.handle]);
+
+  useEffect(
+    () => void updateDescriptionSuggestions(),
+    [updateDescriptionSuggestions]
+  );
+
+  const suggestionsAvailable =
+    descriptionSuggestions.status === "ok" &&
+    descriptionSuggestions.suggestions.length > 0;
 
   return (
     <>
@@ -195,6 +227,7 @@ export default function NamingScreen({
                     Suggestions:
                   </div>
                   {nameSuggestions.suggestions
+                    .slice(0, 3)
                     .filter(async () =>
                       validateHandle({
                         owner,
@@ -264,21 +297,59 @@ export default function NamingScreen({
               Describe for others the assistant’s purpose.
             </div>
           </div>
-          <div>
-            <Input
-              placeholder="Answer questions about sales, translate from English to French…"
-              value={builderState.description}
-              onChange={(value) => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  description: value,
-                }));
-              }}
-              error={null} // TODO ?
-              name="assistantDescription"
-              className="text-sm"
-            />
+
+          <div className="flex items-center gap-2">
+            <div className="flex-grow">
+              <Input
+                placeholder={
+                  suggestionsAvailable
+                    ? "Click on sparkles to generate a description"
+                    : "Answer questions about sales, translate from English to French…"
+                }
+                value={builderState.description}
+                onChange={(value) => {
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    description: value,
+                  }));
+                }}
+                error={null} // TODO ?
+                name="assistantDescription"
+                className="text-sm"
+              />
+            </div>
+            {isDevelopmentOrDustWorkspace(owner) && (
+              <IconButton
+                icon={SparklesIcon}
+                size="md"
+                onClick={async () => {
+                  if (!suggestionsAvailable) return;
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    description:
+                      descriptionSuggestions.suggestions[
+                        descriptionSuggestionsIndex
+                      ],
+                  }));
+                  if (descriptionSuggestionsIndex === 1) {
+                    await updateDescriptionSuggestions();
+                    setDescriptionSuggestionIndex(0);
+                  } else {
+                    setDescriptionSuggestionIndex(
+                      descriptionSuggestionsIndex + 1
+                    );
+                  }
+                }}
+                disabled={!suggestionsAvailable}
+                tooltip={
+                  suggestionsAvailable
+                    ? "Click to generate a description"
+                    : "Description generation not yet available"
+                }
+              />
+            )}
           </div>
         </div>
       </div>
@@ -303,6 +374,34 @@ async function getNamingSuggestions({
     body: JSON.stringify({
       type: "name",
       inputs: { instructions, description },
+    }),
+  });
+  if (!res.ok) {
+    return new Err({
+      type: "internal_server_error",
+      message: "Failed to get suggestions",
+    });
+  }
+  return new Ok(await res.json());
+}
+
+async function getDescriptionSuggestions({
+  owner,
+  instructions,
+  name,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+  name: string;
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
+  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "description",
+      inputs: { instructions, name },
     }),
   });
   if (!res.ok) {
