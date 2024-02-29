@@ -191,8 +191,7 @@ async function batchGetSheets(
 
   // Chunk sheet ranges into groups such that the concatenated length of each group doesn't exceed the maxCharacters limit (1500).
   const chunks = sheetRangeKeys.reduce<string[][]>((acc, key) => {
-    const lastIndex = acc.length - 1;
-    const lastChunk = acc[lastIndex];
+    const lastChunk = acc.at(-1);
 
     if (!lastChunk || lastChunk.join("").length + key.length > maxCharacters) {
       acc.push([key]);
