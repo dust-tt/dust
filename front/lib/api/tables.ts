@@ -369,8 +369,9 @@ async function rowsFromCsv(
             DateTime.fromHTTP,
             DateTime.fromSQL,
           ];
+          const trimmedV = v.trim();
           for (const parse of dateParsers) {
-            const parsedDate = parse(v.trim());
+            const parsedDate = parse(trimmedV);
             if (parsedDate.isValid) {
               return {
                 type: "datetime" as const,
