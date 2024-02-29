@@ -541,7 +541,7 @@ export async function retrieveNotionResourceParents(
   }
 }
 
-export async function retrieveNotionNodes(
+export async function retrieveNotionContentNodes(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<ConnectorNode[], Error>> {

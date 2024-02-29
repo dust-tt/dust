@@ -7,27 +7,29 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import { BATCH_RETRIEVE_RESOURCE_BY_TYPE } from "@connectors/connectors";
+import { BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE } from "@connectors/connectors";
 import type { Result } from "@connectors/lib/result";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const GetResourcesRequestBodySchema = t.type({
-  resourceInternalIds: t.array(t.string),
+const GetContentNodesRequestBodySchema = t.type({
+  internalIds: t.array(t.string),
 });
-type GetResourcesRequestBody = t.TypeOf<typeof GetResourcesRequestBodySchema>;
+type GetContentNodesRequestBody = t.TypeOf<
+  typeof GetContentNodesRequestBodySchema
+>;
 
-type GetResourcesResponseBody = WithConnectorsAPIErrorReponse<{
-  resources: ConnectorNode[];
+type GetContentNodesResponseBody = WithConnectorsAPIErrorReponse<{
+  nodes: ConnectorNode[];
 }>;
 
-const _getResources = async (
+const _getContentNodes = async (
   req: Request<
     { connector_id: string },
-    GetResourcesResponseBody,
-    GetResourcesRequestBody
+    GetContentNodesResponseBody,
+    GetContentNodesRequestBody
   >,
-  res: Response<GetResourcesResponseBody>
+  res: Response<GetContentNodesResponseBody>
 ) => {
   const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
@@ -40,7 +42,7 @@ const _getResources = async (
     });
   }
 
-  const bodyValidation = GetResourcesRequestBodySchema.decode(req.body);
+  const bodyValidation = GetContentNodesRequestBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
@@ -52,12 +54,12 @@ const _getResources = async (
     });
   }
 
-  const { resourceInternalIds } = bodyValidation.right;
+  const { internalIds } = bodyValidation.right;
 
   const connectorNodesRes: Result<ConnectorNode[], Error> =
-    await BATCH_RETRIEVE_RESOURCE_BY_TYPE[connector.type](
+    await BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE[connector.type](
       connector.id,
-      resourceInternalIds
+      internalIds
     );
 
   if (connectorNodesRes.isErr()) {
@@ -73,8 +75,8 @@ const _getResources = async (
   const connectorNodes = connectorNodesRes.value;
 
   return res.status(200).json({
-    resources: connectorNodes,
+    nodes: connectorNodes,
   });
 };
 
-export const getResourcesAPIHandler = withLogging(_getResources);
+export const getConnectorNodesAPIHandler = withLogging(_getContentNodes);

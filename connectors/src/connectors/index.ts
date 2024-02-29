@@ -44,7 +44,7 @@ import {
   fullResyncIntercomSyncWorkflow,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
-  retrieveIntercomNodes,
+  retrieveIntercomContentNodes,
   retrieveIntercomNodesTitles,
   retrieveIntercomObjectsParents,
   setIntercomConnectorPermissions,
@@ -52,7 +52,7 @@ import {
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
 import type {
-  ConnectorBatchResourceRetriever,
+  ConnectorBatchContentNodesRetriever,
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorConfigGetter,
@@ -75,7 +75,7 @@ import {
   fullResyncNotionConnector,
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
-  retrieveNotionNodes,
+  retrieveNotionContentNodes,
   retrieveNotionNodesTitles,
   retrieveNotionResourceParents,
   stopNotionConnector,
@@ -246,9 +246,9 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
   webcrawler: retrieveWebCrawlerObjectsTitles,
 };
 
-export const BATCH_RETRIEVE_RESOURCE_BY_TYPE: Record<
+export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorBatchResourceRetriever
+  ConnectorBatchContentNodesRetriever
 > = {
   confluence: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
@@ -256,14 +256,14 @@ export const BATCH_RETRIEVE_RESOURCE_BY_TYPE: Record<
   slack: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
-  notion: retrieveNotionNodes,
+  notion: retrieveNotionContentNodes,
   github: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
   google_drive: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
-  intercom: retrieveIntercomNodes,
+  intercom: retrieveIntercomContentNodes,
   webcrawler: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },

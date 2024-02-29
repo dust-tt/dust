@@ -601,7 +601,7 @@ export async function retrieveIntercomNodesTitles(
   return new Ok(titles);
 }
 
-export async function retrieveIntercomNodes(
+export async function retrieveIntercomContentNodes(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<ConnectorNode[], Error>> {
