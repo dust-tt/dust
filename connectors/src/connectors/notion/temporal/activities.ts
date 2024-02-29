@@ -2322,8 +2322,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     },
   });
 
-  if (!dbModel || !dbModel.structuredDataEnabled) {
-    localLogger.info("Structured data not enabled for database (skipping).");
+  if (!dbModel) {
+    localLogger.info("Structured data not not found (skipping).");
     return;
   }
 
