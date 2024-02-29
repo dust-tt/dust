@@ -96,7 +96,6 @@ export function InstructionScreen({
         <div className="flex-grow" />
         <div className="self-end">
           <AdvancedSettings
-            owner={owner}
             plan={plan}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
@@ -133,12 +132,10 @@ export function InstructionScreen({
 }
 
 function AdvancedSettings({
-  owner,
   plan,
   generationSettings,
   setGenerationSettings,
 }: {
-  owner: WorkspaceType;
   plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
