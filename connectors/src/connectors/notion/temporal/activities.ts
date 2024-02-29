@@ -67,7 +67,6 @@ import {
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
-import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -847,8 +846,6 @@ export async function garbageCollect({
 
       continue;
     }
-    const autoIngestAllDatabases =
-      await connectorHasAutoPreIngestAllDatabasesFF(connector);
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     if (x.resourceType === "page") {
       iterationLogger.info("Deleting page.");
@@ -867,10 +864,7 @@ export async function garbageCollect({
             notionDatabaseId: notionPage.parentId,
           },
         });
-        if (
-          parentDatabase &&
-          (autoIngestAllDatabases || parentDatabase.structuredDataEnabled)
-        ) {
+        if (parentDatabase) {
           const tableId = `notion-${parentDatabase.notionDatabaseId}`;
           const rowId = `notion-${notionPage.notionPageId}`;
           await deleteTableRow({ dataSourceConfig, tableId, rowId });
@@ -886,10 +880,7 @@ export async function garbageCollect({
           notionDatabaseId: x.resourceId,
         },
       });
-      if (
-        notionDatabase &&
-        (autoIngestAllDatabases || notionDatabase.structuredDataEnabled)
-      ) {
+      if (notionDatabase) {
         const tableId = `notion-${notionDatabase.notionDatabaseId}`;
         await deleteTable({ dataSourceConfig, tableId });
       }
@@ -1643,13 +1634,8 @@ export async function renderAndUpsertPageFromCache({
     });
 
     if (parentDb) {
-      const autoIngestAllDatabases =
-        await connectorHasAutoPreIngestAllDatabasesFF(connector);
-      if (
-        (autoIngestAllDatabases || parentDb.structuredDataEnabled) &&
-        // Only do structured data incremental sync if the DB has already been synced as structured data.
-        !!parentDb.structuredDataUpsertedTs
-      ) {
+      // Only do structured data incremental sync if the DB has already been synced as structured data.
+      if (parentDb.structuredDataUpsertedTs) {
         const { tableId, tableName, tableDescription } =
           getTableInfoFromDatabase(parentDb);
         const rowId = `notion-${pageId}`;
@@ -2336,12 +2322,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     },
   });
 
-  const autoIngestAllDatabases = await connectorHasAutoPreIngestAllDatabasesFF(
-    connector
-  );
-
-  if (!dbModel || (!dbModel.structuredDataEnabled && !autoIngestAllDatabases)) {
-    localLogger.info("Structured data not enabled for database (skipping).");
+  if (!dbModel) {
+    localLogger.info("Structured data not not found (skipping).");
     return;
   }
 

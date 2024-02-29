@@ -13,7 +13,6 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
-import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -338,11 +337,6 @@ export async function syncSpreadSheet(
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Connector not found.");
-  }
-
-  const hasFF = await connectorHasAutoPreIngestAllDatabasesFF(connector);
-  if (!hasFF) {
-    return false;
   }
 
   const loggerArgs = {

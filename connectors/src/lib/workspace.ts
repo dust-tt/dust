@@ -41,11 +41,3 @@ export const getEnabledFeatureFlagsMemoized = cacheWithRedis(
   // Note: Updates (e.g., feature flags update) may take up to 15 minutes to be reflected.
   15 * 10 * 1000
 );
-
-export async function connectorHasAutoPreIngestAllDatabasesFF(
-  connector: ConnectorResource
-) {
-  const workspaceFeatureFlags = await getEnabledFeatureFlagsMemoized(connector);
-
-  return workspaceFeatureFlags.includes("auto_pre_ingest_all_databases");
-}
