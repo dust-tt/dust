@@ -72,7 +72,7 @@ makeScript(
     },
   },
   async ({ fromModel, toModel, workspaceIds, execute }) => {
-    const whereClause = workspaceIds ? { sId: workspaceIds } : {};
+    const whereClause = workspaceIds.length > 0 ? { sId: workspaceIds } : {};
     const workspaces = await Workspace.findAll({
       attributes: ["id", "name", "sId"],
       where: whereClause,
