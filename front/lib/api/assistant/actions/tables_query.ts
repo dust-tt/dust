@@ -62,13 +62,7 @@ function getTablesQueryAppSpecification() {
       {
         name: "question",
         description:
-          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation. If the user has multiple unanswered questions, make sure to include all of them.",
-        type: "string" as const,
-      },
-      {
-        name: "guidelines",
-        description:
-          "Some additional guidelines that could help generate the right query. This could come from the assistant's instructions or from the conversation history. If the user asked to correct a previous attempt at the same query in a specific way, this information must be included. Return an empty string when not applicable.",
+          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation. If the user has multiple unanswered questions, make sure to include all of them. If the user asked to correct a previous attempt at the same query in a specific way, this information must be included.",
         type: "string" as const,
       },
     ],
@@ -216,7 +210,12 @@ export async function* runTablesQuery({
     auth,
     "assistant-v2-query-tables",
     config,
-    [{ question: input.question, guidelines: input.guidelines }]
+    [
+      {
+        question: input.question,
+        instructions: configuration.generation?.prompt,
+      },
+    ]
   );
 
   if (res.isErr()) {
