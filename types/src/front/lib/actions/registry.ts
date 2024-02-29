@@ -154,7 +154,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "d995d868a8",
       appHash:
-        "174d83511a51ba35dd57e840a2189a75474695e87b75902c9d04955367804446",
+        "c05210a7bf696fa6e5ecec3234064e8aa07efc186e705bbca6b537a0b2c115a4",
     },
     config: {
       INSTRUCTIONS_FINISHED: {
@@ -176,7 +176,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "34a8c4a2aa",
       appHash:
-        "bbe701de9cbb4bc3e8670405326eead911dd4bc372de0611779af3aaad44902b",
+        "eb6549b22d91f1b69fe06f69f05af2fa2e4586c918a3c8930ac301e178f958cc",
     },
     config: {
       IS_FINISHED: {
@@ -187,7 +187,7 @@ export const DustProdActionRegistry = createActionRegistry({
       },
       CREATE_SUGGESTIONS: {
         provider_id: "openai",
-        model_id: "gpt-4",
+        model_id: "gpt-3.5-turbo",
         function_call: "send_suggestions",
         use_cache: true,
       },
