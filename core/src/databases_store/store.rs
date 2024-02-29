@@ -236,5 +236,7 @@ pub const POSTGRES_TABLES: [&'static str; 1] = [
  );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 1] =
-    ["CREATE UNIQUE INDEX IF NOT EXISTS tables_rows_unique ON tables_rows (row_id, table_id);"];
+pub const SQL_INDEXES: [&'static str; 2] = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS tables_rows_unique ON tables_rows (row_id, table_id);",
+    "CREATE INDEX IF NOT EXISTS tables_rows_table_id ON tables_rows (table_id);",
+];
