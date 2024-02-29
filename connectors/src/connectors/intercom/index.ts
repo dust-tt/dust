@@ -661,13 +661,9 @@ export async function retrieveIntercomNodes(
 
   const nodes: ConnectorNode[] = [];
   for (const helpCenter of helpCenters) {
-    const helpCenterInternalId = getHelpCenterInternalId(
-      connectorId,
-      helpCenter.helpCenterId
-    );
     nodes.push({
       provider: "intercom",
-      internalId: helpCenterInternalId,
+      internalId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
       parentInternalId: null,
       type: "database",
       title: helpCenter.name,
@@ -679,13 +675,12 @@ export async function retrieveIntercomNodes(
     });
   }
   for (const collection of collections) {
-    const collectionInternalId = getHelpCenterCollectionInternalId(
-      connectorId,
-      collection.collectionId
-    );
     nodes.push({
       provider: "intercom",
-      internalId: collectionInternalId,
+      internalId: getHelpCenterCollectionInternalId(
+        connectorId,
+        collection.collectionId
+      ),
       parentInternalId: collection.parentId
         ? getHelpCenterCollectionInternalId(connectorId, collection.parentId)
         : null,
@@ -699,13 +694,12 @@ export async function retrieveIntercomNodes(
     });
   }
   for (const article of articles) {
-    const articleInternalId = getHelpCenterArticleInternalId(
-      connectorId,
-      article.articleId
-    );
     nodes.push({
       provider: "intercom",
-      internalId: articleInternalId,
+      internalId: getHelpCenterArticleInternalId(
+        connectorId,
+        article.articleId
+      ),
       parentInternalId: article.parentId
         ? getHelpCenterCollectionInternalId(connectorId, article.parentId)
         : null,
@@ -719,10 +713,9 @@ export async function retrieveIntercomNodes(
     });
   }
   for (const team of teams) {
-    const teamInternalId = getTeamInternalId(connectorId, team.teamId);
     nodes.push({
       provider: "intercom",
-      internalId: teamInternalId,
+      internalId: getTeamInternalId(connectorId, team.teamId),
       parentInternalId: null,
       type: "channel",
       title: team.name,

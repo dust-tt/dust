@@ -545,19 +545,20 @@ export async function retrieveNotionNodes(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<ConnectorNode[], Error>> {
-  const pages = await NotionPage.findAll({
-    where: {
-      connectorId,
-      notionPageId: internalIds,
-    },
-  });
-
-  const dbs = await NotionDatabase.findAll({
-    where: {
-      connectorId,
-      notionDatabaseId: internalIds,
-    },
-  });
+  const [pages, dbs] = await Promise.all([
+    NotionPage.findAll({
+      where: {
+        connectorId,
+        notionPageId: internalIds,
+      },
+    }),
+    NotionDatabase.findAll({
+      where: {
+        connectorId,
+        notionDatabaseId: internalIds,
+      },
+    }),
+  ]);
 
   const pageNodes: ConnectorNode[] = pages.map((page) => ({
     provider: "notion",
