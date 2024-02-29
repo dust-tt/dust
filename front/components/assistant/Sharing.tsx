@@ -446,7 +446,7 @@ function ScopeChangeModal({
     >
       <div>
         <div className="pb-2">
-          {usageText && <span className="font-bold">{usageText + " "}</span>}
+          {usageText && <span className="font-bold">{usageText}&nbsp;</span>}
           {confirmationModalData.text}
         </div>
         <div className="font-bold">Are you sure you want to proceed ?</div>
