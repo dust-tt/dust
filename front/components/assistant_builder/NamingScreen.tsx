@@ -156,10 +156,15 @@ export default function NamingScreen({
     }
   }, [owner, builderState.instructions, builderState.description]);
 
-  useEffect(
-    () => debounce(nameDebounceHandle, updateNameSuggestions),
-    [updateNameSuggestions, builderState.instructions, builderState.description]
-  );
+  useEffect(() => {
+    if (isDevelopmentOrDustWorkspace(owner)) {
+      debounce(nameDebounceHandle, updateNameSuggestions);
+    }
+  }, [
+    updateNameSuggestions,
+    builderState.instructions,
+    builderState.description,
+  ]);
 
   // Description suggestions handling
   const [descriptionSuggestions, setDescriptionSuggestions] =
@@ -182,10 +187,11 @@ export default function NamingScreen({
     }
   }, [owner, builderState.instructions, builderState.handle]);
 
-  useEffect(
-    () => void updateDescriptionSuggestions(),
-    [updateDescriptionSuggestions]
-  );
+  useEffect(() => {
+    if (isDevelopmentOrDustWorkspace(owner)) {
+      void updateDescriptionSuggestions();
+    }
+  }, [updateDescriptionSuggestions]);
 
   const suggestionsAvailable =
     descriptionSuggestions.status === "ok" &&
