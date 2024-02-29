@@ -14,6 +14,7 @@ import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import { connectorHasAutoPreIngestAllDatabasesFF } from "@connectors/lib/workspace";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -178,6 +179,60 @@ async function processSheet(connector: ConnectorResource, sheet: Sheet) {
   }
 }
 
+async function batchGetSheets(
+  sheetsAPI: sheets_v4.Sheets,
+  spreadsheetId: string,
+  sheetRanges: Map<string, Sheet>,
+  localLogger: Logger
+) {
+  const maxCharacters = 1500;
+  const sheetRangeKeys = [...sheetRanges.keys()].map((k) => `'${k}'`);
+  const allRanges: sheets_v4.Schema$ValueRange[] = [];
+
+  // Chunk sheet ranges into groups such that the concatenated length of each group doesn't exceed the maxCharacters limit (1500).
+  const chunks = sheetRangeKeys.reduce<string[][]>((acc, key) => {
+    const lastChunk = acc.at(-1);
+
+    if (!lastChunk || lastChunk.join("").length + key.length > maxCharacters) {
+      acc.push([key]);
+    } else {
+      lastChunk.push(key);
+    }
+
+    return acc;
+  }, []);
+
+  localLogger.info(
+    {
+      chunkCount: chunks.length,
+      sheetCount: sheetRangeKeys.length,
+    },
+    "[Spreadsheet] Chunked sheet ranges into groups to respect URL character limit."
+  );
+
+  for (const chunk of chunks) {
+    // Query the API using the previously constructed sheet ranges to fetch
+    // the desired data from each corresponding sheet range.
+    const sheetRanges = await sheetsAPI.spreadsheets.values.batchGet({
+      ranges: chunk,
+      spreadsheetId,
+      valueRenderOption: "FORMATTED_VALUE",
+    });
+
+    const { valueRanges } = sheetRanges.data;
+    if (!valueRanges) {
+      localLogger.info(
+        "[Spreadsheet] No data ranges found in the spreadsheet, skipping further processing."
+      );
+      continue;
+    }
+
+    allRanges.push(...valueRanges);
+  }
+
+  return allRanges;
+}
+
 async function getAllSheetsFromSpreadSheet(
   sheetsAPI: sheets_v4.Sheets,
   spreadsheet: sheets_v4.Schema$Spreadsheet,
@@ -232,16 +287,14 @@ async function getAllSheetsFromSpreadSheet(
     });
   }
 
-  // Query the API using the previously constructed sheet ranges to fetch
-  // the desired data from each corresponding sheet range.
-  const allSheets = await sheetsAPI.spreadsheets.values.batchGet({
-    ranges: [...sheetRanges.keys()].map((k) => `'${k}'`),
+  const valueRanges = await batchGetSheets(
+    sheetsAPI,
     spreadsheetId,
-    valueRenderOption: "FORMATTED_VALUE",
-  });
+    sheetRanges,
+    localLogger
+  );
 
-  const { valueRanges } = allSheets.data;
-  if (!valueRanges) {
+  if (valueRanges.length === 0) {
     localLogger.info(
       "[Spreadsheet] No data ranges found in the spreadsheet, skipping further processing."
     );
