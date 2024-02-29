@@ -1,15 +1,10 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import type { KeyedMutator } from "swr";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 type AgentConfigurationDisplayType = {
   // TODO(2024-02-28 flav) Add description preview.
@@ -23,8 +18,8 @@ type AgentConfigurationDisplayType = {
 
 export function makeColumnsForAssistants(
   owner: WorkspaceType,
-  agentConfigurations: LightAgentConfigurationType[],
-  mutate: KeyedMutator<GetAgentConfigurationsResponseBody>
+  agentConfigurations: AgentConfigurationType[],
+  reload: () => void
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
     {
@@ -98,7 +93,7 @@ export function makeColumnsForAssistants(
             size="xs"
             variant="tertiary"
             onClick={async () => {
-              await archiveAssistant(owner, mutate, assistant);
+              await archiveAssistant(owner, reload, assistant);
             }}
           />
         );
@@ -109,7 +104,7 @@ export function makeColumnsForAssistants(
 
 async function archiveAssistant(
   owner: WorkspaceType,
-  mutate: KeyedMutator<GetAgentConfigurationsResponseBody>,
+  reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
   if (
@@ -134,7 +129,7 @@ async function archiveAssistant(
       throw new Error("Failed to archive agent configuration.");
     }
 
-    await mutate();
+    reload();
   } catch (e) {
     console.error(e);
     window.alert("An error occurred while archiving the agent configuration.");

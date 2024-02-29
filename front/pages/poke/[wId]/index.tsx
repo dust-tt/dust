@@ -558,7 +558,10 @@ const WorkspacePage = ({
                 dataSources={dataSources}
                 agentConfigurations={agentConfigurations}
               />
-              <AssistantsDataTable owner={owner} />
+              <AssistantsDataTable
+                owner={owner}
+                agentConfigurations={agentConfigurations}
+              />
             </div>
           </div>
         </div>
