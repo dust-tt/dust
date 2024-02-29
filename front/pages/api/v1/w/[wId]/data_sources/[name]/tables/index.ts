@@ -63,19 +63,6 @@ async function handler(
     });
   }
 
-  if (
-    !owner.flags.includes("structured_data") &&
-    !owner.flags.includes("auto_pre_ingest_all_databases")
-  ) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {

@@ -43,14 +43,6 @@ async function handler(
     });
   }
 
-  if (
-    !owner.flags.includes("structured_data") &&
-    !owner.flags.includes("auto_pre_ingest_all_databases")
-  ) {
-    res.status(404).end();
-    return;
-  }
-
   if (!req.query.name || typeof req.query.name !== "string") {
     return apiError(req, res, {
       status_code: 404,

@@ -84,14 +84,6 @@ async function handler(
     });
   }
 
-  if (
-    !owner.flags.includes("structured_data") &&
-    !owner.flags.includes("auto_pre_ingest_all_databases")
-  ) {
-    res.status(404).end();
-    return;
-  }
-
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
