@@ -26,12 +26,6 @@ export async function upsertDocumentActivity(
     throw new Error("SERVICE_ACCOUNT is not set");
   }
 
-  statsDClient.distribution(
-    "upsert_queue_dequeue.duration.distribution",
-    Date.now() - enqueueTimestamp,
-    []
-  );
-
   let logger = mainLogger.child({ upsertQueueId });
   logger.info(
     {
