@@ -603,7 +603,12 @@ async function submitForm({
             workspaceId: owner.sId,
             filter: {
               parents: !isSelectAll
-                ? { in: Object.keys(selectedResources), not: [] }
+                ? {
+                    in: selectedResources.map(
+                      (resource) => resource.internalId
+                    ),
+                    not: [],
+                  }
                 : null,
               tags: null,
             },

@@ -394,6 +394,33 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async getContentNodes({
+    connectorId,
+    internalIds,
+  }: {
+    connectorId: string;
+    internalIds: string[];
+  }): Promise<
+    ConnectorsAPIResponse<{
+      nodes: ConnectorNode[];
+    }>
+  > {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+        connectorId
+      )}/content_nodes`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          internalIds,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async linkSlackChannelsWithAgent({
     connectorId,
     slackChannelIds,

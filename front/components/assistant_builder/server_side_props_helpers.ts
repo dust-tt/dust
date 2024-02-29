@@ -55,29 +55,23 @@ export async function buildInitialState({
         if (!dataSource.connectorId || !ds.resources) {
           return {
             dataSource: dataSource,
-            selectedResources: {},
+            selectedResources: [],
             isSelectAll: ds.isSelectAll,
           };
         }
         const connectorsAPI = new ConnectorsAPI(logger);
-        const response = await connectorsAPI.getResourcesTitles({
+        const response = await connectorsAPI.getContentNodes({
           connectorId: dataSource.connectorId,
-          resourceInternalIds: ds.resources,
+          internalIds: ds.resources,
         });
 
         if (response.isErr()) {
           throw response.error;
         }
 
-        // key: interalId, value: title
-        const selectedResources: Record<string, string> = {};
-        for (const resource of response.value.resources) {
-          selectedResources[resource.internalId] = resource.title;
-        }
-
         return {
           dataSource: dataSource,
-          selectedResources,
+          selectedResources: response.value.nodes,
           isSelectAll: ds.isSelectAll,
         };
       }
