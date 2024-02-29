@@ -204,7 +204,8 @@ async function batchGetSheets(
 
   localLogger.info(
     {
-      chunksCount: chunks.length,
+      chunkCount: chunks.length,
+      sheetCount: sheetRangeKeys.length,
     },
     "[Spreadsheet] Chunked sheet ranges into groups to respect URL character limit."
   );
