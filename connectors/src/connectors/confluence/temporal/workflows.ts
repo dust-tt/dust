@@ -177,10 +177,11 @@ export async function confluenceSpaceSyncWorkflow(
     do {
       const { topLevelPageIds, nextPageCursor: nextCursor } =
         await confluenceGetTopLevelPageIdsActivity({
-          connectorId,
           confluenceCloudId,
-          spaceId,
+          connectorId,
+          pageCursor: nextPageCursor,
           rootPageId: allowedRootPageId,
+          spaceId,
         });
 
       nextPageCursor = nextCursor; // Prepare for the next iteration.

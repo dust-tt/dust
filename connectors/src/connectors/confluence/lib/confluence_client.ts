@@ -258,7 +258,7 @@ export class ConfluenceClient {
     };
   }
 
-  async getGlobalSpaces(pageCursor?: string) {
+  async getGlobalSpaces(pageCursor: string | null) {
     const params = new URLSearchParams({
       limit: "250",
       type: "global",
