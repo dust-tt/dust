@@ -103,7 +103,7 @@ function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
     .filter((row) => row.some((cell) => cell.trim() !== ""));
 }
 
-function getValidRows(allRows: string[][], loggerArgs: object) {
+function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   const filteredRows = findDataRangeAndSelectRows(allRows);
 
   // We assume that the first row is always the headers.
@@ -142,16 +142,22 @@ function getValidRows(allRows: string[][], loggerArgs: object) {
   if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
     logger.info(
       { ...loggerArgs, rowCount: validRows.length },
-      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}`
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
     );
+
+    // If the sheet has too many rows, return an empty array to ignore it.
+    return [];
   }
 
-  return validRows.slice(0, MAXIMUM_NUMBER_OF_GSHEET_ROWS);
+  return validRows;
 }
 
-async function processSheet(connector: ConnectorResource, sheet: Sheet) {
+async function processSheet(
+  connector: ConnectorResource,
+  sheet: Sheet
+): Promise<boolean> {
   if (!sheet.values) {
-    return;
+    return false;
   }
 
   const { id, spreadsheet, title } = sheet;
@@ -175,7 +181,11 @@ async function processSheet(connector: ConnectorResource, sheet: Sheet) {
     await upsertTable(connector, sheet, rows);
 
     await upsertSheetInDb(connector, sheet);
+
+    return true;
   }
+
+  return false;
 }
 
 async function batchGetSheets(
@@ -370,13 +380,21 @@ export async function syncSpreadSheet(
     },
   });
 
+  const successfulSheetIdImports: number[] = [];
   for (const sheet of sheets) {
-    await processSheet(connector, sheet);
+    const isImported = await processSheet(connector, sheet);
+    if (isImported) {
+      successfulSheetIdImports.push(sheet.id);
+    }
   }
 
-  // Delete any previously synced sheets that no longer exist in the current spreadsheet.
+  // Delete any previously synced sheets that no longer exist in the current spreadsheet
+  // or have exceeded the maximum number of rows.
   const deletedSyncedSheets = syncedSheets.filter(
-    (synced) => !sheets.find((s) => s.id === synced.driveSheetId)
+    (synced) =>
+      !successfulSheetIdImports.find(
+        (sheetId) => sheetId === synced.driveSheetId
+      )
   );
   if (deletedSyncedSheets.length > 0) {
     await deleteAllSheets(connector, deletedSyncedSheets, {
