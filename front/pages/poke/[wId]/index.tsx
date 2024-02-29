@@ -27,6 +27,7 @@ import { useSWRConfig } from "swr";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
+import { FeatureFlagsList } from "@app/components/poke/features/list";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -518,38 +519,10 @@ const WorkspacePage = ({
             </div>
 
             <div>
-              <div className="mx-2 w-1/3">
-                <h2 className="text-md mb-4 font-bold">Features:</h2>
-                {whitelistableFeatures.map((f) => (
-                  <div
-                    key={`feature_${f}`}
-                    className="border-material-200 my-4 rounded-lg border p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="mb-2 text-lg font-semibold">{f}</h3>
-                      {owner.flags.includes(f) ? (
-                        <Button
-                          label="Disable"
-                          variant="secondaryWarning"
-                          onClick={() => {
-                            void onToggleFeature(f, false);
-                          }}
-                          disabled={isTogglingFeature}
-                        />
-                      ) : (
-                        <Button
-                          label="Enable"
-                          variant="secondary"
-                          onClick={() => {
-                            void onToggleFeature(f, true);
-                          }}
-                          disabled={isTogglingFeature}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <FeatureFlagsList
+                owner={owner}
+                whitelistableFeatures={whitelistableFeatures}
+              />
             </div>
 
             <div className="flex flex-col space-y-8 pt-4">
