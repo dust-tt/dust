@@ -90,7 +90,7 @@ export async function pageHasReadRestrictions(
 export async function getActiveChildPageIds(
   client: ConfluenceClient,
   parentPageId: string,
-  pageCursor?: string
+  pageCursor: string | null
 ) {
   const { pages: childPages, nextPageCursor } = await client.getChildPages(
     parentPageId,

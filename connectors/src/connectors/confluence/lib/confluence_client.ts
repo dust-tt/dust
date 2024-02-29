@@ -234,7 +234,7 @@ export class ConfluenceClient {
     };
   }
 
-  async getChildPages(parentPageId: string, pageCursor?: string) {
+  async getChildPages(parentPageId: string, pageCursor: string | null) {
     const params = new URLSearchParams({
       sort: "id",
       limit: "100",
