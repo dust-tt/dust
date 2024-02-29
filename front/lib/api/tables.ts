@@ -5,8 +5,9 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CoreAPI, Err, isSlugified, isValidDate, Ok } from "@dust-tt/types";
+import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
+import _ from "lodash";
 
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
@@ -368,26 +369,13 @@ async function rowsFromCsv(
           /^-?\d+(\.\d+)?$/.test(v.trim()) ? parseFloat(v.trim()) : undefined,
         // date/datetime
         (v: string) => {
-          const date = new Date(v.trim());
-          if (!isValidDate(date)) {
-            return undefined;
-          }
-          const epoch = date.getTime();
-          // 3000-01-01
-          if (epoch >= 32503680000000) {
-            logger.warn(
-              {
-                value: v,
-                epoch,
-              },
-              "Date is too far in the future."
-            );
-            return undefined;
-          }
-          return {
-            type: "datetime" as const,
-            epoch,
-          };
+          const maybeDate = v.trim();
+          return _.isDate(maybeDate)
+            ? {
+                type: "datetime" as const,
+                epoch: new Date(maybeDate).getTime(),
+              }
+            : undefined;
         },
         // bool
         (v: string) => {
