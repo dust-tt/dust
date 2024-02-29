@@ -61,8 +61,9 @@ export async function listConfluenceSpaces(
   const allSpaces = new Map<string, ConfluenceSpaceType>();
   let nextPageCursor: string | null = "";
   do {
-    const { spaces, nextPageCursor: nextCursor } =
-      await client.getGlobalSpaces();
+    const { spaces, nextPageCursor: nextCursor } = await client.getGlobalSpaces(
+      nextPageCursor
+    );
 
     spaces.forEach((s) => allSpaces.set(s.id, s));
 
@@ -89,7 +90,7 @@ export async function pageHasReadRestrictions(
 export async function getActiveChildPageIds(
   client: ConfluenceClient,
   parentPageId: string,
-  pageCursor?: string
+  pageCursor: string | null
 ) {
   const { pages: childPages, nextPageCursor } = await client.getChildPages(
     parentPageId,

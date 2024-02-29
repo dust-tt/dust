@@ -381,15 +381,17 @@ export async function confluenceGetRootPageIdsActivity({
 }
 
 export async function confluenceGetTopLevelPageIdsActivity({
-  connectorId,
   confluenceCloudId,
-  spaceId,
+  connectorId,
+  pageCursor,
   rootPageId,
+  spaceId,
 }: {
-  connectorId: ModelId;
   confluenceCloudId: string;
-  spaceId: string;
+  connectorId: ModelId;
+  pageCursor: string | null;
   rootPageId: string;
+  spaceId: string;
 }) {
   const localLogger = logger.child({
     connectorId,
@@ -406,7 +408,8 @@ export async function confluenceGetTopLevelPageIdsActivity({
 
   const { childPageIds, nextPageCursor } = await getActiveChildPageIds(
     client,
-    rootPageId
+    rootPageId,
+    pageCursor
   );
 
   localLogger.info("Found Confluence top-level pages in space.", {

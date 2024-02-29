@@ -234,7 +234,7 @@ export class ConfluenceClient {
     };
   }
 
-  async getChildPages(parentPageId: string, pageCursor?: string) {
+  async getChildPages(parentPageId: string, pageCursor: string | null) {
     const params = new URLSearchParams({
       sort: "id",
       limit: "100",
@@ -258,13 +258,17 @@ export class ConfluenceClient {
     };
   }
 
-  async getGlobalSpaces() {
+  async getGlobalSpaces(pageCursor: string | null) {
     const params = new URLSearchParams({
       limit: "250",
       type: "global",
       sort: "name",
       status: "current",
     });
+
+    if (pageCursor) {
+      params.append("cursor", pageCursor);
+    }
 
     const spaces = await this.request(
       `${this.restApiBaseUrl}/spaces?${params.toString()}`,
