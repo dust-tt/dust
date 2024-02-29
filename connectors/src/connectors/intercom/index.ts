@@ -29,6 +29,8 @@ import {
   getHelpCenterInternalId,
   getTeamIdFromInternalId,
   getTeamInternalId,
+  getTeamsInternalId,
+  isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomSyncWorkflow,
@@ -608,6 +610,7 @@ export async function retrieveIntercomContentNodes(
   const helpCenterIds: string[] = [];
   const collectionIds: string[] = [];
   const articleIds: string[] = [];
+  let isAllTeams = false;
   const teamIds: string[] = [];
 
   internalIds.forEach((internalId) => {
@@ -625,6 +628,9 @@ export async function retrieveIntercomContentNodes(
     if (objectId) {
       articleIds.push(objectId);
       return;
+    }
+    if (!isAllTeams && isInternalIdForAllTeams(connectorId, internalId)) {
+      isAllTeams = true;
     }
     objectId = getTeamIdFromInternalId(connectorId, internalId);
     if (objectId) {
@@ -712,11 +718,25 @@ export async function retrieveIntercomContentNodes(
       lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
     });
   }
+  if (isAllTeams) {
+    nodes.push({
+      provider: "intercom",
+      internalId: getTeamsInternalId(connectorId),
+      parentInternalId: null,
+      type: "channel",
+      title: "Conversations",
+      sourceUrl: null,
+      expandable: true,
+      permission: "none",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  }
   for (const team of teams) {
     nodes.push({
       provider: "intercom",
       internalId: getTeamInternalId(connectorId, team.teamId),
-      parentInternalId: null,
+      parentInternalId: getTeamsInternalId(connectorId),
       type: "channel",
       title: team.name,
       sourceUrl: null,
