@@ -161,9 +161,10 @@ export default function NamingScreen({
       debounce(nameDebounceHandle, updateNameSuggestions);
     }
   }, [
-    updateNameSuggestions,
-    builderState.instructions,
     builderState.description,
+    builderState.instructions,
+    owner,
+    updateNameSuggestions,
   ]);
 
   // Description suggestions handling
@@ -191,7 +192,7 @@ export default function NamingScreen({
     if (isDevelopmentOrDustWorkspace(owner)) {
       void updateDescriptionSuggestions();
     }
-  }, [updateDescriptionSuggestions]);
+  }, [owner, updateDescriptionSuggestions]);
 
   const suggestionsAvailable =
     descriptionSuggestions.status === "ok" &&
