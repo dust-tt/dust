@@ -11,6 +11,7 @@ import {
   getConversationInAppUrl,
   getConversationInternalId,
   getTeamInternalId,
+  getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -279,7 +280,10 @@ export async function syncConversation({
       `createdAt:${createdAtDate.getTime()}`,
       `updatedAt:${updatedAtDate.getTime()}`,
     ],
-    parents: [getTeamInternalId(connectorId, team.teamId)],
+    parents: [
+      getTeamInternalId(connectorId, team.teamId),
+      getTeamsInternalId(connectorId),
+    ],
     loggerArgs: {
       ...loggerArgs,
       conversationId: conversation.id,
