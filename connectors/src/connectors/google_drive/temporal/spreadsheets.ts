@@ -142,7 +142,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
     logger.info(
       { ...loggerArgs, rowCount: validRows.length },
-      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}`
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
     );
 
     // If the sheet has too many rows, return an empty array to ignore it.
