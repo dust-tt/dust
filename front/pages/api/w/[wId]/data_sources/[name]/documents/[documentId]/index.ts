@@ -16,6 +16,14 @@ import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "8mb",
+    },
+  },
+};
+
 export type GetDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
 };
