@@ -67,6 +67,11 @@ export type ConnectorBatchResourceTitleRetriever = (
   internalIds: string[]
 ) => Promise<Result<Record<string, string | null>, Error>>;
 
+export type ConnectorBatchContentNodesRetriever = (
+  connectorId: ModelId,
+  internalIds: string[]
+) => Promise<Result<ConnectorNode[], Error>>;
+
 export type ConnectorNodeParentsRetriever = (
   connectorId: ModelId,
   internalId: string,

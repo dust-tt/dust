@@ -66,6 +66,12 @@ export function getHelpCenterArticleIdFromInternalId(
 ): string | null {
   return _getIdFromInternal(internalId, `intercom-article-${connectorId}-`);
 }
+export function isInternalIdForAllTeams(
+  connectorId: ModelId,
+  internalId: string
+): boolean {
+  return internalId === `intercom-teams-${connectorId}`;
+}
 export function getTeamIdFromInternalId(
   connectorId: ModelId,
   internalId: string

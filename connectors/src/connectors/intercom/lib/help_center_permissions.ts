@@ -381,7 +381,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: true,
         permission: helpCenter.permission,
         dustDocumentId: null,
-        lastUpdatedAt: null,
+        lastUpdatedAt: helpCenter.updatedAt.getTime(),
       }));
     } else {
       const helpCenters = await fetchIntercomHelpCenters(
@@ -446,7 +446,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: true,
         permission: collection.permission,
         dustDocumentId: null,
-        lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
+        lastUpdatedAt: collection.updatedAt.getTime() || null,
       }));
     } else {
       const collectionsInIntercom = await fetchIntercomCollections(
@@ -476,8 +476,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
           permission: matchingCollectionInDb ? "read" : "none",
           dustDocumentId: null,
-          lastUpdatedAt:
-            matchingCollectionInDb?.lastUpsertedTs?.getTime() || null,
+          lastUpdatedAt: matchingCollectionInDb?.updatedAt.getTime() || null,
         };
       });
     }
@@ -544,7 +543,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         expandable: false,
         permission: article.permission,
         dustDocumentId: null,
-        lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
+        lastUpdatedAt: article.updatedAt.getTime(),
       }));
 
       collectionNodes.sort((a, b) => {

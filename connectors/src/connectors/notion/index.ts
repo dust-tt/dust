@@ -527,3 +527,55 @@ export async function retrieveNotionResourceParents(
     return new Err(e as Error);
   }
 }
+
+export async function retrieveNotionContentNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const [pages, dbs] = await Promise.all([
+    NotionPage.findAll({
+      where: {
+        connectorId,
+        notionPageId: internalIds,
+      },
+    }),
+    NotionDatabase.findAll({
+      where: {
+        connectorId,
+        notionDatabaseId: internalIds,
+      },
+    }),
+  ]);
+
+  const pageNodes: ConnectorNode[] = pages.map((page) => ({
+    provider: "notion",
+    internalId: page.notionPageId,
+    parentInternalId:
+      !page.parentId || page.parentId === "workspace" ? null : page.parentId,
+    type: "file",
+    title: page.title || "",
+    sourceUrl: page.notionUrl || null,
+    expandable: false,
+    permission: "read",
+    dustDocumentId: `notion-${page.notionPageId}`,
+    lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+  }));
+
+  const dbNodes: ConnectorNode[] = dbs.map((db) => ({
+    provider: "notion",
+    internalId: db.notionDatabaseId,
+    parentInternalId:
+      !db.parentId || db.parentId === "workspace" ? null : db.parentId,
+    type: "database",
+    title: db.title || "",
+    sourceUrl: db.notionUrl || null,
+    expandable: true,
+    permission: "read",
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+  }));
+
+  const connectorNodes = pageNodes.concat(dbNodes);
+
+  return new Ok(connectorNodes);
+}

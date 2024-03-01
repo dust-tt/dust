@@ -8,6 +8,7 @@ import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
+import { getConnectorNodesAPIHandler } from "@connectors/api/get_content_nodes";
 import { getResourcesParentsAPIHandler } from "@connectors/api/get_resources_parents";
 import { getResourcesTitlesAPIHandler } from "@connectors/api/get_resources_titles";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
@@ -105,6 +106,11 @@ export function startServer(port: number) {
     // must be POST because of body
     "/connectors/:connector_id/resources/titles",
     getResourcesTitlesAPIHandler
+  );
+  app.post(
+    // must be POST because of body
+    "/connectors/:connector_id/content_nodes",
+    getConnectorNodesAPIHandler
   );
   app.post(
     "/connectors/:connector_id/permissions",

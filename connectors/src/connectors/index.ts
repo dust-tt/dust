@@ -44,6 +44,7 @@ import {
   fullResyncIntercomSyncWorkflow,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
+  retrieveIntercomContentNodes,
   retrieveIntercomNodesTitles,
   retrieveIntercomObjectsParents,
   setIntercomConnectorPermissions,
@@ -51,6 +52,7 @@ import {
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
 import type {
+  ConnectorBatchContentNodesRetriever,
   ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorConfigGetter,
@@ -73,6 +75,7 @@ import {
   fullResyncNotionConnector,
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
+  retrieveNotionContentNodes,
   retrieveNotionNodesTitles,
   retrieveNotionResourceParents,
   stopNotionConnector,
@@ -241,6 +244,29 @@ export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
   google_drive: retrieveGoogleDriveObjectsTitles,
   intercom: retrieveIntercomNodesTitles,
   webcrawler: retrieveWebCrawlerObjectsTitles,
+};
+
+export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorBatchContentNodesRetriever
+> = {
+  confluence: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
+  slack: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
+  notion: retrieveNotionContentNodes,
+  github: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
+  google_drive: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
+  intercom: retrieveIntercomContentNodes,
+  webcrawler: (connectorId: ModelId) => {
+    throw new Error(`Not implemented ${connectorId}`);
+  },
 };
 
 export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<

@@ -29,6 +29,8 @@ import {
   getHelpCenterInternalId,
   getTeamIdFromInternalId,
   getTeamInternalId,
+  getTeamsInternalId,
+  isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomSyncWorkflow,
@@ -595,6 +597,153 @@ export async function retrieveIntercomNodesTitles(
   }
 
   return new Ok(titles);
+}
+
+export async function retrieveIntercomContentNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const helpCenterIds: string[] = [];
+  const collectionIds: string[] = [];
+  const articleIds: string[] = [];
+  let isAllTeams = false;
+  const teamIds: string[] = [];
+
+  internalIds.forEach((internalId) => {
+    let objectId = getHelpCenterIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      helpCenterIds.push(objectId);
+      return;
+    }
+    objectId = getHelpCenterCollectionIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      collectionIds.push(objectId);
+      return;
+    }
+    objectId = getHelpCenterArticleIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      articleIds.push(objectId);
+      return;
+    }
+    if (!isAllTeams && isInternalIdForAllTeams(connectorId, internalId)) {
+      isAllTeams = true;
+    }
+    objectId = getTeamIdFromInternalId(connectorId, internalId);
+    if (objectId) {
+      teamIds.push(objectId);
+    }
+  });
+
+  const [helpCenters, collections, articles, teams] = await Promise.all([
+    IntercomHelpCenter.findAll({
+      where: {
+        connectorId: connectorId,
+        helpCenterId: { [Op.in]: helpCenterIds },
+      },
+    }),
+    IntercomCollection.findAll({
+      where: {
+        connectorId: connectorId,
+        collectionId: { [Op.in]: collectionIds },
+      },
+    }),
+    IntercomArticle.findAll({
+      where: {
+        connectorId: connectorId,
+        articleId: { [Op.in]: articleIds },
+      },
+    }),
+    IntercomTeam.findAll({
+      where: {
+        connectorId: connectorId,
+        teamId: { [Op.in]: teamIds },
+      },
+    }),
+  ]);
+
+  const nodes: ConnectorNode[] = [];
+  for (const helpCenter of helpCenters) {
+    nodes.push({
+      provider: "intercom",
+      internalId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
+      parentInternalId: null,
+      type: "database",
+      title: helpCenter.name,
+      sourceUrl: null,
+      expandable: true,
+      permission: helpCenter.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  }
+  for (const collection of collections) {
+    nodes.push({
+      provider: "intercom",
+      internalId: getHelpCenterCollectionInternalId(
+        connectorId,
+        collection.collectionId
+      ),
+      parentInternalId: collection.parentId
+        ? getHelpCenterCollectionInternalId(connectorId, collection.parentId)
+        : null,
+      type: "folder",
+      title: collection.name,
+      sourceUrl: collection.url,
+      expandable: true,
+      permission: collection.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
+    });
+  }
+  for (const article of articles) {
+    nodes.push({
+      provider: "intercom",
+      internalId: getHelpCenterArticleInternalId(
+        connectorId,
+        article.articleId
+      ),
+      parentInternalId: article.parentId
+        ? getHelpCenterCollectionInternalId(connectorId, article.parentId)
+        : null,
+      type: "file",
+      title: article.title,
+      sourceUrl: article.url,
+      expandable: false,
+      permission: article.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
+    });
+  }
+  if (isAllTeams) {
+    nodes.push({
+      provider: "intercom",
+      internalId: getTeamsInternalId(connectorId),
+      parentInternalId: null,
+      type: "channel",
+      title: "Conversations",
+      sourceUrl: null,
+      expandable: true,
+      permission: "none",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  }
+  for (const team of teams) {
+    nodes.push({
+      provider: "intercom",
+      internalId: getTeamInternalId(connectorId, team.teamId),
+      parentInternalId: getTeamsInternalId(connectorId),
+      type: "channel",
+      title: team.name,
+      sourceUrl: null,
+      expandable: false,
+      permission: team.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  }
+
+  return new Ok(nodes);
 }
 
 export async function retrieveIntercomObjectsParents(
