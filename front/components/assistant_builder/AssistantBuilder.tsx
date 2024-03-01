@@ -430,9 +430,9 @@ export default function AssistantBuilder({
         }
       >
         <div className="flex h-full flex-col gap-5 py-4">
-          <div className="flex flex-row justify-between">
+          <div className="flex flex-col justify-between sm:flex-row">
             <Tab tabs={tabs} variant="stepper" />
-            <div className="pt-0.5">
+            <div className="self-end pt-0.5">
               <SharingButton
                 slackDataSource={slackDataSource || null}
                 owner={owner}
