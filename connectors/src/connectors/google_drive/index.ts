@@ -59,42 +59,37 @@ export async function createGoogleDriveConnector(
     const driveClient = await getDriveClient(nangoConnectionId);
 
     // Sanity checks to confirm we have sufficient permissions.
-    await Promise.all([
-      driveClient.about.get({ fields: "*" }),
-      driveClient.files.get({ fileId: "root" }),
-      driveClient.drives.list({
-        pageSize: 10,
-        fields: "nextPageToken, drives(id, name)",
-      }),
-    ])
-      .then(([sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList]) => {
-        if (sanityCheckAbout.status !== 200) {
-          throw new Error(
-            `Could not get google drive info. Error message: ${
-              sanityCheckAbout.statusText || "unknown"
-            }`
-          );
-        }
-        if (sanityCheckFilesGet.status !== 200) {
-          throw new Error(
-            `Could not call google drive files get. Error message: ${
-              sanityCheckFilesGet.statusText || "unknown"
-            }`
-          );
-        }
-        if (sanityCheckFilesList.status !== 200) {
-          throw new Error(
-            `Could not call google drive files list. Error message: ${
-              sanityCheckFilesList.statusText || "unknown"
-            }`
-          );
-        }
-      })
-      .catch(() => {
-        throw new Error(
-          "Error trying to check sufficient permissions from Google."
-        );
-      });
+    const [sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList] =
+      await Promise.all([
+        driveClient.about.get({ fields: "*" }),
+        driveClient.files.get({ fileId: "root" }),
+        driveClient.drives.list({
+          pageSize: 10,
+          fields: "nextPageToken, drives(id, name)",
+        }),
+      ]);
+
+    if (sanityCheckAbout.status !== 200) {
+      throw new Error(
+        `Could not get google drive info. Error message: ${
+          sanityCheckAbout.statusText || "unknown"
+        }`
+      );
+    }
+    if (sanityCheckFilesGet.status !== 200) {
+      throw new Error(
+        `Could not call google drive files get. Error message: ${
+          sanityCheckFilesGet.statusText || "unknown"
+        }`
+      );
+    }
+    if (sanityCheckFilesList.status !== 200) {
+      throw new Error(
+        `Could not call google drive files list. Error message: ${
+          sanityCheckFilesList.statusText || "unknown"
+        }`
+      );
+    }
   } catch (err) {
     logger.error(
       {
