@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "lib": ["es2017"],
+    "lib": ["ES2021"],
     "allowJs": true,
     "checkJs": true,
     "skipLibCheck": true,
