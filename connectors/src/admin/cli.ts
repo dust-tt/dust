@@ -25,7 +25,10 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { searchNotionPagesForQuery } from "@connectors/connectors/notion/lib/cli";
+import {
+  checkNotionUrl,
+  searchNotionPagesForQuery,
+} from "@connectors/connectors/notion/lib/cli";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
@@ -643,6 +646,25 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       console.table(pages);
+
+      break;
+    }
+
+    case "check-url": {
+      const { url, wId } = args;
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: wId,
+      });
+
+      const r = await checkNotionUrl({
+        connectorId: connector.id,
+        connectionId: connector.connectionId,
+        url,
+      });
+
+      console.log(r);
 
       break;
     }
