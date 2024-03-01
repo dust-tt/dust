@@ -307,8 +307,11 @@ function Suggestions({
   owner: WorkspaceType;
   instructions: string;
 }) {
-  const [suggestions, setSuggestions] =
-    useState<BuilderSuggestionsType>(STATIC_SUGGESTIONS);
+  const [suggestions, setSuggestions] = useState<BuilderSuggestionsType>(
+    !instructions
+      ? STATIC_SUGGESTIONS
+      : { status: "unavailable", reason: "irrelevant" }
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<APIError | null>(null);
@@ -342,6 +345,12 @@ function Suggestions({
     debounce(debounceHandle, updateSuggestions);
   }, [instructions, updateSuggestions]);
 
+  if (
+    suggestions.status === "unavailable" &&
+    suggestions.reason === "irrelevant"
+  ) {
+    return null;
+  }
   return (
     <Collapsible defaultOpen>
       <div className="flex flex-col gap-2">
@@ -384,7 +393,10 @@ function Suggestions({
                     </ContentMessage>
                   ));
               }
-              if (suggestions.status === "unavailable") {
+              if (
+                suggestions.status === "unavailable" &&
+                suggestions.reason === "user_not_finished"
+              ) {
                 return (
                   <ContentMessage size="sm" variant="slate" title="">
                     Suggestions will appear when you're done writing.
