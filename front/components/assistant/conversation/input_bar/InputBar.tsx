@@ -218,7 +218,9 @@ export function AssistantInputBar({
         },
         body: JSON.stringify({
           action: "cancel",
-          messageIds: generationContext.generatingMessageIds,
+          messageIds: generationContext.generatingMessages
+            .filter((m) => m.conversationId === conversationId)
+            .map((m) => m.messageId),
         }),
       }
     );
@@ -228,16 +230,23 @@ export function AssistantInputBar({
   };
 
   useEffect(() => {
-    if (isProcessing && generationContext.generatingMessageIds.length === 0) {
+    if (
+      isProcessing &&
+      !generationContext.generatingMessages.some(
+        (m) => m.conversationId === conversationId
+      )
+    ) {
       setIsProcessing(false);
     }
-  }, [isProcessing, generationContext.generatingMessageIds.length]);
+  }, [isProcessing, generationContext.generatingMessages, conversationId]);
 
   const isInTryModal = !!tryModalAgentConfiguration;
 
   return (
     <>
-      {generationContext.generatingMessageIds.length > 0 && (
+      {generationContext.generatingMessages.some(
+        (m) => m.conversationId === conversationId
+      ) && (
         <div className="flex justify-center px-4 pb-4">
           <Button
             className="mt-4"
