@@ -1,10 +1,11 @@
 import {
   AnthropicLogo,
   Button,
-  Collapsible,
+  ChevronRightIcon,
   ContentMessage,
   DropdownMenu,
   GoogleLogo,
+  IconButton,
   MistralLogo,
   OpenaiLogo,
   Page,
@@ -294,9 +295,10 @@ function AssistantBuilderTextArea({
 const STATIC_SUGGESTIONS = {
   status: "ok" as const,
   suggestions: [
-    "Tip: break down your instructions into steps to leverage the model's reasoning capabilities.",
-    "Tip: give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'. This leverages the underlying model's internal knowledge on the expectations of that role.",
-    "Tip: add instructions on the format of the answer you'd like to see: the tone of voice, whether to structure it with bullet points, in code blocks, etc...",
+    "Break down your instructions into steps to leverage the model's reasoning capabilities.",
+    "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'",
+    "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
+    "Try to be specific: tailor prompts with precise language to avoid ambiguity",
   ],
 };
 
@@ -352,62 +354,76 @@ function Suggestions({
     return null;
   }
   return (
-    <Collapsible defaultOpen>
-      <div className="flex flex-col gap-2">
-        <Collapsible.Button>
-          <div className="text-base font-bold text-element-800">
-            Suggestions
-          </div>
-        </Collapsible.Button>
-        <Collapsible.Panel>
-          <div className="flex gap-2">
-            {(() => {
-              if (loading) {
-                return <Spinner size="sm" />;
-              }
-              if (error) {
-                return (
-                  <ContentMessage size="sm" title="Error" variant="red">
-                    {error.message}
-                  </ContentMessage>
-                );
-              }
-              if (suggestions.status === "ok") {
-                if (suggestions.suggestions.length === 0) {
-                  return (
-                    <ContentMessage size="sm" variant="slate" title="">
-                      Looking good! 🎉
-                    </ContentMessage>
-                  );
-                }
-                return suggestions.suggestions
-                  .slice(0, 3)
-                  .map((suggestion, index) => (
-                    <ContentMessage
-                      size="sm"
-                      title=""
-                      variant="pink"
-                      key={`suggestion-${index}`}
-                    >
-                      {suggestion}
-                    </ContentMessage>
-                  ));
-              }
-              if (
-                suggestions.status === "unavailable" &&
-                suggestions.reason === "user_not_finished"
-              ) {
-                return (
-                  <ContentMessage size="sm" variant="slate" title="">
-                    Suggestions will appear when you're done writing.
-                  </ContentMessage>
-                );
-              }
-            })()}
-          </div>
-        </Collapsible.Panel>
+    <div className="flex flex-col gap-2">
+      <div className="text-base font-bold text-element-800">Tips</div>
+      <div className="">
+        {(() => {
+          if (loading) {
+            return <Spinner size="sm" />;
+          }
+          if (error) {
+            return (
+              <ContentMessage size="sm" title="Error" variant="red">
+                {error.message}
+              </ContentMessage>
+            );
+          }
+          if (suggestions.status === "ok") {
+            if (suggestions.suggestions.length === 0) {
+              return (
+                <ContentMessage size="sm" variant="slate" title="">
+                  Looking good! 🎉
+                </ContentMessage>
+              );
+            }
+            return (
+              <div className="flex gap-2">
+                <ContentMessage
+                  size="sm"
+                  title=""
+                  variant="sky"
+                  className="transition-all"
+                >
+                  {suggestions.suggestions[0]}
+                </ContentMessage>
+                <ContentMessage
+                  size="sm"
+                  title=""
+                  variant="sky"
+                  className="transition-all"
+                >
+                  {suggestions.suggestions[1]}
+                </ContentMessage>
+                <IconButton
+                  icon={ChevronRightIcon}
+                  size="sm"
+                  variant="tertiary"
+                  onClick={() => {
+                    setSuggestions({
+                      status: "ok",
+                      suggestions: [
+                        ...suggestions.suggestions.slice(2),
+                        ...suggestions.suggestions.slice(0, 2),
+                      ],
+                    });
+                  }}
+                />
+              </div>
+            );
+          }
+          if (
+            suggestions.status === "unavailable" &&
+            suggestions.reason === "user_not_finished"
+          ) {
+            return (
+              <ContentMessage size="sm" variant="slate" title="">
+                Suggestions will appear when you're done writing.
+              </ContentMessage>
+            );
+          }
+        })()}
       </div>
-    </Collapsible>
+    </div>
   );
 }
 
