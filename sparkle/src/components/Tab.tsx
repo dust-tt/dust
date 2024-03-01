@@ -28,6 +28,7 @@ type TabProps<E> = {
   variant?: "default" | "stepper";
   tabs: Array<TabType<E>>;
   setCurrentTab?: (tabId: E, e: MouseEvent<HTMLAnchorElement>) => void;
+  tabClassName?: string;
   className?: string;
 };
 
@@ -103,7 +104,8 @@ export function Tab<E>({
   variant = "default",
   tabs,
   setCurrentTab,
-  className = "",
+  className,
+  tabClassName = "",
 }: TabProps<E>) {
   const { components } = React.useContext(SparkleContext);
 
@@ -135,7 +137,7 @@ export function Tab<E>({
         tabStateClasses.hover,
         tabStateClasses.dark.base,
         tabStateClasses.dark.hover,
-        className
+        tabClassName
       );
 
       const finalIconClasses = classNames(
@@ -144,7 +146,7 @@ export function Tab<E>({
         iconStateClasses.hover,
         iconStateClasses.dark.base,
         iconStateClasses.dark.hover,
-        className
+        tabClassName
       );
 
       const Link: SparkleContextLinkType = tab.href
@@ -226,7 +228,9 @@ export function Tab<E>({
       className={classNames(
         variant === "default"
           ? "s-border-b s-border-structure-200 dark:s-border-structure-200-dark"
-          : ""
+          : "",
+        className ?? "",
+        "s-overflow-x-auto s-overflow-y-hidden s-scrollbar-hide"
       )}
     >
       <nav className="-s-mb-px s-flex s-space-x-0" aria-label="Tabs">
