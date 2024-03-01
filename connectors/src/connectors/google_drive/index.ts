@@ -95,26 +95,35 @@ export async function createGoogleDriveConnector(
           "Error trying to check sufficient permissions from Google."
         );
       });
-
-    const googleDriveConfigurationBlob = {
-      pdfEnabled: false,
-    };
-
-    const connector = await ConnectorResource.makeNew(
-      "google_drive",
+  } catch (err) {
+    logger.error(
       {
-        connectionId: nangoConnectionId,
-        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
+        err,
       },
-      googleDriveConfigurationBlob
+      "Error creating Google Drive connector"
     );
+    return new Err(new Error("Error creating Google Drive connector"));
+  }
 
+  const googleDriveConfigurationBlob = {
+    pdfEnabled: false,
+  };
+
+  const connector = await ConnectorResource.makeNew(
+    "google_drive",
+    {
+      connectionId: nangoConnectionId,
+      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    googleDriveConfigurationBlob
+  );
+
+  try {
     const webhookInfo = await registerWebhook(connector);
     if (webhookInfo.isErr()) {
       await connector.delete();
-
       throw webhookInfo.error;
     } else {
       await GoogleDriveWebhook.create({
@@ -127,6 +136,7 @@ export async function createGoogleDriveConnector(
 
     return new Ok(connector.id.toString());
   } catch (err) {
+    await connector.delete();
     logger.error(
       {
         err,
