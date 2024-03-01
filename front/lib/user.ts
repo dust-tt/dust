@@ -31,8 +31,6 @@ export async function getUserMetadataFromClient(key: string) {
  * @param metadata MetadataType the metadata to set for the current user.
  */
 export function setUserMetadataFromClient(metadata: UserMetadataType) {
-  const { mutate } = useSWRConfig();
-
   void (async () => {
     try {
       const res = await fetch(
@@ -52,7 +50,6 @@ export function setUserMetadataFromClient(metadata: UserMetadataType) {
       }
 
       // Finally mutate to kick SWR to revalidate.
-      await mutate(`/api/user/metadata/${encodeURIComponent(metadata.key)}`);
     } catch (err) {
       console.error("setUserMetadata error", err);
     }

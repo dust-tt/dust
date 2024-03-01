@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   Page,
   Popup,
+  QuestionMarkCircleIcon,
   RobotSharedIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -39,8 +40,10 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurations } from "@app/lib/swr";
+import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
+import { setUserMetadataFromClient } from "@app/lib/user";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { QuickGuide } from "@app/pages/w/[wId]/assistant/quick_guide";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -128,6 +131,20 @@ export default function AssistantNew({
     // Sort is necessary due to separately fetched global and workspace assistants, ensuring unified ordering.
     .sort(compareAgentsForSort)
     .slice(0, isBuilder ? 2 : 4);
+
+  const {
+    metadata: quickGuideSeen,
+    isMetadataError: isQuickGuideSeenError,
+    isMetadataLoading: isQuickGuideSeenLoading,
+  } = useUserMetadata("quick_guide_seen");
+  const [showQuickGuide, setShowQuickGuide] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!quickGuideSeen && !isQuickGuideSeenError && !isQuickGuideSeenLoading) {
+      // Quick guide has never been shown, lets show it.
+      setShowQuickGuide(true);
+    }
+  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
 
   const { submit: handleSubmit } = useSubmitFunction(
     async (
@@ -219,6 +236,11 @@ export default function AssistantNew({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
+  const { submit: persistQuickGuideSeen } = useSubmitFunction(async () => {
+    setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" });
+    setShowQuickGuide(false);
+  });
+
   return (
     <InputBarContext.Provider
       value={{ animate: shouldAnimateInput, selectedAssistant }}
@@ -238,6 +260,12 @@ export default function AssistantNew({
             />
           }
         >
+          <QuickGuide
+            show={showQuickGuide}
+            onClose={() => {
+              void persistQuickGuideSeen();
+            }}
+          />
           {conversationHelperModal && helper && (
             <TryAssistantModal
               owner={owner}
@@ -262,15 +290,30 @@ export default function AssistantNew({
                     <div className="flex w-full flex-row gap-4">
                       <div className="flex w-full flex-row justify-between">
                         <Page.SectionHeader title={greeting} />
+                        <div>
+                          <Button
+                            icon={QuestionMarkCircleIcon}
+                            variant="tertiary"
+                            label="Quick Start Guide"
+                            size="xs"
+                            onClick={() => {
+                              setShowQuickGuide(true);
+                            }}
+                          />
+                        </div>
                         {!isBuilder && (
-                          <Link href={`/w/${owner.sId}/assistant/gallery`}>
-                            <Button
-                              variant="primary"
-                              icon={BookOpenIcon}
-                              size="xs"
-                              label="Explore the Assistants Gallery"
-                            />
-                          </Link>
+                          <div className="flex-cols flex gap-2">
+                            <div>
+                              <Link href={`/w/${owner.sId}/assistant/gallery`}>
+                                <Button
+                                  variant="primary"
+                                  icon={BookOpenIcon}
+                                  size="xs"
+                                  label="Explore the Assistants Gallery"
+                                />
+                              </Link>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
