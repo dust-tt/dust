@@ -87,6 +87,7 @@ import {
   getSlackConfig,
   retrieveSlackChannelsTitles,
   retrieveSlackConnectorPermissions,
+  retrieveSlackContentNodes,
   setSlackConfig,
   setSlackConnectorPermissions,
   updateSlackConnector,
@@ -253,9 +254,7 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   confluence: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
-  slack: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  slack: retrieveSlackContentNodes,
   notion: retrieveNotionContentNodes,
   github: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);

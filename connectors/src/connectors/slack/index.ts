@@ -579,6 +579,43 @@ export async function retrieveSlackChannelsTitles(
   return new Ok(titles);
 }
 
+export async function retrieveSlackContentNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const slackConfig = await SlackConfiguration.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  if (!slackConfig) {
+    logger.error({ connectorId }, "Slack configuration not found");
+    return new Err(new Error("Slack configuration not found"));
+  }
+
+  const channels = await SlackChannel.findAll({
+    where: {
+      connectorId: connectorId,
+      slackChannelId: internalIds,
+    },
+  });
+
+  const contentNodes: ConnectorNode[] = channels.map((ch) => ({
+    provider: "slack",
+    internalId: ch.slackChannelId,
+    parentInternalId: null,
+    type: "channel",
+    title: `#${ch.slackChannelName}`,
+    sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
+    expandable: false,
+    permission: ch.permission,
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+  }));
+
+  return new Ok(contentNodes);
+}
+
 export const getSlackConfig: ConnectorConfigGetter = async function (
   connectorId: ModelId,
   configKey: string
