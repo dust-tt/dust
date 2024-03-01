@@ -55,6 +55,7 @@
     "redis": "^4.6.10",
     "remove-markdown": "^0.5.0",
     "sequelize": "^6.31.0",
+    "slackify-markdown": "^4.4.0",
     "talisman": "^1.1.4",
     "tar": "^6.2.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
