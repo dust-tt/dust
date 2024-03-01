@@ -97,14 +97,16 @@ export async function githubFullSyncWorkflow(
               connectorId: [connectorId],
             },
             args: [
-              dataSourceConfig,
-              connectorId.toString(),
-              githubInstallationId,
-              repo.name,
-              repo.id,
-              repo.login,
-              syncCodeOnly,
-              true,
+              {
+                dataSourceConfig,
+                connectorId,
+                githubInstallationId,
+                repoName: repo.name,
+                repoId: repo.id,
+                repoLogin: repo.login,
+                syncCodeOnly,
+                isFullSync: true,
+              },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
             memo: workflowInfo().memo,
@@ -124,7 +126,7 @@ export async function githubReposSyncWorkflow(
   githubInstallationId: string,
   orgLogin: string,
   repos: { name: string; id: number }[],
-  connectorId: string
+  connectorId: ModelId
 ) {
   const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
   const promises: Promise<void>[] = [];
@@ -137,17 +139,19 @@ export async function githubReposSyncWorkflow(
         executeChild(githubRepoSyncWorkflow, {
           workflowId: childWorkflowId,
           searchAttributes: {
-            connectorId: [parseInt(connectorId)],
+            connectorId: [connectorId],
           },
           args: [
-            dataSourceConfig,
-            connectorId,
-            githubInstallationId,
-            repo.name,
-            repo.id,
-            orgLogin,
-            false,
-            false,
+            {
+              dataSourceConfig,
+              connectorId,
+              githubInstallationId,
+              repoName: repo.name,
+              repoId: repo.id,
+              repoLogin: orgLogin,
+              syncCodeOnly: false,
+              isFullSync: false,
+            },
           ],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           memo: workflowInfo().memo,
@@ -160,14 +164,21 @@ export async function githubReposSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
-export async function githubRepoIssuesSyncWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
-  repoName: string,
-  repoId: number,
-  repoLogin: string,
-  pageNumber: number
-): Promise<boolean> {
+export async function githubRepoIssuesSyncWorkflow({
+  dataSourceConfig,
+  githubInstallationId,
+  repoName,
+  repoId,
+  repoLogin,
+  pageNumber,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  githubInstallationId: string;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  pageNumber: number;
+}): Promise<boolean> {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -215,14 +226,21 @@ export async function githubRepoIssuesSyncWorkflow(
   return true;
 }
 
-export async function githubRepoDiscussionsSyncWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
-  repoName: string,
-  repoId: number,
-  repoLogin: string,
-  nextCursor: string | null
-): Promise<string | null> {
+export async function githubRepoDiscussionsSyncWorkflow({
+  dataSourceConfig,
+  githubInstallationId,
+  repoName,
+  repoId,
+  repoLogin,
+  nextCursor,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  githubInstallationId: string;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  nextCursor: string | null;
+}): Promise<string | null> {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -267,16 +285,25 @@ export async function githubRepoDiscussionsSyncWorkflow(
   return cursor;
 }
 
-export async function githubRepoSyncWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  connectorId: string,
-  githubInstallationId: string,
-  repoName: string,
-  repoId: number,
-  repoLogin: string,
-  syncCodeOnly: boolean,
-  isFullSync: boolean
-) {
+export async function githubRepoSyncWorkflow({
+  dataSourceConfig,
+  connectorId,
+  githubInstallationId,
+  repoName,
+  repoId,
+  repoLogin,
+  syncCodeOnly,
+  isFullSync,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  connectorId: ModelId;
+  githubInstallationId: string;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  syncCodeOnly: boolean;
+  isFullSync: boolean;
+}) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -298,15 +325,17 @@ export async function githubRepoSyncWorkflow(
       const shouldContinue = await executeChild(githubRepoIssuesSyncWorkflow, {
         workflowId: childWorkflowId,
         searchAttributes: {
-          connectorId: [parseInt(connectorId)],
+          connectorId: [connectorId],
         },
         args: [
-          dataSourceConfig,
-          githubInstallationId,
-          repoName,
-          repoId,
-          repoLogin,
-          pageNumber,
+          {
+            dataSourceConfig,
+            githubInstallationId,
+            repoName,
+            repoId,
+            repoLogin,
+            pageNumber,
+          },
         ],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
@@ -330,15 +359,17 @@ export async function githubRepoSyncWorkflow(
       nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
         workflowId: childWorkflowId,
         searchAttributes: {
-          connectorId: [parseInt(connectorId)],
+          connectorId: [connectorId],
         },
         args: [
-          dataSourceConfig,
-          githubInstallationId,
-          repoName,
-          repoId,
-          repoLogin,
-          nextCursor,
+          {
+            dataSourceConfig,
+            githubInstallationId,
+            repoName,
+            repoId,
+            repoLogin,
+            nextCursor,
+          },
         ],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,

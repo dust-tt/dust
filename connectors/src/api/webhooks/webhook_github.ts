@@ -331,7 +331,7 @@ async function syncRepos(
   let hasErrors = false;
   await Promise.all(
     connectors.map((c) =>
-      launchGithubReposSyncWorkflow(c.id.toString(), orgLogin, repos).catch(
+      launchGithubReposSyncWorkflow(c.id, orgLogin, repos).catch(
         (err) => {
           logger.error(
             {

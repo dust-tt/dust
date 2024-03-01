@@ -106,7 +106,7 @@ export async function getGithubFullSyncWorkflow(connectorId: ModelId): Promise<{
 }
 
 export async function launchGithubReposSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   orgLogin: string,
   repos: { name: string; id: number }[]
 ) {
@@ -130,7 +130,7 @@ export async function launchGithubReposSyncWorkflow(
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     memo: {
       connectorId: connectorId,
