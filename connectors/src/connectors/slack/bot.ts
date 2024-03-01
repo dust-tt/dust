@@ -17,6 +17,7 @@ import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
+import slackifyMarkdown from "slackify-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
@@ -486,8 +487,8 @@ async function botAnswerMessage(
         }
         lastSentDate = new Date();
 
-        let finalAnswer = normalizeContentForSlack(
-          _processCiteMention(fullAnswer, action)
+        let finalAnswer = slackifyMarkdown(
+          normalizeContentForSlack(_processCiteMention(fullAnswer, action))
         );
 
         // if the message is too long, we avoid the update entirely (to reduce
@@ -512,8 +513,8 @@ async function botAnswerMessage(
       case "agent_generation_success": {
         fullAnswer = `${botIdentity}${event.text}`;
 
-        let finalAnswer = normalizeContentForSlack(
-          _processCiteMention(fullAnswer, action)
+        let finalAnswer = slackifyMarkdown(
+          normalizeContentForSlack(_processCiteMention(fullAnswer, action))
         );
 
         // if the message is too long, when generation is finished we show it
