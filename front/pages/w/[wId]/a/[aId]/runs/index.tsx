@@ -148,9 +148,10 @@ export default function RunsView({
       hideSidebar
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2 overflow-x-auto scrollbar-hide">
-          <Tab tabs={subNavigationApp({ owner, app, current: "runs" })} />
-        </div>
+        <Tab
+          className="mt-2"
+          tabs={subNavigationApp({ owner, app, current: "runs" })}
+        />
         <div className="mt-8 flex">
           <nav className="flex" aria-label="Tabs">
             {tabs.map((tab, tabIdx) => (

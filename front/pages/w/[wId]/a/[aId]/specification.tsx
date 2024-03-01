@@ -113,11 +113,10 @@ export default function Specification({
       hideSidebar
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2 overflow-x-auto scrollbar-hide">
-          <Tab
-            tabs={subNavigationApp({ owner, app, current: "specification" })}
-          />
-        </div>
+        <Tab
+          className="mt-2"
+          tabs={subNavigationApp({ owner, app, current: "specification" })}
+        />
         <div className="font-mono mt-8 whitespace-pre text-[13px] text-gray-700">
           {specification}
         </div>

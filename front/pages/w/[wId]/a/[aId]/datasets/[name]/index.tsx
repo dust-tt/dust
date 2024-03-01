@@ -188,9 +188,10 @@ export default function ViewDatasetView({
       hideSidebar
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2 overflow-x-auto scrollbar-hide">
-          <Tab tabs={subNavigationApp({ owner, app, current: "datasets" })} />
-        </div>
+        <Tab
+          className="mt-2"
+          tabs={subNavigationApp({ owner, app, current: "datasets" })}
+        />
         <div className="mt-8 flex flex-col">
           <div className="flex flex-1">
             <div className="mb-8 w-full">

@@ -224,7 +224,7 @@ export default function WorkspaceAssistants({
           <div className="flex flex-col gap-4">
             <Tab
               tabs={tabs}
-              className={classNames(
+              tabClassName={classNames(
                 assistantSearch ? disabledTablineClass : ""
               )}
             />

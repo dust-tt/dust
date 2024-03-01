@@ -161,9 +161,10 @@ export default function AppRun({
       hideSidebar
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2 overflow-x-auto scrollbar-hide">
-          <Tab tabs={subNavigationApp({ owner, app, current: "runs" })} />
-        </div>
+        <Tab
+          className="mt-2"
+          tabs={subNavigationApp({ owner, app, current: "runs" })}
+        />
         <div className="mt-8 flex flex-col">
           <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
             <div className="flex flex-col items-start">

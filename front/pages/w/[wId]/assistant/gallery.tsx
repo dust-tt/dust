@@ -284,9 +284,11 @@ export default function AssistantsGallery({
             <div className="block md:hidden">{SearchOrderDropdown}</div>
           </div>
           <div className="flex flex-row space-x-4">
-            <div className="grow overflow-x-auto scrollbar-hide">
-              <Tab tabs={tabs} setCurrentTab={setAgentsGetView} />
-            </div>
+            <Tab
+              className="grow"
+              tabs={tabs}
+              setCurrentTab={setAgentsGetView}
+            />
             <div className="hidden md:block">{SearchOrderDropdown}</div>
           </div>
           <div className="flex flex-col gap-2">
