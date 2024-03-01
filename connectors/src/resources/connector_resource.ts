@@ -53,7 +53,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         { transaction }
       );
 
-      const connectorRes = new this(ConnectorModel, connector);
+      const connectorRes = new this(ConnectorModel, connector.get());
 
       await connectorRes.providerStrategy.makeNew(
         connectorRes,
