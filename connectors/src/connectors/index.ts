@@ -5,6 +5,7 @@ import {
   createConfluenceConnector,
   resumeConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
+  retrieveConfluenceContentNodes,
   retrieveConfluenceObjectsTitles,
   retrieveConfluenceResourceParents,
   setConfluenceConnectorPermissions,
@@ -252,9 +253,7 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorBatchContentNodesRetriever
 > = {
-  confluence: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  confluence: retrieveConfluenceContentNodes,
   slack: retrieveSlackContentNodes,
   notion: retrieveNotionContentNodes,
   github: retrieveGithubReposContentNodes,
