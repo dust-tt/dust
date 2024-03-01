@@ -290,19 +290,20 @@ export default function AssistantNew({
                     <div className="flex w-full flex-row gap-4">
                       <div className="flex w-full flex-row justify-between">
                         <Page.SectionHeader title={greeting} />
-                        <div>
-                          <Button
-                            icon={QuestionMarkCircleIcon}
-                            variant="tertiary"
-                            label="Quick Start Guide"
-                            size="xs"
-                            onClick={() => {
-                              setShowQuickGuide(true);
-                            }}
-                          />
-                        </div>
-                        {!isBuilder && (
-                          <div className="flex-cols flex gap-2">
+
+                        <div className="flex-cols flex gap-2">
+                          <div>
+                            <Button
+                              icon={QuestionMarkCircleIcon}
+                              variant="tertiary"
+                              label="Quick Start Guide"
+                              size="xs"
+                              onClick={() => {
+                                setShowQuickGuide(true);
+                              }}
+                            />
+                          </div>
+                          {!isBuilder && (
                             <div>
                               <Link href={`/w/${owner.sId}/assistant/gallery`}>
                                 <Button
@@ -313,8 +314,8 @@ export default function AssistantNew({
                                 />
                               </Link>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
