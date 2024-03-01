@@ -129,7 +129,7 @@ export async function notionSyncWorkflow({
 
     const promises: Promise<void>[] = [];
 
-    // we go through each result page of the notion  search API
+    // we go through each result page of the notion search API
     do {
       // We only want to fetch pages that were updated since the last sync unless it's a garbage
       // collection run or a force resync.
@@ -177,9 +177,9 @@ export async function notionSyncWorkflow({
     // wait for all child workflows to finish
     await Promise.all(promises);
 
-    // these are resources (pages/DBs) that we didn't get from the search API but that are child/parent pages/DBs
-    // of other pages that we did get from the search API.
-    // We upsert those as well.
+    // These are resources (pages/DBs) that we didn't get from the search API but that are
+    // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+    // well.
     let discoveredResources: {
       pageIds: string[];
       databaseIds: string[];
@@ -196,7 +196,7 @@ export async function notionSyncWorkflow({
           databaseIds: discoveredResources.databaseIds,
           isGarbageCollectionRun: isGarbageCollectionRun,
           runTimestamp,
-          pageIndex,
+          pageIndex: null,
           isBatchSync: isInitialSync,
           queue: childWorkflowQueue,
           childWorkflowsNameSuffix: "discovered",
@@ -257,7 +257,13 @@ export async function upsertPageWorkflow({
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
   const runTimestamp = Date.now();
+
+  const queue = new PQueue({
+    concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
+  });
+
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
   const { skipped } = await executeChild(upsertPageChildWorkflow, {
     workflowId: `${topLevelWorkflowId}-upsert-page-${pageId}`,
     searchAttributes: {
@@ -276,7 +282,37 @@ export async function upsertPageWorkflow({
     parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
     memo: workflowInfo().memo,
   });
+
+  // These are resources (pages/DBs) that we stumbled upon but don't know about. We upsert those as
+  // well.
+  let discoveredResources: {
+    pageIds: string[];
+    databaseIds: string[];
+  } | null;
+  do {
+    discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
+    if (discoveredResources) {
+      await performUpserts({
+        connectorId,
+        pageIds: discoveredResources.pageIds,
+        databaseIds: discoveredResources.databaseIds,
+        isGarbageCollectionRun: false,
+        runTimestamp,
+        pageIndex: null,
+        isBatchSync: true,
+        queue,
+        childWorkflowsNameSuffix: "discovered",
+        topLevelWorkflowId,
+        forceResync: false,
+      });
+    }
+  } while (discoveredResources);
+
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
   return { skipped };
 }
 
@@ -291,9 +327,11 @@ export async function upsertDatabaseWorkflow({
   forceResync?: boolean;
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
+
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
   });
+
   const runTimestamp = Date.now();
 
   const loggerArgs = {
@@ -320,6 +358,34 @@ export async function upsertDatabaseWorkflow({
     queue,
     forceResync,
   });
+
+  // These are resources (pages/DBs) that we stumbled upon but don't know about. We upsert those as
+  // well.
+  let discoveredResources: {
+    pageIds: string[];
+    databaseIds: string[];
+  } | null;
+  do {
+    discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
+    if (discoveredResources) {
+      await performUpserts({
+        connectorId,
+        pageIds: discoveredResources.pageIds,
+        databaseIds: discoveredResources.databaseIds,
+        isGarbageCollectionRun: false,
+        runTimestamp,
+        pageIndex: null,
+        isBatchSync: true,
+        queue,
+        childWorkflowsNameSuffix: "discovered",
+        topLevelWorkflowId,
+        forceResync: false,
+      });
+    }
+  } while (discoveredResources);
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 }
@@ -709,7 +775,7 @@ async function performUpserts({
   databaseIds: string[];
   isGarbageCollectionRun: boolean;
   runTimestamp: number;
-  pageIndex: number;
+  pageIndex: number | null;
   isBatchSync: boolean;
   queue: PQueue;
   childWorkflowsNameSuffix?: string;
@@ -749,7 +815,10 @@ async function performUpserts({
     ) {
       const batch = pagesToSync.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      let workflowId = `${topLevelWorkflowId}-result-page-${pageIndex}-pages-${batchIndex}`;
+      let workflowId =
+        pageIndex !== null
+          ? `${topLevelWorkflowId}-result-page-${pageIndex}-pages-${batchIndex}`
+          : `${topLevelWorkflowId}-upserts-pages-${batchIndex}`;
       if (isGarbageCollectionRun) {
         workflowId += "-gc";
       }
@@ -792,7 +861,10 @@ async function performUpserts({
         i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW
       );
       const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      let workflowId = `${topLevelWorkflowId}-result-page-${pageIndex}-databases-${batchIndex}`;
+      let workflowId =
+        pageIndex !== null
+          ? `${topLevelWorkflowId}-result-page-${pageIndex}-databases-${batchIndex}`
+          : `${topLevelWorkflowId}-upserts-databases-${batchIndex}`;
       if (isGarbageCollectionRun) {
         workflowId += "-gc";
       }
