@@ -33,7 +33,6 @@ export function getAmplitude(): Ampli {
     logger.debug("Amplitude environment variables not set, using dev instance");
     AmplitInstance = new AmpliDev();
   } else {
-    console.log("Amplitude environment variables set, using prod instance");
     AmplitInstance = ampli;
     ampli.load({
       // @ts-expect-error - the type of "environment" is auto populated by the Amplitude CLI,
