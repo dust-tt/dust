@@ -5,6 +5,7 @@ import { Op } from "sequelize";
 import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
 import { NotionDatabase } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
+
 import { getParsedDatabase, retrievePage } from "./notion_api";
 
 const logger = mainLogger.child({ provider: "notion" });
