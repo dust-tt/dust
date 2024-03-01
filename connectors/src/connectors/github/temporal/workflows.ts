@@ -53,7 +53,7 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
-const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 3;
+const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
