@@ -252,17 +252,25 @@ export function AgentMessage({
     );
   }
   useEffect(() => {
-    const isInArray = generationContext.generatingMessageIds.includes(
-      message.sId
+    const isInArray = generationContext.generatingMessages.some(
+      (m) => m.messageId === message.sId
     );
     if (agentMessageToRender.status === "created" && !isInArray) {
-      generationContext.setGeneratingMessageIds((s) => [...s, message.sId]);
+      generationContext.setGeneratingMessages((s) => [
+        ...s,
+        { messageId: message.sId, conversationId },
+      ]);
     } else if (agentMessageToRender.status !== "created" && isInArray) {
-      generationContext.setGeneratingMessageIds((s) =>
-        s.filter((id) => id !== message.sId)
+      generationContext.setGeneratingMessages((s) =>
+        s.filter((m) => m.messageId !== message.sId)
       );
     }
-  }, [agentMessageToRender.status, generationContext, message.sId]);
+  }, [
+    agentMessageToRender.status,
+    generationContext,
+    message.sId,
+    conversationId,
+  ]);
 
   const buttons =
     message.status === "failed"

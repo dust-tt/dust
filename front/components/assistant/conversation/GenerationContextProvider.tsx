@@ -1,8 +1,10 @@
 import { createContext, useState } from "react";
 
 type GenerationContextType = {
-  generatingMessageIds: string[];
-  setGeneratingMessageIds: React.Dispatch<React.SetStateAction<string[]>>;
+  generatingMessages: { messageId: string; conversationId: string }[];
+  setGeneratingMessages: React.Dispatch<
+    React.SetStateAction<{ messageId: string; conversationId: string }[]>
+  >;
 };
 
 export const GenerationContext = createContext<
@@ -14,14 +16,14 @@ export const GenerationContextProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [generatingMessageIds, setGeneratingMessageIds] = useState<string[]>(
-    []
-  );
+  const [generatingMessages, setGeneratingMessages] = useState<
+    { messageId: string; conversationId: string }[]
+  >([]);
   return (
     <GenerationContext.Provider
       value={{
-        generatingMessageIds: generatingMessageIds,
-        setGeneratingMessageIds: setGeneratingMessageIds,
+        generatingMessages,
+        setGeneratingMessages,
       }}
     >
       {children}
