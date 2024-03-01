@@ -53,7 +53,7 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
-const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 3;
+const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
@@ -97,12 +97,16 @@ export async function githubFullSyncWorkflow(
               connectorId: [connectorId],
             },
             args: [
-              dataSourceConfig,
-              githubInstallationId,
-              repo.name,
-              repo.id,
-              repo.login,
-              syncCodeOnly,
+              {
+                dataSourceConfig,
+                connectorId,
+                githubInstallationId,
+                repoName: repo.name,
+                repoId: repo.id,
+                repoLogin: repo.login,
+                syncCodeOnly,
+                isFullSync: true,
+              },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
             memo: workflowInfo().memo,
@@ -122,7 +126,7 @@ export async function githubReposSyncWorkflow(
   githubInstallationId: string,
   orgLogin: string,
   repos: { name: string; id: number }[],
-  connectorId: string
+  connectorId: ModelId
 ) {
   const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
   const promises: Promise<void>[] = [];
@@ -135,15 +139,19 @@ export async function githubReposSyncWorkflow(
         executeChild(githubRepoSyncWorkflow, {
           workflowId: childWorkflowId,
           searchAttributes: {
-            connectorId: [parseInt(connectorId)],
+            connectorId: [connectorId],
           },
           args: [
-            dataSourceConfig,
-            githubInstallationId,
-            repo.name,
-            repo.id,
-            orgLogin,
-            false,
+            {
+              dataSourceConfig,
+              connectorId,
+              githubInstallationId,
+              repoName: repo.name,
+              repoId: repo.id,
+              repoLogin: orgLogin,
+              syncCodeOnly: false,
+              isFullSync: false,
+            },
           ],
           parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
           memo: workflowInfo().memo,
@@ -156,14 +164,146 @@ export async function githubReposSyncWorkflow(
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
-export async function githubRepoSyncWorkflow(
-  dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
-  repoName: string,
-  repoId: number,
-  repoLogin: string,
-  syncCodeOnly: boolean
-) {
+export async function githubRepoIssuesSyncWorkflow({
+  dataSourceConfig,
+  githubInstallationId,
+  repoName,
+  repoId,
+  repoLogin,
+  pageNumber,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  githubInstallationId: string;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  pageNumber: number;
+}): Promise<boolean> {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+    githubInstallationId,
+    repoName,
+    repoLogin,
+  };
+
+  const queue = new PQueue({
+    concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
+  });
+  const promises: Promise<void>[] = [];
+
+  const resultsPage = await githubGetRepoIssuesResultPageActivity(
+    githubInstallationId,
+    repoName,
+    repoLogin,
+    pageNumber,
+    loggerArgs
+  );
+
+  if (!resultsPage.length) {
+    return false;
+  }
+
+  for (const issueNumber of resultsPage) {
+    promises.push(
+      queue.add(() =>
+        githubUpsertIssueActivity(
+          githubInstallationId,
+          repoName,
+          repoId,
+          repoLogin,
+          issueNumber,
+          dataSourceConfig,
+          loggerArgs,
+          true // isBatchSync
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
+
+  return true;
+}
+
+export async function githubRepoDiscussionsSyncWorkflow({
+  dataSourceConfig,
+  githubInstallationId,
+  repoName,
+  repoId,
+  repoLogin,
+  nextCursor,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  githubInstallationId: string;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  nextCursor: string | null;
+}): Promise<string | null> {
+  const loggerArgs = {
+    dataSourceName: dataSourceConfig.dataSourceName,
+    workspaceId: dataSourceConfig.workspaceId,
+    githubInstallationId,
+    repoName,
+    repoLogin,
+  };
+
+  const queue = new PQueue({
+    concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
+  });
+  const promises: Promise<void>[] = [];
+
+  const { cursor, discussionNumbers } =
+    await githubGetRepoDiscussionsResultPageActivity(
+      githubInstallationId,
+      repoName,
+      repoLogin,
+      nextCursor,
+      loggerArgs
+    );
+
+  for (const discussionNumber of discussionNumbers) {
+    promises.push(
+      queue.add(() =>
+        githubUpsertDiscussionActivity(
+          githubInstallationId,
+          repoName,
+          repoId,
+          repoLogin,
+          discussionNumber,
+          dataSourceConfig,
+          loggerArgs,
+          true // isBatchSync
+        )
+      )
+    );
+  }
+
+  await Promise.all(promises);
+
+  return cursor;
+}
+
+export async function githubRepoSyncWorkflow({
+  dataSourceConfig,
+  connectorId,
+  githubInstallationId,
+  repoName,
+  repoId,
+  repoLogin,
+  syncCodeOnly,
+  isFullSync,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  connectorId: ModelId;
+  githubInstallationId: string;
+  repoName: string;
+  repoId: number;
+  repoLogin: string;
+  syncCodeOnly: boolean;
+  isFullSync: boolean;
+}) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
@@ -174,75 +314,72 @@ export async function githubRepoSyncWorkflow(
   };
 
   if (!syncCodeOnly) {
-    const queue = new PQueue({
-      concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
-    });
-    const promises: Promise<void>[] = [];
-
     let pageNumber = 1; // 1-indexed
     for (;;) {
-      const resultsPage = await githubGetRepoIssuesResultPageActivity(
-        githubInstallationId,
-        repoName,
-        repoLogin,
-        pageNumber,
-        loggerArgs
-      );
-      if (!resultsPage.length) {
+      const childWorkflowId = `${
+        isFullSync
+          ? getFullSyncWorkflowId(dataSourceConfig)
+          : getReposSyncWorkflowId(dataSourceConfig)
+      }-repo-${repoId}-issues-page-${pageNumber}`;
+
+      const shouldContinue = await executeChild(githubRepoIssuesSyncWorkflow, {
+        workflowId: childWorkflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [
+          {
+            dataSourceConfig,
+            githubInstallationId,
+            repoName,
+            repoId,
+            repoLogin,
+            pageNumber,
+          },
+        ],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
+      });
+
+      if (!shouldContinue) {
         break;
       }
       pageNumber += 1;
-      for (const issueNumber of resultsPage) {
-        promises.push(
-          queue.add(() =>
-            githubUpsertIssueActivity(
-              githubInstallationId,
-              repoName,
-              repoId,
-              repoLogin,
-              issueNumber,
-              dataSourceConfig,
-              loggerArgs,
-              true // isBatchSync
-            )
-          )
-        );
-      }
     }
 
     let nextCursor: string | null = null;
+    let cursorIteration = 0;
     for (;;) {
-      const { cursor, discussionNumbers } =
-        await githubGetRepoDiscussionsResultPageActivity(
-          githubInstallationId,
-          repoName,
-          repoLogin,
-          nextCursor,
-          loggerArgs
-        );
-      for (const discussionNumber of discussionNumbers) {
-        promises.push(
-          queue.add(() =>
-            githubUpsertDiscussionActivity(
-              githubInstallationId,
-              repoName,
-              repoId,
-              repoLogin,
-              discussionNumber,
-              dataSourceConfig,
-              loggerArgs,
-              true // isBatchSync
-            )
-          )
-        );
-      }
-      if (!cursor) {
+      const childWorkflowId = `${
+        isFullSync
+          ? getFullSyncWorkflowId(dataSourceConfig)
+          : getReposSyncWorkflowId(dataSourceConfig)
+      }-repo-${repoId}-issues-page-${cursorIteration}`;
+
+      nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
+        workflowId: childWorkflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [
+          {
+            dataSourceConfig,
+            githubInstallationId,
+            repoName,
+            repoId,
+            repoLogin,
+            nextCursor,
+          },
+        ],
+        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
+        memo: workflowInfo().memo,
+      });
+
+      if (!nextCursor) {
         break;
       }
-      nextCursor = cursor;
+      cursorIteration += 1;
     }
-
-    await Promise.all(promises);
   }
 
   // Start code syncing activity.
