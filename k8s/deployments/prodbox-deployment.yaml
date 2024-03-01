@@ -39,6 +39,14 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
 
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+            - name: private-key-volume
+              mountPath: /etc/private-keys
+            - name: service-account-volume
+              mountPath: /etc/service-accounts
+
           resources:
             requests:
               cpu: 1000m
@@ -46,3 +54,16 @@ spec:
             limits:
               cpu: 1000m
               memory: 1Gi
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-cert
+
+        - name: private-key-volume
+          secret:
+            secretName: github-app-private-key
+
+        - name: service-account-volume
+          secret:
+            secretName: gcp-service-account-secret
