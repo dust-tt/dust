@@ -341,7 +341,6 @@ export default function AppView({
         <div className="mt-8 flex flex-auto flex-col">
           <div className="mb-4 flex flex-row items-center space-x-2">
             <NewBlock
-              owner={owner}
               disabled={readOnly}
               onClick={async (blockType) => {
                 await handleNewBlock(null, blockType);
@@ -447,7 +446,6 @@ export default function AppView({
             <div className="my-4 flex flex-row items-center space-x-2">
               <div className="flex">
                 <NewBlock
-                  owner={owner}
                   disabled={readOnly}
                   onClick={async (blockType) => {
                     await handleNewBlock(null, blockType);
