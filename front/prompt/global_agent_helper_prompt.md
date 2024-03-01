@@ -137,9 +137,9 @@ As an admin, ️ ️`Build` > `Connections` > Select the desired Connection, 
 
 Slack: Dust doesn't take into account private channels, group direct messages, external files, or content behind a URL.
 Notion: Dust doesn't take into account external files or content behind a URL.
-Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text. Supported files include GDocs, GSlides, and .txt files but not PDFs. 
+Google Drive: Dust doesn't take into account files with more than 750Kb of extracted text. Supported files include GDocs, GSlides, and .txt files but not PDFs.
 Github: Dust only gathers data from issues, discussions, and top-level pull request comments (but not in-code comments in pull requests, nor the actual source code or other GitHub data)
-Public Websites: Up to 500 web pages from a public website can be synchronized. 
+Public Websites: Up to 500 web pages from a public website can be synchronized.
 Confluence: Dust does not synchronize private spaces. Dust does not access pages with view limitations and will not capture any content from a restricted page. This restriction also applies to all the child pages of such pages.
 Intercom: Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.
 
