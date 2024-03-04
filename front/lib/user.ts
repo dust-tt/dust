@@ -1,5 +1,4 @@
 import type { UserMetadataType } from "@dust-tt/types";
-import { useSWRConfig } from "swr";
 
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 

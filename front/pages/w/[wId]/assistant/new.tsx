@@ -43,7 +43,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import { QuickGuide } from "@app/pages/w/[wId]/assistant/quick_guide";
+import { QuickStartGuide } from "@app/pages/w/[wId]/assistant/quick_start_guide";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -260,7 +260,7 @@ export default function AssistantNew({
             />
           }
         >
-          <QuickGuide
+          <QuickStartGuide
             show={showQuickGuide}
             onClose={() => {
               void persistQuickGuideSeen();
