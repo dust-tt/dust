@@ -1,22 +1,20 @@
-import { BarHeader, GoogleLogo } from "@dust-tt/sparkle";
+import { BarHeader } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
 import React from "react";
 
-import { SignInButton } from "@app/components/Button";
-
 export default function OnboardingLayout({
   owner,
   gaTrackingId,
   headerTitle,
-  onSignIn,
+  headerRightActions,
   children,
 }: {
   owner: LightWorkspaceType;
   gaTrackingId: string;
   headerTitle: string;
-  onSignIn: () => void;
+  headerRightActions: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -75,16 +73,7 @@ export default function OnboardingLayout({
       </Head>
 
       <main className="- z-10 p-6">
-        <BarHeader
-          title={headerTitle}
-          rightActions={
-            <SignInButton
-              label="Sign up with Google"
-              icon={GoogleLogo}
-              onClick={onSignIn}
-            />
-          }
-        />
+        <BarHeader title={headerTitle} rightActions={headerRightActions} />
         <div className="container mx-auto flex h-full items-center sm:px-16 xl:px-64 2xl:px-96">
           {children}
         </div>

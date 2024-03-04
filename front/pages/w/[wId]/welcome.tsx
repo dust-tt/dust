@@ -139,8 +139,21 @@ export default function Welcome({
   };
 
   if (!displayVideoScreen) {
+    const actionButton = (
+      <Button
+        label={youtubeId ? "Next" : "Ok"}
+        disabled={!isFormValid || isSubmitting}
+        onClick={submit}
+      />
+    );
+
     return (
-      <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
+      <OnboardingLayout
+        owner={owner}
+        gaTrackingId={gaTrackingId}
+        headerTitle="Joining Dust"
+        headerRightActions={actionButton}
+      >
         <div className="flex flex-col gap-6">
           <div>
             <p className="font-objektiv text-2xl font-bold tracking-tighter">
@@ -227,18 +240,13 @@ export default function Welcome({
               onChange={setExpertise}
             />
           </div>
-          <div className="flex justify-center pt-6">
-            <Button
-              label={youtubeId ? "Next" : "Start with Dust!"}
-              disabled={!isFormValid || isSubmitting}
-              onClick={submit}
-            />
-          </div>
+          <div className="flex justify-center pt-6">{actionButton}</div>
         </div>
       </OnboardingLayout>
     );
   } else if (displayVideoScreen && youtubeId !== null) {
     return (
+      // TODO: check this screen by forcing it
       <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
         <div className="flex flex-col gap-6">
           <div>
@@ -252,7 +260,7 @@ export default function Welcome({
           </div>
           <div className="flex justify-center">
             <Button
-              label="Start with Dust!"
+              label="Ok"
               disabled={!isFormValid}
               onClick={redirectToApp}
             />
