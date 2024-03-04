@@ -12,7 +12,7 @@ import {
   Modal,
   Page,
   PlanetIcon,
-  ShapesIcon,
+  ShapesShareIcon,
   SlackLogo,
   SliderToggle,
   UserGroupIcon,
@@ -167,12 +167,13 @@ export function SharingButton({
           <Button
             size="sm"
             label="Sharing"
-            icon={ShapesIcon}
+            icon={ShapesShareIcon}
             variant="tertiary"
+            type="menu"
           />
         </DropdownMenu.Button>
-        <DropdownMenu.Items width={319} overflow="visible">
-          <div className="-mx-1 flex flex-col gap-y-4 pb-2 pt-3">
+        <DropdownMenu.Items width={240} overflow="visible">
+          <div className="-mx-1 flex flex-col gap-y-2">
             <div className="flex flex-col gap-y-2">
               <SharingDropdown
                 owner={owner}
@@ -192,7 +193,7 @@ export function SharingButton({
                 </div>
               </div>
             </div>
-
+            <Page.Separator />
             <div className="flex flex-row justify-between">
               <div>
                 <div className="text-base font-bold text-element-800">
@@ -211,16 +212,16 @@ export function SharingButton({
                   )}
                 </div>
 
-                <div className="pt-3">
-                  {slackChannelSelected.length > 0 && (
+                {slackChannelSelected.length > 0 && (
+                  <div className="pt-3">
                     <Button
                       size="xs"
                       variant="secondary"
                       label="Manage channels"
                       onClick={() => setSlackDrawerOpened(true)}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
               <div className="">
                 <SliderToggle
