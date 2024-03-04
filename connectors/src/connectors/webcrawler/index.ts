@@ -292,6 +292,59 @@ export async function retrieveWebCrawlerObjectsTitles(
   return new Ok(titles);
 }
 
+export async function retrieveWebCrawlerContentNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const nodes: ConnectorNode[] = [];
+
+  const [folders, pages] = await Promise.all([
+    WebCrawlerFolder.findAll({
+      where: {
+        connectorId: connectorId,
+        url: internalIds,
+      },
+    }),
+    WebCrawlerPage.findAll({
+      where: {
+        connectorId: connectorId,
+        documentId: internalIds,
+      },
+    }),
+  ]);
+
+  folders.forEach((folder) => {
+    nodes.push({
+      provider: "webcrawler",
+      internalId: folder.internalId,
+      parentInternalId: folder.parentUrl,
+      title: folder.url,
+      sourceUrl: folder.url,
+      expandable: true,
+      permission: "read",
+      dustDocumentId: null,
+      type: "folder",
+      lastUpdatedAt: folder.updatedAt.getTime(),
+    });
+  });
+  pages.forEach((page) => {
+    nodes.push({
+      provider: "webcrawler",
+      internalId: page.documentId,
+      parentInternalId: page.parentUrl,
+      title: page.title ?? page.url,
+      sourceUrl: page.url,
+      expandable: false,
+      permission: "read",
+      dustDocumentId: page.documentId,
+      type: "file",
+      lastUpdatedAt: page.updatedAt.getTime(),
+    });
+  });
+
+  return new Ok(nodes);
+}
+
 export async function retrieveWebCrawlerObjectsParents(
   connectorId: ModelId,
   internalId: string

@@ -101,6 +101,7 @@ import {
   cleanupWebcrawlerConnector,
   createWebcrawlerConnector,
   retrieveWebcrawlerConnectorPermissions,
+  retrieveWebCrawlerContentNodes,
   retrieveWebCrawlerObjectsParents,
   retrieveWebCrawlerObjectsTitles,
   stopWebcrawlerConnector,
@@ -262,9 +263,7 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
     throw new Error(`Not implemented ${connectorId}`);
   },
   intercom: retrieveIntercomContentNodes,
-  webcrawler: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  webcrawler: retrieveWebCrawlerContentNodes,
 };
 
 export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
