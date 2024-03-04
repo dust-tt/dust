@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   getSanitizedHeaders,
+  InvalidStructuredDataHeaderError,
   makeStructuredDataTableName,
 } from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
@@ -117,39 +118,48 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
     return [];
   }
 
-  const headers = getSanitizedHeaders(rawHeaders);
+  try {
+    const headers = getSanitizedHeaders(rawHeaders);
 
-  const validRows: string[][] = filteredRows.map((row, index) => {
-    // Return raw headers.
-    if (index === 0) {
-      return headers;
+    const validRows: string[][] = filteredRows.map((row, index) => {
+      // Return raw headers.
+      if (index === 0) {
+        return headers;
+      }
+
+      // If a row has less cells than headers, we fill the gap with empty strings.
+      if (row.length < headers.length) {
+        const shortfall = headers.length - row.length;
+        return [...row, ...Array(shortfall).fill("")];
+      }
+
+      // If a row has more cells than headers we truncate the row.
+      if (row.length > headers.length) {
+        return row.slice(0, headers.length);
+      }
+
+      return row;
+    });
+
+    if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
+      logger.info(
+        { ...loggerArgs, rowCount: validRows.length },
+        `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
+      );
+
+      // If the sheet has too many rows, return an empty array to ignore it.
+      return [];
     }
 
-    // If a row has less cells than headers, we fill the gap with empty strings.
-    if (row.length < headers.length) {
-      const shortfall = headers.length - row.length;
-      return [...row, ...Array(shortfall).fill("")];
+    return validRows;
+  } catch (err) {
+    // If the headers are invalid, return an empty array to ignore it.
+    if (err instanceof InvalidStructuredDataHeaderError) {
+      return [];
     }
 
-    // If a row has more cells than headers we truncate the row.
-    if (row.length > headers.length) {
-      return row.slice(0, headers.length);
-    }
-
-    return row;
-  });
-
-  if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
-    logger.info(
-      { ...loggerArgs, rowCount: validRows.length },
-      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
-    );
-
-    // If the sheet has too many rows, return an empty array to ignore it.
-    return [];
+    throw err;
   }
-
-  return validRows;
 }
 
 async function processSheet(

@@ -7,6 +7,12 @@ export function makeStructuredDataTableName(name: string, externalId: string) {
   return slugify(`${name}_${externalIdPrefix}_${externalIdSuffix}`);
 }
 
+export class InvalidStructuredDataHeaderError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export function getSanitizedHeaders(rawHeaders: string[]) {
   return rawHeaders.reduce<string[]>((acc, curr) => {
     const slugifiedName = slugify(curr);
@@ -24,7 +30,7 @@ export function getSanitizedHeaders(rawHeaders: string[]) {
       }
 
       if (!conflictResolved) {
-        throw new Error(
+        throw new InvalidStructuredDataHeaderError(
           `Failed to generate unique slugified name for header "${curr}" after multiple attempts.`
         );
       }
