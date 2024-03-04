@@ -240,8 +240,6 @@ async function batchRenderUserMessages(messages: Message[]) {
       user: user
         ? {
             id: user.id,
-            provider: user.provider,
-            providerId: user.providerId,
             username: user.username,
             email: user.email,
             firstName: user.firstName,
@@ -258,13 +256,7 @@ async function batchRenderUserMessages(messages: Message[]) {
             configurationId: m.agentConfigurationId,
           };
         }
-        if (m.user) {
-          return {
-            provider: m.user.provider,
-            providerId: m.user.providerId,
-          };
-        }
-        throw new Error("Unreachable: mention must be either agent or user");
+        throw new Error("Mention Must Be An Agent: Unreachable.");
       }),
       content: userMessage.content,
       context: {
