@@ -7,11 +7,7 @@ export function makeStructuredDataTableName(name: string, externalId: string) {
   return slugify(`${name}_${externalIdPrefix}_${externalIdSuffix}`);
 }
 
-export class InvalidStructuredDataHeaderError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
+export class InvalidStructuredDataHeaderError extends Error {}
 
 export function getSanitizedHeaders(rawHeaders: string[]) {
   return rawHeaders.reduce<string[]>((acc, curr) => {
