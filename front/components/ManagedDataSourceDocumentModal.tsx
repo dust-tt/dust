@@ -10,7 +10,7 @@ export default function ManagedDataSourceDocumentModal({
   setOpen,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | null;
   documentId: string | null;
   isOpen: boolean;
   setOpen: (open: boolean) => void;
@@ -20,7 +20,7 @@ export default function ManagedDataSourceDocumentModal({
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    if (documentId) {
+    if (documentId && dataSource?.name) {
       setDownloading(true);
       fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
@@ -42,7 +42,7 @@ export default function ManagedDataSourceDocumentModal({
         })
         .catch((e) => console.error(e));
     }
-  }, [dataSource.name, documentId, owner.sId]);
+  }, [dataSource, documentId, owner.sId]);
 
   function closeModal() {
     setOpen(false);
