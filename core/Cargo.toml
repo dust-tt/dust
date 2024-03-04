@@ -15,6 +15,9 @@ path = "bin/qdrant_migrator.rs"
 name = "sqlite-worker"
 path = "bin/sqlite_worker.rs"
 
+[[bin]]
+name = "repro"
+path = "bin/repro.rs"
 
 [dependencies]
 anyhow = "1.0"
