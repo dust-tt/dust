@@ -1,10 +1,10 @@
-import { GoogleLogo, Logo } from "@dust-tt/sparkle";
+import { DustIcon, GoogleLogo, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
-import { A, H1, P, Strong } from "@app/components/home/contentComponents";
+import { A } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import {
   getWorkspaceInfos,
@@ -115,62 +115,63 @@ export default function Join({
   signUpCallbackUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return (
-    <OnboardingLayout owner={workspace} gaTrackingId={gaTrackingId}>
-      <div className="flex flex-col gap-12">
-        <div className="my-20">
-          <Logo className="h-[48px] w-[192px] px-1" />
-        </div>
-        <H1 className="text-slate-100">
-          <span className="text-red-400">Amplify your team's potential</span>{" "}
-          <br />
-          with customizable and secure AI&nbsp;assistants.
-        </H1>
-        <div className="flex flex-col gap-1">
-          <P>Welcome aboard!</P>
-          {onboardingType === "domain_conversation_link" ? (
-            <P>
-              Please log in or sign up with your company email to access this
-              conversation.
-            </P>
-          ) : (
-            <P>
-              You've been invited to join the{" "}
-              <Strong>{workspace.name} workspace on Dust</Strong>.
-            </P>
-          )}
-        </div>
+  const handleSignIn = () => {
+    void signIn("google", {
+      callbackUrl: signUpCallbackUrl,
+    });
+  };
 
-        {onboardingType === "email_invite" && (
-          <P>How would you like to connect?</P>
-        )}
+  return (
+    <OnboardingLayout
+      owner={workspace}
+      gaTrackingId={gaTrackingId}
+      headerTitle="Welcome to Dust"
+      onSignIn={handleSignIn}
+    >
+      <div className="flex flex-col gap-8">
+        <Page.Header title={`Hello there!`} icon={DustIcon} />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <p>Welcome aboard!</p>
+            {onboardingType === "domain_conversation_link" ? (
+              <p>
+                Please log in or sign up with your company email to access this
+                conversation.
+              </p>
+            ) : (
+              <p>
+                You've been invited to join{" "}
+                <strong>{workspace.name}'s workspace on Dust</strong>.
+              </p>
+            )}
+          </div>
+
+          <p>
+            Dust is a platform giving you access to the best AI assistants. It's
+            easy to use and it's a great place for teams to collaborate. Learn
+            more about Dust on{" "}
+            <A href="https://dust.tt" target="_blank">
+              our website
+            </A>
+            .
+          </p>
+        </div>
 
         <div className="flex flex-col items-center justify-center gap-4 ">
           <SignInButton
             label="Sign up with Google"
             icon={GoogleLogo}
-            onClick={() => {
-              void signIn("google", {
-                callbackUrl: signUpCallbackUrl,
-              });
-            }}
+            onClick={handleSignIn}
           />
         </div>
         <div className="flex flex-col gap-3 pb-20">
-          <P>
-            <Strong>Dust</Strong> is a platform giving you access to{" "}
-            <Strong>the best AI assistants</Strong>.
-            <br />
-            It's easy to&nbsp;use and it's a&nbsp;great place for teams
-            to&nbsp;collaborate.
-          </P>
-          <P>
-            Learn more about Dust on{" "}
-            <A href="https://dust.tt/" target="_blank" variant="secondary">
-              our homepage
+          <p>
+            By signing-up, you accept Dust's{" "}
+            <A href="https://dust.tt/terms" target="_blank">
+              terms and conditions
             </A>
             .
-          </P>
+          </p>
         </div>
       </div>
     </OnboardingLayout>

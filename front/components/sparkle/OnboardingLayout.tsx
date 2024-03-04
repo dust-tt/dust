@@ -1,22 +1,24 @@
+import { BarHeader, GoogleLogo } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
-import { useRef } from "react";
 import React from "react";
 
-import Particles from "@app/components/home/particles";
+import { SignInButton } from "@app/components/Button";
 
 export default function OnboardingLayout({
   owner,
   gaTrackingId,
+  headerTitle,
+  onSignIn,
   children,
 }: {
   owner: LightWorkspaceType;
   gaTrackingId: string;
+  headerTitle: string;
+  onSignIn: () => void;
   children: React.ReactNode;
 }) {
-  const scrollRef0 = useRef<HTMLDivElement | null>(null);
-
   return (
     <>
       <Head>
@@ -72,36 +74,34 @@ export default function OnboardingLayout({
         />
       </Head>
 
-      {/* Keeping the background dark */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
-      {/* Particle system */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden">
-        <Particles
-          scrollRef0={scrollRef0}
-          scrollRef1={scrollRef0}
-          scrollRef2={scrollRef0}
-          scrollRef3={scrollRef0}
-          scrollRef4={scrollRef0}
+      <main className="- z-10 p-6">
+        <BarHeader
+          title={headerTitle}
+          rightActions={
+            <SignInButton
+              label="Sign up with Google"
+              icon={GoogleLogo}
+              onClick={onSignIn}
+            />
+          }
         />
-      </div>
+        <div className="container mx-auto flex h-full items-center sm:px-16 xl:px-64 2xl:px-96">
+          {children}
+        </div>
+      </main>
 
-      <div className="s-dark text-slate-200">
-        <main className="z-10 mx-auto max-w-4xl px-6 pt-32">{children}</main>
-      </div>
-      <>
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){window.dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${gaTrackingId}');
           `}
-        </Script>
-      </>
+      </Script>
     </>
   );
 }
