@@ -10,12 +10,12 @@ import type { InferGetServerSidePropsType } from "next";
 import WebsiteConfiguration from "@app/components/data_source/WebsiteConfiguration";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];

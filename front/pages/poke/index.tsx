@@ -5,8 +5,8 @@ import React, { useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { usePokeWorkspaces } from "@app/lib/swr";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 export const getServerSideProps = withGetServerSidePropsLogging<object>(
   async (context) => {

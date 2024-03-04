@@ -32,13 +32,13 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, subFilter } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   tabScope: AgentConfigurationScope;

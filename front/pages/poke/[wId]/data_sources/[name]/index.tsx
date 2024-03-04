@@ -25,14 +25,14 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;

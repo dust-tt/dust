@@ -47,10 +47,10 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const {
   GA_TRACKING_ID = "",
@@ -63,7 +63,7 @@ const {
   NANGO_SLACK_CONNECTOR_ID = "",
 } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;

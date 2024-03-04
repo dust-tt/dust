@@ -52,36 +52,41 @@ import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
+}>(
+  async (context) => {
+    const session = await getSession(context.req, context.res);
+    const user = await getUserFromSession(session);
 
-  if (user && user.workspaces.length > 0) {
-    let url = `/w/${user.workspaces[0].sId}`;
+    if (user && user.workspaces.length > 0) {
+      let url = `/w/${user.workspaces[0].sId}`;
 
-    if (context.query.inviteToken) {
-      url = `/api/login?inviteToken=${context.query.inviteToken}`;
+      if (context.query.inviteToken) {
+        url = `/api/login?inviteToken=${context.query.inviteToken}`;
+      }
+
+      return {
+        redirect: {
+          destination: url,
+          permanent: false,
+        },
+      };
     }
 
     return {
-      redirect: {
-        destination: url,
-        permanent: false,
-      },
+      props: { gaTrackingId: GA_TRACKING_ID },
     };
+  },
+  {
+    requireAuth: false,
   }
-
-  return {
-    props: { gaTrackingId: GA_TRACKING_ID },
-  };
-});
+);
 
 export default function Home({
   gaTrackingId,

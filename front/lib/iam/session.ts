@@ -1,11 +1,22 @@
 import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
+import type {
+  GetServerSideProps,
+  GetServerSidePropsContext,
+  GetServerSidePropsResult,
+  PreviewData,
+} from "next";
+import { redirect } from "next/navigation";
+import type { P } from "pino";
+import type { ParsedUrlQuery } from "querystring";
 import { Op } from "sequelize";
 
+import { getSession } from "@app/lib/auth";
 import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
 import { Membership, Workspace } from "@app/lib/models";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 export function isGoogleSession(session: any) {
   return session.provider.provider === "google";
@@ -73,5 +84,45 @@ export async function getUserFromSession(
         segmentation: w.segmentation || null,
       };
     }),
+  };
+}
+
+interface WithGetServerSidePropsRequirementsOptions {
+  enableLogging?: boolean;
+  requireAuth?: boolean;
+}
+
+const defaultWithGetServerSidePropsRequirements: WithGetServerSidePropsRequirementsOptions =
+  {
+    enableLogging: true,
+    requireAuth: true,
+  };
+
+export function withGetServerSidePropsRequirements<
+  T extends { [key: string]: any } = { [key: string]: any }
+>(
+  getServerSideProps: GetServerSideProps<T>,
+  opts: WithGetServerSidePropsRequirementsOptions = defaultWithGetServerSidePropsRequirements
+): GetServerSideProps<T> {
+  return async (
+    context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
+  ) => {
+    const session = await getSession(context.req, context.res);
+    if (!session) {
+      return {
+        redirect: {
+          permanent: false,
+          // TODO(2024-03-04 flav) Add support for `returnTo=`.
+          destination: "/",
+        },
+      };
+    }
+
+    const { enableLogging } = opts;
+    if (enableLogging) {
+      return withGetServerSidePropsLogging(getServerSideProps)(context);
+    }
+
+    return getServerSideProps(context);
   };
 }

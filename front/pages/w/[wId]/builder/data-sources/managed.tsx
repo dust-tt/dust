@@ -35,9 +35,9 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const {
   GA_TRACKING_ID = "",
@@ -73,7 +73,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "intercom",
 ];
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;

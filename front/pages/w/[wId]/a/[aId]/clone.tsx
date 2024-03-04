@@ -23,8 +23,8 @@ import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

@@ -28,13 +28,13 @@ import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   plan: PlanType | null;

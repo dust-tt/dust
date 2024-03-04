@@ -38,6 +38,7 @@ import {
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -45,9 +46,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;

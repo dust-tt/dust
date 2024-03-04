@@ -11,12 +11,12 @@ import React, { useCallback, useEffect, useState } from "react";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
