@@ -575,6 +575,15 @@ export async function retrieveGoogleDriveContentNodes(
   const nodes = await concurrentExecutor(
     folderOrFiles,
     async (f): Promise<ConnectorNode> => {
+      const type = getPermissionViewType(f);
+      let sourceUrl = null;
+      if (type === "file") {
+        sourceUrl = `https://drive.google.com/file/d/${f.driveFileId}/view`;
+      } else if (type === "folder") {
+        sourceUrl = `https://drive.google.com/drive/folders/${f.driveFileId}`;
+      } else if (type === "database") {
+        sourceUrl = `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
+      }
       return {
         provider: "google_drive",
         internalId: f.driveFileId,
@@ -583,7 +592,7 @@ export async function retrieveGoogleDriveContentNodes(
         title: f.name || "",
         dustDocumentId: getGoogleDriveEntityDocumentId(f),
         lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
-        sourceUrl: null,
+        sourceUrl,
         expandable:
           (await GoogleDriveFiles.findOne({
             attributes: ["id"],
