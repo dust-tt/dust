@@ -221,9 +221,6 @@ async function handler(
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
 
-  // Login flow: first step is to attempt to find the user.
-  const user = await createOrUpdateUser(session);
-
   let targetWorkspace: Workspace | null = null;
   try {
     // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
@@ -231,6 +228,9 @@ async function handler(
     const membershipInvite = await getPendingMembershipInvitationForToken(
       inviteToken
     );
+
+    // Login flow: first step is to attempt to find the user.
+    const user = await createOrUpdateUser(session);
 
     if (membershipInvite) {
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
