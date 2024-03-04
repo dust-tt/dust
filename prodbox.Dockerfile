@@ -1,7 +1,7 @@
 FROM node:18.15.0 as base
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential libjemalloc-dev graphviz ghostscript
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -53,7 +53,7 @@ WORKDIR /dust
 RUN echo "echo -e \"\033[0;31mWARNING: This is a PRODUCTION system!\033[0m\"" >> /root/.bashrc
 RUN echo "export PS1='\[\e[0;31m\]prodbox\[\e[0m\]:\w\$ '" >> /root/.bashrc
 
-ENV _RJEM_MALLOC_CONF=prof:true,lg_prof_interval:30,lg_prof_sample:17
+ENV _RJEM_MALLOC_CONF=prof_leak:true,lg_prof_sample:0,prof_final:true
 
 # Set a default command
 CMD ["bash"]
