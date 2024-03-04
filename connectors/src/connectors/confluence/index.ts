@@ -20,6 +20,7 @@ import {
   makeConfluenceInternalSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
+  checkPageHasChildren,
   createConnectorNodeFromPage,
   createConnectorNodeFromSpace,
   retrieveAvailableSpaces,
@@ -32,6 +33,7 @@ import {
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -443,21 +445,29 @@ export async function retrieveConfluenceContentNodes(
     });
   });
 
-  const pageContentNodes: ConnectorNode[] = confluencePages.map((page) => {
-    let parentId = page.parentId || page.spaceId;
-    let parentType: "page" | "space" = "page";
-    if (!page.parentId) {
-      parentId = page.spaceId;
-      parentType = "space";
-    } else if (isConfluenceInternalSpaceId(page.parentId)) {
-      parentType = "space";
-    }
-    return createConnectorNodeFromPage(
-      { id: parentId, type: parentType },
-      connectorState.url,
-      page
-    );
-  });
+  const pageContentNodes: ConnectorNode[] = await concurrentExecutor(
+    confluencePages,
+    async (page) => {
+      const parentId = page.parentId ?? page.spaceId;
+      let parentType: "page" | "space";
+      if (isConfluenceInternalSpaceId(parentId)) {
+        parentType = "space";
+      } else if (isConfluenceInternalPageId(parentId)) {
+        parentType = "page";
+      } else {
+        throw new Error("Invalid parent type");
+      }
+      const isExpandable = await checkPageHasChildren(connectorId, page.pageId);
+
+      return createConnectorNodeFromPage(
+        { id: parentId, type: parentType },
+        connectorState.url,
+        page,
+        isExpandable
+      );
+    },
+    { concurrency: 8 }
+  );
 
   const contentNodes = spaceContentNodes.concat(pageContentNodes);
   return new Ok(contentNodes);

@@ -82,7 +82,10 @@ export function createConnectorNodeFromPage(
   };
 }
 
-async function checkPageHasChildren(connectorId: ModelId, pageId: string) {
+export async function checkPageHasChildren(
+  connectorId: ModelId,
+  pageId: string
+) {
   const childrenPage = await ConfluencePage.findOne({
     attributes: ["id"],
     where: {
