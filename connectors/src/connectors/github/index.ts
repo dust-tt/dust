@@ -641,7 +641,7 @@ export async function retrieveGithubReposContentNodes(
       type: "folder",
       title: directory.dirName,
       titleWithParentsContext: repo
-        ? `[${repo.name}] Code Directory "${directory.dirName}"`
+        ? `[${repo.name}] ${directory.dirName} (code)`
         : directory.dirName,
       sourceUrl: directory.sourceUrl,
       expandable: true,
@@ -661,7 +661,7 @@ export async function retrieveGithubReposContentNodes(
       type: "file",
       title: file.fileName,
       titleWithParentsContext: repo
-        ? `[${repo.name}] Code File "${file.fileName}"`
+        ? `[${repo.name}] ${file.fileName} (code)`
         : file.fileName,
       sourceUrl: file.sourceUrl,
       expandable: false,
