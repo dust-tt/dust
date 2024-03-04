@@ -13,25 +13,12 @@ export type AgentMention = {
   configurationId: string;
 };
 
-export type UserMention = {
-  provider: string;
-  providerId: string;
-};
-
-export type MentionType = AgentMention | UserMention;
+export type MentionType = AgentMention;
 
 export type MessageVisibility = "visible" | "deleted";
 
 export function isAgentMention(arg: MentionType): arg is AgentMention {
   return (arg as AgentMention).configurationId !== undefined;
-}
-
-export function isUserMention(arg: MentionType): arg is UserMention {
-  const maybeUserMention = arg as UserMention;
-  return (
-    maybeUserMention.provider !== undefined &&
-    maybeUserMention.providerId !== undefined
-  );
 }
 
 export type ConversationMessageReactions = {
