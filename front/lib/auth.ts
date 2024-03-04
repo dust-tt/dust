@@ -420,6 +420,7 @@ export class Authenticator {
     return this._user
       ? {
           id: this._user.id,
+          provider: this._user.provider,
           username: this._user.username,
           email: this._user.email,
           fullName:
@@ -501,6 +502,7 @@ export async function getUserFromSession(
 
   return {
     id: user.id,
+    provider: user.provider,
     username: user.username,
     email: user.email,
     firstName: user.firstName,

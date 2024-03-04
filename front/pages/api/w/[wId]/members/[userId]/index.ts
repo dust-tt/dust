@@ -117,6 +117,7 @@ async function handler(
 
       const member = {
         id: user.id,
+        provider: user.provider,
         username: user.username,
         email: user.email,
         firstName: user.firstName,

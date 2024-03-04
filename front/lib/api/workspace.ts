@@ -158,6 +158,7 @@ export async function getMembers(
 
     return {
       id: u.id,
+      provider: u.provider,
       username: u.username,
       email: u.email,
       fullName: u.firstName + (u.lastName ? ` ${u.lastName}` : ""),
