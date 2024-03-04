@@ -1527,7 +1527,7 @@ async function maybeAddParentToResourcesToCheck({
         notionId = parentId;
       }
     } else {
-      ((_x: never) => void _x)(parentType);
+      assertNever(parentType);
     }
 
     if (notionId) {
