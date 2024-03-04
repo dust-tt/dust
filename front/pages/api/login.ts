@@ -1,139 +1,30 @@
-import type { ModelId, WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { FrontApiError } from "@dust-tt/types";
-import { verify } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { Op } from "sequelize";
 
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
-import { getUserFromSession, subscriptionForWorkspace } from "@app/lib/auth";
+import { subscriptionForWorkspace } from "@app/lib/auth";
 import {
-  Membership,
-  MembershipInvitation,
-  User,
-  Workspace,
-} from "@app/lib/models";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace";
+  getPendingMembershipInvitationForToken,
+  markInvitationAsConsumed,
+} from "@app/lib/iam/invitations";
+import { getActiveMembershipsForUser } from "@app/lib/iam/memberships";
+import { getUserFromSession } from "@app/lib/iam/session";
+import { createOrUpdateUser } from "@app/lib/iam/users";
+import {
+  createWorkspace,
+  findWorkspaceWithVerifiedDomain,
+} from "@app/lib/iam/workspaces";
+import type { MembershipInvitation, User } from "@app/lib/models";
+import { Membership, Workspace } from "@app/lib/models";
 import {
   internalSubscribeWorkspaceToFreeTestPlan,
   updateWorkspacePerSeatSubscriptionUsage,
 } from "@app/lib/plans/subscription";
-import { guessFirstandLastNameFromFullName } from "@app/lib/user";
-import { generateModelSId } from "@app/lib/utils";
-import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { authOptions } from "./auth/[...nextauth]";
-
-const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
-
-function isGoogleSession(session: any) {
-  return session.provider.provider === "google";
-}
-
-export async function createWorkspace(session: any) {
-  const [, emailDomain] = session.user.email.split("@");
-
-  // Use domain only when email is verified on Google Workspace and non-disposable.
-  const isEmailVerified =
-    isGoogleSession(session) && session.user.email_verified;
-  const verifiedDomain =
-    isEmailVerified && !isDisposableEmailDomain(emailDomain)
-      ? emailDomain
-      : null;
-
-  const workspace = await Workspace.create({
-    sId: generateModelSId(),
-    name: session.user.username,
-  });
-
-  if (verifiedDomain) {
-    try {
-      await WorkspaceHasDomain.create({
-        domain: verifiedDomain,
-        domainAutoJoinEnabled: false,
-        workspaceId: workspace.id,
-      });
-    } catch (err) {
-      // `WorkspaceHasDomain` table has a unique constraint on the domain column.
-      // Suppress any creation errors to prevent disruption of the login process.
-    }
-  }
-
-  return workspace;
-}
-
-async function findWorkspaceWithVerifiedDomain(
-  session: any
-): Promise<WorkspaceHasDomain | null> {
-  const { user } = session;
-
-  if (!isGoogleSession(session) || !user.email_verified) {
-    return null;
-  }
-
-  const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomain.findOne({
-    where: {
-      domain: userEmailDomain,
-    },
-    include: [
-      {
-        model: Workspace,
-        as: "workspace",
-        required: true,
-      },
-    ],
-  });
-
-  return workspaceWithVerifiedDomain;
-}
-
-async function createOrUpdateUser(session: any): Promise<User> {
-  const user = await User.findOne({
-    where: {
-      provider: session.provider.provider,
-      providerId: session.provider.id.toString(),
-    },
-  });
-
-  if (user) {
-    // Update the user object from the updated session information.
-    user.username = session.user.username;
-    user.name = session.user.name;
-
-    // We only update the user's email if the session is not from Google.
-    if (!isGoogleSession(session)) {
-      user.email = session.user.email;
-    }
-
-    if (!user.firstName && !user.lastName) {
-      const { firstName, lastName } = guessFirstandLastNameFromFullName(
-        session.user.name
-      );
-      user.firstName = firstName;
-      user.lastName = lastName;
-    }
-
-    await user.save();
-
-    return user;
-  } else {
-    const { firstName, lastName } = guessFirstandLastNameFromFullName(
-      session.user.name
-    );
-
-    return User.create({
-      provider: session.provider.provider,
-      providerId: session.provider.id.toString(),
-      username: session.user.username,
-      email: session.user.email,
-      name: session.user.name,
-      firstName,
-      lastName,
-    });
-  }
-}
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
@@ -187,22 +78,9 @@ async function handleMembershipInvite(
     });
   }
 
-  membershipInvite.status = "consumed";
-  membershipInvite.invitedUserId = user.id;
-  await membershipInvite.save();
+  await markInvitationAsConsumed(membershipInvite, user);
 
   return workspace;
-}
-
-async function getActiveMembershipsForUser(userId: ModelId) {
-  return Membership.findAll({
-    where: {
-      userId,
-      role: {
-        [Op.ne]: "revoked",
-      },
-    },
-  });
 }
 
 function canJoinTargetWorkspace(
@@ -343,37 +221,17 @@ async function handler(
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
 
-  // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
-  // `inviteToken`, meaning the user is going through the invite by email flow.
-  let membershipInvite: MembershipInvitation | null = null;
-  if (inviteToken && typeof inviteToken === "string") {
-    const decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
-      membershipInvitationId: number;
-    };
-
-    membershipInvite = await MembershipInvitation.findOne({
-      where: {
-        id: decodedToken.membershipInvitationId,
-        status: "pending",
-      },
-    });
-    if (!membershipInvite) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The invite token is invalid, please ask your admin to resend an invitation.",
-        },
-      });
-    }
-  }
-
-  // Login flow: first step is to attempt to find the user.
-  const user = await createOrUpdateUser(session);
-
   let targetWorkspace: Workspace | null = null;
   try {
+    // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
+    // `inviteToken`, meaning the user is going through the invite by email flow.
+    const membershipInvite = await getPendingMembershipInvitationForToken(
+      inviteToken
+    );
+
+    // Login flow: first step is to attempt to find the user.
+    const user = await createOrUpdateUser(session);
+
     if (membershipInvite) {
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
     } else {

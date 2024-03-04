@@ -2,10 +2,11 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
-import { getUserFromSession } from "@app/lib/auth";
+import { getUserFromSession } from "@app/lib/iam/session";
+import { createWorkspace } from "@app/lib/iam/workspaces";
 import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { createAndLogMembership, createWorkspace } from "@app/pages/api/login";
+import { createAndLogMembership } from "@app/pages/api/login";
 
 import { authOptions } from "./auth/[...nextauth]";
 
