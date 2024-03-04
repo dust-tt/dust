@@ -14,7 +14,7 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
     // uuid here serves as a correlation id for the console.error and the logger.error.
     const uuid = uuidv4();
     // console.log here is important because the promise.catch() below could fail.
-    console.error({ promise: promise, reason, panic: true, uuid });
+    console.error("unhandledRejection", promise, reason, uuid);
 
     promise.catch((error) => {
       // We'll get the call stack from error only if the promise was rejected with an error object.
