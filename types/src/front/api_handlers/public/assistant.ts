@@ -2,15 +2,7 @@ import * as t from "io-ts";
 
 export const PublicPostMessagesRequestBodySchema = t.type({
   content: t.string,
-  mentions: t.array(
-    t.union([
-      t.type({ configurationId: t.string }),
-      t.type({
-        provider: t.string,
-        providerId: t.string,
-      }),
-    ])
-  ),
+  mentions: t.array(t.type({ configurationId: t.string })),
   context: t.type({
     timezone: t.string,
     username: t.string,

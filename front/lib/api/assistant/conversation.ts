@@ -950,8 +950,6 @@ export async function* postUserMessage(
         context: context,
       };
 
-      console.log(">> mentions:", mentions);
-
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
           mentions.filter(isAgentMention).map((mention) => {
