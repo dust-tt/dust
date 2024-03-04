@@ -30,10 +30,10 @@ export function QuickStartGuide({
         />
 
         <Page.Horizontal>
-          <Page.Vertical>
+          <Page.Vertical sizing="grow">
             <Page.H>
-              👋 Hello <br />{" "}
-              <span className="text-success-500">@mentions</span>
+              👋 <br />
+              Hello <br /> <span className="text-success-500">@mentions</span>
             </Page.H>
             <Page.P>
               In Dust, you won't find just one AI assistant, but multiple ones.
@@ -43,7 +43,7 @@ export function QuickStartGuide({
               of the assistant.
             </Page.P>
           </Page.Vertical>
-          <Page.Vertical>
+          <Page.Vertical sizing="grow">
             <img src="/static/quick_start_guide_input_bar.png" />
           </Page.Vertical>
         </Page.Horizontal>
