@@ -134,6 +134,23 @@ export const AssistantPreviewExample = () => (
         onClick={() => console.log("clicked")}
       />
     </div>
+    <h2>Template</h2>
+    <div className="s-grid s-grid-cols-2">
+      <AssistantPreview
+        title={"gpt4"}
+        description={"OpenAI's most powerful and recent model (128k context)."}
+        onClick={() => console.log("clicked")}
+        pictureUrl={"https://dust.tt/static/systemavatar/gpt4_avatar_full.png"}
+        variant={"list"}
+      />
+      <AssistantPreview
+        title={"salesFr"}
+        description={"OpenAI's most powerful and recent model (128k context)."}
+        pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
+        variant={"list"}
+        onClick={() => console.log("clicked")}
+      />
+    </div>
     <h2>Gallery</h2>
     <div className="s-grid s-grid-cols-2">
       <AssistantPreview
