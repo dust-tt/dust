@@ -104,8 +104,10 @@ export function withGetServerSidePropsRequirements<
   return async (
     context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
   ) => {
+    const { enableLogging, requireAuth } = opts;
+
     const session = await getSession(context.req, context.res);
-    if (!session) {
+    if (requireAuth && !session) {
       return {
         redirect: {
           permanent: false,
@@ -115,7 +117,6 @@ export function withGetServerSidePropsRequirements<
       };
     }
 
-    const { enableLogging } = opts;
     if (enableLogging) {
       return withGetServerSidePropsLogging(getServerSideProps)(context);
     }
