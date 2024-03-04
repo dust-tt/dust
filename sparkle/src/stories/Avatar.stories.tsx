@@ -35,6 +35,14 @@ export const AvatarExample = () => (
       <Avatar size="lg" name="Omar Doe" />
       <Avatar size="xl" name="Omar Doe" />
     </div>
+    <div>With emoji</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
+      <Avatar size="sm" emoji="💀" backgroundColor="s-bg-slate-800" />
+      <Avatar size="md" emoji="😂" backgroundColor="s-bg-amber-200" />
+      <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-slate-200" />
+      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-sky-200" />
+    </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />
       <Avatar size="sm" name="Mason Johnson" />
@@ -62,22 +70,22 @@ export const AvatarExample = () => (
       <Avatar
         size="xs"
         name="Isabelle Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
       <Avatar
         size="sm"
         name="Rafael Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
       <Avatar
         size="md"
         name="Aria Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
       <Avatar
         size="lg"
         name="Omar Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
     </div>
   </div>
@@ -89,39 +97,39 @@ export const AvatarStackExample = () => (
       <Avatar.Stack size="xs" nbMoreItems={0} isRounded>
         <Avatar
           name="Isabelle Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
         />
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
         <Avatar
           name="Aria Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
         />
         <Avatar
           name="Omar Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         />
       </Avatar.Stack>
 
       <Avatar.Stack size="xs" nbMoreItems={8}>
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
         <Avatar size="sm" name="Mason Johnson" />
         <Avatar
           size="sm"
           name="Omar Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         />
         <Avatar size="sm" name="Eleanor Wright" />
       </Avatar.Stack>
       <Avatar.Stack size="xs" nbMoreItems={0}>
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
       </Avatar.Stack>
     </div>
@@ -129,39 +137,39 @@ export const AvatarStackExample = () => (
       <Avatar.Stack size="sm" nbMoreItems={0} isRounded>
         <Avatar
           name="Isabelle Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
         />
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
         <Avatar
           name="Aria Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
         />
         <Avatar
           name="Omar Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         />
       </Avatar.Stack>
 
       <Avatar.Stack size="sm" nbMoreItems={8}>
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
         <Avatar size="sm" name="Mason Johnson" />
         <Avatar
           size="sm"
           name="Omar Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         />
         <Avatar size="sm" name="Eleanor Wright" />
       </Avatar.Stack>
       <Avatar.Stack nbMoreItems={0}>
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
       </Avatar.Stack>
     </div>
@@ -169,38 +177,38 @@ export const AvatarStackExample = () => (
       <Avatar.Stack nbMoreItems={0} size="md">
         <Avatar
           name="Isabelle Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
         />
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
         <Avatar
           name="Aria Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
         />
         <Avatar
           name="Omar Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         />
       </Avatar.Stack>
 
       <Avatar.Stack nbMoreItems={8} size="md">
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
         <Avatar size="md" name="Mason Johnson" />
         <Avatar
           name="Omar Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         />
         <Avatar size="md" name="Eleanor Wright" />
       </Avatar.Stack>
       <Avatar.Stack nbMoreItems={0} size="md">
         <Avatar
           name="Rafael Doe"
-          visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         />
       </Avatar.Stack>
     </div>
@@ -242,22 +250,22 @@ export const AvatarGridExample = () => (
     <Avatar
       size="auto"
       name="Isabelle Doe"
-      visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+      visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
     />
     <Avatar
       size="auto"
       name="Rafael Doe"
-      visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+      visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
     />
     <Avatar
       size="auto"
       name="Aria Doe"
-      visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+      visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
     />
     <Avatar
       size="auto"
       name="Omar Doe"
-      visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+      visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
     />
   </div>
 );
@@ -308,25 +316,25 @@ export const AvatarBusyExample = () => (
         busy
         size="xs"
         name="Isabelle Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
       <Avatar
         busy
         size="sm"
         name="Rafael Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
       />
       <Avatar
         busy
         size="md"
         name="Aria Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
       />
       <Avatar
         busy
         size="lg"
         name="Omar Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
       />
     </div>
   </div>
@@ -375,25 +383,25 @@ export const AvatarClickableExample = () => (
       <Avatar
         size="xs"
         name="Isabelle Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
         clickable
       />
       <Avatar
         size="sm"
         name="Rafael Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856587807662191/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_d3bf4062-218d-46fd-a77a-e4b9f90d7c68.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
         clickable
       />
       <Avatar
         size="md"
         name="Aria Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1143856180087767111/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_bc919872-ba19-451b-8dea-e8ae341c6387.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
         clickable
       />
       <Avatar
         size="lg"
         name="Omar Doe"
-        visual="https://cdn.discordapp.com/attachments/995248824375316560/1148265064185475192/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_348961d4-9039-426f-a1ca-0b350d2d83a9.png"
+        visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
         clickable
       />
     </div>
