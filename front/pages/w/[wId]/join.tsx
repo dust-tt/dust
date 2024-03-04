@@ -115,24 +115,24 @@ export default function Join({
   signUpCallbackUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const signInButton = (
-    <SignInButton
-      label="Sign up with Google"
-      icon={GoogleLogo}
-      onClick={() =>
-        signIn("google", {
-          callbackUrl: signUpCallbackUrl,
-        })
-      }
-    />
-  );
+  const handleSignUpClick = () =>
+    signIn("google", {
+      callbackUrl: signUpCallbackUrl,
+    });
 
   return (
     <OnboardingLayout
       owner={workspace}
       gaTrackingId={gaTrackingId}
       headerTitle="Welcome to Dust"
-      headerRightActions={signInButton}
+      headerRightActions={
+        <SignInButton
+          label="Sign up with Google"
+          icon={GoogleLogo}
+          size="sm"
+          onClick={handleSignUpClick}
+        />
+      }
     >
       <div className="flex flex-col gap-8">
         <Page.Header title={`Hello there!`} icon={DustIcon} />
@@ -164,7 +164,13 @@ export default function Join({
         </div>
 
         <div className="flex flex-col items-center justify-center gap-4 ">
-          {signInButton}
+          {
+            <SignInButton
+              label="Sign up with Google"
+              icon={GoogleLogo}
+              onClick={handleSignUpClick}
+            />
+          }
         </div>
         <div className="flex flex-col gap-3 pb-20">
           <p>

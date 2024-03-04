@@ -74,7 +74,7 @@ export default function OnboardingLayout({
 
       <main className="- z-10 p-6">
         <BarHeader title={headerTitle} rightActions={headerRightActions} />
-        <div className="container mx-auto flex h-full items-center sm:px-16 xl:px-64 2xl:px-96">
+        <div className="container mx-auto flex h-full pt-16 sm:items-center sm:px-16 sm:pt-0 xl:px-64 2xl:px-96">
           {children}
         </div>
       </main>
