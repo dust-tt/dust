@@ -19,6 +19,7 @@ import {
   getGithubConfig,
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
+  retrieveGithubReposContentNodes,
   retrieveGithubReposTitles,
   retrieveGithubResourceParents,
   setGithubConfig,
@@ -256,9 +257,7 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   },
   slack: retrieveSlackContentNodes,
   notion: retrieveNotionContentNodes,
-  github: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  github: retrieveGithubReposContentNodes,
   google_drive: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
