@@ -33,6 +33,7 @@ import {
   getGoogleDriveConfig,
   googleDriveGarbageCollect,
   retrieveGoogleDriveConnectorPermissions,
+  retrieveGoogleDriveContentNodes,
   retrieveGoogleDriveObjectsParents,
   retrieveGoogleDriveObjectsTitles,
   setGoogleDriveConfig,
@@ -258,9 +259,7 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   slack: retrieveSlackContentNodes,
   notion: retrieveNotionContentNodes,
   github: retrieveGithubReposContentNodes,
-  google_drive: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  google_drive: retrieveGoogleDriveContentNodes,
   intercom: retrieveIntercomContentNodes,
   webcrawler: retrieveWebCrawlerContentNodes,
 };

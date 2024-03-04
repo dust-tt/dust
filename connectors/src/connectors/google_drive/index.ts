@@ -561,6 +561,46 @@ export async function retrieveGoogleDriveObjectsTitles(
   return new Ok(titles);
 }
 
+export async function retrieveGoogleDriveContentNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const folderOrFiles = await GoogleDriveFiles.findAll({
+    where: {
+      connectorId: connectorId,
+      driveFileId: internalIds,
+    },
+  });
+
+  const nodes = await concurrentExecutor(
+    folderOrFiles,
+    async (f): Promise<ConnectorNode> => {
+      return {
+        provider: "google_drive",
+        internalId: f.driveFileId,
+        parentInternalId: null,
+        type: getPermissionViewType(f),
+        title: f.name || "",
+        dustDocumentId: getGoogleDriveEntityDocumentId(f),
+        lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
+        sourceUrl: null,
+        expandable:
+          (await GoogleDriveFiles.findOne({
+            attributes: ["id"],
+            where: {
+              connectorId: connectorId,
+              parentId: f.driveFileId,
+            },
+          })) !== null,
+        permission: "read",
+      };
+    },
+    { concurrency: 4 }
+  );
+
+  return new Ok(nodes);
+}
+
 export async function retrieveGoogleDriveObjectsParents(
   connectorId: ModelId,
   internalId: string,
