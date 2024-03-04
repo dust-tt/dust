@@ -1,9 +1,9 @@
 import type {
   ConnectorNode,
-  ConnectorPermission,
   ConnectorsAPIError,
   ModelId,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -259,7 +259,7 @@ export async function retrieveGithubConnectorPermissions({
           title: repo.name,
           sourceUrl: repo.url,
           expandable: true,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: null,
         }))
@@ -310,7 +310,7 @@ export async function retrieveGithubConnectorPermissions({
           title: directory.dirName,
           sourceUrl: directory.sourceUrl,
           expandable: true,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: directory.codeUpdatedAt.getTime(),
         });
@@ -325,7 +325,7 @@ export async function retrieveGithubConnectorPermissions({
           title: file.fileName,
           sourceUrl: file.sourceUrl,
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: file.documentId,
           lastUpdatedAt: file.codeUpdatedAt.getTime(),
         });
@@ -386,7 +386,7 @@ export async function retrieveGithubConnectorPermissions({
           title: "Issues",
           sourceUrl: repo.url + "/issues",
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: latestIssue.updatedAt.getTime(),
         });
@@ -401,7 +401,7 @@ export async function retrieveGithubConnectorPermissions({
           title: "Discussions",
           sourceUrl: repo.url + "/discussions",
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
         });
@@ -416,7 +416,7 @@ export async function retrieveGithubConnectorPermissions({
           title: "Code",
           sourceUrl: repo.url,
           expandable: true,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
         });
@@ -514,7 +514,7 @@ export async function retrieveGithubReposContentNodes(
         codeFileIds.push(internalId);
         break;
       default:
-        throw new Error(`Invalid type: ${type}`);
+        assertNever(type);
     }
   });
 
@@ -567,7 +567,7 @@ export async function retrieveGithubReposContentNodes(
       titleWithParentsContext: `[${repo.name}] - Full repository`,
       sourceUrl: repo.url,
       expandable: true,
-      permission: "read" as ConnectorPermission,
+      permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: null,
     });
@@ -588,7 +588,7 @@ export async function retrieveGithubReposContentNodes(
       titleWithParentsContext: `${repo.name} - Issues`,
       sourceUrl: repo.url + "/issues",
       expandable: false,
-      permission: "read" as ConnectorPermission,
+      permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: null,
     });
@@ -607,7 +607,7 @@ export async function retrieveGithubReposContentNodes(
       titleWithParentsContext: `${repo.name} - Discussions`,
       sourceUrl: repo.url + "/discussions",
       expandable: false,
-      permission: "read" as ConnectorPermission,
+      permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: null,
     });
@@ -625,7 +625,7 @@ export async function retrieveGithubReposContentNodes(
       titleWithParentsContext: repo ? `[${repo.name}] - Code` : "Code",
       sourceUrl: codeRepo.sourceUrl,
       expandable: true,
-      permission: "read" as ConnectorPermission,
+      permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
     });
@@ -645,7 +645,7 @@ export async function retrieveGithubReposContentNodes(
         : directory.dirName,
       sourceUrl: directory.sourceUrl,
       expandable: true,
-      permission: "read" as ConnectorPermission,
+      permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: directory.codeUpdatedAt.getTime(),
     });
@@ -665,7 +665,7 @@ export async function retrieveGithubReposContentNodes(
         : file.fileName,
       sourceUrl: file.sourceUrl,
       expandable: false,
-      permission: "read" as ConnectorPermission,
+      permission: "read",
       dustDocumentId: file.documentId,
       lastUpdatedAt: file.codeUpdatedAt.getTime(),
     });
