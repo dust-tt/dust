@@ -131,7 +131,10 @@ export default function DataSourceSelectionSection({
                               : true,
                           }));
                         }}
-                        label={selectedResource.title}
+                        label={
+                          selectedResource.titleWithParentsContext ??
+                          selectedResource.title
+                        }
                         type={selectedResource.expandable ? "node" : "leaf"}
                         variant={selectedResource.type}
                         className="whitespace-nowrap"
