@@ -1,4 +1,5 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   ChevronDownIcon,
   Chip,
@@ -12,7 +13,6 @@ import {
   Modal,
   Page,
   PlanetIcon,
-  ShapesShareIcon,
   SlackLogo,
   SliderToggle,
   UserGroupIcon,
@@ -167,7 +167,7 @@ export function SharingButton({
           <Button
             size="sm"
             label="Sharing"
-            icon={ShapesShareIcon}
+            icon={ArrowUpOnSquareIcon}
             variant="tertiary"
             type="menu"
           />
