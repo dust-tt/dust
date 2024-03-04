@@ -53,6 +53,8 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { Client } from "@notionhq/client";
+import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -665,6 +667,31 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       console.log(r);
+
+      break;
+    }
+
+    case "me": {
+      const { wId } = args;
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: wId,
+      });
+
+      const notionAccessToken = await getNotionAccessToken(
+        connector.connectionId
+      );
+
+      const notionClient = new Client({
+        auth: notionAccessToken,
+      });
+
+      const me = await notionClient.users.me({});
+
+      console.log(me);
+      // @ts-expect-error untyped bot field
+      console.log(me.bot.owner);
 
       break;
     }
