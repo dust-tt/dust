@@ -35,7 +35,6 @@ import { GPT_3_5_TURBO_MODEL_CONFIG, md5, removeNulls } from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
-  isUserMention,
   isUserMessageType,
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
@@ -1016,29 +1015,6 @@ export async function* postUserMessage(
           })
         );
 
-      await Promise.all(
-        mentions.filter(isUserMention).map((mention) => {
-          return (async () => {
-            const user = await User.findOne({
-              where: {
-                provider: mention.provider,
-                providerId: mention.providerId,
-              },
-            });
-
-            if (user) {
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  userId: user.id,
-                },
-                { transaction: t }
-              );
-            }
-          })();
-        })
-      );
-
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
         m: AgentMessageType;
@@ -1476,29 +1452,6 @@ export async function* editUserMessage(
             })();
           })
         );
-
-      await Promise.all(
-        mentions.filter(isUserMention).map((mention) => {
-          return (async () => {
-            const user = await User.findOne({
-              where: {
-                provider: mention.provider,
-                providerId: mention.providerId,
-              },
-            });
-
-            if (user) {
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  userId: user.id,
-                },
-                { transaction: t }
-              );
-            }
-          })();
-        })
-      );
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;

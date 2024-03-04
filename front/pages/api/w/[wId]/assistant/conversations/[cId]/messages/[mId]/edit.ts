@@ -12,15 +12,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const PostEditRequestBodySchema = t.type({
   content: t.string,
-  mentions: t.array(
-    t.union([
-      t.type({ configurationId: t.string }),
-      t.type({
-        provider: t.string,
-        providerId: t.string,
-      }),
-    ])
-  ),
+  mentions: t.array(t.type({ configurationId: t.string })),
 });
 
 async function handler(
