@@ -28,7 +28,7 @@ import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType;

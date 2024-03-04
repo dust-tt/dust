@@ -6,6 +6,7 @@ import { classNames } from "@sparkle/lib/utils";
 type AvatarProps = {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "auto";
   name?: string;
+  emoji?: string;
   visual?: string | React.ReactNode;
   clickable?: boolean;
   onClick?: () => void;
@@ -68,8 +69,8 @@ const roundedClasses = {
   sm: "s-rounded-xl",
   md: "s-rounded-2xl",
   lg: "s-rounded-3xl",
-  xl: "s-rounded-[44px]",
-  auto: "s-rounded-[33%]",
+  xl: "s-rounded-[38px]",
+  auto: "s-rounded-[30%]",
 };
 
 const textSize = {
@@ -84,6 +85,7 @@ const textSize = {
 export function Avatar({
   size = "md",
   name,
+  emoji,
   visual,
   onClick,
   clickable = false,
@@ -131,6 +133,7 @@ export function Avatar({
       : name
       ? getColor(name)
       : "s-bg-slate-200",
+    visual ? "" : "s-border s-border-slate-950/10",
     "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
     clickableStyles,
     busyStyles
@@ -156,6 +159,12 @@ export function Avatar({
         />
       ) : visual ? (
         visual
+      ) : emoji ? (
+        <span
+          className={classNames(textSize[size], "s-select-none s-font-medium")}
+        >
+          {emoji}
+        </span>
       ) : name ? (
         <span
           className={classNames(

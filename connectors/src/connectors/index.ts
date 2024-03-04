@@ -19,6 +19,7 @@ import {
   getGithubConfig,
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
+  retrieveGithubReposContentNodes,
   retrieveGithubReposTitles,
   retrieveGithubResourceParents,
   setGithubConfig,
@@ -100,6 +101,7 @@ import {
   cleanupWebcrawlerConnector,
   createWebcrawlerConnector,
   retrieveWebcrawlerConnectorPermissions,
+  retrieveWebCrawlerContentNodes,
   retrieveWebCrawlerObjectsParents,
   retrieveWebCrawlerObjectsTitles,
   stopWebcrawlerConnector,
@@ -256,16 +258,12 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   },
   slack: retrieveSlackContentNodes,
   notion: retrieveNotionContentNodes,
-  github: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  github: retrieveGithubReposContentNodes,
   google_drive: (connectorId: ModelId) => {
     throw new Error(`Not implemented ${connectorId}`);
   },
   intercom: retrieveIntercomContentNodes,
-  webcrawler: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  webcrawler: retrieveWebCrawlerContentNodes,
 };
 
 export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<

@@ -93,6 +93,7 @@ export type ConnectorNode = {
   parentInternalId: string | null;
   type: ConnectorNodeType;
   title: string;
+  titleWithParentsContext?: string;
   sourceUrl: string | null;
   expandable: boolean;
   preventSelection?: boolean;

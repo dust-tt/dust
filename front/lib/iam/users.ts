@@ -16,7 +16,7 @@ async function fetchUserWithLegacyProvider({
   const user = await User.findOne({
     where: {
       provider,
-      providerId,
+      providerId: providerId.toString(),
     },
   });
 
