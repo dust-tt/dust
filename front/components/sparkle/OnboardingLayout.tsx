@@ -1,4 +1,4 @@
-import { BarHeader } from "@dust-tt/sparkle";
+import { BarHeader, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
@@ -72,12 +72,10 @@ export default function OnboardingLayout({
         />
       </Head>
 
-      <main className="- z-10 p-6">
+      <Page>
         <BarHeader title={headerTitle} rightActions={headerRightActions} />
-        <div className="container mx-auto flex h-full pt-16 sm:items-center sm:px-16 sm:pt-0 xl:px-64 2xl:px-96">
-          {children}
-        </div>
-      </main>
+        {children}
+      </Page>
 
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}

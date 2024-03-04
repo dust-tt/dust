@@ -153,7 +153,7 @@ export default function Welcome({
           />
         }
       >
-        <div className="flex w-full flex-col gap-6">
+        <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
           <Page.Header
             title={`Hello ${firstName}!`}
             icon={() => <Logo className="-ml-8 h-4 w-32" />}
@@ -261,7 +261,7 @@ export default function Welcome({
           />
         }
       >
-        <div className="flex w-full flex-col gap-6">
+        <div className="flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
           <Page.Header
             title={`You're ready to go!`}
             icon={() => <Logo className="-ml-8 h-4 w-32" />}

@@ -1,10 +1,10 @@
 import { GoogleLogo, Logo, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 
 import { SignInButton } from "@app/components/Button";
-import { A } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import {
   getWorkspaceInfos,
@@ -134,7 +134,7 @@ export default function Join({
         />
       }
     >
-      <div className="flex flex-col gap-8">
+      <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello there!`}
           icon={() => <Logo className="-ml-8 h-4 w-32" />}
@@ -159,9 +159,13 @@ export default function Join({
             Dust is a platform giving you access to the best AI assistants. It's
             easy to use and it's a great place for teams to collaborate. Learn
             more about Dust on{" "}
-            <A href="https://dust.tt" target="_blank">
+            <Link
+              href="https://dust.tt"
+              className="cursor-pointer text-sm font-bold text-action-500"
+              target="_blank"
+            >
               our website
-            </A>
+            </Link>
             .
           </p>
         </div>
@@ -178,9 +182,13 @@ export default function Join({
         <div className="flex flex-col gap-3 pb-20">
           <p>
             By signing-up, you accept Dust's{" "}
-            <A href="https://dust.tt/terms" target="_blank">
+            <Link
+              href="https://dust.tt/terms"
+              className="cursor-pointer text-sm font-bold text-action-500"
+              target="_blank"
+            >
               terms and conditions
-            </A>
+            </Link>
             .
           </p>
         </div>
