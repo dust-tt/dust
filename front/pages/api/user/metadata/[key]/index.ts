@@ -2,8 +2,7 @@ import type { UserMetadataType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
-import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
+import { getSession, getUserFromSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostUserMetadataResponseBody = {

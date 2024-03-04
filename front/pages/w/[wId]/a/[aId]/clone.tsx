@@ -21,8 +21,7 @@ import {
 } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
+import { Authenticator, getSession, getUserFromSession } from "@app/lib/auth";
 import { classNames } from "@app/lib/utils";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 

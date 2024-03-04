@@ -9,8 +9,7 @@ import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
+import { getSession, getUserFromSession } from "@app/lib/auth";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
