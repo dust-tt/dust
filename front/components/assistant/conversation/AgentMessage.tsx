@@ -24,6 +24,7 @@ import type {
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import { assertNever, isRetrievalActionType } from "@dust-tt/types";
+import * as d3 from "d3";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -41,6 +42,21 @@ import {
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
+
+if (typeof window !== "undefined") {
+  window.d3 = d3;
+}
+
+function trimTrailingChars(str: string, ch: string) {
+  let start = 0,
+    end = str.length;
+
+  while (start < end && str[start] === ch) ++start;
+
+  while (end > start && str[end - 1] === ch) --end;
+
+  return start > 0 || end < str.length ? str.substring(start, end) : str;
+}
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -321,6 +337,29 @@ export function AgentMessage({
       );
     }
   }, [agentMessageToRender.action]);
+
+  const codeGeneratedRef = useRef(false);
+  useEffect(() => {
+    const isCodeMessage =
+      agentMessageToRender.content?.startsWith("```") || false;
+    if (
+      isCodeMessage &&
+      !codeGeneratedRef.current &&
+      agentMessageToRender.status === "succeeded"
+    ) {
+      codeGeneratedRef.current = true;
+      if (agentMessageToRender.content) {
+        let jsCode = trimTrailingChars(agentMessageToRender.content, "`");
+        if (jsCode.indexOf("js") === 0) {
+          jsCode = jsCode.substring("js".length);
+        } else if (jsCode.indexOf("javascript") === 0) {
+          jsCode = jsCode.substring("javascript".length);
+        }
+        document.getElementById("d3js")!.innerHTML = "";
+        eval(jsCode);
+      }
+    }
+  }, [agentMessageToRender.content, agentMessageToRender.status]);
 
   function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
     const router = useRouter();

@@ -241,6 +241,7 @@ export default function Conversation({
             })(m);
         }
       })}
+      <div id="d3js" />
     </div>
   );
 }
