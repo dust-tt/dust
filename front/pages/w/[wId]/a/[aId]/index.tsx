@@ -332,12 +332,10 @@ export default function AppView({
       }
     >
       <div className="flex w-full flex-col">
-        <div className="mt-2 overflow-x-auto scrollbar-hide">
-          <Tab
-            tabs={subNavigationApp({ owner, app, current: "specification" })}
-          />
-        </div>
-
+        <Tab
+          className="mt-2"
+          tabs={subNavigationApp({ owner, app, current: "specification" })}
+        />
         <div className="mt-8 flex flex-auto flex-col">
           <div className="mb-4 flex flex-row items-center space-x-2">
             <NewBlock

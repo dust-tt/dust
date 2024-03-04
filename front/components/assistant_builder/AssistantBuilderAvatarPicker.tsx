@@ -197,9 +197,7 @@ export function AvatarPicker({
       />
 
       <div className="h-full w-full overflow-visible">
-        <div className="overflow-x-auto pt-3">
-          <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
-        </div>
+        <Tab tabs={tabs} setCurrentTab={setCurrentTab} className="pt-3" />
         <div className="h-full w-full overflow-y-auto">
           {["droids", "spirits"].includes(currentTab) ? (
             <div className="mb-16 mt-3 grid w-full grid-cols-8 gap-2 overflow-y-auto">
