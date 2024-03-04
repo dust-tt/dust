@@ -106,15 +106,17 @@ export function withGetServerSidePropsRequirements<
   ) => {
     const { enableLogging, requireAuth } = opts;
 
-    const session = await getSession(context.req, context.res);
-    if (requireAuth && !session) {
-      return {
-        redirect: {
-          permanent: false,
-          // TODO(2024-03-04 flav) Add support for `returnTo=`.
-          destination: "/",
-        },
-      };
+    if (requireAuth) {
+      const session = await getSession(context.req, context.res);
+      if (!session) {
+        return {
+          redirect: {
+            permanent: false,
+            // TODO(2024-03-04 flav) Add support for `returnTo=`.
+            destination: "/",
+          },
+        };
+      }
     }
 
     if (enableLogging) {
