@@ -29,6 +29,7 @@ use dust::{
 };
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
+use jemallocator::Jemalloc;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -42,6 +43,9 @@ use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
 use tracing_subscriber::prelude::*;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 /// API State
 

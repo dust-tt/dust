@@ -66,3 +66,4 @@ chrono = "0.4.31"
 yup-oauth2 = "8.3.0"
 datadog-formatting-layer = "1.1"
 thiserror = "1.0.57"
+jemallocator = { version = "0.5.4", features = ["profiling"] }
