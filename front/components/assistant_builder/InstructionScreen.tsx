@@ -33,6 +33,7 @@ import {
   MISTRAL_SMALL_MODEL_CONFIG,
   Ok,
 } from "@dust-tt/types";
+import { Transition } from "@headlessui/react";
 import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -347,83 +348,92 @@ function Suggestions({
     debounce(debounceHandle, updateSuggestions);
   }, [instructions, updateSuggestions]);
 
-  if (
-    suggestions.status === "unavailable" &&
-    suggestions.reason === "irrelevant"
-  ) {
-    return null;
-  }
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-base font-bold text-element-800">Tips</div>
-      <div className="">
-        {(() => {
-          if (loading) {
-            return <Spinner size="sm" />;
-          }
-          if (error) {
-            return (
-              <ContentMessage size="sm" title="Error" variant="red">
-                {error.message}
-              </ContentMessage>
-            );
-          }
-          if (suggestions.status === "ok") {
-            if (suggestions.suggestions.length === 0) {
+    <Transition
+      show={
+        !(
+          suggestions.status === "unavailable" &&
+          suggestions.reason === "irrelevant"
+        )
+      }
+      enter="transition-[max-height] duration-1000"
+      enterFrom="max-h-0"
+      enterTo="max-h-full"
+      leave="transition-[max-height] duration-1000"
+      leaveFrom="max-h-full"
+      leaveTo="max-h-0"
+    >
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-1 text-base font-bold text-element-800">
+          <div>Tips</div>
+          {loading && <Spinner size="sm" />}
+        </div>
+        <div>
+          {(() => {
+            if (error) {
               return (
-                <ContentMessage size="sm" variant="slate" title="">
-                  Looking good! 🎉
+                <ContentMessage size="sm" title="Error" variant="red">
+                  {error.message}
                 </ContentMessage>
               );
             }
-            return (
-              <div className="flex gap-2">
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions.suggestions[0]}
+            if (suggestions.status === "ok") {
+              if (suggestions.suggestions.length === 0) {
+                return (
+                  <ContentMessage size="sm" variant="slate" title="">
+                    Looking good! 🎉
+                  </ContentMessage>
+                );
+              }
+              return (
+                <div className="flex gap-2">
+                  <ContentMessage
+                    size="sm"
+                    title=""
+                    variant="sky"
+                    className="transition-all"
+                  >
+                    {suggestions.suggestions[0]}
+                  </ContentMessage>
+                  <ContentMessage
+                    size="sm"
+                    title=""
+                    variant="sky"
+                    className="transition-all"
+                  >
+                    {suggestions.suggestions[1]}
+                  </ContentMessage>
+                  <IconButton
+                    icon={ChevronRightIcon}
+                    size="sm"
+                    variant="tertiary"
+                    onClick={() => {
+                      setSuggestions({
+                        status: "ok",
+                        suggestions: [
+                          ...suggestions.suggestions.slice(2),
+                          ...suggestions.suggestions.slice(0, 2),
+                        ],
+                      });
+                    }}
+                  />
+                </div>
+              );
+            }
+            if (
+              suggestions.status === "unavailable" &&
+              suggestions.reason === "user_not_finished"
+            ) {
+              return (
+                <ContentMessage size="sm" variant="slate" title="">
+                  Suggestions will appear when you're done writing.
                 </ContentMessage>
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions.suggestions[1]}
-                </ContentMessage>
-                <IconButton
-                  icon={ChevronRightIcon}
-                  size="sm"
-                  variant="tertiary"
-                  onClick={() => {
-                    setSuggestions({
-                      status: "ok",
-                      suggestions: [
-                        ...suggestions.suggestions.slice(2),
-                        ...suggestions.suggestions.slice(0, 2),
-                      ],
-                    });
-                  }}
-                />
-              </div>
-            );
-          }
-          if (
-            suggestions.status === "unavailable" &&
-            suggestions.reason === "user_not_finished"
-          ) {
-            return (
-              <ContentMessage size="sm" variant="slate" title="">
-                Suggestions will appear when you're done writing.
-              </ContentMessage>
-            );
-          }
-        })()}
+              );
+            }
+          })()}
+        </div>
       </div>
-    </div>
+    </Transition>
   );
 }
 
