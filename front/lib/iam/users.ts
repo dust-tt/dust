@@ -1,6 +1,5 @@
 import type { Session } from "next-auth";
 
-import type { ExternalUser } from "@app/lib/iam/provider";
 import { isGoogleSession } from "@app/lib/iam/session";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
