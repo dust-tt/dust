@@ -141,5 +141,6 @@
     "tls": false,
     "fs": false,
     "dgram": false
-  }
+  },
+  "version": "0.0.1"
 }
