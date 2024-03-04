@@ -172,9 +172,9 @@ export function SharingButton({
             type="menu"
           />
         </DropdownMenu.Button>
-        <DropdownMenu.Items width={240} overflow="visible">
-          <div className="-mx-1 flex flex-col gap-y-2">
-            <div className="flex flex-col gap-y-2">
+        <DropdownMenu.Items width={300} overflow="visible">
+          <div className="flex flex-col gap-y-2 py-1">
+            <div className="flex flex-col gap-y-3">
               <SharingDropdown
                 owner={owner}
                 agentConfiguration={agentConfiguration}
@@ -201,7 +201,7 @@ export function SharingButton({
                 </div>
                 <div className="text-sm text-element-700">
                   {slackChannelSelected.length === 0 ? (
-                    <>Set as default assistant for specific channels.</>
+                    <>Set as default assistant for specific&nbsp;channels.</>
                   ) : (
                     <>
                       Default assistant for{" "}
@@ -223,7 +223,7 @@ export function SharingButton({
                   </div>
                 )}
               </div>
-              <div className="">
+              <div className="pt-4">
                 <SliderToggle
                   selected={slackChannelSelected.length > 0}
                   onClick={() => {
@@ -237,32 +237,33 @@ export function SharingButton({
               </div>
             </div>
             {agentConfigurationId && (
-              <div className="flex flex-row justify-between">
-                <div>
-                  <div className="text-base font-bold text-element-800">
-                    Link
+              <>
+                <Page.Separator />
+                <div className="flex w-full flex-row">
+                  <div className="grow">
+                    <div className="text-base font-bold text-element-800">
+                      Link
+                    </div>
+                    <div className="text-sm text-element-700">
+                      Shareable direct&nbsp;URL
+                    </div>
                   </div>
-                  <div className="text-sm text-element-700">
-                    Shareable direct URL
+                  <div className="pt-4 text-right">
+                    <Button
+                      size="sm"
+                      label={copyLinkSuccess ? "Copied!" : "Copy link"}
+                      variant="secondary"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(shareLink);
+                        setCopyLinkSuccess(true);
+                        setTimeout(() => {
+                          setCopyLinkSuccess(false);
+                        }, 1000);
+                      }}
+                    />
                   </div>
                 </div>
-                <div>
-                  <Button
-                    size="sm"
-                    icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                    label={copyLinkSuccess ? "Copied!" : "Copy link"}
-                    variant="secondary"
-                    className="w-full"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(shareLink);
-                      setCopyLinkSuccess(true);
-                      setTimeout(() => {
-                        setCopyLinkSuccess(false);
-                      }, 1000);
-                    }}
-                  />
-                </div>
-              </div>
+              </>
             )}
           </div>
         </DropdownMenu.Items>
