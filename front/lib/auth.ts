@@ -1,7 +1,6 @@
 import type {
   RoleType,
   UserType,
-  UserTypeWithWorkspaces,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -23,13 +22,8 @@ import type {
   NextApiResponse,
 } from "next";
 import { getServerSession } from "next-auth/next";
-import { Op } from "sequelize";
 
 import { isDevelopment } from "@app/lib/development";
-import {
-  fetchUserFromSession,
-  maybeUpdateFromExternalUser,
-} from "@app/lib/iam/users";
 import {
   FeatureFlag,
   Key,
