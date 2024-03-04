@@ -8,14 +8,14 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 const ADMIN_YOUTUBE_ID = "f9n4mqBX2aw";
 const MEMBER_YOUTUBE_ID = null; // We don't have the video yet.
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;

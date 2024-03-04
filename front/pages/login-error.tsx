@@ -2,23 +2,28 @@ import { Button, Logo } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   domain?: string;
   gaTrackingId: string;
   baseUrl: string;
-}>(async (context) => {
-  return {
-    props: {
-      domain: context.query.domain as string,
-      baseUrl: URL,
-      gaTrackingId: GA_TRACKING_ID,
-    },
-  };
-});
+}>(
+  async (context) => {
+    return {
+      props: {
+        domain: context.query.domain as string,
+        baseUrl: URL,
+        gaTrackingId: GA_TRACKING_ID,
+      },
+    };
+  },
+  {
+    requireAuth: false,
+  }
+);
 
 export default function LoginError({
   domain,

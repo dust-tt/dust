@@ -11,9 +11,9 @@ import React from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   members: UserTypeWithWorkspaces[];
 }>(async (context) => {

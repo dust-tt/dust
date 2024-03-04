@@ -35,6 +35,7 @@ import {
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import {
   addBlock,
   deleteBlock,
@@ -42,11 +43,10 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;

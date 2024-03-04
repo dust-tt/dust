@@ -11,9 +11,9 @@ import { useRouter } from "next/router";
 
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(
@@ -55,71 +55,76 @@ async function fetchRevokedWorkspace(
   return Workspace.findByPk(revokedWorkspaceId);
 }
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   status: "auto-join-disabled" | "revoked";
   userFirstName: string;
   workspaceName: string;
   workspaceVerifiedDomain: string | null;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
+}>(
+  async (context) => {
+    const session = await getSession(context.req, context.res);
+    const user = await getUserFromSession(session);
 
-  if (!user) {
+    if (!user) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const flow =
+      context.query.flow && typeof context.query.flow === "string"
+        ? context.query.flow
+        : null;
+
+    let workspace: Workspace | null = null;
+    let workspaceVerifiedDomain: string | null = null;
+    let status: "auto-join-disabled" | "revoked";
+
+    if (flow === "no-auto-join") {
+      status = "auto-join-disabled";
+      const workspaceHasDomain = await fetchWorkspaceDetails(user);
+      workspace = workspaceHasDomain?.workspace ?? null;
+      workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
+
+      if (!workspace || !workspaceVerifiedDomain) {
+        logger.error(
+          {
+            flow,
+            userId: user.id,
+            panic: true,
+          },
+          "Unreachable: workspace not found."
+        );
+        throw new Error("Workspace not found.");
+      }
+    } else if (flow === "revoked") {
+      status = "revoked";
+      workspace = await fetchRevokedWorkspace(user);
+
+      if (!workspace) {
+        logger.error(
+          { flow, userId: user.id, panic: true },
+          "Unreachable: workspace not found."
+        );
+        throw new Error("Workspace not found.");
+      }
+    } else {
+      throw new Error("No workspace found.");
+    }
+
     return {
-      notFound: true,
+      props: {
+        status,
+        userFirstName: user.firstName,
+        workspaceName: workspace.name,
+        workspaceVerifiedDomain,
+      },
     };
+  },
+  {
+    requireAuth: false,
   }
-
-  const flow =
-    context.query.flow && typeof context.query.flow === "string"
-      ? context.query.flow
-      : null;
-
-  let workspace: Workspace | null = null;
-  let workspaceVerifiedDomain: string | null = null;
-  let status: "auto-join-disabled" | "revoked";
-
-  if (flow === "no-auto-join") {
-    status = "auto-join-disabled";
-    const workspaceHasDomain = await fetchWorkspaceDetails(user);
-    workspace = workspaceHasDomain?.workspace ?? null;
-    workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
-
-    if (!workspace || !workspaceVerifiedDomain) {
-      logger.error(
-        {
-          flow,
-          userId: user.id,
-          panic: true,
-        },
-        "Unreachable: workspace not found."
-      );
-      throw new Error("Workspace not found.");
-    }
-  } else if (flow === "revoked") {
-    status = "revoked";
-    workspace = await fetchRevokedWorkspace(user);
-
-    if (!workspace) {
-      logger.error(
-        { flow, userId: user.id, panic: true },
-        "Unreachable: workspace not found."
-      );
-      throw new Error("Workspace not found.");
-    }
-  } else {
-    throw new Error("No workspace found.");
-  }
-
-  return {
-    props: {
-      status,
-      userFirstName: user.firstName,
-      workspaceName: workspace.name,
-      workspaceVerifiedDomain,
-    },
-  };
-});
+);
 
 export default function NoWorkspace({
   status,

@@ -446,7 +446,7 @@ export class Authenticator {
 export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
-): Promise<any> {
+): Promise<any | null> {
   return getServerSession(req, res, authOptions);
 }
 
