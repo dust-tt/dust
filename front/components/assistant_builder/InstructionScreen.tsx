@@ -354,13 +354,13 @@ function Suggestions({
     return null;
   }
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-base font-bold text-element-800">Tips</div>
+    <div className="flex flex-col gap-2 transition">
+      <div className="flex gap-1 text-base font-bold text-element-800">
+        <div>Tips</div>
+        {loading && <Spinner size="sm" />}
+      </div>
       <div className="">
         {(() => {
-          if (loading) {
-            return <Spinner size="sm" />;
-          }
           if (error) {
             return (
               <ContentMessage size="sm" title="Error" variant="red">
