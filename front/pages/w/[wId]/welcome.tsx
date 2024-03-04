@@ -1,4 +1,4 @@
-import { Button, DustIcon, Input, Page, RadioButton } from "@dust-tt/sparkle";
+import { Button, Input, Logo, Page, RadioButton } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -154,7 +154,10 @@ export default function Welcome({
         }
       >
         <div className="flex w-full flex-col gap-6">
-          <Page.Header title={`Hello ${firstName}!`} icon={DustIcon} />
+          <Page.Header
+            title={`Hello ${firstName}!`}
+            icon={() => <Logo className="-ml-8 h-4 w-32" />}
+          />
           <p className="text-element-800">Let's check a few things.</p>
           {!isAdmin && (
             <div>
@@ -259,7 +262,10 @@ export default function Welcome({
         }
       >
         <div className="flex w-full flex-col gap-6">
-          <Page.Header title={`You're ready to go!`} icon={DustIcon} />
+          <Page.Header
+            title={`You're ready to go!`}
+            icon={() => <Logo className="-ml-8 h-4 w-32" />}
+          />
           <p className="text-element-800">
             Here is a short video to get you started with Dust.
           </p>

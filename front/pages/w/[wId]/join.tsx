@@ -1,4 +1,4 @@
-import { DustIcon, GoogleLogo, Page } from "@dust-tt/sparkle";
+import { GoogleLogo, Logo, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { signIn } from "next-auth/react";
@@ -135,7 +135,10 @@ export default function Join({
       }
     >
       <div className="flex flex-col gap-8">
-        <Page.Header title={`Hello there!`} icon={DustIcon} />
+        <Page.Header
+          title={`Hello there!`}
+          icon={() => <Logo className="-ml-8 h-4 w-32" />}
+        />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <p>Welcome aboard!</p>
