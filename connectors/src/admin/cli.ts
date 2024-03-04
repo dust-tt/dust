@@ -1,4 +1,5 @@
 import { isConnectorError } from "@dust-tt/types";
+import { Client } from "@notionhq/client";
 import parseArgs from "minimist";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -29,6 +30,7 @@ import {
   checkNotionUrl,
   searchNotionPagesForQuery,
 } from "@connectors/connectors/notion/lib/cli";
+import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
@@ -665,6 +667,31 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       console.log(r);
+
+      break;
+    }
+
+    case "me": {
+      const { wId } = args;
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: wId,
+      });
+
+      const notionAccessToken = await getNotionAccessToken(
+        connector.connectionId
+      );
+
+      const notionClient = new Client({
+        auth: notionAccessToken,
+      });
+
+      const me = await notionClient.users.me({});
+
+      console.log(me);
+      // @ts-expect-error untyped bot field
+      console.log(me.bot.owner);
 
       break;
     }
