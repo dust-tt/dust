@@ -12,13 +12,13 @@ import {
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;

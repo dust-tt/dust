@@ -1,7 +1,7 @@
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
-export const getServerSideProps = withGetServerSidePropsLogging<object>(
+export const getServerSideProps = withGetServerSidePropsRequirements<object>(
   async (context) => {
     const session = await getSession(context.req, context.res);
     const auth = await Authenticator.fromSession(

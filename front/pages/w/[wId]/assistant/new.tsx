@@ -39,12 +39,12 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserType;
   isBuilder: boolean;
   subscription: SubscriptionType;

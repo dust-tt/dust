@@ -1,10 +1,10 @@
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { getCheckoutUrlForUpgrade } from "@app/lib/plans/subscription";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps = withGetServerSidePropsLogging<object>(
+export const getServerSideProps = withGetServerSidePropsRequirements<object>(
   async (context) => {
     const session = await getSession(context.req, context.res);
     const auth = await Authenticator.fromSession(

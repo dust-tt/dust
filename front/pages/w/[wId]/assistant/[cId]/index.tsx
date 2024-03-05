@@ -18,13 +18,13 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useConversation } from "@app/lib/swr";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;

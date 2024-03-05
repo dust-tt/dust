@@ -10,10 +10,10 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
 }>(async (context) => {

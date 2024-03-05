@@ -26,11 +26,11 @@ import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;

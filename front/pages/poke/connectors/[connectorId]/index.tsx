@@ -2,10 +2,10 @@ import type { ConnectorType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps = withGetServerSidePropsLogging<object>(
+export const getServerSideProps = withGetServerSidePropsRequirements<object>(
   async (context) => {
     const session = await getSession(context.req, context.res);
     const auth = await Authenticator.fromSuperUserSession(session, null);

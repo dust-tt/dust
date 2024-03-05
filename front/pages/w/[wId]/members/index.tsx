@@ -37,16 +37,16 @@ import {
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 const CLOSING_ANIMATION_DURATION = 200;
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;

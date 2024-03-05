@@ -26,8 +26,8 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -35,7 +35,7 @@ type DataSourceWithConnector = DataSourceType & {
   connector: ConnectorType;
 };
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;

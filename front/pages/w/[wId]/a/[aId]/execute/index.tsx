@@ -40,9 +40,9 @@ import {
   getDatasetTypes,
   getValueType,
 } from "@app/lib/datasets";
+import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useSavedRunStatus } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -57,7 +57,7 @@ type Event = {
   };
 };
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
