@@ -1019,9 +1019,6 @@ pub async fn embed(
     text: Vec<&str>,
     user: Option<String>,
 ) -> Result<Embeddings> {
-    // let https = HttpsConnector::new();
-    // let cli = Client::builder().build::<_, hyper::Body>(https);
-
     let mut body = json!({
         "input": text,
     });
