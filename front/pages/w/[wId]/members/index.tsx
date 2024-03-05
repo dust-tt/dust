@@ -36,8 +36,8 @@ import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { Authenticator } from "@app/lib/auth";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -46,7 +46,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 
 const CLOSING_ANIMATION_DURATION = 200;
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -54,8 +54,7 @@ export const getServerSideProps = withGetServerSidePropsRequirements<{
   gaTrackingId: string;
   workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomain: WorkspaceDomain | null;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string

@@ -10,14 +10,13 @@ import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getMembers } from "@app/lib/api/workspace";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { Authenticator } from "@app/lib/auth";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   members: UserTypeWithWorkspaces[];
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string

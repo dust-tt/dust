@@ -9,21 +9,20 @@ import type { InferGetServerSidePropsType } from "next";
 
 import WebsiteConfiguration from "@app/components/data_source/WebsiteConfiguration";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { Authenticator } from "@app/lib/auth";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
   dataSource: DataSourceType;
   webCrawlerConfiguration: WebCrawlerConfigurationType;
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string

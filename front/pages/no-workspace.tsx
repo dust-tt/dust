@@ -9,9 +9,11 @@ import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import {
+  getUserFromSession,
+  withDefaultGetServerSidePropsRequirements,
+} from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
@@ -41,7 +43,7 @@ async function fetchRevokedWorkspace(
   user: UserTypeWithWorkspaces
 ): Promise<Workspace | null> {
   const memberships = await Membership.findAll({
-    where: { userId: user.id },
+    where: { userId: user.id, role: "revoked" },
   });
 
   if (!memberships.length) {
@@ -55,13 +57,12 @@ async function fetchRevokedWorkspace(
   return Workspace.findByPk(revokedWorkspaceId);
 }
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   status: "auto-join-disabled" | "revoked";
   userFirstName: string;
   workspaceName: string;
   workspaceVerifiedDomain: string | null;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const user = await getUserFromSession(session);
 
   if (!user) {

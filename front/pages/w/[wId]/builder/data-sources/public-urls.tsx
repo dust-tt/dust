@@ -24,9 +24,9 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -35,15 +35,14 @@ type DataSourceWithConnector = DataSourceType & {
   connector: ConnectorType;
 };
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
   dataSources: DataSourceWithConnector[];
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string

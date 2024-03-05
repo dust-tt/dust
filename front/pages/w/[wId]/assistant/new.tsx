@@ -36,23 +36,22 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   user: UserType;
   isBuilder: boolean;
   subscription: SubscriptionType;
   owner: WorkspaceType;
   helper: LightAgentConfigurationType | null;
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string

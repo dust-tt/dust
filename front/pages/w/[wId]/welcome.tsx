@@ -6,16 +6,16 @@ import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 const ADMIN_YOUTUBE_ID = "f9n4mqBX2aw";
 const MEMBER_YOUTUBE_ID = null; // We don't have the video yet.
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
@@ -24,8 +24,7 @@ export const getServerSideProps = withGetServerSidePropsRequirements<{
   conversationId: string | null;
   gaTrackingId: string;
   baseUrl: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string

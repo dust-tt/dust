@@ -1,3 +1,4 @@
+import type { UserProviderType } from "@dust-tt/types";
 import type { Session } from "next-auth";
 
 import { isGoogleSession } from "@app/lib/iam/session";
@@ -5,8 +6,8 @@ import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 
 interface LegacyProviderInfo {
-  provider: "google" | "github";
-  providerId: string;
+  provider: UserProviderType;
+  providerId: number | string;
 }
 
 async function fetchUserWithLegacyProvider({

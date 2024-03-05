@@ -8,16 +8,15 @@ import { useEffect, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string

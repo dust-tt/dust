@@ -51,39 +51,37 @@ import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsRequirements(
-  async (context, session) => {
-    const user = await getUserFromSession(session);
+export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
+  requireAuth: false,
+})<{
+  gaTrackingId: string;
+}>(async (context, session) => {
+  const user = await getUserFromSession(session);
 
-    if (user && user.workspaces.length > 0) {
-      let url = `/w/${user.workspaces[0].sId}`;
+  if (user && user.workspaces.length > 0) {
+    let url = `/w/${user.workspaces[0].sId}`;
 
-      if (context.query.inviteToken) {
-        url = `/api/login?inviteToken=${context.query.inviteToken}`;
-      }
-
-      return {
-        redirect: {
-          destination: url,
-          permanent: false,
-        },
-      };
+    if (context.query.inviteToken) {
+      url = `/api/login?inviteToken=${context.query.inviteToken}`;
     }
 
     return {
-      props: { gaTrackingId: GA_TRACKING_ID },
+      redirect: {
+        destination: url,
+        permanent: false,
+      },
     };
-  },
-  {
-    requireAuth: false,
-    enableLogging: false,
   }
-);
+
+  return {
+    props: { gaTrackingId: GA_TRACKING_ID },
+  };
+});
 
 export default function Home({
   gaTrackingId,

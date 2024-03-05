@@ -18,13 +18,13 @@ import {
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -32,8 +32,7 @@ export const getServerSideProps = withGetServerSidePropsRequirements<{
   dataset: DatasetType;
   schema: DatasetSchema | null;
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string

@@ -10,7 +10,7 @@ import {
   getWorkspaceInfos,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -38,84 +38,78 @@ type OnboardingType =
   | "domain_conversation_link"
   | "domain_invite_link";
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
+  requireAuth: false,
+})<{
   onboardingType: OnboardingType;
   workspace: LightWorkspaceType;
   signUpCallbackUrl: string;
   gaTrackingId: string;
   baseUrl: string;
-}>(
-  async (context) => {
-    const wId = context.query.wId as string;
-    if (!wId) {
-      return {
-        notFound: true,
-      };
-    }
-    const workspace = await getWorkspaceInfos(wId);
-    if (!workspace) {
-      return {
-        notFound: true,
-      };
-    }
-    const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
-
-    const cId =
-      typeof context.query.cId === "string" ? context.query.cId : null;
-    const token = typeof context.query.t === "string" ? context.query.t : null;
-    let onboardingType: OnboardingType | null = null;
-
-    if (cId) {
-      onboardingType = "domain_conversation_link";
-    } else if (token) {
-      onboardingType = "email_invite";
-    } else {
-      onboardingType = "domain_invite_link";
-    }
-
-    // Redirect to 404 if in a flow where we need a verified domain and there is none.
-    if (
-      !workspaceDomain?.domainAutoJoinEnabled &&
-      ["domain_conversation_link", "domain_invite_link"].includes(
-        onboardingType
-      )
-    ) {
-      return {
-        notFound: true,
-      };
-    }
-
-    let signUpCallbackUrl: string | undefined = undefined;
-    switch (onboardingType) {
-      case "domain_conversation_link":
-        signUpCallbackUrl = `/api/login?wId=${wId}&cId=${cId}&join=true`;
-        break;
-      case "email_invite":
-        signUpCallbackUrl = `/api/login?inviteToken=${token}`;
-        break;
-      case "domain_invite_link":
-        signUpCallbackUrl = `/api/login?wId=${wId}`;
-        break;
-      default:
-        return {
-          notFound: true,
-        };
-    }
-
+}>(async (context) => {
+  const wId = context.query.wId as string;
+  if (!wId) {
     return {
-      props: {
-        onboardingType: onboardingType,
-        workspace: workspace,
-        signUpCallbackUrl: signUpCallbackUrl,
-        baseUrl: URL,
-        gaTrackingId: GA_TRACKING_ID,
-      },
+      notFound: true,
     };
-  },
-  {
-    requireAuth: false,
   }
-);
+  const workspace = await getWorkspaceInfos(wId);
+  if (!workspace) {
+    return {
+      notFound: true,
+    };
+  }
+  const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
+
+  const cId = typeof context.query.cId === "string" ? context.query.cId : null;
+  const token = typeof context.query.t === "string" ? context.query.t : null;
+  let onboardingType: OnboardingType | null = null;
+
+  if (cId) {
+    onboardingType = "domain_conversation_link";
+  } else if (token) {
+    onboardingType = "email_invite";
+  } else {
+    onboardingType = "domain_invite_link";
+  }
+
+  // Redirect to 404 if in a flow where we need a verified domain and there is none.
+  if (
+    !workspaceDomain?.domainAutoJoinEnabled &&
+    ["domain_conversation_link", "domain_invite_link"].includes(onboardingType)
+  ) {
+    return {
+      notFound: true,
+    };
+  }
+
+  let signUpCallbackUrl: string | undefined = undefined;
+  switch (onboardingType) {
+    case "domain_conversation_link":
+      signUpCallbackUrl = `/api/login?wId=${wId}&cId=${cId}&join=true`;
+      break;
+    case "email_invite":
+      signUpCallbackUrl = `/api/login?inviteToken=${token}`;
+      break;
+    case "domain_invite_link":
+      signUpCallbackUrl = `/api/login?wId=${wId}`;
+      break;
+    default:
+      return {
+        notFound: true,
+      };
+  }
+
+  return {
+    props: {
+      onboardingType: onboardingType,
+      workspace: workspace,
+      signUpCallbackUrl: signUpCallbackUrl,
+      baseUrl: URL,
+      gaTrackingId: GA_TRACKING_ID,
+    },
+  };
+});
 
 export default function Join({
   onboardingType,

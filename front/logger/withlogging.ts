@@ -4,14 +4,9 @@ import type {
 } from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
-import type {
-  GetServerSideProps,
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-  PreviewData,
-} from "next";
-import type { ParsedUrlQuery } from "querystring";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import type { CustomGetServerSideProps } from "@app/lib/iam/session";
 
 import logger from "./logger";
 
@@ -148,12 +143,13 @@ export function apiError<T>(
   return;
 }
 
-export function withGetServerSidePropsLogging<T extends { [key: string]: any }>(
-  getServerSideProps: GetServerSideProps<T>
-): GetServerSideProps<T> {
-  return async (
-    context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
-  ) => {
+export function withGetServerSidePropsLogging<
+  T extends { [key: string]: any },
+  RequireAuth extends boolean = true
+>(
+  getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuth>
+): CustomGetServerSideProps<T, any, any, RequireAuth> {
+  return async (context, session) => {
     const now = new Date();
 
     let route = context.resolvedUrl.split("?")[0];
@@ -165,7 +161,7 @@ export function withGetServerSidePropsLogging<T extends { [key: string]: any }>(
     }
 
     try {
-      const res = await getServerSideProps(context);
+      const res = await getServerSideProps(context, session);
 
       const elapsed = new Date().getTime() - now.getTime();
 

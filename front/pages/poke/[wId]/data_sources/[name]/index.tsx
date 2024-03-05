@@ -22,17 +22,17 @@ import { useEffect, useState } from "react";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;
@@ -43,8 +43,7 @@ export const getServerSideProps = withGetServerSidePropsRequirements<{
     githubCodeSyncEnabled: boolean;
   };
   temporalWorkspace: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string
