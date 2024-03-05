@@ -203,6 +203,9 @@ export default function AssistantBuilder({
         }
   );
 
+  const showSlackIntegration =
+    builderState.scope === "workspace" || builderState.scope === "published";
+
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
@@ -434,6 +437,7 @@ export default function AssistantBuilder({
             <Tab tabs={tabs} variant="stepper" />
             <div className="self-end pt-0.5">
               <SharingButton
+                showSlackIntegration={showSlackIntegration}
                 slackDataSource={slackDataSource || null}
                 owner={owner}
                 agentConfigurationId={agentConfigurationId}
