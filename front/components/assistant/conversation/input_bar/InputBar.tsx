@@ -311,7 +311,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
-  hideQuickActions,
+  hideQuickActions = false,
   disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
@@ -323,7 +323,7 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions: boolean;
+  hideQuickActions?: boolean;
   disableAutoFocus?: boolean;
 }) {
   return (
