@@ -98,6 +98,7 @@ export function startServer(port: number) {
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
   );
+  // @deprecated Daph to remove
   app.post(
     // must be POST because of body
     "/connectors/:connector_id/resources/parents",
