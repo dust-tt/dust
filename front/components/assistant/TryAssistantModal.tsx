@@ -7,17 +7,25 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import {
+  AssistantInputBar,
+  FixedAssistantInputBar,
+} from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
   CONVERSATION_PARENT_SCROLL_DIV_ID as CONVERSATION_PARENT_SCROLL_DIV_ID,
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { submitAssistantBuilderForm } from "@app/components/assistant_builder/AssistantBuilder";
+import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useUser } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
+import { debounce } from "@app/lib/utils/debounce";
 
 export function TryAssistantModal({
   owner,
@@ -122,11 +130,208 @@ export function TryAssistantModal({
               onSubmit={handleSubmit}
               stickyMentions={stickyMentions}
               conversationId={conversation?.sId || null}
-              tryModalAgentConfiguration={assistant}
+              additionalAgentConfiguration={assistant}
+              hideQuickActions
             />
           </div>
         </GenerationContextProvider>
       </div>
     </Modal>
   );
+}
+
+export function TryAssistant({
+  owner,
+  openWithConversation,
+  assistant,
+}: {
+  owner: WorkspaceType;
+  openWithConversation?: ConversationType;
+  assistant: LightAgentConfigurationType | null;
+}) {
+  const [conversation, setConversation] = useState<ConversationType | null>(
+    openWithConversation ?? null
+  );
+  const sendNotification = useContext(SendNotificationsContext);
+  const { user } = useUser();
+  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
+    { configurationId: assistant?.sId as string },
+  ]);
+
+  useEffect(() => {
+    setStickyMentions([{ configurationId: assistant?.sId as string }]);
+  }, [assistant]);
+
+  const handleSubmit = async (
+    input: string,
+    mentions: MentionType[],
+    contentFragment?: {
+      title: string;
+      content: string;
+    }
+  ) => {
+    if (!assistant || !user) return;
+    const messageData = { input, mentions, contentFragment };
+    if (!conversation) {
+      const result = await createConversationWithMessage({
+        owner,
+        user,
+        messageData,
+        visibility: "test",
+        title: `Trying @${assistant.name}`,
+      });
+      if (result.isOk()) {
+        setConversation(result.value);
+        return;
+      }
+      sendNotification({
+        title: result.error.title,
+        description: result.error.message,
+        type: "error",
+      });
+    } else {
+      const result = await submitMessage({
+        owner,
+        user,
+        conversationId: conversation.sId as string,
+        messageData,
+      });
+      if (result.isOk()) return;
+      sendNotification({
+        title: result.error.title,
+        description: result.error.message,
+        type: "error",
+      });
+    }
+  };
+
+  useEffect(() => {
+    setConversation(openWithConversation ?? null);
+  }, [openWithConversation, assistant?.sId]);
+
+  if (!user || !assistant) return null;
+
+  return (
+    <div
+      className={classNames(
+        "flex h-full w-full flex-1 flex-col justify-between"
+      )}
+    >
+      <div className="relative h-full w-full">
+        <GenerationContextProvider>
+          {conversation && (
+            <div
+              className="max-h-[100%] overflow-y-scroll "
+              id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
+            >
+              <Conversation
+                owner={owner}
+                user={user}
+                conversationId={conversation.sId}
+                onStickyMentionsChange={setStickyMentions}
+                isInModal
+              />
+            </div>
+          )}
+
+          <div className="absolute bottom-4 w-full">
+            <div className="">
+              <AssistantInputBar
+                owner={owner}
+                onSubmit={handleSubmit}
+                stickyMentions={stickyMentions}
+                conversationId={conversation?.sId || null}
+                additionalAgentConfiguration={assistant}
+                hideQuickActions
+                disableAutoFocus
+              />
+            </div>
+          </div>
+        </GenerationContextProvider>
+      </div>
+    </div>
+  );
+}
+
+export function usePreviewAssistant({
+  owner,
+  builderState,
+}: {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+}): {
+  shouldAnimate: boolean;
+  draftAssistant: LightAgentConfigurationType | null;
+} {
+  const [draftAssistant, setDraftAssistant] =
+    useState<LightAgentConfigurationType | null>();
+  const [animateDrawer, setAnimateDrawer] = useState(false);
+  const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const animate = () => {
+    if (drawerAnimationTimeoutRef.current) {
+      clearTimeout(drawerAnimationTimeoutRef.current);
+      drawerAnimationTimeoutRef.current = null;
+    }
+    setAnimateDrawer(true);
+    drawerAnimationTimeoutRef.current = setTimeout(() => {
+      setAnimateDrawer(false);
+    }, 1000);
+  };
+
+  const submit = useCallback(async () => {
+    console.log("submitting");
+    const a = await submitAssistantBuilderForm({
+      owner,
+      builderState: {
+        actionMode: builderState.actionMode,
+        handle: builderState.handle,
+        description: "Draft Assistant",
+        instructions: builderState.instructions,
+        avatarUrl: builderState.avatarUrl,
+        timeFrame: {
+          value: builderState.timeFrame.value,
+          unit: builderState.timeFrame.unit,
+        },
+        dustAppConfiguration: builderState.dustAppConfiguration,
+        tablesQueryConfiguration: builderState.tablesQueryConfiguration,
+        scope: "private",
+        dataSourceConfigurations: builderState.dataSourceConfigurations,
+        generationSettings: builderState.generationSettings,
+      },
+
+      agentConfigurationId: null,
+      slackData: {
+        selectedSlackChannels: [],
+        slackChannelsLinkedWithAgent: [],
+      },
+      isDraft: true,
+    });
+
+    animate();
+
+    setDraftAssistant(a);
+  }, [
+    owner,
+    builderState.actionMode,
+    builderState.handle,
+    builderState.instructions,
+    builderState.avatarUrl,
+    builderState.timeFrame.value,
+    builderState.timeFrame.unit,
+    builderState.dustAppConfiguration,
+    builderState.tablesQueryConfiguration,
+    builderState.dataSourceConfigurations,
+    builderState.generationSettings,
+  ]);
+
+  useEffect(() => {
+    debounce(debounceHandle, submit, 1500);
+  }, [submit]);
+
+  return {
+    shouldAnimate: animateDrawer,
+    draftAssistant: draftAssistant ?? null,
+  };
 }

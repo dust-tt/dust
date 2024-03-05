@@ -32,6 +32,7 @@ export interface InputBarContainerProps {
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
   hideQuickActions: boolean;
+  disableAutoFocus: boolean;
 }
 
 const InputBarContainer = ({
@@ -44,6 +45,7 @@ const InputBarContainer = ({
   selectedAssistant,
   stickyMentions,
   hideQuickActions,
+  disableAutoFocus,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
@@ -63,6 +65,7 @@ const InputBarContainer = ({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
+    disableAutoFocus,
   });
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
@@ -78,7 +81,8 @@ const InputBarContainer = ({
     editorService,
     agentConfigurations,
     stickyMentions,
-    selectedAssistant
+    selectedAssistant,
+    disableAutoFocus
   );
 
   // TODO: Reset after loading.
@@ -155,7 +159,7 @@ const InputBarContainer = ({
           size="sm"
           icon={ArrowUpIcon}
           label="Send"
-          disabled={editorService.isEmpty()}
+          disabled={!editorService.isFocused() || editorService.isEmpty()}
           labelVisible={false}
           disabledTooltip
           onClick={async () => {
