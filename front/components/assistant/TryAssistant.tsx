@@ -42,59 +42,18 @@ export function TryAssistantModal({
   assistant: LightAgentConfigurationType;
   onClose: () => void;
 }) {
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
-    { configurationId: assistant?.sId as string },
-  ]);
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    openWithConversation ?? null
-  );
-  const sendNotification = useContext(SendNotificationsContext);
-
-  const handleSubmit = async (
-    input: string,
-    mentions: MentionType[],
-    contentFragment?: {
-      title: string;
-      content: string;
-    }
-  ) => {
-    const messageData = { input, mentions, contentFragment };
-    if (!conversation) {
-      const result = await createConversationWithMessage({
-        owner,
-        user,
-        messageData,
-        visibility: "test",
-        title: `Trying @${assistant.name}`,
-      });
-      if (result.isOk()) {
-        setConversation(result.value);
-        return;
-      }
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
-    } else {
-      const result = await submitMessage({
-        owner,
-        user,
-        conversationId: conversation.sId as string,
-        messageData,
-      });
-      if (result.isOk()) return;
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
-    }
-  };
-
-  useEffect(() => {
-    setStickyMentions([{ configurationId: assistant?.sId as string }]);
-  }, [assistant]);
+  const {
+    conversation,
+    setConversation,
+    stickyMentions,
+    setStickyMentions,
+    handleSubmit,
+  } = useTryAssistantCore({
+    owner,
+    user,
+    assistant,
+    openWithConversation,
+  });
 
   return (
     <Modal
@@ -142,72 +101,27 @@ export function TryAssistantModal({
 
 export function TryAssistant({
   owner,
-  openWithConversation,
   assistant,
 }: {
   owner: WorkspaceType;
-  openWithConversation?: ConversationType;
   assistant: LightAgentConfigurationType | null;
 }) {
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    openWithConversation ?? null
-  );
-  const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
-    { configurationId: assistant?.sId as string },
-  ]);
+  const {
+    conversation,
+    setConversation,
+    stickyMentions,
+    setStickyMentions,
+    handleSubmit,
+  } = useTryAssistantCore({
+    owner,
+    user,
+    assistant,
+  });
 
   useEffect(() => {
-    setStickyMentions([{ configurationId: assistant?.sId as string }]);
-  }, [assistant]);
-
-  const handleSubmit = async (
-    input: string,
-    mentions: MentionType[],
-    contentFragment?: {
-      title: string;
-      content: string;
-    }
-  ) => {
-    if (!assistant || !user) return;
-    const messageData = { input, mentions, contentFragment };
-    if (!conversation) {
-      const result = await createConversationWithMessage({
-        owner,
-        user,
-        messageData,
-        visibility: "test",
-        title: `Trying @${assistant.name}`,
-      });
-      if (result.isOk()) {
-        setConversation(result.value);
-        return;
-      }
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
-    } else {
-      const result = await submitMessage({
-        owner,
-        user,
-        conversationId: conversation.sId as string,
-        messageData,
-      });
-      if (result.isOk()) return;
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
-    }
-  };
-
-  useEffect(() => {
-    setConversation(openWithConversation ?? null);
-  }, [openWithConversation, assistant?.sId]);
+    setConversation(null);
+  }, [assistant?.sId, setConversation]);
 
   if (!user || !assistant) return null;
 
@@ -333,5 +247,80 @@ export function usePreviewAssistant({
   return {
     shouldAnimate: animateDrawer,
     draftAssistant: draftAssistant ?? null,
+  };
+}
+
+function useTryAssistantCore({
+  owner,
+  user,
+  assistant,
+  openWithConversation,
+}: {
+  owner: WorkspaceType;
+  user: UserType | null;
+  openWithConversation?: ConversationType;
+  assistant: LightAgentConfigurationType | null;
+}) {
+  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
+    { configurationId: assistant?.sId as string },
+  ]);
+  const [conversation, setConversation] = useState<ConversationType | null>(
+    openWithConversation ?? null
+  );
+  const sendNotification = useContext(SendNotificationsContext);
+
+  const handleSubmit = async (
+    input: string,
+    mentions: MentionType[],
+    contentFragment?: {
+      title: string;
+      content: string;
+    }
+  ) => {
+    if (!user) return;
+    const messageData = { input, mentions, contentFragment };
+    if (!conversation) {
+      const result = await createConversationWithMessage({
+        owner,
+        user,
+        messageData,
+        visibility: "test",
+        title: `Trying @${assistant?.name}`,
+      });
+      if (result.isOk()) {
+        setConversation(result.value);
+        return;
+      }
+      sendNotification({
+        title: result.error.title,
+        description: result.error.message,
+        type: "error",
+      });
+    } else {
+      const result = await submitMessage({
+        owner,
+        user,
+        conversationId: conversation.sId as string,
+        messageData,
+      });
+      if (result.isOk()) return;
+      sendNotification({
+        title: result.error.title,
+        description: result.error.message,
+        type: "error",
+      });
+    }
+  };
+
+  useEffect(() => {
+    setStickyMentions([{ configurationId: assistant?.sId as string }]);
+  }, [assistant]);
+
+  return {
+    stickyMentions,
+    setStickyMentions,
+    conversation,
+    setConversation,
+    handleSubmit,
   };
 }
