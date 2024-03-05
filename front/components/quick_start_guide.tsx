@@ -78,7 +78,7 @@ export function QuickStartGuide({
               </Page.P>
               <Page.P>
                 You can call an assistant by using{" "}
-                <span className="italic">“"mentions"</span> (Typing{" "}
+                <span className="italic">“mentions”</span> (Typing{" "}
                 <strong>"@"</strong> and the name of the assistant). You can
                 even call several assistants at the same time and in the same
                 thread.
@@ -99,7 +99,7 @@ export function QuickStartGuide({
                 <span className="font-bold text-success-500">@gpt4</span>.
               </Page.P>
               <Page.P>
-                It is a raw model. <span className="italic">““Raw”</span> means
+                It is a raw model. <span className="italic">“Raw”</span> means
                 it does not have particular instructions or access to your
                 knowledge.
               </Page.P>
