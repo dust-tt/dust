@@ -364,36 +364,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getResourcesTitles({
-    connectorId,
-    resourceInternalIds,
-  }: {
-    connectorId: string;
-    resourceInternalIds: string[];
-  }): Promise<
-    ConnectorsAPIResponse<{
-      resources: {
-        internalId: string;
-        title: string;
-      }[];
-    }>
-  > {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
-        connectorId
-      )}/resources/titles`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          resourceInternalIds,
-        }),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async getContentNodes({
     connectorId,
     internalIds,

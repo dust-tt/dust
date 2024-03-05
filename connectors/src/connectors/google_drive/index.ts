@@ -542,25 +542,6 @@ export async function setGoogleDriveConnectorPermissions(
   return new Ok(undefined);
 }
 
-export async function retrieveGoogleDriveObjectsTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const googleDriveFiles = await GoogleDriveFiles.findAll({
-    where: {
-      connectorId: connectorId,
-      driveFileId: internalIds,
-    },
-  });
-
-  const titles = googleDriveFiles.reduce((acc, curr) => {
-    acc[curr.driveFileId] = curr.name;
-    return acc;
-  }, {} as Record<string, string>);
-
-  return new Ok(titles);
-}
-
 export async function retrieveGoogleDriveContentNodes(
   connectorId: ModelId,
   internalIds: string[]

@@ -462,37 +462,6 @@ export async function retrieveNotionConnectorPermissions({
   return new Ok(nodes.concat(folderNodes));
 }
 
-export async function retrieveNotionNodesTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string | null>, Error>> {
-  const pages = await NotionPage.findAll({
-    where: {
-      connectorId,
-      notionPageId: internalIds,
-    },
-  });
-
-  const dbs = await NotionDatabase.findAll({
-    where: {
-      connectorId,
-      notionDatabaseId: internalIds,
-    },
-  });
-
-  const titles = pages
-    .map((p) => ({ internalId: p.notionPageId, title: p.title }))
-    .concat(
-      dbs.map((db) => ({ internalId: db.notionDatabaseId, title: db.title }))
-    )
-    .reduce((acc, { internalId, title }) => {
-      acc[internalId] = title ?? null;
-      return acc;
-    }, {} as Record<string, string | null>);
-
-  return new Ok(titles);
-}
-
 export async function retrieveNotionContentNodeParents(
   connectorId: ModelId,
   internalId: string,
