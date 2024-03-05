@@ -16,6 +16,7 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
+import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
@@ -58,7 +59,6 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
