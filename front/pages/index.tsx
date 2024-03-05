@@ -66,29 +66,25 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
 
-    if (user && user.workspaces.length > 0) {
-      let url = `/w/${user.workspaces[0].sId}`;
+  if (user && user.workspaces.length > 0) {
+    let url = `/w/${user.workspaces[0].sId}`;
 
-      if (context.query.inviteToken) {
-        url = `/api/login?inviteToken=${context.query.inviteToken}`;
-      }
-
-      return {
-        redirect: {
-          destination: url,
-          permanent: false,
-        },
-      };
+    if (context.query.inviteToken) {
+      url = `/api/login?inviteToken=${context.query.inviteToken}`;
     }
 
     return {
-      props: { gaTrackingId: GA_TRACKING_ID },
+      redirect: {
+        destination: url,
+        permanent: false,
+      },
     };
-  },
-  {
-    requireAuth: false,
   }
-);
+
+  return {
+    props: { gaTrackingId: GA_TRACKING_ID },
+  };
+});
 
 export default function Home({
   gaTrackingId,
