@@ -10,7 +10,8 @@ const useHandleMentions = (
   editorService: EditorService,
   agentConfigurations: LightAgentConfigurationType[],
   stickyMentions: AgentMention[] | undefined,
-  selectedAssistant: AgentMention | null
+  selectedAssistant: AgentMention | null,
+  disableAutoFocus: boolean
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
 
@@ -56,12 +57,17 @@ const useHandleMentions = (
       }
 
       if (mentionsToInsert.length !== 0) {
-        editorService.resetWithMentions(mentionsToInsert);
+        editorService.resetWithMentions(mentionsToInsert, disableAutoFocus);
         stickyMentionsTextContent.current =
           editorService.getTrimmedText() ?? null;
       }
     }
-  }, [agentConfigurations, editorService, mentionedAgentConfigurationIds]);
+  }, [
+    agentConfigurations,
+    editorService,
+    mentionedAgentConfigurationIds,
+    disableAutoFocus,
+  ]);
 };
 
 export default useHandleMentions;

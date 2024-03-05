@@ -1,4 +1,4 @@
-const DEBOUNCE_DELAY = 1500;
+const DEFAULT_DEBOUNCE_DELAY = 1500;
 
 /**
  * Debounce function to prevent too many calls
@@ -7,11 +7,12 @@ const DEBOUNCE_DELAY = 1500;
  */
 export function debounce(
   debounceHandle: React.MutableRefObject<NodeJS.Timeout | undefined>,
-  func: () => void
+  func: () => void,
+  debounceDelay = DEFAULT_DEBOUNCE_DELAY
 ) {
   if (debounceHandle.current) {
     clearTimeout(debounceHandle.current);
     debounceHandle.current = undefined;
   }
-  debounceHandle.current = setTimeout(func, DEBOUNCE_DELAY);
+  debounceHandle.current = setTimeout(func, debounceDelay);
 }
