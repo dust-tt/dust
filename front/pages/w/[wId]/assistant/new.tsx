@@ -31,7 +31,7 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/i
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
