@@ -1,3 +1,4 @@
+import type { UserProviderType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -15,8 +16,11 @@ export class User extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare provider: "github" | "google";
-  declare providerId: string;
+
+  declare auth0Sub: string | null;
+  declare provider: UserProviderType;
+  declare providerId: string | null;
+
   declare username: string;
   declare email: string;
   declare name: string;
@@ -45,11 +49,16 @@ User.init(
     },
     provider: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     providerId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
+    },
+    auth0Sub: {
+      type: DataTypes.STRING,
+      // TODO(2024-03-01 flav) Set to false once new login flow is released.
+      allowNull: true,
     },
     username: {
       type: DataTypes.STRING,
