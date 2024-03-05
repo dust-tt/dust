@@ -44,7 +44,7 @@ export function QuickStartGuide({
               </Page.H>
               <Page.P>
                 In Dust, you have access to{" "}
-                <strong>multiple AI&nbsp;assistant</strong>.
+                <strong>multiple AI&nbsp;assistants</strong>.
               </Page.P>
               <Page.P>
                 You can call an assistant by using{" "}
@@ -143,7 +143,7 @@ export function QuickStartGuide({
               </div>
               <Page.P>
                 Notion, Slack, Google Drive... Dust can connect to multiple
-                platforms and make syncronise your data.
+                platforms and synchronize your data.
               </Page.P>
             </Page.Vertical>
             <Page.Vertical sizing="grow">
