@@ -364,37 +364,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  // @deprecated
-  async getResourcesParents({
-    connectorId,
-    resourceInternalIds,
-  }: {
-    connectorId: string;
-    resourceInternalIds: string[];
-  }): Promise<
-    ConnectorsAPIResponse<{
-      resources: {
-        internalId: string;
-        parents: string[];
-      }[];
-    }>
-  > {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
-        connectorId
-      )}/resources/parents`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify({
-          resourceInternalIds,
-        }),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async getResourcesTitles({
     connectorId,
     resourceInternalIds,

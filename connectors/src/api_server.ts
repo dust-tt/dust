@@ -10,7 +10,6 @@ import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getContentNodesParentsAPIHandler } from "@connectors/api/get_content_node_parents";
 import { getConnectorNodesAPIHandler } from "@connectors/api/get_content_nodes";
-import { getResourcesParentsAPIHandler } from "@connectors/api/get_resources_parents";
 import { getResourcesTitlesAPIHandler } from "@connectors/api/get_resources_titles";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
@@ -97,12 +96,6 @@ export function startServer(port: number) {
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
-  );
-  // @deprecated Daph to remove
-  app.post(
-    // must be POST because of body
-    "/connectors/:connector_id/resources/parents",
-    getResourcesParentsAPIHandler
   );
   app.post(
     // must be POST because of body
