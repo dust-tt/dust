@@ -473,7 +473,7 @@ export async function retrieveConfluenceContentNodes(
   return new Ok(contentNodes);
 }
 
-export async function retrieveConfluenceResourceParents(
+export async function retrieveConfluenceContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {

@@ -750,7 +750,7 @@ export async function setGithubConfig(
   }
 }
 
-export async function retrieveGithubResourceParents(
+export async function retrieveGithubContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {

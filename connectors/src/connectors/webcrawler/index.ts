@@ -345,7 +345,7 @@ export async function retrieveWebCrawlerContentNodes(
   return new Ok(nodes);
 }
 
-export async function retrieveWebCrawlerObjectsParents(
+export async function retrieveWebCrawlerContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
