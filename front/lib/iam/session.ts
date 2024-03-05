@@ -19,11 +19,11 @@ import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 /**
  * Retrieves the user for a given session
- * @param session any NextAuth session
+ * @param session any Auth0 session
  * @returns Promise<UserType | null>
  */
 export async function getUserFromSession(
-  session: any
+  session: SessionWithUser | null
 ): Promise<UserTypeWithWorkspaces | null> {
   if (!session || !isValidSession(session)) {
     return null;
