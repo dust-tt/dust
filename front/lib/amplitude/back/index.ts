@@ -11,7 +11,6 @@ export function getBackendClient() {
   }
 
   const disabled = !(AMPLITUDE_ENABLED === "true");
-  console.log("amplitude disabled?", disabled);
   ampli.load({
     environment: "dust",
     disabled: disabled,

@@ -17,7 +17,7 @@
  * [Full Setup Instructions](https://data.amplitude.com/dust-tt/Dust/implementation/dust-back)
  */
 
-import * as amplitude from '@amplitude/analytics-node';
+import * as amplitude from "@amplitude/analytics-node";
 
 export type NodeClient = amplitude.Types.NodeClient;
 export type BaseEvent = amplitude.Types.BaseEvent;
@@ -26,40 +26,52 @@ export type EventOptions = amplitude.Types.EventOptions;
 export type Result = amplitude.Types.Result;
 export type NodeOptions = amplitude.Types.NodeOptions;
 
-export type Environment = 'dust';
+export type Environment = "dust";
 
 export const ApiKey: Record<Environment, string> = {
-  dust: '6ba33096c77a939358f9c21e12d73592'
+  dust: "6ba33096c77a939358f9c21e12d73592",
 };
 
 /**
-* Default Amplitude configuration options. Contains tracking plan information.
-*/
+ * Default Amplitude configuration options. Contains tracking plan information.
+ */
 export const DefaultConfiguration: NodeOptions = {
   plan: {
-    version: '1',
-    branch: 'main',
-    source: 'dust-back',
-    versionId: '79fc7267-bc91-42ba-8abc-721cd114724e'
+    version: "1",
+    branch: "main",
+    source: "dust-back",
+    versionId: "79fc7267-bc91-42ba-8abc-721cd114724e",
   },
   ...{
     ingestionMetadata: {
-      sourceName: 'node.js-typescript-ampli',
-      sourceVersion: '2.0.0'
-    }
-  }
+      sourceName: "node.js-typescript-ampli",
+      sourceVersion: "2.0.0",
+    },
+  },
 };
 
-export interface LoadOptionsBase { disabled?: boolean }
+export interface LoadOptionsBase {
+  disabled?: boolean;
+}
 
-export type LoadOptionsWithEnvironment = LoadOptionsBase & { environment: Environment; client?: { configuration?: NodeOptions; }; };
-export type LoadOptionsWithApiKey = LoadOptionsBase & { client: { apiKey: string; configuration?: NodeOptions; } };
-export type LoadOptionsWithClientInstance = LoadOptionsBase & { client: { instance: NodeClient; } };
+export type LoadOptionsWithEnvironment = LoadOptionsBase & {
+  environment: Environment;
+  client?: { configuration?: NodeOptions };
+};
+export type LoadOptionsWithApiKey = LoadOptionsBase & {
+  client: { apiKey: string; configuration?: NodeOptions };
+};
+export type LoadOptionsWithClientInstance = LoadOptionsBase & {
+  client: { instance: NodeClient };
+};
 
-export type LoadOptions = LoadOptionsWithEnvironment | LoadOptionsWithApiKey | LoadOptionsWithClientInstance;
+export type LoadOptions =
+  | LoadOptionsWithEnvironment
+  | LoadOptionsWithApiKey
+  | LoadOptionsWithClientInstance;
 
 export class SignUp implements BaseEvent {
-  event_type = 'Sign Up';
+  event_type = "Sign Up";
 }
 
 export type PromiseResult<T> = { promise: Promise<T | void> };

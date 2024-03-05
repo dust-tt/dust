@@ -17,12 +17,12 @@
  * [Full Setup Instructions](https://data.amplitude.com/dust-tt/Dust/implementation/dust-browser)
  */
 
-import * as amplitude from '@amplitude/analytics-browser';
+import * as amplitude from "@amplitude/analytics-browser";
 
-export type Environment = 'dust';
+export type Environment = "dust";
 
 export const ApiKey: Record<Environment, string> = {
-  dust: '6ba33096c77a939358f9c21e12d73592'
+  dust: "6ba33096c77a939358f9c21e12d73592",
 };
 
 /**
@@ -30,26 +30,38 @@ export const ApiKey: Record<Environment, string> = {
  */
 export const DefaultConfiguration: BrowserOptions = {
   plan: {
-    version: '1',
-    branch: 'main',
-    source: 'dust-browser',
-    versionId: '79fc7267-bc91-42ba-8abc-721cd114724e'
+    version: "1",
+    branch: "main",
+    source: "dust-browser",
+    versionId: "79fc7267-bc91-42ba-8abc-721cd114724e",
   },
   ...{
     ingestionMetadata: {
-      sourceName: 'browser-typescript-ampli',
-      sourceVersion: '2.0.0'
-    }
-  }
+      sourceName: "browser-typescript-ampli",
+      sourceVersion: "2.0.0",
+    },
+  },
 };
 
-export interface LoadOptionsBase { disabled?: boolean }
+export interface LoadOptionsBase {
+  disabled?: boolean;
+}
 
-export type LoadOptionsWithEnvironment = LoadOptionsBase & { environment: Environment; client?: { configuration?: BrowserOptions; }; };
-export type LoadOptionsWithApiKey = LoadOptionsBase & { client: { apiKey: string; configuration?: BrowserOptions; } };
-export type LoadOptionsWithClientInstance = LoadOptionsBase & { client: { instance: BrowserClient; } };
+export type LoadOptionsWithEnvironment = LoadOptionsBase & {
+  environment: Environment;
+  client?: { configuration?: BrowserOptions };
+};
+export type LoadOptionsWithApiKey = LoadOptionsBase & {
+  client: { apiKey: string; configuration?: BrowserOptions };
+};
+export type LoadOptionsWithClientInstance = LoadOptionsBase & {
+  client: { instance: BrowserClient };
+};
 
-export type LoadOptions = LoadOptionsWithEnvironment | LoadOptionsWithApiKey | LoadOptionsWithClientInstance;
+export type LoadOptions =
+  | LoadOptionsWithEnvironment
+  | LoadOptionsWithApiKey
+  | LoadOptionsWithClientInstance;
 
 export interface QuickGuideViewProperties {
   /**
@@ -63,11 +75,9 @@ export interface QuickGuideViewProperties {
 }
 
 export class QuickGuideView implements BaseEvent {
-  event_type = 'Quick Guide View';
+  event_type = "Quick Guide View";
 
-  constructor(
-    public event_properties: QuickGuideViewProperties,
-  ) {
+  constructor(public event_properties: QuickGuideViewProperties) {
     this.event_properties = event_properties;
   }
 }

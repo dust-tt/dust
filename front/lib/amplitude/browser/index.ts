@@ -9,7 +9,7 @@ export function getBrowserClient() {
   }
 
   const disabled = !new URL(window.location.href).origin.startsWith(
-    "https://dust.tt"
+    "https://dust.tt/"
   );
   ampli.load({
     environment: "dust",
