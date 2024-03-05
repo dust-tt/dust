@@ -1,6 +1,7 @@
 import type {
   AgentConfigurationScope,
   AppType,
+  ConnectorNode,
   DataSourceType,
   SupportedModel,
   TimeframeUnit,
@@ -18,7 +19,7 @@ export type ActionMode = (typeof ACTION_MODES)[number];
 
 export type AssistantBuilderDataSourceConfiguration = {
   dataSource: DataSourceType;
-  selectedResources: Record<string, string>;
+  selectedResources: ConnectorNode[];
   isSelectAll: boolean;
 };
 
@@ -33,13 +34,15 @@ export type AssistantBuilderTableConfiguration = {
   tableName: string;
 };
 
+export type AssistantBuilderDataSourceConfigurations = Record<
+  string,
+  AssistantBuilderDataSourceConfiguration
+>;
+
 // Builder State
 export type AssistantBuilderState = {
   actionMode: ActionMode;
-  dataSourceConfigurations: Record<
-    string,
-    AssistantBuilderDataSourceConfiguration
-  >;
+  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
   timeFrame: {
     value: number;
     unit: TimeframeUnit;

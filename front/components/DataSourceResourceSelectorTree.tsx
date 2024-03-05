@@ -6,7 +6,11 @@ import {
   DocumentTextIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  DataSourceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { ConnectorNodeType, ConnectorPermission } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
@@ -29,7 +33,8 @@ export default function DataSourceResourceSelectorTree({
   expandable: boolean;
   selectedParentIds: Set<string>;
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string; parents: string[] },
+    resource: ConnectorNode,
+    parents: string[],
     selected: boolean
   ) => void;
   parentsById: Record<string, Set<string>>;
@@ -99,7 +104,8 @@ function DataSourceResourceSelectorChildren({
   selectedParentIds: Set<string>;
   parents: string[];
   onSelectChange: (
-    resource: { resourceId: string; resourceName: string; parents: string[] },
+    resource: ConnectorNode,
+    parents: string[],
     selected: boolean
   ) => void;
   parentsById: Record<string, Set<string>>;
@@ -201,14 +207,7 @@ function DataSourceResourceSelectorChildren({
                       checked={checkStatus === "checked"}
                       partialChecked={checkStatus === "partial"}
                       onChange={(checked) =>
-                        onSelectChange(
-                          {
-                            resourceId: r.internalId,
-                            resourceName: r.title,
-                            parents: parents,
-                          },
-                          checked
-                        )
+                        onSelectChange(r, parents, checked)
                       }
                       disabled={isChecked || fullySelected}
                     />

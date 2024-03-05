@@ -7,14 +7,21 @@ import {
   Searchbar,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import type {
+  ConnectorNode,
+  ConnectorProvider,
+  DataSourceType,
+} from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderDataSourceConfigurations,
+} from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -43,33 +50,27 @@ export default function AssistantBuilderDataSourceModal({
   owner,
   dataSources,
   onSave,
-  dataSourceToManage,
+  onDelete,
+  dataSourceConfigurations,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
   onSave: (params: AssistantBuilderDataSourceConfiguration) => void;
-  dataSourceToManage: AssistantBuilderDataSourceConfiguration | null;
+  onDelete: (name: string) => void;
+  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
-  const [selectedResources, setSelectedResources] = useState<
-    Record<string, string>
-  >({});
+  const [selectedResources, setSelectedResources] = useState<ConnectorNode[]>(
+    []
+  );
   const [isSelectAll, setIsSelectAll] = useState(false);
-
-  useEffect(() => {
-    if (dataSourceToManage) {
-      setSelectedDataSource(dataSourceToManage.dataSource);
-      setSelectedResources(dataSourceToManage.selectedResources);
-      setIsSelectAll(dataSourceToManage.isSelectAll);
-    }
-  }, [dataSourceToManage]);
 
   const onReset = () => {
     setSelectedDataSource(null);
-    setSelectedResources({});
+    setSelectedResources([]);
     setIsSelectAll(false);
   };
 
@@ -81,43 +82,48 @@ export default function AssistantBuilderDataSourceModal({
   };
 
   const onSaveLocal = ({ isSelectAll }: { isSelectAll: boolean }) => {
-    if (
-      !selectedDataSource ||
-      (Object.keys(selectedResources).length === 0 && !isSelectAll)
-    ) {
+    if (!selectedDataSource) {
       throw new Error("Cannot save an incomplete configuration");
     }
-    onSave({
-      dataSource: selectedDataSource,
-      selectedResources,
-      isSelectAll,
-    });
+    if (selectedResources.length || isSelectAll) {
+      onSave({
+        dataSource: selectedDataSource,
+        selectedResources,
+        isSelectAll,
+      });
+    } else {
+      onDelete(selectedDataSource.name);
+    }
+
     onClose();
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={selectedDataSource && !dataSourceToManage ? onReset : onClose}
+      onClose={selectedDataSource !== null ? onReset : onClose}
       onSave={() => onSaveLocal({ isSelectAll })}
-      hasChanged={
-        !!selectedDataSource &&
-        (Object.keys(selectedResources).length > 0 || isSelectAll)
-      }
+      hasChanged={selectedDataSource !== null}
       variant="full-screen"
-      title="Add data sources"
+      title="Manage data sources selection"
     >
       <div className="w-full pt-12">
         {!selectedDataSource || !selectedDataSource.connectorProvider ? (
           <PickDataSource
             dataSources={dataSources}
-            show={!dataSourceToManage}
+            show={!selectedDataSource}
             onPick={(ds) => {
               setSelectedDataSource(ds);
+              setSelectedResources(
+                dataSourceConfigurations[ds.name]?.selectedResources || []
+              );
+              setIsSelectAll(
+                dataSourceConfigurations[ds.name]?.isSelectAll || false
+              );
               if (!ds.connectorProvider) {
                 onSave({
                   dataSource: ds,
-                  selectedResources: {},
+                  selectedResources: [],
                   isSelectAll: true,
                 });
                 onClose();
@@ -126,22 +132,34 @@ export default function AssistantBuilderDataSourceModal({
           />
         ) : (
           <DataSourceResourceSelector
-            dataSource={dataSourceToManage?.dataSource ?? selectedDataSource}
+            dataSource={selectedDataSource}
             owner={owner}
             selectedResources={selectedResources}
             isSelectAll={isSelectAll}
-            onSelectChange={({ resourceId, resourceName }, selected) => {
-              const newSelectedResources = { ...selectedResources };
-              if (selected) {
-                newSelectedResources[resourceId] = resourceName;
-              } else {
-                delete newSelectedResources[resourceId];
-              }
-
-              setSelectedResources(newSelectedResources);
+            onSelectChange={(node, selected) => {
+              setSelectedResources((currentResources) => {
+                const isNodeAlreadySelected = currentResources.some(
+                  (resource) => resource.internalId === node.internalId
+                );
+                if (selected) {
+                  if (!isNodeAlreadySelected) {
+                    return [...currentResources, node];
+                  }
+                } else {
+                  if (isNodeAlreadySelected) {
+                    return currentResources.filter(
+                      (resource) => resource.internalId !== node.internalId
+                    );
+                  }
+                }
+                return currentResources;
+              });
             }}
             toggleSelectAll={() => {
               const selectAll = !isSelectAll;
+              if (isSelectAll === false) {
+                setSelectedResources([]);
+              }
               setIsSelectAll(selectAll);
             }}
           />
@@ -208,12 +226,9 @@ function DataSourceResourceSelector({
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
-  selectedResources: Record<string, string>;
+  selectedResources: ConnectorNode[];
   isSelectAll: boolean;
-  onSelectChange: (
-    resource: { resourceId: string; resourceName: string },
-    selected: boolean
-  ) => void;
+  onSelectChange: (resource: ConnectorNode, selected: boolean) => void;
   toggleSelectAll: () => void;
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
@@ -235,7 +250,9 @@ function DataSourceResourceSelector({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            internalIds: Object.keys(selectedResources),
+            internalIds: selectedResources.map((resource) => {
+              return resource.internalId;
+            }),
           }),
         }
       );
@@ -257,7 +274,7 @@ function DataSourceResourceSelector({
   }, [owner, dataSource?.name, selectedResources]);
 
   const hasParentsById = Object.keys(parentsById || {}).length > 0;
-  const hasSelectedResources = Object.keys(selectedResources).length > 0;
+  const hasSelectedResources = selectedResources.length > 0;
 
   useEffect(() => {
     if (parentsAreLoading || parentsAreError) {
@@ -316,21 +333,21 @@ function DataSourceResourceSelector({
                     dataSource.connectorProvider as ConnectorProvider
                   ]?.isNested
                 }
-                selectedParentIds={new Set(Object.keys(selectedResources))}
+                selectedParentIds={
+                  new Set(
+                    selectedResources.map((resource) => resource.internalId)
+                  )
+                }
                 parentsById={parentsById}
-                onSelectChange={(
-                  { resourceId, resourceName, parents },
-                  selected
-                ) => {
+                onSelectChange={(node, parents, selected) => {
                   const newParentsById = { ...parentsById };
                   if (selected) {
-                    newParentsById[resourceId] = new Set(parents);
+                    newParentsById[node.internalId] = new Set(parents);
                   } else {
-                    delete newParentsById[resourceId];
+                    delete newParentsById[node.internalId];
                   }
-
                   setParentsById(newParentsById);
-                  onSelectChange({ resourceId, resourceName }, selected);
+                  onSelectChange(node, selected);
                 }}
                 fullySelected={isSelectAll}
               />
