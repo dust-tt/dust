@@ -503,6 +503,7 @@ export async function garbageCollector(
 
   return files.length;
 }
+
 export async function renewWebhooks(pageSize: number): Promise<number> {
   // Find webhook that are about to expire in the next hour.
   const webhooks = await GoogleDriveWebhook.findAll({
@@ -587,6 +588,11 @@ export async function renewOneWebhook(webhookId: ModelId) {
           },
           `Failed to renew webhook: Oauth token revoked .`
         );
+        // Do not delete the webhook object but push it down the line in 2h so that it does not get
+        // picked up by the loop calling rewnewOneWebhook.
+        await wh.update({
+          renewAt: literal("NOW() + INTERVAL '2 hour'"),
+        });
         return;
       }
 
@@ -615,6 +621,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
     }
   }
 }
+
 export async function populateSyncTokens(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
