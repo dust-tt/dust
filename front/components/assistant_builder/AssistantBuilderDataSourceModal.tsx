@@ -235,7 +235,7 @@ function DataSourceResourceSelector({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            resourceInternalIds: Object.keys(selectedResources),
+            internalIds: Object.keys(selectedResources),
           }),
         }
       );
@@ -244,7 +244,7 @@ function DataSourceResourceSelector({
       }
       const json: GetConnectorNodeParentsResponseBody = await res.json();
       setParentsById(
-        json.resources.reduce((acc, r) => {
+        json.nodes.reduce((acc, r) => {
           acc[r.internalId] = new Set(r.parents);
           return acc;
         }, {} as Record<string, Set<string>>)
