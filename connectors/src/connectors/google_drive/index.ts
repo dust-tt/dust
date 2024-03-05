@@ -610,7 +610,7 @@ export async function retrieveGoogleDriveContentNodes(
   return new Ok(nodes);
 }
 
-export async function retrieveGoogleDriveObjectsParents(
+export async function retrieveGoogleDriveContentNodeParents(
   connectorId: ModelId,
   internalId: string,
   memoizationKey?: string

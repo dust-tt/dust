@@ -497,7 +497,7 @@ export async function retrieveNotionNodesTitles(
   return new Ok(titles);
 }
 
-export async function retrieveNotionResourceParents(
+export async function retrieveNotionContentNodeParents(
   connectorId: ModelId,
   internalId: string,
   memoizationKey?: string
