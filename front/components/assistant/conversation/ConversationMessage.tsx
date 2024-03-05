@@ -51,7 +51,7 @@ export function EmojiSelector({
           />
         </div>
       </DropdownMenu.Button>
-      <DropdownMenu.Items width={280} origin="topRight">
+      <DropdownMenu.Items width={400} origin="topRight" overflow="visible">
         <Picker
           theme="light"
           previewPosition="none"
