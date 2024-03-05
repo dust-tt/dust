@@ -11,11 +11,11 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const GetConnectorNodeParentsRequestBodySchema = t.type({
-  resourceInternalIds: t.array(t.string),
+  internalIds: t.array(t.string),
 });
 
 export type GetConnectorNodeParentsResponseBody = {
-  resources: { parents: string[]; internalId: string }[];
+  nodes: { parents: string[]; internalId: string }[];
 };
 
 async function handler(
@@ -101,11 +101,11 @@ async function handler(
         });
       }
 
-      const { resourceInternalIds } = bodyValidation.right;
+      const { internalIds } = bodyValidation.right;
 
       const connectorsAPI = new ConnectorsAPI(logger);
-      const connectorsRes = await connectorsAPI.getResourcesParents({
-        resourceInternalIds,
+      const connectorsRes = await connectorsAPI.getContentNodesParents({
+        internalIds,
         connectorId: dataSource.connectorId,
       });
 
@@ -119,7 +119,7 @@ async function handler(
         });
       }
 
-      res.status(200).json({ resources: connectorsRes.value.resources });
+      res.status(200).json({ nodes: connectorsRes.value.nodes });
       return;
 
     default:

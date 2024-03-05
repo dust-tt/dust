@@ -34,7 +34,7 @@ function isConfluenceSpaceModel(
   );
 }
 
-function createConnectorNodeFromSpace(
+export function createConnectorNodeFromSpace(
   space: ConfluenceSpace | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
@@ -59,7 +59,7 @@ function createConnectorNodeFromSpace(
   };
 }
 
-function createConnectorNodeFromPage(
+export function createConnectorNodeFromPage(
   parent: { id: string; type: "page" | "space" },
   baseUrl: string,
   page: ConfluencePage,
@@ -82,7 +82,10 @@ function createConnectorNodeFromPage(
   };
 }
 
-async function checkPageHasChildren(connectorId: ModelId, pageId: string) {
+export async function checkPageHasChildren(
+  connectorId: ModelId,
+  pageId: string
+) {
   const childrenPage = await ConfluencePage.findOne({
     attributes: ["id"],
     where: {

@@ -11,7 +11,7 @@ interface BaseAssistantPreviewProps {
   description: string;
   title: string;
   pictureUrl: string;
-  subtitle: string;
+  subtitle?: string;
   onClick?: () => void;
 }
 
@@ -129,7 +129,7 @@ const ListVariantContent = ({
     <div className="s-flex s-gap-2">
       <Avatar
         visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
-        size="md"
+        size="lg"
       />
       <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
         <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
@@ -142,14 +142,17 @@ const ListVariantContent = ({
             >
               @{title}
             </div>
-            <div
-              className={classNames(
-                subtitleClassNames["base"],
-                subtitleClassNames.list
-              )}
-            >
-              By: {subtitle}
-            </div>
+
+            {subtitle && (
+              <div
+                className={classNames(
+                  subtitleClassNames["base"],
+                  subtitleClassNames.list
+                )}
+              >
+                By: {subtitle}
+              </div>
+            )}
           </div>
         </div>
         <div
@@ -178,7 +181,7 @@ const GalleryVariantContent = ({
     <div className="s-flex s-gap-2">
       <Avatar
         visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
-        size="md"
+        size="lg"
       />
       <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
         <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">

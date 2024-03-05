@@ -10,7 +10,7 @@ import {
   getWorkspaceInfos,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -38,7 +38,9 @@ type OnboardingType =
   | "domain_conversation_link"
   | "domain_invite_link";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
+  requireAuth: false,
+})<{
   onboardingType: OnboardingType;
   workspace: LightWorkspaceType;
   signUpCallbackUrl: string;

@@ -107,6 +107,7 @@ export function SharingButton({
   newScope,
   setNewScope,
   baseUrl,
+  showSlackIntegration,
   slackDataSource,
   slackChannelSelected,
   setNewLinkedSlackChannels,
@@ -117,6 +118,7 @@ export function SharingButton({
   newScope: NonGlobalScope;
   setNewScope: (scope: NonGlobalScope) => void;
   baseUrl: string;
+  showSlackIntegration: boolean;
   slackDataSource: DataSourceType | null;
   slackChannelSelected: SlackChannel[];
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
@@ -191,6 +193,8 @@ export function SharingButton({
                 </div>
               </div>
             </div>
+            {showSlackIntegration && (
+                <>
             <Page.Separator />
             <div className="flex flex-row justify-between">
               <div>
@@ -233,7 +237,8 @@ export function SharingButton({
                   }}
                 />
               </div>
-            </div>
+            </div></>
+            )}
             {agentConfigurationId && (
               <>
                 <Page.Separator />

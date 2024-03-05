@@ -93,6 +93,7 @@ export type ConnectorNode = {
   parentInternalId: string | null;
   type: ConnectorNodeType;
   title: string;
+  titleWithParentsContext?: string;
   sourceUrl: string | null;
   expandable: boolean;
   preventSelection?: boolean;
@@ -333,15 +334,15 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getResourcesParents({
+  async getContentNodesParents({
     connectorId,
-    resourceInternalIds,
+    internalIds,
   }: {
     connectorId: string;
-    resourceInternalIds: string[];
+    internalIds: string[];
   }): Promise<
     ConnectorsAPIResponse<{
-      resources: {
+      nodes: {
         internalId: string;
         parents: string[];
       }[];
@@ -350,12 +351,12 @@ export class ConnectorsAPI {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
-      )}/resources/parents`,
+      )}/content_nodes/parents`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
-          resourceInternalIds,
+          internalIds,
         }),
       }
     );

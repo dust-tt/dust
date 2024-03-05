@@ -16,9 +16,13 @@ import { getConfluencePageParentIds } from "@connectors/connectors/confluence/li
 import {
   getIdFromConfluenceInternalId,
   isConfluenceInternalPageId,
+  isConfluenceInternalSpaceId,
   makeConfluenceInternalSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
+  checkPageHasChildren,
+  createConnectorNodeFromPage,
+  createConnectorNodeFromSpace,
   retrieveAvailableSpaces,
   retrieveHierarchyForParent,
 } from "@connectors/connectors/confluence/lib/permissions";
@@ -29,6 +33,7 @@ import {
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -395,7 +400,81 @@ export async function retrieveConfluenceObjectsTitles(
   return new Ok(titles);
 }
 
-export async function retrieveConfluenceResourceParents(
+export async function retrieveConfluenceContentNodes(
+  connectorId: ModelId,
+  internalIds: string[]
+): Promise<Result<ConnectorNode[], Error>> {
+  const connectorState = await ConfluenceConfiguration.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!connectorState) {
+    return new Err(new Error("Confluence configuration not found"));
+  }
+
+  const spaceIds: string[] = [];
+  const pageIds: string[] = [];
+
+  internalIds.forEach((internalId) => {
+    if (isConfluenceInternalSpaceId(internalId)) {
+      spaceIds.push(getIdFromConfluenceInternalId(internalId));
+    } else if (isConfluenceInternalPageId(internalId)) {
+      pageIds.push(getIdFromConfluenceInternalId(internalId));
+    }
+  });
+
+  const [confluenceSpaces, confluencePages] = await Promise.all([
+    ConfluenceSpace.findAll({
+      where: {
+        connectorId: connectorId,
+        spaceId: spaceIds,
+      },
+    }),
+    ConfluencePage.findAll({
+      where: {
+        connectorId: connectorId,
+        pageId: pageIds,
+      },
+    }),
+  ]);
+
+  const spaceContentNodes: ConnectorNode[] = confluenceSpaces.map((space) => {
+    return createConnectorNodeFromSpace(space, connectorState.url, "read", {
+      isExpandable: true,
+    });
+  });
+
+  const pageContentNodes: ConnectorNode[] = await concurrentExecutor(
+    confluencePages,
+    async (page) => {
+      let parentId: string;
+      let parentType: "page" | "space";
+
+      if (page.parentId) {
+        parentId = page.parentId;
+        parentType = "page";
+      } else {
+        parentId = page.spaceId;
+        parentType = "space";
+      }
+      const isExpandable = await checkPageHasChildren(connectorId, page.pageId);
+
+      return createConnectorNodeFromPage(
+        { id: parentId, type: parentType },
+        connectorState.url,
+        page,
+        isExpandable
+      );
+    },
+    { concurrency: 8 }
+  );
+
+  const contentNodes = spaceContentNodes.concat(pageContentNodes);
+  return new Ok(contentNodes);
+}
+
+export async function retrieveConfluenceContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {

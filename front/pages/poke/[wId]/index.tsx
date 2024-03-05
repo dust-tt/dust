@@ -35,9 +35,10 @@ import {
   GLOBAL_AGENTS_SID,
   orderDatasourceByImportance,
 } from "@app/lib/assistant";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -45,9 +46,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
@@ -55,8 +55,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string

@@ -9,13 +9,12 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { Authenticator } from "@app/lib/auth";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   agentConfigurations: AgentConfigurationType[];
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string
