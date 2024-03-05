@@ -71,7 +71,7 @@ const _getContentNodesParents = async (
 
   for (const [internalId, parentsResult] of zip(internalIds, parentsResults)) {
     if (parentsResult.isErr()) {
-      logger.error(parentsResult.error, "Failed to get resource parents");
+      logger.error(parentsResult.error, "Failed to get content node parents");
       return apiError(req, res, {
         status_code: 500,
         api_error: {
