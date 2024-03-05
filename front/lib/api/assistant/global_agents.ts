@@ -381,6 +381,11 @@ async function _getGeminiProGlobalAgent({
   };
 }
 
+// Meta prompt used to incentivize the model to answer with brieviety.
+function brievietyPrompt() {
+  return "When replying to the user, go straight to the point. Answer with precision and brieviety.";
+}
+
 async function _getManagedDataSourceAgent(
   auth: Authenticator,
   {
@@ -513,7 +518,8 @@ async function _getGoogleDriveGlobalAgent(
     description: "An assistant with context on your Google Drives.",
     pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
     prompt:
-      "Assist the user based on the retrieved data from their Google Drives.",
+      "Assist the user based on the retrieved data from their Google Drives." +
+      `\n${brievietyPrompt()}`,
     dataSources,
   });
 }
@@ -536,7 +542,8 @@ async function _getSlackGlobalAgent(
     description: "An assistant with context on your Slack Channels.",
     pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
     prompt:
-      "Assist the user based on the retrieved data from their Slack channels.",
+      "Assist the user based on the retrieved data from their Slack channels." +
+      `\n${brievietyPrompt()}`,
     dataSources,
   });
 }
@@ -560,7 +567,8 @@ async function _getGithubGlobalAgent(
       "An assistant with context on your Github Issues and Discussions.",
     pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
     prompt:
-      "Assist the user based on the retrieved data from their Github Issues and Discussions.",
+      "Assist the user based on the retrieved data from their Github Issues and Discussions." +
+      `\n${brievietyPrompt()}`,
     dataSources,
   });
 }
@@ -583,7 +591,8 @@ async function _getNotionGlobalAgent(
     description: "An assistant with context on your Notion Spaces.",
     pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
     prompt:
-      "Assist the user based on the retrieved data from their Notion Spaces.",
+      "Assist the user based on the retrieved data from their Notion Spaces." +
+      `\n${brievietyPrompt()}`,
     dataSources,
   });
 }
@@ -606,7 +615,8 @@ async function _getIntercomGlobalAgent(
     description: "An assistant with context on your Intercom Help Center data.",
     pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
     prompt:
-      "Assist the user based on the retrieved data from their Intercom Workspace.",
+      "Assist the user based on the retrieved data from their Intercom Workspace." +
+      `\n${brievietyPrompt()}`,
     dataSources,
   });
 }
@@ -691,7 +701,8 @@ async function _getDustGlobalAgent(
     generation: {
       id: -1,
       prompt:
-        "Assist the user based on the retrieved data from their workspace. Unlesss the user explicitely asks for a detailed answer, you goal is to provide a quick answer to their question.",
+        "Assist the user based on the retrieved data from their workspace." +
+        `\n${brievietyPrompt()}`,
       model: !auth.isUpgraded()
         ? {
             providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
