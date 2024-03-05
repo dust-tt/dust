@@ -499,7 +499,7 @@ export default function AssistantBuilder({
           })()}
           <PrevNextButtons screen={screen} setScreen={setScreen} />
         </div>
-        {false && <div className="flex flex-col space-y-8 pb-16 pt-8"></div>}
+        <div className="flex flex-col space-y-8 pb-16 pt-8"></div>
       </AppLayout>
     </>
   );
