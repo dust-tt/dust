@@ -534,7 +534,7 @@ export default function AssistantBuilder({
             <div
               className={classNames(
                 "flex h-full w-full rounded-xl bg-slate-100 transition-all ease-in-out",
-                shouldAnimatePreviewDrawer ? "animate-gobrr" : ""
+                shouldAnimatePreviewDrawer ? "animate-reload" : ""
               )}
               ref={previewDrawerRef}
             >

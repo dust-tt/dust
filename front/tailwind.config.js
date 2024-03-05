@@ -109,7 +109,7 @@ module.exports = {
           },
         },
 
-        gobrr: {
+        reload: {
           "0%, 100%": {
             transform: "scale(1)",
             opacity: "1",
@@ -127,7 +127,7 @@ module.exports = {
         breathing: "breathing 4s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
-        gobrr: "gobrr 500ms ease-in-out",
+        reload: "reload 500ms ease-in-out",
       },
       colors: {
         brand: {
