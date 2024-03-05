@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use axum::{
-    extract::{self, Path, State},
+    extract::{Path, State},
     response::Json,
     routing::{delete, get, post},
     Router,
@@ -237,8 +237,8 @@ async fn databases_query(
 }
 
 async fn databases_delete(
-    extract::Path(database_id): extract::Path<String>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+    Path(database_id): Path<String>,
+    State(state): State<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     state.invalidate_database(&database_id).await;
 
@@ -253,9 +253,7 @@ async fn databases_delete(
     )
 }
 
-async fn expire_all(
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
+async fn expire_all(State(state): State<Arc<WorkerState>>) -> (StatusCode, Json<APIResponse>) {
     let mut registry = state.registry.lock().await;
     registry.clear();
 

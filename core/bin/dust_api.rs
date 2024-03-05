@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use axum::{
-    extract,
-    extract::DefaultBodyLimit,
+    extract::{DefaultBodyLimit, Path, Query, State},
     http::header::HeaderMap,
     response::{
         sse::{Event, KeepAlive, Sse},
@@ -35,6 +34,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::{
+    net::TcpListener,
     signal::unix::{signal, SignalKind},
     sync::mpsc::unbounded_channel,
 };
@@ -177,9 +177,7 @@ async fn index() -> &'static str {
 
 /// Create a new project (simply generates an id)
 
-async fn projects_create(
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-) -> (StatusCode, Json<APIResponse>) {
+async fn projects_create(State(state): State<Arc<APIState>>) -> (StatusCode, Json<APIResponse>) {
     match state.store.create_project().await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -200,8 +198,8 @@ async fn projects_create(
 }
 
 async fn projects_delete(
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-    extract::Path(project_id): extract::Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Path(project_id): Path<i64>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -253,8 +251,8 @@ async fn projects_delete(
 /// Simply consists in cloning the latest dataset versions, as we don't copy runs and hence specs.
 
 async fn projects_clone(
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-    extract::Path(project_id): extract::Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Path(project_id): Path<i64>,
 ) -> (StatusCode, Json<APIResponse>) {
     let cloned = project::Project::new_from_id(project_id);
 
@@ -334,8 +332,8 @@ struct SpecificationsCheckPayload {
 }
 
 async fn specifications_check(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<SpecificationsCheckPayload>,
+    Path(project_id): Path<i64>,
+    Json(payload): Json<SpecificationsCheckPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let _project = project::Project::new_from_id(project_id);
     match app::App::new(&payload.specification).await {
@@ -363,8 +361,8 @@ async fn specifications_check(
 /// Retrieve a specification
 
 async fn specifications_retrieve(
-    extract::Path((project_id, hash)): extract::Path<(i64, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, hash)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_specification(&project, &hash).await {
@@ -406,9 +404,9 @@ struct DatasetsRegisterPayload {
 }
 
 async fn datasets_register(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<DatasetsRegisterPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatasetsRegisterPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match dataset::Dataset::new_from_jsonl(&payload.dataset_id, payload.data).await {
@@ -473,8 +471,8 @@ async fn datasets_register(
 }
 
 async fn datasets_list(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.list_datasets(&project).await {
@@ -515,8 +513,8 @@ async fn datasets_list(
 }
 
 async fn datasets_retrieve(
-    extract::Path((project_id, dataset_id, hash)): extract::Path<(i64, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, dataset_id, hash)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_dataset(&project, &dataset_id, &hash).await {
@@ -750,10 +748,10 @@ async fn run_helper(
 }
 
 async fn runs_create(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<RunsCreatePayload>,
+    Path(project_id): Path<i64>,
     headers: HeaderMap,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<RunsCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
 
@@ -787,10 +785,10 @@ async fn runs_create(
 }
 
 async fn runs_create_stream(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<RunsCreatePayload>,
+    Path(project_id): Path<i64>,
     headers: HeaderMap,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<RunsCreatePayload>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut credentials = payload.credentials.clone();
 
@@ -884,8 +882,8 @@ async fn runs_create_stream(
 }
 
 async fn runs_delete(
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
-    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
+    Path((project_id, run_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.delete_run(&project, &run_id).await {
@@ -915,9 +913,9 @@ struct RunsListQuery {
 }
 
 async fn runs_list(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Query(query): extract::Query<RunsListQuery>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<RunsListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -952,9 +950,9 @@ struct RunsRetrieveBatchPayload {
 }
 
 async fn runs_retrieve_batch(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<RunsRetrieveBatchPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<RunsRetrieveBatchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_runs(&project, payload.run_ids).await {
@@ -977,8 +975,8 @@ async fn runs_retrieve_batch(
 }
 
 async fn runs_retrieve(
-    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, run_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_run(&project, &run_id, None).await {
@@ -1009,13 +1007,8 @@ async fn runs_retrieve(
 }
 
 async fn runs_retrieve_block(
-    extract::Path((project_id, run_id, block_type, block_name)): extract::Path<(
-        i64,
-        String,
-        BlockType,
-        String,
-    )>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, run_id, block_type, block_name)): Path<(i64, String, BlockType, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1050,8 +1043,8 @@ async fn runs_retrieve_block(
 }
 
 async fn runs_retrieve_status(
-    extract::Path((project_id, run_id)): extract::Path<(i64, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, run_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state.store.load_run(&project, &run_id, Some(None)).await {
@@ -1091,9 +1084,9 @@ struct DataSourcesRegisterPayload {
 }
 
 async fn data_sources_register(
-    extract::Path(project_id): extract::Path<i64>,
-    extract::Json(payload): extract::Json<DataSourcesRegisterPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesRegisterPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
@@ -1137,9 +1130,9 @@ struct DataSourcesTokenizePayload {
     text: String,
 }
 async fn data_sources_tokenize(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Json(payload): extract::Json<DataSourcesTokenizePayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesTokenizePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1186,8 +1179,8 @@ async fn data_sources_tokenize(
 }
 
 async fn data_sources_retrieve(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1239,9 +1232,9 @@ struct DatasourceSearchPayload {
 }
 
 async fn data_sources_search(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Json(payload): extract::Json<DatasourceSearchPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatasourceSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1307,9 +1300,9 @@ struct DataSourcesDocumentsUpdateTagsPayload {
 }
 
 async fn data_sources_documents_update_tags(
-    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
-    extract::Json(payload): extract::Json<DataSourcesDocumentsUpdateTagsPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesDocumentsUpdateTagsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let add_tags = match payload.add_tags {
@@ -1391,9 +1384,9 @@ struct DataSourcesDocumentsUpdateParentsPayload {
 }
 
 async fn data_sources_documents_update_parents(
-    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
-    extract::Json(payload): extract::Json<DataSourcesDocumentsUpdateParentsPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesDocumentsUpdateParentsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -1459,9 +1452,9 @@ struct DataSourcesDocumentsVersionsListQuery {
 }
 
 async fn data_sources_documents_versions_list(
-    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
-    extract::Query(query): extract::Query<DataSourcesDocumentsVersionsListQuery>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<DataSourcesDocumentsVersionsListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1511,9 +1504,9 @@ struct DataSourcesDocumentsUpsertPayload {
 }
 
 async fn data_sources_documents_upsert(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Json(payload): extract::Json<DataSourcesDocumentsUpsertPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesDocumentsUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let light_document_output = match payload.light_document_output {
@@ -1603,9 +1596,9 @@ struct DataSourcesListQuery {
 }
 
 async fn data_sources_documents_list(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Query(query): extract::Query<DataSourcesListQuery>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<DataSourcesListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1646,9 +1639,9 @@ struct DataSourcesDocumentsRetrieveQuery {
 }
 
 async fn data_sources_documents_retrieve(
-    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
-    extract::Query(query): extract::Query<DataSourcesDocumentsRetrieveQuery>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<DataSourcesDocumentsRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1707,8 +1700,8 @@ async fn data_sources_documents_retrieve(
 /// Delete document from a data source.
 
 async fn data_sources_documents_delete(
-    extract::Path((project_id, data_source_id, document_id)): extract::Path<(i64, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1764,8 +1757,8 @@ async fn data_sources_documents_delete(
 /// Delete a data source.
 
 async fn data_sources_delete(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     match state
@@ -1826,9 +1819,9 @@ struct DatabasesTablesUpsertPayload {
 }
 
 async fn tables_upsert(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Json(payload): extract::Json<DatabasesTablesUpsertPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatabasesTablesUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -1862,8 +1855,8 @@ async fn tables_upsert(
 }
 
 async fn tables_retrieve(
-    extract::Path((project_id, data_source_id, table_id)): extract::Path<(i64, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -1899,8 +1892,8 @@ async fn tables_retrieve(
 }
 
 async fn tables_list(
-    extract::Path((project_id, data_source_id)): extract::Path<(i64, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -1928,8 +1921,8 @@ async fn tables_list(
 }
 
 async fn tables_delete(
-    extract::Path((project_id, data_source_id, table_id)): extract::Path<(i64, String, String)>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -1980,9 +1973,9 @@ struct TablesRowsUpsertPayload {
 }
 
 async fn tables_rows_upsert(
-    extract::Path((project_id, data_source_id, table_id)): extract::Path<(i64, String, String)>,
-    extract::Json(payload): extract::Json<TablesRowsUpsertPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<TablesRowsUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -2041,13 +2034,8 @@ async fn tables_rows_upsert(
 }
 
 async fn tables_rows_retrieve(
-    extract::Path((project_id, data_source_id, table_id, row_id)): extract::Path<(
-        i64,
-        String,
-        String,
-        String,
-    )>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, table_id, row_id)): Path<(i64, String, String, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -2102,13 +2090,8 @@ async fn tables_rows_retrieve(
 }
 
 async fn tables_rows_delete(
-    extract::Path((project_id, data_source_id, table_id, row_id)): extract::Path<(
-        i64,
-        String,
-        String,
-        String,
-    )>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, table_id, row_id)): Path<(i64, String, String, String)>,
+    State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -2167,9 +2150,9 @@ struct DatabasesRowsListQuery {
 }
 
 async fn tables_rows_list(
-    extract::Path((project_id, data_source_id, table_id)): extract::Path<(i64, String, String)>,
-    extract::Query(query): extract::Query<DatabasesRowsListQuery>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Query(query): Query<DatabasesRowsListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
 
@@ -2230,8 +2213,8 @@ struct DatabaseQueryRunPayload {
 }
 
 async fn databases_query_run(
-    extract::Json(payload): extract::Json<DatabaseQueryRunPayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatabaseQueryRunPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     match try_join_all(
         payload
@@ -2301,8 +2284,8 @@ struct SQLiteWorkersUpsertOrDeletePayload {
 }
 
 async fn sqlite_workers_heartbeat(
-    extract::Json(payload): extract::Json<SQLiteWorkersUpsertOrDeletePayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<SQLiteWorkersUpsertOrDeletePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     match state
         .store
@@ -2344,8 +2327,8 @@ async fn sqlite_workers_heartbeat(
 }
 
 async fn sqlite_workers_delete(
-    extract::Json(payload): extract::Json<SQLiteWorkersUpsertOrDeletePayload>,
-    extract::Extension(state): extract::Extension<Arc<APIState>>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<SQLiteWorkersUpsertOrDeletePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.sqlite_workers_delete(&payload.url).await {
         Err(e) => error_response(
@@ -2374,9 +2357,7 @@ struct TokenizePayload {
     credentials: Option<run::Credentials>,
 }
 
-async fn tokenize(
-    extract::Json(payload): extract::Json<TokenizePayload>,
-) -> (StatusCode, Json<APIResponse>) {
+async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json<APIResponse>) {
     let mut llm = provider(payload.provider_id).llm(payload.model_id);
 
     // If we received credentials we initialize the llm with them.
@@ -2600,12 +2581,12 @@ fn main() {
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
-        .layer(extract::Extension(state.clone()));
+        .with_state(state.clone());
 
         // In a separate router, to avoid noisy tracing.
         let sqlite_heartbeat_router = Router::new()
             .route("/sqlite_workers", post(sqlite_workers_heartbeat))
-            .layer(extract::Extension(state.clone()));
+            .with_state(state.clone());
 
         let app = Router::new().merge(router).merge(sqlite_heartbeat_router);
 
@@ -2616,11 +2597,13 @@ fn main() {
         let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
         let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
 
-        let srv = axum::Server::bind(&"[::]:3001".parse().unwrap())
-            .serve(app.into_make_service())
-            .with_graceful_shutdown(async {
-                rx1.await.ok();
-            });
+        let srv = axum::serve(
+            TcpListener::bind::<std::net::SocketAddr>("[::]:3001".parse().unwrap()).await?,
+            app.into_make_service(),
+        )
+        .with_graceful_shutdown(async {
+            rx1.await.ok();
+        });
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {
