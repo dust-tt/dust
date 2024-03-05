@@ -29,7 +29,7 @@ export function isGoogleSession(session: any) {
 export async function getUserFromSession(
   session: any
 ): Promise<UserTypeWithWorkspaces | null> {
-  if (!session) {
+  if (!session || !isValidSession(session)) {
     return null;
   }
 
@@ -123,7 +123,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
           redirect: {
             permanent: false,
             // TODO(2024-03-04 flav) Add support for `returnTo=`.
-            destination: "/",
+            destination: "/api/auth/login",
           },
         };
       }

@@ -1,15 +1,15 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { FrontApiError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getServerSession } from "next-auth/next";
 
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
-import { subscriptionForWorkspace } from "@app/lib/auth";
+import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import {
   getPendingMembershipInvitationForToken,
   markInvitationAsConsumed,
 } from "@app/lib/iam/invitations";
 import { getActiveMembershipsForUser } from "@app/lib/iam/memberships";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import {
@@ -23,8 +23,6 @@ import {
   updateWorkspacePerSeatSubscriptionUsage,
 } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-import { authOptions } from "./auth/[...nextauth]";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
@@ -112,7 +110,7 @@ function canJoinTargetWorkspace(
 // Verify if there's an existing workspace with the same verified domain that allows auto-joining.
 // The user will join this workspace if it exists; otherwise, a new workspace is created.
 async function handleRegularSignupFlow(
-  session: any,
+  session: SessionWithUser,
   user: User,
   targetWorkspaceId?: string
 ): Promise<{
@@ -202,7 +200,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<void>>
 ): Promise<void> {
-  const session = await getServerSession(req, res, authOptions);
+  const session = await getSession(req, res);
   if (!session) {
     res.status(401).end();
     return;
