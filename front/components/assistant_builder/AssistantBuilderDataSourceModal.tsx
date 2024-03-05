@@ -85,7 +85,7 @@ export default function AssistantBuilderDataSourceModal({
     if (!selectedDataSource) {
       throw new Error("Cannot save an incomplete configuration");
     }
-    if (selectedResources.length) {
+    if (selectedResources.length || isSelectAll) {
       onSave({
         dataSource: selectedDataSource,
         selectedResources,
