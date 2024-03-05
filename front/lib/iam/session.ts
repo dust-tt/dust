@@ -2,12 +2,15 @@ import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
 import type {
   GetServerSideProps,
   GetServerSidePropsContext,
+  GetServerSidePropsResult,
   PreviewData,
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
 import { Op } from "sequelize";
 
 import { getSession } from "@app/lib/auth";
+import type { LegacySession, Session } from "@app/lib/iam/provider";
+import { isLegacySession, isValidSession } from "@app/lib/iam/provider";
 import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
@@ -86,7 +89,7 @@ export async function getUserFromSession(
 
 interface WithGetServerSidePropsRequirementsOptions {
   enableLogging?: boolean;
-  requireAuth?: boolean;
+  requireAuth: boolean;
 }
 
 const defaultWithGetServerSidePropsRequirements: WithGetServerSidePropsRequirementsOptions =
@@ -95,34 +98,53 @@ const defaultWithGetServerSidePropsRequirements: WithGetServerSidePropsRequireme
     requireAuth: true,
   };
 
+export type CustomGetServerSideProps<
+  Props extends { [key: string]: any } = { [key: string]: any },
+  Params extends ParsedUrlQuery = ParsedUrlQuery,
+  Preview extends PreviewData = PreviewData,
+  RequireAuth extends boolean = true
+> = (
+  context: GetServerSidePropsContext<Params, Preview>,
+  session: RequireAuth extends true ? Session : null
+) => Promise<GetServerSidePropsResult<Props>>;
+
 export function withGetServerSidePropsRequirements<
-  T extends { [key: string]: any } = { [key: string]: any }
+  T extends { [key: string]: any },
+  RequireAuth extends boolean
 >(
-  getServerSideProps: GetServerSideProps<T>,
-  opts: WithGetServerSidePropsRequirementsOptions = defaultWithGetServerSidePropsRequirements
+  getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuth>,
+  opts: {
+    enableLogging?: boolean;
+    requireAuth: RequireAuth;
+  }
 ): GetServerSideProps<T> {
+  const { requireAuth = false } = opts;
+
   return async (
     context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
   ) => {
-    const { enableLogging, requireAuth } = opts;
+    const session = requireAuth
+      ? await getSession(context.req, context.res)
+      : null;
 
-    if (requireAuth) {
-      const session = await getSession(context.req, context.res);
-      if (!session) {
-        return {
-          redirect: {
-            permanent: false,
-            // TODO(2024-03-04 flav) Add support for `returnTo=`.
-            destination: "/",
-          },
-        };
-      }
+    if (session && !isValidSession(session)) {
+      return {
+        redirect: {
+          permanent: false,
+          destination: "/",
+        },
+      };
     }
 
-    if (enableLogging) {
-      return withGetServerSidePropsLogging(getServerSideProps)(context);
+    if (requireAuth && !session) {
+      return {
+        redirect: {
+          permanent: false,
+          destination: "/",
+        },
+      };
     }
 
-    return getServerSideProps(context);
+    return getServerSideProps(context, session);
   };
 }

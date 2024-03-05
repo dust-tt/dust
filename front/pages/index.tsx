@@ -50,18 +50,14 @@ import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
-import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
-  gaTrackingId: string;
-}>(
-  async (context) => {
-    const session = await getSession(context.req, context.res);
+export const getServerSideProps = withGetServerSidePropsRequirements(
+  async (context, session) => {
     const user = await getUserFromSession(session);
 
     if (user && user.workspaces.length > 0) {
@@ -85,6 +81,7 @@ export const getServerSideProps = withGetServerSidePropsRequirements<{
   },
   {
     requireAuth: false,
+    enableLogging: false,
   }
 );
 
