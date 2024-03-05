@@ -7,7 +7,6 @@ import {
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceContentNodeParents,
   retrieveConfluenceContentNodes,
-  retrieveConfluenceObjectsTitles,
   setConfluenceConnectorPermissions,
   stopConfluenceConnector,
   updateConfluenceConnector,
@@ -22,7 +21,6 @@ import {
   retrieveGithubConnectorPermissions,
   retrieveGithubContentNodeParents,
   retrieveGithubReposContentNodes,
-  retrieveGithubReposTitles,
   setGithubConfig,
   stopGithubConnector,
   updateGithubConnector,
@@ -35,7 +33,6 @@ import {
   retrieveGoogleDriveConnectorPermissions,
   retrieveGoogleDriveContentNodeParents,
   retrieveGoogleDriveContentNodes,
-  retrieveGoogleDriveObjectsTitles,
   setGoogleDriveConfig,
   setGoogleDriveConnectorPermissions,
   updateGoogleDriveConnector,
@@ -49,14 +46,12 @@ import {
   retrieveIntercomConnectorPermissions,
   retrieveIntercomContentNodeParents,
   retrieveIntercomContentNodes,
-  retrieveIntercomNodesTitles,
   setIntercomConnectorPermissions,
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
 import type {
   ConnectorBatchContentNodesRetriever,
-  ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorConfigGetter,
   ConnectorConfigSetter,
@@ -80,7 +75,6 @@ import {
   retrieveNotionConnectorPermissions,
   retrieveNotionContentNodeParents,
   retrieveNotionContentNodes,
-  retrieveNotionNodesTitles,
   stopNotionConnector,
   updateNotionConnector,
 } from "@connectors/connectors/notion";
@@ -88,7 +82,6 @@ import {
   cleanupSlackConnector,
   createSlackConnector,
   getSlackConfig,
-  retrieveSlackChannelsTitles,
   retrieveSlackConnectorPermissions,
   retrieveSlackContentNodes,
   setSlackConfig,
@@ -105,7 +98,6 @@ import {
   retrieveWebcrawlerConnectorPermissions,
   retrieveWebCrawlerContentNodeParents,
   retrieveWebCrawlerContentNodes,
-  retrieveWebCrawlerObjectsTitles,
   stopWebcrawlerConnector,
   updateWebcrawlerConnector,
 } from "./webcrawler";
@@ -236,19 +228,6 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
       new Error(`Setting Webcrawler connector permissions is not applicable.`)
     );
   },
-};
-
-export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
-  ConnectorProvider,
-  ConnectorBatchResourceTitleRetriever
-> = {
-  confluence: retrieveConfluenceObjectsTitles,
-  slack: retrieveSlackChannelsTitles,
-  notion: retrieveNotionNodesTitles,
-  github: retrieveGithubReposTitles,
-  google_drive: retrieveGoogleDriveObjectsTitles,
-  intercom: retrieveIntercomNodesTitles,
-  webcrawler: retrieveWebCrawlerObjectsTitles,
 };
 
 export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<

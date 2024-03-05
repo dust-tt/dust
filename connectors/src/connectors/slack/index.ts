@@ -560,25 +560,6 @@ export async function setSlackConnectorPermissions(
   return new Ok(undefined);
 }
 
-export async function retrieveSlackChannelsTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const channels = await SlackChannel.findAll({
-    where: {
-      connectorId: connectorId,
-      slackChannelId: internalIds,
-    },
-  });
-
-  const titles: Record<string, string> = {};
-  for (const ch of channels) {
-    titles[ch.slackChannelId] = ch.slackChannelName;
-  }
-
-  return new Ok(titles);
-}
-
 export async function retrieveSlackContentNodes(
   connectorId: ModelId,
   internalIds: string[]

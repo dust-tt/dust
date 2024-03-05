@@ -273,25 +273,6 @@ export async function cleanupWebcrawlerConnector(
   return new Ok(undefined);
 }
 
-export async function retrieveWebCrawlerObjectsTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const googleDriveFiles = await WebCrawlerFolder.findAll({
-    where: {
-      connectorId: connectorId,
-      url: internalIds,
-    },
-  });
-
-  const titles = googleDriveFiles.reduce((acc, curr) => {
-    acc[curr.url] = curr.url;
-    return acc;
-  }, {} as Record<string, string>);
-
-  return new Ok(titles);
-}
-
 export async function retrieveWebCrawlerContentNodes(
   connectorId: ModelId,
   internalIds: string[]

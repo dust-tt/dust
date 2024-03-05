@@ -373,33 +373,6 @@ export async function setConfluenceConnectorPermissions(
   return new Ok(undefined);
 }
 
-export async function retrieveConfluenceObjectsTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const confluenceSpaceIds = internalIds.map((id) =>
-    getIdFromConfluenceInternalId(id)
-  );
-
-  const confluenceSpaces = await ConfluenceSpace.findAll({
-    attributes: ["id", "spaceId", "name"],
-    where: {
-      connectorId: connectorId,
-      spaceId: confluenceSpaceIds,
-    },
-  });
-
-  const titles = confluenceSpaces.reduce<Record<string, string>>(
-    (acc, curr) => {
-      acc[curr.spaceId] = curr.name;
-      return acc;
-    },
-    {}
-  );
-
-  return new Ok(titles);
-}
-
 export async function retrieveConfluenceContentNodes(
   connectorId: ModelId,
   internalIds: string[]
