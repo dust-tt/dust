@@ -16,6 +16,7 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
+import { registerWebhook } from "@connectors/connectors/google_drive/lib";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
@@ -43,7 +44,10 @@ import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
 import { GithubConnectorState } from "@connectors/lib/models/github";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveFiles,
+  GoogleDriveWebhook,
+} from "@connectors/lib/models/google_drive";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
@@ -847,6 +851,41 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
         });
       }
 
+      return;
+    }
+    case "register-webhook": {
+      // Re-register a webhook for a given connectors. Used for selected connectors who eneded up
+      // without GoogleDriveWebhook.
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: {
+          workspaceId: args.wId,
+          dataSourceName: args.dataSourceName,
+        },
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
+        );
+      }
+
+      const webhookInfo = await registerWebhook(connector);
+      if (webhookInfo.isErr()) {
+        throw webhookInfo.error;
+      } else {
+        await GoogleDriveWebhook.create({
+          webhookId: webhookInfo.value.id,
+          expiresAt: new Date(webhookInfo.value.expirationTsMs),
+          renewAt: new Date(webhookInfo.value.expirationTsMs),
+          connectorId: connector.id,
+        });
+      }
       return;
     }
     default:
