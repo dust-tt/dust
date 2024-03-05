@@ -270,9 +270,17 @@ async function botAnswerMessage(
   // Remove markdown to extract mentions.
   const messageWithoutMarkdown = removeMarkdown(message);
 
-  // Extract all ~mentions.
-  const mentionCandidates =
+  // Extract all ~mentions and +mentions
+  const mentionCandidatesTilde =
     messageWithoutMarkdown.match(/(?<!\S)~([a-zA-Z0-9_-]{1,40})(?!\S)/g) || [];
+
+  const mentionCandidatesPlus =
+    messageWithoutMarkdown.match(/(?<!\S)\+([a-zA-Z0-9_-]{1,40})(?!\S)/g) || [];
+
+  const mentionCandidates = [
+    ...mentionCandidatesTilde,
+    ...mentionCandidatesPlus,
+  ];
 
   const mentions: { assistantName: string; assistantId: string }[] = [];
   if (mentionCandidates.length > 1) {
