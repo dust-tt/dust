@@ -5,15 +5,14 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { Authenticator } from "@app/lib/auth";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-export const getServerSideProps = withGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   document: CoreAPIDocument;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSuperUserSession(
     session,
     context.params?.wId as string

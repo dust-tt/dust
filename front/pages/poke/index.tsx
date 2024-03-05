@@ -4,26 +4,26 @@ import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { Authenticator } from "@app/lib/auth";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { usePokeWorkspaces } from "@app/lib/swr";
 
-export const getServerSideProps = withGetServerSidePropsRequirements<object>(
-  async (context) => {
-    const session = await getSession(context.req, context.res);
-    const auth = await Authenticator.fromSuperUserSession(session, null);
+export const getServerSideProps =
+  withDefaultGetServerSidePropsRequirements<object>(
+    async (context, session) => {
+      const auth = await Authenticator.fromSuperUserSession(session, null);
 
-    if (!auth.isDustSuperUser()) {
+      if (!auth.isDustSuperUser()) {
+        return {
+          notFound: true,
+        };
+      }
+
       return {
-        notFound: true,
+        props: {},
       };
     }
-
-    return {
-      props: {},
-    };
-  }
-);
+  );
 
 const Dashboard = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>
