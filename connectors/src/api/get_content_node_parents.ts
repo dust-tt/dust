@@ -11,28 +11,28 @@ import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const GetResourcesParentsRequestBodySchema = t.type({
-  resourceInternalIds: t.array(t.string),
+const GetContentNodesParentsRequestBodySchema = t.type({
+  internalIds: t.array(t.string),
 });
 
-export type GetResourcesParentsRequestBody = t.TypeOf<
-  typeof GetResourcesParentsRequestBodySchema
+export type GetContentNodesParentsRequestBody = t.TypeOf<
+  typeof GetContentNodesParentsRequestBodySchema
 >;
 
-type GetResourcesParentsResponseBody = WithConnectorsAPIErrorReponse<{
-  resources: {
+type GetContentNodesResponseBody = WithConnectorsAPIErrorReponse<{
+  nodes: {
     internalId: string;
     parents: string[] | null;
   }[];
 }>;
 
-const _getResourcesParents = async (
+const _getContentNodesParents = async (
   req: Request<
     { connector_id: string },
-    GetResourcesParentsResponseBody,
-    GetResourcesParentsRequestBody
+    GetContentNodesResponseBody,
+    GetContentNodesParentsRequestBody
   >,
-  res: Response<GetResourcesParentsResponseBody>
+  res: Response<GetContentNodesResponseBody>
 ) => {
   const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
@@ -45,7 +45,9 @@ const _getResourcesParents = async (
     });
   }
 
-  const bodyValidation = GetResourcesParentsRequestBodySchema.decode(req.body);
+  const bodyValidation = GetContentNodesParentsRequestBodySchema.decode(
+    req.body
+  );
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
@@ -57,22 +59,19 @@ const _getResourcesParents = async (
     });
   }
 
-  const { resourceInternalIds } = bodyValidation.right;
+  const { internalIds } = bodyValidation.right;
 
   const parentsGetter = RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE[connector.type];
   const parentsResults = await concurrentExecutor(
-    resourceInternalIds,
-    (resourceInternalId) => parentsGetter(connector.id, resourceInternalId),
+    internalIds,
+    (internalId) => parentsGetter(connector.id, internalId),
     { concurrency: 4 }
   );
-  const resources: { internalId: string; parents: string[] }[] = [];
+  const nodes: { internalId: string; parents: string[] }[] = [];
 
-  for (const [internalId, parentsResult] of zip(
-    resourceInternalIds,
-    parentsResults
-  )) {
+  for (const [internalId, parentsResult] of zip(internalIds, parentsResults)) {
     if (parentsResult.isErr()) {
-      logger.error(parentsResult.error, "Failed to get resource parents");
+      logger.error(parentsResult.error, "Failed to get content node parents");
       return apiError(req, res, {
         status_code: 500,
         api_error: {
@@ -82,13 +81,15 @@ const _getResourcesParents = async (
       });
     }
 
-    resources.push({
+    nodes.push({
       internalId,
       parents: parentsResult.value,
     });
   }
 
-  return res.status(200).json({ resources });
+  return res.status(200).json({ nodes });
 };
 
-export const getResourcesParentsAPIHandler = withLogging(_getResourcesParents);
+export const getContentNodesParentsAPIHandler = withLogging(
+  _getContentNodesParents
+);

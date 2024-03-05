@@ -746,7 +746,7 @@ export async function retrieveIntercomContentNodes(
   return new Ok(nodes);
 }
 
-export async function retrieveIntercomObjectsParents(
+export async function retrieveIntercomContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {

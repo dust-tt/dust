@@ -94,7 +94,7 @@ async fn show(
         Some(info) => {
             utils::info(&format!(
                 "[MAIN] Qdrant collection: collection={} status={} \
-                             points_count={} cluster={} ",
+                             points_count={:?} cluster={} ",
                 ds.qdrant_collection(),
                 info.status.to_string(),
                 info.points_count,
@@ -119,7 +119,7 @@ async fn show(
                 Some(info) => {
                     utils::info(&format!(
                         "[SHADOW] Qdrant collection: collection={} status={} \
-                             points_count={} cluster={}",
+                             points_count={:?} cluster={}",
                         ds.qdrant_collection(),
                         info.status.to_string(),
                         info.points_count,
@@ -233,7 +233,7 @@ async fn clear_shadow_write(
             match utils::confirm(&format!(
                 "[DANGER] Are you sure you want to delete this qdrant \
                   shadow_write_cluster collection? \
-                  (this is definitive) points_count={} shadow_write_cluster={}",
+                  (this is definitive) points_count={:?} shadow_write_cluster={}",
                 info.points_count,
                 match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
                     Some(cluster) => cluster.to_string(),
@@ -373,7 +373,7 @@ async fn migrate_shadow_write(
             .collect::<Vec<_>>();
 
         match shadow_write_qdrant_client
-            .upsert_points(ds.qdrant_collection(), points, None)
+            .upsert_points(ds.qdrant_collection(), None, points, None)
             .await
         {
             Ok(_) => (),
@@ -537,7 +537,7 @@ async fn migrate(
                     Some(info) => {
                         utils::info(&format!(
                             "[SHADOW] Qdrant collection: collection={} status={} \
-                             points_count={} cluster={}",
+                             points_count={:?} cluster={}",
                             ds.qdrant_collection(),
                             info.status.to_string(),
                             info.points_count,

@@ -12,15 +12,20 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   domain?: string;
   gaTrackingId: string;
   baseUrl: string;
-}>(async (context) => {
-  return {
-    props: {
-      domain: context.query.domain as string,
-      baseUrl: URL,
-      gaTrackingId: GA_TRACKING_ID,
-    },
-  };
-});
+}>(
+  async (context) => {
+    return {
+      props: {
+        domain: context.query.domain as string,
+        baseUrl: URL,
+        gaTrackingId: GA_TRACKING_ID,
+      },
+    };
+  },
+  {
+    requireAuth: false,
+  }
+);
 
 export default function LoginError({
   domain,

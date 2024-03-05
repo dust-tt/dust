@@ -638,6 +638,7 @@ impl DataSource {
                 match qdrant_client
                     .set_payload(
                         self.qdrant_collection().to_string(),
+                        None,
                         &points_selector,
                         payload.clone(),
                         None,
@@ -667,6 +668,7 @@ impl DataSource {
         qdrant_client
             .set_payload(
                 self.qdrant_collection().to_string(),
+                None,
                 &points_selector,
                 payload,
                 None,
@@ -1043,7 +1045,7 @@ impl DataSource {
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
                 match qdrant_client
-                    .delete_points(self.qdrant_collection(), &filter, None)
+                    .delete_points(self.qdrant_collection(), None, &filter, None)
                     .await
                 {
                     Ok(_) => {
@@ -1067,7 +1069,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .delete_points(self.qdrant_collection(), &filter, None)
+            .delete_points(self.qdrant_collection(), None, &filter, None)
             .await?;
 
         info!(
@@ -1135,7 +1137,7 @@ impl DataSource {
                 match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
                     Some(qdrant_client) => {
                         match qdrant_client
-                            .upsert_points(self.qdrant_collection(), chunk.clone(), None)
+                            .upsert_points(self.qdrant_collection(), None, chunk.clone(), None)
                             .await
                         {
                             Ok(_) => {
@@ -1159,7 +1161,7 @@ impl DataSource {
                 }
 
                 qdrant_client
-                    .upsert_points(self.qdrant_collection(), chunk, None)
+                    .upsert_points(self.qdrant_collection(), None, chunk, None)
                     .await?;
 
                 info!(
@@ -1272,6 +1274,9 @@ impl DataSource {
                         vector_name: None,
                         with_vectors: None,
                         read_consistency: None,
+                        shard_key_selector: None,
+                        timeout: None,
+                        sparse_indices: None,
                     })
                     .await?;
 
@@ -1814,7 +1819,7 @@ impl DataSource {
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
                 match qdrant_client
-                    .delete_points(self.qdrant_collection(), &filter, None)
+                    .delete_points(self.qdrant_collection(), None, &filter, None)
                     .await
                 {
                     Ok(_) => {
@@ -1838,7 +1843,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .delete_points(self.qdrant_collection(), &filter, None)
+            .delete_points(self.qdrant_collection(), None, &filter, None)
             .await?;
 
         // Delete document (SQL)
