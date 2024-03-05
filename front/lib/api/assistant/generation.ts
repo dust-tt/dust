@@ -266,14 +266,6 @@ export async function renderConversationForModel({
  * Generation execution.
  */
 
-// Meta prompt used to incentivize the model to answer with brieviety.
-function brievietyPrompt() {
-  return (
-    "When replying to the user, go straight to the point." +
-    " Answer with precision and brieviety."
-  );
-}
-
 // Construct the full prompt from the agent configuration.
 // - Meta data about the agent and current time.
 // - Insructions from the agent configuration (in case of generation)
@@ -301,9 +293,6 @@ export async function constructPrompt(
     instructions += `\n${configuration.generation.prompt}`;
   } else if (fallbackPrompt) {
     instructions += `\n${fallbackPrompt}`;
-  }
-  if (owner?.flags?.includes("brieviety_prompt")) {
-    instructions += `\n${brievietyPrompt()}`;
   }
   if (isRetrievalConfiguration(configuration.action)) {
     instructions += `\n${retrievalMetaPrompt()}`;
