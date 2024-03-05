@@ -1,7 +1,7 @@
+import type { Session } from "@auth0/nextjs-auth0";
 import type { UserProviderType } from "@dust-tt/types";
-import type { Session } from "next-auth";
 
-import { isGoogleSession } from "@app/lib/iam/session";
+import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 
@@ -10,10 +10,10 @@ interface LegacyProviderInfo {
   providerId: number | string;
 }
 
-async function fetchUserWithLegacyProvider({
-  provider,
-  providerId,
-}: LegacyProviderInfo) {
+async function fetchUserWithLegacyProvider(
+  { provider, providerId }: LegacyProviderInfo,
+  sub: string
+) {
   const user = await User.findOne({
     where: {
       provider,
@@ -21,30 +21,64 @@ async function fetchUserWithLegacyProvider({
     },
   });
 
-  // TODO(2024-03-04 flav) Once migrating to new auth system, backfill here.
+  // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
+  if (user) {
+    await user.update({ auth0Sub: sub });
+  }
 
   return user;
 }
 
-export async function fetchUserFromSession(session: any) {
-  const { provider } = session;
+async function fetchUserWithAuth0Sub(sub: string) {
+  const userWithAuth0 = await User.findOne({
+    where: {
+      auth0Sub: sub,
+    },
+  });
 
-  const legacyProviderInfo: LegacyProviderInfo = {
-    provider: provider.provider,
-    providerId: provider.id,
-  };
+  return userWithAuth0;
+}
 
-  return fetchUserWithLegacyProvider(legacyProviderInfo);
+function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
+  const { user } = session;
+
+  const [rawProvider, providerId] = user.sub.split("|");
+  switch (rawProvider) {
+    case "google-oauth2":
+      return { provider: "google", providerId };
+
+    case "github":
+      return { provider: "github", providerId };
+
+    default:
+      return null;
+  }
+}
+
+export async function fetchUserFromSession(session: SessionWithUser) {
+  const { sub } = session.user;
+
+  const userWithAuth0 = await fetchUserWithAuth0Sub(sub);
+  if (userWithAuth0) {
+    return userWithAuth0;
+  }
+
+  const legacyProviderInfo = mapAuth0ProviderToLegacy(session);
+  if (!legacyProviderInfo) {
+    return null;
+  }
+
+  return fetchUserWithLegacyProvider(legacyProviderInfo, sub);
 }
 
 export async function maybeUpdateFromExternalUser(
   user: User,
-  externalUser: Session["user"]
+  externalUser: ExternalUser
 ) {
-  if (externalUser?.image && externalUser.image !== user.imageUrl) {
+  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
     void User.update(
       {
-        imageUrl: externalUser.image,
+        imageUrl: externalUser.picture,
       },
       {
         where: {
@@ -55,34 +89,34 @@ export async function maybeUpdateFromExternalUser(
   }
 }
 
-export async function createOrUpdateUser(session: any): Promise<User> {
-  const user = await User.findOne({
-    where: {
-      provider: session.provider.provider,
-      providerId: session.provider.id.toString(),
-    },
-  });
-
+export async function createOrUpdateUser(
+  session: SessionWithUser
+): Promise<User> {
   const { user: externalUser } = session;
-  // TODO(2024-03-04 flav): Remove when deprecating next-auth.
-  externalUser.email_verified = isGoogleSession(session);
+
+  const user = await fetchUserFromSession(session);
 
   if (user) {
-    // Update the user object from the updated session information.
-    user.username = externalUser.username;
-    user.name = externalUser.name;
-
     // We only update the user's email if the email is verified.
     if (externalUser.email_verified) {
       user.email = externalUser.email;
     }
 
+    // Update the user object from the updated session information.
+    user.username = externalUser.nickname;
+    user.name = externalUser.name;
+
     if (!user.firstName && !user.lastName) {
-      const { firstName, lastName } = guessFirstandLastNameFromFullName(
-        externalUser.name
-      );
-      user.firstName = firstName;
-      user.lastName = lastName;
+      if (externalUser.given_name && externalUser.family_name) {
+        user.firstName = externalUser.given_name;
+        user.lastName = externalUser.family_name;
+      } else {
+        const { firstName, lastName } = guessFirstandLastNameFromFullName(
+          externalUser.name
+        );
+        user.firstName = firstName;
+        user.lastName = lastName;
+      }
     }
 
     await user.save();
@@ -90,17 +124,16 @@ export async function createOrUpdateUser(session: any): Promise<User> {
     return user;
   } else {
     const { firstName, lastName } = guessFirstandLastNameFromFullName(
-      session.user.name
+      externalUser.name
     );
 
     return User.create({
-      provider: session.provider.provider,
-      providerId: session.provider.id.toString(),
-      username: session.user.username,
-      email: session.user.email,
-      name: session.user.name,
-      firstName,
-      lastName,
+      auth0Sub: externalUser.sub,
+      username: externalUser.nickname,
+      email: externalUser.email,
+      name: externalUser.name,
+      firstName: externalUser.given_name ?? firstName,
+      lastName: externalUser.family_name ?? lastName,
     });
   }
 }

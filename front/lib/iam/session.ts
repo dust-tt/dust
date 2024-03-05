@@ -8,7 +8,7 @@ import type { ParsedUrlQuery } from "querystring";
 import { Op } from "sequelize";
 
 import { getSession } from "@app/lib/auth";
-import type { Session } from "@app/lib/iam/provider";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import {
   fetchUserFromSession,
@@ -17,19 +17,15 @@ import {
 import { Membership, Workspace } from "@app/lib/models";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export function isGoogleSession(session: any) {
-  return session.provider.provider === "google";
-}
-
 /**
  * Retrieves the user for a given session
- * @param session any NextAuth session
+ * @param session any Auth0 session
  * @returns Promise<UserType | null>
  */
 export async function getUserFromSession(
-  session: any
+  session: SessionWithUser | null
 ): Promise<UserTypeWithWorkspaces | null> {
-  if (!session) {
+  if (!session || !isValidSession(session)) {
     return null;
   }
 
@@ -100,7 +96,7 @@ export type CustomGetServerSideProps<
   RequireAuth extends boolean = true
 > = (
   context: GetServerSidePropsContext<Params, Preview>,
-  session: RequireAuth extends true ? Session : null
+  session: RequireAuth extends true ? SessionWithUser : null
 ) => Promise<GetServerSidePropsResult<Props>>;
 
 export function makeGetServerSidePropsRequirementsWrapper<
@@ -123,12 +119,14 @@ export function makeGetServerSidePropsRequirementsWrapper<
           redirect: {
             permanent: false,
             // TODO(2024-03-04 flav) Add support for `returnTo=`.
-            destination: "/",
+            destination: "/api/auth/login",
           },
         };
       }
 
-      const userSession = session as RequireAuth extends true ? Session : null;
+      const userSession = session as RequireAuth extends true
+        ? SessionWithUser
+        : null;
 
       if (enableLogging) {
         return withGetServerSidePropsLogging(getServerSideProps)(

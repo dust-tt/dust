@@ -1,3 +1,4 @@
+import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
   RoleType,
   UserType,
@@ -21,10 +22,10 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
-import type { Session } from "next-auth";
-import { getServerSession } from "next-auth/next";
 
 import { isDevelopment } from "@app/lib/development";
+import type { SessionWithUser } from "@app/lib/iam/provider";
+import { isValidSession } from "@app/lib/iam/provider";
 import {
   FeatureFlag,
   Key,
@@ -39,7 +40,6 @@ import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { authOptions } from "@app/pages/api/auth/[...nextauth]";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
@@ -86,13 +86,16 @@ export class Authenticator {
 
   /**
    * Get a an Authenticator for the target workspace associated with the authentified user from the
-   * NextAuth session.
+   * Auth0 session.
    *
-   * @param session any NextAuth session
+   * @param session any Auth0 session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
-  static async fromSession(session: any, wId: string): Promise<Authenticator> {
+  static async fromSession(
+    session: SessionWithUser | null,
+    wId: string
+  ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       (async () => {
         return Workspace.findOne({
@@ -107,8 +110,7 @@ export class Authenticator {
         } else {
           return User.findOne({
             where: {
-              provider: session.provider.provider,
-              providerId: session.provider.id.toString(),
+              auth0Sub: session.user.sub,
             },
           });
         }
@@ -157,15 +159,15 @@ export class Authenticator {
 
   /**
    * Get a an Authenticator for the target workspace and the authentified Super User user from the
-   * NextAuth session.
+   * Auth0 session.
    * Super User will have `role` set to `admin` regardless of their actual role in the workspace.
    *
-   * @param session any NextAuth session
+   * @param session any Auth0 session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
   static async fromSuperUserSession(
-    session: any,
+    session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
@@ -185,8 +187,7 @@ export class Authenticator {
         } else {
           return User.findOne({
             where: {
-              provider: session.provider.provider,
-              providerId: session.provider.id.toString(),
+              auth0Sub: session.user.sub,
             },
           });
         }
@@ -439,7 +440,7 @@ export class Authenticator {
 }
 
 /**
- * Retrieves the NextAuth session from the request/response.
+ * Retrieves the Auth0 session from the request/response.
  * @param req NextApiRequest request object
  * @param res NextApiResponse response object
  * @returns Promise<any>
@@ -447,8 +448,13 @@ export class Authenticator {
 export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
-): Promise<Session | null> {
-  return getServerSession(req, res, authOptions);
+): Promise<SessionWithUser | null> {
+  const session = await getAuth0Session(req, res);
+  if (!session || !isValidSession(session)) {
+    return null;
+  }
+
+  return session;
 }
 
 /**

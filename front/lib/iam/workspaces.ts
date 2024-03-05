@@ -1,22 +1,22 @@
-import { isGoogleSession } from "@app/lib/iam/session";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 
-export async function createWorkspace(session: any) {
-  const [, emailDomain] = session.user.email.split("@");
+export async function createWorkspace(session: SessionWithUser) {
+  const { user: externalUser } = session;
 
-  // Use domain only when email is verified on Google Workspace and non-disposable.
-  const isEmailVerified =
-    isGoogleSession(session) && session.user.email_verified;
+  const [, emailDomain] = externalUser.email.split("@");
+
+  // Use domain only when email is verified and non-disposable.
   const verifiedDomain =
-    isEmailVerified && !isDisposableEmailDomain(emailDomain)
+    externalUser.email_verified && !isDisposableEmailDomain(emailDomain)
       ? emailDomain
       : null;
 
   const workspace = await Workspace.create({
     sId: generateModelSId(),
-    name: session.user.username,
+    name: externalUser.nickname,
   });
 
   if (verifiedDomain) {
@@ -36,11 +36,11 @@ export async function createWorkspace(session: any) {
 }
 
 export async function findWorkspaceWithVerifiedDomain(
-  session: any
+  session: SessionWithUser
 ): Promise<WorkspaceHasDomain | null> {
   const { user } = session;
 
-  if (!isGoogleSession(session) || !user.email_verified) {
+  if (!user.email_verified) {
     return null;
   }
 

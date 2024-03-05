@@ -1,56 +1,42 @@
-import type { UserProviderType } from "@dust-tt/types";
+import type { Session } from "@auth0/nextjs-auth0";
 
-interface LegacyProvider {
-  provider: UserProviderType;
-  id: number | string;
-}
-
-interface LegacyExternalUser {
-  name: string;
+// This maps to the Auth0 user.
+export interface ExternalUser {
   email: string;
-  image?: string;
-  username?: string;
-  email_verified?: boolean;
+  email_verified: boolean;
+  name: string;
+  nickname: string;
+  sub: string;
+
+  // Google-specific fields.
+  family_name?: string;
+  given_name?: string;
+
+  // Always optional.
+  picture?: string;
 }
 
-interface LegacySession {
-  provider: LegacyProvider;
-  user: LegacyExternalUser;
-}
-
-function isLegacyExternalUser(user: unknown): user is LegacyExternalUser {
+function isExternalUser(user: Session["user"]): user is ExternalUser {
   return (
     typeof user === "object" &&
-    user !== null &&
     "email" in user &&
-    "name" in user
+    "email_verified" in user &&
+    "name" in user &&
+    "nickname" in user &&
+    "sub" in user
   );
 }
 
-function isLegacyProvider(provider: unknown): provider is LegacyProvider {
-  return (
-    typeof provider === "object" &&
-    provider !== null &&
-    "provider" in provider &&
-    "id" in provider
-  );
-}
-
-export function isLegacySession(session: unknown): session is LegacySession {
-  return (
-    typeof session === "object" &&
-    session !== null &&
-    "provider" in session &&
-    isLegacyProvider(session.provider) &&
-    "user" in session &&
-    isLegacyExternalUser(session.user)
-  );
+function isAuth0Session(session: unknown): session is Session {
+  return typeof session === "object" && session !== null && "user" in session;
 }
 
 // We only expose generic types to ease phasing out.
 
-export type Session = LegacySession;
+export type SessionWithUser = Omit<Session, "user"> & { user: ExternalUser };
 
-export function isValidSession(session: unknown): session is Session {
-  return isLegacySession(session);
+export function isValidSession(
+  session: Session | null
+): session is SessionWithUser {
+  return isAuth0Session(session) && isExternalUser(session.user);
 }
