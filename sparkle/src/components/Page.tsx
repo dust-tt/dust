@@ -35,7 +35,7 @@ export function Page({ children, variant }: PageProps) {
 }
 
 interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   description?: string;
   icon?: ComponentType<{ className?: string }>;
 }
@@ -214,7 +214,7 @@ Page.Horizontal = function ({
   return (
     <div
       className={classNames(
-        "s-flex s-flex-col  sm:s-flex-row",
+        "s-flex s-flex-col sm:s-flex-row",
         sizing === "grow" ? "s-grow s-basis-0" : "",
         sizing === "shrink" ? "s-shrink" : "",
         gapSizes[gap],
@@ -239,7 +239,7 @@ Page.Vertical = function ({
     <div
       className={classNames(
         "s-flex s-flex-col",
-        sizing === "grow" ? "s-grow" : "",
+        sizing === "grow" ? "s-grow s-basis-0" : "",
         sizing === "shrink" ? "s-shrink" : "",
         gapSizes[gap],
         align === "left" ? "s-items-start" : "",
