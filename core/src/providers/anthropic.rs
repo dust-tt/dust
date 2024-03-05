@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
@@ -398,7 +399,7 @@ impl AnthropicLLM {
 
         let status = res.status();
 
-        let body = hyper::body::aggregate(res).await?;
+        let body = res.collect().await?.to_bytes();
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
