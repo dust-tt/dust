@@ -71,7 +71,7 @@ export interface QuickGuideViewProperties {
    */
   duration: number;
   workspaceId: string;
-  WorkspaceName: string;
+  workspaceName: string;
 }
 
 export class QuickGuideView implements BaseEvent {

@@ -14,6 +14,11 @@ export function getBrowserClient() {
   ampli.load({
     environment: "dust",
     disabled: disabled,
+    client: {
+      configuration: {
+        defaultTracking: false,
+      },
+    },
   });
   BROWSER_CLIENT = ampli;
 

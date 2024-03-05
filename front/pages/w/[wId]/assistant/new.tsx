@@ -261,6 +261,8 @@ export default function AssistantNew({
           }
         >
           <QuickStartGuide
+            owner={owner}
+            user={user}
             show={showQuickGuide}
             onClose={() => {
               void persistQuickGuideSeen();

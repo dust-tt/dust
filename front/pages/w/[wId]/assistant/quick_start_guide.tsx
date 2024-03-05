@@ -7,14 +7,44 @@ import {
   RocketIcon,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
+import { useEffect, useRef } from "react";
+
+import { getBrowserClient } from "@app/lib/amplitude/browser";
 
 export function QuickStartGuide({
+  owner,
+  user,
   show,
   onClose,
 }: {
+  owner: WorkspaceType;
+  user: UserType;
   show: boolean;
   onClose: () => void;
 }) {
+  const showedStartTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Track view duration on amplitude
+    if (show) {
+      showedStartTimeRef.current = Date.now();
+    } else {
+      if (showedStartTimeRef.current) {
+        const duration = Date.now() - showedStartTimeRef.current;
+        showedStartTimeRef.current = null;
+
+        const amplitude = getBrowserClient();
+        amplitude.identify(`user-${user.id.toString()}`);
+        amplitude.quickGuideView({
+          workspaceId: owner.sId,
+          workspaceName: owner.name,
+          duration,
+        });
+      }
+    }
+  }, [owner.name, owner.sId, show, user.id]);
+
   return (
     <Modal
       isOpen={show}
