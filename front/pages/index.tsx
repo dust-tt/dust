@@ -50,6 +50,7 @@ import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
+import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
@@ -60,7 +61,9 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireAuth: false,
 })<{
   gaTrackingId: string;
-}>(async (context, session) => {
+}>(async (context) => {
+  // Fetch session explicitly as this page redirects logged in users to our home page.
+  const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
 
   if (user && user.workspaces.length > 0) {

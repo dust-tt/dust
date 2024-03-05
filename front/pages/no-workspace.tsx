@@ -13,7 +13,6 @@ import {
   getUserFromSession,
   withDefaultGetServerSidePropsRequirements,
 } from "@app/lib/iam/session";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
 

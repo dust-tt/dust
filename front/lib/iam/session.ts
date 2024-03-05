@@ -118,20 +118,11 @@ export function makeGetServerSidePropsRequirementsWrapper<
       const session = requireAuth
         ? await getSession(context.req, context.res)
         : null;
-
-      if (session && !isValidSession(session)) {
+      if (requireAuth && (!session || !isValidSession(session))) {
         return {
           redirect: {
             permanent: false,
-            destination: "/",
-          },
-        };
-      }
-
-      if (requireAuth && !session) {
-        return {
-          redirect: {
-            permanent: false,
+            // TODO(2024-03-04 flav) Add support for `returnTo=`.
             destination: "/",
           },
         };
