@@ -1,7 +1,7 @@
 import type {
-  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
   ModelId,
 } from "@dust-tt/types";
 
@@ -21,8 +21,8 @@ import {
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
   checkPageHasChildren,
-  createConnectorNodeFromPage,
-  createConnectorNodeFromSpace,
+  createContentNodeFromPage,
+  createContentNodeFromSpace,
   retrieveAvailableSpaces,
   retrieveHierarchyForParent,
 } from "@connectors/connectors/confluence/lib/permissions";
@@ -254,7 +254,7 @@ export async function retrieveConfluenceConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -403,7 +403,7 @@ export async function retrieveConfluenceObjectsTitles(
 export async function retrieveConfluenceContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const connectorState = await ConfluenceConfiguration.findOne({
     where: {
       connectorId,
@@ -439,13 +439,13 @@ export async function retrieveConfluenceContentNodes(
     }),
   ]);
 
-  const spaceContentNodes: ConnectorNode[] = confluenceSpaces.map((space) => {
-    return createConnectorNodeFromSpace(space, connectorState.url, "read", {
+  const spaceContentNodes: ContentNode[] = confluenceSpaces.map((space) => {
+    return createContentNodeFromSpace(space, connectorState.url, "read", {
       isExpandable: true,
     });
   });
 
-  const pageContentNodes: ConnectorNode[] = await concurrentExecutor(
+  const pageContentNodes: ContentNode[] = await concurrentExecutor(
     confluencePages,
     async (page) => {
       let parentId: string;
@@ -460,7 +460,7 @@ export async function retrieveConfluenceContentNodes(
       }
       const isExpandable = await checkPageHasChildren(connectorId, page.pageId);
 
-      return createConnectorNodeFromPage(
+      return createContentNodeFromPage(
         { id: parentId, type: parentType },
         connectorState.url,
         page,

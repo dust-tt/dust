@@ -1,4 +1,4 @@
-import type { ConnectorNode, ModelId } from "@dust-tt/types";
+import type { ContentNode, ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -346,7 +346,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorNode[]> {
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ContentNode[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
@@ -355,7 +355,7 @@ export async function retrieveIntercomHelpCentersPermissions({
 
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
-  let nodes: ConnectorNode[] = [];
+  let nodes: ContentNode[] = [];
 
   // If Root level we retrieve the list of Help Centers.
   // If isReadPermissionsOnly = true, we retrieve the list of Help Centers from DB that have permission = "read"
@@ -498,7 +498,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: "read",
         },
       });
-      const collectionNodes: ConnectorNode[] = collectionsInDb.map(
+      const collectionNodes: ContentNode[] = collectionsInDb.map(
         (collection) => ({
           provider: connector.type,
           internalId: getHelpCenterCollectionInternalId(
@@ -528,7 +528,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: "read",
         },
       });
-      const articleNodes: ConnectorNode[] = articlesInDb.map((article) => ({
+      const articleNodes: ContentNode[] = articlesInDb.map((article) => ({
         provider: connector.type,
         internalId: getHelpCenterArticleInternalId(
           connectorId,

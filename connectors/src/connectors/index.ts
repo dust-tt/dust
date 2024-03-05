@@ -63,13 +63,13 @@ import type {
   ConnectorCreatorOAuth,
   ConnectorCreatorUrl,
   ConnectorGarbageCollector,
-  ConnectorNodeParentsRetriever,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
   ConnectorResumer,
   ConnectorStopper,
   ConnectorUpdaterOAuth,
   ConnectorUpdaterUrl,
+  ContentNodeParentsRetriever,
   SyncConnector,
 } from "@connectors/connectors/interface";
 import {
@@ -266,7 +266,7 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
 
 export const RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorNodeParentsRetriever
+  ContentNodeParentsRetriever
 > = {
   confluence: retrieveConfluenceContentNodeParents,
   notion: retrieveNotionContentNodeParents,

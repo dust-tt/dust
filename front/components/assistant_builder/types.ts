@@ -1,7 +1,7 @@
 import type {
   AgentConfigurationScope,
   AppType,
-  ConnectorNode,
+  ContentNode,
   DataSourceType,
   SupportedModel,
   TimeframeUnit,
@@ -19,7 +19,7 @@ export type ActionMode = (typeof ACTION_MODES)[number];
 
 export type AssistantBuilderDataSourceConfiguration = {
   dataSource: DataSourceType;
-  selectedResources: ConnectorNode[];
+  selectedResources: ContentNode[];
   isSelectAll: boolean;
 };
 

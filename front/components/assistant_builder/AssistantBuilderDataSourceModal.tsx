@@ -8,8 +8,8 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type {
-  ConnectorNode,
   ConnectorProvider,
+  ContentNode,
   DataSourceType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -26,7 +26,7 @@ import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSe
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
-import type { GetConnectorNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
+import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
@@ -63,9 +63,7 @@ export default function AssistantBuilderDataSourceModal({
 }) {
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
-  const [selectedResources, setSelectedResources] = useState<ConnectorNode[]>(
-    []
-  );
+  const [selectedResources, setSelectedResources] = useState<ContentNode[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
 
   const onReset = () => {
@@ -226,9 +224,9 @@ function DataSourceResourceSelector({
 }: {
   dataSource: DataSourceType | null;
   owner: WorkspaceType;
-  selectedResources: ConnectorNode[];
+  selectedResources: ContentNode[];
   isSelectAll: boolean;
-  onSelectChange: (resource: ConnectorNode, selected: boolean) => void;
+  onSelectChange: (resource: ContentNode, selected: boolean) => void;
   toggleSelectAll: () => void;
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
@@ -259,7 +257,7 @@ function DataSourceResourceSelector({
       if (!res.ok) {
         throw new Error("Failed to fetch parents");
       }
-      const json: GetConnectorNodeParentsResponseBody = await res.json();
+      const json: GetContentNodeParentsResponseBody = await res.json();
       setParentsById(
         json.nodes.reduce((acc, r) => {
           acc[r.internalId] = new Set(r.parents);

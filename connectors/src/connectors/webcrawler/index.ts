@@ -1,6 +1,6 @@
 import type {
-  ConnectorNode,
   ConnectorsAPIError,
+  ContentNode,
   CreateConnectorUrlRequestBody,
   ModelId,
   WebCrawlerConfigurationType,
@@ -130,7 +130,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -186,7 +186,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
     folders
       // We don't want to show folders that are also pages.
       .filter((f) => !excludedFoldersSet.has(f.url))
-      .map((folder): ConnectorNode => {
+      .map((folder): ContentNode => {
         return {
           provider: "webcrawler",
           internalId: folder.internalId,
@@ -210,7 +210,7 @@ export async function retrieveWebcrawlerConnectorPermissions({
         };
       })
       .concat(
-        pages.map((page): ConnectorNode => {
+        pages.map((page): ContentNode => {
           const isFileAndFolder = excludedFoldersSet.has(
             normalizeFolderUrl(page.url)
           );
@@ -295,8 +295,8 @@ export async function retrieveWebCrawlerObjectsTitles(
 export async function retrieveWebCrawlerContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
-  const nodes: ConnectorNode[] = [];
+): Promise<Result<ContentNode[], Error>> {
+  const nodes: ContentNode[] = [];
 
   const [folders, pages] = await Promise.all([
     WebCrawlerFolder.findAll({

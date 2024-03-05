@@ -1,7 +1,7 @@
 import type {
-  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -355,7 +355,7 @@ export async function retrieveIntercomConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -602,7 +602,7 @@ export async function retrieveIntercomNodesTitles(
 export async function retrieveIntercomContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const helpCenterIds: string[] = [];
   const collectionIds: string[] = [];
   const articleIds: string[] = [];
@@ -661,7 +661,7 @@ export async function retrieveIntercomContentNodes(
     }),
   ]);
 
-  const nodes: ConnectorNode[] = [];
+  const nodes: ContentNode[] = [];
   for (const helpCenter of helpCenters) {
     nodes.push({
       provider: "intercom",
