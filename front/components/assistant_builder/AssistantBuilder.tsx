@@ -145,7 +145,7 @@ const useNavigationLock = (
 
 const screens = {
   instructions: { label: "Instructions", icon: CircleIcon },
-  actions: { label: "Actions & Data sources", icon: SquareIcon },
+  actions: { label: "Data sources & Actions", icon: SquareIcon },
   naming: { label: "Naming", icon: TriangleIcon },
 };
 type BuilderScreen = keyof typeof screens;
@@ -463,7 +463,7 @@ export default function AssistantBuilder({
         <BuilderLayout
           leftPanel={
             <div className="flex h-full flex-col gap-5 py-4">
-              <div className="flex flex-col justify-between sm:flex-row">
+              <div className="flex flex-col flex-wrap justify-between gap-4 sm:flex-row">
                 <Tab tabs={tabs} variant="stepper" />
                 <div className="self-end pt-0.5">
                   <SharingButton
