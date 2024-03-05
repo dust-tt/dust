@@ -93,7 +93,7 @@ export class Authenticator {
    * @returns Promise<Authenticator>
    */
   static async fromSession(
-    session: SessionWithUser,
+    session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
@@ -167,7 +167,7 @@ export class Authenticator {
    * @returns Promise<Authenticator>
    */
   static async fromSuperUserSession(
-    session: SessionWithUser,
+    session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([

@@ -8,7 +8,7 @@ import type { ParsedUrlQuery } from "querystring";
 import { Op } from "sequelize";
 
 import { getSession } from "@app/lib/auth";
-import type { Session } from "@app/lib/iam/provider";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import {
   fetchUserFromSession,
@@ -100,7 +100,7 @@ export type CustomGetServerSideProps<
   RequireAuth extends boolean = true
 > = (
   context: GetServerSidePropsContext<Params, Preview>,
-  session: RequireAuth extends true ? Session : null
+  session: RequireAuth extends true ? SessionWithUser : null
 ) => Promise<GetServerSidePropsResult<Props>>;
 
 export function makeGetServerSidePropsRequirementsWrapper<
@@ -128,7 +128,9 @@ export function makeGetServerSidePropsRequirementsWrapper<
         };
       }
 
-      const userSession = session as RequireAuth extends true ? Session : null;
+      const userSession = session as RequireAuth extends true
+        ? SessionWithUser
+        : null;
 
       if (enableLogging) {
         return withGetServerSidePropsLogging(getServerSideProps)(
