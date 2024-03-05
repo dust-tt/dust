@@ -1,10 +1,8 @@
 use super::block::Env;
 use crate::project::Project;
 use anyhow::{anyhow, Result};
-use hyper::body::HttpBody;
-use hyper::header;
-use hyper::{body::Buf, http::StatusCode, Body, Client, Method, Request};
-use hyper_tls::HttpsConnector;
+use hyper::body::Buf;
+use reqwest::StatusCode;
 use serde_json::Value;
 use std::io::prelude::*;
 use url::Url;
@@ -41,40 +39,15 @@ pub async fn get_data_source_project(
     );
     let parsed_url = Url::parse(url.as_str())?;
 
-    let mut req = Request::builder().method(Method::GET).uri(url.as_str());
-
-    {
-        let headers = match req.headers_mut() {
-            Some(h) => h,
-            None => Err(anyhow!("Invalid URL: {}", url.as_str()))?,
-        };
-        headers.insert(
-            header::AUTHORIZATION,
-            header::HeaderValue::from_bytes(
-                format!("Bearer {}", registry_secret.as_str()).as_bytes(),
-            )?,
-        );
-        headers.insert(
-            header::HeaderName::from_bytes("X-Dust-Workspace-Id".as_bytes())?,
-            header::HeaderValue::from_bytes(dust_workspace_id.as_bytes())?,
-        );
-    }
-    let req = req.body(Body::empty())?;
-
-    let res = match parsed_url.scheme() {
-        "https" => {
-            let https = HttpsConnector::new();
-            let cli = Client::builder().build::<_, hyper::Body>(https);
-            cli.request(req).await?
-        }
-        "http" => {
-            let cli = Client::new();
-            cli.request(req).await?
-        }
-        _ => Err(anyhow!(
-            "Only the `http` and `https` schemes are authorized."
-        ))?,
-    };
+    let res = reqwest::Client::new()
+        .get(parsed_url.as_str())
+        .header(
+            "Authorization",
+            format!("Bearer {}", registry_secret.as_str()),
+        )
+        .header("X-Dust-Workspace-Id", dust_workspace_id)
+        .send()
+        .await?;
 
     let status = res.status();
     if status != StatusCode::OK {
@@ -85,7 +58,7 @@ pub async fn get_data_source_project(
         ))?;
     }
 
-    let body = res.collect().await?.aggregate();
+    let body = res.bytes().await?;
 
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;

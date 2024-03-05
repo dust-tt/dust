@@ -6,9 +6,9 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use hyper::body::HttpBody;
-use hyper::{body::Buf, Body, Client, Method, Request, Uri};
-use hyper_tls::HttpsConnector;
+use hyper::body::Buf;
+use hyper::Uri;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
@@ -30,34 +30,28 @@ pub struct DetokenizeResponse {
 }
 
 async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
-    let https = HttpsConnector::new();
-    let cli = Client::builder().build::<_, hyper::Body>(https);
-
-    let req = Request::builder()
-        .method(Method::POST)
-        .uri(format!("https://api.cohere.ai/tokenize",).parse::<Uri>()?)
+    let res = reqwest::Client::new()
+        .post("https://api.cohere.ai/tokenize")
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_key))
-        .body(Body::from(
-            json!({
-                "text": text,
-            })
-            .to_string(),
-        ))?;
-
-    let res = cli.request(req).await?;
+        .json(&json!({
+            "text": text,
+        }))
+        .send()
+        .await?;
     let status = res.status();
-    let body = res.collect().await?.aggregate();
+    let body = res.bytes().await?;
+
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
 
     let r = match status {
-        hyper::StatusCode::OK => {
+        StatusCode::OK => {
             let r: TokenizeResponse = serde_json::from_slice(c)?;
             Ok(r)
         }
-        hyper::StatusCode::TOO_MANY_REQUESTS => {
+        StatusCode::TOO_MANY_REQUESTS => {
             let error: Error = serde_json::from_slice(c).unwrap_or(Error {
                 message: "Too many requests".to_string(),
             });
@@ -82,34 +76,29 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
 }
 
 async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
-    let https = HttpsConnector::new();
-    let cli = Client::builder().build::<_, hyper::Body>(https);
-
-    let req = Request::builder()
-        .method(Method::POST)
-        .uri(format!("https://api.cohere.ai/detokenize",).parse::<Uri>()?)
+    let res = reqwest::Client::new()
+        .post("https://api.cohere.ai/detokenize")
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_key))
-        .body(Body::from(
-            json!({
-                "tokens": tokens,
-            })
-            .to_string(),
-        ))?;
+        .json(&json!({
+            "tokens": tokens,
+        }))
+        .send()
+        .await?;
 
-    let res = cli.request(req).await?;
     let status = res.status();
-    let body = res.collect().await?.aggregate();
+    let body = res.bytes().await?;
+
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
 
     let r = match status {
-        hyper::StatusCode::OK => {
+        StatusCode::OK => {
             let r: DetokenizeResponse = serde_json::from_slice(c)?;
             Ok(r)
         }
-        hyper::StatusCode::TOO_MANY_REQUESTS => {
+        StatusCode::TOO_MANY_REQUESTS => {
             let error: Error = serde_json::from_slice(c).unwrap_or(Error {
                 message: "Too many requests".to_string(),
             });
@@ -193,50 +182,44 @@ impl CohereLLM {
     ) -> Result<Response> {
         assert!(self.api_key.is_some());
 
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
+        let res = reqwest::Client::new()
+            .post(self.uri()?.to_string())
             .header("Content-Type", "application/json")
             .header("Cohere-Version", "2022-12-06")
             .header(
                 "Authorization",
                 format!("Bearer {}", self.api_key.clone().unwrap()),
             )
-            .body(Body::from(
-                json!({
-                    "model": self.id.clone(),
-                    "prompt": prompt,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                    "num_generations": num_generations,
-                    "return_likelihoods": return_likelihoods,
-                    "stop_sequences": match stop.len() {
-                        0 => None,
-                        _ => Some(stop),
-                    },
-                    "frequency_penalty": frequency_penalty,
-                    "presence_penalty": presence_penalty,
-                    "p": p,
-                })
-                .to_string(),
-            ))?;
+            .json(&json!({
+                "model": self.id.clone(),
+                "prompt": prompt,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "num_generations": num_generations,
+                "return_likelihoods": return_likelihoods,
+                "stop_sequences": match stop.len() {
+                    0 => None,
+                    _ => Some(stop),
+                },
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+                "p": p,
+            }))
+            .send()
+            .await?;
 
-        let res = cli.request(req).await?;
         let status = res.status();
-        let body = res.collect().await?.aggregate();
+        let body = res.bytes().await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
 
         let response = match status {
-            hyper::StatusCode::OK => {
+            StatusCode::OK => {
                 let response: Response = serde_json::from_slice(c)?;
                 Ok(response)
             }
-            hyper::StatusCode::TOO_MANY_REQUESTS => {
+            StatusCode::TOO_MANY_REQUESTS => {
                 let error: Error = serde_json::from_slice(c).unwrap_or(Error {
                     message: "Too many requests".to_string(),
                 });
@@ -434,40 +417,33 @@ impl CohereEmbedder {
     async fn embed(&self, text: Vec<&str>, truncate: Truncate) -> Result<Embeddings> {
         assert!(self.api_key.is_some());
 
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
+        let res = reqwest::Client::new()
+            .post(self.uri()?.to_string())
             .header("Content-Type", "application/json")
             .header("Cohere-Version", "2022-12-06")
             .header(
                 "Authorization",
                 format!("Bearer {}", self.api_key.clone().unwrap()),
             )
-            .body(Body::from(
-                json!({
-                    "model": self.id.clone(),
-                    "texts": text,
-                    "truncate": truncate,
-                })
-                .to_string(),
-            ))?;
-
-        let res = cli.request(req).await?;
+            .json(&json!({
+                "model": self.id.clone(),
+                "texts": text,
+                "truncate": truncate,
+            }))
+            .send()
+            .await?;
         let status = res.status();
-        let body = res.collect().await?.aggregate();
+        let body = res.bytes().await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
 
         let e = match status {
-            hyper::StatusCode::OK => {
+            StatusCode::OK => {
                 let embeddings: Embeddings = serde_json::from_slice(c)?;
                 Ok(embeddings)
             }
-            hyper::StatusCode::TOO_MANY_REQUESTS => {
+            StatusCode::TOO_MANY_REQUESTS => {
                 let error: Error = serde_json::from_slice(c).unwrap_or(Error {
                     message: "Too many requests".to_string(),
                 });

@@ -6,9 +6,7 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use hyper::body::HttpBody;
-use hyper::{body::Buf, Body, Client, Method, Request, Uri};
-use hyper_tls::HttpsConnector;
+use hyper::{body::Buf, Uri};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -87,51 +85,46 @@ impl AI21LLM {
     ) -> Result<Response> {
         assert!(self.api_key.is_some());
 
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
+        let res = reqwest::Client::new()
+            .post(self.uri()?.to_string())
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header(
                 "Authorization",
                 format!("Bearer {}", self.api_key.clone().unwrap()),
             )
-            .body(Body::from(
-                json!({
-                    "prompt": prompt,
-                    "numResults": num_results,
-                    "maxTokens": max_tokens,
-                    "minTokens": min_tokens,
-                    "temperature": temperature,
-                    "topP": top_p,
-                    "stopSequences": stop,
-                    "topKReturn": top_k_return,
-                    "frequency_penalty": {
-                        "scale": frequency_penalty,
-                    },
-                    "presence_penalty": {
-                        "scale": presence_penalty,
-                    }
-                })
-                .to_string(),
-            ))?;
+            .json(&json!({
+                "prompt": prompt,
+                "numResults": num_results,
+                "maxTokens": max_tokens,
+                "minTokens": min_tokens,
+                "temperature": temperature,
+                "topP": top_p,
+                "stopSequences": stop,
+                "topKReturn": top_k_return,
+                "frequency_penalty": {
+                    "scale": frequency_penalty,
+                },
+                "presence_penalty": {
+                    "scale": presence_penalty,
+                }
+            }))
+            .send()
+            .await?;
 
-        let res = cli.request(req).await?;
         let status = res.status();
-        let body = res.collect().await?.aggregate();
+        let body = res.bytes().await?;
+
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
 
         let response = match status {
-            hyper::StatusCode::OK => {
+            reqwest::StatusCode::OK => {
                 let response: Response = serde_json::from_slice(c)?;
                 Ok(response)
             }
-            hyper::StatusCode::TOO_MANY_REQUESTS => {
+            reqwest::StatusCode::TOO_MANY_REQUESTS => {
                 let error: Error = serde_json::from_slice(c).unwrap_or(Error {
                     detail: "Too many requests".to_string(),
                 });

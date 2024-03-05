@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use hyper::body::HttpBody;
-use hyper::{body::Bytes, Body, Client, Request};
+use hyper::body::Bytes;
+use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
@@ -71,24 +71,17 @@ impl SqliteWorker {
         query: &str,
     ) -> Result<Vec<QueryResult>, SqliteWorkerError> {
         let worker_url = self.url();
+        let uri = format!("{}/databases/{}", worker_url, encode(database_unique_id));
 
-        let req = Request::builder()
-            .method("POST")
-            .uri(format!(
-                "{}/databases/{}",
-                worker_url,
-                encode(database_unique_id)
-            ))
+        let req = reqwest::Client::new()
+            .post(&uri)
             .header("Content-Type", "application/json")
-            .body(Body::from(
-                json!({
-                    "tables": tables,
-                    "query": query,
-                })
-                .to_string(),
-            ))?;
+            .json(&json!({
+                "tables": tables,
+                "query": query,
+            }));
 
-        let body_bytes = get_response_body(req).await?;
+        let body_bytes = get_response_body(req, &uri).await?;
 
         #[derive(Deserialize)]
         struct ExecuteQueryResponseBody {
@@ -114,47 +107,44 @@ impl SqliteWorker {
         database_unique_id: &str,
     ) -> Result<(), SqliteWorkerError> {
         let worker_url = self.url();
+        let uri = format!("{}/databases/{}", worker_url, encode(database_unique_id));
 
-        let req = Request::builder()
-            .method("DELETE")
-            .uri(format!(
-                "{}/databases/{}",
-                worker_url,
-                encode(database_unique_id)
-            ))
-            .body(Body::from(""))?;
+        let req = reqwest::Client::new().delete(&uri);
 
-        let _ = get_response_body(req).await?;
+        let _ = get_response_body(req, &uri).await?;
 
         Ok(())
     }
 
     pub async fn expire_all(&self) -> Result<(), SqliteWorkerError> {
         let worker_url = self.url();
+        let uri = format!("{}/databases", worker_url);
 
-        let req = Request::builder()
-            .method("DELETE")
-            .uri(format!("{}/databases", worker_url))
-            .body(Body::from(""))?;
+        let req = reqwest::Client::new().delete(&uri);
 
-        let _ = get_response_body(req).await?;
+        let _ = get_response_body(req, &uri).await?;
 
         Ok(())
     }
 }
 
-async fn get_response_body(req: hyper::Request<hyper::Body>) -> Result<Bytes, SqliteWorkerError> {
-    let uri = req.uri().to_string();
-    let res = Client::new().request(req).await?;
+async fn get_response_body(req: RequestBuilder, uri: &str) -> Result<Bytes, SqliteWorkerError> {
+    let res = req
+        .send()
+        .await
+        .map_err(|e| SqliteWorkerError::UnexpectedError(anyhow!(e)))?;
 
-    let status = res.status().as_u16();
-    let body = res.collect().await?.to_bytes();
+    let status = res.status();
+    let body = res
+        .bytes()
+        .await
+        .map_err(|e| SqliteWorkerError::UnexpectedError(anyhow!(e)))?;
 
     match status {
-        200 => Ok(body),
+        StatusCode::OK => Ok(body),
         s => {
             let body_json: serde_json::Value = serde_json::from_slice(&body)
-                .map_err(|e| SqliteWorkerError::BodyParsingError(e, uri.clone(), s))?;
+                .map_err(|e| SqliteWorkerError::BodyParsingError(e, uri.to_string(), s.into()))?;
 
             let error = body_json.get("error");
             let error_code = match error {
@@ -166,10 +156,14 @@ async fn get_response_body(req: hyper::Request<hyper::Body>) -> Result<Bytes, Sq
                 None => None,
             };
             match error_code {
-                Some(code) => Err(SqliteWorkerError::ServerError(uri, code.to_string(), s))?,
+                Some(code) => Err(SqliteWorkerError::ServerError(
+                    uri.to_string(),
+                    code.to_string(),
+                    s.into(),
+                ))?,
                 None => Err(SqliteWorkerError::UnexpectedServerError(
-                    uri,
-                    s,
+                    uri.to_string(),
+                    s.into(),
                     format!("No error code in response: {}", body_json.to_string()),
                 ))?,
             }

@@ -11,8 +11,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
-use hyper::body::HttpBody;
-use hyper::{body::Buf, Body, Client, Method, Request, Uri};
+use hyper::{body::Buf, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -367,44 +366,36 @@ impl AnthropicLLM {
         top_k: Option<i32>,
         stop: &Vec<String>,
     ) -> Result<Response> {
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
-        // TODO: implement stream
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(self.uri()?)
+        let res = reqwest::Client::new()
+            .post(self.uri()?.to_string())
             .header("Content-Type", "application/json")
             .header("X-API-Key", api_key)
             .header("anthropic-version", "2023-06-01")
-            .body(Body::from(
-                json!({
-                    "model": self.id.clone(),
-                    "prompt": prompt,
-                    "max_tokens_to_sample": max_tokens_to_sample,
-                    "temperature": temperature,
-                    // stop sequences need to be non-null for anthropic, otherwise
-                    // we get 422 Unprocessable Entity
-                    "stop_sequences": stop.clone(),
-                    "top_p": top_p,
-                    "top_k": match top_k {
-                        Some(k) => k,
-                        None => -1
-                    },
-                })
-                .to_string(),
-            ))?;
-
-        let res = cli.request(req).await?;
+            .json(&json!({
+                "model": self.id.clone(),
+                "prompt": prompt,
+                "max_tokens_to_sample": max_tokens_to_sample,
+                "temperature": temperature,
+                // stop sequences need to be non-null for anthropic, otherwise
+                // we get 422 Unprocessable Entity
+                "stop_sequences": stop.clone(),
+                "top_p": top_p,
+                "top_k": match top_k {
+                    Some(k) => k,
+                    None => -1
+                },
+            }))
+            .send()
+            .await?;
 
         let status = res.status();
+        let body = res.bytes().await?;
 
-        let body = res.collect().await?.to_bytes();
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
         let response = match status {
-            hyper::StatusCode::OK => {
+            reqwest::StatusCode::OK => {
                 let response: Response = serde_json::from_slice(c)?;
                 Ok(response)
             }
