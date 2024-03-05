@@ -55,7 +55,15 @@ export async function registerWebhook(
     };
     return new Ok(result);
   } else {
-    return new Err(new HTTPError(await res.text(), res.status));
+    let errorMsg = await res.text();
+    try {
+      // Gdrive returns JSON errors, attempt to parse it.
+      const error = JSON.parse(errorMsg);
+      errorMsg = error.error.message;
+    } catch (e) {
+      // Keep the raw text as error message
+    }
+    return new Err(new HTTPError(errorMsg, res.status));
   }
 }
 
