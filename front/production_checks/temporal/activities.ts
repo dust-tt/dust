@@ -5,6 +5,7 @@ import mainLogger from "@app/logger/logger";
 import { checkActiveWorkflows } from "@app/production_checks/checks/check_active_workflows_for_connectors";
 import { checkNotionActiveWorkflows } from "@app/production_checks/checks/check_notion_active_workflows";
 import { managedDataSourceGCGdriveCheck } from "@app/production_checks/checks/managed_data_source_gdrive_gc";
+import { managedDataSourceGdriveWebhooksCheck } from "@app/production_checks/checks/managed_data_source_gdrive_webhooks";
 import { nangoConnectionIdCleanupSlack } from "@app/production_checks/checks/nango_connection_id_cleanup_slack";
 import { scrubDeletedCoreDocumentVersionsCheck } from "@app/production_checks/checks/scrub_deleted_core_document_versions";
 import type { Check } from "@app/production_checks/types/check";
@@ -14,6 +15,11 @@ export async function runAllChecksActivity() {
     {
       name: "managed_data_source_gdrive_gc",
       check: managedDataSourceGCGdriveCheck,
+      everyHour: 1,
+    },
+    {
+      name: "managed_data_source_gdrive_webhooks",
+      check: managedDataSourceGdriveWebhooksCheck,
       everyHour: 1,
     },
     {

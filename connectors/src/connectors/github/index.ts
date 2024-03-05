@@ -1,8 +1,4 @@
-import type {
-  ConnectorNode,
-  ConnectorsAPIError,
-  ModelId,
-} from "@dust-tt/types";
+import type { ConnectorsAPIError, ContentNode, ModelId } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
@@ -228,7 +224,7 @@ export async function retrieveGithubConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
@@ -241,7 +237,7 @@ export async function retrieveGithubConnectorPermissions({
   if (!parentInternalId) {
     // No parentInternalId: we return the repositories.
 
-    let nodes: ConnectorNode[] = [];
+    let nodes: ContentNode[] = [];
     let pageNumber = 1; // 1-indexed
     for (;;) {
       const page = await getReposPage(githubInstallationId, pageNumber);
@@ -299,7 +295,7 @@ export async function retrieveGithubConnectorPermissions({
         return a.dirName.localeCompare(b.dirName);
       });
 
-      const nodes: ConnectorNode[] = [];
+      const nodes: ContentNode[] = [];
 
       directories.forEach((directory) => {
         nodes.push({
@@ -375,7 +371,7 @@ export async function retrieveGithubConnectorPermissions({
         ]
       );
 
-      const nodes: ConnectorNode[] = [];
+      const nodes: ContentNode[] = [];
 
       if (latestIssue) {
         nodes.push({
@@ -427,45 +423,10 @@ export async function retrieveGithubConnectorPermissions({
   }
 }
 
-export async function retrieveGithubReposTitles(
-  connectorId: ModelId,
-  repoIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const c = await ConnectorResource.fetchById(connectorId);
-  if (!c) {
-    logger.error({ connectorId }, "Connector not found");
-    return new Err(new Error("Connector not found"));
-  }
-
-  const githubInstallationId = c.connectionId;
-
-  const repoIdsSet = new Set(repoIds);
-
-  // for github, we just fetch all the repos from the github API and only filter the ones we need
-  // this is fine as we don't expect to have a lot of repos (it should rarely be more than 1 api call)
-  const repoTitles: Record<string, string> = {};
-  let pageNumber = 1; // 1-indexed
-  for (;;) {
-    const page = await getReposPage(githubInstallationId, pageNumber);
-    pageNumber += 1;
-    if (page.length === 0) {
-      break;
-    }
-
-    page.forEach((repo) => {
-      if (repoIdsSet.has(repo.id.toString())) {
-        repoTitles[repo.id.toString()] = repo.name;
-      }
-    });
-  }
-
-  return new Ok(repoTitles);
-}
-
 export async function retrieveGithubReposContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
@@ -474,7 +435,7 @@ export async function retrieveGithubReposContentNodes(
 
   const githubInstallationId = c.connectionId;
   const allReposIdsToFetch: Set<number> = new Set();
-  const nodes: ConnectorNode[] = [];
+  const nodes: ContentNode[] = [];
 
   // Users can select:
   // A full repo (issues + discussions + code if enabled)

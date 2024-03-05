@@ -1,7 +1,7 @@
 import type {
-  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
   ModelId,
 } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
@@ -334,7 +334,7 @@ export async function retrieveSlackConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   if (parentInternalId) {
     return new Err(
@@ -413,7 +413,7 @@ export async function retrieveSlackConnectorPermissions({
     }
   }
 
-  const resources: ConnectorNode[] = slackChannels.map((ch) => ({
+  const resources: ContentNode[] = slackChannels.map((ch) => ({
     provider: "slack",
     internalId: ch.slackChannelId,
     parentInternalId: null,
@@ -560,29 +560,10 @@ export async function setSlackConnectorPermissions(
   return new Ok(undefined);
 }
 
-export async function retrieveSlackChannelsTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const channels = await SlackChannel.findAll({
-    where: {
-      connectorId: connectorId,
-      slackChannelId: internalIds,
-    },
-  });
-
-  const titles: Record<string, string> = {};
-  for (const ch of channels) {
-    titles[ch.slackChannelId] = ch.slackChannelName;
-  }
-
-  return new Ok(titles);
-}
-
 export async function retrieveSlackContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const slackConfig = await SlackConfiguration.findOne({
     where: {
       connectorId: connectorId,
@@ -600,7 +581,7 @@ export async function retrieveSlackContentNodes(
     },
   });
 
-  const contentNodes: ConnectorNode[] = channels.map((ch) => ({
+  const contentNodes: ContentNode[] = channels.map((ch) => ({
     provider: "slack",
     internalId: ch.slackChannelId,
     parentInternalId: null,

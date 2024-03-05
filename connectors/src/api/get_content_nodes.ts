@@ -1,5 +1,5 @@
 import type {
-  ConnectorNode,
+  ContentNode,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
@@ -20,7 +20,7 @@ type GetContentNodesRequestBody = t.TypeOf<
 >;
 
 type GetContentNodesResponseBody = WithConnectorsAPIErrorReponse<{
-  nodes: ConnectorNode[];
+  nodes: ContentNode[];
 }>;
 
 const _getContentNodes = async (
@@ -56,27 +56,27 @@ const _getContentNodes = async (
 
   const { internalIds } = bodyValidation.right;
 
-  const connectorNodesRes: Result<ConnectorNode[], Error> =
+  const contentNodesRes: Result<ContentNode[], Error> =
     await BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE[connector.type](
       connector.id,
       internalIds
     );
 
-  if (connectorNodesRes.isErr()) {
+  if (contentNodesRes.isErr()) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: connectorNodesRes.error.message,
+        message: contentNodesRes.error.message,
       },
     });
   }
 
-  const connectorNodes = connectorNodesRes.value;
+  const contentNodes = contentNodesRes.value;
 
   return res.status(200).json({
-    nodes: connectorNodes,
+    nodes: contentNodes,
   });
 };
 
-export const getConnectorNodesAPIHandler = withLogging(_getContentNodes);
+export const getContentNodesAPIHandler = withLogging(_getContentNodes);

@@ -30,7 +30,6 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import type {
   ActionMode,
-  AssistantBuilderDataSourceConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -142,14 +141,8 @@ export default function ActionScreen({
   timeFrameError: string | null;
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-  const [dataSourceToManage, setDataSourceToManage] =
-    useState<AssistantBuilderDataSourceConfiguration | null>(null);
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
-
-  const configurableDataSources = dataSources.filter(
-    (dataSource) => !builderState.dataSourceConfigurations[dataSource.name]
-  );
 
   const deleteDataSource = (name: string) => {
     setEdited(true);
@@ -197,7 +190,7 @@ export default function ActionScreen({
   };
 
   const noDataSources =
-    configurableDataSources.length === 0 &&
+    dataSources.length === 0 &&
     Object.keys(builderState.dataSourceConfigurations).length === 0;
   const noDustApp = dustApps.length === 0;
 
@@ -207,9 +200,6 @@ export default function ActionScreen({
         isOpen={showDustAppsModal}
         setOpen={(isOpen) => {
           setShowDustAppsModal(isOpen);
-          if (!isOpen) {
-            setDataSourceToManage(null);
-          }
         }}
         dustApps={dustApps}
         onSave={({ app }) => {
@@ -243,12 +233,9 @@ export default function ActionScreen({
         isOpen={showDataSourcesModal}
         setOpen={(isOpen) => {
           setShowDataSourcesModal(isOpen);
-          if (!isOpen) {
-            setDataSourceToManage(null);
-          }
         }}
         owner={owner}
-        dataSources={configurableDataSources}
+        dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
           setBuilderState((state) => ({
@@ -263,7 +250,8 @@ export default function ActionScreen({
             },
           }));
         }}
-        dataSourceToManage={dataSourceToManage}
+        onDelete={deleteDataSource}
+        dataSourceConfigurations={builderState.dataSourceConfigurations}
       />
       <div className="flex flex-col gap-4 text-sm text-element-700">
         <div className="flex flex-col gap-2">
@@ -414,7 +402,6 @@ export default function ActionScreen({
                   <DropdownMenu.Items origin="topLeft" width={260}>
                     {SEARCH_MODES.filter((key) => {
                       const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
-                      console.log(owner.flags);
                       return flag === null || owner.flags.includes(flag);
                     }).map((key) => (
                       <DropdownMenu.Item
@@ -451,17 +438,12 @@ export default function ActionScreen({
           }
         >
           <DataSourceSelectionSection
+            owner={owner}
             dataSourceConfigurations={builderState.dataSourceConfigurations}
             openDataSourceModal={() => {
               setShowDataSourcesModal(true);
             }}
-            canAddDataSource={configurableDataSources.length > 0}
-            onManageDataSource={(name) => {
-              setDataSourceToManage(
-                builderState.dataSourceConfigurations[name]
-              );
-              setShowDataSourcesModal(true);
-            }}
+            canAddDataSource={dataSources.length > 0}
             onDelete={deleteDataSource}
           />
         </ActionModeSection>
@@ -472,17 +454,12 @@ export default function ActionScreen({
           }
         >
           <DataSourceSelectionSection
+            owner={owner}
             dataSourceConfigurations={builderState.dataSourceConfigurations}
             openDataSourceModal={() => {
               setShowDataSourcesModal(true);
             }}
-            canAddDataSource={configurableDataSources.length > 0}
-            onManageDataSource={(name) => {
-              setDataSourceToManage(
-                builderState.dataSourceConfigurations[name]
-              );
-              setShowDataSourcesModal(true);
-            }}
+            canAddDataSource={dataSources.length > 0}
             onDelete={deleteDataSource}
           />
           <div className={"flex flex-row items-center gap-4 pb-4"}>

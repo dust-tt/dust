@@ -10,17 +10,17 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const GetConnectorNodeParentsRequestBodySchema = t.type({
+const GetContentNodeParentsRequestBodySchema = t.type({
   internalIds: t.array(t.string),
 });
 
-export type GetConnectorNodeParentsResponseBody = {
+export type GetContentNodeParentsResponseBody = {
   nodes: { parents: string[]; internalId: string }[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetConnectorNodeParentsResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<GetContentNodeParentsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -86,7 +86,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = GetConnectorNodeParentsRequestBodySchema.decode(
+      const bodyValidation = GetContentNodeParentsRequestBodySchema.decode(
         req.body
       );
 

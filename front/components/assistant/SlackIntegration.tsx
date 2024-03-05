@@ -71,7 +71,7 @@ export function SlackIntegration({
             dataSource={slackDataSource}
             selectedParentIds={selectedChannelIds}
             parentsById={{}}
-            onSelectChange={({ resourceId, resourceName }, selected) => {
+            onSelectChange={(node, selected) => {
               setHasChanged(true);
 
               if (selected) {
@@ -81,8 +81,8 @@ export function SlackIntegration({
                     finalState.push(...sel);
                   }
                   finalState.push({
-                    slackChannelId: resourceId,
-                    slackChannelName: resourceName,
+                    slackChannelId: node.internalId,
+                    slackChannelName: node.title,
                   });
 
                   return finalState;
@@ -95,7 +95,7 @@ export function SlackIntegration({
                   }
                   finalState.splice(
                     finalState.findIndex(
-                      (c) => c.slackChannelId === resourceId
+                      (c) => c.slackChannelId === node.internalId
                     ),
                     1
                   );
