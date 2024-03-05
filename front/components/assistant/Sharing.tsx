@@ -1,18 +1,16 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   ChevronDownIcon,
   Chip,
-  ClipboardCheckIcon,
   Dialog,
   DropdownMenu,
   DustIcon,
   IconButton,
-  LinkIcon,
   LockIcon,
   Modal,
   Page,
   PlanetIcon,
-  ShapesIcon,
   SlackLogo,
   SliderToggle,
   UserGroupIcon,
@@ -169,13 +167,14 @@ export function SharingButton({
           <Button
             size="sm"
             label="Sharing"
-            icon={ShapesIcon}
+            icon={ArrowUpOnSquareIcon}
             variant="tertiary"
+            type="menu"
           />
         </DropdownMenu.Button>
-        <DropdownMenu.Items width={319} overflow="visible">
-          <div className="-mx-1 flex flex-col gap-y-4 pb-2 pt-3">
-            <div className="flex flex-col gap-y-2">
+        <DropdownMenu.Items width={300} overflow="visible">
+          <div className="flex flex-col gap-y-2 py-1">
+            <div className="flex flex-col gap-y-3">
               <SharingDropdown
                 owner={owner}
                 agentConfiguration={agentConfiguration}
@@ -194,78 +193,83 @@ export function SharingButton({
                 </div>
               </div>
             </div>
-
             {showSlackIntegration && (
-              <div className="flex flex-row justify-between">
-                <div>
-                  <div className="text-base font-bold text-element-800">
-                    Slack integration
-                  </div>
-                  <div className="text-sm text-element-700">
-                    {slackChannelSelected.length === 0 ? (
-                      <>Set as default assistant for specific channels.</>
-                    ) : (
-                      <>
-                        Default assistant for{" "}
-                        {slackChannelSelected
-                          .map((c) => c.slackChannelName)
-                          .join(", ")}
-                      </>
-                    )}
-                  </div>
+              <>
+                <Page.Separator />
+                <div className="flex flex-row justify-between">
+                  <div>
+                    <div className="text-base font-bold text-element-800">
+                      Slack integration
+                    </div>
+                    <div className="text-sm text-element-700">
+                      {slackChannelSelected.length === 0 ? (
+                        <>
+                          Set as default assistant for specific&nbsp;channels.
+                        </>
+                      ) : (
+                        <>
+                          Default assistant for{" "}
+                          {slackChannelSelected
+                            .map((c) => c.slackChannelName)
+                            .join(", ")}
+                        </>
+                      )}
+                    </div>
 
-                  <div className="pt-3">
                     {slackChannelSelected.length > 0 && (
-                      <Button
-                        size="xs"
-                        variant="secondary"
-                        label="Manage channels"
-                        onClick={() => setSlackDrawerOpened(true)}
-                      />
+                      <div className="pt-3">
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          label="Manage channels"
+                          onClick={() => setSlackDrawerOpened(true)}
+                        />
+                      </div>
                     )}
                   </div>
+                  <div className="pt-4">
+                    <SliderToggle
+                      selected={slackChannelSelected.length > 0}
+                      onClick={() => {
+                        if (slackChannelSelected.length > 0) {
+                          setNewLinkedSlackChannels([]);
+                        } else {
+                          setSlackDrawerOpened(true);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="">
-                  <SliderToggle
-                    selected={slackChannelSelected.length > 0}
-                    onClick={() => {
-                      if (slackChannelSelected.length > 0) {
-                        setNewLinkedSlackChannels([]);
-                      } else {
-                        setSlackDrawerOpened(true);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
+              </>
             )}
             {agentConfigurationId && (
-              <div className="flex flex-row justify-between">
-                <div>
-                  <div className="text-base font-bold text-element-800">
-                    Link
+              <>
+                <Page.Separator />
+                <div className="flex w-full flex-row">
+                  <div className="grow">
+                    <div className="text-base font-bold text-element-800">
+                      Link
+                    </div>
+                    <div className="text-sm text-element-700">
+                      Shareable direct&nbsp;URL
+                    </div>
                   </div>
-                  <div className="text-sm text-element-700">
-                    Shareable direct URL
+                  <div className="pt-4 text-right">
+                    <Button
+                      size="sm"
+                      label={copyLinkSuccess ? "Copied!" : "Copy link"}
+                      variant="secondary"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(shareLink);
+                        setCopyLinkSuccess(true);
+                        setTimeout(() => {
+                          setCopyLinkSuccess(false);
+                        }, 1000);
+                      }}
+                    />
                   </div>
                 </div>
-                <div>
-                  <Button
-                    size="sm"
-                    icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                    label={copyLinkSuccess ? "Copied!" : "Copy link"}
-                    variant="secondary"
-                    className="w-full"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(shareLink);
-                      setCopyLinkSuccess(true);
-                      setTimeout(() => {
-                        setCopyLinkSuccess(false);
-                      }, 1000);
-                    }}
-                  />
-                </div>
-              </div>
+              </>
             )}
           </div>
         </DropdownMenu.Items>
