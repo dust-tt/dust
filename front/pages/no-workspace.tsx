@@ -42,7 +42,7 @@ async function fetchRevokedWorkspace(
   user: UserTypeWithWorkspaces
 ): Promise<Workspace | null> {
   const memberships = await Membership.findAll({
-    where: { userId: user.id, role: "revoked" },
+    where: { userId: user.id },
   });
 
   if (!memberships.length) {
