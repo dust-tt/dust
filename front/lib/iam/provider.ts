@@ -28,7 +28,7 @@ function isExternalUser(user: Session["user"]): user is ExternalUser {
 }
 
 function isAuth0Session(session: unknown): session is Session {
-  return typeof session === "object" && session !== null && "sub" in session;
+  return typeof session === "object" && session !== null && "user" in session;
 }
 
 // We only expose generic types to ease phasing out.

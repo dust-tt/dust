@@ -1,5 +1,4 @@
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { isGoogleSession } from "@app/lib/iam/session";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -41,7 +40,7 @@ export async function findWorkspaceWithVerifiedDomain(
 ): Promise<WorkspaceHasDomain | null> {
   const { user } = session;
 
-  if (!isGoogleSession(session) || !user.email_verified) {
+  if (!user.email_verified) {
     return null;
   }
 

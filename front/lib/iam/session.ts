@@ -17,10 +17,6 @@ import {
 import { Membership, Workspace } from "@app/lib/models";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
-export function isGoogleSession(session: any) {
-  return session.provider.provider === "google";
-}
-
 /**
  * Retrieves the user for a given session
  * @param session any NextAuth session

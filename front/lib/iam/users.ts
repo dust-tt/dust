@@ -2,7 +2,6 @@ import type { Session } from "@auth0/nextjs-auth0";
 import type { UserProviderType } from "@dust-tt/types";
 
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
-import { isGoogleSession } from "@app/lib/iam/session";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 
