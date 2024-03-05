@@ -757,7 +757,7 @@ export async function retrieveIntercomContentNodeParents(
   }
   const teamId = getTeamIdFromInternalId(connectorId, internalId);
   if (teamId) {
-    return new Ok([]);
+    return new Ok([getTeamsInternalId(connectorId)]);
   }
 
   const parents: string[] = [];
