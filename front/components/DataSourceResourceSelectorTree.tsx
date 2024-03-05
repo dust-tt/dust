@@ -7,11 +7,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  ConnectorNode,
+  ContentNode,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorNodeType, ConnectorPermission } from "@dust-tt/types";
+import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
@@ -33,7 +33,7 @@ export default function DataSourceResourceSelectorTree({
   expandable: boolean;
   selectedParentIds: Set<string>;
   onSelectChange: (
-    resource: ConnectorNode,
+    resource: ContentNode,
     parents: string[],
     selected: boolean
   ) => void;
@@ -66,7 +66,7 @@ export type IconComponentType =
   | typeof CircleStackIcon
   | typeof ChatBubbleLeftRightIcon;
 
-function getIconForType(type: ConnectorNodeType): IconComponentType {
+function getIconForType(type: ContentNodeType): IconComponentType {
   switch (type) {
     case "file":
       return DocumentTextIcon;
@@ -104,7 +104,7 @@ function DataSourceResourceSelectorChildren({
   selectedParentIds: Set<string>;
   parents: string[];
   onSelectChange: (
-    resource: ConnectorNode,
+    resource: ContentNode,
     parents: string[],
     selected: boolean
   ) => void;

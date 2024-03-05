@@ -26,10 +26,10 @@ import {
 } from "./temporal/client";
 export type NangoConnectionId = string;
 import type {
-  ConnectorNode,
-  ConnectorNodeType,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
+  ContentNodeType,
   ModelId,
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
@@ -299,7 +299,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
@@ -316,9 +316,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const folderAsConnectorNodes = await concurrentExecutor(
+      const folderAsContentNodes = await concurrentExecutor(
         folders,
-        async (f): Promise<ConnectorNode | null> => {
+        async (f): Promise<ContentNode | null> => {
           const fd = await getGoogleDriveObject(authCredentials, f.folderId);
           if (!fd) {
             return null;
@@ -346,7 +346,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
         { concurrency: 4 }
       );
 
-      const nodes = removeNulls(folderAsConnectorNodes);
+      const nodes = removeNulls(folderAsContentNodes);
 
       nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
@@ -364,7 +364,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
 
       const nodes = await concurrentExecutor(
         folderOrFiles,
-        async (f): Promise<ConnectorNode> => {
+        async (f): Promise<ContentNode> => {
           return {
             provider: c.type,
             internalId: f.driveFileId,
@@ -403,8 +403,8 @@ export async function retrieveGoogleDriveConnectorPermissions({
       // Return the list of remote shared drives.
       const drives = await getDrivesIds(c.id);
 
-      const nodes: ConnectorNode[] = await Promise.all(
-        drives.map(async (d): Promise<ConnectorNode> => {
+      const nodes: ContentNode[] = await Promise.all(
+        drives.map(async (d): Promise<ContentNode> => {
           const driveObject = await getGoogleDriveObject(authCredentials, d.id);
           if (!driveObject) {
             throw new Error(`Drive ${d.id} unexpectedly not found (got 404).`);
@@ -413,7 +413,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             provider: c.type,
             internalId: driveObject.id,
             parentInternalId: driveObject.parent,
-            type: "folder" as ConnectorNodeType,
+            type: "folder" as ContentNodeType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
             dustDocumentId: null,
@@ -467,15 +467,15 @@ export async function retrieveGoogleDriveConnectorPermissions({
         nextPageToken = res.data.nextPageToken || undefined;
       } while (nextPageToken);
 
-      const nodes: ConnectorNode[] = await Promise.all(
-        remoteFolders.map(async (rf): Promise<ConnectorNode> => {
+      const nodes: ContentNode[] = await Promise.all(
+        remoteFolders.map(async (rf): Promise<ContentNode> => {
           const driveObject = await driveObjectToDustType(rf, authCredentials);
 
           return {
             provider: c.type,
             internalId: driveObject.id,
             parentInternalId: driveObject.parent,
-            type: "folder" as ConnectorNodeType,
+            type: "folder" as ContentNodeType,
             title: driveObject.name,
             sourceUrl: driveObject.webViewLink || null,
             expandable: await folderHasChildren(connectorId, driveObject.id),
@@ -564,7 +564,7 @@ export async function retrieveGoogleDriveObjectsTitles(
 export async function retrieveGoogleDriveContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const folderOrFiles = await GoogleDriveFiles.findAll({
     where: {
       connectorId: connectorId,
@@ -574,7 +574,7 @@ export async function retrieveGoogleDriveContentNodes(
 
   const nodes = await concurrentExecutor(
     folderOrFiles,
-    async (f): Promise<ConnectorNode> => {
+    async (f): Promise<ContentNode> => {
       const type = getPermissionViewType(f);
       let sourceUrl = null;
       if (type === "file") {

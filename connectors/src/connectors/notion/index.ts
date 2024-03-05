@@ -1,8 +1,4 @@
-import type {
-  ConnectorNode,
-  ConnectorsAPIError,
-  ModelId,
-} from "@dust-tt/types";
+import type { ConnectorsAPIError, ContentNode, ModelId } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
@@ -343,7 +339,7 @@ export async function retrieveNotionConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
@@ -368,7 +364,7 @@ export async function retrieveNotionConnectorPermissions({
     }),
   ]);
 
-  const getPageNodes = async (page: NotionPage): Promise<ConnectorNode> => {
+  const getPageNodes = async (page: NotionPage): Promise<ContentNode> => {
     const [childPage, childDB] = await Promise.all([
       NotionPage.findOne({
         where: {
@@ -403,7 +399,7 @@ export async function retrieveNotionConnectorPermissions({
 
   const pageNodes = await Promise.all(pages.map((p) => getPageNodes(p)));
 
-  const getDbNodes = async (db: NotionDatabase): Promise<ConnectorNode> => {
+  const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
@@ -421,7 +417,7 @@ export async function retrieveNotionConnectorPermissions({
 
   const dbNodes = await Promise.all(dbs.map((db) => getDbNodes(db)));
 
-  const folderNodes: ConnectorNode[] = [];
+  const folderNodes: ContentNode[] = [];
   if (!parentInternalId) {
     const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
       NotionPage.count({
@@ -531,7 +527,7 @@ export async function retrieveNotionContentNodeParents(
 export async function retrieveNotionContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const [pages, dbs] = await Promise.all([
     NotionPage.findAll({
       where: {
@@ -547,7 +543,7 @@ export async function retrieveNotionContentNodes(
     }),
   ]);
 
-  const pageNodes: ConnectorNode[] = pages.map((page) => ({
+  const pageNodes: ContentNode[] = pages.map((page) => ({
     provider: "notion",
     internalId: page.notionPageId,
     parentInternalId:
@@ -561,7 +557,7 @@ export async function retrieveNotionContentNodes(
     lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
   }));
 
-  const dbNodes: ConnectorNode[] = dbs.map((db) => ({
+  const dbNodes: ContentNode[] = dbs.map((db) => ({
     provider: "notion",
     internalId: db.notionDatabaseId,
     parentInternalId:
@@ -575,7 +571,7 @@ export async function retrieveNotionContentNodes(
     lastUpdatedAt: null,
   }));
 
-  const connectorNodes = pageNodes.concat(dbNodes);
+  const contentNodes = pageNodes.concat(dbNodes);
 
-  return new Ok(connectorNodes);
+  return new Ok(contentNodes);
 }
