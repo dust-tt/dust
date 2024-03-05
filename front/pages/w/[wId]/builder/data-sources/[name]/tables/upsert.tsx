@@ -26,7 +26,7 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useTable } from "@app/lib/swr";
