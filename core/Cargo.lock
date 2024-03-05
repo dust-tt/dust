@@ -1066,7 +1066,6 @@ dependencies = [
  "bb8-postgres",
  "blake3",
  "bstr",
- "bytes",
  "chrono",
  "clap",
  "cloud-storage",
@@ -1076,10 +1075,8 @@ dependencies = [
  "eventsource-client",
  "fancy-regex",
  "futures",
- "http-body-util",
  "hyper 1.2.0",
  "hyper-tls",
- "hyper-util",
  "itertools 0.10.5",
  "lazy_static",
  "parking_lot",
@@ -1769,7 +1766,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca38ef113da30126bbff9cd1705f9273e15d45498615d138b0c20279ac7a76aa"
 dependencies = [
  "bytes",
- "futures-channel",
  "futures-util",
  "http 1.1.0",
  "http-body 1.0.0",
@@ -1777,9 +1773,6 @@ dependencies = [
  "pin-project-lite",
  "socket2 0.5.6",
  "tokio",
- "tower",
- "tower-service",
- "tracing",
 ]
 
 [[package]]
