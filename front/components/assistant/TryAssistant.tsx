@@ -195,7 +195,6 @@ export function usePreviewAssistant({
   };
 
   const submit = useCallback(async () => {
-    console.log("submitting");
     const a = await submitAssistantBuilderForm({
       owner,
       builderState: {

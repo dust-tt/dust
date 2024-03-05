@@ -36,7 +36,7 @@ function AgentMention({
 
 /**
  *
- * @param additionalAgentConfigurations when trying an assistant in a side modal we
+ * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
  * need to pass the agent configuration to the input bar (it may not be in the
  * user's list of assistants)
  */
