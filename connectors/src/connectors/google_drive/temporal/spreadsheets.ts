@@ -46,7 +46,8 @@ async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
 async function upsertTable(
   connector: ConnectorResource,
   sheet: Sheet,
-  rows: string[][]
+  rows: string[][],
+  loggerArgs: object
 ) {
   const dataSourceConfig = await dataSourceConfigFromConnector(connector);
 
@@ -78,6 +79,8 @@ async function upsertTable(
     },
     truncate: true,
   });
+
+  logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
 }
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
@@ -153,6 +156,11 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
 
     return validRows;
   } catch (err) {
+    logger.info(
+      { ...loggerArgs, err },
+      `[Spreadsheet] Failed to retrieve valid rows.`
+    );
+
     // If the headers are invalid, return an empty array to ignore it.
     if (err instanceof InvalidStructuredDataHeaderError) {
       return [];
@@ -188,12 +196,17 @@ async function processSheet(
   const rows = await getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    await upsertTable(connector, sheet, rows);
+    await upsertTable(connector, sheet, rows, loggerArgs);
 
     await upsertSheetInDb(connector, sheet);
 
     return true;
   }
+
+  logger.info(
+    loggerArgs,
+    "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
+  );
 
   return false;
 }
