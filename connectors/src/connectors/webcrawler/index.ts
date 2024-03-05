@@ -349,23 +349,52 @@ export async function retrieveWebCrawlerContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
-  const parents: string[] = [internalId];
-  let ptr = internalId;
+  const parents: string[] = [];
+  let parentUrl: string | null = null;
 
-  const visited = new Set<string>();
-
-  do {
+  // First we get the Page or Folder for which we want to retrieve the parents
+  const page = await WebCrawlerPage.findOne({
+    where: {
+      connectorId: connectorId,
+      documentId: internalId,
+    },
+  });
+  if (page && page.parentUrl) {
+    parentUrl = page.parentUrl;
+  } else {
     const folder = await WebCrawlerFolder.findOne({
       where: {
         connectorId: connectorId,
-        url: ptr,
+        internalId: internalId,
       },
     });
-    if (!folder || !folder.parentUrl) {
-      return new Ok(parents);
+    if (folder && folder.parentUrl) {
+      parentUrl = folder.parentUrl;
+    }
+  }
+
+  // If the Page or Folder has no parentUrl, we return an empty array
+  if (!parentUrl) {
+    return new Ok([]);
+  }
+
+  // Otherwise we loop on the parentUrl to retrieve all the parents
+  const visitedUrls = new Set<string>();
+  while (parentUrl) {
+    const parentFolder: WebCrawlerFolder | null =
+      await WebCrawlerFolder.findOne({
+        where: {
+          connectorId: connectorId,
+          url: parentUrl,
+        },
+      });
+
+    if (!parentFolder) {
+      parentUrl = null;
+      continue;
     }
 
-    if (visited.has(folder.parentUrl)) {
+    if (visitedUrls.has(parentFolder.url)) {
       logger.error(
         {
           connectorId,
@@ -374,12 +403,13 @@ export async function retrieveWebCrawlerContentNodeParents(
         },
         "Found a cycle in the parents tree"
       );
-      return new Ok(parents);
+      parentUrl = null;
+      continue;
     }
-    parents.push(folder.parentUrl);
-    ptr = folder.parentUrl;
-    visited.add(ptr);
-  } while (ptr);
+    parents.push(parentFolder.internalId);
+    visitedUrls.add(parentFolder.url);
+    parentUrl = parentFolder.parentUrl;
+  }
 
   return new Ok(parents);
 }
