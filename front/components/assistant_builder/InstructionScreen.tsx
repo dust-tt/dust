@@ -307,9 +307,10 @@ const STATIC_SUGGESTIONS = {
   status: "ok" as const,
   suggestions: [
     "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-    "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'",
+    "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
     "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
-    "Try to be specific: tailor prompts with precise language to avoid ambiguity",
+    "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
+    "Brievity prompt useful in productivity setups: 'When replying to the user, go straight to the point. Answer with precision and brieviety.'",
   ],
 };
 
