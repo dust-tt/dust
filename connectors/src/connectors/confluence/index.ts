@@ -448,14 +448,15 @@ export async function retrieveConfluenceContentNodes(
   const pageContentNodes: ConnectorNode[] = await concurrentExecutor(
     confluencePages,
     async (page) => {
-      const parentId = page.parentId ?? page.spaceId;
+      let parentId: string;
       let parentType: "page" | "space";
-      if (isConfluenceInternalSpaceId(parentId)) {
-        parentType = "space";
-      } else if (isConfluenceInternalPageId(parentId)) {
+
+      if (page.parentId) {
+        parentId = page.parentId;
         parentType = "page";
       } else {
-        throw new Error("Invalid parent type");
+        parentId = page.spaceId;
+        parentType = "space";
       }
       const isExpandable = await checkPageHasChildren(connectorId, page.pageId);
 
