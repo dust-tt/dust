@@ -33,6 +33,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+import { QuickStartGuide } from "@app/components/quick_start_guide";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -43,7 +44,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
-import { QuickStartGuide } from "@app/pages/w/[wId]/assistant/quick_start_guide";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
