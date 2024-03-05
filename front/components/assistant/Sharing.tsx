@@ -194,50 +194,53 @@ export function SharingButton({
               </div>
             </div>
             {showSlackIntegration && (
-                <>
-            <Page.Separator />
-            <div className="flex flex-row justify-between">
-              <div>
-                <div className="text-base font-bold text-element-800">
-                  Slack integration
-                </div>
-                <div className="text-sm text-element-700">
-                  {slackChannelSelected.length === 0 ? (
-                    <>Set as default assistant for specific&nbsp;channels.</>
-                  ) : (
-                    <>
-                      Default assistant for{" "}
-                      {slackChannelSelected
-                        .map((c) => c.slackChannelName)
-                        .join(", ")}
-                    </>
-                  )}
-                </div>
+              <>
+                <Page.Separator />
+                <div className="flex flex-row justify-between">
+                  <div>
+                    <div className="text-base font-bold text-element-800">
+                      Slack integration
+                    </div>
+                    <div className="text-sm text-element-700">
+                      {slackChannelSelected.length === 0 ? (
+                        <>
+                          Set as default assistant for specific&nbsp;channels.
+                        </>
+                      ) : (
+                        <>
+                          Default assistant for{" "}
+                          {slackChannelSelected
+                            .map((c) => c.slackChannelName)
+                            .join(", ")}
+                        </>
+                      )}
+                    </div>
 
-                {slackChannelSelected.length > 0 && (
-                  <div className="pt-3">
-                    <Button
-                      size="xs"
-                      variant="secondary"
-                      label="Manage channels"
-                      onClick={() => setSlackDrawerOpened(true)}
+                    {slackChannelSelected.length > 0 && (
+                      <div className="pt-3">
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          label="Manage channels"
+                          onClick={() => setSlackDrawerOpened(true)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-4">
+                    <SliderToggle
+                      selected={slackChannelSelected.length > 0}
+                      onClick={() => {
+                        if (slackChannelSelected.length > 0) {
+                          setNewLinkedSlackChannels([]);
+                        } else {
+                          setSlackDrawerOpened(true);
+                        }
+                      }}
                     />
                   </div>
-                )}
-              </div>
-              <div className="pt-4">
-                <SliderToggle
-                  selected={slackChannelSelected.length > 0}
-                  onClick={() => {
-                    if (slackChannelSelected.length > 0) {
-                      setNewLinkedSlackChannels([]);
-                    } else {
-                      setSlackDrawerOpened(true);
-                    }
-                  }}
-                />
-              </div>
-            </div></>
+                </div>
+              </>
             )}
             {agentConfigurationId && (
               <>
