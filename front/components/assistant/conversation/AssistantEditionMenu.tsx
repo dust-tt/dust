@@ -19,7 +19,7 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration, useUser } from "@app/lib/swr";

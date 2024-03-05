@@ -34,7 +34,7 @@ import { SharingButton } from "@app/components/assistant/Sharing";
 import {
   TryAssistant,
   usePreviewAssistant,
-} from "@app/components/assistant/TryAssistantModal";
+} from "@app/components/assistant/TryAssistant";
 import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
