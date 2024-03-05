@@ -1,6 +1,7 @@
 use super::block::Env;
 use crate::project::Project;
 use anyhow::{anyhow, Result};
+use hyper::body::HttpBody;
 use hyper::header;
 use hyper::{body::Buf, http::StatusCode, Body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
@@ -84,7 +85,8 @@ pub async fn get_data_source_project(
         ))?;
     }
 
-    let body = hyper::body::aggregate(res).await?;
+    let body = res.collect().await?.aggregate();
+
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
 

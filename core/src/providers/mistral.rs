@@ -1,3 +1,5 @@
+use super::llm::{ChatFunction, ChatMessage as BaseChatMessage};
+use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
@@ -9,6 +11,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use parking_lot::{Mutex, RwLock};
@@ -21,9 +24,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-
-use super::llm::{ChatFunction, ChatMessage as BaseChatMessage};
-use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -476,13 +476,14 @@ impl MistralAILLM {
             Ok(Err(e)) => Err(e)?,
             Err(_) => Err(anyhow!("Timeout sending request to Mistral AI after 180s"))?,
         };
-        let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
+        let collected = match timeout(Duration::new(180, 0), res.collect()).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
             Err(_) => Err(anyhow!(
                 "Timeout reading response from Mistral AI after 180s"
             ))?,
         };
+        let body = collected.aggregate();
 
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;

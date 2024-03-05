@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use itertools::izip;
@@ -488,11 +489,12 @@ pub async fn completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
-    let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
+    let collected = match timeout(Duration::new(180, 0), res.collect()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
     };
+    let body = collected.aggregate();
 
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
@@ -974,11 +976,12 @@ pub async fn chat_completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
-    let body = match timeout(Duration::new(180, 0), hyper::body::aggregate(res)).await {
+    let collected = match timeout(Duration::new(180, 0), res.collect()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
     };
+    let body = collected.aggregate();
 
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
@@ -1064,11 +1067,13 @@ pub async fn embed(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
     };
-    let body = match timeout(Duration::new(60, 0), hyper::body::aggregate(res)).await {
+
+    let collected = match timeout(Duration::new(60, 0), res.collect()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 60s"))?,
     };
+    let body = collected.aggregate();
 
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
