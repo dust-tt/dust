@@ -2308,11 +2308,13 @@ export async function upsertDatabaseStructuredDataFromCache({
     return;
   }
 
+  const pagesProperties = pageCacheEntries.map(
+    (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
+  );
+
   const csv = await renderDatabaseFromPages({
     databaseTitle: null,
-    pagesProperties: pageCacheEntries.map(
-      (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
-    ),
+    pagesProperties,
     dustIdColumn: pageCacheEntries.map((p) => `notion-${p.notionPageId}`),
     cellSeparator: ",",
     rowBoundary: "",
@@ -2342,6 +2344,13 @@ export async function upsertDatabaseStructuredDataFromCache({
     // We overwrite the whole table since we just fetched all child pages.
     truncate: true,
   });
+  // Same as above, but without the `dustId` column
+  const csvForDocument = await renderDatabaseFromPages({
+    databaseTitle: null,
+    pagesProperties,
+    cellSeparator: ",",
+    rowBoundary: "",
+  });
   const parents = await getParents(
     connector.id,
     databaseId,
@@ -2353,12 +2362,12 @@ export async function upsertDatabaseStructuredDataFromCache({
     dataSourceConfig,
     documentId: `notion-database-${databaseId}`,
     documentContent: {
-      prefix: csvHeader,
-      content: csv,
+      prefix: `${databaseName}\ncsvHeader`,
+      content: csvForDocument,
       sections: [],
     },
     documentUrl: dbModel.notionUrl ?? undefined,
-    // TODO: see if we actually want to use the Notionlast edited time of the database
+    // TODO: see if we actually want to use the Notion last edited time of the database
     // we currently don't have it because we don't fetch the DB object from notion.
     timestampMs: upsertAt.getTime(),
     tags: [`title:${databaseName}`, "is_database:true"],
