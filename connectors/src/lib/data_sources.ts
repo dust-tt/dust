@@ -244,20 +244,27 @@ async function _updateDocumentParentsField({
 
 // allows for 4 full prefixes before hitting half of the max chunk size (approx.
 // 256 chars for 512 token chunks)
-const MAX_PREFIX_TOKENS = EMBEDDING_CONFIG.max_chunk_size / 8;
+export const MAX_PREFIX_TOKENS = EMBEDDING_CONFIG.max_chunk_size / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
 // large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
 // limit can be large and should be large to avoid underusing prexfixes
-const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
+export const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
 // provided will not be augmented with `\n`, so it should include appropriate carriage return. If
 // the prefix is too long (> MAX_PREFIX_TOKENS), it will be truncated. The remained will be returned as
 // content of the resulting section.
-export async function renderPrefixSection(
-  dataSourceConfig: DataSourceConfig,
-  prefix: string | null
-): Promise<CoreAPIDataSourceDocumentSection> {
+export async function renderPrefixSection({
+  dataSourceConfig,
+  prefix,
+  maxPrefixTokens = MAX_PREFIX_TOKENS,
+  maxPrefixChars = MAX_PREFIX_CHARS,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  prefix: string | null;
+  maxPrefixTokens?: number;
+  maxPrefixChars?: number;
+}): Promise<CoreAPIDataSourceDocumentSection> {
   if (!prefix || !prefix.trim()) {
     return {
       prefix: null,
@@ -265,21 +272,19 @@ export async function renderPrefixSection(
       sections: [],
     };
   }
-  let targetPrefix = safeSubstring(prefix, 0, MAX_PREFIX_CHARS);
+  let targetPrefix = safeSubstring(prefix, 0, maxPrefixChars);
   let targetContent =
-    prefix.length > MAX_PREFIX_CHARS
-      ? safeSubstring(prefix, MAX_PREFIX_CHARS)
-      : "";
+    prefix.length > maxPrefixChars ? safeSubstring(prefix, maxPrefixChars) : "";
 
   const tokens = await tokenize(targetPrefix, dataSourceConfig);
 
   targetPrefix = tokens
-    .slice(0, MAX_PREFIX_TOKENS)
+    .slice(0, maxPrefixTokens)
     .map((t) => t[1])
     .join("");
   targetContent =
     tokens
-      .slice(MAX_PREFIX_TOKENS)
+      .slice(maxPrefixTokens)
       .map((t) => t[1])
       .join("") + targetContent;
 
@@ -345,10 +350,10 @@ export async function renderMarkdownSection(
         throw new Error("Unreachable");
       }
 
-      const c = await renderPrefixSection(
-        dsConfig,
-        toMarkdown(child, { extensions: [gfmToMarkdown()] })
-      );
+      const c = await renderPrefixSection({
+        dataSourceConfig: dsConfig,
+        prefix: toMarkdown(child, { extensions: [gfmToMarkdown()] }),
+      });
       last.content.sections.push(c);
       path.push({
         depth: child.depth,
@@ -405,7 +410,7 @@ export async function renderDocumentTitleAndContent({
   } else {
     title = null;
   }
-  const c = await renderPrefixSection(dataSourceConfig, title);
+  const c = await renderPrefixSection({ dataSourceConfig, prefix: title });
   let metaPrefix: string | null = "";
   if (createdAt && isValidDate(createdAt)) {
     metaPrefix += `$createdAt: ${createdAt.toISOString()}\n`;

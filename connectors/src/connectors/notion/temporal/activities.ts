@@ -50,6 +50,8 @@ import {
   deleteTable,
   deleteTableRow,
   MAX_DOCUMENT_TXT_LEN,
+  MAX_PREFIX_CHARS,
+  MAX_PREFIX_TOKENS,
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
@@ -2221,7 +2223,10 @@ async function renderPageSection({
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
       depth < 2 && adaptedBlocksByParentId[b.notionBlockId]?.length
-        ? await renderPrefixSection(dsConfig, renderedBlock)
+        ? await renderPrefixSection({
+            dataSourceConfig: dsConfig,
+            prefix: renderedBlock,
+          })
         : {
             prefix: null,
             content: renderedBlock,
@@ -2356,7 +2361,12 @@ export async function upsertDatabaseStructuredDataFromCache({
     );
     localLogger.info("Upserting Notion Database as Document.");
     const prefix = `${databaseName}\n${csvHeader}`;
-    const prefixSection = await renderPrefixSection(dataSourceConfig, prefix);
+    const prefixSection = await renderPrefixSection({
+      dataSourceConfig,
+      prefix,
+      maxPrefixTokens: MAX_PREFIX_TOKENS * 2,
+      maxPrefixChars: MAX_PREFIX_CHARS * 2,
+    });
     if (!prefixSection.content) {
       await upsertToDatasource({
         dataSourceConfig,
