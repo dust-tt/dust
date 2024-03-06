@@ -475,35 +475,6 @@ function Citations({
   activeReferences: { index: number; document: RetrievalDocumentType }[];
   lastHoveredReference: number | null;
 }) {
-  // const citationContainer = useRef<HTMLDivElement>(null);
-
-  // This block was responsible for scrolling. It's been commented as I'm looking at stop using this effect.
-  // useEffect(() => {
-  //   if (citationContainer.current) {
-  //     if (lastHoveredReference !== null) {
-  //       citationContainer.current.scrollTo({
-  //         left: citationsScrollOffset(lastHoveredReference),
-  //         behavior: "smooth",
-  //       });
-  //     }
-  //   }
-  // }, [lastHoveredReference]);
-
-  // function citationsScrollOffset(reference: number | null) {
-  //   if (!citationContainer.current || reference === null) {
-  //     return 0;
-  //   }
-  //   const offset = (
-  //     citationContainer.current.firstElementChild
-  //       ?.firstElementChild as HTMLElement
-  //   ).offsetLeft;
-  //   const scrolling =
-  //     (citationContainer.current.firstElementChild?.firstElementChild
-  //       ?.scrollWidth || 0) *
-  //     (reference - 2);
-  //   return scrolling - offset;
-  // }
-
   activeReferences.sort((a, b) => a.index - b.index);
   return (
     <div
