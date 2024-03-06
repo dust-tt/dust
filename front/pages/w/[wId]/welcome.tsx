@@ -1,4 +1,4 @@
-import { Button, Input, Logo, Page, RadioButton } from "@dust-tt/sparkle";
+import { Button, Input, Logo, LogoSquareColorLogo, Page, RadioButton } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -156,14 +156,14 @@ export default function Welcome({
         <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
           <Page.Header
             title={`Hello ${firstName}!`}
-            icon={() => <Logo className="-ml-8 h-4 w-32" />}
+            icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
           />
-          <p className="text-element-800">Let's check a few things.</p>
+          <p className="text-element-800 font-semibold">Let's check a few things.</p>
           {!isAdmin && (
             <div>
               <p className="text-element-700">
                 You will be joining the workspace:{" "}
-                <span className="font-bold">{owner.name}</span>.
+                <span className="font-semibold">{owner.name}</span>.
               </p>
             </div>
           )}
@@ -189,7 +189,7 @@ export default function Welcome({
               <p className="pb-2">I'm looking at Dust:</p>
               <RadioButton
                 name="adminInterest"
-                className="flex-col sm:flex-row"
+                className="flex-col sm:flex-row font-semibold"
                 choices={[
                   {
                     label: "Just for me",
@@ -213,7 +213,7 @@ export default function Welcome({
             </p>
             <RadioButton
               name="expertise"
-              className="flex-col sm:flex-row"
+              className="flex-col sm:flex-row font-semibold"
               choices={[
                 {
                   label: "Nothing!",
