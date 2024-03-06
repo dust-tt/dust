@@ -1,6 +1,7 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { UserProviderType } from "@dust-tt/types";
+import type { UserProviderType, UserType } from "@dust-tt/types";
 
+import { trackUser } from "@app/lib/amplitude/back";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
@@ -127,7 +128,7 @@ export async function createOrUpdateUser(
       externalUser.name
     );
 
-    return User.create({
+    const u = await User.create({
       auth0Sub: externalUser.sub,
       username: externalUser.nickname,
       email: externalUser.email,
@@ -135,5 +136,19 @@ export async function createOrUpdateUser(
       firstName: externalUser.given_name ?? firstName,
       lastName: externalUser.family_name ?? lastName,
     });
+
+    trackUser({
+      id: u.id,
+      createdAt: u.createdAt.getTime(),
+      provider: u.provider,
+      username: u.username,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      image: u.imageUrl,
+      fullName: u.name,
+    } satisfies UserType);
+
+    return u;
   }
 }

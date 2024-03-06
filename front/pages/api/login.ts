@@ -2,6 +2,7 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { FrontApiError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { trackWorkspaceMember } from "@app/lib/amplitude/back";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import {
@@ -22,6 +23,7 @@ import {
   internalSubscribeWorkspaceToFreeTestPlan,
   updateWorkspacePerSeatSubscriptionUsage,
 } from "@app/lib/plans/subscription";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
@@ -292,6 +294,7 @@ export async function createAndLogMembership({
     userId: userId,
     workspaceId: workspace.id,
   });
+  trackWorkspaceMember(m).catch(logger.error);
 
   // If the user is joining a workspace with a subscription based on per_seat,
   // we need to update the Stripe subscription quantity.

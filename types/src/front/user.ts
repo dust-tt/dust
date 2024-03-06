@@ -21,6 +21,7 @@ export type UserProviderType = "github" | "google" | null;
 
 export type UserType = {
   id: ModelId;
+  createdAt: number;
   provider: UserProviderType;
   username: string;
   email: string;

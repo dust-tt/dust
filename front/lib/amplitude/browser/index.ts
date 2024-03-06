@@ -1,5 +1,6 @@
 import type { Ampli } from "@app/lib/amplitude/browser/generated";
 import { ampli } from "@app/lib/amplitude/browser/generated";
+import { AMPLITUDE_PUBLIC_API_KEY } from "@app/lib/amplitude/config";
 
 let BROWSER_CLIENT: Ampli | null = null;
 
@@ -12,8 +13,15 @@ export function getBrowserClient() {
     "https://dust.tt/"
   );
   ampli.load({
-    environment: "dust",
+    // The environment property is a depreacted value, but still needed by the SDK. We don't use it.
+    environment: "dustprod",
     disabled: disabled,
+    client: {
+      apiKey: AMPLITUDE_PUBLIC_API_KEY,
+      configuration: {
+        defaultTracking: false,
+      },
+    },
   });
   BROWSER_CLIENT = ampli;
 

@@ -158,6 +158,7 @@ export async function getMembers(
 
     return {
       id: u.id,
+      createdAt: u.createdAt.getTime(),
       provider: u.provider,
       username: u.username,
       email: u.email,
