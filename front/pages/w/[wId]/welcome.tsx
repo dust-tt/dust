@@ -90,9 +90,9 @@ export default function Welcome({
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
-        lastName !== "" &&
-        expertise !== "" &&
-        (isAdmin ? adminInterest !== "" : true)
+      lastName !== "" &&
+      expertise !== "" &&
+      (isAdmin ? adminInterest !== "" : true)
     );
   }, [firstName, lastName, expertise, adminInterest, isAdmin]);
 
