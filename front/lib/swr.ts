@@ -7,6 +7,7 @@ import type {
   ConversationType,
   DataSourceType,
   RunRunType,
+  WorkspaceEnterpriseConnection,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
@@ -759,5 +760,27 @@ export function useWorkspaceAnalytics({
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,
+  };
+}
+
+export function useWorkspaceEnterpriseConnection({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceEnterpriseConnectionFetcher: Fetcher<{
+    connection: WorkspaceEnterpriseConnection;
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    workspaceId ? `/api/w/${workspaceId}/enterprise-connection` : null,
+    workspaceEnterpriseConnectionFetcher
+  );
+
+  return {
+    enterpriseConnection: data ? data.connection : null,
+    isEnterpriseConnectionLoading: !error && !data,
+    isEnterpriseConnectionError: error,
+    mutateEnterpriseConnection: mutate,
   };
 }

@@ -32,11 +32,13 @@ import { useSWRConfig } from "swr";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
@@ -196,7 +198,9 @@ export default function WorkspaceAdmin({
             </div>
           </Page.Vertical>
         )}
-
+        {isDevelopmentOrDustWorkspace(owner) && (
+          <EnterpriseConnectionDetails owner={owner} plan={plan} />
+        )}
         <MemberList />
       </Page.Vertical>
     </AppLayout>
@@ -627,8 +631,6 @@ function DomainAutoJoinModal({
         domainAutoJoinEnabled: !domainAutoJoinEnabled,
       }),
     });
-
-    console.log(">> res:", await res.json());
 
     if (!res.ok) {
       sendNotification({
