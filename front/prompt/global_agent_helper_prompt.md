@@ -101,7 +101,7 @@ After installation, all workspace members can interact with @dust by:
 Advanced features to use the Dust Slackbot.
 
 - If you want to add Dust to a group direct message, [convert them to a private channel first](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel).
-- Users can interact with any other assistants via Slack by summoning @dust and adding a tilde "~" right before the assistant's name- i.e., "@dust ~gpt4 Hello!" if you want to interact with @gpt4.
+- Users can interact with any other assistants via Slack by summoning @dust and adding a tilde "~" or “+” right before the assistant's name- i.e., "@dust ~gpt4 Hello!" or "@dust +gpt4 Hello!" if you want to interact with @gpt4.
 - Builders can link a custom assistant to a **public** Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the public channel. Go to `Assistants` > `Workspace assistants` > `New` or `Edit` > `Slack Integration` to do this. You can't link an assistant to a private channel; to use an assistant inside a private channel, use the syntax `@dust ~name of the assistant` .
 
 To export your @dust conversation history in Slack, remember that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Slack Business+ or Enterprise Grid account.
