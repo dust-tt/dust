@@ -95,27 +95,22 @@ export function QuickStartGuide({
                 <br /> Why multiple Assistants?
               </Page.H>
               <Page.P size="md">
-                The basic assistant is{" "}
-                <span className="font-bold text-success-500">@gpt4</span>.
-              </Page.P>
-              <Page.P size="md">
-                It is a raw model. <span className="italic">“Raw”</span> means
-                it does not have particular instructions or access to your
-                knowledge.
-              </Page.P>
-              <Page.P size="md">
-                You also have access to assistants combining a model with
-                specific instructions and access to&nbsp;knowledge.
-                <br />
                 <span className="font-bold">
-                  They are created to answer specific questions,
-                  really&nbsp;well.
+                  Specialized assistants can help answer questions, really well.
                 </span>
               </Page.P>
               <Page.P size="md">
-                Assistants can be provided by Dust, by your company (
-                <span className="italic">Company assistants</span>), or by your
-                coworkers (<span className="italic">Shared assistants</span>).
+                Assistants in Dust can be provided by Dust, by your company
+                (Company assistants) or by your coworkers (Shared assistants).
+              </Page.P>
+              <Page.P size="md">
+                Specialised assistants generally combine a model with specific
+                instructions and access to knowledge.
+              </Page.P>
+              <Page.P size="md">
+                Raw model assistants, without any particular instructions or
+                access to your company knowledge are also available, like{" "}
+                <span className="font-bold text-success-500">@gpt4</span>.
               </Page.P>
             </Page.Vertical>
 
