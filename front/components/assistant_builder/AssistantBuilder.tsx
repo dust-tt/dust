@@ -1,9 +1,9 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
+  BuilderLayout,
   Button,
   CircleIcon,
-  PlayIcon,
   SquareIcon,
   Tab,
   TriangleIcon,
@@ -31,7 +31,10 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+import {
+  TryAssistant,
+  usePreviewAssistant,
+} from "@app/components/assistant/TryAssistant";
 import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
@@ -54,7 +57,8 @@ import {
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useSlackChannelsLinkedWithAgent, useUser } from "@app/lib/swr";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -141,7 +145,7 @@ const useNavigationLock = (
 
 const screens = {
   instructions: { label: "Instructions", icon: CircleIcon },
-  actions: { label: "Actions & Data sources", icon: SquareIcon },
+  actions: { label: "Data sources & Actions", icon: SquareIcon },
   naming: { label: "Naming", icon: TriangleIcon },
 };
 type BuilderScreen = keyof typeof screens;
@@ -216,6 +220,17 @@ export default function AssistantBuilder({
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
+
+  const [previewDrawerOpenedAt, setPreviewDrawerOpenedAt] = useState<
+    number | null
+  >(null);
+
+  const openPreviewDrawer = () => {
+    setPreviewDrawerOpenedAt(Date.now());
+  };
+  const closePreviewDrawer = () => {
+    setPreviewDrawerOpenedAt(null);
+  };
 
   useEffect(() => {
     const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
@@ -352,7 +367,7 @@ export default function AssistantBuilder({
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
     try {
-      await submitForm({
+      await submitAssistantBuilderForm({
         owner,
         builderState,
         agentConfigurationId,
@@ -395,16 +410,15 @@ export default function AssistantBuilder({
     ? `Edit @${builderState.handle}`
     : "New Assistant";
 
+  const { shouldAnimate: shouldAnimatePreviewDrawer, draftAssistant } =
+    usePreviewAssistant({ owner, builderState });
+
   return (
     <>
-      <TryModalInBuilder
-        owner={owner}
-        builderState={builderState}
-        disabled={!submitEnabled}
-      />
       <AppLayout
         subscription={subscription}
         hideSidebar
+        isWideMode
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"
@@ -432,74 +446,99 @@ export default function AssistantBuilder({
           )
         }
       >
-        <div className="flex h-full flex-col gap-5 py-4">
-          <div className="flex flex-col justify-between sm:flex-row">
-            <Tab tabs={tabs} variant="stepper" />
-            <div className="self-end pt-0.5">
-              <SharingButton
-                showSlackIntegration={showSlackIntegration}
-                slackDataSource={slackDataSource || null}
-                owner={owner}
-                agentConfigurationId={agentConfigurationId}
-                initialScope={initialBuilderState?.scope ?? defaultScope}
-                slackChannelSelected={selectedSlackChannels || []}
-                newScope={builderState.scope}
-                setNewScope={(
-                  scope: Exclude<AgentConfigurationScope, "global">
-                ) => {
-                  setEdited(scope !== initialBuilderState?.scope);
-                  setBuilderState((state) => ({ ...state, scope }));
-                }}
-                baseUrl={baseUrl}
-                setNewLinkedSlackChannels={(channels) => {
-                  setSelectedSlackChannels(channels);
-                  setEdited(true);
-                }}
-              />
+        <BuilderLayout
+          leftPanel={
+            <div className="flex h-full flex-col gap-5 py-4">
+              <div className="flex flex-col flex-wrap justify-between gap-4 sm:flex-row">
+                <Tab tabs={tabs} variant="stepper" />
+                <div className="self-end pt-0.5">
+                  <SharingButton
+                    showSlackIntegration={showSlackIntegration}
+                    slackDataSource={slackDataSource || null}
+                    owner={owner}
+                    agentConfigurationId={agentConfigurationId}
+                    initialScope={initialBuilderState?.scope ?? defaultScope}
+                    slackChannelSelected={selectedSlackChannels || []}
+                    newScope={builderState.scope}
+                    setNewScope={(
+                      scope: Exclude<AgentConfigurationScope, "global">
+                    ) => {
+                      setEdited(scope !== initialBuilderState?.scope);
+                      setBuilderState((state) => ({ ...state, scope }));
+                    }}
+                    baseUrl={baseUrl}
+                    setNewLinkedSlackChannels={(channels) => {
+                      setSelectedSlackChannels(channels);
+                      setEdited(true);
+                    }}
+                  />
+                </div>
+              </div>
+              {(() => {
+                switch (screen) {
+                  case "instructions":
+                    return (
+                      <InstructionScreen
+                        owner={owner}
+                        plan={plan}
+                        builderState={builderState}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
+                      />
+                    );
+                  case "actions":
+                    return (
+                      <ActionScreen
+                        owner={owner}
+                        builderState={builderState}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
+                        dataSources={dataSources}
+                        dustApps={dustApps}
+                        timeFrameError={timeFrameError}
+                      />
+                    );
+                  case "naming":
+                    return (
+                      <NamingScreen
+                        owner={owner}
+                        builderState={builderState}
+                        initialHandle={initialBuilderState?.handle}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
+                        assistantHandleError={assistantHandleError}
+                      />
+                    );
+                  default:
+                    assertNever(screen);
+                }
+              })()}
+              <PrevNextButtons screen={screen} setScreen={setScreen} />
             </div>
-          </div>
-          {(() => {
-            switch (screen) {
-              case "instructions":
-                return (
-                  <InstructionScreen
-                    owner={owner}
-                    plan={plan}
-                    builderState={builderState}
-                    setBuilderState={setBuilderState}
-                    setEdited={setEdited}
-                  />
-                );
-              case "actions":
-                return (
-                  <ActionScreen
-                    owner={owner}
-                    builderState={builderState}
-                    setBuilderState={setBuilderState}
-                    setEdited={setEdited}
-                    dataSources={dataSources}
-                    dustApps={dustApps}
-                    timeFrameError={timeFrameError}
-                  />
-                );
-              case "naming":
-                return (
-                  <NamingScreen
-                    owner={owner}
-                    builderState={builderState}
-                    initialHandle={initialBuilderState?.handle}
-                    setBuilderState={setBuilderState}
-                    setEdited={setEdited}
-                    assistantHandleError={assistantHandleError}
-                  />
-                );
-              default:
-                assertNever(screen);
-            }
-          })()}
-          <PrevNextButtons screen={screen} setScreen={setScreen} />
-        </div>
-        <div className="flex flex-col space-y-8 pb-16 pt-8"></div>
+          }
+          rightPanel={
+            <div
+              className={classNames(
+                "flex h-full w-full rounded-xl bg-slate-100 transition-all ease-in-out",
+                shouldAnimatePreviewDrawer &&
+                  previewDrawerOpenedAt != null &&
+                  // Only animate the reload if the drawer has been open for at least 1 second.
+                  // This is to prevent the animation from triggering right after the drawer is opened.
+                  Date.now() - previewDrawerOpenedAt > 1000
+                  ? "animate-reload"
+                  : ""
+              )}
+            >
+              <TryAssistant owner={owner} assistant={draftAssistant} />
+            </div>
+          }
+          isRightPanelOpen={previewDrawerOpenedAt !== null}
+          toggleRightPanel={
+            previewDrawerOpenedAt !== null
+              ? closePreviewDrawer
+              : openPreviewDrawer
+          }
+        />
       </AppLayout>
     </>
   );
@@ -547,7 +586,7 @@ function PrevNextButtons({
   );
 }
 
-async function submitForm({
+export async function submitAssistantBuilderForm({
   owner,
   builderState,
   agentConfigurationId,
@@ -564,15 +603,18 @@ async function submitForm({
   isDraft?: boolean;
 }): Promise<LightAgentConfigurationType | AgentConfigurationType> {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  if (
-    !builderState.handle ||
-    !builderState.description ||
-    !builderState.instructions ||
-    !builderState.avatarUrl
-  ) {
-    // should be unreachable
-    // we keep this for TS
-    throw new Error("Form not valid");
+  let { handle, description, instructions, avatarUrl } = builderState;
+  if (!handle || !description || !instructions || !avatarUrl) {
+    if (!isDraft) {
+      // should be unreachable
+      // we keep this for TS
+      throw new Error("Form not valid");
+    } else {
+      handle = handle?.trim() || "Preview";
+      description = description?.trim() || "Preview";
+      instructions = instructions?.trim() || "Preview";
+      avatarUrl = avatarUrl ?? "";
+    }
   }
 
   type BodyType = t.TypeOf<
@@ -645,14 +687,14 @@ async function submitForm({
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {
       assistant: {
-        name: removeLeadingAt(builderState.handle),
-        pictureUrl: builderState.avatarUrl,
-        description: builderState.description.trim(),
+        name: removeLeadingAt(handle),
+        pictureUrl: avatarUrl,
+        description: description,
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
         action: actionParam,
         generation: {
-          prompt: builderState.instructions.trim(),
+          prompt: instructions.trim(),
           model: builderState.generationSettings.modelSettings,
           temperature: builderState.generationSettings.temperature,
         },
@@ -713,60 +755,4 @@ async function submitForm({
   }
 
   return newAgentConfiguration.agentConfiguration;
-}
-
-function TryModalInBuilder({
-  owner,
-  builderState,
-  disabled,
-}: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  disabled: boolean;
-}) {
-  const { user } = useUser();
-  const [assistant, setAssistant] = useState<
-    LightAgentConfigurationType | AgentConfigurationType | null
-  >(null);
-
-  async function onTryClick() {
-    // A new assistant is created on the fly with status 'draft'
-    // so that the user can try it out while creating it.
-    setAssistant(
-      await submitForm({
-        owner,
-        builderState: { ...builderState },
-        agentConfigurationId: null,
-        slackData: {
-          selectedSlackChannels: [],
-          slackChannelsLinkedWithAgent: [],
-        },
-        isDraft: true,
-      })
-    );
-  }
-  return (
-    <>
-      {user && assistant && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          assistant={assistant}
-          onClose={() => {
-            setAssistant(null);
-          }}
-        />
-      )}
-      <div className="fixed bottom-8 flex w-full justify-center">
-        <Button
-          label="Try"
-          onClick={onTryClick}
-          size="md"
-          icon={PlayIcon}
-          disabled={disabled}
-          variant="primary"
-        />
-      </div>
-    </>
-  );
 }

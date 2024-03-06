@@ -108,12 +108,26 @@ module.exports = {
             opacity: 0,
           },
         },
+
+        reload: {
+          "0%, 100%": {
+            transform: "scale(1)",
+            opacity: "1",
+            filter: "blur(0px)",
+          },
+          "50%": {
+            transform: "scale(0.2)",
+            opacity: "0.0",
+            filter: "blur(4px)",
+          },
+        },
       },
       animation: {
         "move-square": "move-square 4s ease-out infinite",
         breathing: "breathing 4s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
+        reload: "reload 500ms ease-in-out",
       },
       colors: {
         brand: {

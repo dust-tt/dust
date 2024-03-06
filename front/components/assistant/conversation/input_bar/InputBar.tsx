@@ -36,7 +36,7 @@ function AgentMention({
 
 /**
  *
- * @param tryModalAgentConfiguration when trying an assistant in a side modal we
+ * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
  * need to pass the agent configuration to the input bar (it may not be in the
  * user's list of assistants)
  */
@@ -45,7 +45,9 @@ export function AssistantInputBar({
   onSubmit,
   conversationId,
   stickyMentions,
-  tryModalAgentConfiguration,
+  additionalAgentConfiguration,
+  hideQuickActions,
+  disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -55,7 +57,9 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  tryModalAgentConfiguration?: LightAgentConfigurationType;
+  additionalAgentConfiguration?: LightAgentConfigurationType;
+  hideQuickActions: boolean;
+  disableAutoFocus: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -74,14 +78,14 @@ export function AssistantInputBar({
   const agentConfigurations = useMemo(() => {
     if (
       baseAgentConfigurations.find(
-        (a) => a.sId === tryModalAgentConfiguration?.sId
+        (a) => a.sId === additionalAgentConfiguration?.sId
       ) ||
-      !tryModalAgentConfiguration
+      !additionalAgentConfiguration
     ) {
       return baseAgentConfigurations;
     }
-    return [...baseAgentConfigurations, tryModalAgentConfiguration];
-  }, [baseAgentConfigurations, tryModalAgentConfiguration]);
+    return [...baseAgentConfigurations, additionalAgentConfiguration];
+  }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -240,8 +244,6 @@ export function AssistantInputBar({
     }
   }, [isProcessing, generationContext.generatingMessages, conversationId]);
 
-  const isInTryModal = !!tryModalAgentConfiguration;
-
   return (
     <>
       {generationContext.generatingMessages.some(
@@ -284,7 +286,8 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                hideQuickActions={isInTryModal}
+                hideQuickActions={hideQuickActions}
+                disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
@@ -307,7 +310,9 @@ export function FixedAssistantInputBar({
   onSubmit,
   stickyMentions,
   conversationId,
-  tryModalAgentConfiguration,
+  additionalAgentConfiguration,
+  hideQuickActions = false,
+  disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -317,7 +322,9 @@ export function FixedAssistantInputBar({
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  tryModalAgentConfiguration?: LightAgentConfigurationType;
+  additionalAgentConfiguration?: LightAgentConfigurationType;
+  hideQuickActions?: boolean;
+  disableAutoFocus?: boolean;
 }) {
   return (
     <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
@@ -327,7 +334,9 @@ export function FixedAssistantInputBar({
           onSubmit={onSubmit}
           conversationId={conversationId}
           stickyMentions={stickyMentions}
-          tryModalAgentConfiguration={tryModalAgentConfiguration}
+          additionalAgentConfiguration={additionalAgentConfiguration}
+          hideQuickActions={hideQuickActions}
+          disableAutoFocus={disableAutoFocus}
         />
       </div>
     </div>

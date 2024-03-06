@@ -70,8 +70,17 @@ const useEditorService = (editor: Editor | null) => {
           .run();
       },
 
-      resetWithMentions: (mentions: EditorMention[]) => {
-        const chainCommands = editor?.chain().focus().clearContent();
+      resetWithMentions: (
+        mentions: EditorMention[],
+        disableAutoFocus: boolean
+      ) => {
+        const chainCommands = editor?.chain();
+
+        if (!disableAutoFocus) {
+          chainCommands?.focus();
+        }
+
+        chainCommands?.clearContent();
 
         mentions.forEach(
           (m) =>
@@ -92,6 +101,10 @@ const useEditorService = (editor: Editor | null) => {
 
       isEmpty() {
         return editor?.isEmpty ?? true;
+      },
+
+      isFocused() {
+        return editor?.isFocused;
       },
 
       getJSONContent() {
@@ -132,12 +145,14 @@ export interface CustomEditorProps {
   ) => void;
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
+  disableAutoFocus: boolean;
 }
 
 const useCustomEditor = ({
   onEnterKeyDown,
   resetEditorContainerSize,
   suggestions,
+  disableAutoFocus,
 }: CustomEditorProps) => {
   // Memoize the suggestion configuration to avoid recreating the object on every render
   const getSuggestions = useMemo(
@@ -147,7 +162,7 @@ const useCustomEditor = ({
 
   const editor = useEditor(
     {
-      autofocus: "end",
+      autofocus: !disableAutoFocus,
       enableInputRules: false, // Disable Markdown when typing.
       enablePasteRules: false, // Disable Markdown when pasting.
       extensions: [
