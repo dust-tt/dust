@@ -2355,26 +2355,38 @@ export async function upsertDatabaseStructuredDataFromCache({
       runTimestamp.toString()
     );
     localLogger.info("Upserting Notion Database as Document.");
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentId: `notion-database-${databaseId}`,
-      documentContent: {
-        prefix: csvHeader,
-        content: csvRows,
-        sections: [],
-      },
-      documentUrl: dbModel.notionUrl ?? undefined,
-      // TODO: see if we actually want to use the Notion last edited time of the database
-      // we currently don't have it because we don't fetch the DB object from notion.
-      timestampMs: upsertAt.getTime(),
-      tags: [`title:${databaseName}`, "is_database:true"],
-      parents: parents,
-      loggerArgs,
-      upsertContext: {
-        sync_type: "batch",
-      },
-      async: true,
-    });
+    const prefix = `${databaseName}\n${csvHeader}`;
+    const prefixSection = await renderPrefixSection(dataSourceConfig, prefix);
+    if (!prefixSection.content) {
+      await upsertToDatasource({
+        dataSourceConfig,
+        documentId: `notion-database-${databaseId}`,
+        documentContent: {
+          prefix: prefixSection.prefix,
+          content: csvRows,
+          sections: [],
+        },
+        documentUrl: dbModel.notionUrl ?? undefined,
+        // TODO: see if we actually want to use the Notion last edited time of the database
+        // we currently don't have it because we don't fetch the DB object from notion.
+        timestampMs: upsertAt.getTime(),
+        tags: [`title:${databaseName}`, "is_database:true"],
+        parents: parents,
+        loggerArgs,
+        upsertContext: {
+          sync_type: "batch",
+        },
+        async: true,
+      });
+    } else {
+      localLogger.info(
+        {
+          prefix: prefixSection.prefix,
+          content: csvRows,
+        },
+        "Skipping document upsert as prefix is too long."
+      );
+    }
   }
 
   await dbModel.update({ structuredDataUpsertedTs: upsertAt });
