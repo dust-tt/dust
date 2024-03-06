@@ -13,7 +13,6 @@ import {
 
 import {
   Avatar,
-  ExternalLinkIcon,
   Icon,
   IconButton,
   Tooltip,
