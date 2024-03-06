@@ -1,4 +1,11 @@
-import { Button, Input, Logo, LogoSquareColorLogo, Page, RadioButton } from "@dust-tt/sparkle";
+import {
+  Button,
+  Input,
+  Logo,
+  LogoSquareColorLogo,
+  Page,
+  RadioButton,
+} from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -90,9 +97,9 @@ export default function Welcome({
   useEffect(() => {
     setIsFormValid(
       firstName !== "" &&
-      lastName !== "" &&
-      expertise !== "" &&
-      (isAdmin ? adminInterest !== "" : true)
+        lastName !== "" &&
+        expertise !== "" &&
+        (isAdmin ? adminInterest !== "" : true)
     );
   }, [firstName, lastName, expertise, adminInterest, isAdmin]);
 
@@ -158,7 +165,9 @@ export default function Welcome({
             title={`Hello ${firstName}!`}
             icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
           />
-          <p className="text-element-800 font-semibold">Let's check a few things.</p>
+          <p className="font-semibold text-element-800">
+            Let's check a few things.
+          </p>
           {!isAdmin && (
             <div>
               <p className="text-element-700">
@@ -189,7 +198,7 @@ export default function Welcome({
               <p className="pb-2">I'm looking at Dust:</p>
               <RadioButton
                 name="adminInterest"
-                className="flex-col sm:flex-row font-semibold"
+                className="flex-col font-semibold sm:flex-row"
                 choices={[
                   {
                     label: "Just for me",
@@ -213,7 +222,7 @@ export default function Welcome({
             </p>
             <RadioButton
               name="expertise"
-              className="flex-col sm:flex-row font-semibold"
+              className="flex-col font-semibold sm:flex-row"
               choices={[
                 {
                   label: "Nothing!",

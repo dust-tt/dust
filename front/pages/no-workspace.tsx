@@ -175,14 +175,18 @@ export default function NoWorkspace({
               <span className="text-md text-element-700">
                 To join the existing workspace of your company,
                 <span className="font-semibold">
-                  {" "}please request an invitation from your  <br />colleagues,
+                  {" "}
+                  please request an invitation from your <br />
+                  colleagues,
                 </span>{" "}
                 then use the link provided in the invitation email to access the
                 workspace.
               </span>
               <span className="text-md text-element-700">
-                If you're looking to establish <span className="font-semibold">
-                  {" "}a new, separate workspace
+                If you're looking to establish{" "}
+                <span className="font-semibold">
+                  {" "}
+                  a new, separate workspace
                 </span>{" "}
                 continue with the following step:
               </span>
@@ -204,8 +208,10 @@ export default function NoWorkspace({
                 for more informations or to add you again.
               </span>
               <span className="text-md text-element-700">
-                If you're looking to establish <span className="font-semibold">
-                  {" "}a new, separate workspace
+                If you're looking to establish{" "}
+                <span className="font-semibold">
+                  {" "}
+                  a new, separate workspace
                 </span>{" "}
                 continue with the following step:
               </span>
