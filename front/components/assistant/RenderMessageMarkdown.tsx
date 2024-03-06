@@ -310,13 +310,13 @@ function CiteBlock(props: ReactMarkdownProps) {
 
   if (refs) {
     return (
-      <>
+      <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
           const link = linkFromDocument(document);
 
           return (
-            <sup key={`${r.ref}-${i}`} className="inline-block">
+            <sup key={`${r.ref}-${i}`}>
               <a
                 href={link}
                 target="_blank"
@@ -330,7 +330,7 @@ function CiteBlock(props: ReactMarkdownProps) {
             </sup>
           );
         })}
-      </>
+      </span>
     );
   } else {
     const { children } = props;
