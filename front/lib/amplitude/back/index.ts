@@ -47,7 +47,7 @@ export async function trackWorkspaceMember(membership: Membership) {
   }
 }
 
-export async function trackUser(user: UserType) {
+export function trackUser(user: UserType) {
   const amplitude = getBackendClient();
   amplitude.identify(`user-${user.id}`, {});
   amplitude.signUp(`user-${user.id}`, {
@@ -56,7 +56,7 @@ export async function trackUser(user: UserType) {
   });
 }
 
-export async function trackUserMessage({
+export function trackUserMessage({
   userMessage,
   workspace,
   userId,

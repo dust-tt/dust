@@ -5,7 +5,6 @@ import { trackUser } from "@app/lib/amplitude/back";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
-import logger from "@app/logger/logger";
 
 interface LegacyProviderInfo {
   provider: UserProviderType;
@@ -148,7 +147,7 @@ export async function createOrUpdateUser(
       lastName: u.lastName,
       image: u.imageUrl,
       fullName: u.name,
-    } satisfies UserType).catch(logger.error);
+    } satisfies UserType);
 
     return u;
   }

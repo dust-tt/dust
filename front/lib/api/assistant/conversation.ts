@@ -1039,7 +1039,7 @@ export async function* postUserMessage(
     workspace: conversation.owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
     conversationId: conversation.sId,
-  }).catch(logger.error);
+  });
 
   yield {
     type: "user_message_new",
