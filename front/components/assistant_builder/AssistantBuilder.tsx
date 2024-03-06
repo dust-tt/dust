@@ -26,7 +26,7 @@ import {
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -231,22 +231,6 @@ export default function AssistantBuilder({
   const closePreviewDrawer = () => {
     setPreviewDrawerOpenedAt(null);
   };
-
-  const previewDrawerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClick(event: MouseEvent) {
-      const target = event.target;
-
-      if (!(target instanceof Node)) return;
-      if (!previewDrawerRef.current) return;
-    }
-
-    document.addEventListener("mousedown", handleClick);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-    };
-  }, [previewDrawerRef]);
 
   useEffect(() => {
     const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
@@ -544,7 +528,6 @@ export default function AssistantBuilder({
                   ? "animate-reload"
                   : ""
               )}
-              ref={previewDrawerRef}
             >
               <TryAssistant owner={owner} assistant={draftAssistant} />
             </div>
