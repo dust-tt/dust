@@ -175,7 +175,7 @@ export async function fetchIntercomCollections(
         "[Intercom] No collections found in the list collections response"
       );
     }
-    if (response.pages.total_pages > page) {
+    if (response.pages?.total_pages && response.pages.total_pages > page) {
       hasMore = true;
       page += 1;
     } else {

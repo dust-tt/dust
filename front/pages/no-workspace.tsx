@@ -9,10 +9,12 @@ import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import { getSession, getUserFromSession } from "@app/lib/auth";
+import {
+  getUserFromSession,
+  withDefaultGetServerSidePropsRequirements,
+} from "@app/lib/iam/session";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(
@@ -54,13 +56,12 @@ async function fetchRevokedWorkspace(
   return Workspace.findByPk(revokedWorkspaceId);
 }
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   status: "auto-join-disabled" | "revoked";
   userFirstName: string;
   workspaceName: string;
   workspaceVerifiedDomain: string | null;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const user = await getUserFromSession(session);
 
   if (!user) {

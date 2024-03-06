@@ -15,7 +15,6 @@ import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import { signOut } from "next-auth/react";
 import React, { Fragment, useContext, useEffect, useState } from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
@@ -102,12 +101,7 @@ function NavigationBar({
               <DropdownMenu.Items origin="topRight">
                 <DropdownMenu.Item
                   label="Sign&nbsp;out"
-                  onClick={() => {
-                    void signOut({
-                      callbackUrl: "/",
-                      redirect: true,
-                    });
-                  }}
+                  href="/api/auth/logout"
                 />
               </DropdownMenu.Items>
             </DropdownMenu>

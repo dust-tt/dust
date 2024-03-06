@@ -1,16 +1,14 @@
-import { GoogleLogo, Logo, Page } from "@dust-tt/sparkle";
+import { Button, LoginIcon, Logo, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 
-import { SignInButton } from "@app/components/Button";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import {
   getWorkspaceInfos,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -38,7 +36,9 @@ type OnboardingType =
   | "domain_conversation_link"
   | "domain_invite_link";
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
+  requireAuth: false,
+})<{
   onboardingType: OnboardingType;
   workspace: LightWorkspaceType;
   signUpCallbackUrl: string;
@@ -115,22 +115,20 @@ export default function Join({
   signUpCallbackUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const handleSignUpClick = () =>
-    signIn("google", {
-      callbackUrl: signUpCallbackUrl,
-    });
-
   return (
     <OnboardingLayout
       owner={workspace}
       gaTrackingId={gaTrackingId}
       headerTitle="Welcome to Dust"
       headerRightActions={
-        <SignInButton
-          label="Sign up with Google"
-          icon={GoogleLogo}
+        <Button
+          variant="tertiary"
           size="sm"
-          onClick={handleSignUpClick}
+          label="Sign up"
+          icon={LoginIcon}
+          onClick={() =>
+            (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
+          }
         />
       }
     >
@@ -171,13 +169,15 @@ export default function Join({
         </div>
 
         <div className="flex flex-col items-center justify-center gap-4 ">
-          {
-            <SignInButton
-              label="Sign up with Google"
-              icon={GoogleLogo}
-              onClick={handleSignUpClick}
-            />
-          }
+          <Button
+            variant="tertiary"
+            size="sm"
+            label="Sign up"
+            icon={LoginIcon}
+            onClick={() =>
+              (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
+            }
+          />
         </div>
         <div className="flex flex-col gap-3 pb-20">
           <p>

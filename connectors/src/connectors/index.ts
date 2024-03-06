@@ -5,8 +5,8 @@ import {
   createConfluenceConnector,
   resumeConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
-  retrieveConfluenceObjectsTitles,
-  retrieveConfluenceResourceParents,
+  retrieveConfluenceContentNodeParents,
+  retrieveConfluenceContentNodes,
   setConfluenceConnectorPermissions,
   stopConfluenceConnector,
   updateConfluenceConnector,
@@ -19,8 +19,8 @@ import {
   getGithubConfig,
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
-  retrieveGithubReposTitles,
-  retrieveGithubResourceParents,
+  retrieveGithubContentNodeParents,
+  retrieveGithubReposContentNodes,
   setGithubConfig,
   stopGithubConnector,
   updateGithubConnector,
@@ -31,8 +31,8 @@ import {
   getGoogleDriveConfig,
   googleDriveGarbageCollect,
   retrieveGoogleDriveConnectorPermissions,
-  retrieveGoogleDriveObjectsParents,
-  retrieveGoogleDriveObjectsTitles,
+  retrieveGoogleDriveContentNodeParents,
+  retrieveGoogleDriveContentNodes,
   setGoogleDriveConfig,
   setGoogleDriveConnectorPermissions,
   updateGoogleDriveConnector,
@@ -44,29 +44,27 @@ import {
   fullResyncIntercomSyncWorkflow,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
+  retrieveIntercomContentNodeParents,
   retrieveIntercomContentNodes,
-  retrieveIntercomNodesTitles,
-  retrieveIntercomObjectsParents,
   setIntercomConnectorPermissions,
   stopIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
 import type {
   ConnectorBatchContentNodesRetriever,
-  ConnectorBatchResourceTitleRetriever,
   ConnectorCleaner,
   ConnectorConfigGetter,
   ConnectorConfigSetter,
   ConnectorCreatorOAuth,
   ConnectorCreatorUrl,
   ConnectorGarbageCollector,
-  ConnectorNodeParentsRetriever,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
   ConnectorResumer,
   ConnectorStopper,
   ConnectorUpdaterOAuth,
   ConnectorUpdaterUrl,
+  ContentNodeParentsRetriever,
   SyncConnector,
 } from "@connectors/connectors/interface";
 import {
@@ -75,9 +73,8 @@ import {
   fullResyncNotionConnector,
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
+  retrieveNotionContentNodeParents,
   retrieveNotionContentNodes,
-  retrieveNotionNodesTitles,
-  retrieveNotionResourceParents,
   stopNotionConnector,
   updateNotionConnector,
 } from "@connectors/connectors/notion";
@@ -85,7 +82,6 @@ import {
   cleanupSlackConnector,
   createSlackConnector,
   getSlackConfig,
-  retrieveSlackChannelsTitles,
   retrieveSlackConnectorPermissions,
   retrieveSlackContentNodes,
   setSlackConfig,
@@ -100,8 +96,8 @@ import {
   cleanupWebcrawlerConnector,
   createWebcrawlerConnector,
   retrieveWebcrawlerConnectorPermissions,
-  retrieveWebCrawlerObjectsParents,
-  retrieveWebCrawlerObjectsTitles,
+  retrieveWebCrawlerContentNodeParents,
+  retrieveWebCrawlerContentNodes,
   stopWebcrawlerConnector,
   updateWebcrawlerConnector,
 } from "./webcrawler";
@@ -234,51 +230,30 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   },
 };
 
-export const BATCH_RETRIEVE_RESOURCE_TITLE_BY_TYPE: Record<
-  ConnectorProvider,
-  ConnectorBatchResourceTitleRetriever
-> = {
-  confluence: retrieveConfluenceObjectsTitles,
-  slack: retrieveSlackChannelsTitles,
-  notion: retrieveNotionNodesTitles,
-  github: retrieveGithubReposTitles,
-  google_drive: retrieveGoogleDriveObjectsTitles,
-  intercom: retrieveIntercomNodesTitles,
-  webcrawler: retrieveWebCrawlerObjectsTitles,
-};
-
 export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorBatchContentNodesRetriever
 > = {
-  confluence: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  confluence: retrieveConfluenceContentNodes,
   slack: retrieveSlackContentNodes,
   notion: retrieveNotionContentNodes,
-  github: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
-  google_drive: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  github: retrieveGithubReposContentNodes,
+  google_drive: retrieveGoogleDriveContentNodes,
   intercom: retrieveIntercomContentNodes,
-  webcrawler: (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
-  },
+  webcrawler: retrieveWebCrawlerContentNodes,
 };
 
-export const RETRIEVE_RESOURCE_PARENTS_BY_TYPE: Record<
+export const RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorNodeParentsRetriever
+  ContentNodeParentsRetriever
 > = {
-  confluence: retrieveConfluenceResourceParents,
-  notion: retrieveNotionResourceParents,
-  google_drive: retrieveGoogleDriveObjectsParents,
+  confluence: retrieveConfluenceContentNodeParents,
+  notion: retrieveNotionContentNodeParents,
+  google_drive: retrieveGoogleDriveContentNodeParents,
   slack: async () => new Ok([]), // Slack is flat
-  github: retrieveGithubResourceParents,
-  intercom: retrieveIntercomObjectsParents,
-  webcrawler: retrieveWebCrawlerObjectsParents,
+  github: retrieveGithubContentNodeParents,
+  intercom: retrieveIntercomContentNodeParents,
+  webcrawler: retrieveWebCrawlerContentNodeParents,
 };
 
 export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<

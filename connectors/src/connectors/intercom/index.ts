@@ -1,7 +1,7 @@
 import type {
-  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -355,7 +355,7 @@ export async function retrieveIntercomConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -511,98 +511,10 @@ export async function setIntercomConnectorPermissions(
   }
 }
 
-export async function retrieveIntercomNodesTitles(
-  connectorId: ModelId,
-  internalIds: string[]
-): Promise<Result<Record<string, string | null>, Error>> {
-  const helpCenterIds: string[] = [];
-  const collectionIds: string[] = [];
-  const articleIds: string[] = [];
-  const teamIds: string[] = [];
-
-  internalIds.forEach((internalId) => {
-    let objectId = getHelpCenterIdFromInternalId(connectorId, internalId);
-    if (objectId) {
-      helpCenterIds.push(objectId);
-      return;
-    }
-    objectId = getHelpCenterCollectionIdFromInternalId(connectorId, internalId);
-    if (objectId) {
-      collectionIds.push(objectId);
-      return;
-    }
-    objectId = getHelpCenterArticleIdFromInternalId(connectorId, internalId);
-    if (objectId) {
-      articleIds.push(objectId);
-      return;
-    }
-    objectId = getTeamIdFromInternalId(connectorId, internalId);
-    if (objectId) {
-      teamIds.push(objectId);
-    }
-  });
-
-  const [helpCenters, collections, articles, teams] = await Promise.all([
-    IntercomHelpCenter.findAll({
-      where: {
-        connectorId: connectorId,
-        helpCenterId: { [Op.in]: helpCenterIds },
-      },
-    }),
-    IntercomCollection.findAll({
-      where: {
-        connectorId: connectorId,
-        collectionId: { [Op.in]: collectionIds },
-      },
-    }),
-    IntercomArticle.findAll({
-      where: {
-        connectorId: connectorId,
-        articleId: { [Op.in]: articleIds },
-      },
-    }),
-    IntercomTeam.findAll({
-      where: {
-        connectorId: connectorId,
-        teamId: { [Op.in]: teamIds },
-      },
-    }),
-  ]);
-
-  const titles: Record<string, string> = {};
-  for (const helpCenter of helpCenters) {
-    const helpCenterInternalId = getHelpCenterInternalId(
-      connectorId,
-      helpCenter.helpCenterId
-    );
-    titles[helpCenterInternalId] = helpCenter.name;
-  }
-  for (const collection of collections) {
-    const collectionInternalId = getHelpCenterCollectionInternalId(
-      connectorId,
-      collection.collectionId
-    );
-    titles[collectionInternalId] = collection.name;
-  }
-  for (const article of articles) {
-    const articleInternalId = getHelpCenterArticleInternalId(
-      connectorId,
-      article.articleId
-    );
-    titles[articleInternalId] = article.title;
-  }
-  for (const team of teams) {
-    const teamInternalId = getTeamInternalId(connectorId, team.teamId);
-    titles[teamInternalId] = team.name;
-  }
-
-  return new Ok(titles);
-}
-
 export async function retrieveIntercomContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<ConnectorNode[], Error>> {
+): Promise<Result<ContentNode[], Error>> {
   const helpCenterIds: string[] = [];
   const collectionIds: string[] = [];
   const articleIds: string[] = [];
@@ -661,7 +573,7 @@ export async function retrieveIntercomContentNodes(
     }),
   ]);
 
-  const nodes: ConnectorNode[] = [];
+  const nodes: ContentNode[] = [];
   for (const helpCenter of helpCenters) {
     nodes.push({
       provider: "intercom",
@@ -746,7 +658,7 @@ export async function retrieveIntercomContentNodes(
   return new Ok(nodes);
 }
 
-export async function retrieveIntercomObjectsParents(
+export async function retrieveIntercomContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {
@@ -757,7 +669,7 @@ export async function retrieveIntercomObjectsParents(
   }
   const teamId = getTeamIdFromInternalId(connectorId, internalId);
   if (teamId) {
-    return new Ok([]);
+    return new Ok([getTeamsInternalId(connectorId)]);
   }
 
   const parents: string[] = [];

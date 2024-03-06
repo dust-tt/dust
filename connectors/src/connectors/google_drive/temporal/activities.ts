@@ -503,6 +503,7 @@ export async function garbageCollector(
 
   return files.length;
 }
+
 export async function renewWebhooks(pageSize: number): Promise<number> {
   // Find webhook that are about to expire in the next hour.
   const webhooks = await GoogleDriveWebhook.findAll({
@@ -572,23 +573,10 @@ export async function renewOneWebhook(webhookId: ModelId) {
         });
       }
     } catch (e) {
-      if (e instanceof ExternalOauthTokenError) {
-        logger.info(
-          {
-            error: e,
-            connectorId: wh.connectorId,
-            workspaceId: connector.workspaceId,
-            id: wh.id,
-          },
-          `Deleting webhook because the oauth token was revoked.`
-        );
-        await wh.destroy();
-        return;
-      }
-
       if (
-        e instanceof HTTPError &&
-        e.message === "The caller does not have permission"
+        e instanceof ExternalOauthTokenError ||
+        (e instanceof HTTPError &&
+          e.message === "The caller does not have permission")
       ) {
         await syncFailed(connector.id, "oauth_token_revoked");
         logger.error(
@@ -598,8 +586,13 @@ export async function renewOneWebhook(webhookId: ModelId) {
             workspaceId: connector.workspaceId,
             id: wh.id,
           },
-          `Failed to renew webhook: Received "The caller does not have permission" from Google.`
+          `Failed to renew webhook: Oauth token revoked .`
         );
+        // Do not delete the webhook object but push it down the line in 2h so that it does not get
+        // picked up by the loop calling rewnewOneWebhook.
+        await wh.update({
+          renewAt: literal("NOW() + INTERVAL '2 hour'"),
+        });
         return;
       }
 
@@ -628,6 +621,7 @@ export async function renewOneWebhook(webhookId: ModelId) {
     }
   }
 }
+
 export async function populateSyncTokens(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {

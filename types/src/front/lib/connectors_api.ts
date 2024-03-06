@@ -60,14 +60,14 @@ export type ConnectorType = {
 };
 
 /**
- * This type represents the permission associated with a ConnectorNode. For now the only
+ * This type represents the permission associated with a ContentNode. For now the only
  * permission we handle is read. but we could have more complex permissions in the future.
  */
 export type ConnectorPermission = "read" | "write" | "read_write" | "none";
-export type ConnectorNodeType = "file" | "folder" | "database" | "channel";
+export type ContentNodeType = "file" | "folder" | "database" | "channel";
 
 /**
- * A ConnectorNode represents a connector related node. As an example:
+ * A ContentNode represents a connector related node. As an example:
  * - Notion: Top-level pages (possibly manually added lower level ones)
  * - Github: repositories
  * - Slack: channels
@@ -87,12 +87,13 @@ export type ConnectorNodeType = "file" | "folder" | "database" | "channel";
  * used both in the parents field management code and the connectors node
  * code.
  */
-export type ConnectorNode = {
+export type ContentNode = {
   provider: ConnectorProvider;
   internalId: string;
   parentInternalId: string | null;
-  type: ConnectorNodeType;
+  type: ContentNodeType;
   title: string;
+  titleWithParentsContext?: string;
   sourceUrl: string | null;
   expandable: boolean;
   preventSelection?: boolean;
@@ -230,7 +231,7 @@ export class ConnectorsAPI {
     connectorId: string;
     parentId?: string;
     filterPermission?: ConnectorPermission;
-  }): Promise<ConnectorsAPIResponse<{ resources: ConnectorNode[] }>> {
+  }): Promise<ConnectorsAPIResponse<{ resources: ContentNode[] }>> {
     let url = `${CONNECTORS_API}/connectors/${encodeURIComponent(
       connectorId
     )}/permissions?`;
@@ -333,15 +334,15 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getResourcesParents({
+  async getContentNodesParents({
     connectorId,
-    resourceInternalIds,
+    internalIds,
   }: {
     connectorId: string;
-    resourceInternalIds: string[];
+    internalIds: string[];
   }): Promise<
     ConnectorsAPIResponse<{
-      resources: {
+      nodes: {
         internalId: string;
         parents: string[];
       }[];
@@ -350,12 +351,12 @@ export class ConnectorsAPI {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
-      )}/resources/parents`,
+      )}/content_nodes/parents`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
-          resourceInternalIds,
+          internalIds,
         }),
       }
     );
@@ -363,29 +364,26 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getResourcesTitles({
+  async getContentNodes({
     connectorId,
-    resourceInternalIds,
+    internalIds,
   }: {
     connectorId: string;
-    resourceInternalIds: string[];
+    internalIds: string[];
   }): Promise<
     ConnectorsAPIResponse<{
-      resources: {
-        internalId: string;
-        title: string;
-      }[];
+      nodes: ContentNode[];
     }>
   > {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
-      )}/resources/titles`,
+      )}/content_nodes`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
-          resourceInternalIds,
+          internalIds,
         }),
       }
     );

@@ -6,6 +6,7 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
@@ -46,7 +47,7 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
 
     let res = cli.request(req).await?;
     let status = res.status();
-    let body = hyper::body::aggregate(res).await?;
+    let body = res.collect().await?.aggregate();
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
@@ -98,7 +99,7 @@ async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
 
     let res = cli.request(req).await?;
     let status = res.status();
-    let body = hyper::body::aggregate(res).await?;
+    let body = res.collect().await?.aggregate();
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
@@ -225,7 +226,7 @@ impl CohereLLM {
 
         let res = cli.request(req).await?;
         let status = res.status();
-        let body = hyper::body::aggregate(res).await?;
+        let body = res.collect().await?.aggregate();
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
@@ -456,7 +457,7 @@ impl CohereEmbedder {
 
         let res = cli.request(req).await?;
         let status = res.status();
-        let body = hyper::body::aggregate(res).await?;
+        let body = res.collect().await?.aggregate();
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;

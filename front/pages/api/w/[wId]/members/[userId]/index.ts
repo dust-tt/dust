@@ -118,7 +118,6 @@ async function handler(
       const member = {
         id: user.id,
         provider: user.provider,
-        providerId: user.providerId,
         username: user.username,
         email: user.email,
         firstName: user.firstName,

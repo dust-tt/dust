@@ -203,6 +203,9 @@ export default function AssistantBuilder({
         }
   );
 
+  const showSlackIntegration =
+    builderState.scope === "workspace" || builderState.scope === "published";
+
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
@@ -430,10 +433,11 @@ export default function AssistantBuilder({
         }
       >
         <div className="flex h-full flex-col gap-5 py-4">
-          <div className="flex flex-row justify-between">
+          <div className="flex flex-col justify-between sm:flex-row">
             <Tab tabs={tabs} variant="stepper" />
-            <div className="pt-0.5">
+            <div className="self-end pt-0.5">
               <SharingButton
+                showSlackIntegration={showSlackIntegration}
                 slackDataSource={slackDataSource || null}
                 owner={owner}
                 agentConfigurationId={agentConfigurationId}
@@ -495,7 +499,7 @@ export default function AssistantBuilder({
           })()}
           <PrevNextButtons screen={screen} setScreen={setScreen} />
         </div>
-        {false && <div className="flex flex-col space-y-8 pb-16 pt-8"></div>}
+        <div className="flex flex-col space-y-8 pb-16 pt-8"></div>
       </AppLayout>
     </>
   );
@@ -599,7 +603,12 @@ async function submitForm({
             workspaceId: owner.sId,
             filter: {
               parents: !isSelectAll
-                ? { in: Object.keys(selectedResources), not: [] }
+                ? {
+                    in: selectedResources.map(
+                      (resource) => resource.internalId
+                    ),
+                    not: [],
+                  }
                 : null,
               tags: null,
             },

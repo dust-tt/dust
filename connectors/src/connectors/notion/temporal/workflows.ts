@@ -345,6 +345,7 @@ export async function upsertDatabaseWorkflow({
     connectorId,
     databaseId,
     Date.now(),
+    topLevelWorkflowId,
     loggerArgs
   );
 
@@ -654,6 +655,7 @@ export async function syncResultPageDatabaseChildWorkflow({
           connectorId,
           databaseId,
           runTimestamp,
+          topLevelWorkflowId,
           loggerArgs
         )
       )

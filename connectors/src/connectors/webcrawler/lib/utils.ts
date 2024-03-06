@@ -1,4 +1,4 @@
-import type { ConnectorNodeType } from "@dust-tt/types";
+import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 
 // Generate a stable id for a given url and ressource type
@@ -8,7 +8,7 @@ export function stableIdForUrl({
   ressourceType,
 }: {
   url: string;
-  ressourceType: ConnectorNodeType;
+  ressourceType: ContentNodeType;
 }) {
   return Buffer.from(blake3(`${ressourceType}-${url}`)).toString("hex");
 }

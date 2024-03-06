@@ -33,6 +33,7 @@ import {
   MISTRAL_SMALL_MODEL_CONFIG,
   Ok,
 } from "@dust-tt/types";
+import { Transition } from "@headlessui/react";
 import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -84,7 +85,7 @@ export function InstructionScreen({
 }) {
   return (
     <div className="flex h-full max-h-[800px] w-full flex-col gap-4">
-      <div className="flex">
+      <div className="flex flex-col sm:flex-row">
         <div className="flex flex-col gap-2">
           <Page.Header title="Instructions" />
           <Page.P>
@@ -168,14 +169,14 @@ function AdvancedSettings({
           label="Advanced settings"
           variant="tertiary"
           size="sm"
-          type="select"
+          type="menu"
         />
       </DropdownMenu.Button>
-      <DropdownMenu.Items width={300} overflow="visible">
+      <DropdownMenu.Items width={240} overflow="visible">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-row items-center gap-2">
-            <div className="grow text-sm text-element-900">
-              Model selection:
+          <div className="flex flex-col items-end gap-2">
+            <div className="w-full grow text-sm font-bold text-element-800">
+              Model selection
             </div>
             <DropdownMenu>
               <DropdownMenu.Button>
@@ -186,7 +187,7 @@ function AdvancedSettings({
                     getSupportedModelConfig(generationSettings.modelSettings)
                       .displayName
                   }
-                  variant="tertiary"
+                  variant="secondary"
                   hasMagnifying={false}
                   size="sm"
                 />
@@ -217,9 +218,9 @@ function AdvancedSettings({
               </DropdownMenu.Items>
             </DropdownMenu>
           </div>
-          <div className="flex flex-row items-center gap-2">
-            <div className="grow text-sm text-element-900">
-              Creativity level:
+          <div className="flex flex-col items-end gap-2">
+            <div className="w-full grow text-sm font-bold text-element-800">
+              Creativity level
             </div>
             <DropdownMenu>
               <DropdownMenu.Button>
@@ -231,7 +232,7 @@ function AdvancedSettings({
                       generationSettings?.temperature
                     ).label
                   }
-                  variant="tertiary"
+                  variant="secondary"
                   hasMagnifying={false}
                   size="sm"
                 />
@@ -271,17 +272,27 @@ function AssistantBuilderTextArea({
   error?: string | null;
   name: string;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto"; // Reset height to recalculate
+      textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
+    }
+  }, [value]); // Re-run when value changes
   return (
     <textarea
+      ref={textareaRef}
       name="name"
       id={name}
       className={classNames(
-        "block max-h-full min-h-48 w-full min-w-0 grow rounded-md text-sm text-sm",
+        "block min-h-60 w-full min-w-0 rounded-md text-sm",
         !error
           ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
           : "border-red-500 focus:border-red-500 focus:ring-red-500",
         "bg-structure-50 stroke-structure-50",
-        "resize-none"
+        "resize-y"
       )}
       placeholder={placeholder}
       value={value ?? ""}
@@ -296,9 +307,10 @@ const STATIC_SUGGESTIONS = {
   status: "ok" as const,
   suggestions: [
     "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-    "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'",
+    "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
     "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
-    "Try to be specific: tailor prompts with precise language to avoid ambiguity",
+    "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
+    "Brievity prompt useful in productivity setups: 'When replying to the user, go straight to the point. Answer with precision and brieviety.'",
   ],
 };
 
@@ -347,83 +359,92 @@ function Suggestions({
     debounce(debounceHandle, updateSuggestions);
   }, [instructions, updateSuggestions]);
 
-  if (
-    suggestions.status === "unavailable" &&
-    suggestions.reason === "irrelevant"
-  ) {
-    return null;
-  }
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-base font-bold text-element-800">Tips</div>
-      <div className="">
-        {(() => {
-          if (loading) {
-            return <Spinner size="sm" />;
-          }
-          if (error) {
-            return (
-              <ContentMessage size="sm" title="Error" variant="red">
-                {error.message}
-              </ContentMessage>
-            );
-          }
-          if (suggestions.status === "ok") {
-            if (suggestions.suggestions.length === 0) {
+    <Transition
+      show={
+        !(
+          suggestions.status === "unavailable" &&
+          suggestions.reason === "irrelevant"
+        )
+      }
+      enter="transition-[max-height] duration-1000"
+      enterFrom="max-h-0"
+      enterTo="max-h-full"
+      leave="transition-[max-height] duration-1000"
+      leaveFrom="max-h-full"
+      leaveTo="max-h-0"
+    >
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-1 text-base font-bold text-element-800">
+          <div>Tips</div>
+          {loading && <Spinner size="sm" />}
+        </div>
+        <div>
+          {(() => {
+            if (error) {
               return (
-                <ContentMessage size="sm" variant="slate" title="">
-                  Looking good! 🎉
+                <ContentMessage size="sm" title="Error" variant="red">
+                  {error.message}
                 </ContentMessage>
               );
             }
-            return (
-              <div className="flex gap-2">
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions.suggestions[0]}
+            if (suggestions.status === "ok") {
+              if (suggestions.suggestions.length === 0) {
+                return (
+                  <ContentMessage size="sm" variant="slate" title="">
+                    Looking good! 🎉
+                  </ContentMessage>
+                );
+              }
+              return (
+                <div className="flex gap-2">
+                  <ContentMessage
+                    size="sm"
+                    title=""
+                    variant="sky"
+                    className="transition-all"
+                  >
+                    {suggestions.suggestions[0]}
+                  </ContentMessage>
+                  <ContentMessage
+                    size="sm"
+                    title=""
+                    variant="sky"
+                    className="transition-all"
+                  >
+                    {suggestions.suggestions[1]}
+                  </ContentMessage>
+                  <IconButton
+                    icon={ChevronRightIcon}
+                    size="sm"
+                    variant="tertiary"
+                    onClick={() => {
+                      setSuggestions({
+                        status: "ok",
+                        suggestions: [
+                          ...suggestions.suggestions.slice(2),
+                          ...suggestions.suggestions.slice(0, 2),
+                        ],
+                      });
+                    }}
+                  />
+                </div>
+              );
+            }
+            if (
+              suggestions.status === "unavailable" &&
+              suggestions.reason === "user_not_finished"
+            ) {
+              return (
+                <ContentMessage size="sm" variant="slate" title="">
+                  Suggestions will appear when you're done writing.
                 </ContentMessage>
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions.suggestions[1]}
-                </ContentMessage>
-                <IconButton
-                  icon={ChevronRightIcon}
-                  size="sm"
-                  variant="tertiary"
-                  onClick={() => {
-                    setSuggestions({
-                      status: "ok",
-                      suggestions: [
-                        ...suggestions.suggestions.slice(2),
-                        ...suggestions.suggestions.slice(0, 2),
-                      ],
-                    });
-                  }}
-                />
-              </div>
-            );
-          }
-          if (
-            suggestions.status === "unavailable" &&
-            suggestions.reason === "user_not_finished"
-          ) {
-            return (
-              <ContentMessage size="sm" variant="slate" title="">
-                Suggestions will appear when you're done writing.
-              </ContentMessage>
-            );
-          }
-        })()}
+              );
+            }
+          })()}
+        </div>
       </div>
-    </div>
+    </Transition>
   );
 }
 

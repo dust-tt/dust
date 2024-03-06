@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use hyper::body::HttpBody;
 use hyper::{body::Bytes, Body, Client, Request};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -147,7 +148,7 @@ async fn get_response_body(req: hyper::Request<hyper::Body>) -> Result<Bytes, Sq
     let res = Client::new().request(req).await?;
 
     let status = res.status().as_u16();
-    let body = hyper::body::to_bytes(res.into_body()).await?;
+    let body = res.collect().await?.to_bytes();
 
     match status {
         200 => Ok(body),

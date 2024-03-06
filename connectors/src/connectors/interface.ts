@@ -1,7 +1,7 @@
 import type {
-  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
   CreateConnectorUrlRequestBody,
   ModelId,
 } from "@dust-tt/types";
@@ -54,7 +54,7 @@ export type ConnectorPermissionRetriever = (params: {
   connectorId: ModelId;
   parentInternalId: string | null;
   filterPermission: ConnectorPermission | null;
-}) => Promise<Result<ConnectorNode[], Error>>;
+}) => Promise<Result<ContentNode[], Error>>;
 
 export type ConnectorPermissionSetter = (
   connectorId: ModelId,
@@ -70,9 +70,9 @@ export type ConnectorBatchResourceTitleRetriever = (
 export type ConnectorBatchContentNodesRetriever = (
   connectorId: ModelId,
   internalIds: string[]
-) => Promise<Result<ConnectorNode[], Error>>;
+) => Promise<Result<ContentNode[], Error>>;
 
-export type ConnectorNodeParentsRetriever = (
+export type ContentNodeParentsRetriever = (
   connectorId: ModelId,
   internalId: string,
   memoizationKey?: string

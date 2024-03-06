@@ -1,7 +1,7 @@
 import type {
-  ConnectorNode,
   ConnectorPermission,
   ConnectorsAPIError,
+  ContentNode,
   ModelId,
 } from "@dust-tt/types";
 
@@ -16,9 +16,13 @@ import { getConfluencePageParentIds } from "@connectors/connectors/confluence/li
 import {
   getIdFromConfluenceInternalId,
   isConfluenceInternalPageId,
+  isConfluenceInternalSpaceId,
   makeConfluenceInternalSpaceId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
+  checkPageHasChildren,
+  createContentNodeFromPage,
+  createContentNodeFromSpace,
   retrieveAvailableSpaces,
   retrieveHierarchyForParent,
 } from "@connectors/connectors/confluence/lib/permissions";
@@ -29,6 +33,7 @@ import {
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -249,7 +254,7 @@ export async function retrieveConfluenceConnectorPermissions({
   parentInternalId,
   filterPermission,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -368,34 +373,81 @@ export async function setConfluenceConnectorPermissions(
   return new Ok(undefined);
 }
 
-export async function retrieveConfluenceObjectsTitles(
+export async function retrieveConfluenceContentNodes(
   connectorId: ModelId,
   internalIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
-  const confluenceSpaceIds = internalIds.map((id) =>
-    getIdFromConfluenceInternalId(id)
-  );
-
-  const confluenceSpaces = await ConfluenceSpace.findAll({
-    attributes: ["id", "spaceId", "name"],
+): Promise<Result<ContentNode[], Error>> {
+  const connectorState = await ConfluenceConfiguration.findOne({
     where: {
-      connectorId: connectorId,
-      spaceId: confluenceSpaceIds,
+      connectorId,
     },
   });
+  if (!connectorState) {
+    return new Err(new Error("Confluence configuration not found"));
+  }
 
-  const titles = confluenceSpaces.reduce<Record<string, string>>(
-    (acc, curr) => {
-      acc[curr.spaceId] = curr.name;
-      return acc;
+  const spaceIds: string[] = [];
+  const pageIds: string[] = [];
+
+  internalIds.forEach((internalId) => {
+    if (isConfluenceInternalSpaceId(internalId)) {
+      spaceIds.push(getIdFromConfluenceInternalId(internalId));
+    } else if (isConfluenceInternalPageId(internalId)) {
+      pageIds.push(getIdFromConfluenceInternalId(internalId));
+    }
+  });
+
+  const [confluenceSpaces, confluencePages] = await Promise.all([
+    ConfluenceSpace.findAll({
+      where: {
+        connectorId: connectorId,
+        spaceId: spaceIds,
+      },
+    }),
+    ConfluencePage.findAll({
+      where: {
+        connectorId: connectorId,
+        pageId: pageIds,
+      },
+    }),
+  ]);
+
+  const spaceContentNodes: ContentNode[] = confluenceSpaces.map((space) => {
+    return createContentNodeFromSpace(space, connectorState.url, "read", {
+      isExpandable: true,
+    });
+  });
+
+  const pageContentNodes: ContentNode[] = await concurrentExecutor(
+    confluencePages,
+    async (page) => {
+      let parentId: string;
+      let parentType: "page" | "space";
+
+      if (page.parentId) {
+        parentId = page.parentId;
+        parentType = "page";
+      } else {
+        parentId = page.spaceId;
+        parentType = "space";
+      }
+      const isExpandable = await checkPageHasChildren(connectorId, page.pageId);
+
+      return createContentNodeFromPage(
+        { id: parentId, type: parentType },
+        connectorState.url,
+        page,
+        isExpandable
+      );
     },
-    {}
+    { concurrency: 8 }
   );
 
-  return new Ok(titles);
+  const contentNodes = spaceContentNodes.concat(pageContentNodes);
+  return new Ok(contentNodes);
 }
 
-export async function retrieveConfluenceResourceParents(
+export async function retrieveConfluenceContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {

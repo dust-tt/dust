@@ -34,7 +34,7 @@ type GithubOrg = {
   login: string;
 };
 
-type GithubRepo = {
+export type GithubRepo = {
   id: number;
   name: string;
   private: boolean;

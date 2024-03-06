@@ -6,6 +6,7 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use hyper::body::HttpBody;
 use hyper::{body::Buf, Body, Client, Method, Request, Uri};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
@@ -120,7 +121,7 @@ impl AI21LLM {
 
         let res = cli.request(req).await?;
         let status = res.status();
-        let body = hyper::body::aggregate(res).await?;
+        let body = res.collect().await?.aggregate();
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;

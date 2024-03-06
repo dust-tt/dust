@@ -3,6 +3,7 @@ use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use dns_lookup::lookup_host;
+use hyper::body::HttpBody;
 use hyper::header;
 use hyper::{body::Buf, Body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
@@ -157,7 +158,7 @@ impl HttpRequest {
         let status = res.status();
         let headers = res.headers().clone();
 
-        let body = hyper::body::aggregate(res).await?;
+        let body = res.collect().await?.to_bytes();
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
 

@@ -1,9 +1,9 @@
 import "@app/styles/global.css";
 
+import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { SparkleContext } from "@dust-tt/sparkle";
 import type { AppProps } from "next/app";
 import Link from "next/link";
-import { SessionProvider } from "next-auth/react";
 import type { MouseEvent, ReactNode } from "react";
 
 import { SidebarProvider } from "@app/components/sparkle/AppLayout";
@@ -45,19 +45,16 @@ function NextLinkWrapper({
   );
 }
 
-export default function App({
-  Component,
-  pageProps: { session, ...pageProps },
-}: AppProps) {
+export default function App({ Component, pageProps }: AppProps) {
   return (
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
-      <SessionProvider session={session}>
+      <UserProvider>
         <SidebarProvider>
           <NotificationArea>
             <Component {...pageProps} />
           </NotificationArea>
         </SidebarProvider>
-      </SessionProvider>
+      </UserProvider>
     </SparkleContext.Provider>
   );
 }

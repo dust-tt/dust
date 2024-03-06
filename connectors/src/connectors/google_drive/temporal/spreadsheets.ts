@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   getSanitizedHeaders,
+  InvalidStructuredDataHeaderError,
   makeStructuredDataTableName,
 } from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
@@ -45,7 +46,8 @@ async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
 async function upsertTable(
   connector: ConnectorResource,
   sheet: Sheet,
-  rows: string[][]
+  rows: string[][],
+  loggerArgs: object
 ) {
   const dataSourceConfig = await dataSourceConfigFromConnector(connector);
 
@@ -77,6 +79,8 @@ async function upsertTable(
     },
     truncate: true,
   });
+
+  logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
 }
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
@@ -117,39 +121,53 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
     return [];
   }
 
-  const headers = getSanitizedHeaders(rawHeaders);
+  try {
+    const headers = getSanitizedHeaders(rawHeaders);
 
-  const validRows: string[][] = filteredRows.map((row, index) => {
-    // Return raw headers.
-    if (index === 0) {
-      return headers;
+    const validRows: string[][] = filteredRows.map((row, index) => {
+      // Return raw headers.
+      if (index === 0) {
+        return headers;
+      }
+
+      // If a row has less cells than headers, we fill the gap with empty strings.
+      if (row.length < headers.length) {
+        const shortfall = headers.length - row.length;
+        return [...row, ...Array(shortfall).fill("")];
+      }
+
+      // If a row has more cells than headers we truncate the row.
+      if (row.length > headers.length) {
+        return row.slice(0, headers.length);
+      }
+
+      return row;
+    });
+
+    if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
+      logger.info(
+        { ...loggerArgs, rowCount: validRows.length },
+        `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
+      );
+
+      // If the sheet has too many rows, return an empty array to ignore it.
+      return [];
     }
 
-    // If a row has less cells than headers, we fill the gap with empty strings.
-    if (row.length < headers.length) {
-      const shortfall = headers.length - row.length;
-      return [...row, ...Array(shortfall).fill("")];
-    }
-
-    // If a row has more cells than headers we truncate the row.
-    if (row.length > headers.length) {
-      return row.slice(0, headers.length);
-    }
-
-    return row;
-  });
-
-  if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
+    return validRows;
+  } catch (err) {
     logger.info(
-      { ...loggerArgs, rowCount: validRows.length },
-      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
+      { ...loggerArgs, err },
+      `[Spreadsheet] Failed to retrieve valid rows.`
     );
 
-    // If the sheet has too many rows, return an empty array to ignore it.
-    return [];
-  }
+    // If the headers are invalid, return an empty array to ignore it.
+    if (err instanceof InvalidStructuredDataHeaderError) {
+      return [];
+    }
 
-  return validRows;
+    throw err;
+  }
 }
 
 async function processSheet(
@@ -178,12 +196,17 @@ async function processSheet(
   const rows = await getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    await upsertTable(connector, sheet, rows);
+    await upsertTable(connector, sheet, rows, loggerArgs);
 
     await upsertSheetInDb(connector, sheet);
 
     return true;
   }
+
+  logger.info(
+    loggerArgs,
+    "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
+  );
 
   return false;
 }

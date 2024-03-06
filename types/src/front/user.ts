@@ -17,12 +17,11 @@ export type WorkspaceType = LightWorkspaceType & {
   flags: WhitelistableFeature[];
 };
 
-export type UserProviderType = "github" | "google";
+export type UserProviderType = "github" | "google" | null;
 
 export type UserType = {
   id: ModelId;
   provider: UserProviderType;
-  providerId: string;
   username: string;
   email: string;
   firstName: string;

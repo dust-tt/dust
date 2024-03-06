@@ -1,21 +1,20 @@
-import type {
-  ConnectorNode,
-  ConnectorPermission,
-  ConnectorsAPIError,
-  ModelId,
-} from "@dust-tt/types";
+import type { ConnectorsAPIError, ContentNode, ModelId } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
+import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
   getRepo,
   getReposPage,
   validateInstallationId,
 } from "@connectors/connectors/github/lib/github_api";
 import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
+import { matchGithubInternalIdType } from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
 import type {
   ConnectorConfigGetter,
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -225,7 +224,7 @@ export async function retrieveGithubConnectorPermissions({
   connectorId,
   parentInternalId,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
-  Result<ConnectorNode[], Error>
+  Result<ContentNode[], Error>
 > {
   const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
@@ -238,7 +237,7 @@ export async function retrieveGithubConnectorPermissions({
   if (!parentInternalId) {
     // No parentInternalId: we return the repositories.
 
-    let nodes: ConnectorNode[] = [];
+    let nodes: ContentNode[] = [];
     let pageNumber = 1; // 1-indexed
     for (;;) {
       const page = await getReposPage(githubInstallationId, pageNumber);
@@ -256,7 +255,7 @@ export async function retrieveGithubConnectorPermissions({
           title: repo.name,
           sourceUrl: repo.url,
           expandable: true,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: null,
         }))
@@ -296,7 +295,7 @@ export async function retrieveGithubConnectorPermissions({
         return a.dirName.localeCompare(b.dirName);
       });
 
-      const nodes: ConnectorNode[] = [];
+      const nodes: ContentNode[] = [];
 
       directories.forEach((directory) => {
         nodes.push({
@@ -307,7 +306,7 @@ export async function retrieveGithubConnectorPermissions({
           title: directory.dirName,
           sourceUrl: directory.sourceUrl,
           expandable: true,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: directory.codeUpdatedAt.getTime(),
         });
@@ -322,7 +321,7 @@ export async function retrieveGithubConnectorPermissions({
           title: file.fileName,
           sourceUrl: file.sourceUrl,
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: file.documentId,
           lastUpdatedAt: file.codeUpdatedAt.getTime(),
         });
@@ -372,7 +371,7 @@ export async function retrieveGithubConnectorPermissions({
         ]
       );
 
-      const nodes: ConnectorNode[] = [];
+      const nodes: ContentNode[] = [];
 
       if (latestIssue) {
         nodes.push({
@@ -383,7 +382,7 @@ export async function retrieveGithubConnectorPermissions({
           title: "Issues",
           sourceUrl: repo.url + "/issues",
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: latestIssue.updatedAt.getTime(),
         });
@@ -398,7 +397,7 @@ export async function retrieveGithubConnectorPermissions({
           title: "Discussions",
           sourceUrl: repo.url + "/discussions",
           expandable: false,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
         });
@@ -413,7 +412,7 @@ export async function retrieveGithubConnectorPermissions({
           title: "Code",
           sourceUrl: repo.url,
           expandable: true,
-          permission: "read" as ConnectorPermission,
+          permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
         });
@@ -424,10 +423,10 @@ export async function retrieveGithubConnectorPermissions({
   }
 }
 
-export async function retrieveGithubReposTitles(
+export async function retrieveGithubReposContentNodes(
   connectorId: ModelId,
-  repoIds: string[]
-): Promise<Result<Record<string, string>, Error>> {
+  internalIds: string[]
+): Promise<Result<ContentNode[], Error>> {
   const c = await ConnectorResource.fetchById(connectorId);
   if (!c) {
     logger.error({ connectorId }, "Connector not found");
@@ -435,28 +434,205 @@ export async function retrieveGithubReposTitles(
   }
 
   const githubInstallationId = c.connectionId;
+  const allReposIdsToFetch: Set<number> = new Set();
+  const nodes: ContentNode[] = [];
 
-  const repoIdsSet = new Set(repoIds);
+  // Users can select:
+  // A full repo (issues + discussions + code if enabled)
+  const fullRepoIds: number[] = [];
 
-  // for github, we just fetch all the repos from the github API and only filter the ones we need
-  // this is fine as we don't expect to have a lot of repos (it should rarely be more than 1 api call)
-  const repoTitles: Record<string, string> = {};
-  let pageNumber = 1; // 1-indexed
-  for (;;) {
-    const page = await getReposPage(githubInstallationId, pageNumber);
-    pageNumber += 1;
-    if (page.length === 0) {
-      break;
+  //  All issues of the repo, or all discussions of the repo
+  const allIssuesFromRepoIds: number[] = [];
+  const allDiscussionsFromRepoIds: number[] = [];
+
+  // The full code, or a specific folder or file in the code
+  const allCodeFromRepoIds: string[] = [];
+  const codeDirectoryIds: string[] = [];
+  const codeFileIds: string[] = [];
+
+  // We loop on all the internalIds we receive to know what is the related data type
+  internalIds.forEach((internalId) => {
+    const { type, repoId } = matchGithubInternalIdType(internalId);
+    allReposIdsToFetch.add(repoId);
+
+    switch (type) {
+      case "REPO_FULL":
+        fullRepoIds.push(repoId);
+        break;
+      case "REPO_ISSUES":
+        allIssuesFromRepoIds.push(repoId);
+        break;
+      case "REPO_DISCUSSIONS":
+        allDiscussionsFromRepoIds.push(repoId);
+        break;
+      case "REPO_CODE":
+        allCodeFromRepoIds.push(repoId.toString());
+        break;
+      case "REPO_CODE_DIR":
+        codeDirectoryIds.push(internalId);
+        break;
+      case "REPO_CODE_FILE":
+        codeFileIds.push(internalId);
+        break;
+      default:
+        assertNever(type);
     }
+  });
 
-    page.forEach((repo) => {
-      if (repoIdsSet.has(repo.id.toString())) {
-        repoTitles[repo.id.toString()] = repo.name;
-      }
+  // Repos are not stored in the DB, we have to fetch them from the API
+  const uniqueRepoIdsArray: number[] = Array.from(allReposIdsToFetch);
+  const uniqueRepos: Record<number, GithubRepo> = {};
+  await concurrentExecutor(
+    uniqueRepoIdsArray,
+    async (repoId) => {
+      const repoData = await getRepo(githubInstallationId, repoId);
+      uniqueRepos[repoId] = repoData;
+    },
+    { concurrency: 8 }
+  );
+
+  // Code Repositories, Directories and Files are stored in the DB
+  const [fullCodeInRepos, codeDirectories, codeFiles] = await Promise.all([
+    GithubCodeRepository.findAll({
+      where: {
+        connectorId: c.id,
+        repoId: allCodeFromRepoIds,
+      },
+    }),
+    GithubCodeDirectory.findAll({
+      where: {
+        connectorId: c.id,
+        internalId: codeDirectoryIds,
+      },
+    }),
+    GithubCodeFile.findAll({
+      where: {
+        connectorId: c.id,
+        documentId: codeFileIds,
+      },
+    }),
+  ]);
+
+  // Constructing Nodes for Full Repo
+  fullRepoIds.forEach((repoId) => {
+    const repo = uniqueRepos[repoId];
+    if (!repo) {
+      return;
+    }
+    nodes.push({
+      provider: c.type,
+      internalId: repoId.toString(),
+      parentInternalId: null,
+      type: "folder",
+      title: repo.name,
+      titleWithParentsContext: `[${repo.name}] - Full repository`,
+      sourceUrl: repo.url,
+      expandable: true,
+      permission: "read",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
     });
-  }
+  });
 
-  return new Ok(repoTitles);
+  // Constructing Nodes for All Issues and All Discussions
+  allIssuesFromRepoIds.forEach((repoId) => {
+    const repo = uniqueRepos[repoId];
+    if (!repo) {
+      return;
+    }
+    nodes.push({
+      provider: c.type,
+      internalId: `${repoId}-issues`,
+      parentInternalId: repoId.toString(),
+      type: "database",
+      title: "Issues",
+      titleWithParentsContext: `[${repo.name}] Issues`,
+      sourceUrl: repo.url + "/issues",
+      expandable: false,
+      permission: "read",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  });
+  allDiscussionsFromRepoIds.forEach((repoId) => {
+    const repo = uniqueRepos[repoId];
+    if (!repo) {
+      return;
+    }
+    nodes.push({
+      provider: c.type,
+      internalId: `${repoId}-discussions`,
+      parentInternalId: repoId.toString(),
+      type: "channel",
+      title: "Discussions",
+      titleWithParentsContext: `[${repo.name}] Discussions`,
+      sourceUrl: repo.url + "/discussions",
+      expandable: false,
+      permission: "read",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    });
+  });
+
+  // Constructing Nodes for Code
+  fullCodeInRepos.forEach((codeRepo) => {
+    const repo = uniqueRepos[parseInt(codeRepo.repoId)];
+    nodes.push({
+      provider: c.type,
+      internalId: `github-code-${codeRepo.repoId}`,
+      parentInternalId: codeRepo.repoId,
+      type: "folder",
+      title: "Code",
+      titleWithParentsContext: repo ? `[${repo.name}] Code` : "Code",
+      sourceUrl: codeRepo.sourceUrl,
+      expandable: true,
+      permission: "read",
+      dustDocumentId: null,
+      lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
+    });
+  });
+
+  // Constructing Nodes for Code Directories
+  codeDirectories.forEach((directory) => {
+    const repo = uniqueRepos[parseInt(directory.repoId)];
+    nodes.push({
+      provider: c.type,
+      internalId: directory.internalId,
+      parentInternalId: directory.parentInternalId,
+      type: "folder",
+      title: directory.dirName,
+      titleWithParentsContext: repo
+        ? `[${repo.name}] ${directory.dirName} (code)`
+        : directory.dirName,
+      sourceUrl: directory.sourceUrl,
+      expandable: true,
+      permission: "read",
+      dustDocumentId: null,
+      lastUpdatedAt: directory.codeUpdatedAt.getTime(),
+    });
+  });
+
+  // Constructing Nodes for Code Files
+  codeFiles.forEach((file) => {
+    const repo = uniqueRepos[parseInt(file.repoId)];
+    nodes.push({
+      provider: c.type,
+      internalId: file.documentId,
+      parentInternalId: file.parentInternalId,
+      type: "file",
+      title: file.fileName,
+      titleWithParentsContext: repo
+        ? `[${repo.name}] ${file.fileName} (code)`
+        : file.fileName,
+      sourceUrl: file.sourceUrl,
+      expandable: false,
+      permission: "read",
+      dustDocumentId: file.documentId,
+      lastUpdatedAt: file.codeUpdatedAt.getTime(),
+    });
+  });
+
+  return new Ok(nodes);
 }
 
 export const getGithubConfig: ConnectorConfigGetter = async function (
@@ -535,7 +711,7 @@ export async function setGithubConfig(
   }
 }
 
-export async function retrieveGithubResourceParents(
+export async function retrieveGithubContentNodeParents(
   connectorId: ModelId,
   internalId: string
 ): Promise<Result<string[], Error>> {

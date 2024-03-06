@@ -35,7 +35,6 @@ import { GPT_3_5_TURBO_MODEL_CONFIG, md5, removeNulls } from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
-  isUserMention,
   isUserMessageType,
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
@@ -241,8 +240,6 @@ async function batchRenderUserMessages(messages: Message[]) {
       user: user
         ? {
             id: user.id,
-            provider: user.provider,
-            providerId: user.providerId,
             username: user.username,
             email: user.email,
             firstName: user.firstName,
@@ -259,13 +256,7 @@ async function batchRenderUserMessages(messages: Message[]) {
             configurationId: m.agentConfigurationId,
           };
         }
-        if (m.user) {
-          return {
-            provider: m.user.provider,
-            providerId: m.user.providerId,
-          };
-        }
-        throw new Error("Unreachable: mention must be either agent or user");
+        throw new Error("Mention Must Be An Agent: Unreachable.");
       }),
       content: userMessage.content,
       context: {
@@ -1016,29 +1007,6 @@ export async function* postUserMessage(
           })
         );
 
-      await Promise.all(
-        mentions.filter(isUserMention).map((mention) => {
-          return (async () => {
-            const user = await User.findOne({
-              where: {
-                provider: mention.provider,
-                providerId: mention.providerId,
-              },
-            });
-
-            if (user) {
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  userId: user.id,
-                },
-                { transaction: t }
-              );
-            }
-          })();
-        })
-      );
-
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
         m: AgentMessageType;
@@ -1476,29 +1444,6 @@ export async function* editUserMessage(
             })();
           })
         );
-
-      await Promise.all(
-        mentions.filter(isUserMention).map((mention) => {
-          return (async () => {
-            const user = await User.findOne({
-              where: {
-                provider: mention.provider,
-                providerId: mention.providerId,
-              },
-            });
-
-            if (user) {
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  userId: user.id,
-                },
-                { transaction: t }
-              );
-            }
-          })();
-        })
-      );
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;

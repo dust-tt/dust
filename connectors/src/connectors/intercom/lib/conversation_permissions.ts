@@ -1,4 +1,4 @@
-import type { ConnectorNode, ModelId } from "@dust-tt/types";
+import type { ContentNode, ModelId } from "@dust-tt/types";
 
 import {
   fetchIntercomTeam,
@@ -81,7 +81,7 @@ export async function retrieveIntercomConversationsPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ConnectorNode[]> {
+}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ContentNode[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");
@@ -91,9 +91,9 @@ export async function retrieveIntercomConversationsPermissions({
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
   const teamsInternalId = getTeamsInternalId(connectorId);
-  const nodes: ConnectorNode[] = [];
+  const nodes: ContentNode[] = [];
 
-  const rootConversationNode: ConnectorNode = {
+  const rootConversationNode: ContentNode = {
     provider: "intercom",
     internalId: teamsInternalId,
     parentInternalId: null,

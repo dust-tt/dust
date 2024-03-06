@@ -33,16 +33,16 @@ import {
 import { Spinner } from "@app/components/Spinner";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import {
   checkDatasetData,
   getDatasetTypes,
   getValueType,
 } from "@app/lib/datasets";
+import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { useSavedRunStatus } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -57,7 +57,7 @@ type Event = {
   };
 };
 
-export const getServerSideProps = withGetServerSidePropsLogging<{
+export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
@@ -65,8 +65,7 @@ export const getServerSideProps = withGetServerSidePropsLogging<{
   inputDataset: DatasetType | null;
   readOnly: boolean;
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
+}>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
     context.params?.wId as string
