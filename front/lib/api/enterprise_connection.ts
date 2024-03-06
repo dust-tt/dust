@@ -3,6 +3,7 @@ import type { Connection } from "auth0";
 import { ManagementClient } from "auth0";
 
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 
 const management = new ManagementClient({
   domain: config.getAuth0TenantUrl(),
@@ -15,16 +16,21 @@ function makeEnterpriseConnectionName(workspaceId: string) {
 }
 
 export async function getEnterpriseConnectionForWorkspace(
-  workspaceId: string,
+  auth: Authenticator,
   strategy: SupportedEnterpriseConnectionStrategies = "okta"
 ) {
+  const owner = auth.workspace();
+  if (!owner) {
+    return null;
+  }
+
   // This endpoint supports fetching up to 1000 connections in one page.
   // In the future, consider implementing pagination to handle larger datasets.
   const connections = await management.connections.getAll({
     strategy: [strategy],
   });
 
-  const expectedConnectionName = makeEnterpriseConnectionName(workspaceId);
+  const expectedConnectionName = makeEnterpriseConnectionName(owner.sId);
   return connections.data.find((c) => c.name === expectedConnectionName);
 }
 
@@ -36,18 +42,21 @@ interface EnterpriseConnectionDetails {
 }
 
 export async function createEnterpriseConnection(
-  {
-    workspaceId,
-    verifiedDomain,
-  }: {
-    workspaceId: string;
-    verifiedDomain: string | null;
-  },
+  auth: Authenticator,
+  verifiedDomain: string | null,
   connectionDetails: EnterpriseConnectionDetails
 ): Promise<Connection> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error(
+      "Workspace is required to enable an enterprise connection."
+    );
+  }
+
+  const { sId } = owner;
   const connection = await management.connections.create({
-    name: makeEnterpriseConnectionName(workspaceId),
-    display_name: makeEnterpriseConnectionName(workspaceId),
+    name: makeEnterpriseConnectionName(sId),
+    display_name: makeEnterpriseConnectionName(sId),
     strategy: connectionDetails.strategy,
     options: {
       client_id: connectionDetails.clientId,
@@ -66,11 +75,18 @@ export async function createEnterpriseConnection(
 }
 
 export async function deleteEnterpriseConnection(
-  workspaceId: string,
+  auth: Authenticator,
   strategy: SupportedEnterpriseConnectionStrategies = "okta"
 ) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error(
+      "Workspace is required to delete an enterprise connection."
+    );
+  }
+
   const existingConnection = await getEnterpriseConnectionForWorkspace(
-    workspaceId,
+    auth,
     strategy
   );
   if (!existingConnection) {

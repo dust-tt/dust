@@ -77,7 +77,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const enterpriseConnection = await getEnterpriseConnectionForWorkspace(
-        workspace.sId
+        auth
       );
       if (enterpriseConnection) {
         return res
@@ -88,7 +88,7 @@ async function handler(
 
     case "DELETE":
       try {
-        await deleteEnterpriseConnection(workspace.sId);
+        await deleteEnterpriseConnection(auth);
 
         res.status(204).end();
         return;
@@ -133,10 +133,8 @@ async function handler(
 
       try {
         await createEnterpriseConnection(
-          {
-            workspaceId: workspace.sId,
-            verifiedDomain: workspaceWithVerifiedDomain?.domain ?? null,
-          },
+          auth,
+          workspaceWithVerifiedDomain?.domain ?? null,
           body
         );
       } catch (err) {
