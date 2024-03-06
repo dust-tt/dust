@@ -208,7 +208,7 @@ impl MistralAILLM {
         messages: &Vec<ChatMessage>,
         temperature: f32,
         top_p: f32,
-        max_tokens: i32,
+        max_tokens: Option<i32>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<ChatCompletion> {
         let url = uri.to_string();
@@ -373,11 +373,13 @@ impl MistralAILLM {
                         finish_reason: None,
                     })
                     .collect::<Vec<_>>(),
-                // The `created` timestamp is absent in the initial stream chunk (in ms), defaulting to the current time (in seconds).
+                // The `created` timestamp is absent in the initial stream chunk (in ms),
+                // defaulting to the current time (in seconds).
                 created: f.created.map(|s| s * 1000).unwrap_or_else(now),
                 id: f.id.clone(),
                 model: f.model,
-                // The `object` field defaults to "start" when not present in the initial stream chunk.
+                // The `object` field defaults to "start" when not present in the initial stream
+                // chunk.
                 object: f.object.unwrap_or(String::from("start")),
                 usage: None,
             };
@@ -444,7 +446,7 @@ impl MistralAILLM {
         messages: &Vec<ChatMessage>,
         temperature: f32,
         top_p: f32,
-        max_tokens: i32,
+        max_tokens: Option<i32>,
     ) -> Result<ChatCompletion> {
         let mut body = json!({
             "messages": messages,
@@ -581,16 +583,9 @@ impl LLM for MistralAILLM {
         }
 
         // If max_tokens is not set or is -1, compute the max tokens based on the first message.
-        let first_message = &messages[0];
         let computed_max_tokens = match max_tokens.unwrap_or(-1) {
-            -1 => match &first_message.content {
-                Some(content) => {
-                    let tokens = self.encode(content).await?;
-                    (self.context_size() - tokens.len()) as i32
-                }
-                None => self.context_size() as i32,
-            },
-            _ => max_tokens.unwrap(),
+            -1 => None,
+            _ => max_tokens,
         };
 
         // TODO(flav): Handle `extras`.
@@ -609,7 +604,10 @@ impl LLM for MistralAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    computed_max_tokens,
+                    match max_tokens {
+                        Some(-1) => None,
+                        _ => max_tokens,
+                    },
                     event_sender,
                 )
                 .await?
