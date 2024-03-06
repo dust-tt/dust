@@ -5,7 +5,7 @@ import { ManagementClient } from "auth0";
 import config from "@app/lib/api/config";
 
 const management = new ManagementClient({
-  domain: config.getAuth0IssuerBaseUrl(),
+  domain: config.getAuth0TenantUrl(),
   clientId: config.getAuth0M2MClientId(),
   clientSecret: config.getAuth0M2MClientSecret(),
 });

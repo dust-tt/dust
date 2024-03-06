@@ -24,13 +24,18 @@ import { useWorkspaceEnterpriseConnection } from "@app/lib/swr";
 interface EnterpriseConnectionDetailsProps {
   owner: WorkspaceType;
   plan: PlanType;
-  strategy?: SupportedEnterpriseConnectionStrategies;
+  strategyDetails: EnterpriseConnectionStrategyDetails;
+}
+
+export interface EnterpriseConnectionStrategyDetails {
+  strategy: SupportedEnterpriseConnectionStrategies;
+  callbackUrl: string;
 }
 
 export function EnterpriseConnectionDetails({
   owner,
   plan,
-  strategy = "okta",
+  strategyDetails,
 }: EnterpriseConnectionDetailsProps) {
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [
@@ -49,6 +54,8 @@ export function EnterpriseConnectionDetails({
       workspaceId: owner.sId,
     });
 
+  const { strategy } = strategyDetails;
+
   return (
     <Page.Vertical gap="sm">
       <Page.H variant="h5">Single Sign On</Page.H>
@@ -62,7 +69,7 @@ export function EnterpriseConnectionDetails({
 
           setIsEnterpriseConnectionModalOpened(false);
         }}
-        strategy={strategy}
+        strategyDetails={strategyDetails}
       />
       <DisableEnterpriseConnectionModal
         enterpriseConnectionEnabled={!!enterpriseConnection}
@@ -141,16 +148,16 @@ function OktaHelpLink({ hint, link }: { hint: string; link: string }) {
   );
 }
 
-function CreateEnterpriseConnectionModal({
+function CreateOktaEnterpriseConnectionModal({
   isOpen,
   onClose,
   owner,
-  strategy,
+  strategyDetails,
 }: {
   isOpen: boolean;
   onClose: (created: boolean) => void;
   owner: WorkspaceType;
-  strategy: SupportedEnterpriseConnectionStrategies;
+  strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
   const [enterpriseConnectionDetails, setEnterpriseConnectionDetails] =
     useState<{
@@ -158,6 +165,8 @@ function CreateEnterpriseConnectionModal({
       clientSecret?: string;
       domain?: string;
     }>({});
+
+  const { callbackUrl } = strategyDetails;
 
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -168,7 +177,7 @@ function CreateEnterpriseConnectionModal({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        strategy,
+        strategy: "okta",
         ...enterpriseConnectionDetails,
       }),
     });
@@ -176,7 +185,7 @@ function CreateEnterpriseConnectionModal({
       sendNotification({
         type: "error",
         title: "Update failed",
-        description: `Failed to create ${strategy} Single Sign On configuration.`,
+        description: "Failed to create Okta Single Sign On configuration.",
       });
     } else {
       sendNotification({
@@ -187,17 +196,33 @@ function CreateEnterpriseConnectionModal({
     }
   };
 
-  // TODO: Make Generic!
   return (
     <Modal
       isOpen={isOpen}
-      title={`Create ${strategy} Single Sign On configuration`}
+      title={"Create Okta Single Sign On configuration"}
       onClose={() => onClose(false)}
       hasChanged={false}
       variant="side-sm"
     >
       <Page variant="modal">
         <Page.Layout direction="vertical">
+          <Page.P>
+            Callback URL:
+            <Input
+              name="Callback URL"
+              placeholder="callback url"
+              value={callbackUrl}
+              disabled={true}
+              onChange={(value) =>
+                setEnterpriseConnectionDetails({
+                  ...enterpriseConnectionDetails,
+                  domain: value,
+                })
+              }
+              className="max-w-sm"
+            />
+          </Page.P>
+          <Page.Separator />
           <Page.P>
             Okta Domain:
             <Input
@@ -280,6 +305,33 @@ function CreateEnterpriseConnectionModal({
       </Page>
     </Modal>
   );
+}
+
+function CreateEnterpriseConnectionModal({
+  isOpen,
+  onClose,
+  owner,
+  strategyDetails,
+}: {
+  isOpen: boolean;
+  onClose: (created: boolean) => void;
+  owner: WorkspaceType;
+  strategyDetails: EnterpriseConnectionStrategyDetails;
+}) {
+  switch (strategyDetails.strategy) {
+    case "okta":
+      return (
+        <CreateOktaEnterpriseConnectionModal
+          isOpen={isOpen}
+          onClose={onClose}
+          owner={owner}
+          strategyDetails={strategyDetails}
+        />
+      );
+
+    default:
+      return <></>;
+  }
 }
 
 function DisableEnterpriseConnectionModal({

@@ -1,7 +1,7 @@
 import { EnvironmentConfig } from "@dust-tt/types";
 
 const config = {
-  getAuth0IssuerBaseUrl: (): string => {
+  getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
   getAuth0M2MClientId: (): string => {

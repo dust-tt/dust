@@ -32,7 +32,9 @@ import { useSWRConfig } from "swr";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
+import config from "@app/lib/api/config";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
@@ -52,6 +54,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   gaTrackingId: string;
   workspaceHasAvailableSeats: boolean;
@@ -75,11 +78,18 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
+
+  const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
+    {
+      strategy: "okta",
+      callbackUrl: config.getAuth0TenantUrl(),
+    };
   return {
     props: {
       user,
       owner,
       subscription,
+      enterpriseConnectionStrategyDetails,
       plan,
       gaTrackingId: GA_TRACKING_ID,
       workspaceHasAvailableSeats,
@@ -110,6 +120,7 @@ export default function WorkspaceAdmin({
   user,
   owner,
   subscription,
+  enterpriseConnectionStrategyDetails,
   plan,
   gaTrackingId,
   workspaceVerifiedDomain,
@@ -199,7 +210,11 @@ export default function WorkspaceAdmin({
           </Page.Vertical>
         )}
         {isDevelopmentOrDustWorkspace(owner) && (
-          <EnterpriseConnectionDetails owner={owner} plan={plan} />
+          <EnterpriseConnectionDetails
+            owner={owner}
+            plan={plan}
+            strategyDetails={enterpriseConnectionStrategyDetails}
+          />
         )}
         <MemberList />
       </Page.Vertical>
