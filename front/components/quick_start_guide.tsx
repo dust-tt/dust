@@ -36,7 +36,7 @@ export function QuickStartGuide({
 
         const amplitude = getBrowserClient();
         amplitude.identify(`user-${user.id.toString()}`);
-        amplitude.quickGuideView({
+        amplitude.quickGuideViewed({
           workspaceId: owner.sId,
           workspaceName: owner.name,
           duration,
