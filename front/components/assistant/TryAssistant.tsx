@@ -135,7 +135,7 @@ export function TryAssistant({
         <GenerationContextProvider>
           {conversation && (
             <div
-              className="max-h-[100%] overflow-y-auto "
+              className="max-h-[100%] overflow-y-auto overflow-x-hidden"
               id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
             >
               <Conversation
@@ -144,6 +144,7 @@ export function TryAssistant({
                 conversationId={conversation.sId}
                 onStickyMentionsChange={setStickyMentions}
                 isInModal
+                hideReactions
               />
             </div>
           )}
