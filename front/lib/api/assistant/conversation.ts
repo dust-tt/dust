@@ -43,6 +43,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { trackUserMessage } from "@app/lib/amplitude/back";
 import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
@@ -1033,6 +1034,13 @@ export async function* postUserMessage(
       });
     }
   }
+  trackUserMessage({
+    userMessage,
+    workspace: conversation.owner,
+    userId: user ? `user-${user.id}` : `api-${context.username}`,
+    conversationId: conversation.sId,
+  }).catch(logger.error);
+
   yield {
     type: "user_message_new",
     created: Date.now(),

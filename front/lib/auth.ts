@@ -420,6 +420,7 @@ export class Authenticator {
     return this._user
       ? {
           id: this._user.id,
+          createdAt: this._user.createdAt.getTime(),
           provider: this._user.provider,
           username: this._user.username,
           email: this._user.email,
