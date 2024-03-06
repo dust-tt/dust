@@ -434,7 +434,7 @@ export async function upsertPageChildWorkflow({
   let cursor: string | null = null;
   let blockIndexInPage = 0;
   do {
-    const { nextCursor, blocksWithChildren, childDatabases, blocksCount } =
+    const { nextCursor, blocksWithChildren, blocksCount } =
       await cacheBlockChildren({
         connectorId,
         pageId,
@@ -454,17 +454,6 @@ export async function upsertPageChildWorkflow({
           connectorId: [connectorId],
         },
         args: [{ connectorId, pageId, blockId: block, topLevelWorkflowId }],
-        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-        memo: workflowInfo().memo,
-      });
-    }
-    for (const databaseId of childDatabases) {
-      await executeChild(processChildDatabaseChildWorkflow, {
-        workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        args: [{ connectorId, databaseId, topLevelWorkflowId }],
         parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
         memo: workflowInfo().memo,
       });
@@ -504,7 +493,7 @@ export async function notionProcessBlockChildrenChildWorkflow({
   let blockIndexInParent = 0;
 
   do {
-    const { nextCursor, blocksWithChildren, childDatabases, blocksCount } =
+    const { nextCursor, blocksWithChildren, blocksCount } =
       await cacheBlockChildren({
         connectorId,
         pageId,
@@ -528,45 +517,6 @@ export async function notionProcessBlockChildrenChildWorkflow({
         memo: workflowInfo().memo,
       });
     }
-    for (const databaseId of childDatabases) {
-      await executeChild(processChildDatabaseChildWorkflow, {
-        workflowId: `${topLevelWorkflowId}-page-${pageId}-child-database-${databaseId}`,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        args: [{ connectorId, databaseId, topLevelWorkflowId }],
-        parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
-        memo: workflowInfo().memo,
-      });
-    }
-  } while (cursor);
-}
-
-export async function processChildDatabaseChildWorkflow({
-  connectorId,
-  databaseId,
-  topLevelWorkflowId,
-}: {
-  connectorId: ModelId;
-  databaseId: string;
-  topLevelWorkflowId: string;
-}): Promise<void> {
-  const loggerArgs = {
-    connectorId,
-  };
-
-  let cursor: string | null = null;
-  do {
-    const { nextCursor } = await fetchDatabaseChildPages({
-      connectorId,
-      databaseId,
-      cursor,
-      loggerArgs,
-      topLevelWorkflowId,
-      storeInCache: true,
-      returnUpToDatePageIdsForExistingDatabase: true,
-    });
-    cursor = nextCursor;
   } while (cursor);
 }
 
@@ -753,6 +703,7 @@ async function upsertDatabase({
       connectorId,
       topLevelWorkflowId,
       loggerArgs,
+      runTimestamp,
     })
   );
 
