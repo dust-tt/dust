@@ -310,19 +310,18 @@ function CiteBlock(props: ReactMarkdownProps) {
 
   if (refs) {
     return (
-      <>
+      <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
           const link = linkFromDocument(document);
 
           return (
-            <sup key={`${r.ref}-${i}`} className="inline-flex">
+            <sup key={`${r.ref}-${i}`}>
               <a
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
                 onMouseEnter={() => setHoveredReference(r.counter)}
-                className={`${i !== 0 ? "pl-1" : ""}`}
               >
                 <div className="flex h-4 w-4 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800 hover:border-violet-400">
                   {r.counter}
@@ -331,7 +330,7 @@ function CiteBlock(props: ReactMarkdownProps) {
             </sup>
           );
         })}
-      </>
+      </span>
     );
   } else {
     const { children } = props;
