@@ -54,6 +54,10 @@ export function EnterpriseConnectionDetails({
       workspaceId: owner.sId,
     });
 
+  if (!owner.flags.includes("okta_enterprise_connection")) {
+    return <></>;
+  }
+
   const { strategy } = strategyDetails;
 
   return (

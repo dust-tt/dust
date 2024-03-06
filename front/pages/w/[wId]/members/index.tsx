@@ -209,13 +209,11 @@ export default function WorkspaceAdmin({
             </div>
           </Page.Vertical>
         )}
-        {isDevelopmentOrDustWorkspace(owner) && (
-          <EnterpriseConnectionDetails
-            owner={owner}
-            plan={plan}
-            strategyDetails={enterpriseConnectionStrategyDetails}
-          />
-        )}
+        <EnterpriseConnectionDetails
+          owner={owner}
+          plan={plan}
+          strategyDetails={enterpriseConnectionStrategyDetails}
+        />
         <MemberList />
       </Page.Vertical>
     </AppLayout>
