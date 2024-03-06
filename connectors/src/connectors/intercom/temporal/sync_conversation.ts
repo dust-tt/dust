@@ -220,18 +220,20 @@ export async function syncConversation({
     });
     convoTitle = `Conversation from ${formattedDate}`;
   }
-  const tags = conversation.tags?.tags
-    .map((tag: IntercomTagType) => tag.name)
-    .join(", ");
+  const customAttributes = conversation.custom_attributes;
+  const tags = conversation.tags?.tags ?? [];
+  const tagsAsString = tags.map((tag: IntercomTagType) => tag.name).join(", ");
   const source = conversation.source.type;
+
   const firstMessageAuthor = conversation.source.author;
   const firstMessageContent = turndownService.turndown(
     conversation.source.body
   );
 
   markdown += `# ${convoTitle}\n\n`;
-  markdown += `**TAGS: ${tags || "no tags"}**\n`;
+  markdown += `**TAGS: ${tagsAsString ?? "no tags"}**\n`;
   markdown += `**SOURCE: ${source || "unknown"}**\n`;
+  markdown += `**CUSTOM ATTRIBUTES: ${JSON.stringify(customAttributes)}**\n\n`;
   markdown += `**[Message] ${firstMessageAuthor.name} (${firstMessageAuthor.type})**\n`;
   markdown += `${firstMessageContent}\n\n`;
 
@@ -269,17 +271,32 @@ export async function syncConversation({
     intercomWorkspace.region
   );
 
+  // Datasource TAGS
+  const datasourceTags = [
+    `title:${convoTitle}`,
+    `createdAt:${createdAtDate.getTime()}`,
+    `updatedAt:${updatedAtDate.getTime()}`,
+  ];
+  Object.entries(customAttributes).forEach(([name, value]) => {
+    if (
+      (typeof value === "string" && value.length > 0) ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      datasourceTags.push(`attribute:${name}:${value}`);
+    }
+  });
+  tags.forEach((tag) => {
+    datasourceTags.push(`tag:${tag.name}`);
+  });
+
   await upsertToDatasource({
     dataSourceConfig,
     documentId: getConversationInternalId(connectorId, conversation.id),
     documentContent: renderedPage,
     documentUrl: conversationUrl,
     timestampMs: updatedAtDate.getTime(),
-    tags: [
-      `title:${convoTitle}`,
-      `createdAt:${createdAtDate.getTime()}`,
-      `updatedAt:${updatedAtDate.getTime()}`,
-    ],
+    tags: datasourceTags,
     parents: [
       getTeamInternalId(connectorId, team.teamId),
       getTeamsInternalId(connectorId),
