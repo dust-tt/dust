@@ -1738,7 +1738,7 @@ export async function renderAndUpsertPageFromCache({
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
-  for (const p of parsedProperties.filter((p) => p.key !== "title" && p.text)) {
+  for (const p of parsedProperties.filter((p) => p.key !== "title")) {
     if (!p.text) {
       continue;
     }
