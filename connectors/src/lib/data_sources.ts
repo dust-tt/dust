@@ -30,6 +30,10 @@ if (!DUST_FRONT_API) {
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
 
+// Size above which a property value is considered to be "free text" (which will trigger an upsert of the page
+// even if the page has not actual body)
+export const MIN_FREE_TEXT_PROPERTY_LEN = 256;
+
 type UpsertContext = {
   sync_type: "batch" | "incremental";
 };

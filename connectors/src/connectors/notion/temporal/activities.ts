@@ -50,6 +50,7 @@ import {
   deleteTable,
   deleteTableRow,
   MAX_DOCUMENT_TXT_LEN,
+  MIN_FREE_TEXT_PROPERTY_LEN,
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
@@ -1733,11 +1734,16 @@ export async function renderAndUpsertPageFromCache({
 
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
+  let maxPropertyLength = 0;
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
   for (const p of parsedProperties.filter((p) => p.key !== "title" && p.text)) {
+    if (!p.text) {
+      continue;
+    }
     const propertyContent = `$${p.key}: ${p.text}\n`;
+    maxPropertyLength = Math.max(maxPropertyLength, p.text.length);
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -1844,9 +1850,10 @@ export async function renderAndUpsertPageFromCache({
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (documentLength === 0) {
+  if (documentLength === 0 && maxPropertyLength < MIN_FREE_TEXT_PROPERTY_LEN) {
     localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Not upserting page without body."
+      { maxPropertyLength },
+      "notionRenderAndUpsertPageFromCache: Not upserting page without body and free text properties."
     );
   } else if (!skipReason) {
     upsertTs = new Date().getTime();
