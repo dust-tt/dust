@@ -335,7 +335,7 @@ export function AgentMessage({
         shallow
         className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
       >
-        {assistant.name}
+        @{assistant.name}
       </Link>
     );
   }
@@ -357,7 +357,7 @@ export function AgentMessage({
       renderName={() => {
         return (
           <div className="flex flex-row gap-2">
-            <div className="text-sm font-medium">
+            <div className="text-base font-medium">
               {AssitantDetailViewLink(agentConfiguration)}
             </div>
             <AssistantEditionMenu
@@ -475,56 +475,27 @@ function Citations({
   activeReferences: { index: number; document: RetrievalDocumentType }[];
   lastHoveredReference: number | null;
 }) {
-  const citationContainer = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (citationContainer.current) {
-      if (lastHoveredReference !== null) {
-        citationContainer.current.scrollTo({
-          left: citationsScrollOffset(lastHoveredReference),
-          behavior: "smooth",
-        });
-      }
-    }
-  }, [lastHoveredReference]);
-
-  function citationsScrollOffset(reference: number | null) {
-    if (!citationContainer.current || reference === null) {
-      return 0;
-    }
-    const offset = (
-      citationContainer.current.firstElementChild
-        ?.firstElementChild as HTMLElement
-    ).offsetLeft;
-    const scrolling =
-      (citationContainer.current.firstElementChild?.firstElementChild
-        ?.scrollWidth || 0) *
-      (reference - 2);
-    return scrolling - offset;
-  }
-
   activeReferences.sort((a, b) => a.index - b.index);
   return (
     <div
-      className="-mx-[100%] mt-9 overflow-x-auto px-[100%] pb-4 scrollbar-hide"
-      ref={citationContainer}
+      className="grid grid-cols-3 items-stretch gap-2 pb-4 pt-8 md:grid-cols-4"
+      // ref={citationContainer}
     >
-      <div className="left-100 relative flex gap-2">
-        {activeReferences.map(({ document, index }) => {
-          const provider = providerFromDocument(document);
-          return (
-            <Citation
-              key={index}
-              isBlinking={lastHoveredReference === index}
-              type={provider === "none" ? "document" : provider}
-              title={titleFromDocument(document)}
-              href={linkFromDocument(document)}
-              index={index}
-            />
-          );
-        })}
-        <div className="h-1 w-[100%] flex-none" />
-      </div>
+      {activeReferences.map(({ document, index }) => {
+        const provider = providerFromDocument(document);
+        return (
+          <Citation
+            key={index}
+            size="xs"
+            sizing="fluid"
+            isBlinking={lastHoveredReference === index}
+            type={provider === "none" ? "document" : provider}
+            title={titleFromDocument(document)}
+            href={linkFromDocument(document)}
+            index={index}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -266,16 +266,18 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-              "border-struture-200 border-t bg-white/80 shadow-[0_0_36px_-15px_rgba(0,0,0,0.3)] backdrop-blur focus-within:border-structure-300 sm:rounded-3xl sm:border-2 sm:border-element-500 sm:shadow-[0_12px_36px_-15px_rgba(0,0,0,0.3)] sm:focus-within:border-element-600",
+              "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all duration-300",
+              "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1",
               isAnimating ? "animate-shake" : ""
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
               {contentFragmentFilename && contentFragmentBody && (
-                <div className="border-b border-structure-300/50 pb-3 pt-5">
+                <div className="mr-4 border-b border-structure-300/50 pb-3 pt-4">
                   <Citation
                     title={contentFragmentFilename}
+                    size="xs"
                     description={contentFragmentBody?.substring(0, 100)}
                     onClose={() => {
                       setContentFragmentBody(undefined);
