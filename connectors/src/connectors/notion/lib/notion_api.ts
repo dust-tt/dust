@@ -1043,7 +1043,9 @@ export function parsePageBlock(block: BlockObjectResponse): ParsedNotionBlock {
     case "child_database":
       return {
         ...commonFields,
-        text: null,
+        text: `Child Database: ${
+          block.child_database.title ?? "Untitled Database"
+        }`,
         childDatabaseTitle: block.child_database.title,
       };
 

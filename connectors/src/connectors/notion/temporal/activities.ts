@@ -50,6 +50,8 @@ import {
   deleteTable,
   deleteTableRow,
   MAX_DOCUMENT_TXT_LEN,
+  MAX_PREFIX_CHARS,
+  MAX_PREFIX_TOKENS,
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
@@ -1245,7 +1247,6 @@ export async function cacheBlockChildren({
 }): Promise<{
   nextCursor: string | null;
   blocksWithChildren: string[];
-  childDatabases: string[];
   blocksCount: number;
 }> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -1269,7 +1270,6 @@ export async function cacheBlockChildren({
       nextCursor: null,
       blocksWithChildren: [],
       blocksCount: 0,
-      childDatabases: [],
     };
   }
 
@@ -1300,7 +1300,6 @@ export async function cacheBlockChildren({
       nextCursor: null,
       blocksWithChildren: [],
       blocksCount: 0,
-      childDatabases: [],
     };
   }
 
@@ -1342,16 +1341,11 @@ export async function cacheBlockChildren({
     .filter((b) => b.hasChildren)
     .map((b) => b.id);
 
-  const childDatabases = parsedBlocks
-    .filter((b) => b.type === "child_database")
-    .map((b) => b.id);
-
   localLogger.info(
     {
       blocksWithChildrenCount: blocksWithChildren.length,
-      childDatabasesCount: childDatabases.length,
     },
-    "Found blocks with children and child databases."
+    "Found blocks with children."
   );
 
   localLogger.info(
@@ -1376,7 +1370,6 @@ export async function cacheBlockChildren({
   );
 
   return {
-    childDatabases,
     blocksWithChildren,
     blocksCount: parsedBlocks.length,
     nextCursor: resultPage.next_cursor,
@@ -1730,46 +1723,6 @@ export async function renderAndUpsertPageFromCache({
     ];
   }
 
-  const childDatabaseTitleById = blockCacheEntries
-    .filter((b) => b.blockType === "child_database")
-    .map((b) => ({
-      id: b.notionBlockId,
-      title:
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        b.childDatabaseTitle!,
-    }))
-    .reduce((acc, { id, title }) => {
-      acc[id] = title;
-      return acc;
-    }, {} as Record<string, string>);
-
-  localLogger.info(
-    "notionRenderAndUpsertPageFromCache: Retrieving child database pages from cache."
-  );
-  const childDbPagesCacheEntries = await NotionConnectorPageCacheEntry.findAll({
-    where: {
-      parentId: Object.keys(blocksByParentId),
-      connectorId: connector.id,
-      workflowId: topLevelWorkflowId,
-    },
-  });
-  const childDatabases: Record<string, NotionConnectorPageCacheEntry[]> = {};
-  for (const childDbPageCacheEntry of childDbPagesCacheEntries) {
-    childDatabases[childDbPageCacheEntry.parentId] = [
-      ...(childDatabases[childDbPageCacheEntry.parentId] ?? []),
-      childDbPageCacheEntry,
-    ];
-  }
-  const renderedChildDatabases: Record<string, string> = {};
-  for (const [databaseId, pages] of Object.entries(childDatabases)) {
-    renderedChildDatabases[databaseId] = await renderDatabaseFromPages({
-      databaseTitle: childDatabaseTitleById[databaseId] ?? null,
-      pagesProperties: pages.map(
-        (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
-      ),
-    });
-  }
-
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
   const renderedPageSection = await renderPageSection({
     dsConfig,
@@ -1782,11 +1735,16 @@ export async function renderAndUpsertPageFromCache({
 
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
+  let maxPropertyLength = 0;
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
-  for (const p of parsedProperties.filter((p) => p.key !== "title" && p.text)) {
+  for (const p of parsedProperties.filter((p) => p.key !== "title")) {
+    if (!p.text) {
+      continue;
+    }
     const propertyContent = `$${p.key}: ${p.text}\n`;
+    maxPropertyLength = Math.max(maxPropertyLength, p.text.length);
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -1893,9 +1851,10 @@ export async function renderAndUpsertPageFromCache({
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (documentLength === 0) {
+  if (documentLength === 0 && maxPropertyLength < 256) {
     localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Not upserting page without body."
+      { maxPropertyLength },
+      "notionRenderAndUpsertPageFromCache: Not upserting page without body and free text properties."
     );
   } else if (!skipReason) {
     upsertTs = new Date().getTime();
@@ -1937,7 +1896,6 @@ export async function renderAndUpsertPageFromCache({
         updatedTime: updatedAt.getTime(),
         parsedProperties,
       }),
-
       parents,
       loggerArgs,
       upsertContext: {
@@ -2265,7 +2223,10 @@ async function renderPageSection({
     // Prefix for depths 0 and 1, and only if children
     const blockSection =
       depth < 2 && adaptedBlocksByParentId[b.notionBlockId]?.length
-        ? await renderPrefixSection(dsConfig, renderedBlock)
+        ? await renderPrefixSection({
+            dataSourceConfig: dsConfig,
+            prefix: renderedBlock,
+          })
         : {
             prefix: null,
             content: renderedBlock,
@@ -2307,11 +2268,13 @@ export async function upsertDatabaseStructuredDataFromCache({
   connectorId,
   topLevelWorkflowId,
   loggerArgs,
+  runTimestamp,
 }: {
   databaseId: string;
   connectorId: number;
   topLevelWorkflowId: string;
   loggerArgs: Record<string, string | number>;
+  runTimestamp: number;
 }): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -2350,21 +2313,28 @@ export async function upsertDatabaseStructuredDataFromCache({
     return;
   }
 
+  const pagesProperties = pageCacheEntries.map(
+    (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
+  );
+
   const csv = await renderDatabaseFromPages({
     databaseTitle: null,
-    pagesProperties: pageCacheEntries.map(
-      (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
-    ),
+    pagesProperties,
     dustIdColumn: pageCacheEntries.map((p) => `notion-${p.notionPageId}`),
     cellSeparator: ",",
     rowBoundary: "",
   });
 
-  const { tableId, tableName, tableDescription } =
+  const { databaseName, tableId, tableName, tableDescription } =
     getTableInfoFromDatabase(dbModel);
 
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const upsertAt = new Date();
+
+  localLogger.info("Upserting Notion Database as Table.");
   await upsertTableFromCsv({
-    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    dataSourceConfig,
     tableId,
     tableName,
     tableDescription,
@@ -2373,10 +2343,67 @@ export async function upsertDatabaseStructuredDataFromCache({
     // We overwrite the whole table since we just fetched all child pages.
     truncate: true,
   });
-  await dbModel.update({ structuredDataUpsertedTs: new Date() });
+  // Same as above, but without the `dustId` column
+  const csvForDocument = await renderDatabaseFromPages({
+    databaseTitle: null,
+    pagesProperties,
+    cellSeparator: ",",
+    rowBoundary: "",
+  });
+  const csvHeader = csvForDocument.split("\n")[0];
+  const csvRows = csvForDocument.split("\n").slice(1).join("\n");
+  if (csvHeader && csvRows.length) {
+    const parents = await getParents(
+      connector.id,
+      databaseId,
+      new Set<string>(),
+      runTimestamp.toString()
+    );
+    localLogger.info("Upserting Notion Database as Document.");
+    const prefix = `${databaseName}\n${csvHeader}`;
+    const prefixSection = await renderPrefixSection({
+      dataSourceConfig,
+      prefix,
+      maxPrefixTokens: MAX_PREFIX_TOKENS * 2,
+      maxPrefixChars: MAX_PREFIX_CHARS * 2,
+    });
+    if (!prefixSection.content) {
+      await upsertToDatasource({
+        dataSourceConfig,
+        documentId: `notion-database-${databaseId}`,
+        documentContent: {
+          prefix: prefixSection.prefix,
+          content: csvRows,
+          sections: [],
+        },
+        documentUrl: dbModel.notionUrl ?? undefined,
+        // TODO: see if we actually want to use the Notion last edited time of the database
+        // we currently don't have it because we don't fetch the DB object from notion.
+        timestampMs: upsertAt.getTime(),
+        tags: [`title:${databaseName}`, "is_database:true"],
+        parents: parents,
+        loggerArgs,
+        upsertContext: {
+          sync_type: "batch",
+        },
+        async: true,
+      });
+    } else {
+      localLogger.info(
+        {
+          prefix: prefixSection.prefix,
+          content: csvRows,
+        },
+        "Skipping document upsert as prefix is too long."
+      );
+    }
+  }
+
+  await dbModel.update({ structuredDataUpsertedTs: upsertAt });
 }
 
 function getTableInfoFromDatabase(database: NotionDatabase): {
+  databaseName: string;
   tableId: string;
   tableName: string;
   tableDescription: string;
@@ -2390,5 +2417,5 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   );
 
   const tableDescription = `Structured data from Notion Database ${tableName}`;
-  return { tableId, tableName, tableDescription };
+  return { databaseName: name, tableId, tableName, tableDescription };
 }
