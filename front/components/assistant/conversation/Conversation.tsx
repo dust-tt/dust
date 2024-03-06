@@ -193,7 +193,7 @@ export default function Conversation({
             return (
               <div
                 key={`message-id-${m.sId}`}
-                className="border-t border-structure-100 bg-structure-50 px-2 py-6"
+                className="bg-structure-50 px-2 py-8"
               >
                 <div className="mx-auto flex max-w-4xl flex-col gap-4">
                   <UserMessage
@@ -208,10 +208,7 @@ export default function Conversation({
             );
           case "agent_message":
             return (
-              <div
-                key={`message-id-${m.sId}`}
-                className="border-t border-structure-100 px-2 py-6"
-              >
+              <div key={`message-id-${m.sId}`} className="px-2 py-8">
                 <div className="mx-auto flex max-w-4xl gap-4">
                   <AgentMessage
                     message={m}
@@ -228,7 +225,7 @@ export default function Conversation({
             return (
               <div
                 key={`message-id-${m.sId}`}
-                className="items-center border-t bg-structure-50 px-2 py-6"
+                className="items-center bg-structure-50  px-2 pt-8"
               >
                 <div className="mx-auto flex max-w-4xl flex-col gap-4">
                   <ContentFragment message={m} />
