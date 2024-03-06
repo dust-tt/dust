@@ -2320,12 +2320,6 @@ export async function upsertDatabaseStructuredDataFromCache({
     rowBoundary: "",
   });
 
-  const csvHeader = csv.split("\n")[0];
-  if (!csvHeader) {
-    localLogger.info("No header found in CSV (skipping).");
-    return;
-  }
-
   const { databaseName, tableId, tableName, tableDescription } =
     getTableInfoFromDatabase(dbModel);
 
@@ -2351,33 +2345,37 @@ export async function upsertDatabaseStructuredDataFromCache({
     cellSeparator: ",",
     rowBoundary: "",
   });
-  const parents = await getParents(
-    connector.id,
-    databaseId,
-    new Set<string>(),
-    runTimestamp.toString()
-  );
-  localLogger.info("Upserting Notion Database as Document.");
-  await upsertToDatasource({
-    dataSourceConfig,
-    documentId: `notion-database-${databaseId}`,
-    documentContent: {
-      prefix: `${databaseName}\ncsvHeader`,
-      content: csvForDocument,
-      sections: [],
-    },
-    documentUrl: dbModel.notionUrl ?? undefined,
-    // TODO: see if we actually want to use the Notion last edited time of the database
-    // we currently don't have it because we don't fetch the DB object from notion.
-    timestampMs: upsertAt.getTime(),
-    tags: [`title:${databaseName}`, "is_database:true"],
-    parents: parents,
-    loggerArgs,
-    upsertContext: {
-      sync_type: "batch",
-    },
-    async: true,
-  });
+  const csvHeader = csvForDocument.split("\n")[0];
+  const csvRows = csvForDocument.split("\n").slice(1).join("\n");
+  if (csvHeader && csvRows.length) {
+    const parents = await getParents(
+      connector.id,
+      databaseId,
+      new Set<string>(),
+      runTimestamp.toString()
+    );
+    localLogger.info("Upserting Notion Database as Document.");
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentId: `notion-database-${databaseId}`,
+      documentContent: {
+        prefix: csvHeader,
+        content: csvRows,
+        sections: [],
+      },
+      documentUrl: dbModel.notionUrl ?? undefined,
+      // TODO: see if we actually want to use the Notion last edited time of the database
+      // we currently don't have it because we don't fetch the DB object from notion.
+      timestampMs: upsertAt.getTime(),
+      tags: [`title:${databaseName}`, "is_database:true"],
+      parents: parents,
+      loggerArgs,
+      upsertContext: {
+        sync_type: "batch",
+      },
+      async: true,
+    });
+  }
 
   await dbModel.update({ structuredDataUpsertedTs: upsertAt });
 }
