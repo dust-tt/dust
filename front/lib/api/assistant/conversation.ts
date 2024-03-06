@@ -189,7 +189,7 @@ export async function deleteConversation(
  * Conversation Rendering
  */
 
-async function batchRenderUserMessages(messages: Message[]) {
+export async function batchRenderUserMessages(messages: Message[]) {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );

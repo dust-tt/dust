@@ -52,6 +52,7 @@ export async function trackUser(user: UserType) {
   amplitude.identify(`user-${user.id}`, {});
   amplitude.signUp(`user-${user.id}`, {
     insert_id: `signup_${user.id}`,
+    time: user.createdAt,
   });
 }
 
