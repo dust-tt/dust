@@ -119,7 +119,6 @@ export default function DustAppRunAction({
                 },
                 "hljs-string": {
                   color: emerald["600"],
-                  // @ts-expect-error - this is a valid style
                   textWrap: "wrap",
                 },
                 hljs: {
