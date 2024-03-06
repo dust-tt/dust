@@ -24,7 +24,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistantModal";
+import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Authenticator } from "@app/lib/auth";

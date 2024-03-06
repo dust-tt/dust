@@ -9,9 +9,8 @@ export function getBrowserClient() {
     return BROWSER_CLIENT;
   }
 
-  const disabled = !new URL(window.location.href).origin.startsWith(
-    "https://dust.tt/"
-  );
+  const disabled = !window.location.href.startsWith("https://dust.tt/");
+
   ampli.load({
     // The environment property is a depreacted value, but still needed by the SDK. We don't use it.
     environment: "dustprod",
