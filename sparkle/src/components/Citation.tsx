@@ -11,13 +11,7 @@ import {
   Slack,
 } from "@sparkle/logo/platforms";
 
-import {
-  Avatar,
-  Icon,
-  IconButton,
-  Tooltip,
-  XCircleIcon,
-} from "..";
+import { Avatar, Icon, IconButton, Tooltip, XCircleIcon } from "..";
 
 interface CitationProps {
   type?:
@@ -34,6 +28,7 @@ interface CitationProps {
   isBlinking?: boolean;
   href?: string;
   size?: "xs" | "sm";
+  sizing?: "fixed" | "fluid";
   onClose?: () => void;
   avatarUrl?: string;
 }
@@ -48,11 +43,17 @@ const typeIcons = {
   slack: Slack,
 };
 
+const typeSizing = {
+  fixed: { xs: "s-w-48", sm: "s-w-64" },
+  fluid: "s-w-full",
+};
+
 export function Citation({
   title,
   index,
   type = "document",
   size = "sm",
+  sizing = "fixed",
   description,
   href,
   onClose,
@@ -105,7 +106,7 @@ export function Citation({
         rel="noopener noreferrer"
         className={classNames(
           "s-flex s-w-48 s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-bg-white s-p-3",
-          size === "sm" ? "sm:s-w-64" : "",
+          sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
           "s-bg-whites-transition s-cursor-pointer s-duration-300 hover:s-bg-structure-100"
         )}
