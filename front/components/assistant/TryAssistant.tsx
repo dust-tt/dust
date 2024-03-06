@@ -135,7 +135,7 @@ export function TryAssistant({
         <GenerationContextProvider>
           {conversation && (
             <div
-              className="max-h-[100%] overflow-y-scroll "
+              className="max-h-[100%] overflow-y-auto "
               id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
             >
               <Conversation
