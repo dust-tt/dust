@@ -169,20 +169,26 @@ export default function NoWorkspace({
         <div>
           {status === "auto-join-disabled" && (
             <div className="flex flex-col gap-4">
-              <span className="text-lg font-semibold text-element-700">
+              <span className="text-lg font-bold text-element-700">
                 {workspaceVerifiedDomain ?? workspaceName} already has a Dust
                 workspace.
               </span>
               <span className="text-md text-element-700">
-                To join the existing workspace of your company, <br />
+                To join the existing workspace of your company,
                 <span className="font-semibold">
-                  please request an invitation from your colleagues,{" "}
+                  {" "}
+                  please request an invitation from your <br />
+                  colleagues,
                 </span>{" "}
                 then use the link provided in the invitation email to access the
                 workspace.
               </span>
               <span className="text-md text-element-700">
-                If you're looking to establish a new, separate workspace,
+                If you're looking to establish{" "}
+                <span className="font-semibold">
+                  {" "}
+                  a new, separate workspace
+                </span>{" "}
                 continue with the following step:
               </span>
             </div>
@@ -203,7 +209,11 @@ export default function NoWorkspace({
                 for more informations or to add you again.
               </span>
               <span className="text-md text-element-700">
-                If you're looking to establish a new, separate workspace,
+                If you're looking to establish{" "}
+                <span className="font-semibold">
+                  {" "}
+                  a new, separate workspace
+                </span>{" "}
                 continue with the following step:
               </span>
             </div>

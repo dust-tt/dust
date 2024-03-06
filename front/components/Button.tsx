@@ -12,10 +12,12 @@ import { useState } from "react";
 
 export function SignInButton({
   label,
+  size = "md",
   icon = null,
   onClick = null,
 }: React.PropsWithChildren<{
   label: string;
+  size?: "sm" | "md";
   icon?: any;
   onClick?: any;
 }>) {
@@ -25,7 +27,7 @@ export function SignInButton({
       variant="tertiary"
       icon={icon}
       onClick={onClick}
-      size="md"
+      size={size}
     ></Button>
   );
 }

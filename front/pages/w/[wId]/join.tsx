@@ -1,8 +1,8 @@
-import { Button, LoginIcon, Logo } from "@dust-tt/sparkle";
+import { Button, LoginIcon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 
-import { A, H1, P, Strong } from "@app/components/home/contentComponents";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import {
   getWorkspaceInfos,
@@ -116,34 +116,57 @@ export default function Join({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <OnboardingLayout owner={workspace} gaTrackingId={gaTrackingId}>
-      <div className="flex flex-col gap-12">
-        <div className="my-20">
-          <Logo className="h-[48px] w-[192px] px-1" />
-        </div>
-        <H1 className="text-slate-100">
-          <span className="text-red-400">Amplify your team's potential</span>{" "}
-          <br />
-          with customizable and secure AI&nbsp;assistants.
-        </H1>
-        <div className="flex flex-col gap-1">
-          <P>Welcome aboard!</P>
-          {onboardingType === "domain_conversation_link" ? (
-            <P>
-              Please log in or sign up with your company email to access this
-              conversation.
-            </P>
-          ) : (
-            <P>
-              You've been invited to join the{" "}
-              <Strong>{workspace.name} workspace on Dust</Strong>.
-            </P>
-          )}
-        </div>
+    <OnboardingLayout
+      owner={workspace}
+      gaTrackingId={gaTrackingId}
+      headerTitle="Welcome to Dust"
+      headerRightActions={
+        <Button
+          variant="tertiary"
+          size="sm"
+          label="Sign up"
+          icon={LoginIcon}
+          onClick={() =>
+            (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
+          }
+        />
+      }
+    >
+      <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
+        <Page.Header
+          title={`Hello there!`}
+          icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+        />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <p>Welcome aboard!</p>
+            {onboardingType === "domain_conversation_link" ? (
+              <p>
+                Please log in or sign up with your company email to access this
+                conversation.
+              </p>
+            ) : (
+              <p>
+                You've been invited to join{" "}
+                <strong>{workspace.name}'s workspace on Dust</strong>.
+              </p>
+            )}
+          </div>
 
-        {onboardingType === "email_invite" && (
-          <P>How would you like to connect?</P>
-        )}
+          <p>
+            Dust is a platform giving you access to the best AI assistants. It's
+            easy to use and it's a great place for teams to collaborate. Learn
+            more about Dust on{" "}
+            <Link
+              href="https://dust.tt"
+              className="cursor-pointer text-sm font-bold text-action-500"
+              target="_blank"
+            >
+              our website
+            </Link>
+            .
+          </p>
+        </div>
 
         <div className="flex flex-col items-center justify-center gap-4 ">
           <Button
@@ -157,20 +180,17 @@ export default function Join({
           />
         </div>
         <div className="flex flex-col gap-3 pb-20">
-          <P>
-            <Strong>Dust</Strong> is a platform giving you access to{" "}
-            <Strong>the best AI assistants</Strong>.
-            <br />
-            It's easy to&nbsp;use and it's a&nbsp;great place for teams
-            to&nbsp;collaborate.
-          </P>
-          <P>
-            Learn more about Dust on{" "}
-            <A href="https://dust.tt/" target="_blank" variant="secondary">
-              our homepage
-            </A>
+          <p>
+            By signing-up, you accept Dust's{" "}
+            <Link
+              href="https://dust.tt/terms"
+              className="cursor-pointer text-sm font-bold text-action-500"
+              target="_blank"
+            >
+              terms and conditions
+            </Link>
             .
-          </P>
+          </p>
         </div>
       </div>
     </OnboardingLayout>

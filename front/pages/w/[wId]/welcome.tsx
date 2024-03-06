@@ -1,4 +1,11 @@
-import { Button, Input, RadioButton } from "@dust-tt/sparkle";
+import {
+  Button,
+  Input,
+  Logo,
+  LogoSquareColorLogo,
+  Page,
+  RadioButton,
+} from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -139,27 +146,37 @@ export default function Welcome({
 
   if (!displayVideoScreen) {
     return (
-      <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
-        <div className="flex flex-col gap-6">
-          <div>
-            <p className="font-objektiv text-2xl font-bold tracking-tighter">
-              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Hello {firstName}
-              </span>
-              <br />
-              Let's check a few things.
-            </p>
-          </div>
+      <OnboardingLayout
+        owner={owner}
+        gaTrackingId={gaTrackingId}
+        headerTitle="Joining Dust"
+        headerRightActions={
+          <Button
+            label={youtubeId ? "Next" : "Ok"}
+            disabled={!isFormValid || isSubmitting}
+            size="sm"
+            onClick={submit}
+          />
+        }
+      >
+        <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
+          <Page.Header
+            title={`Hello ${firstName}!`}
+            icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+          />
+          <p className="font-semibold text-element-800">
+            Let's check a few things.
+          </p>
           {!isAdmin && (
             <div>
-              <p>
+              <p className="text-element-700">
                 You will be joining the workspace:{" "}
-                <span className="font-bold">{owner.name}</span>.
+                <span className="font-semibold">{owner.name}</span>.
               </p>
             </div>
           )}
           <div>
-            <p className="pb-2">Your name is:</p>
+            <p className="pb-2 text-element-700">Your name is:</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 name="firstName"
@@ -180,7 +197,7 @@ export default function Welcome({
               <p className="pb-2">I'm looking at Dust:</p>
               <RadioButton
                 name="adminInterest"
-                className="flex-col sm:flex-row"
+                className="flex-col font-semibold sm:flex-row"
                 choices={[
                   {
                     label: "Just for me",
@@ -199,25 +216,25 @@ export default function Welcome({
             </div>
           )}
           <div>
-            <p className="pb-2">
-              You currently use ChatGPT or other AI assistants:
+            <p className="pb-2 text-element-700">
+              How much do you know about AI assistants?
             </p>
             <RadioButton
               name="expertise"
-              className="flex-col sm:flex-row"
+              className="flex-col font-semibold sm:flex-row"
               choices={[
                 {
-                  label: "Never!",
+                  label: "Nothing!",
                   value: "beginner",
                   disabled: false,
                 },
                 {
-                  label: "Occasionally",
+                  label: "I know the basics",
                   value: "intermediate",
                   disabled: false,
                 },
                 {
-                  label: "Daily!",
+                  label: "I'm a pro",
                   value: "advanced",
                   disabled: false,
                 },
@@ -226,10 +243,11 @@ export default function Welcome({
               onChange={setExpertise}
             />
           </div>
-          <div className="flex justify-center pt-6">
+          <div className="flex justify-end">
             <Button
-              label={youtubeId ? "Next" : "Start with Dust!"}
+              label={youtubeId ? "Next" : "Ok"}
               disabled={!isFormValid || isSubmitting}
+              size="md"
               onClick={submit}
             />
           </div>
@@ -238,21 +256,35 @@ export default function Welcome({
     );
   } else if (displayVideoScreen && youtubeId !== null) {
     return (
-      <OnboardingLayout owner={owner} gaTrackingId={gaTrackingId}>
-        <div className="flex flex-col gap-6">
-          <div>
-            <p className="font-objektiv text-2xl font-bold tracking-tighter text-green-400 sm:font-objektiv md:font-objektiv">
-              You're ready to go!
-            </p>
-            <p>Here is a short video to get you started with Dust.</p>
-          </div>
+      <OnboardingLayout
+        owner={owner}
+        gaTrackingId={gaTrackingId}
+        headerTitle="Joining Dust"
+        headerRightActions={
+          <Button
+            label="Ok"
+            disabled={!isFormValid}
+            size="sm"
+            onClick={redirectToApp}
+          />
+        }
+      >
+        <div className="flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
+          <Page.Header
+            title={`You're ready to go!`}
+            icon={() => <Logo className="-ml-8 h-4 w-32" />}
+          />
+          <p className="text-element-800">
+            Here is a short video to get you started with Dust.
+          </p>
           <div>
             <YoutubeIframe youtubeId={youtubeId} />
           </div>
           <div className="flex justify-center">
             <Button
-              label="Start with Dust!"
+              label="Ok"
               disabled={!isFormValid}
+              size="md"
               onClick={redirectToApp}
             />
           </div>
