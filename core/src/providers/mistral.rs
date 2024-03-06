@@ -446,15 +446,12 @@ impl MistralAILLM {
         top_p: f32,
         max_tokens: i32,
     ) -> Result<ChatCompletion> {
-        // let https = HttpsConnector::new();
-        // let cli = Client::builder().build::<_, hyper::Body>(https);
-
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
             "top_p": top_p,
             "max_tokens": max_tokens,
-            "streamed": false
+            "stream": false
         });
 
         if model_id.is_some() {
@@ -464,11 +461,7 @@ impl MistralAILLM {
         let req = reqwest::Client::new()
             .post(uri.to_string())
             .header("Content-Type", "application/json")
-            .header(
-                "Authorization
-            ",
-                format!("Bearer {}", api_key.clone()),
-            )
+            .header("Authorization", format!("Bearer {}", api_key.clone()))
             .json(&body);
 
         let res = match timeout(Duration::new(180, 0), req.send()).await {
