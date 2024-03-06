@@ -3,15 +3,13 @@ use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use dns_lookup::lookup_host;
-use hyper::body::HttpBody;
-use hyper::header;
-use hyper::{body::Buf, Body, Client, Method, Request};
-use hyper_tls::HttpsConnector;
+use hyper::body::Buf;
 use lazy_static::lazy_static;
 use regex::Regex;
+use reqwest::{header, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::io::prelude::*;
+use std::{io::prelude::*, str::FromStr};
 use tracing::info;
 use url::{Host, Url};
 
@@ -105,60 +103,36 @@ impl HttpRequest {
         // TODO(spolu): encode query
         // TODO(spolu): timeout requests
 
-        let mut req = Request::builder().method(method).uri(self.url.as_str());
-
-        {
-            let headers = match req.headers_mut() {
-                Some(h) => h,
-                None => Err(anyhow!("Invalid URL: {}", self.url))?,
-            };
-
-            match &self.headers {
-                Value::Object(h) => {
-                    for (key, value) in h {
-                        match value {
-                            Value::String(value) => {
-                                headers.insert(
-                                    header::HeaderName::from_bytes(key.as_bytes())?,
-                                    header::HeaderValue::from_bytes(value.as_bytes())?,
-                                );
-                            }
-                            _ => Err(anyhow!("Header value for header {} must be a string", key))?,
-                        }
-                    }
-                }
-                _ => Err(anyhow!(
-                    "Returned headers must be an object with string values.",
-                ))?,
-            };
-        }
+        let req = reqwest::Client::new()
+            .request(method, self.url.as_str())
+            .headers(
+                self.headers
+                    .as_object()
+                    .unwrap_or(&serde_json::Map::new())
+                    .iter()
+                    .map(|(k, v)| match v {
+                        Value::String(v) => Ok((
+                            header::HeaderName::from_str(k)?,
+                            header::HeaderValue::from_str(v)?,
+                        )),
+                        _ => Err(anyhow!("Header value for header {} must be a string", k)),
+                    })
+                    .collect::<Result<header::HeaderMap>>()?,
+            );
 
         let req = match &self.body {
-            Value::Object(body) => req.body(Body::from(serde_json::to_string(body)?))?,
-            Value::String(body) => req.body(Body::from(body.clone()))?,
-            Value::Null => req.body(Body::empty())?,
+            Value::Object(body) => req.json(&serde_json::to_string(body)?),
+            Value::String(body) => req.body(body.to_string()),
+            Value::Null => req,
             _ => Err(anyhow!("Returned body must be either a string or null."))?,
         };
 
-        let res = match parsed_url.scheme() {
-            "https" => {
-                let https = HttpsConnector::new();
-                let cli = Client::builder().build::<_, hyper::Body>(https);
-                cli.request(req).await?
-            }
-            "http" => {
-                let cli = Client::new();
-                cli.request(req).await?
-            }
-            _ => Err(anyhow!(
-                "Only the `http` and `https` schemes are authorized."
-            ))?,
-        };
+        let res = req.send().await?;
 
         let status = res.status();
         let headers = res.headers().clone();
 
-        let body = res.collect().await?.to_bytes();
+        let body = res.bytes().await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
 

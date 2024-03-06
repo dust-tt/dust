@@ -11,9 +11,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
-use hyper::body::HttpBody;
-use hyper::{body::Buf, Body, Client, Method, Request, Uri};
-use hyper_tls::HttpsConnector;
+use hyper::{body::Buf, Uri};
 use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -448,42 +446,36 @@ impl MistralAILLM {
         top_p: f32,
         max_tokens: i32,
     ) -> Result<ChatCompletion> {
-        let https = HttpsConnector::new();
-        let cli = Client::builder().build::<_, hyper::Body>(https);
-
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
             "top_p": top_p,
             "max_tokens": max_tokens,
-            "streamed": false
+            "stream": false
         });
 
         if model_id.is_some() {
             body["model"] = json!(model_id);
         }
 
-        let req_builder = Request::builder()
-            .method(Method::POST)
-            .uri(uri)
+        let req = reqwest::Client::new()
+            .post(uri.to_string())
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", api_key.clone()));
+            .header("Authorization", format!("Bearer {}", api_key.clone()))
+            .json(&body);
 
-        let req = req_builder.body(Body::from(body.to_string()))?;
-
-        let res = match timeout(Duration::new(180, 0), cli.request(req)).await {
+        let res = match timeout(Duration::new(180, 0), req.send()).await {
             Ok(Ok(res)) => res,
             Ok(Err(e)) => Err(e)?,
             Err(_) => Err(anyhow!("Timeout sending request to Mistral AI after 180s"))?,
         };
-        let collected = match timeout(Duration::new(180, 0), res.collect()).await {
+        let body = match timeout(Duration::new(180, 0), res.bytes()).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
             Err(_) => Err(anyhow!(
                 "Timeout reading response from Mistral AI after 180s"
             ))?,
         };
-        let body = collected.aggregate();
 
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;

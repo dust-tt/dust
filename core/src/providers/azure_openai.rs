@@ -13,12 +13,10 @@ use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use hyper::body::HttpBody;
-use hyper::header;
-use hyper::{body::Buf, http::StatusCode, Body, Client, Method, Request, Uri};
-use hyper_tls::HttpsConnector;
+use hyper::{body::Buf, Uri};
 use itertools::izip;
 use parking_lot::RwLock;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::prelude::*;
@@ -51,23 +49,11 @@ struct AzureOpenAIDeployments {
 async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenAIDeployment>> {
     let url = format!("{}openai/deployments?api-version=2022-12-01", endpoint);
 
-    let mut req = Request::builder().method(Method::GET).uri(url.as_str());
-
-    {
-        let headers = match req.headers_mut() {
-            Some(h) => h,
-            None => Err(anyhow!("Invalid URL: {}", url.as_str()))?,
-        };
-        headers.insert(
-            header::HeaderName::from_bytes("api-key".as_bytes())?,
-            header::HeaderValue::from_bytes(api_key.as_bytes())?,
-        );
-    }
-    let req = req.body(Body::empty())?;
-
-    let https = HttpsConnector::new();
-    let cli = Client::builder().build::<_, hyper::Body>(https);
-    let res = cli.request(req).await?;
+    let res = reqwest::Client::new()
+        .get(url)
+        .header("api-key", api_key)
+        .send()
+        .await?;
 
     let status = res.status();
     if status != StatusCode::OK {
@@ -77,7 +63,7 @@ async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenA
         ))?;
     }
 
-    let body = res.collect().await?.aggregate();
+    let body = res.bytes().await?;
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
@@ -100,23 +86,11 @@ async fn get_deployment(
         endpoint, deployment_id
     );
 
-    let mut req = Request::builder().method(Method::GET).uri(url.as_str());
-
-    {
-        let headers = match req.headers_mut() {
-            Some(h) => h,
-            None => Err(anyhow!("Invalid URL: {}", url.as_str()))?,
-        };
-        headers.insert(
-            header::HeaderName::from_bytes("api-key".as_bytes())?,
-            header::HeaderValue::from_bytes(api_key.as_bytes())?,
-        );
-    }
-    let req = req.body(Body::empty())?;
-
-    let https = HttpsConnector::new();
-    let cli = Client::builder().build::<_, hyper::Body>(https);
-    let res = cli.request(req).await?;
+    let res = reqwest::Client::new()
+        .get(url)
+        .header("api-key", api_key)
+        .send()
+        .await?;
 
     let status = res.status();
     if status != StatusCode::OK {
@@ -125,8 +99,8 @@ async fn get_deployment(
             status
         ))?;
     }
+    let body = res.bytes().await?;
 
-    let body = res.collect().await?.aggregate();
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;

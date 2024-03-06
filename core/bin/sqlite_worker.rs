@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use axum::{
-    extract,
+    extract::{Path, State},
     response::Json,
     routing::{delete, get, post},
     Router,
@@ -12,7 +12,8 @@ use dust::{
     sqlite_workers::sqlite_database::{QueryError, SqliteDatabase},
     utils::{error_response, APIResponse},
 };
-use hyper::{Body, Client, Request, StatusCode};
+use hyper::StatusCode;
+use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 use std::{
@@ -23,8 +24,11 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
+use tokio::{
+    net::TcpListener,
+    signal::unix::{signal, SignalKind},
+};
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
 use tracing_subscriber::prelude::*;
@@ -138,18 +142,17 @@ impl WorkerState {
             Err(_) => Err(anyhow!("CORE_API not set."))?,
         };
 
-        let req = Request::builder()
-            .method(method)
-            .uri(format!("{}/sqlite_workers", core_api))
+        let res = reqwest::Client::new()
+            .request(
+                Method::from_bytes(method.as_bytes())?,
+                format!("{}/sqlite_workers", core_api),
+            )
             .header("Content-Type", "application/json")
-            .body(Body::from(
-                json!({
-                    "url": worker_url,
-                })
-                .to_string(),
-            ))?;
-
-        let res = Client::new().request(req).await?;
+            .json(&json!({
+                "url": worker_url,
+            }))
+            .send()
+            .await?;
 
         match res.status().as_u16() {
             200 => Ok(()),
@@ -174,9 +177,9 @@ struct DbQueryPayload {
 }
 
 async fn databases_query(
-    extract::Path(database_id): extract::Path<String>,
-    extract::Json(payload): Json<DbQueryPayload>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+    Path(database_id): Path<String>,
+    State(state): State<Arc<WorkerState>>,
+    Json(payload): Json<DbQueryPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let database = {
         let mut registry = state.registry.lock().await;
@@ -234,8 +237,8 @@ async fn databases_query(
 }
 
 async fn databases_delete(
-    extract::Path(database_id): extract::Path<String>,
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
+    Path(database_id): Path<String>,
+    State(state): State<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     state.invalidate_database(&database_id).await;
 
@@ -250,9 +253,7 @@ async fn databases_delete(
     )
 }
 
-async fn expire_all(
-    extract::Extension(state): extract::Extension<Arc<WorkerState>>,
-) -> (StatusCode, Json<APIResponse>) {
+async fn expire_all(State(state): State<Arc<WorkerState>>) -> (StatusCode, Json<APIResponse>) {
     let mut registry = state.registry.lock().await;
     registry.clear();
 
@@ -301,7 +302,7 @@ fn main() {
                     .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                     .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
             )
-            .layer(extract::Extension(state.clone()));
+            .with_state(state.clone());
 
         let health_check_router = Router::new().route("/", get(index));
 
@@ -316,11 +317,13 @@ fn main() {
         let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
         let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
 
-        let srv = axum::Server::bind(&"[::]:3005".parse().unwrap())
-            .serve(app.into_make_service())
-            .with_graceful_shutdown(async {
-                rx1.await.ok();
-            });
+        let srv = axum::serve(
+            TcpListener::bind::<std::net::SocketAddr>("[::]:3005".parse().unwrap()).await?,
+            app.into_make_service(),
+        )
+        .with_graceful_shutdown(async {
+            rx1.await.ok();
+        });
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {
