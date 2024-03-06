@@ -411,7 +411,7 @@ export async function retrieveNotionConnectorPermissions({
       expandable: true,
       permission: "read",
       dustDocumentId: `notion-database-${db.notionDatabaseId}`,
-      lastUpdatedAt: db.lastSeenTs.getTime(),
+      lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
     };
   };
 
