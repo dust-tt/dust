@@ -387,9 +387,24 @@ export async function syncSpreadSheet(
   );
 
   const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
-  const spreadsheet = await sheetsAPI.spreadsheets.get({
-    spreadsheetId: file.id,
-  });
+  const spreadsheet = await (async () => {
+    try {
+      return await sheetsAPI.spreadsheets.get({
+        spreadsheetId: file.id,
+      });
+    } catch (err) {
+      if (isGAxiosServiceUnavailablError(err)) {
+        throw {
+          error: err,
+          __is_dust_error: true,
+          message: "Got 503 Service Unavailable from Google Sheets",
+          type: "google_sheets_503_service_unavailable",
+        };
+      }
+      throw err;
+    }
+  })();
+
   const sheets = await getAllSheetsFromSpreadSheet(
     sheetsAPI,
     spreadsheet.data,
@@ -495,4 +510,17 @@ export async function deleteSpreadsheet(
   if (sheetsInSpreadsheet.length > 0) {
     await deleteAllSheets(connector, sheetsInSpreadsheet, file);
   }
+}
+
+function isGAxiosServiceUnavailablError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    "code" in err &&
+    err.code === 503 &&
+    "response" in err &&
+    err.response !== null &&
+    typeof err.response === "object" &&
+    "statusText" in err.response &&
+    err.response.statusText === "Service Unavailable"
+  );
 }
