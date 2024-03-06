@@ -59,6 +59,9 @@ export type IntercomConversationType = {
     type: "tag.list";
     tags: IntercomTagType[];
   };
+  custom_attributes: {
+    [key: string]: unknown; // string | number | boolean | custom intercom object
+  };
   source: {
     type: string;
     id: number;
