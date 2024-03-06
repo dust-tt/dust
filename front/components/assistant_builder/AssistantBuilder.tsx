@@ -221,13 +221,15 @@ export default function AssistantBuilder({
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
-  const [previewDrawerOpen, setPreviewDrawerOpen] = useState(false);
+  const [previewDrawerOpenedAt, setPreviewDrawerOpenedAt] = useState<
+    number | null
+  >(null);
 
   const openPreviewDrawer = () => {
-    setPreviewDrawerOpen(true);
+    setPreviewDrawerOpenedAt(Date.now());
   };
   const closePreviewDrawer = () => {
-    setPreviewDrawerOpen(false);
+    setPreviewDrawerOpenedAt(null);
   };
 
   const previewDrawerRef = useRef<HTMLDivElement>(null);
@@ -534,16 +536,24 @@ export default function AssistantBuilder({
             <div
               className={classNames(
                 "flex h-full w-full rounded-xl bg-slate-100 transition-all ease-in-out",
-                shouldAnimatePreviewDrawer ? "animate-reload" : ""
+                shouldAnimatePreviewDrawer &&
+                  previewDrawerOpenedAt != null &&
+                  // Only animate the reload if the drawer has been open for at least 1 second.
+                  // This is to prevent the animation from triggering right after the drawer is opened.
+                  Date.now() - previewDrawerOpenedAt > 1000
+                  ? "animate-reload"
+                  : ""
               )}
               ref={previewDrawerRef}
             >
               <TryAssistant owner={owner} assistant={draftAssistant} />
             </div>
           }
-          isRightPanelOpen={previewDrawerOpen}
+          isRightPanelOpen={previewDrawerOpenedAt !== null}
           toggleRightPanel={
-            previewDrawerOpen ? closePreviewDrawer : openPreviewDrawer
+            previewDrawerOpenedAt !== null
+              ? closePreviewDrawer
+              : openPreviewDrawer
           }
         />
       </AppLayout>
