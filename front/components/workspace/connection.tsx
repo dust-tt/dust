@@ -195,7 +195,7 @@ function CreateOktaEnterpriseConnectionModal({
       sendNotification({
         type: "success",
         title: "SSO configuration created",
-        description: "Single Sign On configuration created.",
+        description: "Okta Single Sign On configuration created.",
       });
     }
   };
