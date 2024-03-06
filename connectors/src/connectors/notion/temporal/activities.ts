@@ -50,7 +50,6 @@ import {
   deleteTable,
   deleteTableRow,
   MAX_DOCUMENT_TXT_LEN,
-  MIN_FREE_TEXT_PROPERTY_LEN,
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
@@ -1850,7 +1849,7 @@ export async function renderAndUpsertPageFromCache({
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (documentLength === 0 && maxPropertyLength < MIN_FREE_TEXT_PROPERTY_LEN) {
+  if (documentLength === 0 && maxPropertyLength < 256) {
     localLogger.info(
       { maxPropertyLength },
       "notionRenderAndUpsertPageFromCache: Not upserting page without body and free text properties."
