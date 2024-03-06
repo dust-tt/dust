@@ -40,7 +40,6 @@ import {
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
