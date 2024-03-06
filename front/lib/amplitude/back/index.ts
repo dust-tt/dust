@@ -2,7 +2,7 @@ import type { UserMessageType, UserType, WorkspaceType } from "@dust-tt/types";
 
 import type { Ampli } from "@app/lib/amplitude/back/generated";
 import { ampli } from "@app/lib/amplitude/back/generated";
-import { AMPLITUDE_API_KEY } from "@app/lib/amplitude/config";
+import { AMPLITUDE_PUBLIC_API_KEY } from "@app/lib/amplitude/config";
 import type { Membership } from "@app/lib/models";
 import { User, Workspace } from "@app/lib/models";
 
@@ -20,7 +20,7 @@ export function getBackendClient() {
     // The environment property is a depreacted value, but still needed by the SDK. We don't use it.
     environment: "dustprod",
     client: {
-      apiKey: AMPLITUDE_API_KEY,
+      apiKey: AMPLITUDE_PUBLIC_API_KEY,
     },
     disabled: disabled,
   });

@@ -1,6 +1,6 @@
 import type { Ampli } from "@app/lib/amplitude/browser/generated";
 import { ampli } from "@app/lib/amplitude/browser/generated";
-import { AMPLITUDE_API_KEY } from "@app/lib/amplitude/config";
+import { AMPLITUDE_PUBLIC_API_KEY } from "@app/lib/amplitude/config";
 
 let BROWSER_CLIENT: Ampli | null = null;
 
@@ -17,7 +17,7 @@ export function getBrowserClient() {
     environment: "dustprod",
     disabled: disabled,
     client: {
-      apiKey: AMPLITUDE_API_KEY,
+      apiKey: AMPLITUDE_PUBLIC_API_KEY,
       configuration: {
         defaultTracking: false,
       },
