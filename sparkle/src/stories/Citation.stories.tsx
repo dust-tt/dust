@@ -31,6 +31,58 @@ export const CitationsExample = () => (
         avatarUrl="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
       />
     </div>
+    <div className="s-w-full">
+      <div className="s-grid s-grid-cols-2 s-items-stretch s-gap-2 md:s-grid-cols-3 lg:s-grid-cols-4">
+        <Citation
+          title="Source: Thread on #general message from @ed"
+          size="xs"
+          sizing="fluid"
+          type="slack"
+          index="1"
+          href="https://www.google.com"
+        />
+        <Citation
+          title="Title"
+          type="github"
+          size="xs"
+          sizing="fluid"
+          index="2"
+          href="https://www.google.com"
+        />
+        <Citation
+          title="Source: Thread on #general message from @ed"
+          size="xs"
+          sizing="fluid"
+          type="slack"
+          index="1"
+          href="https://www.google.com"
+        />
+        <Citation
+          title="Title"
+          type="github"
+          size="xs"
+          sizing="fluid"
+          index="2"
+          href="https://www.google.com"
+        />
+        <Citation
+          title="Source: Thread on #general message from @ed"
+          size="xs"
+          sizing="fluid"
+          type="slack"
+          index="1"
+          href="https://www.google.com"
+        />
+        <Citation
+          title="Title"
+          type="github"
+          sizing="fluid"
+          size="xs"
+          index="2"
+          href="https://www.google.com"
+        />
+      </div>
+    </div>
     <div className="s-flex s-gap-2">
       <Citation
         title="Source: Thread on #general message from @ed"
