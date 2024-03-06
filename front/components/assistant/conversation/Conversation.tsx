@@ -31,12 +31,14 @@ export default function Conversation({
   conversationId,
   onStickyMentionsChange,
   isInModal,
+  hideReactions,
 }: {
   owner: WorkspaceType;
   user: UserType;
   conversationId: string;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   isInModal?: boolean;
+  hideReactions?: boolean;
 }) {
   const {
     conversation,
@@ -202,6 +204,7 @@ export default function Conversation({
                     owner={owner}
                     user={user}
                     reactions={messageReactions}
+                    hideReactions={hideReactions}
                   />
                 </div>
               </div>
@@ -217,6 +220,7 @@ export default function Conversation({
                     conversationId={conversationId}
                     reactions={messageReactions}
                     isInModal={isInModal}
+                    hideReactions={hideReactions}
                   />
                 </div>
               </div>

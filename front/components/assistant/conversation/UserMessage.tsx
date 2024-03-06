@@ -16,12 +16,14 @@ export function UserMessage({
   owner,
   user,
   reactions,
+  hideReactions,
 }: {
   message: UserMessageType;
   conversation: ConversationType;
   owner: WorkspaceType;
   user: UserType;
   reactions: MessageReactionType[];
+  hideReactions?: boolean;
 }) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -37,7 +39,7 @@ export function UserMessage({
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
       reactions={reactions}
-      enableEmojis={true}
+      enableEmojis={!hideReactions}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
     >
       <div className="flex flex-col gap-4">

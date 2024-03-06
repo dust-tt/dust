@@ -60,6 +60,7 @@ export function AgentMessage({
   conversationId,
   reactions,
   isInModal,
+  hideReactions,
 }: {
   message: AgentMessageType;
   owner: WorkspaceType;
@@ -67,6 +68,7 @@ export function AgentMessage({
   conversationId: string;
   reactions: MessageReactionType[];
   isInModal?: boolean;
+  hideReactions?: boolean;
 }) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -353,7 +355,7 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       reactions={reactions}
-      enableEmojis={true}
+      enableEmojis={!hideReactions}
       renderName={() => {
         return (
           <div className="flex flex-row gap-2">
