@@ -50,10 +50,11 @@ export async function createEnterpriseConnection(
     display_name: makeEnterpriseConnectionName(workspaceId),
     strategy: connectionDetails.strategy,
     options: {
-      domain: connectionDetails.domain,
       client_id: connectionDetails.clientId,
       client_secret: connectionDetails.clientSecret,
       domain_aliases: verifiedDomain ? [verifiedDomain] : [],
+      domain: connectionDetails.domain,
+      scope: "email profile openid",
     },
     is_domain_connection: false,
     realms: [],
