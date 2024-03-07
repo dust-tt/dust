@@ -20,6 +20,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 10000;
+const MAX_FILE_SIZE = 128 * 1024 * 1024; // 200 MB in bytes.
 
 type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;
@@ -385,6 +386,22 @@ export async function syncSpreadSheet(
     },
     "[Spreadsheet] Syncing Google Spreadsheet."
   );
+
+  // Avoid import attempts for sheets exceeding the max size due to Node constraints.
+  if (file.size && file.size > MAX_FILE_SIZE) {
+    logger.info(
+      {
+        ...loggerArgs,
+        spreadsheet: {
+          id: file.id,
+        },
+        size: file.size,
+      },
+      "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
+    );
+
+    return false;
+  }
 
   const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
 

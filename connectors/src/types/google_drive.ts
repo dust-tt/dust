@@ -1,18 +1,19 @@
 export type GoogleDriveObjectType = {
-  id: string;
-  name: string;
-  parent: string | null;
-  createdAtMs: number;
-  updatedAtMs?: number;
-  webViewLink?: string;
-  mimeType: string;
-  trashed: boolean;
-  lastEditor?: {
-    displayName: string;
-  };
   capabilities: {
     canDownload: boolean;
   };
+  createdAtMs: number;
+  id: string;
+  lastEditor?: {
+    displayName: string;
+  };
+  mimeType: string;
+  name: string;
+  parent: string | null;
+  size: number | null;
+  trashed: boolean;
+  updatedAtMs?: number;
+  webViewLink?: string;
 };
 export type GoogleDriveFolderType = {
   id: string;
@@ -26,15 +27,16 @@ export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
 };
 
 export const FILE_ATTRIBUTES_TO_FETCH = [
+  "capabilities",
+  "createdTime",
+  "driveId",
   "id",
+  "lastModifyingUser",
+  "mimeType",
+  "modifiedTime",
   "name",
   "parents",
-  "mimeType",
-  "createdTime",
-  "lastModifyingUser",
-  "modifiedTime",
+  "size",
   "trashed",
   "webViewLink",
-  "capabilities",
-  "driveId",
 ] as const;
