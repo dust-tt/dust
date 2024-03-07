@@ -1,8 +1,11 @@
 import type {
+  AgentActionType,
   AgentMessageNewEvent,
   ConversationTitleEvent,
   DustAppParameters,
+  DustAppRunActionType,
   GenerationTokensEvent,
+  TablesQueryActionType,
   UserMessageErrorEvent,
   UserMessageNewEvent,
   WorkspaceType,
@@ -275,7 +278,7 @@ export async function batchRenderUserMessages(messages: Message[]) {
 async function batchRenderAgentMessages(
   auth: Authenticator,
   messages: Message[]
-) {
+): Promise<{ m: AgentMessageType; rank: number; version: number }[]> {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
 
   const [
@@ -333,7 +336,7 @@ async function batchRenderAgentMessages(
           params: action.params,
           runningBlock: null,
           output: action.output,
-        };
+        } satisfies DustAppRunActionType;
       });
     })(),
     (async () => {
@@ -352,7 +355,7 @@ async function batchRenderAgentMessages(
           type: "tables_query_action",
           params: action.params as DustAppParameters,
           output: action.output as Record<string, string | number | boolean>,
-        };
+        } satisfies TablesQueryActionType;
       });
     })(),
   ]);
@@ -365,23 +368,31 @@ async function batchRenderAgentMessages(
     }
     const agentMessage = message.agentMessage;
 
-    let action = null;
+    let action: AgentActionType | null = null;
     if (agentMessage.agentRetrievalActionId) {
-      action = agentRetrievalActions.find(
-        (a) => a.id === agentMessage.agentRetrievalActionId
-      );
+      action =
+        agentRetrievalActions.find(
+          (a) => a.id === agentMessage.agentRetrievalActionId
+        ) || null;
     } else if (agentMessage.agentDustAppRunActionId) {
-      action = agentDustAppRunActions.find(
-        (a) => a.id === agentMessage.agentDustAppRunActionId
-      );
+      action =
+        agentDustAppRunActions.find(
+          (a) => a.id === agentMessage.agentDustAppRunActionId
+        ) || null;
     } else if (agentMessage.agentTablesQueryActionId) {
-      action = agentTablesQueryActions.find(
-        (a) => a.id === agentMessage.agentTablesQueryActionId
-      );
+      action =
+        agentTablesQueryActions.find(
+          (a) => a.id === agentMessage.agentTablesQueryActionId
+        ) || null;
     }
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === message.agentMessage?.agentConfigurationId
     );
+    if (!agentConfiguration) {
+      throw new Error(
+        "Unreachable: agent configuration must be found for agent message"
+      );
+    }
 
     let error: {
       code: string;
@@ -409,7 +420,7 @@ async function batchRenderAgentMessages(
       content: agentMessage.content,
       error,
       configuration: agentConfiguration,
-    };
+    } satisfies AgentMessageType;
     return { m, rank: message.rank, version: message.version };
   });
 }
