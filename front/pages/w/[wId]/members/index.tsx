@@ -35,6 +35,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
@@ -80,9 +81,11 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
 
   const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
     {
-      strategy: "okta",
       callbackUrl: config.getAuth0TenantUrl(),
+      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
+      strategy: "okta",
     };
+
   return {
     props: {
       user,

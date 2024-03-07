@@ -1,6 +1,9 @@
 import { EnvironmentConfig } from "@dust-tt/types";
 
 const config = {
+  getAppUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("URL");
+  },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
   },
