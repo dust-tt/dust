@@ -28,7 +28,7 @@ export function makeColumnsForDataSources(
 
         return (
           <Link
-            className="font-bold decoration-1 hover:underline"
+            className="font-bold hover:underline"
             href={`/poke/${owner.sId}/data_sources/${name}`}
           >
             {name}

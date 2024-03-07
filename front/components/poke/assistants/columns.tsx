@@ -29,7 +29,7 @@ export function makeColumnsForAssistants(
 
         return (
           <Link
-            className="font-bold decoration-1 hover:underline"
+            className="font-bold hover:underline"
             href={`/poke/${owner.sId}/assistants/${sId}`}
           >
             {sId}
