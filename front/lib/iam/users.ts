@@ -52,7 +52,7 @@ function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
       return { provider: "github", providerId };
 
     default:
-      return null;
+      return { provider: rawProvider, providerId };
   }
 }
 
@@ -130,6 +130,7 @@ export async function createOrUpdateUser(
 
     const u = await User.create({
       auth0Sub: externalUser.sub,
+      provider: mapAuth0ProviderToLegacy(session)?.provider,
       username: externalUser.nickname,
       email: externalUser.email,
       name: externalUser.name,
