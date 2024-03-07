@@ -513,14 +513,5 @@ export async function deleteSpreadsheet(
 }
 
 function isGAxiosServiceUnavailablError(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    "code" in err &&
-    err.code === 503 &&
-    "response" in err &&
-    err.response !== null &&
-    typeof err.response === "object" &&
-    "statusText" in err.response &&
-    err.response.statusText === "Service Unavailable"
-  );
+  return err instanceof Error && "code" in err && err.code === 503;
 }
