@@ -159,7 +159,7 @@ const InputBarContainer = ({
           size="sm"
           icon={ArrowUpIcon}
           label="Send"
-          disabled={!editorService.isFocused() || editorService.isEmpty()}
+          disabled={editorService.isEmpty()}
           labelVisible={false}
           disabledTooltip
           onClick={async () => {
