@@ -518,8 +518,8 @@ export async function upsertDatabaseInConnectorsDb(
     connectorId,
     notionDatabaseId: databaseId,
     runTimestamp,
-    parentType: parsedDb ? parsedDb.parentType : null,
-    parentId: parsedDb ? parsedDb.parentId : null,
+    parentType: parentType ?? null,
+    parentId: parentId ?? null,
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
@@ -1534,7 +1534,7 @@ async function maybeAddParentToResourcesToCheck({
   }
 }
 
-async function resolveResourceParent({
+export async function resolveResourceParent({
   parentId,
   parentType,
   pageOrDbId,
