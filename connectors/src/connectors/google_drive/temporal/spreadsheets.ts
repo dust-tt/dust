@@ -18,7 +18,6 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
-import { get } from "http";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 10000;
 
