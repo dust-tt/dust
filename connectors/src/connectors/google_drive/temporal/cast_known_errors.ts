@@ -20,6 +20,7 @@ export class GoogleDriveCastKnownErrorsInterceptor
           __is_dust_error: true,
           message: "Google Drive Internal Error",
           type: "google_drive_internal_error",
+          error: err,
         };
       }
 
