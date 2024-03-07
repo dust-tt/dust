@@ -22,7 +22,6 @@ import type {
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import {
-  CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
