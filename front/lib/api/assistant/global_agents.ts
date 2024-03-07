@@ -862,7 +862,10 @@ export async function getGlobalAgent(
       agentConfiguration = await _getClaude3OpusGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
-      agentConfiguration = await _getClaude3SonnetGlobalAgent({ auth, settings });
+      agentConfiguration = await _getClaude3SonnetGlobalAgent({
+        auth,
+        settings,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
       agentConfiguration = await _getClaude2GlobalAgent({ auth, settings });
