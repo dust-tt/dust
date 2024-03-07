@@ -103,10 +103,6 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.isEmpty ?? true;
       },
 
-      isFocused() {
-        return editor?.isFocused;
-      },
-
       getJSONContent() {
         return editor?.getJSON();
       },
