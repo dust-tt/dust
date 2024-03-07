@@ -331,7 +331,7 @@ export default function ActionScreen({
             {noDataSources ? (
               <ContentMessage
                 title="You don't have any Data source available"
-                variant="warning"
+                variant="pink"
               >
                 <div className="flex flex-col gap-y-3">
                   {(() => {
@@ -339,31 +339,28 @@ export default function ActionScreen({
                       case "admin":
                         return (
                           <div>
-                            <strong>
-                              Visit the "Connections", "Websites" and "Folders"
-                              sections in the Build panel to add new data
-                              sources.
-                            </strong>
+                            Go to <strong>"Connections"</strong>,{" "}
+                            <strong>"Websites"</strong> and{" "}
+                            <strong>"Folders"</strong>
+                            sections in the Build panel to add new data sources.
                           </div>
                         );
                       case "builder":
                         return (
                           <div>
+                            You can add Data Sources by visiting the "Websites"
+                            and "Folders" sections in the Build panel.
                             <strong>
-                              Only Admins can activate Connections. You can add
-                              Data Sources by visiting the "Websites" and
-                              "Folders" sections in the Build panel.
+                              Only Admins can activate Connections (Notion,
+                              Drive…).
                             </strong>
                           </div>
                         );
                       case "user":
                         return (
                           <div>
-                            <strong>
-                              Contact an Admin or Builder to activate
-                              Connections, add public Websites or create
-                              Folders.
-                            </strong>
+                            Contact an <strong>Admin</strong> to add Data
+                            sources to your workspace!
                           </div>
                         );
                       case "none":
