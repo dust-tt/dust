@@ -381,9 +381,9 @@ async function _getGeminiProGlobalAgent({
   };
 }
 
-// Meta prompt used to incentivize the model to answer with brieviety.
-const BRIEVETY_PROMPT =
-  "When replying to the user, go straight to the point. Answer with precision and brieviety.";
+// Meta prompt used to incentivize the model to answer with brevity.
+const BREVITY_PROMPT =
+  "When replying to the user, go straight to the point. Answer with precision and brevity.";
 
 async function _getManagedDataSourceAgent(
   auth: Authenticator,
@@ -518,7 +518,7 @@ async function _getGoogleDriveGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Google Drives." +
-      `\n${BRIEVETY_PROMPT}`,
+      `\n${BREVITY_PROMPT}`,
     dataSources,
   });
 }
@@ -542,7 +542,7 @@ async function _getSlackGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Slack channels." +
-      `\n${BRIEVETY_PROMPT}`,
+      `\n${BREVITY_PROMPT}`,
     dataSources,
   });
 }
@@ -567,7 +567,7 @@ async function _getGithubGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
-      `\n${BRIEVETY_PROMPT}`,
+      `\n${BREVITY_PROMPT}`,
     dataSources,
   });
 }
@@ -591,7 +591,7 @@ async function _getNotionGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Notion Spaces." +
-      `\n${BRIEVETY_PROMPT}`,
+      `\n${BREVITY_PROMPT}`,
     dataSources,
   });
 }
@@ -615,7 +615,7 @@ async function _getIntercomGlobalAgent(
     pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
     prompt:
       "Assist the user based on the retrieved data from their Intercom Workspace." +
-      `\n${BRIEVETY_PROMPT}`,
+      `\n${BREVITY_PROMPT}`,
     dataSources,
   });
 }
@@ -701,7 +701,7 @@ async function _getDustGlobalAgent(
       id: -1,
       prompt:
         "Assist the user based on the retrieved data from their workspace." +
-        `\n${BRIEVETY_PROMPT}`,
+        `\n${BREVITY_PROMPT}`,
       model: !auth.isUpgraded()
         ? {
             providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
