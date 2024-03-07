@@ -287,11 +287,11 @@ function AssistantBuilderTextArea({
       name="name"
       id={name}
       className={classNames(
-        "block min-h-60 w-full min-w-0 rounded-md text-sm",
+        "block min-h-60 w-full min-w-0 rounded-xl text-sm transition-all duration-200",
         !error
-          ? "border-gray-300 focus:border-action-500 focus:ring-action-500"
+          ? "border-structure-100 focus:border-action-300 focus:ring-action-300"
           : "border-red-500 focus:border-red-500 focus:ring-red-500",
-        "bg-structure-50 stroke-structure-50",
+        "border-structure-200 bg-structure-50",
         "resize-y"
       )}
       placeholder={placeholder}
