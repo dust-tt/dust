@@ -2352,7 +2352,15 @@ export async function upsertDatabaseStructuredDataFromCache({
   });
   const csvHeader = csvForDocument.split("\n")[0];
   const csvRows = csvForDocument.split("\n").slice(1).join("\n");
-  if (csvHeader && csvRows.length) {
+  if (csvForDocument.length > MAX_DOCUMENT_TXT_LEN) {
+    localLogger.info(
+      {
+        csvLength: csvForDocument.length,
+        maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
+      },
+      "Skipping document upsert as body is too long."
+    );
+  } else {
     const parents = await getParents(
       connector.id,
       databaseId,
