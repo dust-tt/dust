@@ -382,6 +382,7 @@ export async function syncSpreadSheet(
       ...loggerArgs,
       spreadsheet: {
         id: file.id,
+        size: file.size,
       },
     },
     "[Spreadsheet] Syncing Google Spreadsheet."
@@ -394,8 +395,8 @@ export async function syncSpreadSheet(
         ...loggerArgs,
         spreadsheet: {
           id: file.id,
+          size: file.size,
         },
-        size: file.size,
       },
       "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
     );
