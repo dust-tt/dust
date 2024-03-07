@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 
 let auth0ManagemementClient: ManagementClient | null = null;
 
-function getAuth0ManagemementClient() {
+function getAuth0ManagemementClient(): ManagementClient {
   if (!auth0ManagemementClient) {
     auth0ManagemementClient = new ManagementClient({
       domain: config.getAuth0TenantUrl(),
