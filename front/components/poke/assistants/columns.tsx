@@ -27,7 +27,14 @@ export function makeColumnsForAssistants(
       cell: ({ row }) => {
         const sId: string = row.getValue("sId");
 
-        return <Link href={`/poke/${owner.sId}/assistants/${sId}`}>{sId}</Link>;
+        return (
+          <Link
+            className="font-bold decoration-1 hover:underline"
+            href={`/poke/${owner.sId}/assistants/${sId}`}
+          >
+            {sId}
+          </Link>
+        );
       },
       header: ({ column }) => {
         return (
