@@ -580,11 +580,11 @@ function _processCiteMention(
                 }/builder/data-sources/${
                   ref.dataSourceId
                 }/upsert?documentId=${encodeURIComponent(ref.documentId)}`;
-            return `[<${link}|${refCounter[k]}>]`;
+            return `[${refCounter[k]}](${link})`;
           }
           return "";
         })
-        .join("");
+        .join(" ");
     });
   }
 
