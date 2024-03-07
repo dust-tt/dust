@@ -212,12 +212,25 @@ async function handler(
           return;
 
         case "anthropic":
-          const anthropic_models = [
-            { id: "claude-instant-1.2" },
-            { id: "claude-2.1" },
-            { id: "claude-3-sonnet-20240229" },
-            { id: "claude-3-opus-20240229" },
-          ];
+          let anthropic_models: { id: string }[] = [];
+          if (embed) {
+            anthropic_models = [];
+          } else {
+            if (chat) {
+              anthropic_models = [
+                { id: "claude-instant-1.2" },
+                { id: "claude-2.1" },
+                { id: "claude-3-sonnet-20240229" },
+                { id: "claude-3-opus-20240229" },
+              ];
+            } else {
+              anthropic_models = [
+                { id: "claude-instant-1.2" },
+                { id: "claude-2.1" },
+              ];
+            }
+          }
+
           res.status(200).json({ models: anthropic_models });
           return;
 
