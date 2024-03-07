@@ -11,9 +11,9 @@ import type {
 } from "@dust-tt/types";
 import type { GlobalAgentStatus } from "@dust-tt/types";
 import {
+  CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
@@ -231,7 +231,7 @@ async function _getClaude2GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "claude-2",
-    description: CLAUDE_DEFAULT_MODEL_CONFIG.description,
+    description: CLAUDE_2_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -240,8 +240,8 @@ async function _getClaude2GlobalAgent({
       id: -1,
       prompt: "",
       model: {
-        providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -928,6 +928,10 @@ export async function getGlobalAgent(
   return agentConfiguration;
 }
 
+// This is the list of global agents that we want to support in past conversations but we don't want
+// to be accessible to users moving forward.
+const RETIRED_GLOABL_AGENTS_SID = [GLOBAL_AGENTS_SID.CLAUDE_2];
+
 export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[]
@@ -959,7 +963,14 @@ export async function getGlobalAgents(
   }
   const preFetchedDataSources = dsRes.value;
 
-  const agentsIdsToFetch = Object.values(agentIds ?? GLOBAL_AGENTS_SID);
+  // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
+  // one (which will remove these models from the list of default agents in the product + list of
+  // user assistants).
+  const agentsIdsToFetch =
+    agentIds ??
+    Object.values(GLOBAL_AGENTS_SID).filter(
+      (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
+    );
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
