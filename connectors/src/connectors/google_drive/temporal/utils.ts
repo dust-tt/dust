@@ -44,7 +44,7 @@ export async function driveObjectToDustType(
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),
       trashed: false,
-      size: file.size,
+      size: file.size ?? null,
       capabilities: {
         canDownload: false,
       },
@@ -58,7 +58,7 @@ export async function driveObjectToDustType(
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),
       trashed: file.trashed ? file.trashed : false,
-      size: file.size,
+      size: file.size ?? null,
       updatedAtMs: file.modifiedTime
         ? new Date(file.modifiedTime).getTime()
         : undefined,

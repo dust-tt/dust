@@ -10,7 +10,7 @@ export type GoogleDriveObjectType = {
   mimeType: string;
   name: string;
   parent: string | null;
-  size: number;
+  size: number | null;
   trashed: boolean;
   updatedAtMs?: number;
   webViewLink?: string;
