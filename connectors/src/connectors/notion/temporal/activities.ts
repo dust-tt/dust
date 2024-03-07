@@ -695,7 +695,7 @@ export async function garbageCollectorMarkAsSeen({
     (
       await NotionDatabase.findAll({
         where: {
-          notionDatabaseId: pageIds,
+          notionDatabaseId: databaseIds,
           connectorId: connector.id,
           skipReason: {
             [Op.is]: null,
@@ -703,7 +703,7 @@ export async function garbageCollectorMarkAsSeen({
         },
         attributes: ["notionDatabaseId"],
       })
-    ).map((page) => page.notionDatabaseId)
+    ).map((database) => database.notionDatabaseId)
   );
 
   const newDatabaseIds = databaseIds.filter(
