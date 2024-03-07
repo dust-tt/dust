@@ -387,6 +387,7 @@ export async function syncSpreadSheet(
     "[Spreadsheet] Syncing Google Spreadsheet."
   );
 
+  // Avoid import attempts for sheets exceeding the max size due to Node constraints.
   if (file.size && file.size > MAX_FILE_SIZE) {
     logger.info(
       {
