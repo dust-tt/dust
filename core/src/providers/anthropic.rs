@@ -256,8 +256,6 @@ impl AnthropicLLM {
             body["system"] = json!(system);
         }
 
-        println!("body: {}", body);
-
         let res = reqwest::Client::new()
             .post(self.messages_uri()?.to_string())
             .header("Content-Type", "application/json")
@@ -963,10 +961,6 @@ impl LLM for AnthropicLLM {
             },
             None => None,
         };
-
-        if system.is_some() {
-            println!("system: {:?}", system);
-        }
 
         let mut messages = messages
             .iter()
