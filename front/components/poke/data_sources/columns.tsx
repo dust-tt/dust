@@ -27,7 +27,12 @@ export function makeColumnsForDataSources(
         const name: string = row.getValue("name");
 
         return (
-          <Link href={`/poke/${owner.sId}/data_sources/${name}`}>{name}</Link>
+          <Link
+            className="font-bold hover:underline"
+            href={`/poke/${owner.sId}/data_sources/${name}`}
+          >
+            {name}
+          </Link>
         );
       },
       header: ({ column }) => {
