@@ -209,6 +209,17 @@ function CreateOktaEnterpriseConnectionModal({
       variant="side-sm"
     >
       <Page variant="modal">
+        <Page.P>
+          Discover how to set up Okta SSO – Read Our{" "}
+          <a
+            className="font-bold underline decoration-2"
+            href="https://dust-tt.notion.site/Enable-Single-Sign-On-5df17bd3566848d69834fc0fa4fc2643"
+            target="_blank"
+          >
+            Documentation
+          </a>
+          .
+        </Page.P>
         <Page.Layout direction="vertical">
           <Page.P>
             Callback URL:
