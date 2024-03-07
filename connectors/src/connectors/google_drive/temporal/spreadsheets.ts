@@ -435,6 +435,7 @@ export async function syncSpreadSheet(
   // List synced sheets.
   const syncedSheets = await GoogleDriveSheet.findAll({
     where: {
+      connectorId: connector.id,
       driveFileId: file.id,
     },
   });
@@ -451,9 +452,11 @@ export async function syncSpreadSheet(
   // or have exceeded the maximum number of rows.
   const deletedSyncedSheets = syncedSheets.filter(
     (synced) =>
-      !successfulSheetIdImports.find(
+      // Check for undefined explicitly, avoiding incorrect filtering
+      // due to falsy values (0 can be a valid sheet ID).
+      successfulSheetIdImports.find(
         (sheetId) => sheetId === synced.driveSheetId
-      )
+      ) === undefined
   );
   if (deletedSyncedSheets.length > 0) {
     await deleteAllSheets(connector, deletedSyncedSheets, {
@@ -475,7 +478,9 @@ async function deleteSheetForSpreadsheet(
     {
       connectorId: connector.id,
       sheet,
-      spreadsheetFileId,
+      spreadsheet: {
+        id: spreadsheetFileId,
+      },
     },
     "[Spreadsheet] Deleting google drive sheet."
   );
