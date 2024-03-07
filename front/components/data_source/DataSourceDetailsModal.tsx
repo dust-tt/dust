@@ -91,7 +91,6 @@ export default function DataSourceDetailsModal({
               icon={LockIcon}
               label="Change Permissions"
               onClick={onClick}
-              hasMagnifying={false}
             />
           </div>
         </Page.Layout>
