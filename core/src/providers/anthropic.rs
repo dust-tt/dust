@@ -181,13 +181,18 @@ struct StreamContentBlockStop {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ChatResponseDelta {
     stop_reason: Option<StopReason>,
-    pub usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UsageDelta {
+    output_tokens: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct StreamMessageDelta {
     pub r#type: String,
     pub delta: ChatResponseDelta,
+    pub usage: UsageDelta,
 }
 
 impl Display for ErrorDetail {
@@ -307,6 +312,7 @@ impl AnthropicLLM {
                 0 => None,
                 _ => Some(stop_sequences),
             },
+            "stream": true,
         });
 
         if system.is_some() {
@@ -314,7 +320,7 @@ impl AnthropicLLM {
         }
 
         let https = HttpsConnector::new();
-        let url = self.completions_uri()?.to_string();
+        let url = self.messages_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
             Ok(builder) => builder,
@@ -497,11 +503,13 @@ impl AnthropicLLM {
                                     }
                                     Some(response) => {
                                         response.stop_reason = event.delta.stop_reason;
-                                        response.usage = event.delta.usage.clone();
+                                        response.usage.output_tokens = event.usage.output_tokens;
                                     }
                                 }
                             }
-                            "message_stop" => {}
+                            "message_stop" => {
+                                break 'stream;
+                            }
                             "error" => {
                                 let event: Error = match serde_json::from_str(event.data.as_str()) {
                                     Ok(event) => event,
