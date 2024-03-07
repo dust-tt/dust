@@ -95,7 +95,10 @@ const InputBarContainer = ({
   );
 
   return (
-    <div className="relative flex flex-1 flex-col sm:flex-row">
+    <div
+      id="InputBarContainer"
+      className="relative flex flex-1 flex-col sm:flex-row"
+    >
       <EditorContent
         editor={editor}
         className={classNames(

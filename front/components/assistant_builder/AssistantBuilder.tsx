@@ -519,7 +519,7 @@ export default function AssistantBuilder({
           rightPanel={
             <div
               className={classNames(
-                "flex h-full w-full rounded-xl bg-slate-100 transition-all ease-in-out",
+                "flex h-full w-full overflow-hidden rounded-xl border border-structure-200 bg-structure-50 transition-all",
                 shouldAnimatePreviewDrawer &&
                   previewDrawerOpenedAt != null &&
                   // Only animate the reload if the drawer has been open for at least 1 second.
