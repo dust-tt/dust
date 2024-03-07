@@ -149,18 +149,17 @@ export function TryAssistant({
             </div>
           )}
 
-          <div className="absolute bottom-4 w-full">
-            <div className="">
-              <AssistantInputBar
-                owner={owner}
-                onSubmit={handleSubmit}
-                stickyMentions={stickyMentions}
-                conversationId={conversation?.sId || null}
-                additionalAgentConfiguration={assistant}
-                hideQuickActions
-                disableAutoFocus
-              />
-            </div>
+          <div className="absolute bottom-0 w-full">
+            <AssistantInputBar
+              owner={owner}
+              onSubmit={handleSubmit}
+              stickyMentions={stickyMentions}
+              conversationId={conversation?.sId || null}
+              additionalAgentConfiguration={assistant}
+              hideQuickActions
+              disableAutoFocus
+              isFloating={false}
+            />
           </div>
         </GenerationContextProvider>
       </div>
