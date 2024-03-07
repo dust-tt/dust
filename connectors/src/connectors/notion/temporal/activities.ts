@@ -2356,7 +2356,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     localLogger.info(
       {
         csvLength: csvForDocument.length,
-        maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
+        // 2MB (max size allowed in `front`) at the time of writing
+        maxDocumentTxtLength: 2_000_000,
       },
       "Skipping document upsert as body is too long."
     );
