@@ -135,8 +135,7 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
   return markdown;
 };
 
-// Returns true if a is a subsequence of b.
-export function subFilter(a: string, b: string) {
+function subFilterLastIndex(a: string, b: string) {
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
@@ -145,16 +144,58 @@ export function subFilter(a: string, b: string) {
     }
     j++;
   }
-  return i === a.length;
+  return i === a.length ? j : -1;
 }
 
+function subFilterFirstIndex(a: string, b: string) {
+  let i = a.length - 1;
+  let j = b.length - 1;
+  while (i >= 0 && j >= 0) {
+    if (a[i] === b[j]) {
+      i--;
+    }
+    j--;
+  }
+  return i === -1 ? j + 1 : -1;
+}
+
+/**
+ * Returns true if a is a subfilter of b, i.e. all characters in a are present
+ * in b in the same order.
+ */
+export function subFilter(a: string, b: string) {
+  return subFilterLastIndex(a, b) > -1;
+}
+
+/**
+ * Compares two strings for fuzzy sorting against a query First sort by spread
+ * of subfilter, then by first index of subfilter, then length, then by
+ * lexicographic order
+ */
 export function compareForFuzzySort(query: string, a: string, b: string) {
   const distanceToQuery = (s: string) =>
-    s.length - query.length + s.indexOf(query.charAt(0));
-  if (distanceToQuery(a) === distanceToQuery(b)) {
-    return a.localeCompare(b);
+    subFilterLastIndex(query, s) - subFilterFirstIndex(query, s);
+  const distanceA = distanceToQuery(a);
+  if (distanceA === 0) {
+    return 1;
   }
-  return distanceToQuery(a) - distanceToQuery(b);
+  const distanceB = distanceToQuery(b);
+  if (distanceB === 0) {
+    return -1;
+  }
+
+  if (distanceA !== distanceB) {
+    return distanceA - distanceB;
+  }
+  const firstCharA = a.indexOf(query.charAt(0));
+  const firstCharB = b.indexOf(query.charAt(0));
+  if (firstCharA !== firstCharB) {
+    return firstCharA - firstCharB;
+  }
+  if (a.length !== b.length) {
+    return a.length - b.length;
+  }
+  return a.localeCompare(b);
 }
 
 export function filterAndSortAgents(
@@ -167,7 +208,6 @@ export function filterAndSortAgents(
     subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
-  // Sort by position of the subFilter in the name (position of the first character matching).
   if (searchText.length > 0) {
     filtered.sort((a, b) =>
       compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
@@ -176,3 +216,30 @@ export function filterAndSortAgents(
 
   return filtered;
 }
+
+function testCompareForFuzzySort() {
+  // a is always closer to the query than b
+  const data = [
+    { query: "eng", a: "eng", b: "ContentMarketing" },
+    { query: "sql", a: "sqlGod", b: "sqlCoreGod" },
+    { query: "sql", a: "sql", b: "sqlGod" },
+    { query: "sql", a: "sql", b: "SEOQualityRater" },
+    { query: "gp", a: "gpt-4", b: "GabHelp" },
+    { query: "gp", a: "gpt-4", b: "gemni-pro" },
+    { query: "start", a: "robotstart", b: "strongrt" },
+    { query: "mygod", a: "ohmygodbot", b: "moatmode" },
+    { query: "test", a: "test", b: "testlong" },
+    { query: "test", a: "testlonger", b: "longtest" },
+  ];
+  console.log(
+    "Testing compareForFuzzySort, expected first then expected second"
+  );
+  for (const d of data) {
+    console.log(
+      compareForFuzzySort(d.query, d.a, d.b) < 0 ? "PASS" : "FAIL",
+      d
+    );
+  }
+}
+
+testCompareForFuzzySort();
