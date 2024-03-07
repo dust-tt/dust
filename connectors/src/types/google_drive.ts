@@ -27,15 +27,16 @@ export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
 };
 
 export const FILE_ATTRIBUTES_TO_FETCH = [
+  "capabilities",
+  "createdTime",
+  "driveId",
   "id",
+  "lastModifyingUser",
+  "mimeType",
+  "modifiedTime",
   "name",
   "parents",
-  "mimeType",
-  "createdTime",
-  "lastModifyingUser",
-  "modifiedTime",
+  "size",
   "trashed",
   "webViewLink",
-  "capabilities",
-  "driveId",
 ] as const;
