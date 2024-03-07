@@ -24,35 +24,25 @@ export async function getUserMetadataFromClient(key: string) {
   }
 }
 
-/**
- * Client-side: sets the metadata for the current user. This function is best effort, and never
- * errors.
- * @param metadata MetadataType the metadata to set for the current user.
- */
-export function setUserMetadataFromClient(metadata: UserMetadataType) {
-  void (async () => {
-    try {
-      const res = await fetch(
-        `/api/user/metadata/${encodeURIComponent(metadata.key)}`,
-        {
-          method: "POST",
-          body: JSON.stringify({ value: metadata.value }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json();
-        console.error("setUserMetadata error", err);
-      }
-
-      // Finally mutate to kick SWR to revalidate.
-    } catch (err) {
-      console.error("setUserMetadata error", err);
+export async function setUserMetadataFromClient(metadata: UserMetadataType) {
+  const res = await fetch(
+    `/api/user/metadata/${encodeURIComponent(metadata.key)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ value: metadata.value }),
+      headers: {
+        "Content-Type": "application/json",
+      },
     }
-  })();
+  );
+
+  if (!res.ok) {
+    const err = await res.json();
+    console.error("setUserMetadata error", err);
+    throw new Error(`Error setting user metadata: ${err.message}`);
+  }
+
+  return;
 }
 
 export const guessFirstandLastNameFromFullName = (

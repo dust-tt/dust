@@ -135,6 +135,7 @@ export default function AssistantNew({
     metadata: quickGuideSeen,
     isMetadataError: isQuickGuideSeenError,
     isMetadataLoading: isQuickGuideSeenLoading,
+    mutateMetadata: mutateQuickGuideSeen,
   } = useUserMetadata("quick_guide_seen");
   const [showQuickGuide, setShowQuickGuide] = useState<boolean>(false);
 
@@ -236,7 +237,11 @@ export default function AssistantNew({
   }, [user]);
 
   const { submit: persistQuickGuideSeen } = useSubmitFunction(async () => {
-    setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" });
+    setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" })
+      .then(() => {
+        return mutateQuickGuideSeen();
+      })
+      .catch(console.error);
     setShowQuickGuide(false);
   });
 
