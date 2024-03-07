@@ -233,7 +233,7 @@ export function Tab<E>({
         "s-overflow-x-auto s-overflow-y-hidden s-scrollbar-hide"
       )}
     >
-      <nav className="-s-mb-px s-flex s-space-x-0" aria-label="Tabs">
+      <nav className="s-flex s-space-x-0" aria-label="Tabs">
         {renderTabs()}
       </nav>
     </div>
