@@ -18,6 +18,7 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import { get } from "http";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 10000;
 
@@ -387,7 +388,8 @@ export async function syncSpreadSheet(
   );
 
   const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
-  const spreadsheet = await (async () => {
+
+  const getSpreadsheet = async () => {
     try {
       return await sheetsAPI.spreadsheets.get({
         spreadsheetId: file.id,
@@ -403,7 +405,9 @@ export async function syncSpreadSheet(
       }
       throw err;
     }
-  })();
+  };
+
+  const spreadsheet = await getSpreadsheet();
 
   const sheets = await getAllSheetsFromSpreadSheet(
     sheetsAPI,
