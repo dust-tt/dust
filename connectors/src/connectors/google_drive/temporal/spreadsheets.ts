@@ -478,7 +478,9 @@ async function deleteSheetForSpreadsheet(
     {
       connectorId: connector.id,
       sheet,
-      spreadsheetFileId,
+      spreadsheet: {
+        id: spreadsheetFileId,
+      },
     },
     "[Spreadsheet] Deleting google drive sheet."
   );
