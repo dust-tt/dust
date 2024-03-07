@@ -244,7 +244,7 @@ export function useUser() {
 export function useUserMetadata(key: string) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/user/metadata/${encodeURIComponent(key)}`,
     userMetadataFetcher
   );
@@ -253,6 +253,7 @@ export function useUserMetadata(key: string) {
     metadata: data ? data.metadata : null,
     isMetadataLoading: !error && !data,
     isMetadataError: error,
+    mutateMetadata: mutate,
   };
 }
 
