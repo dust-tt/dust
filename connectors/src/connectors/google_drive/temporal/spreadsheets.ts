@@ -387,7 +387,7 @@ export async function syncSpreadSheet(
     "[Spreadsheet] Syncing Google Spreadsheet."
   );
 
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size && file.size > MAX_FILE_SIZE) {
     logger.info(
       {
         ...loggerArgs,
