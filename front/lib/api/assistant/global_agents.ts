@@ -12,14 +12,13 @@ import type {
 import type { GlobalAgentStatus } from "@dust-tt/types";
 import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  GPT_4_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-} from "@dust-tt/types";
-import {
+  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -231,7 +230,7 @@ async function _getClaude2GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude2",
+    name: "claude-2",
     description: CLAUDE_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
@@ -243,6 +242,43 @@ async function _getClaude2GlobalAgent({
       model: {
         providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getClaude3SonnetGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-3-sonnet",
+    description: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.description,
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -268,7 +304,7 @@ async function _getClaude3OpusGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude3",
+    name: "claude-3",
     description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
@@ -825,6 +861,9 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
       agentConfiguration = await _getClaude3OpusGlobalAgent({ auth, settings });
       break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+      agentConfiguration = await _getClaude3SonnetGlobalAgent({ auth, settings });
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
       agentConfiguration = await _getClaude2GlobalAgent({ auth, settings });
       break;
@@ -843,7 +882,7 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
       agentConfiguration = await _getMistralSmallGlobalAgent({ settings });
       break;
-    case GLOBAL_AGENTS_SID.GEMINI_PRO :
+    case GLOBAL_AGENTS_SID.GEMINI_PRO:
       agentConfiguration = await _getGeminiProGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
