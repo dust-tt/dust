@@ -28,8 +28,9 @@ interface EnterpriseConnectionDetailsProps {
 }
 
 export interface EnterpriseConnectionStrategyDetails {
-  strategy: SupportedEnterpriseConnectionStrategies;
   callbackUrl: string;
+  initiateLoginUrl: string;
+  strategy: SupportedEnterpriseConnectionStrategies;
 }
 
 export function EnterpriseConnectionDetails({
@@ -170,7 +171,7 @@ function CreateOktaEnterpriseConnectionModal({
       domain?: string;
     }>({});
 
-  const { callbackUrl } = strategyDetails;
+  const { callbackUrl, initiateLoginUrl } = strategyDetails;
 
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -225,15 +226,19 @@ function CreateOktaEnterpriseConnectionModal({
             Callback URL:
             <Input
               name="Callback URL"
-              placeholder="callback url"
+              placeholder="Callback url"
               value={callbackUrl}
               disabled={true}
-              onChange={(value) =>
-                setEnterpriseConnectionDetails({
-                  ...enterpriseConnectionDetails,
-                  domain: value,
-                })
-              }
+              className="max-w-sm"
+            />
+          </Page.P>
+          <Page.P>
+            Initiate login URI:
+            <Input
+              name="Initiate login URI"
+              placeholder="Initiate login URI"
+              value={initiateLoginUrl}
+              disabled={true}
               className="max-w-sm"
             />
           </Page.P>

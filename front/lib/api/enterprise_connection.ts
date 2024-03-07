@@ -5,14 +5,28 @@ import { ManagementClient } from "auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 
-const management = new ManagementClient({
-  domain: config.getAuth0TenantUrl(),
-  clientId: config.getAuth0M2MClientId(),
-  clientSecret: config.getAuth0M2MClientSecret(),
-});
+let auth0ManagemementClient: ManagementClient | null = null;
+
+function getAuth0ManagemementClient(): ManagementClient {
+  if (!auth0ManagemementClient) {
+    auth0ManagemementClient = new ManagementClient({
+      domain: config.getAuth0TenantUrl(),
+      clientId: config.getAuth0M2MClientId(),
+      clientSecret: config.getAuth0M2MClientSecret(),
+    });
+  }
+
+  return auth0ManagemementClient;
+}
 
 function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
+}
+
+export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
+  return `${config.getAppUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
+    workspaceId
+  )}`;
 }
 
 export async function getEnterpriseConnectionForWorkspace(
@@ -26,7 +40,7 @@ export async function getEnterpriseConnectionForWorkspace(
 
   // This endpoint supports fetching up to 1000 connections in one page.
   // In the future, consider implementing pagination to handle larger datasets.
-  const connections = await management.connections.getAll({
+  const connections = await getAuth0ManagemementClient().connections.getAll({
     strategy: [strategy],
   });
 
@@ -54,7 +68,7 @@ export async function createEnterpriseConnection(
   }
 
   const { sId } = owner;
-  const connection = await management.connections.create({
+  const connection = await getAuth0ManagemementClient().connections.create({
     name: makeEnterpriseConnectionName(sId),
     display_name: makeEnterpriseConnectionName(sId),
     strategy: connectionDetails.strategy,
@@ -93,7 +107,7 @@ export async function deleteEnterpriseConnection(
     throw new Error("Enterprise connection not found.");
   }
 
-  return management.connections.delete({
+  return getAuth0ManagemementClient().connections.delete({
     id: existingConnection.id,
   });
 }
