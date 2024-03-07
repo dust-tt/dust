@@ -57,7 +57,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG = {
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
   displayName: "Claude 3 Opus",
   contextSize: 200000,
-  recommendedTopK: 32,
+  recommendedTopK: 64,
   largeModel: true,
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
