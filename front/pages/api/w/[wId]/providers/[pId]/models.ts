@@ -136,8 +136,6 @@ async function handler(
             { id: "command-light" },
             { id: "command-nightly" },
             { id: "command-light-nightly" },
-            { id: "base" },
-            { id: "base-light" },
           ];
           res.status(200).json({ models: cohereModels });
           return;
@@ -215,9 +213,10 @@ async function handler(
 
         case "anthropic":
           const anthropic_models = [
-            { id: "claude-2" },
-            { id: "claude-2.1" },
             { id: "claude-instant-1.2" },
+            { id: "claude-2.1" },
+            { id: "claude-3-sonnet-20240229" },
+            { id: "claude-3-opus-20240229" },
           ];
           res.status(200).json({ models: anthropic_models });
           return;
