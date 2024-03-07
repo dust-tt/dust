@@ -46,9 +46,35 @@ export const GPT_3_5_TURBO_MODEL_CONFIG = {
   shortDescription: "OpenAI's fast model.",
 } as const;
 
+export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
+export const CLAUDE_3_SONNET_2024029_MODEL_ID =
+  "claude-3-sonnet-20240229" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
-export const CLAUDE_2_MODEL_ID = "claude-2" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
+
+export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG = {
+  providerId: "anthropic" as const,
+  modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
+  displayName: "Claude 3 Opus",
+  contextSize: 200000,
+  recommendedTopK: 32,
+  largeModel: true,
+  description:
+    "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
+  shortDescription: "Anthropic's powerful model.",
+} as const;
+
+export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG = {
+  providerId: "anthropic" as const,
+  modelId: CLAUDE_3_SONNET_2024029_MODEL_ID,
+  displayName: "Claude 3 Sonnet",
+  contextSize: 200000,
+  recommendedTopK: 32,
+  largeModel: true,
+  description:
+    "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
+  shortDescription: "Anthropic's balanced model.",
+} as const;
 
 export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   providerId: "anthropic" as const,
@@ -57,7 +83,7 @@ export const CLAUDE_DEFAULT_MODEL_CONFIG = {
   contextSize: 200000,
   recommendedTopK: 32,
   largeModel: true,
-  description: "Anthropic's superior performance model (200k context).",
+  description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's smartest model.",
 } as const;
 
@@ -126,6 +152,8 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,

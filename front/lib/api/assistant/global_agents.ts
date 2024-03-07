@@ -11,14 +11,14 @@ import type {
 } from "@dust-tt/types";
 import type { GlobalAgentStatus } from "@dust-tt/types";
 import {
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  GPT_4_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-} from "@dust-tt/types";
-import {
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -186,7 +186,7 @@ async function _getClaudeInstantGlobalAgent({
 }: {
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  const status = settings ? settings.status : "active";
+  const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
@@ -212,24 +212,28 @@ async function _getClaudeInstantGlobalAgent({
   };
 }
 
-async function _getClaudeGlobalAgent({
+async function _getClaude2GlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
+  let status = settings?.status ?? "disabled_by_admin";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_2,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude",
+    name: "claude-2",
     description: CLAUDE_DEFAULT_MODEL_CONFIG.description,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-    status: settings ? settings.status : status,
+    status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
@@ -238,6 +242,80 @@ async function _getClaudeGlobalAgent({
       model: {
         providerId: CLAUDE_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_DEFAULT_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getClaude3SonnetGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-3-sonnet",
+    description: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.description,
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getClaude3OpusGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-3",
+    description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -351,11 +429,16 @@ async function _getMistralSmallGlobalAgent({
 }
 
 async function _getGeminiProGlobalAgent({
+  auth,
   settings,
 }: {
+  auth: Authenticator;
   settings: GlobalAgentSettings | null;
 }): Promise<AgentConfigurationType> {
-  const status = settings ? settings.status : "disabled_by_admin";
+  let status = settings?.status ?? "disabled_by_admin";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
@@ -775,8 +858,17 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });
       break;
-    case GLOBAL_AGENTS_SID.CLAUDE:
-      agentConfiguration = await _getClaudeGlobalAgent({ auth, settings });
+    case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
+      agentConfiguration = await _getClaude3OpusGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+      agentConfiguration = await _getClaude3SonnetGlobalAgent({
+        auth,
+        settings,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_2:
+      agentConfiguration = await _getClaude2GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
       agentConfiguration = await _getMistralLargeGlobalAgent({
@@ -794,7 +886,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getMistralSmallGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
-      agentConfiguration = await _getGeminiProGlobalAgent({ settings });
+      agentConfiguration = await _getGeminiProGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = await _getSlackGlobalAgent(auth, {

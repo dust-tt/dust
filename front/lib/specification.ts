@@ -198,7 +198,7 @@ export function addBlock(
             '_fun = (env) => {\n  // return [{ role: "user", content: "hi!"}];\n}',
           functions_code:
             "_fun = (env) => {\n" +
-            "  // See https://platform.openai.com/docs/guides/gpt/function-calling\n" +
+            "  // See https://cookbook.openai.com/examples/how_to_call_functions_with_chat_models\n" +
             "  // return [{\n" +
             '  //  name: "...",\n' +
             '  //  description: "...",\n' +

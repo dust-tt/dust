@@ -28,10 +28,110 @@ use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 pub enum StopReason {
     StopSequence,
     MaxTokens,
+    EndTurn,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum AnthropicChatMessageRole {
+    Assistant,
+    User,
+}
+
+impl From<AnthropicChatMessageRole> for ChatMessageRole {
+    fn from(value: AnthropicChatMessageRole) -> Self {
+        match value {
+            AnthropicChatMessageRole::Assistant => ChatMessageRole::Assistant,
+            AnthropicChatMessageRole::User => ChatMessageRole::User,
+        }
+    }
+}
+
+impl TryFrom<&ChatMessageRole> for AnthropicChatMessageRole {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &ChatMessageRole) -> Result<Self, Self::Error> {
+        match value {
+            ChatMessageRole::Assistant => Ok(AnthropicChatMessageRole::Assistant),
+            ChatMessageRole::System => Ok(AnthropicChatMessageRole::User),
+            ChatMessageRole::User => Ok(AnthropicChatMessageRole::User),
+            ChatMessageRole::Function => Ok(AnthropicChatMessageRole::User),
+        }
+    }
+}
+
+impl ToString for AnthropicChatMessageRole {
+    fn to_string(&self) -> String {
+        match self {
+            AnthropicChatMessageRole::Assistant => String::from("assistant"),
+            AnthropicChatMessageRole::User => String::from("user"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicContent {
+    pub r#type: String,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicChatMessage {
+    pub content: Vec<AnthropicContent>,
+    pub role: AnthropicChatMessageRole,
+}
+
+impl TryFrom<&ChatMessage> for AnthropicChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        let role = AnthropicChatMessageRole::try_from(&cm.role)
+            .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
+
+        let meta_prompt = match cm.role {
+            ChatMessageRole::User => match cm.name.as_ref() {
+                Some(name) => format!("[user: {}] ", name), // Include space here.
+                None => String::from(""),
+            },
+            ChatMessageRole::Function => match cm.name.as_ref() {
+                Some(name) => format!("[function_result: {}] ", name), // Include space here.
+                None => "[function_result]".to_string(),
+            },
+            _ => String::from(""),
+        };
+
+        Ok(AnthropicChatMessage {
+            content: vec![AnthropicContent {
+                r#type: "text".to_string(),
+                text: format!(
+                    "{}{}",
+                    meta_prompt,
+                    cm.content.clone().unwrap_or(String::from(""))
+                ),
+            }],
+            role,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Response {
+pub struct Usage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatResponse {
+    pub id: String,
+    pub model: String,
+    pub role: AnthropicChatMessageRole,
+    pub content: Vec<AnthropicContent>,
+    pub stop_reason: Option<StopReason>,
+    pub usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CompletionResponse {
     pub completion: String,
     pub stop_reason: Option<StopReason>,
     pub stop: Option<String>,
@@ -48,6 +148,51 @@ pub struct Error {
     // Anthropi api errors look like this:
     // {"error":{"type":"invalid_request_error","message":"model: field required"}}
     pub error: ErrorDetail,
+}
+
+// Streaming types
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct StreamMessageStart {
+    pub r#type: String,
+    pub message: ChatResponse,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct StreamContentBlockStart {
+    pub r#type: String,
+    pub index: u64,
+    pub content_block: AnthropicContent,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct StreamContentBlockDelta {
+    pub r#type: String,
+    pub index: u64,
+    pub delta: AnthropicContent,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct StreamContentBlockStop {
+    pub r#type: String,
+    pub index: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ChatResponseDelta {
+    stop_reason: Option<StopReason>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UsageDelta {
+    output_tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct StreamMessageDelta {
+    pub r#type: String,
+    pub delta: ChatResponseDelta,
+    pub usage: UsageDelta,
 }
 
 impl Display for ErrorDetail {
@@ -71,164 +216,109 @@ impl AnthropicLLM {
     pub fn new(id: String) -> Self {
         Self { id, api_key: None }
     }
-    fn uri(&self) -> Result<Uri> {
+
+    fn messages_uri(&self) -> Result<Uri> {
+        Ok("https://api.anthropic.com/v1/messages"
+            .to_string()
+            .parse::<Uri>()?)
+    }
+
+    fn completions_uri(&self) -> Result<Uri> {
         Ok("https://api.anthropic.com/v1/complete"
             .to_string()
             .parse::<Uri>()?)
     }
 
-    fn chat_prompt(&self, messages: &Vec<ChatMessage>) -> String {
-        let mut prompt = messages
-            .iter()
-            .map(|cm| -> String {
-                format!(
-                    "{}: {}{}",
-                    match cm.role {
-                        ChatMessageRole::System => "",
-                        ChatMessageRole::Assistant => "\n\nAssistant",
-                        ChatMessageRole::User => "\n\nHuman",
-                        ChatMessageRole::Function => "\n\nHuman",
-                    },
-                    match cm.role {
-                        ChatMessageRole::System => "".to_string(),
-                        ChatMessageRole::Assistant => "".to_string(),
-                        ChatMessageRole::User => match cm.name.as_ref() {
-                            Some(name) => format!("[user: {}] ", name),
-                            None => "".to_string(),
-                        },
-                        ChatMessageRole::Function => match cm.name.as_ref() {
-                            Some(name) => format!("[function_result: {}] ", name),
-                            None => "[function_result]".to_string(),
-                        },
-                    },
-                    cm.content.as_ref().unwrap_or(&String::from("")).clone(),
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        prompt = format!("{}\n\nAssistant:", prompt);
-
-        return prompt;
-    }
-
     async fn chat_completion(
         &self,
-        messages: &Vec<ChatMessage>,
+        system: Option<String>,
+        messages: &Vec<AnthropicChatMessage>,
         temperature: f32,
         top_p: f32,
-        stop: &Vec<String>,
-        mut max_tokens: Option<i32>,
-    ) -> Result<LLMChatGeneration> {
+        stop_sequences: &Vec<String>,
+        max_tokens: i32,
+    ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
 
-        let prompt = self.chat_prompt(messages);
+        let mut body = json!({
+            "model": self.id.clone(),
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "stop_sequences": match stop_sequences.len() {
+                0 => None,
+                _ => Some(stop_sequences),
+            },
+        });
 
-        let mut stop_tokens = stop.clone();
-        stop_tokens.push(String::from("\n\nHuman:"));
-        stop_tokens.push(String::from("\n\nAssistant:"));
-
-        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
-            let tokens = self.encode(&prompt).await?;
-            max_tokens = Some(std::cmp::min(
-                (self.context_size() - tokens.len()) as i32,
-                16384,
-            ));
+        if system.is_some() {
+            body["system"] = json!(system);
         }
 
-        let response = self
-            .completion(
-                self.api_key.clone().unwrap(),
-                &prompt,
-                match max_tokens {
-                    Some(m) => m,
-                    None => 256,
-                },
-                temperature,
-                top_p,
-                None,
-                stop_tokens.as_ref(),
-            )
+        let res = reqwest::Client::new()
+            .post(self.messages_uri()?.to_string())
+            .header("Content-Type", "application/json")
+            .header("X-API-Key", self.api_key.clone().unwrap())
+            .header("anthropic-version", "2023-06-01")
+            .json(&body)
+            .send()
             .await?;
 
-        return Ok(LLMChatGeneration {
-            created: utils::now(),
-            provider: ProviderID::Anthropic.to_string(),
-            model: self.id.clone(),
-            completions: vec![ChatMessage {
-                role: ChatMessageRole::Assistant,
-                content: Some(response.completion.clone()),
-                name: None,
-                function_call: None,
-            }],
-        });
+        let status = res.status();
+        let body = res.bytes().await?;
+
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+        let c: &[u8] = &b;
+        let response = match status {
+            reqwest::StatusCode::OK => {
+                let response: ChatResponse = serde_json::from_slice(c)?;
+                Ok(response)
+            }
+            _ => {
+                let error: Error = serde_json::from_slice(c)?;
+                Err(ModelError {
+                    message: format!("Anthropic API Error: {}", error.to_string()),
+                    retryable: None,
+                })
+            }
+        }?;
+
+        Ok(response)
     }
 
     pub async fn streamed_chat_completion(
         &self,
-        messages: &Vec<ChatMessage>,
+        system: Option<String>,
+        messages: &Vec<AnthropicChatMessage>,
         temperature: f32,
         top_p: f32,
-        stop: &Vec<String>,
-        mut max_tokens: Option<i32>,
+        stop_sequences: &Vec<String>,
+        max_tokens: i32,
         event_sender: UnboundedSender<Value>,
-    ) -> Result<LLMChatGeneration> {
-        let prompt = self.chat_prompt(messages);
+    ) -> Result<ChatResponse> {
+        assert!(self.api_key.is_some());
 
-        let mut stop_tokens = stop.clone();
-        stop_tokens.push(String::from("\n\nHuman:"));
-        stop_tokens.push(String::from("\n\nAssistant:"));
+        let mut body = json!({
+            "model": self.id.clone(),
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "stop_sequences": match stop_sequences.len() {
+                0 => None,
+                _ => Some(stop_sequences),
+            },
+            "stream": true,
+        });
 
-        if max_tokens.is_none() || max_tokens.unwrap() == -1 {
-            let tokens = self.encode(&prompt).await?;
-            max_tokens = Some(std::cmp::min(
-                (self.context_size() - tokens.len()) as i32,
-                16384,
-            ));
+        if system.is_some() {
+            body["system"] = json!(system);
         }
 
-        let response = self
-            .streamed_completion(
-                self.api_key.clone().unwrap(),
-                prompt.as_str(),
-                match max_tokens {
-                    Some(m) => m,
-                    None => 256,
-                },
-                temperature,
-                top_p,
-                None,
-                &stop_tokens,
-                event_sender,
-            )
-            .await;
-
-        return Ok(LLMChatGeneration {
-            created: utils::now(),
-            provider: ProviderID::Anthropic.to_string(),
-            model: self.id.clone(),
-            completions: vec![ChatMessage {
-                role: ChatMessageRole::Assistant,
-                content: Some(response?.completion.clone()),
-                name: None,
-                function_call: None,
-            }],
-        });
-    }
-
-    pub async fn streamed_completion(
-        &self,
-        api_key: String,
-        prompt: &str,
-        max_tokens_to_sample: i32,
-        temperature: f32,
-        top_p: f32,
-        top_k: Option<i32>,
-        stop: &Vec<String>,
-        event_sender: UnboundedSender<Value>,
-    ) -> Result<Response> {
         let https = HttpsConnector::new();
-        let url = self.uri()?.to_string();
+        let url = self.messages_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
             Ok(builder) => builder,
@@ -245,7 +335,263 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
-        builder = match builder.header("X-API-Key", api_key.as_str()) {
+        builder = match builder.header("X-API-Key", self.api_key.clone().unwrap().as_str()) {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+        builder = match builder.header("anthropic-version", "2023-06-01") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+
+        let client = builder
+            .body(body.to_string())
+            .reconnect(
+                es::ReconnectOptions::reconnect(true)
+                    .retry_initial(false)
+                    .delay(Duration::from_secs(1))
+                    .backoff_factor(2)
+                    .delay_max(Duration::from_secs(8))
+                    .build(),
+            )
+            .build_with_conn(https);
+
+        let mut stream = client.stream();
+
+        let mut final_response: Option<ChatResponse> = None;
+        'stream: loop {
+            match stream.try_next().await {
+                Ok(stream_next) => match stream_next {
+                    Some(es::SSE::Comment(comment)) => {
+                        println!("UNEXPECTED COMMENT {}", comment);
+                    }
+                    Some(es::SSE::Event(event)) => match event.event_type.as_str() {
+                        "message_start" => {
+                            let event: StreamMessageStart =
+                                match serde_json::from_str(event.data.as_str()) {
+                                    Ok(event) => event,
+                                    Err(error) => {
+                                        Err(anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            error,
+                                            event.data
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                };
+
+                            final_response = Some(event.message.clone());
+                        }
+                        "content_block_start" => {
+                            let event: StreamContentBlockStart =
+                                match serde_json::from_str(event.data.as_str()) {
+                                    Ok(event) => event,
+                                    Err(error) => {
+                                        Err(anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            error,
+                                            event.data
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                };
+
+                            match final_response.as_mut() {
+                                None => {
+                                    Err(anyhow!(
+                                        "Error streaming from Anthropic: \
+                                                missing `message_start`"
+                                    ))?;
+                                    break 'stream;
+                                }
+                                Some(response) => {
+                                    response.content.push(event.content_block.clone());
+                                    if event.content_block.text.len() > 0 {
+                                        let _ = event_sender.send(json!({
+                                            "type": "tokens",
+                                            "content": {
+                                              "text": event.content_block.text,
+                                            }
+
+                                        }));
+                                    }
+                                }
+                            }
+                        }
+                        "content_block_delta" => {
+                            let event: StreamContentBlockDelta =
+                                match serde_json::from_str(event.data.as_str()) {
+                                    Ok(event) => event,
+                                    Err(error) => {
+                                        Err(anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            error,
+                                            event.data
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                };
+
+                            match event.delta.r#type.as_str() {
+                                "text_delta" => (),
+                                _ => {
+                                    Err(anyhow!(
+                                        "Error streaming from Anthropic: \
+                                             unexpected delta type: {:?}",
+                                        event.delta.r#type
+                                    ))?;
+                                    break 'stream;
+                                }
+                            }
+
+                            match final_response.as_mut() {
+                                None => {
+                                    Err(anyhow!(
+                                        "Error streaming from Anthropic: \
+                                                missing `message_start`"
+                                    ))?;
+                                    break 'stream;
+                                }
+                                Some(response) => match response.content.get_mut(0) {
+                                    None => {
+                                        Err(anyhow!(
+                                            "Error streaming from Anthropic: \
+                                                    missing `content_block_start`"
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                    Some(content) => {
+                                        content.text.push_str(event.delta.text.as_str());
+                                        if event.delta.text.len() > 0 {
+                                            let _ = event_sender.send(json!({
+                                                "type": "tokens",
+                                                "content": {
+                                                  "text": event.delta.text,
+                                                }
+
+                                            }));
+                                        }
+                                    }
+                                },
+                            }
+                        }
+                        "content_block_stop" => {
+                            let _: StreamContentBlockStop =
+                                match serde_json::from_str(event.data.as_str()) {
+                                    Ok(event) => event,
+                                    Err(error) => {
+                                        Err(anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            error,
+                                            event.data
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                };
+                        }
+                        "message_delta" => {
+                            let event: StreamMessageDelta =
+                                match serde_json::from_str(event.data.as_str()) {
+                                    Ok(event) => event,
+                                    Err(error) => {
+                                        Err(anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            error,
+                                            event.data
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                };
+
+                            match final_response.as_mut() {
+                                None => {
+                                    Err(anyhow!(
+                                        "Error streaming from Anthropic: \
+                                                missing `message_start`"
+                                    ))?;
+                                    break 'stream;
+                                }
+                                Some(response) => {
+                                    response.stop_reason = event.delta.stop_reason;
+                                    response.usage.output_tokens = event.usage.output_tokens;
+                                }
+                            }
+                        }
+                        "message_stop" => {
+                            break 'stream;
+                        }
+                        "error" => {
+                            let event: Error = match serde_json::from_str(event.data.as_str()) {
+                                Ok(event) => event,
+                                Err(_) => {
+                                    Err(anyhow!(
+                                        "Streaming error from Anthropic: {:?}",
+                                        event.data
+                                    ))?;
+                                    break 'stream;
+                                }
+                            };
+
+                            Err(ModelError {
+                                message: format!(
+                                    "Anthropic API Error: {}",
+                                    event.error.to_string()
+                                ),
+                                retryable: None,
+                            })?;
+                            break 'stream;
+                        }
+                        _ => (),
+                    },
+                    None => {
+                        println!("UNEXPECTED NONE");
+                        break 'stream;
+                    }
+                },
+                Err(error) => {
+                    Err(anyhow!("Error streaming from Anthropic: {:?}", error))?;
+                    break 'stream;
+                }
+            }
+        }
+
+        match final_response {
+            Some(response) => Ok(response),
+            None => Err(anyhow!("No response from Anthropic")),
+        }
+    }
+
+    pub async fn streamed_completion(
+        &self,
+        prompt: &str,
+        max_tokens_to_sample: i32,
+        temperature: f32,
+        top_p: f32,
+        top_k: Option<i32>,
+        stop: &Vec<String>,
+        event_sender: UnboundedSender<Value>,
+    ) -> Result<CompletionResponse> {
+        assert!(self.api_key.is_some());
+
+        let https = HttpsConnector::new();
+        let url = self.completions_uri()?.to_string();
+
+        let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
+            Ok(builder) => builder,
+            Err(e) => {
+                return Err(anyhow!(
+                    "Error creating Anthropic streaming client: {:?}",
+                    e
+                ))
+            }
+        };
+
+        builder = builder.method(String::from("POST"));
+        builder = match builder.header("Content-Type", "application/json") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+        builder = match builder.header("X-API-Key", self.api_key.clone().unwrap().as_str()) {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
@@ -282,7 +628,7 @@ impl AnthropicLLM {
 
         let mut stream = client.stream();
 
-        let mut final_response: Option<Response> = None;
+        let mut final_response: Option<CompletionResponse> = None;
         let mut completion = String::new();
         'stream: loop {
             match stream.try_next().await {
@@ -293,22 +639,22 @@ impl AnthropicLLM {
                     Some(es::SSE::Event(event)) => match event.event_type.as_str() {
                         "completion" => {
                             // println!("RESPONSE {} {}", event.event_type, event.data);
-                            let response: Response = match serde_json::from_str(event.data.as_str())
-                            {
-                                Ok(response) => response,
-                                Err(error) => {
-                                    Err(anyhow!(
-                                        "Error parsing response from Anthropic: {:?} {:?}",
-                                        error,
-                                        event.data
-                                    ))?;
-                                    break 'stream;
-                                }
-                            };
+                            let response: CompletionResponse =
+                                match serde_json::from_str(event.data.as_str()) {
+                                    Ok(response) => response,
+                                    Err(error) => {
+                                        Err(anyhow!(
+                                            "Error parsing response from Anthropic: {:?} {:?}",
+                                            error,
+                                            event.data
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                };
 
                             match response.stop_reason {
                                 Some(stop_reason) => {
-                                    final_response = Some(Response {
+                                    final_response = Some(CompletionResponse {
                                         completion,
                                         stop_reason: Some(stop_reason),
                                         stop: response.stop.clone(),
@@ -358,18 +704,19 @@ impl AnthropicLLM {
 
     async fn completion(
         &self,
-        api_key: String,
         prompt: &str,
         max_tokens_to_sample: i32,
         temperature: f32,
         top_p: f32,
         top_k: Option<i32>,
         stop: &Vec<String>,
-    ) -> Result<Response> {
+    ) -> Result<CompletionResponse> {
+        assert!(self.api_key.is_some());
+
         let res = reqwest::Client::new()
-            .post(self.uri()?.to_string())
+            .post(self.completions_uri()?.to_string())
             .header("Content-Type", "application/json")
-            .header("X-API-Key", api_key)
+            .header("X-API-Key", self.api_key.clone().unwrap())
             .header("anthropic-version", "2023-06-01")
             .json(&json!({
                 "model": self.id.clone(),
@@ -396,7 +743,7 @@ impl AnthropicLLM {
         let c: &[u8] = &b;
         let response = match status {
             reqwest::StatusCode::OK => {
-                let response: Response = serde_json::from_slice(c)?;
+                let response: CompletionResponse = serde_json::from_slice(c)?;
                 Ok(response)
             }
             _ => {
@@ -407,6 +754,7 @@ impl AnthropicLLM {
                 })
             }
         }?;
+
         Ok(response)
     }
 }
@@ -436,7 +784,7 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("claude-2.1") {
+        if self.id.starts_with("claude-2.1") || self.id.starts_with("claude-3") {
             200000
         } else {
             100000
@@ -470,7 +818,7 @@ impl LLM for AnthropicLLM {
                 let tokens = self.encode(prompt).await?;
                 max_tokens = Some(std::cmp::min(
                     (self.context_size() - tokens.len()) as i32,
-                    16384,
+                    4096,
                 ));
             }
         }
@@ -480,7 +828,6 @@ impl LLM for AnthropicLLM {
                 let mut completions: Vec<Tokens> = vec![];
                 let response = match self
                     .streamed_completion(
-                        self.api_key.clone().unwrap(),
                         prompt,
                         match max_tokens {
                             Some(m) => m,
@@ -518,11 +865,10 @@ impl LLM for AnthropicLLM {
                 // so we loop here and make n API calls
                 let response = self
                     .completion(
-                        self.api_key.clone().unwrap(),
                         prompt,
                         match max_tokens {
                             Some(m) => m,
-                            None => 256,
+                            None => 4096,
                         },
                         temperature,
                         match top_p {
@@ -582,12 +928,14 @@ impl LLM for AnthropicLLM {
         top_p: Option<f32>,
         n: usize,
         stop: &Vec<String>,
-        max_tokens: Option<i32>,
+        mut max_tokens: Option<i32>,
         _presence_penalty: Option<f32>,
         _frequency_penalty: Option<f32>,
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        assert!(self.api_key.is_some());
+        assert!(n > 0);
         if n > 1 {
             return Err(anyhow!(
                 "Anthropic only supports generating one sample at a time."
@@ -597,36 +945,119 @@ impl LLM for AnthropicLLM {
             return Err(anyhow!("Anthropic does not support chat functions."));
         }
 
-        match event_sender {
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                max_tokens = Some(4096);
+            }
+        }
+
+        let system = match messages.get(0) {
+            Some(cm) => match cm.role {
+                ChatMessageRole::System => match cm.content.as_ref() {
+                    Some(c) => Some(c.clone()),
+                    None => None,
+                },
+                _ => None,
+            },
+            None => None,
+        };
+
+        let mut messages = messages
+            .iter()
+            .skip(match system.as_ref() {
+                Some(_) => 1,
+                None => 0,
+            })
+            .map(|cm| AnthropicChatMessage::try_from(cm))
+            .collect::<Result<Vec<AnthropicChatMessage>>>()?;
+
+        messages = messages.iter().fold(
+            vec![],
+            |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {
+                match acc.last_mut() {
+                    Some(last) if last.role == cm.role => {
+                        last.content.extend(cm.content.clone());
+                    }
+                    _ => {
+                        acc.push(cm.clone());
+                    }
+                };
+                acc
+            },
+        );
+
+        messages = messages
+            .iter()
+            .map(|cm| AnthropicChatMessage {
+                content: vec![AnthropicContent {
+                    r#type: String::from("text"),
+                    text: cm
+                        .content
+                        .iter()
+                        .map(|c| c.text.clone())
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                }],
+                role: cm.role.clone(),
+            })
+            .collect();
+
+        // merge messages of the same role
+
+        let c = match event_sender {
             Some(es) => {
-                return self
-                    .streamed_chat_completion(
-                        messages,
-                        temperature,
-                        match top_p {
-                            Some(p) => p,
-                            None => 1.0,
-                        },
-                        stop,
-                        max_tokens,
-                        es,
-                    )
-                    .await;
+                self.streamed_chat_completion(
+                    system,
+                    &messages,
+                    temperature,
+                    match top_p {
+                        Some(p) => p,
+                        None => 1.0,
+                    },
+                    stop,
+                    match max_tokens {
+                        Some(m) => m,
+                        None => 4096,
+                    },
+                    es,
+                )
+                .await?
             }
             None => {
-                return self
-                    .chat_completion(
-                        messages,
-                        temperature,
-                        match top_p {
-                            Some(p) => p,
-                            None => 1.0,
-                        },
-                        stop,
-                        max_tokens,
-                    )
-                    .await;
+                self.chat_completion(
+                    system,
+                    &messages,
+                    temperature,
+                    match top_p {
+                        Some(p) => p,
+                        None => 1.0,
+                    },
+                    stop,
+                    match max_tokens {
+                        Some(m) => m,
+                        None => 4096,
+                    },
+                )
+                .await?
             }
+        };
+
+        match c.content.first() {
+            None => Err(anyhow!("No content in response from Anthropic.")),
+            Some(content) => match content.r#type.as_str() {
+                "text" => Ok(LLMChatGeneration {
+                    created: utils::now(),
+                    provider: ProviderID::Anthropic.to_string(),
+                    model: self.id.clone(),
+                    completions: vec![ChatMessage {
+                        role: ChatMessageRole::Assistant,
+                        content: Some(content.text.clone()),
+                        name: None,
+                        function_call: None,
+                    }],
+                }),
+                _ => Err(anyhow!("Anthropic returned an unexpected content type.")),
+            },
         }
     }
 }
