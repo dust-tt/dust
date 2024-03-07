@@ -189,7 +189,9 @@ export async function deleteConversation(
  * Conversation Rendering
  */
 
-export async function batchRenderUserMessages(messages: Message[]) {
+export async function batchRenderUserMessages(
+  messages: Message[]
+): Promise<{ m: UserMessageType; rank: number; version: number }[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
@@ -241,14 +243,15 @@ export async function batchRenderUserMessages(messages: Message[]) {
       user: user
         ? {
             id: user.id,
+            createdAt: user.createdAt.getTime(),
             username: user.username,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
             fullName:
               user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+            provider: user.provider,
             image: user.imageUrl,
-            workspaces: [],
           }
         : null,
       mentions: messageMentions.map((m) => {
@@ -267,7 +270,7 @@ export async function batchRenderUserMessages(messages: Message[]) {
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
       },
-    };
+    } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
   });
 }
