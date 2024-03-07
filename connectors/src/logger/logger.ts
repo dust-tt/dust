@@ -15,7 +15,9 @@ const defaultPinoOptions: LoggerOptions = {
   level: LOG_LEVEL,
   redact: [
     // Redact Axios config.
+    "*.*.config.headers.Authorization",
     "*.config.headers.Authorization",
+    "*.*.response.config.headers.Authorization",
     "*.response.config.headers.Authorization",
     // Redact Undici config.
     "headers.authorization",
