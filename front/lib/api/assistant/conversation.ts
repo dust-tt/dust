@@ -452,7 +452,9 @@ function renderContentFragment({
   };
 }
 
-async function batchRenderContentFragment(messages: Message[]) {
+async function batchRenderContentFragment(
+  messages: Message[]
+): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
   const messagesWithContentFragment = messages.filter(
     (m) => !!m.contentFragment
   );
