@@ -173,25 +173,28 @@ export function subFilter(a: string, b: string) {
  * lexicographic order
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
-  const distanceToQuery = (s: string) =>
-    subFilterLastIndex(query, s) - subFilterFirstIndex(query, s);
-  const distanceA = distanceToQuery(a);
-  if (distanceA === 0) {
+  const subFilterFirstIndexA = subFilterFirstIndex(query, a);
+  if (subFilterFirstIndexA === -1) {
     return 1;
   }
-  const distanceB = distanceToQuery(b);
-  if (distanceB === 0) {
+
+  const subFilterFirstIndexB = subFilterFirstIndex(query, b);
+  if (subFilterFirstIndexB === -1) {
     return -1;
   }
 
+  const subFilterLastIndexA = subFilterLastIndex(query, a);
+  const subFilterLastIndexB = subFilterLastIndex(query, b);
+  const distanceA = subFilterLastIndexA - subFilterFirstIndexA;
+  const distanceB = subFilterLastIndexB - subFilterFirstIndexB;
   if (distanceA !== distanceB) {
     return distanceA - distanceB;
   }
-  const firstCharA = a.indexOf(query.charAt(0));
-  const firstCharB = b.indexOf(query.charAt(0));
-  if (firstCharA !== firstCharB) {
-    return firstCharA - firstCharB;
+
+  if (subFilterFirstIndexA !== subFilterFirstIndexB) {
+    return subFilterFirstIndexA - subFilterFirstIndexB;
   }
+
   if (a.length !== b.length) {
     return a.length - b.length;
   }
