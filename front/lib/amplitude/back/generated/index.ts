@@ -77,6 +77,7 @@ export interface IdentifyProperties {
 
 export interface UserMessagePostedProperties {
   conversationId: string;
+  isGlobalAgent: boolean;
   mentions: any;
   /**
    * | Rule | Value |

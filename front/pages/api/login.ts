@@ -2,7 +2,7 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { FrontApiError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackWorkspaceMember } from "@app/lib/amplitude/back";
+import { trackUserMemberships } from "@app/lib/amplitude/back";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import {
@@ -294,7 +294,7 @@ export async function createAndLogMembership({
     userId: userId,
     workspaceId: workspace.id,
   });
-  trackWorkspaceMember(m).catch(logger.error);
+  trackUserMemberships(m.userId).catch(logger.error);
 
   // If the user is joining a workspace with a subscription based on per_seat,
   // we need to update the Stripe subscription quantity.
