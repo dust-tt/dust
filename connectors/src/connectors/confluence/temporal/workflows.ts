@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import type { WorkflowInfo } from "@temporalio/workflow";
 import {
+  continueAsNew,
   executeChild,
   proxyActivities,
   setHandler,
@@ -38,6 +39,8 @@ const {
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
+
+const MAX_HISTORY_LENGTH = 30_000;
 
 export async function confluenceSyncWorkflow({
   connectorId,
@@ -205,7 +208,7 @@ export async function confluenceSpaceSyncWorkflow(
           spaceName,
           confluenceCloudId,
           visitedAtMs,
-          topLevelPageId: pageId,
+          topLevelPageIds: [pageId],
         },
       ],
       memo,
@@ -232,7 +235,7 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
   isBatchSync: boolean;
   spaceId: string;
   spaceName: string;
-  topLevelPageId: string;
+  topLevelPageIds: string[];
   visitedAtMs: number;
 }
 
@@ -245,8 +248,8 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
 export async function confluenceSyncTopLevelChildPagesWorkflow(
   params: confluenceSyncTopLevelChildPagesWorkflowInput
 ) {
-  const { spaceName, topLevelPageId, visitedAtMs } = params;
-  const stack = [topLevelPageId];
+  const { spaceName, topLevelPageIds, visitedAtMs } = params;
+  const stack = [...topLevelPageIds];
 
   while (stack.length > 0) {
     const currentPageId = stack.pop();
@@ -278,6 +281,14 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
 
       stack.push(...childPageIds);
     } while (nextPageCursor !== null);
+
+    // If additional pages are pending and workflow limits are reached, continue in a new workflow.
+    if (stack.length > 0 && workflowInfo().historyLength > MAX_HISTORY_LENGTH) {
+      await continueAsNew<typeof confluenceSyncTopLevelChildPagesWorkflow>({
+        ...params,
+        topLevelPageIds: stack,
+      });
+    }
   }
 }
 

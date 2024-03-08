@@ -412,9 +412,12 @@ export async function confluenceGetTopLevelPageIdsActivity({
     pageCursor
   );
 
-  localLogger.info("Found Confluence top-level pages in space.", {
-    topLevelPagesCount: childPageIds.length,
-  });
+  localLogger.info(
+    {
+      topLevelPagesCount: childPageIds.length,
+    },
+    "Found Confluence top-level pages in space."
+  );
 
   return { topLevelPageIds: childPageIds, nextPageCursor };
 }
@@ -554,9 +557,12 @@ export async function confluenceRemoveSpaceActivity(
     },
   });
 
-  localLogger.info("Delete Confluence space", {
-    numberOfPages: allPages.length,
-  });
+  localLogger.info(
+    {
+      numberOfPages: allPages.length,
+    },
+    "Delete Confluence space"
+  );
 
   for (const page of allPages) {
     await deletePage(connectorId, page.pageId, dataSourceConfig);
