@@ -15,7 +15,7 @@ export type LightWorkspaceType = {
 
 export type WorkspaceType = LightWorkspaceType & {
   flags: WhitelistableFeature[];
-  ssoEnforced: boolean;
+  ssoEnforced?: boolean;
 };
 
 export type UserProviderType = "github" | "google" | null;
