@@ -38,11 +38,10 @@ export function GalleryAssistantPreviewContainer({
   const { description, generation, lastAuthors, name, pictureUrl, scope } =
     agentConfiguration;
 
-  const isGlobal = scope === "global";
   const hasAccessToLargeModels = isUpgraded(plan);
   const eligibleForTesting =
     hasAccessToLargeModels || !isLargeModel(generation?.model);
-  const isTestable = !isGlobal && eligibleForTesting;
+
   return (
     <AssistantPreview
       title={name}
@@ -51,7 +50,7 @@ export function GalleryAssistantPreviewContainer({
       description={description}
       variant="gallery"
       onClick={onShowDetails}
-      onPlayClick={isTestable ? handleTestClick : undefined}
+      onPlayClick={eligibleForTesting ? handleTestClick : undefined}
       renderActions={(isParentHovered) => {
         return (
           <div className="s-flex s-gap-2">
