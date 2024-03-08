@@ -42,7 +42,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     githubCodeSyncEnabled: boolean;
   };
   temporalWorkspace: string;
-}>(async (context, session, auth) => {
+}>(async (context, auth) => {
   const owner = auth.workspace();
 
   if (!owner || !auth.isDustSuperUser()) {

@@ -8,7 +8,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeWorkspaces } from "@app/lib/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async (context, session, auth) => {
+  async (context, auth) => {
     if (!auth.isDustSuperUser()) {
       return {
         notFound: true,

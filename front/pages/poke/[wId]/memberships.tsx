@@ -15,7 +15,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   members: UserTypeWithWorkspaces[];
-}>(async (context, session, auth) => {
+}>(async (context, auth) => {
   const owner = auth.workspace();
 
   if (!owner || !auth.isDustSuperUser()) {

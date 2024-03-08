@@ -54,7 +54,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
-}>(async (context, session, auth) => {
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 

@@ -11,7 +11,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
@@ -22,12 +21,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
   gaTrackingId: string;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 

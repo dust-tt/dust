@@ -15,7 +15,7 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
-}>(async (context, session, auth) => {
+}>(async (context, auth) => {
   const owner = auth.workspace();
 
   if (!owner || !auth.isAdmin()) {

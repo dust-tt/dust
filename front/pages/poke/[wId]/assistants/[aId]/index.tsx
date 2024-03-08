@@ -13,7 +13,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
-}>(async (context, session, auth) => {
+}>(async (context, auth) => {
   if (!auth.isDustSuperUser()) {
     return {
       notFound: true,
