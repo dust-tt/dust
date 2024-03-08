@@ -25,7 +25,7 @@ export class Workspace extends Model<
   declare name: string;
   declare description: string | null;
   declare segmentation: WorkspaceSegmentationType;
-  declare ssoEnforced: boolean;
+  declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
