@@ -40,7 +40,10 @@ const {
   startToCloseTimeout: "20 minutes",
 });
 
-const MAX_HISTORY_LENGTH = 30_000;
+// Set a conservative threshold to start a new workflow and
+// avoid exceeding Temporal's max workflow size limit,
+// since a Confluence page can have an unbounded number of pages.
+const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 30_000;
 
 export async function confluenceSyncWorkflow({
   connectorId,
@@ -283,7 +286,10 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
     } while (nextPageCursor !== null);
 
     // If additional pages are pending and workflow limits are reached, continue in a new workflow.
-    if (stack.length > 0 && workflowInfo().historyLength > MAX_HISTORY_LENGTH) {
+    if (
+      stack.length > 0 &&
+      workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH
+    ) {
       await continueAsNew<typeof confluenceSyncTopLevelChildPagesWorkflow>({
         ...params,
         topLevelPageIds: stack,
