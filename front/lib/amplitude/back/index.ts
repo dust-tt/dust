@@ -75,7 +75,7 @@ async function populateWorkspaceProperties(workspaceId: ModelId) {
   const amplitude = getBackendClient();
   const workspace = await Workspace.findByPk(workspaceId);
   if (workspace) {
-    const planCode = await getPlanCodeForWorkspace(workspace.sId);
+    const planCode = await getPlanCodeForWorkspace(workspace.id);
     const groupProperties = new Identify();
     groupProperties.set("name", workspace.name);
     groupProperties.set("plan", planCode);
@@ -85,7 +85,7 @@ async function populateWorkspaceProperties(workspaceId: ModelId) {
 }
 
 async function getPlanCodeForWorkspace(
-  workspaceId: string
+  workspaceId: ModelId
 ): Promise<string | "no-plan"> {
   const subscription = await Subscription.findOne({
     where: {
