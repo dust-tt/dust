@@ -1,4 +1,8 @@
-import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
+import type {
+  RoleType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isEnterpriseConnectionSub } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
@@ -105,15 +109,14 @@ export type CustomGetServerSideProps<
 ) => Promise<GetServerSidePropsResult<Props>>;
 
 export function statisfiesEnforceEntrepriseConnection(
-  auth: Authenticator,
-  session: SessionWithUser
+  session: SessionWithUser,
+  workspace: WorkspaceType | Workspace | null
 ) {
-  const owner = auth.workspace();
-  if (!owner) {
+  if (!workspace) {
     return true;
   }
 
-  if (owner.ssoEnforced) {
+  if (workspace.ssoEnforced) {
     return isEnterpriseConnectionSub(session.user.sub);
   }
 
@@ -185,7 +188,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // Validate the user's session to guarantee compliance with the workspace's SSO requirements when SSO is enforced.
-        if (auth && !statisfiesEnforceEntrepriseConnection(auth, session)) {
+        if (
+          auth &&
+          !statisfiesEnforceEntrepriseConnection(session, auth.workspace())
+        ) {
           return {
             redirect: {
               permanent: false,

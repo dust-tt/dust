@@ -11,7 +11,10 @@ import {
 } from "@app/lib/iam/invitations";
 import { getActiveMembershipsForUser } from "@app/lib/iam/memberships";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getUserFromSession } from "@app/lib/iam/session";
+import {
+  getUserFromSession,
+  statisfiesEnforceEntrepriseConnection,
+} from "@app/lib/iam/session";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import {
   createWorkspace,
@@ -114,7 +117,8 @@ function canJoinTargetWorkspace(
 async function handleRegularSignupFlow(
   session: SessionWithUser,
   user: User,
-  targetWorkspaceId?: string
+  targetWorkspaceId?: string,
+  autoJoinWorkspace?: Workspace
 ): Promise<{
   flow: "no-auto-join" | "revoked" | null;
   workspace: Workspace | null;
@@ -131,24 +135,23 @@ async function handleRegularSignupFlow(
   const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
     session
   );
-  const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
 
   // Verify that the user is allowed to join the specified workspace.
   const joinTargetWorkspaceAllowed = canJoinTargetWorkspace(
     targetWorkspaceId,
-    existingWorkspace,
+    autoJoinWorkspace,
     activeMemberships
   );
   if (
     workspaceWithVerifiedDomain &&
-    existingWorkspace &&
+    autoJoinWorkspace &&
     joinTargetWorkspaceAllowed
   ) {
     const workspaceSubscription = await subscriptionForWorkspace(
-      existingWorkspace
+      autoJoinWorkspace
     );
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
-      existingWorkspace,
+      autoJoinWorkspace,
       workspaceSubscription
     );
     // Redirect to existing workspace if no seats available, requiring an invite.
@@ -162,7 +165,7 @@ async function handleRegularSignupFlow(
     const m = await Membership.findOne({
       where: {
         userId: user.id,
-        workspaceId: existingWorkspace.id,
+        workspaceId: autoJoinWorkspace.id,
       },
     });
 
@@ -172,13 +175,13 @@ async function handleRegularSignupFlow(
 
     if (!m) {
       await createAndLogMembership({
-        workspace: existingWorkspace,
+        workspace: autoJoinWorkspace,
         userId: user.id,
         role: "user",
       });
     }
 
-    return { flow: null, workspace: existingWorkspace };
+    return { flow: null, workspace: autoJoinWorkspace };
   } else if (!targetWorkspaceId) {
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
@@ -229,7 +232,24 @@ async function handler(
       inviteToken
     );
 
-    // Login flow: first step is to attempt to find the user.
+    // Begin by verifying if a workspace corresponds to their domain.
+    const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
+      session
+    );
+    const { workspace: autoJoinWorkspace } = workspaceWithVerifiedDomain ?? {};
+
+    // If a matching workspace is found, confirm that the current session meets SSO criteria.
+    const satisfiesSSORequirements = statisfiesEnforceEntrepriseConnection(
+      session,
+      autoJoinWorkspace ?? null
+    );
+
+    // If SSO requirements not met, redirect to SSO login.
+    if (autoJoinWorkspace && !satisfiesSSORequirements) {
+      res.redirect(`/sso-enforced?workspaceId=${autoJoinWorkspace.sId}`);
+      return;
+    }
+
     const user = await createOrUpdateUser(session);
 
     if (membershipInvite) {
@@ -238,7 +258,8 @@ async function handler(
       const { flow, workspace } = await handleRegularSignupFlow(
         session,
         user,
-        targetWorkspaceId
+        targetWorkspaceId,
+        autoJoinWorkspace
       );
       if (flow) {
         res.redirect(`/no-workspace?flow=${flow}`);
