@@ -19,6 +19,7 @@ import {
   useConversationReactions,
   useConversations,
 } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 /**
  *
@@ -32,6 +33,7 @@ export default function Conversation({
   onStickyMentionsChange,
   isInModal,
   hideReactions,
+  isFading = false,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -39,6 +41,7 @@ export default function Conversation({
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   isInModal?: boolean;
   hideReactions?: boolean;
+  isFading?: boolean;
 }) {
   const {
     conversation,
@@ -181,7 +184,7 @@ export default function Conversation({
   }
 
   return (
-    <div className="pb-44">
+    <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
       {conversation.content.map((versionedMessages) => {
         const m = versionedMessages[versionedMessages.length - 1];
         const convoReactions = reactions.find((r) => r.messageId === m.sId);
