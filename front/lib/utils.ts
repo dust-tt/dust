@@ -135,6 +135,17 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
   return markdown;
 };
 
+/**
+ * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
+ * the same order, and returns the smallest index of the last character of a in
+ * b.
+ *
+ * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
+ * out' in b. e.g.
+ * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
+ * - 'gp4' and 'gpt-4', spread is 5
+ * - 'gp4' and 'gemni-pro4', spread is 10
+ */
 function subFilterLastIndex(a: string, b: string) {
   let i = 0;
   let j = 0;
@@ -147,6 +158,15 @@ function subFilterLastIndex(a: string, b: string) {
   return i === a.length ? j : -1;
 }
 
+/**
+ * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
+ * the same order, and returns the biggest index of the first character of a in b.
+ * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
+ * out' in b. e.g.
+ * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
+ * - 'gp4' and 'gpt-4', spread is 5
+ * - 'gp4' and 'gemni-pro4', spread is 10
+ */
 function subFilterFirstIndex(a: string, b: string) {
   let i = a.length - 1;
   let j = b.length - 1;
