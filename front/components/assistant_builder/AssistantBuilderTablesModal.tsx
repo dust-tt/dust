@@ -22,7 +22,7 @@ import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useTables } from "@app/lib/swr";
-import { subFilter } from "@app/lib/utils";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
 
@@ -225,7 +225,7 @@ const PickTable = ({
               placeholder="Search..."
             />
             {filtered
-              .sort((a, b) => (b.name ? 1 : 0) - (a.name ? 1 : 0))
+              .sort((a, b) => compareForFuzzySort(query, a.name, b.name))
               .map((table) => {
                 return (
                   <Item.Navigation
