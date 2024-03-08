@@ -3,6 +3,7 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
+  Dialog,
   DocumentTextIcon,
   GithubLogo,
   ListCheckIcon,
@@ -725,6 +726,7 @@ interface ConnectorUiConfig {
   addDataButtonLabel: string | null;
   displaySettingsButton: boolean;
   guideLink: string | null;
+  postPermissionsUpdateMessage?: string;
 }
 
 function getRenderingConfigForConnectorProvider(
@@ -759,6 +761,8 @@ function getRenderingConfigForConnectorProvider(
         addDataButtonLabel: "Add / Remove data, manage permissions",
         displaySettingsButton: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+        postPermissionsUpdateMessage:
+          "We've taken your edits into account. Notion permission edits may take up to 24 hours to be reflected on your workspace.",
       };
     case "github":
       return {
@@ -940,10 +944,28 @@ function ManagedDataSourceView({
     addDataButtonLabel,
     displaySettingsButton,
     guideLink,
+    postPermissionsUpdateMessage,
   } = getRenderingConfigForConnectorProvider(connectorProvider);
+
+  const [
+    postPermissionsUpdateDialogIsOpen,
+    setPostPermissionsUpdateDialogIsOpen,
+  ] = useState(false);
 
   return (
     <>
+      {postPermissionsUpdateMessage && (
+        <Dialog
+          isOpen={postPermissionsUpdateDialogIsOpen}
+          onCancel={() => setPostPermissionsUpdateDialogIsOpen(false)}
+          onValidate={() => {
+            setPostPermissionsUpdateDialogIsOpen(false);
+          }}
+          title="Permissions updated"
+        >
+          <span>{postPermissionsUpdateMessage}</span>
+        </Dialog>
+      )}
       <DataSourceDetailsModal
         dataSource={dataSource}
         visible={showDataSourceDetailsModal}
@@ -951,7 +973,10 @@ function ManagedDataSourceView({
           setShowDataSourceDetailsModal(false);
         }}
         onClick={() => {
-          void handleUpdatePermissions();
+          void handleUpdatePermissions().then(() => {
+            postPermissionsUpdateMessage &&
+              setPostPermissionsUpdateDialogIsOpen(true);
+          });
         }}
       />
       <ConnectorPermissionsModal
