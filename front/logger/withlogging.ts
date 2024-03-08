@@ -6,7 +6,10 @@ import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { AuthLevel, CustomGetServerSideProps } from "@app/lib/iam/session";
+import type {
+  CustomGetServerSideProps,
+  UserPrivilege,
+} from "@app/lib/iam/session";
 
 import logger from "./logger";
 
@@ -145,10 +148,15 @@ export function apiError<T>(
 
 export function withGetServerSidePropsLogging<
   T extends { [key: string]: any },
-  RequireAuthLevel extends AuthLevel = "user"
+  RequireUserPrivilege extends UserPrivilege = "user"
 >(
-  getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuthLevel>
-): CustomGetServerSideProps<T, any, any, RequireAuthLevel> {
+  getServerSideProps: CustomGetServerSideProps<
+    T,
+    any,
+    any,
+    RequireUserPrivilege
+  >
+): CustomGetServerSideProps<T, any, any, RequireUserPrivilege> {
   return async (context, auth, session) => {
     const now = new Date();
 

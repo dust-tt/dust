@@ -83,30 +83,30 @@ export async function getUserFromSession(
   };
 }
 
-export type AuthLevel = "none" | "user" | "superuser";
+export type UserPrivilege = "none" | "user" | "superuser";
 
 interface MakeGetServerSidePropsRequirementsWrapperOptions<
-  R extends AuthLevel = "user"
+  R extends UserPrivilege = "user"
 > {
   enableLogging?: boolean;
-  requireAuthLevel: R;
+  requireUserPrivilege: R;
 }
 
 export type CustomGetServerSideProps<
   Props extends { [key: string]: any } = { [key: string]: any },
   Params extends ParsedUrlQuery = ParsedUrlQuery,
   Preview extends PreviewData = PreviewData,
-  RequireAuthLevel extends AuthLevel = "user"
+  RequireUserPrivilege extends UserPrivilege = "user"
 > = (
   context: GetServerSidePropsContext<Params, Preview>,
-  auth: RequireAuthLevel extends "none" ? null : Authenticator,
-  session: RequireAuthLevel extends "none" ? null : SessionWithUser
+  auth: RequireUserPrivilege extends "none" ? null : Authenticator,
+  session: RequireUserPrivilege extends "none" ? null : SessionWithUser
 ) => Promise<GetServerSidePropsResult<Props>>;
 
 async function getAuthenticator(
   context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>,
   session: SessionWithUser | null,
-  requireAuthLevel: AuthLevel
+  requireUserPrivilege: UserPrivilege
 ) {
   if (!session) {
     return null;
@@ -115,7 +115,7 @@ async function getAuthenticator(
   const { wId } = context.params ?? {};
   const workspaceId = typeof wId === "string" ? wId : null;
 
-  switch (requireAuthLevel) {
+  switch (requireUserPrivilege) {
     case "user":
       return workspaceId
         ? Authenticator.fromSession(session, workspaceId)
@@ -130,25 +130,34 @@ async function getAuthenticator(
 }
 
 export function makeGetServerSidePropsRequirementsWrapper<
-  RequireAuthLevel extends AuthLevel = "user"
+  RequireUserPrivilege extends UserPrivilege = "user"
 >({
   enableLogging = true,
-  requireAuthLevel,
-}: MakeGetServerSidePropsRequirementsWrapperOptions<RequireAuthLevel>) {
+  requireUserPrivilege,
+}: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
-    getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuthLevel>
+    getServerSideProps: CustomGetServerSideProps<
+      T,
+      any,
+      any,
+      RequireUserPrivilege
+    >
   ) => {
     return async (
       context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
     ) => {
       const session =
-        requireAuthLevel !== "none"
+        requireUserPrivilege !== "none"
           ? await getSession(context.req, context.res)
           : null;
-      const auth = await getAuthenticator(context, session, requireAuthLevel);
+      const auth = await getAuthenticator(
+        context,
+        session,
+        requireUserPrivilege
+      );
 
       if (
-        requireAuthLevel !== "none" &&
+        requireUserPrivilege !== "none" &&
         (!session || !isValidSession(session))
       ) {
         return {
@@ -160,10 +169,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
         };
       }
 
-      const userSession = session as RequireAuthLevel extends "none"
+      const userSession = session as RequireUserPrivilege extends "none"
         ? null
         : SessionWithUser;
-      const userAuth = auth as RequireAuthLevel extends "none"
+      const userAuth = auth as RequireUserPrivilege extends "none"
         ? null
         : Authenticator;
 
@@ -181,7 +190,9 @@ export function makeGetServerSidePropsRequirementsWrapper<
 }
 
 export const withDefaultUserAuthRequirements =
-  makeGetServerSidePropsRequirementsWrapper({ requireAuthLevel: "user" });
+  makeGetServerSidePropsRequirementsWrapper({ requireUserPrivilege: "user" });
 
 export const withSuperUserAuthRequirements =
-  makeGetServerSidePropsRequirementsWrapper({ requireAuthLevel: "superuser" });
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "superuser",
+  });
