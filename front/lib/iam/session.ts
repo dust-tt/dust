@@ -113,16 +113,13 @@ async function getAuthenticator(
   }
 
   const { wId } = context.params ?? {};
-  if (typeof wId !== "string") {
-    return null;
-  }
 
   switch (requireAuthLevel) {
     case "user":
-      return Authenticator.fromSession(session, wId);
+      return Authenticator.fromSession(session, wId as string);
 
     case "superuser":
-      return Authenticator.fromSuperUserSession(session, wId);
+      return Authenticator.fromSuperUserSession(session, wId as string);
 
     default:
       return null;
@@ -151,7 +148,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
         requireAuthLevel !== "none" &&
         (!session || !isValidSession(session))
       ) {
-        // TODO: Check if the user has a workspace.
         return {
           redirect: {
             permanent: false,
