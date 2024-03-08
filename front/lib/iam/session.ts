@@ -7,7 +7,7 @@ import type {
 import type { ParsedUrlQuery } from "querystring";
 import { Op } from "sequelize";
 
-import { getSession } from "@app/lib/auth";
+import { Authenticator, getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import {
@@ -84,38 +84,74 @@ export async function getUserFromSession(
 }
 
 interface MakeGetServerSidePropsRequirementsWrapperOptions<
-  R extends boolean = true
+  R extends AuthLevel = "user"
 > {
   enableLogging?: boolean;
-  requireAuth: R;
+  requireAuthLevel: R;
 }
 
 export type CustomGetServerSideProps<
   Props extends { [key: string]: any } = { [key: string]: any },
   Params extends ParsedUrlQuery = ParsedUrlQuery,
   Preview extends PreviewData = PreviewData,
-  RequireAuth extends boolean = true
+  RequireAuthLevel extends AuthLevel = "user"
 > = (
   context: GetServerSidePropsContext<Params, Preview>,
-  session: RequireAuth extends true ? SessionWithUser : null
+  session: RequireAuthLevel extends "none" ? null : SessionWithUser,
+  auth: RequireAuthLevel extends "none" ? null : Authenticator
 ) => Promise<GetServerSidePropsResult<Props>>;
 
+export type AuthLevel = "none" | "user" | "superuser";
+
+async function getAuthenticator(
+  context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>,
+  session: SessionWithUser | null,
+  requireAuthLevel: AuthLevel
+) {
+  if (!session) {
+    return null;
+  }
+
+  const { wId } = context.params ?? {};
+  if (typeof wId !== "string") {
+    return null;
+  }
+
+  switch (requireAuthLevel) {
+    case "user":
+      return Authenticator.fromSession(session, wId);
+
+    case "superuser":
+      return Authenticator.fromSuperUserSession(session, wId);
+
+    default:
+      return null;
+  }
+}
+
 export function makeGetServerSidePropsRequirementsWrapper<
-  RequireAuth extends boolean = true
+  RequireAuthLevel extends AuthLevel = "user"
 >({
   enableLogging = true,
-  requireAuth,
-}: MakeGetServerSidePropsRequirementsWrapperOptions<RequireAuth>) {
+  requireAuthLevel,
+}: MakeGetServerSidePropsRequirementsWrapperOptions<RequireAuthLevel>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
-    getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuth>
+    getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuthLevel>
   ) => {
     return async (
       context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>
     ) => {
-      const session = requireAuth
-        ? await getSession(context.req, context.res)
-        : null;
-      if (requireAuth && (!session || !isValidSession(session))) {
+      const session =
+        requireAuthLevel !== "none"
+          ? await getSession(context.req, context.res)
+          : null;
+      const auth = await getAuthenticator(context, session, requireAuthLevel);
+
+      if (
+        requireAuthLevel !== "none" &&
+        (!session || !isValidSession(session))
+      ) {
+        // TODO: Check if the user has a workspace.
         return {
           redirect: {
             permanent: false,
@@ -125,21 +161,28 @@ export function makeGetServerSidePropsRequirementsWrapper<
         };
       }
 
-      const userSession = session as RequireAuth extends true
-        ? SessionWithUser
-        : null;
+      const userSession = session as RequireAuthLevel extends "none"
+        ? null
+        : SessionWithUser;
+      const currentAuth = auth as RequireAuthLevel extends "none"
+        ? null
+        : Authenticator;
 
       if (enableLogging) {
         return withGetServerSidePropsLogging(getServerSideProps)(
           context,
-          userSession
+          userSession,
+          currentAuth
         );
       }
 
-      return getServerSideProps(context, userSession);
+      return getServerSideProps(context, userSession, currentAuth);
     };
   };
 }
 
 export const withDefaultGetServerSidePropsRequirements =
-  makeGetServerSidePropsRequirementsWrapper({ requireAuth: true });
+  makeGetServerSidePropsRequirementsWrapper({ requireAuthLevel: "user" });
+
+export const withSuperUserGetServerSidePropsRequirements =
+  makeGetServerSidePropsRequirementsWrapper({ requireAuthLevel: "superuser" });
