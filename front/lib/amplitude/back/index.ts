@@ -34,22 +34,17 @@ export async function trackWorkspaceMember(membership: Membership) {
   const user = await User.findByPk(membership.userId);
   const workspace = await Workspace.findByPk(membership.workspaceId);
   if (user && workspace) {
-    amplitude.client.setGroup("Group Id", workspace.sId, {
+    amplitude.client.setGroup("GroupWorkspaceId", workspace.sId, {
       user_id: `user-${user.id}`,
       time: membership.createdAt.getTime(),
-      insert_id: `membership_${user.id}-${workspace.sId}`,
-    });
-    amplitude.client.setGroup("Group Name", workspace.name, {
-      user_id: `user-${user.id}`,
-      time: membership.createdAt.getTime(),
-      insert_id: `membership_${user.id}-${workspace.name}`,
+      insert_id: `membership_${user.id}-${workspace.sId}_v2`,
     });
   }
 }
 
 export function trackUser(user: UserType) {
   const amplitude = getBackendClient();
-  amplitude.identify(`user-${user.id}`, {});
+  amplitude.identify(`user-${user.id}`, { email: user.email });
   amplitude.signUp(`user-${user.id}`, {
     insert_id: `signup_${user.id}`,
     time: user.createdAt,

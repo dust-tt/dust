@@ -70,14 +70,32 @@ export type LoadOptions =
   | LoadOptionsWithApiKey
   | LoadOptionsWithClientInstance;
 
+export interface IdentifyProperties {
+  email?: string;
+  SignupDate?: string;
+}
+
 export interface UserMessagePostedProperties {
-  conversationId: any;
+  conversationId: string;
   mentions: any;
-  mentionsCount: any;
+  /**
+   * | Rule | Value |
+   * |---|---|
+   * | Type | integer |
+   */
+  mentionsCount: number;
   messageId: string;
   version: any;
-  workspaceId: any;
-  workspaceName: any;
+  workspaceId: string;
+  workspaceName: string;
+}
+
+export class Identify implements BaseEvent {
+  event_type = amplitude.Types.SpecialEventType.IDENTIFY;
+
+  constructor(public event_properties?: IdentifyProperties) {
+    this.event_properties = event_properties;
+  }
 }
 
 export class SignUp implements BaseEvent {
@@ -155,10 +173,12 @@ export class Ampli {
    * Identify a user and set user properties.
    *
    * @param userId The user's id.
+   * @param properties The user properties.
    * @param options Optional event options.
    */
   identify(
     userId: string | undefined,
+    properties?: IdentifyProperties,
     options?: EventOptions,
   ): PromiseResult<Result> {
     if (!this.isInitializedAndEnabled()) {
@@ -170,6 +190,12 @@ export class Ampli {
     }
 
     const amplitudeIdentify = new amplitude.Identify();
+    const eventProperties = properties;
+    if (eventProperties != null) {
+      for (const [key, value] of Object.entries(eventProperties)) {
+        amplitudeIdentify.set(key, value);
+      }
+    }
 
     return this.amplitude!.identify(amplitudeIdentify, options);
   }
