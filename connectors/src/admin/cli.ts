@@ -334,7 +334,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
-      const pageId = args.pageId as string;
+      const pageId = parseNotionResourceId(args.pageId);
 
       const connector = await ConnectorModel.findOne({
         where: {
@@ -395,7 +395,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
       }
-      const databaseId = args.databaseId as string;
+      const databaseId = parseNotionResourceId(args.databaseId);
 
       const connector = await ConnectorModel.findOne({
         where: {
@@ -472,6 +472,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
+      const pageId = parseNotionResourceId(args.pageId);
       const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
@@ -484,7 +485,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
-      logger.info("Upserting page", { pageId: args.pageId });
+      logger.info("Upserting page", { pageId });
       const connectorId = connector.id;
       const client = await getTemporalClient();
 
@@ -492,11 +493,11 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         args: [
           {
             connectorId,
-            pageId: args.pageId,
+            pageId,
           },
         ],
         taskQueue: QUEUE_NAME,
-        workflowId: `notion-force-sync-upsert-page-${args.pageId}-connector-${connectorId}`,
+        workflowId: `notion-force-sync-upsert-page-${pageId}-connector-${connectorId}`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -524,6 +525,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
       }
+      const databaseId = parseNotionResourceId(args.databaseId);
       const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
@@ -536,7 +538,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
-      logger.info("Upserting database", { databaseId: args.databaseId });
+      logger.info("Upserting database", { databaseId });
       const connectorId = connector.id;
       const client = await getTemporalClient();
 
@@ -544,12 +546,12 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         args: [
           {
             connectorId,
-            databaseId: args.databaseId,
+            databaseId,
             forceResync: !!args.forceResync,
           },
         ],
         taskQueue: QUEUE_NAME,
-        workflowId: `notion-force-sync-upsert-database-${args.databaseId}-connector-${connectorId}`,
+        workflowId: `notion-force-sync-upsert-database-${databaseId}-connector-${connectorId}`,
         searchAttributes: {
           connectorId: [connectorId],
         },
@@ -567,73 +569,6 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
-      break;
-    }
-
-    case "enable-structured-data": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.databaseId) {
-        throw new Error("Missing --databaseId argument");
-      }
-
-      const connector = await getConnectorOrThrow({
-        connectorType: "notion",
-        workspaceId: args.wId,
-      });
-
-      const database = await NotionDatabase.findOne({
-        where: {
-          notionDatabaseId: args.databaseId,
-          connectorId: connector.id,
-        },
-      });
-
-      if (!database) {
-        throw new Error(
-          `Could not find database ${args.databaseId} for connector ${connector.id}`
-        );
-      }
-
-      logger.info("Enabling structured data", { databaseId: args.databaseId });
-
-      await database.update({
-        structuredDataEnabled: true,
-      });
-
-      logger.info("Upserting database", { databaseId: args.databaseId });
-      const connectorId = connector.id;
-      const client = await getTemporalClient();
-
-      const wf = await client.workflow.start(upsertDatabaseWorkflow, {
-        args: [
-          {
-            connectorId,
-            databaseId: args.databaseId,
-            forceResync: false,
-          },
-        ],
-        taskQueue: QUEUE_NAME,
-        workflowId: `notion-force-sync-upsert-database-${args.databaseId}-connector-${connectorId}`,
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        memo: {
-          connectorId: connectorId,
-        },
-      });
-
-      const wfId = wf.workflowId;
-      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
-      if (!temporalNamespace) {
-        console.log(`Started temporal workflow with id: ${wfId}`);
-      } else {
-        console.log(
-          `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
-        );
-      }
-
       break;
     }
 
@@ -1197,4 +1132,33 @@ async function throwOnError<T>(p: Promise<Result<T, Error>>) {
     throw res.error;
   }
   return res;
+}
+
+function parseNotionResourceId(resourceId: unknown): string {
+  if (typeof resourceId !== "string") {
+    throw new Error(`Invalid Notion resource id: ${resourceId}.`);
+  }
+
+  if (!resourceId.includes("-")) {
+    if (resourceId.length !== 32) {
+      throw new Error(`Invalid Notion resource id: ${resourceId}.`);
+    }
+
+    // add dashes
+    return [
+      resourceId.slice(0, 8),
+      resourceId.slice(8, 12),
+      resourceId.slice(12, 16),
+      resourceId.slice(16, 20),
+      resourceId.slice(20),
+    ].join("-");
+  }
+
+  const regex =
+    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+  if (!regex.test(resourceId)) {
+    throw new Error(`Invalid Notion resource id: ${resourceId}.`);
+  }
+
+  return resourceId;
 }
