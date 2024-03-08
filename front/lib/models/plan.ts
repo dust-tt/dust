@@ -33,6 +33,7 @@ export class Plan extends Model<
   declare name: string;
   declare stripeProductId: string | null;
   declare billingType: FreeBillingType | PaidBillingType;
+  declare trialPeriodDays: number | null;
 
   // workspace limitations
   declare maxMessages: number;
@@ -85,6 +86,10 @@ Plan.init(
       validate: {
         isIn: [[...FREE_BILLING_TYPES, ...PAID_BILLING_TYPES]],
       },
+    },
+    trialPeriodDays: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     maxMessages: {
       type: DataTypes.INTEGER,

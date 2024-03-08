@@ -39,6 +39,7 @@ export type EditingPlanType = {
   maxUsers: string | number;
   billingType: FreeBillingType | PaidBillingType;
   isNewPlan?: boolean;
+  trialPeriodDays: number;
 };
 
 export const fromPlanType = (plan: PlanType): EditingPlanType => {
@@ -60,6 +61,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
     billingType: plan.billingType,
+    trialPeriodDays: plan.trialPeriodDays ?? 0,
   };
 };
 
@@ -97,6 +99,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
     },
     billingType: editingPlan.billingType,
+    trialPeriodDays: parseInt(editingPlan.trialPeriodDays.toString(), 10),
   };
 };
 
@@ -119,6 +122,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxUsers: "",
   isNewPlan: true,
   billingType: "fixed",
+  trialPeriodDays: 0,
 });
 
 export const useEditingPlan = () => {
@@ -280,6 +284,18 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "Billing",
     error: (plan: EditingPlanType) => (plan.billingType ? null : "Required"),
+  },
+  trialPeriodDays: {
+    type: "number",
+    width: "small",
+    title: "Trial Days",
+    error: (plan: EditingPlanType) => {
+      if (plan.billingType === "free") {
+        return null;
+      }
+
+      return errorCheckNumber(plan.trialPeriodDays);
+    },
   },
 } as const;
 

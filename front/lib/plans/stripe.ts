@@ -111,6 +111,7 @@ export const createCheckoutSession = async ({
         planCode: planCode,
         workspaceId: owner.sId,
       },
+      trial_period_days: plan.trialPeriodDays || undefined,
     },
     metadata: {
       planCode: planCode,
