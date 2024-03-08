@@ -5,7 +5,6 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator } from "@app/lib/auth";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";

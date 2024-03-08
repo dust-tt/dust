@@ -83,6 +83,8 @@ export async function getUserFromSession(
   };
 }
 
+export type AuthLevel = "none" | "user" | "superuser";
+
 interface MakeGetServerSidePropsRequirementsWrapperOptions<
   R extends AuthLevel = "user"
 > {
@@ -101,8 +103,6 @@ export type CustomGetServerSideProps<
   session: RequireAuthLevel extends "none" ? null : SessionWithUser
 ) => Promise<GetServerSidePropsResult<Props>>;
 
-export type AuthLevel = "none" | "user" | "superuser";
-
 async function getAuthenticator(
   context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>,
   session: SessionWithUser | null,
@@ -113,13 +113,16 @@ async function getAuthenticator(
   }
 
   const { wId } = context.params ?? {};
+  const workspaceId = typeof wId === "string" ? wId : null;
 
   switch (requireAuthLevel) {
     case "user":
-      return Authenticator.fromSession(session, wId as string);
+      return workspaceId
+        ? Authenticator.fromSession(session, workspaceId)
+        : null;
 
     case "superuser":
-      return Authenticator.fromSuperUserSession(session, wId as string);
+      return Authenticator.fromSuperUserSession(session, workspaceId);
 
     default:
       return null;

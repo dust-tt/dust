@@ -31,7 +31,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator } from "@app/lib/auth";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
