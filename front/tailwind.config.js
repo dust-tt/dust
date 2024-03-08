@@ -120,12 +120,10 @@ module.exports = {
           "0%, 100%": {
             transform: "scale(1)",
             opacity: "1",
-            filter: "blur(0px)",
           },
           "50%": {
-            transform: "scale(0.98)",
-            opacity: "0.5",
-            filter: "blur(8px)",
+            transform: "scale(0.99)",
+            opacity: "0.4",
           },
         },
       },
