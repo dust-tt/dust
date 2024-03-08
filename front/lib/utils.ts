@@ -239,30 +239,3 @@ export function filterAndSortAgents(
 
   return filtered;
 }
-
-function testCompareForFuzzySort() {
-  // a is always closer to the query than b
-  const data = [
-    { query: "eng", a: "eng", b: "ContentMarketing" },
-    { query: "sql", a: "sqlGod", b: "sqlCoreGod" },
-    { query: "sql", a: "sql", b: "sqlGod" },
-    { query: "sql", a: "sql", b: "SEOQualityRater" },
-    { query: "gp", a: "gpt-4", b: "GabHelp" },
-    { query: "gp", a: "gpt-4", b: "gemni-pro" },
-    { query: "start", a: "robotstart", b: "strongrt" },
-    { query: "mygod", a: "ohmygodbot", b: "moatmode" },
-    { query: "test", a: "test", b: "testlong" },
-    { query: "test", a: "testlonger", b: "longtest" },
-  ];
-  console.log(
-    "Testing compareForFuzzySort, expected first then expected second"
-  );
-  for (const d of data) {
-    console.log(
-      compareForFuzzySort(d.query, d.a, d.b) < 0 ? "PASS" : "FAIL",
-      d
-    );
-  }
-}
-
-testCompareForFuzzySort();
