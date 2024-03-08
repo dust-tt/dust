@@ -5,19 +5,13 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator } from "@app/lib/auth";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSuperUserSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   if (!auth.isDustSuperUser()) {
     return {
       notFound: true,

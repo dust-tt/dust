@@ -55,7 +55,7 @@ import { classNames } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireAuth: false,
+  requireUserPrivilege: "none",
 })<{
   gaTrackingId: string;
 }>(async (context) => {

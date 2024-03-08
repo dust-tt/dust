@@ -33,9 +33,8 @@ import {
   subNavigationBuild,
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
-import { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   addBlock,
   deleteBlock,
@@ -46,7 +45,7 @@ import { useSavedRunStatus } from "@app/lib/swr";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -54,12 +53,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   url: string;
   app: AppType;
   gaTrackingId: string;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 

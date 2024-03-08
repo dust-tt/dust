@@ -37,7 +37,7 @@ type OnboardingType =
   | "domain_invite_link";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireAuth: false,
+  requireUserPrivilege: "none",
 })<{
   onboardingType: OnboardingType;
   workspace: LightWorkspaceType;

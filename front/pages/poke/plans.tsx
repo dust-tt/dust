@@ -22,26 +22,22 @@ import {
 } from "@app/components/poke/plans/form";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { Authenticator } from "@app/lib/auth";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr";
 
-export const getServerSideProps =
-  withDefaultGetServerSidePropsRequirements<object>(
-    async (context, session) => {
-      const auth = await Authenticator.fromSuperUserSession(session, null);
-
-      if (!auth.isDustSuperUser()) {
-        return {
-          notFound: true,
-        };
-      }
-
+export const getServerSideProps = withSuperUserAuthRequirements<object>(
+  async (context, auth) => {
+    if (!auth.isDustSuperUser()) {
       return {
-        props: {},
+        notFound: true,
       };
     }
-  );
+
+    return {
+      props: {},
+    };
+  }
+);
 
 const PlansPage = (
   _props: InferGetServerSidePropsType<typeof getServerSideProps>

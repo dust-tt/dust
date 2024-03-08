@@ -22,17 +22,16 @@ import { useEffect, useState } from "react";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;
@@ -43,12 +42,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
     githubCodeSyncEnabled: boolean;
   };
   temporalWorkspace: string;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSuperUserSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
 
   if (!owner || !auth.isDustSuperUser()) {

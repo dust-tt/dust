@@ -2,60 +2,32 @@ import { Button, Logo } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
+import { makeEnterpriseConnectionInitiateLoginUrl } from "@app/lib/api/enterprise_connection";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
-  domain: string | null;
-  gaTrackingId: string;
-  reason: string | null;
+  initiatedLoginUrl: string;
 }>(async (context) => {
+  const workspaceId = (context.query.workspaceId as string) ?? null;
+
+  if (!workspaceId) {
+    return {
+      notFound: true,
+    };
+  }
+
   return {
     props: {
-      domain: (context.query.domain as string) ?? null,
-      gaTrackingId: GA_TRACKING_ID,
-      reason: (context.query.reason as string) ?? null,
+      initiatedLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(workspaceId),
     },
   };
 });
 
-function getErrorMessage(domain: string | null, reason: string | null) {
-  if (domain) {
-    return (
-      <>
-        The domain @{domain} attached to your email address is not authorized to
-        join this workspace.
-        <br />
-        Please contact your workspace admin to get access or contact us at
-        team@dust.tt for assistance.
-      </>
-    );
-  }
-
-  switch (reason) {
-    case "unauthorized":
-      return (
-        <>
-          Oops! Looks like you're not authorized to access this application yet.
-          To gain access, please ask your workspace administrator to add you or
-          your domain. Need more help? Email us at team@dust.tt.
-        </>
-      );
-
-    default:
-      return <>Please contact us at team@dust.tt for assistance.</>;
-  }
-}
-
-export default function LoginError({
-  domain,
-  reason,
+export default function SsoEnforced({
+  initiatedLoginUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const errorMessage = getErrorMessage(domain, reason);
-
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
@@ -78,11 +50,11 @@ export default function LoginError({
           <div className="h-10"></div>
           <div>
             <p className="font-regular mb-8 text-slate-400">
-              We could not process your sign up request!
+              Access requires Single Sign-On (SSO) authentication. Use your SSO
+              provider to sign in.{" "}
             </p>
-            <p className="font-regular mb-8 text-slate-400">{errorMessage}</p>
-            <Link href="/">
-              <Button variant="primary" label="Back to homepage" size="md" />
+            <Link href={initiatedLoginUrl}>
+              <Button variant="primary" label="Connect with SSO" size="md" />
             </Link>
           </div>
         </div>

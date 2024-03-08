@@ -11,7 +11,7 @@ import { useRouter } from "next/router";
 
 import {
   getUserFromSession,
-  withDefaultGetServerSidePropsRequirements,
+  withDefaultUserAuthRequirements,
 } from "@app/lib/iam/session";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
@@ -56,12 +56,12 @@ async function fetchRevokedWorkspace(
   return Workspace.findByPk(revokedWorkspaceId);
 }
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   status: "auto-join-disabled" | "revoked";
   userFirstName: string;
   workspaceName: string;
   workspaceVerifiedDomain: string | null;
-}>(async (context, session) => {
+}>(async (context, auth, session) => {
   const user = await getUserFromSession(session);
 
   if (!user) {

@@ -6,7 +6,10 @@ import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { CustomGetServerSideProps } from "@app/lib/iam/session";
+import type {
+  CustomGetServerSideProps,
+  UserPrivilege,
+} from "@app/lib/iam/session";
 
 import logger from "./logger";
 
@@ -145,11 +148,16 @@ export function apiError<T>(
 
 export function withGetServerSidePropsLogging<
   T extends { [key: string]: any },
-  RequireAuth extends boolean = true
+  RequireUserPrivilege extends UserPrivilege = "user"
 >(
-  getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuth>
-): CustomGetServerSideProps<T, any, any, RequireAuth> {
-  return async (context, session) => {
+  getServerSideProps: CustomGetServerSideProps<
+    T,
+    any,
+    any,
+    RequireUserPrivilege
+  >
+): CustomGetServerSideProps<T, any, any, RequireUserPrivilege> {
+  return async (context, auth, session) => {
     const now = new Date();
 
     let route = context.resolvedUrl.split("?")[0];
@@ -161,7 +169,7 @@ export function withGetServerSidePropsLogging<
     }
 
     try {
-      const res = await getServerSideProps(context, session);
+      const res = await getServerSideProps(context, auth, session);
 
       const elapsed = new Date().getTime() - now.getTime();
 
