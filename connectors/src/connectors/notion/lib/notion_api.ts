@@ -475,6 +475,10 @@ export async function getParsedDatabase(
       parentId = "workspace";
       parentType = "workspace";
       break;
+    case "database_id":
+      parentId = dbParent.database_id;
+      parentType = "database";
+      break;
     default:
       ((dbParent: never) => {
         logger.warn({ dbParent }, "Unknown page parent type.");
@@ -673,6 +677,20 @@ export function parsePropertyText(
     return d?.start || null;
   };
 
+  const parseUniqueIdProp = ({
+    prefix,
+    number,
+  }: {
+    prefix: string | null;
+    number: number | null;
+  }): string | null => {
+    if (!number) {
+      return null;
+    }
+
+    return prefix ? `${prefix}-${number}` : `${number}`;
+  };
+
   switch (property.type) {
     case "number":
       return property.number?.toString() || null;
@@ -740,17 +758,14 @@ export function parsePropertyText(
           default:
             assertNever(property.formula);
         }
-      } else {
-        // If the formula is an expression type, return null.
-        return null;
       }
-      break;
-    }
 
+      return null;
+    }
+    case "unique_id":
+      return parseUniqueIdProp(property.unique_id);
     case "relation":
     case "rollup":
-    // @ts-expect-error missing from Notion package
-    // eslint-disable-next-line no-fallthrough
     case "verification":
       return null;
     default:
