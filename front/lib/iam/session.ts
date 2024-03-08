@@ -1,4 +1,5 @@
 import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
+import { isEnterpriseConnectionSub } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -103,6 +104,22 @@ export type CustomGetServerSideProps<
   session: RequireUserPrivilege extends "none" ? null : SessionWithUser
 ) => Promise<GetServerSidePropsResult<Props>>;
 
+export function statisfiesEnforceEntrepriseConnection(
+  auth: Authenticator,
+  session: SessionWithUser
+) {
+  const owner = auth.workspace();
+  if (!owner) {
+    return true;
+  }
+
+  if (owner.ssoEnforced) {
+    return isEnterpriseConnectionSub(session.user.sub);
+  }
+
+  return true;
+}
+
 async function getAuthenticator(
   context: GetServerSidePropsContext<ParsedUrlQuery, PreviewData>,
   session: SessionWithUser | null,
@@ -156,17 +173,27 @@ export function makeGetServerSidePropsRequirementsWrapper<
         requireUserPrivilege
       );
 
-      if (
-        requireUserPrivilege !== "none" &&
-        (!session || !isValidSession(session))
-      ) {
-        return {
-          redirect: {
-            permanent: false,
-            // TODO(2024-03-04 flav) Add support for `returnTo=`.
-            destination: "/api/auth/login",
-          },
-        };
+      if (requireUserPrivilege !== "none") {
+        if (!session || !isValidSession(session)) {
+          return {
+            redirect: {
+              permanent: false,
+              // TODO(2024-03-04 flav) Add support for `returnTo=`.
+              destination: "/api/auth/login",
+            },
+          };
+        }
+
+        // Validate the user's session to guarantee compliance with the workspace's SSO requirements when SSO is enforced.
+        if (auth && !statisfiesEnforceEntrepriseConnection(auth, session)) {
+          return {
+            redirect: {
+              permanent: false,
+              // TODO(2024-03-04 flav) Add support for `returnTo=`.
+              destination: `/sso-enforced?workspaceId=${auth.workspace()?.sId}`,
+            },
+          };
+        }
       }
 
       const userSession = session as RequireUserPrivilege extends "none"

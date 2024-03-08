@@ -395,6 +395,7 @@ export class Authenticator {
             ACTIVATE_ALL_FEATURES_DEV && isDevelopment()
               ? [...WHITELISTABLE_FEATURES]
               : this._flags,
+          ssoEnforced: this._workspace.ssoEnforced,
         }
       : null;
   }
