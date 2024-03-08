@@ -25,6 +25,7 @@ export class Workspace extends Model<
   declare name: string;
   declare description: string | null;
   declare segmentation: WorkspaceSegmentationType;
+  declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
 }
 Workspace.init(
@@ -62,6 +63,10 @@ Workspace.init(
     segmentation: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    ssoEnforced: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {
