@@ -102,8 +102,10 @@ export function TryAssistantModal({
 export function TryAssistant({
   owner,
   assistant,
+  conversationFading,
 }: {
   owner: WorkspaceType;
+  conversationFading?: boolean;
   assistant: LightAgentConfigurationType | null;
 }) {
   const { user } = useUser();
@@ -145,6 +147,7 @@ export function TryAssistant({
                 onStickyMentionsChange={setStickyMentions}
                 isInModal
                 hideReactions
+                isFading={conversationFading}
               />
             </div>
           )}
@@ -175,11 +178,14 @@ export function usePreviewAssistant({
   builderState: AssistantBuilderState;
 }): {
   shouldAnimate: boolean;
+  isFading: boolean; // Add isFading to the return type
   draftAssistant: LightAgentConfigurationType | null;
 } {
+  const animationLength = 1000;
   const [draftAssistant, setDraftAssistant] =
     useState<LightAgentConfigurationType | null>();
   const [animateDrawer, setAnimateDrawer] = useState(false);
+  const [isFading, setIsFading] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
@@ -189,9 +195,11 @@ export function usePreviewAssistant({
       drawerAnimationTimeoutRef.current = null;
     }
     setAnimateDrawer(true);
+    setIsFading(true); // Start fading conversation
     drawerAnimationTimeoutRef.current = setTimeout(() => {
       setAnimateDrawer(false);
-    }, 1000);
+      setIsFading(false); // Stop fading
+    }, animationLength);
   };
 
   const submit = useCallback(async () => {
@@ -224,7 +232,10 @@ export function usePreviewAssistant({
 
     animate();
 
-    setDraftAssistant(a);
+    // Use setTimeout to delay the execution of setDraftAssistant by 500 milliseconds
+    setTimeout(() => {
+      setDraftAssistant(a);
+    }, animationLength / 2);
   }, [
     owner,
     builderState.actionMode,
@@ -245,6 +256,7 @@ export function usePreviewAssistant({
 
   return {
     shouldAnimate: animateDrawer,
+    isFading,
     draftAssistant: draftAssistant ?? null,
   };
 }

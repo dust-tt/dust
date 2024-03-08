@@ -410,8 +410,11 @@ export default function AssistantBuilder({
     ? `Edit @${builderState.handle}`
     : "New Assistant";
 
-  const { shouldAnimate: shouldAnimatePreviewDrawer, draftAssistant } =
-    usePreviewAssistant({ owner, builderState });
+  const {
+    shouldAnimate: shouldAnimatePreviewDrawer,
+    draftAssistant,
+    isFading,
+  } = usePreviewAssistant({ owner, builderState });
 
   return (
     <>
@@ -529,7 +532,11 @@ export default function AssistantBuilder({
                   : ""
               )}
             >
-              <TryAssistant owner={owner} assistant={draftAssistant} />
+              <TryAssistant
+                owner={owner}
+                assistant={draftAssistant}
+                conversationFading={isFading}
+              />
             </div>
           }
           isRightPanelOpen={previewDrawerOpenedAt !== null}

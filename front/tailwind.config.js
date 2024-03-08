@@ -108,16 +108,22 @@ module.exports = {
             opacity: 0,
           },
         },
+        fadeout: {
+          "0%": {
+            opacity: "1",
+          },
+          "100%": {
+            opacity: "0",
+          },
+        },
         reload: {
           "0%, 100%": {
             transform: "scale(1)",
             opacity: "1",
-            filter: "blur(0px)",
           },
           "50%": {
-            transform: "scale(0.98)",
-            opacity: "0.8",
-            filter: "blur(8px)",
+            transform: "scale(0.99)",
+            opacity: "0.4",
           },
         },
       },
@@ -127,6 +133,7 @@ module.exports = {
         "cursor-blink": "cursor-blink 0.9s infinite;",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
         reload: "reload 1000ms ease-out",
+        fadeout: "fadeout 500ms ease-out",
       },
       colors: {
         brand: {
