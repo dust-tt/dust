@@ -95,7 +95,7 @@ impl Chat {
         Ok(Chat {
             instructions,
             messages_code: messages_code.unwrap(),
-            functions_code: functions_code,
+            functions_code,
             temperature: temperature.unwrap(),
             top_p,
             stop,
