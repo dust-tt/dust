@@ -135,8 +135,18 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
   return markdown;
 };
 
-// Returns true if a is a subsequence of b.
-export function subFilter(a: string, b: string) {
+/**
+ * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
+ * the same order, and returns the smallest index of the last character of a in
+ * b.
+ *
+ * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
+ * out' in b. e.g.
+ * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
+ * - 'gp4' and 'gpt-4', spread is 5
+ * - 'gp4' and 'gemni-pro4', spread is 10
+ */
+function subFilterLastIndex(a: string, b: string) {
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
@@ -145,16 +155,70 @@ export function subFilter(a: string, b: string) {
     }
     j++;
   }
-  return i === a.length;
+  return i === a.length ? j : -1;
 }
 
-export function compareForFuzzySort(query: string, a: string, b: string) {
-  const distanceToQuery = (s: string) =>
-    s.length - query.length + s.indexOf(query.charAt(0));
-  if (distanceToQuery(a) === distanceToQuery(b)) {
-    return a.localeCompare(b);
+/**
+ * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
+ * the same order, and returns the biggest index of the first character of a in b.
+ * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
+ * out' in b. e.g.
+ * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
+ * - 'gp4' and 'gpt-4', spread is 5
+ * - 'gp4' and 'gemni-pro4', spread is 10
+ */
+function subFilterFirstIndex(a: string, b: string) {
+  let i = a.length - 1;
+  let j = b.length - 1;
+  while (i >= 0 && j >= 0) {
+    if (a[i] === b[j]) {
+      i--;
+    }
+    j--;
   }
-  return distanceToQuery(a) - distanceToQuery(b);
+  return i === -1 ? j + 1 : -1;
+}
+
+/**
+ * Returns true if a is a subfilter of b, i.e. all characters in a are present
+ * in b in the same order.
+ */
+export function subFilter(a: string, b: string) {
+  return subFilterLastIndex(a, b) > -1;
+}
+
+/**
+ * Compares two strings for fuzzy sorting against a query First sort by spread
+ * of subfilter, then by first index of subfilter, then length, then by
+ * lexicographic order
+ */
+export function compareForFuzzySort(query: string, a: string, b: string) {
+  const subFilterFirstIndexA = subFilterFirstIndex(query, a);
+  if (subFilterFirstIndexA === -1) {
+    return 1;
+  }
+
+  const subFilterFirstIndexB = subFilterFirstIndex(query, b);
+  if (subFilterFirstIndexB === -1) {
+    return -1;
+  }
+
+  const subFilterLastIndexA = subFilterLastIndex(query, a);
+  const subFilterLastIndexB = subFilterLastIndex(query, b);
+  const distanceA = subFilterLastIndexA - subFilterFirstIndexA;
+  const distanceB = subFilterLastIndexB - subFilterFirstIndexB;
+  if (distanceA !== distanceB) {
+    return distanceA - distanceB;
+  }
+
+  if (subFilterFirstIndexA !== subFilterFirstIndexB) {
+    return subFilterFirstIndexA - subFilterFirstIndexB;
+  }
+
+  if (a.length !== b.length) {
+    return a.length - b.length;
+  }
+  return a.localeCompare(b);
 }
 
 export function filterAndSortAgents(
@@ -167,7 +231,6 @@ export function filterAndSortAgents(
     subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
-  // Sort by position of the subFilter in the name (position of the first character matching).
   if (searchText.length > 0) {
     filtered.sort((a, b) =>
       compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
