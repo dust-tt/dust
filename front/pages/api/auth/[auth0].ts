@@ -1,5 +1,12 @@
-import { handleAuth, handleLogin } from "@auth0/nextjs-auth0";
+import {
+  CallbackHandlerError,
+  handleAuth,
+  handleCallback,
+  handleLogin,
+  IdentityProviderError,
+} from "@auth0/nextjs-auth0";
 import type { AuthorizationParameters } from "@auth0/nextjs-auth0/dist/auth0-session";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 export default handleAuth({
   login: handleLogin((req) => {
@@ -18,4 +25,21 @@ export default handleAuth({
       authorizationParams: defaultAuthorizationParams,
     };
   }),
+  callback: async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      await handleCallback(req, res);
+    } catch (error) {
+      let reason: string | null = null;
+
+      if (error instanceof CallbackHandlerError) {
+        if (error.cause instanceof IdentityProviderError) {
+          reason = error.cause.error ?? null;
+        }
+
+        return res.redirect(`/login-error?reason=${reason}`);
+      }
+
+      return res.redirect("/login-error");
+    }
+  },
 });

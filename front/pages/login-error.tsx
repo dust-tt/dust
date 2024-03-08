@@ -4,27 +4,58 @@ import Link from "next/link";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireAuth: false,
 })<{
-  domain?: string;
+  domain: string | null;
   gaTrackingId: string;
-  baseUrl: string;
+  reason: string | null;
 }>(async (context) => {
   return {
     props: {
-      domain: context.query.domain as string,
-      baseUrl: URL,
+      domain: (context.query.domain as string) ?? null,
       gaTrackingId: GA_TRACKING_ID,
+      reason: (context.query.reason as string) ?? null,
     },
   };
 });
 
+function getErrorMessage(domain: string | null, reason: string | null) {
+  if (domain) {
+    return (
+      <>
+        The domain @{domain} attached to your email address is not authorized to
+        join this workspace.
+        <br />
+        Please contact your workspace admin to get access or contact us at
+        team@dust.tt for assistance.
+      </>
+    );
+  }
+
+  switch (reason) {
+    case "unauthorized":
+      return (
+        <>
+          Oops! Looks like you're not authorized to access this application yet.
+          To gain access, please ask your workspace administrator to add you or
+          your domain. Need more help? Email us at team@dust.tt.
+        </>
+      );
+
+    default:
+      return <>Please contact us at team@dust.tt for assistance.</>;
+  }
+}
+
 export default function LoginError({
   domain,
+  reason,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const errorMessage = getErrorMessage(domain, reason);
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
@@ -49,19 +80,7 @@ export default function LoginError({
             <p className="font-regular mb-8 text-slate-400">
               We could not process your sign up request!
             </p>
-            <p className="font-regular mb-8 text-slate-400">
-              {domain ? (
-                <>
-                  The domain @{domain} attached to your email address is not
-                  authorized to join this workspace.
-                  <br />
-                  Please contact your workspace admin to get access or contact
-                  us at team@dust.tt for assistance.
-                </>
-              ) : (
-                <>Please contact us at team@dust.tt for assistance.</>
-              )}
-            </p>
+            <p className="font-regular mb-8 text-slate-400">{errorMessage}</p>
             <Link href="/">
               <Button variant="primary" label="Back to homepage" size="md" />
             </Link>
