@@ -13,7 +13,6 @@ import type {
   LightAgentConfigurationType,
   PlanType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -24,7 +23,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Authenticator } from "@app/lib/auth";
@@ -35,7 +33,6 @@ import { subFilter } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
-  user: UserType;
   owner: WorkspaceType;
   plan: PlanType | null;
   subscription: SubscriptionType;
@@ -59,7 +56,6 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
 
   return {
     props: {
-      user,
       owner,
       plan,
       subscription,
@@ -69,7 +65,6 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
 });
 
 export default function AssistantsGallery({
-  user,
   owner,
   plan,
   subscription,
@@ -133,9 +128,6 @@ export default function AssistantsGallery({
     default:
       assertNever(orderBy);
   }
-
-  const [testModalAssistant, setTestModalAssistant] =
-    useState<LightAgentConfigurationType | null>(null);
 
   const [showDetails, setShowDetails] = useState<string | null>(null);
 
@@ -261,14 +253,6 @@ export default function AssistantsGallery({
         onClose={handleCloseAssistantDetails}
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
-      {testModalAssistant && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          assistant={testModalAssistant}
-          onClose={() => setTestModalAssistant(null)}
-        />
-      )}
       <div className="pb-16 pt-6">
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
@@ -311,7 +295,6 @@ export default function AssistantsGallery({
                   onUpdate={() => {
                     void mutateAgentConfigurations();
                   }}
-                  setTestModalAssistant={setTestModalAssistant}
                 />
               ))}
             </div>

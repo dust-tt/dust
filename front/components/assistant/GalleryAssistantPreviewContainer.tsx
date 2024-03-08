@@ -4,6 +4,7 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import type { SyntheticEvent } from "react";
 
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
@@ -17,9 +18,6 @@ interface GalleryAssistantPreviewContainerProps {
   onUpdate: () => void;
   owner: WorkspaceType;
   plan: PlanType | null;
-  setTestModalAssistant?: (
-    agentConfiguration: LightAgentConfigurationType
-  ) => void;
 }
 
 export function GalleryAssistantPreviewContainer({
@@ -27,11 +25,14 @@ export function GalleryAssistantPreviewContainer({
   onShowDetails,
   owner,
   plan,
-  setTestModalAssistant,
 }: GalleryAssistantPreviewContainerProps) {
+  const router = useRouter();
+
   const handleTestClick = (e: SyntheticEvent) => {
     e.stopPropagation();
-    setTestModalAssistant?.(agentConfiguration);
+    void router.push(
+      `/w/${owner.sId}/assistant/new?mention=${agentConfiguration.sId}`
+    );
   };
 
   const { description, generation, lastAuthors, name, pictureUrl, scope } =

@@ -54,6 +54,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   owner: WorkspaceType;
   helper: LightAgentConfigurationType | null;
   gaTrackingId: string;
+  mentionedAgentId: string | null;
 }>(async (context, session) => {
   const auth = await Authenticator.fromSession(
     session,
@@ -73,6 +74,8 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
     };
   }
 
+  const mentionedAgentId = context.query.mention as string | null;
+
   const helper = await getAgentConfiguration(auth, "helper");
 
   return {
@@ -83,6 +86,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
       helper,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
+      mentionedAgentId,
     },
   };
 });
@@ -94,6 +98,7 @@ export default function AssistantNew({
   helper,
   subscription,
   gaTrackingId,
+  mentionedAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
@@ -505,6 +510,11 @@ export default function AssistantNew({
             owner={owner}
             onSubmit={handleSubmit}
             conversationId={conversation?.sId || null}
+            stickyMentions={
+              mentionedAgentId
+                ? [{ configurationId: mentionedAgentId }]
+                : undefined
+            }
           />
           <LimitReachedPopup
             planLimitReached={planLimitReached}
