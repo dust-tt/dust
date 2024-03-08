@@ -3,6 +3,7 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
+  Dialog,
   DocumentTextIcon,
   GithubLogo,
   ListCheckIcon,
@@ -30,6 +31,7 @@ import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import type { ReactNode } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
@@ -725,6 +727,7 @@ interface ConnectorUiConfig {
   addDataButtonLabel: string | null;
   displaySettingsButton: boolean;
   guideLink: string | null;
+  onPostPermissionsUpdate?: () => ReactNode;
 }
 
 function getRenderingConfigForConnectorProvider(
@@ -759,6 +762,12 @@ function getRenderingConfigForConnectorProvider(
         addDataButtonLabel: "Add / Remove data, manage permissions",
         displaySettingsButton: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+        onPostPermissionsUpdate: () => (
+          <span>
+            We've taken your edits into account. Notion permission edits may
+            take up to 24 hours to be reflected on your workspace.
+          </span>
+        ),
       };
     case "github":
       return {
@@ -940,10 +949,28 @@ function ManagedDataSourceView({
     addDataButtonLabel,
     displaySettingsButton,
     guideLink,
+    onPostPermissionsUpdate,
   } = getRenderingConfigForConnectorProvider(connectorProvider);
+
+  const [
+    postPermissionsUpdateDialogIsOpen,
+    setPostPermissionsUpdateDialogIsOpen,
+  ] = useState(false);
 
   return (
     <>
+      {onPostPermissionsUpdate && (
+        <Dialog
+          isOpen={postPermissionsUpdateDialogIsOpen}
+          onCancel={() => setPostPermissionsUpdateDialogIsOpen(false)}
+          onValidate={() => {
+            setPostPermissionsUpdateDialogIsOpen(false);
+          }}
+          title="Permissions updated"
+        >
+          {onPostPermissionsUpdate()}
+        </Dialog>
+      )}
       <DataSourceDetailsModal
         dataSource={dataSource}
         visible={showDataSourceDetailsModal}
@@ -951,7 +978,10 @@ function ManagedDataSourceView({
           setShowDataSourceDetailsModal(false);
         }}
         onClick={() => {
-          void handleUpdatePermissions();
+          void handleUpdatePermissions().then(() => {
+            onPostPermissionsUpdate &&
+              setPostPermissionsUpdateDialogIsOpen(true);
+          });
         }}
       />
       <ConnectorPermissionsModal
