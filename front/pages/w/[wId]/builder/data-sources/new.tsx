@@ -12,12 +12,12 @@ import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayou
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];

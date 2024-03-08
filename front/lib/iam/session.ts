@@ -97,8 +97,8 @@ export type CustomGetServerSideProps<
   RequireAuthLevel extends AuthLevel = "user"
 > = (
   context: GetServerSidePropsContext<Params, Preview>,
-  session: RequireAuthLevel extends "none" ? null : SessionWithUser,
-  auth: RequireAuthLevel extends "none" ? null : Authenticator
+  auth: RequireAuthLevel extends "none" ? null : Authenticator,
+  session: RequireAuthLevel extends "none" ? null : SessionWithUser
 ) => Promise<GetServerSidePropsResult<Props>>;
 
 export type AuthLevel = "none" | "user" | "superuser";
@@ -164,25 +164,25 @@ export function makeGetServerSidePropsRequirementsWrapper<
       const userSession = session as RequireAuthLevel extends "none"
         ? null
         : SessionWithUser;
-      const currentAuth = auth as RequireAuthLevel extends "none"
+      const userAuth = auth as RequireAuthLevel extends "none"
         ? null
         : Authenticator;
 
       if (enableLogging) {
         return withGetServerSidePropsLogging(getServerSideProps)(
           context,
-          userSession,
-          currentAuth
+          userAuth,
+          userSession
         );
       }
 
-      return getServerSideProps(context, userSession, currentAuth);
+      return getServerSideProps(context, userAuth, userSession);
     };
   };
 }
 
-export const withDefaultGetServerSidePropsRequirements =
+export const withDefaultUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({ requireAuthLevel: "user" });
 
-export const withSuperUserGetServerSidePropsRequirements =
+export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({ requireAuthLevel: "superuser" });

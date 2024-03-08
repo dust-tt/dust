@@ -25,12 +25,11 @@ import type {
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { Authenticator } from "@app/lib/auth";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -46,12 +45,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   agentConfiguration: AgentConfigurationType | null;
   flow: BuilderFlow;
   baseUrl: string;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();

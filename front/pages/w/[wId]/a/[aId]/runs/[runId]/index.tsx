@@ -16,12 +16,11 @@ import {
 } from "@app/components/sparkle/navigation";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
-import { Authenticator, getSession } from "@app/lib/auth";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -29,13 +28,7 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
   run: RunType;
   spec: SpecificationType;
   gaTrackingId: string;
-}>(async (context) => {
-  const session = await getSession(context.req, context.res);
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 

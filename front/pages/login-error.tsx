@@ -7,7 +7,7 @@ import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session"
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireAuth: false,
+  requireAuthLevel: "none",
 })<{
   domain: string | null;
   gaTrackingId: string;

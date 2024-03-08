@@ -18,9 +18,8 @@ import { PricePlans } from "@app/components/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -31,17 +30,12 @@ import { getPlanInvitation } from "@app/lib/plans/subscription";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   planInvitation: PlanInvitationType | null;
   gaTrackingId: string;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   if (!owner || !auth.isAdmin() || !subscription) {

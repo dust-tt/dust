@@ -149,7 +149,7 @@ export function withGetServerSidePropsLogging<
 >(
   getServerSideProps: CustomGetServerSideProps<T, any, any, RequireAuthLevel>
 ): CustomGetServerSideProps<T, any, any, RequireAuthLevel> {
-  return async (context, session, auth) => {
+  return async (context, auth, session) => {
     const now = new Date();
 
     let route = context.resolvedUrl.split("?")[0];
@@ -161,7 +161,7 @@ export function withGetServerSidePropsLogging<
     }
 
     try {
-      const res = await getServerSideProps(context, session, auth);
+      const res = await getServerSideProps(context, auth, session);
 
       const elapsed = new Date().getTime() - now.getTime();
 

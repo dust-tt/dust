@@ -24,26 +24,20 @@ import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getApps } from "@app/lib/api/app";
-import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
 import { useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   apps: AppType[];
   gaTrackingId: string;
-}>(async (context, session) => {
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
-
+}>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 

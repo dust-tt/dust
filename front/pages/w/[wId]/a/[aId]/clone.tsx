@@ -21,20 +21,19 @@ import {
 } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
-import { Authenticator } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { withDefaultGetServerSidePropsRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
+export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
   gaTrackingId: string;
-}>(async (context, session) => {
+}>(async (context, auth, session) => {
   // This is a rare case where we need the full user object as we need to know the user available
   // workspaces to clone the app into.
   const user = await getUserFromSession(session);
@@ -43,11 +42,6 @@ export const getServerSideProps = withDefaultGetServerSidePropsRequirements<{
       notFound: true,
     };
   }
-
-  const auth = await Authenticator.fromSession(
-    session,
-    context.params?.wId as string
-  );
 
   const owner = auth.workspace();
   const subscription = auth.subscription();
