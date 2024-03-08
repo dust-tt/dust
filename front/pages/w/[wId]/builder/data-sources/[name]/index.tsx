@@ -31,7 +31,6 @@ import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import type { ReactNode } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
@@ -727,7 +726,7 @@ interface ConnectorUiConfig {
   addDataButtonLabel: string | null;
   displaySettingsButton: boolean;
   guideLink: string | null;
-  onPostPermissionsUpdate?: () => ReactNode;
+  postPermissionsUpdateMessage?: string;
 }
 
 function getRenderingConfigForConnectorProvider(
@@ -762,12 +761,8 @@ function getRenderingConfigForConnectorProvider(
         addDataButtonLabel: "Add / Remove data, manage permissions",
         displaySettingsButton: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
-        onPostPermissionsUpdate: () => (
-          <span>
-            We've taken your edits into account. Notion permission edits may
-            take up to 24 hours to be reflected on your workspace.
-          </span>
-        ),
+        postPermissionsUpdateMessage:
+          "We've taken your edits into account. Notion permission edits may take up to 24 hours to be reflected on your workspace.",
       };
     case "github":
       return {
@@ -949,7 +944,7 @@ function ManagedDataSourceView({
     addDataButtonLabel,
     displaySettingsButton,
     guideLink,
-    onPostPermissionsUpdate,
+    postPermissionsUpdateMessage,
   } = getRenderingConfigForConnectorProvider(connectorProvider);
 
   const [
@@ -959,7 +954,7 @@ function ManagedDataSourceView({
 
   return (
     <>
-      {onPostPermissionsUpdate && (
+      {postPermissionsUpdateMessage && (
         <Dialog
           isOpen={postPermissionsUpdateDialogIsOpen}
           onCancel={() => setPostPermissionsUpdateDialogIsOpen(false)}
@@ -968,7 +963,7 @@ function ManagedDataSourceView({
           }}
           title="Permissions updated"
         >
-          {onPostPermissionsUpdate()}
+          <span>{postPermissionsUpdateMessage}</span>
         </Dialog>
       )}
       <DataSourceDetailsModal
@@ -979,7 +974,7 @@ function ManagedDataSourceView({
         }}
         onClick={() => {
           void handleUpdatePermissions().then(() => {
-            onPostPermissionsUpdate &&
+            postPermissionsUpdateMessage &&
               setPostPermissionsUpdateDialogIsOpen(true);
           });
         }}
