@@ -25,7 +25,7 @@ export function BuilderLayout({
       </div>
       <div className="hidden s-h-full lg:s-flex">
         <div className="s-h-full s-w-full">
-          <div className="s-flex s-h-full s-w-full s-items-center s-gap-4 s-px-6">
+          <div className="s-flex s-h-full s-w-full s-items-center s-gap-4 s-px-5">
             <div className="s-flex s-h-full s-grow s-justify-center">
               <div className="s-h-full s-w-full s-max-w-[900px]">
                 {leftPanel}
@@ -51,7 +51,7 @@ export function BuilderLayout({
                   isRightPanelOpen ? "s-w-[440px]" : "s-w-0"
                 )}
               >
-                <div className="s-min-w-20 s-h-full s-py-6">{rightPanel}</div>
+                <div className="s-min-w-20 s-h-full s-py-5">{rightPanel}</div>
               </div>
             </div>
           </div>
