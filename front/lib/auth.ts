@@ -597,6 +597,7 @@ export async function subscriptionForWorkspace(
           maxUsers: plan.maxUsersInWorkspace,
         },
       },
+      trialPeriodDays: plan.trialPeriodDays,
     },
   };
 }
