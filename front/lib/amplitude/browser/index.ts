@@ -18,7 +18,13 @@ export function getBrowserClient() {
     client: {
       apiKey: AMPLITUDE_PUBLIC_API_KEY,
       configuration: {
-        defaultTracking: false,
+        defaultTracking: {
+          attribution: true,
+          fileDownloads: false,
+          formInteractions: true,
+          pageViews: false,
+          sessions: true,
+        },
       },
     },
   });
