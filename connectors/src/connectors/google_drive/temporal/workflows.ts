@@ -22,10 +22,14 @@ const {
   renewWebhooks,
   populateSyncTokens,
   garbageCollectorFinished,
-  incrementalSync,
   markFolderAsVisited,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
+});
+
+// Hotfix: increase timeout on incrementalSync to avoid restarting ongoing activities
+const { incrementalSync } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "60 minutes",
 });
 
 // Temporarily increase timeout on syncFiles until table upsertion is moved to the upsert queue.
