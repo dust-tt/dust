@@ -45,7 +45,7 @@ export const PlanTypeSchema = t.type({
     t.literal("per_seat"),
     t.literal("free"),
   ]),
-  trialPeriodDays: t.union([t.number, t.null]),
+  trialPeriodDays: t.number,
 });
 
 export type UpsertPokePlanResponseBody = {
@@ -192,7 +192,7 @@ async function handler(
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
         billingType: body.billingType,
-        trialPeriodDays: body.trialPeriodDays || null,
+        trialPeriodDays: body.trialPeriodDays,
       });
       res.status(200).json({
         plan: body,

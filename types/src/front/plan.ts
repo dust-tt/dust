@@ -49,7 +49,7 @@ export type PlanType = {
   limits: LimitsType;
   stripeProductId: string | null;
   billingType: FreeBillingType | PaidBillingType;
-  trialPeriodDays: number | null;
+  trialPeriodDays: number;
 };
 
 export type SubscriptionType = {

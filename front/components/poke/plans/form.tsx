@@ -39,7 +39,7 @@ export type EditingPlanType = {
   maxUsers: string | number;
   billingType: FreeBillingType | PaidBillingType;
   isNewPlan?: boolean;
-  trialPeriodDays: number;
+  trialPeriodDays: string | number;
 };
 
 export const fromPlanType = (plan: PlanType): EditingPlanType => {
@@ -61,11 +61,17 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
     billingType: plan.billingType,
-    trialPeriodDays: plan.trialPeriodDays ?? 0,
+    trialPeriodDays: plan.trialPeriodDays,
   };
 };
 
 export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
+  const parseMaybeNumber = (x: string | number) => {
+    if (typeof x === "string") {
+      return parseInt(x, 10);
+    }
+    return x;
+  };
   return {
     code: editingPlan.code.trim(),
     name: editingPlan.name.trim(),
@@ -73,7 +79,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
     limits: {
       assistant: {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
-        maxMessages: parseInt(editingPlan.maxMessages.toString(), 10),
+        maxMessages: parseMaybeNumber(editingPlan.maxMessages),
       },
       connections: {
         isConfluenceAllowed: editingPlan.isConfluenceAllowed,
@@ -85,21 +91,18 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isWebCrawlerAllowed: editingPlan.isWebCrawlerAllowed,
       },
       dataSources: {
-        count: parseInt(editingPlan.dataSourcesCount.toString(), 10),
+        count: parseMaybeNumber(editingPlan.dataSourcesCount),
         documents: {
-          count: parseInt(editingPlan.dataSourcesDocumentsCount.toString(), 10),
-          sizeMb: parseInt(
-            editingPlan.dataSourcesDocumentsSizeMb.toString(),
-            10
-          ),
+          count: parseMaybeNumber(editingPlan.dataSourcesDocumentsCount),
+          sizeMb: parseMaybeNumber(editingPlan.dataSourcesDocumentsSizeMb),
         },
       },
       users: {
-        maxUsers: parseInt(editingPlan.maxUsers.toString(), 10),
+        maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
     },
     billingType: editingPlan.billingType,
-    trialPeriodDays: parseInt(editingPlan.trialPeriodDays.toString(), 10),
+    trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
   };
 };
 
