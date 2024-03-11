@@ -33,8 +33,7 @@ function isAuth0Session(session: unknown): session is Session {
 
 // We only expose generic types to ease phasing out.
 
-// Overrides the Auth0 type definition entirely, to only expose what we need.
-export type SessionWithUser = { user: ExternalUser };
+export type SessionWithUser = Session & { user: ExternalUser };
 
 export function isValidSession(
   session: Session | null
