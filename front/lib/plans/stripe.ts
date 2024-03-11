@@ -142,7 +142,10 @@ export const createCheckoutSession = async ({
 
   if (plan.trialPeriodDays) {
     // The plan has free trial, we start a workflow to send reminder emails.
-    await launchSendFreeTrialReminderEmailsWorkflow({ workspaceId: owner.sId });
+    await launchSendFreeTrialReminderEmailsWorkflow({
+      workspaceId: owner.sId,
+      trialPeriodDays: plan.trialPeriodDays,
+    });
   }
 
   return session.url;

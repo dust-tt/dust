@@ -4,8 +4,10 @@ import { sendFreeTrialReminderEmails } from "./workflows";
 
 export async function launchSendFreeTrialReminderEmailsWorkflow({
   workspaceId,
+  trialPeriodDays,
 }: {
   workspaceId: string;
+  trialPeriodDays: number;
 }) {
   const client = await getTemporalClient();
 
@@ -13,6 +15,7 @@ export async function launchSendFreeTrialReminderEmailsWorkflow({
     args: [
       {
         workspaceId,
+        trialPeriodDays,
       },
     ],
     taskQueue: "mailing-queue",
