@@ -106,3 +106,9 @@ export class FrontApiError extends Error {
     super(message);
   }
 }
+
+export class SSOEnforcedError extends Error {
+  constructor(message: string, readonly workspaceId: string) {
+    super(message);
+  }
+}

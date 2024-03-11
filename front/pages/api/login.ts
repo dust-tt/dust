@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { FrontApiError } from "@dust-tt/types";
+import { FrontApiError, SSOEnforcedError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { trackUserMemberships } from "@app/lib/amplitude/back";
@@ -11,7 +11,10 @@ import {
 } from "@app/lib/iam/invitations";
 import { getActiveMembershipsForUser } from "@app/lib/iam/memberships";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getUserFromSession } from "@app/lib/iam/session";
+import {
+  getUserFromSession,
+  statisfiesEnforceEntrepriseConnection,
+} from "@app/lib/iam/session";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import {
   createWorkspace,
@@ -52,6 +55,13 @@ async function handleMembershipInvite(
       "The invite token is invalid, please ask your admin to resend an invitation.",
       400,
       "invalid_request_error"
+    );
+  }
+
+  if (workspace.ssoEnforced) {
+    throw new SSOEnforcedError(
+      "SSO is enforced on this workspace.",
+      workspace.sId
     );
   }
 
@@ -192,6 +202,13 @@ async function handleRegularSignupFlow(
     existingWorkspace &&
     joinTargetWorkspaceAllowed
   ) {
+    if (existingWorkspace.ssoEnforced) {
+      throw new SSOEnforcedError(
+        "SSO is enforced on this workspace.",
+        existingWorkspace.sId
+      );
+    }
+
     const workspaceSubscription = await subscriptionForWorkspace(
       existingWorkspace
     );
@@ -283,9 +300,8 @@ async function handler(
     // Login flow: first step is to attempt to find the user.
     const user = await createOrUpdateUser(session);
 
-    if (membershipInvite) {
-      targetWorkspace = await handleMembershipInvite(user, membershipInvite);
-    } else if (enterpriseConnectionWorkspaceId) {
+    // Prioritize enterprise connections.
+    if (enterpriseConnectionWorkspaceId) {
       const { flow, workspace } = await handleEnterpriseSignUpFlow(
         user,
         enterpriseConnectionWorkspaceId
@@ -296,6 +312,8 @@ async function handler(
       }
 
       targetWorkspace = workspace;
+    } else if (membershipInvite) {
+      targetWorkspace = await handleMembershipInvite(user, membershipInvite);
     } else {
       const { flow, workspace } = await handleRegularSignupFlow(
         session,
@@ -318,6 +336,13 @@ async function handler(
           message: err.message,
         },
       });
+    }
+
+    if (err instanceof SSOEnforcedError) {
+      res.redirect(
+        `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${err.workspaceId}`
+      );
+      return;
     }
   }
 
