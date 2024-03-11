@@ -45,6 +45,7 @@ export const PlanTypeSchema = t.type({
     t.literal("per_seat"),
     t.literal("free"),
   ]),
+  trialPeriodDays: t.number,
 });
 
 export type UpsertPokePlanResponseBody = {
@@ -108,6 +109,7 @@ async function handler(
           },
         },
         billingType: plan.billingType,
+        trialPeriodDays: plan.trialPeriodDays,
       }));
 
       const stripeProductIds = plans
@@ -190,6 +192,7 @@ async function handler(
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
         billingType: body.billingType,
+        trialPeriodDays: body.trialPeriodDays,
       });
       res.status(200).json({
         plan: body,

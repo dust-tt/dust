@@ -46,6 +46,7 @@ if (isDevelopment()) {
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+    trialPeriodDays: 0,
   });
 }
 

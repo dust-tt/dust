@@ -39,6 +39,7 @@ export type EditingPlanType = {
   maxUsers: string | number;
   billingType: FreeBillingType | PaidBillingType;
   isNewPlan?: boolean;
+  trialPeriodDays: string | number;
 };
 
 export const fromPlanType = (plan: PlanType): EditingPlanType => {
@@ -60,10 +61,17 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
     billingType: plan.billingType,
+    trialPeriodDays: plan.trialPeriodDays,
   };
 };
 
 export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
+  const parseMaybeNumber = (x: string | number) => {
+    if (typeof x === "string") {
+      return parseInt(x, 10);
+    }
+    return x;
+  };
   return {
     code: editingPlan.code.trim(),
     name: editingPlan.name.trim(),
@@ -71,7 +79,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
     limits: {
       assistant: {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
-        maxMessages: parseInt(editingPlan.maxMessages.toString(), 10),
+        maxMessages: parseMaybeNumber(editingPlan.maxMessages),
       },
       connections: {
         isConfluenceAllowed: editingPlan.isConfluenceAllowed,
@@ -83,20 +91,18 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isWebCrawlerAllowed: editingPlan.isWebCrawlerAllowed,
       },
       dataSources: {
-        count: parseInt(editingPlan.dataSourcesCount.toString(), 10),
+        count: parseMaybeNumber(editingPlan.dataSourcesCount),
         documents: {
-          count: parseInt(editingPlan.dataSourcesDocumentsCount.toString(), 10),
-          sizeMb: parseInt(
-            editingPlan.dataSourcesDocumentsSizeMb.toString(),
-            10
-          ),
+          count: parseMaybeNumber(editingPlan.dataSourcesDocumentsCount),
+          sizeMb: parseMaybeNumber(editingPlan.dataSourcesDocumentsSizeMb),
         },
       },
       users: {
-        maxUsers: parseInt(editingPlan.maxUsers.toString(), 10),
+        maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
     },
     billingType: editingPlan.billingType,
+    trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
   };
 };
 
@@ -119,6 +125,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxUsers: "",
   isNewPlan: true,
   billingType: "fixed",
+  trialPeriodDays: 0,
 });
 
 export const useEditingPlan = () => {
@@ -280,6 +287,18 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "Billing",
     error: (plan: EditingPlanType) => (plan.billingType ? null : "Required"),
+  },
+  trialPeriodDays: {
+    type: "number",
+    width: "small",
+    title: "Trial Days",
+    error: (plan: EditingPlanType) => {
+      if (plan.billingType === "free") {
+        return null;
+      }
+
+      return errorCheckNumber(plan.trialPeriodDays);
+    },
   },
 } as const;
 

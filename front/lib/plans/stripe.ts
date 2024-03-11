@@ -111,6 +111,8 @@ export const createCheckoutSession = async ({
         planCode: planCode,
         workspaceId: owner.sId,
       },
+      // If trialPeriodDays is 0, we send "undefined" to Stripe.
+      trial_period_days: plan.trialPeriodDays || undefined,
     },
     metadata: {
       planCode: planCode,
