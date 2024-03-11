@@ -102,7 +102,9 @@ export function EnterpriseConnectionDetails({
           setIsToggleEnforceEnterpriseConnectionModalOpened(false);
 
           if (updated) {
-            await mutateEnterpriseConnection();
+            // We perform a full refresh so that the Workspace name updates and we get a fresh owner
+            // object so that the formValidation logic keeps working.
+            window.location.reload();
           }
         }}
         owner={owner}
@@ -443,10 +445,6 @@ function ToggleEnforceEnterpriseConnectionModal({
         });
       } else {
         onClose(true);
-
-        // We perform a full refresh so that the Workspace name updates and we get a fresh owner
-        // object so that the formValidation logic keeps working.
-        window.location.reload();
       }
     },
     [owner, sendNotification, onClose]
