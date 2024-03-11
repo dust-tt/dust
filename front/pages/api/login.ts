@@ -125,12 +125,14 @@ async function handleEnterpriseSignUpFlow(
     }),
   ]);
 
-  console.log(">> activeMemberships:", activeMemberships);
-  console.log(">> workspace:", workspace);
-
-  // If active memberships exist or workspace does not exist, return early.
-  if (activeMemberships.length !== 0 || !workspace) {
+  // Early return if user is already a member of a workspace.
+  if (activeMemberships.length !== 0) {
     return { flow: null, workspace: null };
+  }
+
+  // Redirect to login error flow if workspace is not found.
+  if (!workspace) {
+    return { flow: "unauthorized", workspace: null };
   }
 
   const membership = await Membership.findOne({
@@ -140,7 +142,7 @@ async function handleEnterpriseSignUpFlow(
     },
   });
 
-  // Create membership if it does not exist
+  // Create membership if it does not exist.
   if (!membership) {
     await createAndLogMembership({
       workspace,
