@@ -11,10 +11,7 @@ import {
 } from "@app/lib/iam/invitations";
 import { getActiveMembershipsForUser } from "@app/lib/iam/memberships";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import {
-  getUserFromSession,
-  statisfiesEnforceEntrepriseConnection,
-} from "@app/lib/iam/session";
+import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import {
   createWorkspace,
@@ -322,7 +319,7 @@ async function handler(
     const membershipInvite = membershipInviteRes.value;
 
     // Login flow: first step is to attempt to find the user.
-    const user = await createOrUpdateUser(session);
+    const { created: userCreated, user } = await createOrUpdateUser(session);
 
     // Prioritize enterprise connections.
     if (enterpriseConnectionWorkspaceId) {
@@ -347,7 +344,7 @@ async function handler(
           throw result.error;
         }
 
-        if (user && user.isNewRecord) {
+        if (userCreated) {
           await user.destroy();
         }
 
