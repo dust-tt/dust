@@ -42,6 +42,7 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   maxDataSourcesCount: 5,
   maxDataSourcesDocumentsCount: 10,
   maxDataSourcesDocumentsSizeMb: 2,
+  trialPeriodDays: 0,
 };
 
 /**
@@ -67,6 +68,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
+    trialPeriodDays: 0,
   },
 ];
 

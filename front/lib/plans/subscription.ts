@@ -99,6 +99,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
           maxUsers: freeTestPlan.maxUsersInWorkspace,
         },
       },
+      trialPeriodDays: freeTestPlan.trialPeriodDays,
     },
   };
 };
@@ -199,6 +200,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
             maxUsers: plan.maxUsersInWorkspace,
           },
         },
+        trialPeriodDays: plan.trialPeriodDays,
       },
     };
   });
@@ -365,6 +367,7 @@ export const getCheckoutUrlForUpgrade = async (
           maxUsers: plan.maxUsersInWorkspace,
         },
       },
+      trialPeriodDays: plan.trialPeriodDays,
     },
   };
 };
