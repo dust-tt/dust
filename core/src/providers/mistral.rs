@@ -122,25 +122,24 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
         let mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
-        // let meta_prompt = match cm.role {
-        //     ChatMessageRole::User => match cm.name.as_ref() {
-        //         Some(name) => format!("[user: {}] ", name), // Include space here.
-        //         None => String::from(""),
-        //     },
-        //     ChatMessageRole::Function => match cm.name.as_ref() {
-        //         Some(name) => format!("[function_result: {}] ", name), // Include space here.
-        //         None => "[function_result]".to_string(),
-        //     },
-        //     _ => String::from(""),
-        // };
+        // `name` is taken into account by Mistral only for tool roles. We therefore inject it for
+        // `user` messages to indicate to the model who is the user since name is not taken into
+        // account there. For `assistant` message we don't inject it to avoid having the model
+        // injecting similar prefixes.
+        let meta_prompt = match cm.role {
+            ChatMessageRole::User => match cm.name.as_ref() {
+                Some(name) => format!("[user: {}] ", name), // Include space here.
+                None => String::from(""),
+            },
+            _ => String::from(""),
+        };
 
         Ok(MistralChatMessage {
-            // content: Some(format!(
-            //     "{}{}",
-            //     meta_prompt,
-            //     cm.content.clone().unwrap_or(String::from(""))
-            // )),
-            content: cm.content.clone(),
+            content: Some(format!(
+                "{}{}",
+                meta_prompt,
+                cm.content.clone().unwrap_or(String::from(""))
+            )),
             name: cm.name.clone(),
             role: mistral_role,
             tool_calls: match cm.function_call.as_ref() {
@@ -257,22 +256,28 @@ struct MistralAPIError {
     pub _type: Option<String>,
     pub code: Option<String>,
     pub message: String,
-    pub object: String,
+    pub object: Option<String>,
     pub param: Option<String>,
 }
 
 impl MistralAPIError {
     pub fn message(&self) -> String {
-        format!("MistralAIError: [{:?}] {}", self._type, self.message,)
+        match self._type.as_ref() {
+            Some(t) => format!("MistralAIError: [{}] {}", t, self.message),
+            None => format!("MistralAIError: {}", self.message),
+        }
     }
 
     pub fn retryable(&self) -> bool {
-        match self.object.as_str() {
-            "error" => match self._type {
-                Some(_) => self.message.contains("retry"),
-                None => false,
+        match self.object.as_ref() {
+            Some(o) => match o.as_str() {
+                "error" => match self._type {
+                    Some(_) => self.message.contains("retry"),
+                    None => false,
+                },
+                _ => false,
             },
-            _ => false,
+            None => false,
         }
     }
 
@@ -322,6 +327,8 @@ impl MistralAILLM {
         temperature: f32,
         top_p: f32,
         max_tokens: Option<i32>,
+        tools: Vec<MistralTool>,
+        tool_choice: Option<MistralToolChoice>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<MistralChatCompletion> {
         let url = uri.to_string();
@@ -342,8 +349,6 @@ impl MistralAILLM {
             Err(_) => return Err(anyhow!("Error creating streamed client to Mistral AI")),
         };
 
-        // TODO(flav): Handle `safe_mode`.
-
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
@@ -354,6 +359,11 @@ impl MistralAILLM {
 
         if model_id.is_some() {
             body["model"] = json!(model_id);
+        }
+
+        if tool_choice.is_some() && tools.len() > 0 {
+            body["tool_choice"] = json!(tool_choice);
+            body["tools"] = json!(tools);
         }
 
         let client = builder
@@ -536,6 +546,14 @@ impl MistralAILLM {
                             }
                         },
                     };
+
+                    match a.choices[j].delta.get("tool_calls") {
+                        None => (),
+                        Some(tc) => {
+                            c.choices[j].message.tool_calls =
+                                serde_json::from_value(tc.clone()).unwrap_or_else(|_| None);
+                        }
+                    };
                 }
             }
             c
@@ -581,9 +599,6 @@ impl MistralAILLM {
             body["tools"] = json!(tools);
         }
 
-        // printl the stringify json
-        print!("{}", body.to_string());
-
         let req = reqwest::Client::new()
             .post(uri.to_string())
             .header("Content-Type", "application/json")
@@ -627,8 +642,6 @@ impl MistralAILLM {
                 }
             }
         }?;
-
-        println!("{:?}", completion);
 
         // For all messages, edit the content and strip leading and trailing spaces and \n.
         for m in completion.choices.iter_mut() {
@@ -759,10 +772,9 @@ impl LLM for MistralAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    match max_tokens {
-                        Some(-1) => None,
-                        _ => max_tokens,
-                    },
+                    computed_max_tokens,
+                    tools,
+                    tool_choice,
                     event_sender,
                 )
                 .await?
