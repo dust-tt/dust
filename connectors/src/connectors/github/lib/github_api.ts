@@ -789,7 +789,7 @@ export async function processRepository({
           sizeBytes: size,
           documentId,
           parentInternalId,
-          parents: parents.map((p) => p.internalId),
+          parents: [documentId, ...parents.map((p) => p.internalId)],
           localFilePath: file,
         });
 
