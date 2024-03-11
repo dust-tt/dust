@@ -108,6 +108,52 @@ function canJoinTargetWorkspace(
   return targetWorkspaceId === workspace.sId;
 }
 
+async function handleEnterpriseSignUpFlow(
+  user: User,
+  enterpriseConnectionWorkspaceId: string
+): Promise<{
+  flow: "unauthorized" | null;
+  workspace: Workspace | null;
+}> {
+  // Combine queries to optimize database calls.
+  const [activeMemberships, workspace] = await Promise.all([
+    getActiveMembershipsForUser(user.id),
+    Workspace.findOne({
+      where: {
+        sId: enterpriseConnectionWorkspaceId,
+      },
+    }),
+  ]);
+
+  console.log(">> activeMemberships:", activeMemberships);
+  console.log(">> workspace:", workspace);
+
+  // If active memberships exist or workspace does not exist, return early.
+  if (activeMemberships.length !== 0 || !workspace) {
+    return { flow: null, workspace: null };
+  }
+
+  const membership = await Membership.findOne({
+    where: {
+      userId: user.id,
+      workspaceId: workspace.id,
+    },
+  });
+
+  // Create membership if it does not exist
+  if (!membership) {
+    await createAndLogMembership({
+      workspace,
+      userId: user.id,
+      role: "user",
+    });
+  } else if (membership.role === "revoked") {
+    return { flow: "unauthorized", workspace: null };
+  }
+
+  return { flow: null, workspace };
+}
+
 // Regular flow, only if the user is a newly created user.
 // Verify if there's an existing workspace with the same verified domain that allows auto-joining.
 // The user will join this workspace if it exists; otherwise, a new workspace is created.
@@ -220,6 +266,9 @@ async function handler(
 
   const { inviteToken, wId } = req.query;
   const targetWorkspaceId = typeof wId === "string" ? wId : undefined;
+  // Auth0 flow augments token with a claim for workspace id linked to the enterprise connection.
+  const enterpriseConnectionWorkspaceId =
+    session.user["https://dust.tt/workspaceId"];
 
   let targetWorkspace: Workspace | null = null;
   try {
@@ -234,6 +283,17 @@ async function handler(
 
     if (membershipInvite) {
       targetWorkspace = await handleMembershipInvite(user, membershipInvite);
+    } else if (enterpriseConnectionWorkspaceId) {
+      const { flow, workspace } = await handleEnterpriseSignUpFlow(
+        user,
+        enterpriseConnectionWorkspaceId
+      );
+      if (flow) {
+        res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
+        return;
+      }
+
+      targetWorkspace = workspace;
     } else {
       const { flow, workspace } = await handleRegularSignupFlow(
         session,

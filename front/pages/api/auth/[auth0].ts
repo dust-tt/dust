@@ -3,10 +3,13 @@ import {
   handleAuth,
   handleCallback,
   handleLogin,
+  handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
 import type { AuthorizationParameters } from "@auth0/nextjs-auth0/dist/auth0-session";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+import config from "@app/lib/api/config";
 
 export default handleAuth({
   login: handleLogin((req) => {
@@ -23,6 +26,7 @@ export default handleAuth({
 
     return {
       authorizationParams: defaultAuthorizationParams,
+      returnTo: "/api/login",
     };
   }),
   callback: async (req: NextApiRequest, res: NextApiResponse) => {
@@ -42,4 +46,10 @@ export default handleAuth({
       return res.redirect("/login-error");
     }
   },
+  logout: handleLogout((req) => {
+    return {
+      returnTo:
+        "query" in req ? (req.query.returnTo as string) : config.getAppUrl(),
+    };
+  }),
 });
