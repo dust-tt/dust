@@ -733,7 +733,7 @@ impl LLM for MistralAILLM {
                     "none" => MistralToolChoice::None,
                     // This string is validated in the block to match at least one function.
                     // Mistral semantic of `any` is to force the model to make a function call (but
-                    // can be any of the functions  passed). The two semantics only mathc if there
+                    // can be any of the functions passed). The two semantics only match if there
                     // is one function.
                     _ if functions.len() == 1 => MistralToolChoice::Any,
                     _ => Err(anyhow!(
