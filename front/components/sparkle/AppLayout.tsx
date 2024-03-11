@@ -24,6 +24,7 @@ import type {
 } from "@app/components/sparkle/navigation";
 import { topNavigation } from "@app/components/sparkle/navigation";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -243,10 +244,23 @@ export default function AppLayout({
 }) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const [loaded, setLoaded] = useState(false);
+  const router = useRouter();
+  const user = useUser();
 
   useEffect(() => {
     setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    const amplitude = getBrowserClient();
+    if (user?.user?.id) {
+      const userId = `user-${user?.user?.id}`;
+      amplitude.identify(userId);
+      amplitude.pageViewed({
+        pathname: router.pathname,
+      });
+    }
+  }, [router.pathname, user?.user?.id]);
 
   return (
     <>
