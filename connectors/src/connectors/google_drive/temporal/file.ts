@@ -46,6 +46,11 @@ export async function syncOneFile(
     },
   });
 
+  // Early return if lastSeenTs is greater than activity start, indicating probable failure.
+  if (fileInDb?.lastSeenTs && fileInDb.lastSeenTs > new Date(startSyncTs)) {
+    return true;
+  }
+
   if (fileInDb?.skipReason) {
     logger.info(
       {
