@@ -92,7 +92,7 @@ export async function maybeUpdateFromExternalUser(
 
 export async function createOrUpdateUser(
   session: SessionWithUser
-): Promise<User> {
+): Promise<{ user: User; created: boolean }> {
   const { user: externalUser } = session;
 
   const user = await fetchUserFromSession(session);
@@ -122,7 +122,7 @@ export async function createOrUpdateUser(
 
     await user.save();
 
-    return user;
+    return { user, created: false };
   } else {
     const { firstName, lastName } = guessFirstandLastNameFromFullName(
       externalUser.name
@@ -150,6 +150,6 @@ export async function createOrUpdateUser(
       fullName: u.name,
     } satisfies UserType);
 
-    return u;
+    return { user: u, created: true };
   }
 }
