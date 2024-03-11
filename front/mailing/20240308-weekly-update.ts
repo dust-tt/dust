@@ -7,8 +7,10 @@ sgMail.setApiKey(SENDGRID_API_KEY);
 
 export const sendAPIUserEmail = async ({
   user_email,
+  workspace_id,
 }: {
   user_email: string;
+  workspace_id: string;
 }) => {
   const msg = {
     to: user_email,
@@ -16,7 +18,7 @@ export const sendAPIUserEmail = async ({
     subject: "[Dust] Product Update 1",
     html: `<p>Hi!</p>
     <p style="max-width: 500px;">
-      Dust makes work work better.
+      <a href="https://dust.tt/w/${workspace_id}">Dust</a> makes work work better with custom AI assistants.
     </p>
     <p style="max-width: 500px;">
       The past month has been packed with powerful new features and upgrades.
@@ -24,25 +26,24 @@ export const sendAPIUserEmail = async ({
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>⛵️ Mistral Large Now Available</b><br/>
-      • You can now access the powerful Mistral Large model via the new @mistral-large global assistant.<br/>
-      • Mistral Large, is the latest and most advanced language model from Mistral and delivers top-tier reasoning capacities.<br/>
+      • You can now access Mistral Large via the new @mistral-large global assistant (you can also use it to build custom assistants).<br/>
+      • Mistral Large, is the latest and most advanced language model from Mistral.<br/>
       🔗 <a href="https://mistral.ai/news/mistral-large/">https://mistral.ai/news/mistral-large/</a>
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>🧠 New Cutting-Edge Models from Anthropic</b><br/>
       • Claude 3 Opus is now powering the @claude-3 global assistant, delivering a major performance boost over Claude 2.1.<br/>
-      • Opus is Anthropic most intelligent model, with best-in-market performance. It can navigate open-ended prompts and sight-unseen scenarios.<br/>
+      • Opus is Anthropic's most intelligent model, with best-in-market performance and a very lage context window (200k tokens).<br/>
       • All custom assistants using Claude 2.1 have been automatically upgraded to Claude 3 Opus.<br/>
       🔗 <a href="https://www.anthropic.com/news/claude-3-family">https://www.anthropic.com/news/claude-3-family</a>
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
       <b>📊 Introducing Table Queries</b><br/>
-      • Connect Notion databases, Google Sheets, and CSV files to Dust for powerful data analysis.<br/>
-      • Ask questions like "Show me top customers by revenue" and get back instant charts and insights.<br/>
-      • Enables everyone to make data-informed decisions without needing SQL or analytics expertise.<br/>
-      • Tables in Dust are automatically kept in sync with their source Google Sheets and Notion databases.<br/>
+      • Create custom assistants to perform quantitative queries on Notion databases, Google Sheets, and CSV.<br/>
+      • Ask questions like "Show me top customers by revenue" and get back instant insights.<br/>
+      • Enable everyone to make data-informed decisions without needing SQL or analytics expertise.<br/>
       🔗 <a href="https://blog.dust.tt/dusts-for-quantitative-analysis-with-llms/">https://blog.dust.tt/dusts-for-quantitative-analysis-with-llms/</a>
     </p>
 
@@ -74,6 +75,12 @@ export const sendAPIUserEmail = async ({
     </p>
 
     <p style="max-width: 500px; padding-top: 20px;">
+      <b>🏗️ Dust Builders Sessions #1</b><br/>
+      • Tune in on March 14th for our first Dust Sessions for Builders webinar! Folks from Alan, Pennylane, and Payfit will be demoing their innovative support and sales assistants.<br/>
+      • Admin and Builders, save your spot now! Send an email to <a href="mailto:pauline@dust.tt">pauline@dust.tt</a>.
+    </p>
+
+    <p style="max-width: 500px; padding-top: 20px;">
       <b>➕ And more...</b><br/>
       • Refreshed assistant details page and builder UX.<br/>
       • Experimental instruction suggestions and website crawling settings.<br/>
@@ -86,6 +93,9 @@ export const sendAPIUserEmail = async ({
     <p>
       The Dust Team
     </p>
+    <p style="max-width: 500px; padding-top: 20px; color: #888;">
+      PS: Simply reply to this email with any questions (or if you wish to unsubscribe from these updates). We're here to help!
+    </p>
 `,
   };
 
@@ -95,50 +105,42 @@ export const sendAPIUserEmail = async ({
 };
 
 async function main() {
-  // const [rows] = await front_sequelize.query(
-  //   `select max(ws.name) ws_name, max(ws."sId") ws_sid, u.name user_name, u.email user_email, u.id user_id
-  //   from
-  //       agent_generation_configurations agc
-  //       inner join agent_configurations ac on ac."generationConfigurationId" = agc.id
-  //       inner join workspaces ws on ws.id = ac."workspaceId"
-  //       inner join memberships m on m."workspaceId" = ws.id
-  //       inner join users u on m."userId" = u.id
-  //   where
-  //       agc."modelId" ilike 'gpt-3%' or agc."modelId" ilike 'claude-instant%'
-  //       and ws.plan not ilike '%"largeModels":true%'
-  //       and m.role = 'admin'
-  //   group by u.id
-  //         `
-  // );
+  const [rows] = await front_sequelize.query(
+    `
+SELECT "u".email user_email, "w"."sId" workspace_id
+FROM "users" "u"
+JOIN "memberships" "m" ON "u"."id" = "m"."userId"
+JOIN "workspaces" "w" ON "m"."workspaceId" = "w"."id"
+JOIN "subscriptions" "s" ON "w"."id" = "s"."workspaceId"
+WHERE "s"."status" = 'active'
+AND "m"."role" != 'revoked';
+    `
+  );
 
-  // console.log({ count: rows.length });
+  console.log({ count: rows.length });
 
-  // console.log("USING SENDGRID API KEY", SENDGRID_API_KEY);
+  // split rows in chunks of 16
+  const chunks: { user_email: string; workspace_id: string }[][] = [];
+  let chunk: { user_email: string; workspace_id: string }[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    chunk.push(rows[i] as { user_email: string; workspace_id: string });
+    if (chunk.length === 16) {
+      chunks.push(chunk);
+      chunk = [];
+    }
+  }
+  if (chunk.length > 0) {
+    chunks.push(chunk);
+  }
 
-  // // split rows in chunks of 16
-  // const chunks = [];
-  // let chunk = [];
-  // for (let i = 0; i < rows.length; i++) {
-  //   chunk.push(rows[i]);
-  //   if (chunk.length === 16) {
-  //     chunks.push(chunk);
-  //     chunk = [];
-  //   }
-  // }
-  // if (chunk.length > 0) {
-  //   chunks.push(chunk);
-  // }
-
-  const chunks: { user_email: string }[][] = [
-    [{ user_email: "team@dust.tt" }],
-  ];
+  //const chunks: { user_email: string }[][] = [[{ user_email: "team@dust.tt" }]];
 
   for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i] as { user_email: string }[];
+    const chunk = chunks[i];
     console.log("SENDING CHUNK", i, chunk.length);
     await Promise.all(
       chunk.map((row) => {
-        console.log("PREPARING EMAIL", row.user_email);
+        console.log("PREPARING EMAIL", row.user_email, row.workspace_id);
         if (LIVE && LIVE === "true") {
           return sendAPIUserEmail(row);
         } else {
