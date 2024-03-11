@@ -15,13 +15,20 @@ export type PostWorkspaceResponseBody = {
 const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,
 });
+
+const WorkspaceSsoEnforceUpdateBodySchema = t.type({
+  ssoEnforced: t.boolean,
+});
+
 const WorkspaceAllowedDomainUpdateBodySchema = t.type({
   domain: t.string,
   domainAutoJoinEnabled: t.boolean,
 });
+
 const PostWorkspaceRequestBodySchema = t.union([
-  WorkspaceNameUpdateBodySchema,
   WorkspaceAllowedDomainUpdateBodySchema,
+  WorkspaceNameUpdateBodySchema,
+  WorkspaceSsoEnforceUpdateBodySchema,
 ]);
 
 async function handler(
@@ -90,6 +97,12 @@ async function handler(
           name: body.name,
         });
         owner.name = body.name;
+      } else if ("ssoEnforced" in body) {
+        await w.update({
+          ssoEnforced: body.ssoEnforced,
+        });
+
+        owner.ssoEnforced = body.ssoEnforced;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const [affectedCount] = await WorkspaceHasDomain.update(
