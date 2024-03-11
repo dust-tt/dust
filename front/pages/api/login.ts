@@ -1,5 +1,5 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { FrontApiError, SSOEnforcedError } from "@dust-tt/types";
+import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
+import { Err, FrontApiError, Ok, SSOEnforcedError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { trackUserMemberships } from "@app/lib/amplitude/back";
@@ -35,12 +35,22 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 async function handleMembershipInvite(
   user: User,
   membershipInvite: MembershipInvitation
-) {
+): Promise<
+  Result<
+    {
+      flow: null;
+      workspace: Workspace;
+    },
+    FrontApiError | SSOEnforcedError
+  >
+> {
   if (membershipInvite.inviteEmail !== user.email) {
-    throw new FrontApiError(
-      "The invitation token is not intended for use with this email address.",
-      400,
-      "invalid_request_error"
+    return new Err(
+      new FrontApiError(
+        "The invitation token is not intended for use with this email address.",
+        400,
+        "invalid_request_error"
+      )
     );
   }
 
@@ -51,17 +61,18 @@ async function handleMembershipInvite(
   });
 
   if (!workspace) {
-    throw new FrontApiError(
-      "The invite token is invalid, please ask your admin to resend an invitation.",
-      400,
-      "invalid_request_error"
+    return new Err(
+      new FrontApiError(
+        "The invite token is invalid, please ask your admin to resend an invitation.",
+        400,
+        "invalid_request_error"
+      )
     );
   }
 
   if (workspace.ssoEnforced) {
-    throw new SSOEnforcedError(
-      "SSO is enforced on this workspace.",
-      workspace.sId
+    return new Err(
+      new SSOEnforcedError("SSO is enforced on this workspace.", workspace.sId)
     );
   }
 
@@ -73,10 +84,12 @@ async function handleMembershipInvite(
   });
 
   if (m?.role === "revoked") {
-    throw new FrontApiError(
-      "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
-      400,
-      "invalid_request_error"
+    return new Err(
+      new FrontApiError(
+        "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
+        400,
+        "invalid_request_error"
+      )
     );
   }
 
@@ -90,7 +103,7 @@ async function handleMembershipInvite(
 
   await markInvitationAsConsumed(membershipInvite, user);
 
-  return workspace;
+  return new Ok({ flow: null, workspace });
 }
 
 function canJoinTargetWorkspace(
@@ -173,17 +186,22 @@ async function handleRegularSignupFlow(
   session: SessionWithUser,
   user: User,
   targetWorkspaceId?: string
-): Promise<{
-  flow: "no-auto-join" | "revoked" | null;
-  workspace: Workspace | null;
-}> {
+): Promise<
+  Result<
+    {
+      flow: "no-auto-join" | "revoked" | null;
+      workspace: Workspace | null;
+    },
+    SSOEnforcedError
+  >
+> {
   const activeMemberships = await getActiveMembershipsForUser(user.id);
   // Return early if the user is already a member of a workspace and is not attempting to join another one.
   if (activeMemberships.length !== 0 && !targetWorkspaceId) {
-    return {
+    return new Ok({
       flow: null,
       workspace: null,
-    };
+    });
   }
 
   const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
@@ -203,9 +221,11 @@ async function handleRegularSignupFlow(
     joinTargetWorkspaceAllowed
   ) {
     if (existingWorkspace.ssoEnforced) {
-      throw new SSOEnforcedError(
-        "SSO is enforced on this workspace.",
-        existingWorkspace.sId
+      return new Err(
+        new SSOEnforcedError(
+          "SSO is enforced on this workspace.",
+          existingWorkspace.sId
+        )
       );
     }
 
@@ -221,7 +241,7 @@ async function handleRegularSignupFlow(
       !hasAvailableSeats ||
       workspaceWithVerifiedDomain.domainAutoJoinEnabled === false
     ) {
-      return { flow: "no-auto-join", workspace: null };
+      return new Ok({ flow: "no-auto-join", workspace: null });
     }
 
     const m = await Membership.findOne({
@@ -232,7 +252,7 @@ async function handleRegularSignupFlow(
     });
 
     if (m?.role === "revoked") {
-      return { flow: "revoked", workspace: null };
+      return new Ok({ flow: "revoked", workspace: null });
     }
 
     if (!m) {
@@ -243,7 +263,7 @@ async function handleRegularSignupFlow(
       });
     }
 
-    return { flow: null, workspace: existingWorkspace };
+    return new Ok({ flow: null, workspace: existingWorkspace });
   } else if (!targetWorkspaceId) {
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
@@ -256,10 +276,10 @@ async function handleRegularSignupFlow(
       workspaceId: workspace.sId,
     });
 
-    return { flow: null, workspace };
+    return new Ok({ flow: null, workspace });
   } else {
     // Redirect the user to their existing workspace if they are not allowed to join the target workspace.
-    return { flow: null, workspace: null };
+    return new Ok({ flow: null, workspace: null });
   }
 }
 
@@ -293,9 +313,13 @@ async function handler(
   try {
     // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
     // `inviteToken`, meaning the user is going through the invite by email flow.
-    const membershipInvite = await getPendingMembershipInvitationForToken(
+    const membershipInviteRes = await getPendingMembershipInvitationForToken(
       inviteToken
     );
+    if (membershipInviteRes.isErr()) {
+      throw membershipInviteRes.error;
+    }
+    const membershipInvite = membershipInviteRes.value;
 
     // Login flow: first step is to attempt to find the user.
     const user = await createOrUpdateUser(session);
@@ -312,14 +336,28 @@ async function handler(
       }
 
       targetWorkspace = workspace;
-    } else if (membershipInvite) {
-      targetWorkspace = await handleMembershipInvite(user, membershipInvite);
     } else {
-      const { flow, workspace } = await handleRegularSignupFlow(
-        session,
-        user,
-        targetWorkspaceId
-      );
+      const loginFctn = membershipInvite
+        ? async () => handleMembershipInvite(user, membershipInvite)
+        : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
+
+      const result = await loginFctn();
+      if (result.isErr()) {
+        if (result.error instanceof FrontApiError) {
+          throw result.error;
+        }
+
+        if (user && user.isNewRecord) {
+          await user.destroy();
+        }
+
+        res.redirect(
+          `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${result.error.workspaceId}`
+        );
+        return;
+      }
+
+      const { flow, workspace } = result.value;
       if (flow) {
         res.redirect(`/no-workspace?flow=${flow}`);
         return;
@@ -336,13 +374,6 @@ async function handler(
           message: err.message,
         },
       });
-    }
-
-    if (err instanceof SSOEnforcedError) {
-      res.redirect(
-        `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${err.workspaceId}`
-      );
-      return;
     }
   }
 
