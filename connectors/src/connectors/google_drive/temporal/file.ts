@@ -46,6 +46,12 @@ export async function syncOneFile(
     },
   });
 
+  // Early return if lastSeenTs is greater than workflow start.
+  // This allows avoiding resyncing already-synced documents in case of activity failure
+  if (fileInDb?.lastSeenTs && fileInDb.lastSeenTs > new Date(startSyncTs)) {
+    return true;
+  }
+
   if (fileInDb?.skipReason) {
     logger.info(
       {
