@@ -68,6 +68,10 @@ export interface IdentifyProperties {
   SignupDate?: string;
 }
 
+export interface ClickedEnterpriseContactUsProperties {
+  email: string;
+}
+
 export interface PageViewedProperties {
   pathname: string;
 }
@@ -87,6 +91,14 @@ export class Identify implements BaseEvent {
   event_type = amplitude.Types.SpecialEventType.IDENTIFY;
 
   constructor(public event_properties?: IdentifyProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class ClickedEnterpriseContactUs implements BaseEvent {
+  event_type = "ClickedEnterpriseContactUs";
+
+  constructor(public event_properties: ClickedEnterpriseContactUsProperties) {
     this.event_properties = event_properties;
   }
 }
@@ -222,6 +234,23 @@ export class Ampli {
     }
 
     return this.amplitude!.track(event, undefined, options);
+  }
+
+  /**
+   * ClickedEnterpriseContactUs
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/ClickedEnterpriseContactUs)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param properties The event's properties (e.g. email)
+   * @param options Amplitude event options.
+   */
+  clickedEnterpriseContactUs(
+    properties: ClickedEnterpriseContactUsProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(new ClickedEnterpriseContactUs(properties), options);
   }
 
   /**
