@@ -1,10 +1,11 @@
-use super::llm::{ChatFunction, ChatMessage as BaseChatMessage};
+use super::llm::{ChatFunction, ChatFunctionCall, ChatMessage};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{p50k_base_singleton, CoreBPE};
 use crate::run::Credentials;
+use crate::utils::ParseError;
 use crate::utils::{self, now};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -25,143 +26,258 @@ use tokio::time::timeout;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
-pub enum MistralAIChatMessageRole {
+pub enum MistralChatMessageRole {
     Assistant,
     System,
     User,
+    Tool,
 }
 
-impl From<MistralAIChatMessageRole> for ChatMessageRole {
-    fn from(value: MistralAIChatMessageRole) -> Self {
-        match value {
-            MistralAIChatMessageRole::Assistant => ChatMessageRole::Assistant,
-            MistralAIChatMessageRole::System => ChatMessageRole::System,
-            MistralAIChatMessageRole::User => ChatMessageRole::User,
+impl FromStr for MistralChatMessageRole {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(MistralChatMessageRole::System),
+            "user" => Ok(MistralChatMessageRole::User),
+            "assistant" => Ok(MistralChatMessageRole::Assistant),
+            "tool" => Ok(MistralChatMessageRole::Tool),
+            _ => Err(ParseError::with_message("Unknown MistralChatMessageRole"))?,
         }
     }
 }
 
-impl TryFrom<&ChatMessageRole> for MistralAIChatMessageRole {
+impl From<MistralChatMessageRole> for ChatMessageRole {
+    fn from(value: MistralChatMessageRole) -> Self {
+        match value {
+            MistralChatMessageRole::Assistant => ChatMessageRole::Assistant,
+            MistralChatMessageRole::System => ChatMessageRole::System,
+            MistralChatMessageRole::User => ChatMessageRole::User,
+            MistralChatMessageRole::Tool => ChatMessageRole::Function,
+        }
+    }
+}
+
+impl TryFrom<&ChatMessageRole> for MistralChatMessageRole {
     type Error = anyhow::Error;
 
     fn try_from(value: &ChatMessageRole) -> Result<Self, Self::Error> {
         match value {
-            ChatMessageRole::Assistant => Ok(MistralAIChatMessageRole::Assistant),
-            ChatMessageRole::System => Ok(MistralAIChatMessageRole::System),
-            ChatMessageRole::User => Ok(MistralAIChatMessageRole::User),
-            ChatMessageRole::Function => Ok(MistralAIChatMessageRole::User),
+            ChatMessageRole::Assistant => Ok(MistralChatMessageRole::Assistant),
+            ChatMessageRole::System => Ok(MistralChatMessageRole::System),
+            ChatMessageRole::User => Ok(MistralChatMessageRole::User),
+            ChatMessageRole::Function => Ok(MistralChatMessageRole::Tool),
         }
     }
 }
 
-impl ToString for MistralAIChatMessageRole {
+impl ToString for MistralChatMessageRole {
     fn to_string(&self) -> String {
         match self {
-            MistralAIChatMessageRole::Assistant => String::from("assistant"),
-            MistralAIChatMessageRole::System => String::from("system"),
-            MistralAIChatMessageRole::User => String::from("user"),
+            MistralChatMessageRole::Assistant => String::from("assistant"),
+            MistralChatMessageRole::System => String::from("system"),
+            MistralChatMessageRole::User => String::from("user"),
+            MistralChatMessageRole::Tool => String::from("tool"),
         }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-struct ChatMessage {
-    pub content: Option<String>,
-    pub role: MistralAIChatMessageRole,
+struct MistralToolCallFunction {
+    name: String,
+    arguments: String,
 }
 
-impl TryFrom<&BaseChatMessage> for ChatMessage {
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct MistralToolCall {
+    pub function: MistralToolCallFunction,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct MistralChatMessage {
+    pub role: MistralChatMessageRole,
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<MistralToolCall>>,
+}
+
+impl TryFrom<&ChatFunctionCall> for MistralToolCall {
     type Error = anyhow::Error;
 
-    fn try_from(cm: &BaseChatMessage) -> Result<Self, Self::Error> {
-        let mistral_role = MistralAIChatMessageRole::try_from(&cm.role)
+    fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
+        Ok(MistralToolCall {
+            function: MistralToolCallFunction {
+                name: cf.name.clone(),
+                arguments: cf.arguments.clone(),
+            },
+        })
+    }
+}
+
+impl TryFrom<&ChatMessage> for MistralChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
+        // `name` is taken into account by Mistral only for tool roles. We therefore inject it for
+        // `user` messages to indicate to the model who is the user since name is not taken into
+        // account there. For `assistant` message we don't inject it to avoid having the model
+        // injecting similar prefixes.
         let meta_prompt = match cm.role {
             ChatMessageRole::User => match cm.name.as_ref() {
                 Some(name) => format!("[user: {}] ", name), // Include space here.
                 None => String::from(""),
             },
-            ChatMessageRole::Function => match cm.name.as_ref() {
-                Some(name) => format!("[function_result: {}] ", name), // Include space here.
-                None => "[function_result]".to_string(),
-            },
             _ => String::from(""),
         };
 
-        Ok(ChatMessage {
+        Ok(MistralChatMessage {
             content: Some(format!(
                 "{}{}",
                 meta_prompt,
                 cm.content.clone().unwrap_or(String::from(""))
             )),
+            name: cm.name.clone(),
             role: mistral_role,
+            tool_calls: match cm.function_call.as_ref() {
+                Some(fc) => Some(vec![MistralToolCall::try_from(fc)?]),
+                None => None,
+            },
+        })
+    }
+}
+
+impl TryFrom<&MistralChatMessage> for ChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &MistralChatMessage) -> Result<Self, Self::Error> {
+        let role = ChatMessageRole::from(cm.role.clone());
+        let content = match cm.content.as_ref() {
+            Some(c) => Some(c.clone()),
+            None => None,
+        };
+
+        let function_call = match cm.tool_calls.as_ref() {
+            Some(tc) => {
+                if tc.len() > 0 {
+                    Some(ChatFunctionCall {
+                        name: tc[0].function.name.clone(),
+                        arguments: tc[0].function.arguments.clone(),
+                    })
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+        Ok(ChatMessage {
+            content,
+            role,
+            name: None,
+            function_call,
         })
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChatChoice {
+struct MistralChatChoice {
     pub finish_reason: Option<String>,
     pub index: usize,
-    pub message: BaseChatMessage,
+    pub message: MistralChatMessage,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Usage {
+struct MistralUsage {
     pub completion_tokens: Option<u64>,
     pub prompt_tokens: u64,
     pub total_tokens: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChatCompletion {
+struct MistralChatCompletion {
     pub id: String,
     pub object: String,
     pub created: u64,
     pub model: String,
-    pub choices: Vec<ChatChoice>,
-    pub usage: Option<Usage>,
+    pub choices: Vec<MistralChatChoice>,
+    pub usage: Option<MistralUsage>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChatDelta {
+struct MistralChatDelta {
     pub delta: Value,
     pub finish_reason: Option<String>,
     pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChatChunk {
-    pub choices: Vec<ChatDelta>,
+struct MistralChatChunk {
+    pub choices: Vec<MistralChatDelta>,
     pub created: Option<u64>,
     pub id: String,
     pub model: String,
     pub object: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum MistralToolType {
+    Function,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum MistralToolChoice {
+    None,
+    Auto,
+    Any,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct MistralToolFunction {
+    pub name: String,
+    pub description: Option<String>,
+    pub parameters: Option<Value>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct APIError {
+struct MistralTool {
+    pub r#type: MistralToolType,
+    pub function: MistralToolFunction,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct MistralAPIError {
     #[serde(alias = "type")]
     pub _type: Option<String>,
     pub code: Option<String>,
     pub message: String,
-    pub object: String,
+    pub object: Option<String>,
     pub param: Option<String>,
 }
 
-impl APIError {
+impl MistralAPIError {
     pub fn message(&self) -> String {
-        format!("MistralAIError: [{:?}] {}", self._type, self.message,)
+        match self._type.as_ref() {
+            Some(t) => format!("MistralAIError: [{}] {}", t, self.message),
+            None => format!("MistralAIError: {}", self.message),
+        }
     }
 
     pub fn retryable(&self) -> bool {
-        match self.object.as_str() {
-            "error" => match self._type {
-                Some(_) => self.message.contains("retry"),
-                None => false,
+        match self.object.as_ref() {
+            Some(o) => match o.as_str() {
+                "error" => match self._type {
+                    Some(_) => self.message.contains("retry"),
+                    None => false,
+                },
+                _ => false,
             },
-            _ => false,
+            None => false,
         }
     }
 
@@ -186,10 +302,12 @@ impl MistralAILLM {
 
     fn to_mistral_messages(
         &self,
-        messages: &Vec<BaseChatMessage>,
-    ) -> Result<Vec<ChatMessage>, anyhow::Error> {
-        let mistral_messages: Result<Vec<ChatMessage>, _> =
-            messages.iter().map(|m| ChatMessage::try_from(m)).collect();
+        messages: &Vec<ChatMessage>,
+    ) -> Result<Vec<MistralChatMessage>, anyhow::Error> {
+        let mistral_messages: Result<Vec<MistralChatMessage>, _> = messages
+            .iter()
+            .map(|m| MistralChatMessage::try_from(m))
+            .collect();
 
         // If mistral_messages is Err, the error will be returned from the function.
         // If it's Ok, the inner Vec<ChatMessage> will be returned.
@@ -205,12 +323,14 @@ impl MistralAILLM {
         uri: Uri,
         api_key: String,
         model_id: Option<String>,
-        messages: &Vec<ChatMessage>,
+        messages: &Vec<MistralChatMessage>,
         temperature: f32,
         top_p: f32,
         max_tokens: Option<i32>,
+        tools: Vec<MistralTool>,
+        tool_choice: Option<MistralToolChoice>,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<ChatCompletion> {
+    ) -> Result<MistralChatCompletion> {
         let url = uri.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -229,8 +349,6 @@ impl MistralAILLM {
             Err(_) => return Err(anyhow!("Error creating streamed client to Mistral AI")),
         };
 
-        // TODO(flav): Handle `safe_mode`.
-
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
@@ -241,6 +359,11 @@ impl MistralAILLM {
 
         if model_id.is_some() {
             body["model"] = json!(model_id);
+        }
+
+        if tool_choice.is_some() && tools.len() > 0 {
+            body["tool_choice"] = json!(tool_choice);
+            body["tools"] = json!(tools);
         }
 
         let client = builder
@@ -257,7 +380,7 @@ impl MistralAILLM {
 
         let mut stream = client.stream();
 
-        let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+        let chunks: Arc<Mutex<Vec<MistralChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
 
         'stream: loop {
             match stream.try_next().await {
@@ -275,41 +398,42 @@ impl MistralAILLM {
                                 guard.len()
                             };
 
-                            let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
-                                Ok(c) => c,
-                                Err(err) => {
-                                    let error: Result<APIError, _> =
-                                        serde_json::from_str(e.data.as_str());
-                                    match error {
-                                        Ok(error) => {
-                                            match error.retryable_streamed() && index == 0 {
-                                                true => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(100),
-                                                        factor: 2,
-                                                        retries: 3,
-                                                    }),
-                                                })?,
-                                                false => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: None,
-                                                })?,
+                            let chunk: MistralChatChunk =
+                                match serde_json::from_str(e.data.as_str()) {
+                                    Ok(c) => c,
+                                    Err(err) => {
+                                        let error: Result<MistralAPIError, _> =
+                                            serde_json::from_str(e.data.as_str());
+                                        match error {
+                                            Ok(error) => {
+                                                match error.retryable_streamed() && index == 0 {
+                                                    true => Err(ModelError {
+                                                        message: error.message(),
+                                                        retryable: Some(ModelErrorRetryOptions {
+                                                            sleep: Duration::from_millis(100),
+                                                            factor: 2,
+                                                            retries: 3,
+                                                        }),
+                                                    })?,
+                                                    false => Err(ModelError {
+                                                        message: error.message(),
+                                                        retryable: None,
+                                                    })?,
+                                                }
+                                                break 'stream;
                                             }
-                                            break 'stream;
-                                        }
-                                        Err(_) => {
-                                            Err(anyhow!(
-                                                "MistralAIError: failed parsing streamed \
+                                            Err(_) => {
+                                                Err(anyhow!(
+                                                    "MistralAIError: failed parsing streamed \
                                                      completion from Mistral AI err={} data={}",
-                                                err,
-                                                e.data.as_str(),
-                                            ))?;
-                                            break 'stream;
+                                                    err,
+                                                    e.data.as_str(),
+                                                ))?;
+                                                break 'stream;
+                                            }
                                         }
                                     }
-                                }
-                            };
+                                };
 
                             // Only stream if choices is length 1 but should always be the case.
                             match event_sender.as_ref() {
@@ -358,16 +482,16 @@ impl MistralAILLM {
                 0 => Err(anyhow!("No chunks received from Mistral AI")),
                 _ => Ok(guard[0].clone()),
             }?;
-            let mut c = ChatCompletion {
+            let mut c = MistralChatCompletion {
                 choices: f
                     .choices
                     .iter()
-                    .map(|c| ChatChoice {
-                        message: BaseChatMessage {
+                    .map(|c| MistralChatChoice {
+                        message: MistralChatMessage {
                             content: Some("".to_string()),
-                            function_call: None,
                             name: None,
-                            role: ChatMessageRole::from(MistralAIChatMessageRole::Assistant),
+                            role: MistralChatMessageRole::Assistant,
+                            tool_calls: None,
                         },
                         index: c.index,
                         finish_reason: None,
@@ -400,7 +524,7 @@ impl MistralAILLM {
                         Some(role) => match role.as_str() {
                             None => (),
                             Some(r) => {
-                                c.choices[j].message.role = ChatMessageRole::from_str(r)?;
+                                c.choices[j].message.role = MistralChatMessageRole::from_str(r)?;
                             }
                         },
                     };
@@ -421,6 +545,14 @@ impl MistralAILLM {
                                 ));
                             }
                         },
+                    };
+
+                    match a.choices[j].delta.get("tool_calls") {
+                        None => (),
+                        Some(tc) => {
+                            c.choices[j].message.tool_calls =
+                                serde_json::from_value(tc.clone()).unwrap_or_else(|_| None);
+                        }
                     };
                 }
             }
@@ -443,11 +575,13 @@ impl MistralAILLM {
         uri: Uri,
         api_key: String,
         model_id: Option<String>,
-        messages: &Vec<ChatMessage>,
+        messages: &Vec<MistralChatMessage>,
         temperature: f32,
         top_p: f32,
         max_tokens: Option<i32>,
-    ) -> Result<ChatCompletion> {
+        tools: Vec<MistralTool>,
+        tool_choice: Option<MistralToolChoice>,
+    ) -> Result<MistralChatCompletion> {
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
@@ -458,6 +592,11 @@ impl MistralAILLM {
 
         if model_id.is_some() {
             body["model"] = json!(model_id);
+        }
+
+        if tool_choice.is_some() && tools.len() > 0 {
+            body["tool_choice"] = json!(tool_choice);
+            body["tools"] = json!(tools);
         }
 
         let req = reqwest::Client::new()
@@ -483,10 +622,10 @@ impl MistralAILLM {
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
 
-        let mut completion: ChatCompletion = match serde_json::from_slice(c) {
+        let mut completion: MistralChatCompletion = match serde_json::from_slice(c) {
             Ok(c) => Ok(c),
             Err(_) => {
-                let error: APIError = serde_json::from_slice(c)?;
+                let error: MistralAPIError = serde_json::from_slice(c)?;
                 match error.retryable() {
                     true => Err(ModelError {
                         message: error.message(),
@@ -557,7 +696,7 @@ impl LLM for MistralAILLM {
 
     async fn chat(
         &self,
-        messages: &Vec<BaseChatMessage>,
+        messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
         function_call: Option<String>,
         temperature: f32,
@@ -570,10 +709,6 @@ impl LLM for MistralAILLM {
         _extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        if functions.len() > 0 || function_call.is_some() {
-            return Err(anyhow!("Mistral AI does not support chat functions."));
-        }
-
         if stop.len() > 0 {
             return Err(anyhow!("Mistral AI does not support stop sequence."));
         }
@@ -588,9 +723,42 @@ impl LLM for MistralAILLM {
             _ => max_tokens,
         };
 
-        // TODO(flav): Handle `extras`.
-
         let mistral_messages = self.to_mistral_messages(messages)?;
+
+        // Function calls / Tools logic.
+        let (tool_choice, tools) = match function_call {
+            Some(fc) => {
+                let choice = match fc.as_str() {
+                    "auto" => MistralToolChoice::Auto,
+                    "none" => MistralToolChoice::None,
+                    // This string is validated in the block to match at least one function.
+                    // Mistral semantic of `any` is to force the model to make a function call (but
+                    // can be any of the functions passed). The two semantics only match if there
+                    // is one function.
+                    _ if functions.len() == 1 => MistralToolChoice::Any,
+                    _ => Err(anyhow!(
+                        "Mistral only supports specified function when there \
+                            is exactly one function possible."
+                    ))?,
+                };
+
+                (
+                    Some(choice),
+                    functions
+                        .iter()
+                        .map(|f| MistralTool {
+                            r#type: MistralToolType::Function,
+                            function: MistralToolFunction {
+                                name: f.name.clone(),
+                                description: f.description.clone(),
+                                parameters: f.parameters.clone(),
+                            },
+                        })
+                        .collect(),
+                )
+            }
+            None => (None, vec![]),
+        };
 
         let c = match event_sender {
             Some(_) => {
@@ -604,10 +772,9 @@ impl LLM for MistralAILLM {
                         Some(t) => t,
                         None => 1.0,
                     },
-                    match max_tokens {
-                        Some(-1) => None,
-                        _ => max_tokens,
-                    },
+                    computed_max_tokens,
+                    tools,
+                    tool_choice,
                     event_sender,
                 )
                 .await?
@@ -624,6 +791,8 @@ impl LLM for MistralAILLM {
                         None => 1.0,
                     },
                     computed_max_tokens,
+                    tools,
+                    tool_choice,
                 )
                 .await?
             }
@@ -638,8 +807,8 @@ impl LLM for MistralAILLM {
             completions: c
                 .choices
                 .iter()
-                .map(|c| c.message.clone())
-                .collect::<Vec<_>>(),
+                .map(|c| ChatMessage::try_from(&c.message))
+                .collect::<Result<Vec<_>>>()?,
         })
     }
 

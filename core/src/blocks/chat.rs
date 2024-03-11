@@ -2,7 +2,9 @@ use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::script::Script;
-use crate::providers::llm::{ChatFunction, ChatMessage, ChatMessageRole, LLMChatRequest};
+use crate::providers::llm::{
+    ChatFunction, ChatFunctionCall, ChatMessage, ChatMessageRole, LLMChatRequest,
+};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -95,7 +97,7 @@ impl Chat {
         Ok(Chat {
             instructions,
             messages_code: messages_code.unwrap(),
-            functions_code: functions_code,
+            functions_code,
             temperature: temperature.unwrap(),
             top_p,
             stop,
@@ -313,35 +315,54 @@ impl Block for Chat {
                 Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
             };
 
+        const MESSAGES_CODE_OUTPUT: &str = "Invalid messages code output, \
+            expecting an array of objects with  fields `role`, possibly `name`, \
+            and `content` or `function_call`.";
+
         let mut messages = match messages_value {
             Value::Array(a) => a
                 .into_iter()
                 .map(|v| match v {
-                    Value::Object(o) => match (o.get("role"), o.get("content")) {
-                        (Some(Value::String(r)), Some(Value::String(c))) => Ok(ChatMessage {
-                            role: ChatMessageRole::from_str(r)?,
-                            name: match o.get("name") {
-                                Some(Value::String(n)) => Some(n.clone()),
-                                _ => None,
-                            },
-                            content: Some(c.clone()),
-                            function_call: None,
-                        }),
-                        _ => Err(anyhow!(
-                            "Invalid messages code output, expecting an array of objects with
-                             fields `role`, possibly `name`, and `content`."
-                        )),
-                    },
-                    _ => Err(anyhow!(
-                        "Invalid messages code output, expecting an array of objects with
-                         fields `role`, possibly `name`, and `content`."
-                    )),
+                    Value::Object(o) => {
+                        match (o.get("role"), o.get("content"), o.get("function_call")) {
+                            (Some(Value::String(r)), Some(Value::String(c)), None) => {
+                                Ok(ChatMessage {
+                                    role: ChatMessageRole::from_str(r)?,
+                                    name: match o.get("name") {
+                                        Some(Value::String(n)) => Some(n.clone()),
+                                        _ => None,
+                                    },
+                                    content: Some(c.clone()),
+                                    function_call: None,
+                                })
+                            }
+                            (Some(Value::String(r)), None, Some(Value::Object(fc))) => {
+                                // parse function call into ChatFunctionCall
+                                match (fc.get("name"), fc.get("arguments")) {
+                                    (Some(Value::String(n)), Some(Value::String(a))) => {
+                                        Ok(ChatMessage {
+                                            role: ChatMessageRole::from_str(r)?,
+                                            name: match o.get("name") {
+                                                Some(Value::String(n)) => Some(n.clone()),
+                                                _ => None,
+                                            },
+                                            content: None,
+                                            function_call: Some(ChatFunctionCall {
+                                                name: n.clone(),
+                                                arguments: a.clone(),
+                                            }),
+                                        })
+                                    }
+                                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
+                                }
+                            }
+                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
+                        }
+                    }
+                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                 })
                 .collect::<Result<Vec<ChatMessage>>>()?,
-            _ => Err(anyhow!(
-                "Invalid messages code output, expecting an array of objects with
-                 fields `role`, possibly `name`, and `content`."
-            ))?,
+            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT))?,
         };
 
         // Process functions.
