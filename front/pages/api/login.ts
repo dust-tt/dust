@@ -1,10 +1,11 @@
 import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
-import { Err, FrontApiError, Ok, SSOEnforcedError } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { trackUserMemberships } from "@app/lib/amplitude/back";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
+import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForToken,
   markInvitationAsConsumed,
@@ -38,15 +39,13 @@ async function handleMembershipInvite(
       flow: null;
       workspace: Workspace;
     },
-    FrontApiError | SSOEnforcedError
+    AuthFlowError | SSOEnforcedError
   >
 > {
   if (membershipInvite.inviteEmail !== user.email) {
     return new Err(
-      new FrontApiError(
-        "The invitation token is not intended for use with this email address.",
-        400,
-        "invalid_request_error"
+      new AuthFlowError(
+        "The invitation token is not intended for use with this email address."
       )
     );
   }
@@ -59,10 +58,8 @@ async function handleMembershipInvite(
 
   if (!workspace) {
     return new Err(
-      new FrontApiError(
-        "The invite token is invalid, please ask your admin to resend an invitation.",
-        400,
-        "invalid_request_error"
+      new AuthFlowError(
+        "The invite token is invalid, please ask your admin to resend an invitation."
       )
     );
   }
@@ -82,10 +79,8 @@ async function handleMembershipInvite(
 
   if (m?.role === "revoked") {
     return new Err(
-      new FrontApiError(
-        "Your access to the workspace has been revoked, please contact the workspace admin to update your role.",
-        400,
-        "invalid_request_error"
+      new AuthFlowError(
+        "Your access to the workspace has been revoked, please contact the workspace admin to update your role."
       )
     );
   }
@@ -307,71 +302,67 @@ async function handler(
     session.user["https://dust.tt/workspaceId"];
 
   let targetWorkspace: Workspace | null = null;
-  try {
-    // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
-    // `inviteToken`, meaning the user is going through the invite by email flow.
-    const membershipInviteRes = await getPendingMembershipInvitationForToken(
-      inviteToken
+  // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
+  // `inviteToken`, meaning the user is going through the invite by email flow.
+  const membershipInviteRes = await getPendingMembershipInvitationForToken(
+    inviteToken
+  );
+  if (membershipInviteRes.isErr()) {
+    throw membershipInviteRes.error;
+  }
+  const membershipInvite = membershipInviteRes.value;
+
+  // Login flow: first step is to attempt to find the user.
+  const { created: userCreated, user } = await createOrUpdateUser(session);
+
+  // Prioritize enterprise connections.
+  if (enterpriseConnectionWorkspaceId) {
+    const { flow, workspace } = await handleEnterpriseSignUpFlow(
+      user,
+      enterpriseConnectionWorkspaceId
     );
-    if (membershipInviteRes.isErr()) {
-      throw membershipInviteRes.error;
+    if (flow) {
+      res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
+      return;
     }
-    const membershipInvite = membershipInviteRes.value;
 
-    // Login flow: first step is to attempt to find the user.
-    const { created: userCreated, user } = await createOrUpdateUser(session);
+    targetWorkspace = workspace;
+  } else {
+    const loginFctn = membershipInvite
+      ? async () => handleMembershipInvite(user, membershipInvite)
+      : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
 
-    // Prioritize enterprise connections.
-    if (enterpriseConnectionWorkspaceId) {
-      const { flow, workspace } = await handleEnterpriseSignUpFlow(
-        user,
-        enterpriseConnectionWorkspaceId
+    const result = await loginFctn();
+    if (result.isErr()) {
+      const { error } = result;
+
+      if (error instanceof AuthFlowError) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: error.message,
+          },
+        });
+      }
+
+      if (userCreated) {
+        await user.destroy();
+      }
+
+      res.redirect(
+        `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
       );
-      if (flow) {
-        res.redirect(`/api/auth/logout?returnTo=/login-error?reason=${flow}`);
-        return;
-      }
-
-      targetWorkspace = workspace;
-    } else {
-      const loginFctn = membershipInvite
-        ? async () => handleMembershipInvite(user, membershipInvite)
-        : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
-
-      const result = await loginFctn();
-      if (result.isErr()) {
-        if (result.error instanceof FrontApiError) {
-          throw result.error;
-        }
-
-        if (userCreated) {
-          await user.destroy();
-        }
-
-        res.redirect(
-          `/api/auth/logout?returnTo=/sso-enforced?workspaceId=${result.error.workspaceId}`
-        );
-        return;
-      }
-
-      const { flow, workspace } = result.value;
-      if (flow) {
-        res.redirect(`/no-workspace?flow=${flow}`);
-        return;
-      }
-
-      targetWorkspace = workspace;
+      return;
     }
-  } catch (err) {
-    if (err instanceof FrontApiError) {
-      return apiError(req, res, {
-        status_code: err.statusCode,
-        api_error: {
-          type: err.type,
-          message: err.message,
-        },
-      });
+
+    const { flow, workspace } = result.value;
+    if (flow) {
+      res.redirect(`/no-workspace?flow=${flow}`);
+      return;
     }
+
+    targetWorkspace = workspace;
   }
 
   const u = await getUserFromSession(session);

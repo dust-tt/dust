@@ -96,19 +96,3 @@ export type APIErrorResponse = {
 };
 
 export type WithAPIErrorReponse<T> = T | APIErrorResponse;
-
-export class FrontApiError extends Error {
-  constructor(
-    message: string,
-    readonly statusCode: number,
-    readonly type: APIErrorType
-  ) {
-    super(message);
-  }
-}
-
-export class SSOEnforcedError extends Error {
-  constructor(message: string, readonly workspaceId: string) {
-    super(message);
-  }
-}
