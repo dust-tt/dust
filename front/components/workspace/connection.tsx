@@ -2,20 +2,23 @@ import {
   Button,
   Dialog,
   ExternalLinkIcon,
+  Icon,
   IconButton,
   Input,
   LockIcon,
   Modal,
   Page,
   Popup,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import type {
   PlanType,
   SupportedEnterpriseConnectionStrategies,
+  WorkspaceEnterpriseConnection,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -46,6 +49,10 @@ export function EnterpriseConnectionDetails({
   const [
     isDisableEnterpriseConnectionModalOpened,
     setIsDisableEnterpriseConnectionModalOpened,
+  ] = useState(false);
+  const [
+    isToggleEnforceEnterpriseConnectionModalOpened,
+    setIsToggleEnforceEnterpriseConnectionModalOpened,
   ] = useState(false);
 
   const router = useRouter();
@@ -89,21 +96,52 @@ export function EnterpriseConnectionDetails({
         owner={owner}
         strategy={strategy}
       />
+      <ToggleEnforceEnterpriseConnectionModal
+        isOpen={isToggleEnforceEnterpriseConnectionModalOpened}
+        onClose={async (updated: boolean) => {
+          setIsToggleEnforceEnterpriseConnectionModalOpened(false);
+
+          if (updated) {
+            // We perform a full refresh so that the Workspace name updates and we get a fresh owner
+            // object so that the formValidation logic keeps working.
+            window.location.reload();
+          }
+        }}
+        owner={owner}
+      />
       <Page.P variant="secondary">
         Easily integrate {strategy} to enable Single Sign-On (SSO) for your
         team.
       </Page.P>
-      <div className="flex flex-col items-start gap-3">
+      <div className="flex w-full flex-col items-start gap-3">
         {enterpriseConnection ? (
-          <Button
-            label="De-activate Single Sign On"
-            size="sm"
-            variant="secondaryWarning"
-            disabled={!enterpriseConnection}
-            onClick={() => {
-              setIsDisableEnterpriseConnectionModalOpened(true);
-            }}
-          />
+          <div className="w-full space-y-4">
+            <Button
+              label="De-activate Single Sign On"
+              size="sm"
+              variant="secondaryWarning"
+              disabled={!enterpriseConnection}
+              onClick={() => {
+                setIsDisableEnterpriseConnectionModalOpened(true);
+              }}
+            />
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-row items-center space-x-2">
+                <Icon visual={LockIcon} />
+                <p className="grow">Enforce SSO login</p>
+                <SliderToggle
+                  selected={owner.ssoEnforced}
+                  onClick={async () => {
+                    setIsToggleEnforceEnterpriseConnectionModalOpened(true);
+                  }}
+                />
+              </div>
+              <Page.P variant="secondary">
+                When SSO is enforced, users will no longer be able to use social
+                logins and will be redirected to the SSO portal.
+              </Page.P>
+            </div>
+          </div>
         ) : (
           <Button
             label="Activate Single Sign On"
@@ -175,31 +213,34 @@ function CreateOktaEnterpriseConnectionModal({
 
   const sendNotification = useContext(SendNotificationsContext);
 
-  const createEnterpriseConnection = async () => {
-    const res = await fetch(`/api/w/${owner.sId}/enterprise-connection`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        strategy: "okta",
-        ...enterpriseConnectionDetails,
-      }),
-    });
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Update failed",
-        description: "Failed to create Okta Single Sign On configuration.",
+  const createEnterpriseConnection = useCallback(
+    async (enterpriseConnection: WorkspaceEnterpriseConnection) => {
+      const res = await fetch(`/api/w/${owner.sId}/enterprise-connection`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          strategy: "okta",
+          ...enterpriseConnection,
+        }),
       });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "SSO configuration created",
-        description: "Okta Single Sign On configuration created.",
-      });
-    }
-  };
+      if (!res.ok) {
+        sendNotification({
+          type: "error",
+          title: "Update failed",
+          description: "Failed to create Okta Single Sign On configuration.",
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "SSO configuration created",
+          description: "Okta Single Sign On configuration created.",
+        });
+      }
+    },
+    [owner, sendNotification]
+  );
 
   return (
     <Modal
@@ -315,7 +356,9 @@ function CreateOktaEnterpriseConnectionModal({
               icon={LockIcon}
               label="Create Okta Configuration"
               onClick={async () => {
-                await createEnterpriseConnection();
+                await createEnterpriseConnection(
+                  enterpriseConnectionDetails as WorkspaceEnterpriseConnection
+                );
                 onClose(true);
               }}
               hasMagnifying={true}
@@ -352,6 +395,77 @@ function CreateEnterpriseConnectionModal({
     default:
       return <></>;
   }
+}
+
+function ToggleEnforceEnterpriseConnectionModal({
+  isOpen,
+  onClose,
+  owner,
+}: {
+  isOpen: boolean;
+  onClose: (updated: boolean) => void;
+  owner: WorkspaceType;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+
+  const titleAndContent = {
+    enforce: {
+      title: "Enable Single Sign On Enforcement",
+      content: `
+        By enforcing SSO, access through social media logins will be discontinued.
+        Instead, you'll be directed to sign in via the SSO portal.
+        Please note, this change will require all users to sign out and reconnect using SSO.
+      `,
+      validateLabel: "Enforce Single Sign On",
+    },
+    remove: {
+      title: "Disable Single Sign On Enforcement",
+      content: `By disabling SSO enforcement, users will have the flexibility to login with social media.`,
+      validateLabel: "Disable Single Sign-On Enforcement",
+    },
+  };
+
+  const handleToggleSsoEnforced = useCallback(
+    async (ssoEnforced: boolean) => {
+      const res = await fetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ssoEnforced,
+        }),
+      });
+
+      if (!res.ok) {
+        sendNotification({
+          type: "error",
+          title: "Update failed",
+          description: `Failed to enforce sso on workspace.`,
+        });
+      } else {
+        onClose(true);
+      }
+    },
+    [owner, sendNotification, onClose]
+  );
+
+  const dialog = titleAndContent[owner.ssoEnforced ? "remove" : "enforce"];
+
+  return (
+    <Dialog
+      isOpen={isOpen}
+      title={dialog.title}
+      onValidate={async () => {
+        await handleToggleSsoEnforced(!owner.ssoEnforced);
+      }}
+      onCancel={() => onClose(false)}
+      validateLabel={dialog.validateLabel}
+      validateVariant="primaryWarning"
+    >
+      <div>{dialog.content}</div>
+    </Dialog>
+  );
 }
 
 function DisableEnterpriseConnectionModal({
