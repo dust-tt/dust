@@ -346,6 +346,7 @@ async function handler(
         });
       }
 
+      // Delete newly created user if SSO is mandatory.
       if (userCreated) {
         await user.destroy();
       }
