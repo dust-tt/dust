@@ -23,7 +23,14 @@ export class GoogleDriveCastKnownErrorsInterceptor
           error: err,
         };
       }
-
+      if (err instanceof GaxiosError && err.response?.status === 429) {
+        throw {
+          __is_dust_error: true,
+          message: "Google Drive Rate Limit Error",
+          type: "google_drive_rate_limit_error",
+          error: err,
+        };
+      }
       throw err;
     }
   }
