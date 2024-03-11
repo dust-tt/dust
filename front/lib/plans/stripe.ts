@@ -6,6 +6,7 @@ import Stripe from "stripe";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { launchSendFreeTrialReminderEmailsWorkflow } from "@app/mailing/temporal/client";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -138,6 +139,11 @@ export const createCheckoutSession = async ({
       },
     },
   });
+
+  if (plan.trialPeriodDays) {
+    // The plan has free trial, we start a workflow to send reminder emails.
+    await launchSendFreeTrialReminderEmailsWorkflow({ workspaceId: owner.sId });
+  }
 
   return session.url;
 };

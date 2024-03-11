@@ -6,12 +6,12 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/poke/temporal/activities";
 
-export async function runPokeWorker() {
+export async function runMailingWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
-    taskQueue: "poke-queue",
+    taskQueue: "mailing-queue",
     connection,
     namespace,
     interceptors: {
