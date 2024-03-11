@@ -63,6 +63,11 @@ export type LoadOptions =
   | LoadOptionsWithApiKey
   | LoadOptionsWithClientInstance;
 
+export interface IdentifyProperties {
+  email?: string;
+  SignupDate?: string;
+}
+
 export interface QuickGuideViewedProperties {
   /**
    * | Rule | Value |
@@ -72,6 +77,14 @@ export interface QuickGuideViewedProperties {
   duration: number;
   workspaceId: string;
   workspaceName: string;
+}
+
+export class Identify implements BaseEvent {
+  event_type = amplitude.Types.SpecialEventType.IDENTIFY;
+
+  constructor(public event_properties?: IdentifyProperties) {
+    this.event_properties = event_properties;
+  }
 }
 
 export class QuickGuideViewed implements BaseEvent {
@@ -145,10 +158,12 @@ export class Ampli {
    * Identify a user and set user properties.
    *
    * @param userId The user's id.
+   * @param properties The user properties.
    * @param options Optional event options.
    */
   identify(
     userId: string | undefined,
+    properties?: IdentifyProperties,
     options?: EventOptions,
   ): PromiseResult<Result> {
     if (!this.isInitializedAndEnabled()) {
@@ -160,6 +175,12 @@ export class Ampli {
     }
 
     const amplitudeIdentify = new amplitude.Identify();
+    const eventProperties = properties;
+    if (eventProperties != null) {
+      for (const [key, value] of Object.entries(eventProperties)) {
+        amplitudeIdentify.set(key, value);
+      }
+    }
     return this.amplitude!.identify(
       amplitudeIdentify,
       options,

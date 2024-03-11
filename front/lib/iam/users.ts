@@ -1,7 +1,7 @@
 import type { Session } from "@auth0/nextjs-auth0";
 import type { UserProviderType, UserType } from "@dust-tt/types";
 
-import { trackUser } from "@app/lib/amplitude/back";
+import { trackSignup } from "@app/lib/amplitude/back";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
@@ -138,7 +138,7 @@ export async function createOrUpdateUser(
       lastName: externalUser.family_name ?? lastName,
     });
 
-    trackUser({
+    trackSignup({
       id: u.id,
       createdAt: u.createdAt.getTime(),
       provider: u.provider,
