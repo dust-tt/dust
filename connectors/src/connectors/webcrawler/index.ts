@@ -103,6 +103,13 @@ export async function updateWebcrawlerConnector(
     });
   }
 
+  if (urlConfig.maxPages > WEBCRAWLER_MAX_PAGES) {
+    return new Err({
+      message: `Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`,
+      type: "invalid_request_error",
+    });
+  }
+
   await WebCrawlerConfiguration.update(
     {
       url: urlConfig.url,
