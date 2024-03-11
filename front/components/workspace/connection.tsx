@@ -452,8 +452,6 @@ function ToggleEnforceEnterpriseConnectionModal({
 
   const dialog = titleAndContent[owner.ssoEnforced ? "remove" : "enforce"];
 
-  console.log(">> owner.ssoEnforced:", owner.ssoEnforced);
-
   return (
     <Dialog
       isOpen={isOpen}
