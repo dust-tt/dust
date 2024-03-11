@@ -69,10 +69,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
-      maxRequestsPerCrawl: Math.min(
+      maxRequestsPerCrawl:
         webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES,
-        WEBCRAWLER_MAX_PAGES
-      ),
+
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 60, // 5 requests per second to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,

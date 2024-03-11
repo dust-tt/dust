@@ -6,7 +6,11 @@ import type {
   WebCrawlerConfigurationType,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
-import { DepthOptions, isDepthOption } from "@dust-tt/types";
+import {
+  DepthOptions,
+  isDepthOption,
+  WEBCRAWLER_MAX_PAGES,
+} from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import {
@@ -39,6 +43,11 @@ export async function createWebcrawlerConnector(
   const depth = urlConfig.depth;
   if (!isDepthOption(depth)) {
     return new Err(new Error("Invalid depth option"));
+  }
+  if (urlConfig.maxPages > WEBCRAWLER_MAX_PAGES) {
+    return new Err(
+      new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
+    );
   }
 
   const webCrawlerConfigurationBlob = {
@@ -90,6 +99,13 @@ export async function updateWebcrawlerConnector(
       message: `Invalid depth option. Expected one of: (${DepthOptions.join(
         ","
       )})`,
+      type: "invalid_request_error",
+    });
+  }
+
+  if (urlConfig.maxPages > WEBCRAWLER_MAX_PAGES) {
+    return new Err({
+      message: `Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`,
       type: "invalid_request_error",
     });
   }
