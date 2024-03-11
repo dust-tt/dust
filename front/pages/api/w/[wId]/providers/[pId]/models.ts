@@ -235,6 +235,10 @@ async function handler(
           return;
 
         case "mistral":
+          if (!chat) {
+            res.status(200).json({ models: [] });
+            return;
+          }
           const mistralModelRes = await fetch(
             "https://api.mistral.ai/v1/models",
             {
