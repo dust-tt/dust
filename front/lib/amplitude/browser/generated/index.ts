@@ -17,12 +17,12 @@
  * [Full Setup Instructions](https://data.amplitude.com/dust-tt/dust-prod/implementation/dust-browser-prod)
  */
 
-import * as amplitude from '@amplitude/analytics-browser';
+import * as amplitude from "@amplitude/analytics-browser";
 
-export type Environment = 'dustprod';
+export type Environment = "dustprod";
 
 export const ApiKey: Record<Environment, string> = {
-  dustprod: '940c526d7c7c91a38c267be75c958890'
+  dustprod: "940c526d7c7c91a38c267be75c958890",
 };
 
 /**
@@ -30,26 +30,38 @@ export const ApiKey: Record<Environment, string> = {
  */
 export const DefaultConfiguration: BrowserOptions = {
   plan: {
-    version: '2',
-    branch: 'main',
-    source: 'dust-browser-prod',
-    versionId: '4e855190-0d49-4fdc-a164-e1e974880832'
+    version: "2",
+    branch: "main",
+    source: "dust-browser-prod",
+    versionId: "4e855190-0d49-4fdc-a164-e1e974880832",
   },
   ...{
     ingestionMetadata: {
-      sourceName: 'browser-typescript-ampli',
-      sourceVersion: '2.0.0'
-    }
-  }
+      sourceName: "browser-typescript-ampli",
+      sourceVersion: "2.0.0",
+    },
+  },
 };
 
-export interface LoadOptionsBase { disabled?: boolean }
+export interface LoadOptionsBase {
+  disabled?: boolean;
+}
 
-export type LoadOptionsWithEnvironment = LoadOptionsBase & { environment: Environment; client?: { configuration?: BrowserOptions; }; };
-export type LoadOptionsWithApiKey = LoadOptionsBase & { client: { apiKey: string; configuration?: BrowserOptions; } };
-export type LoadOptionsWithClientInstance = LoadOptionsBase & { client: { instance: BrowserClient; } };
+export type LoadOptionsWithEnvironment = LoadOptionsBase & {
+  environment: Environment;
+  client?: { configuration?: BrowserOptions };
+};
+export type LoadOptionsWithApiKey = LoadOptionsBase & {
+  client: { apiKey: string; configuration?: BrowserOptions };
+};
+export type LoadOptionsWithClientInstance = LoadOptionsBase & {
+  client: { instance: BrowserClient };
+};
 
-export type LoadOptions = LoadOptionsWithEnvironment | LoadOptionsWithApiKey | LoadOptionsWithClientInstance;
+export type LoadOptions =
+  | LoadOptionsWithEnvironment
+  | LoadOptionsWithApiKey
+  | LoadOptionsWithClientInstance;
 
 export interface IdentifyProperties {
   email?: string;
@@ -74,29 +86,23 @@ export interface QuickGuideViewedProperties {
 export class Identify implements BaseEvent {
   event_type = amplitude.Types.SpecialEventType.IDENTIFY;
 
-  constructor(
-    public event_properties?: IdentifyProperties,
-  ) {
+  constructor(public event_properties?: IdentifyProperties) {
     this.event_properties = event_properties;
   }
 }
 
 export class PageViewed implements BaseEvent {
-  event_type = 'PageViewed';
+  event_type = "PageViewed";
 
-  constructor(
-    public event_properties: PageViewedProperties,
-  ) {
+  constructor(public event_properties: PageViewedProperties) {
     this.event_properties = event_properties;
   }
 }
 
 export class QuickGuideViewed implements BaseEvent {
-  event_type = 'QuickGuideViewed';
+  event_type = "QuickGuideViewed";
 
-  constructor(
-    public event_properties: QuickGuideViewedProperties,
-  ) {
+  constructor(public event_properties: QuickGuideViewedProperties) {
     this.event_properties = event_properties;
   }
 }
