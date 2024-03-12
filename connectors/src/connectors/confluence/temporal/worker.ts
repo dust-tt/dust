@@ -8,6 +8,7 @@ import * as sync_status from "@connectors/lib/sync_status";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
+import { ConfluenceCastKnownErrorsInterceptor } from "@connectors/connectors/confluence/temporal/cast_known_errors";
 
 export async function runConfluenceWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
@@ -23,6 +24,7 @@ export async function runConfluenceWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new ConfluenceCastKnownErrorsInterceptor(),
       ],
     },
     bundlerOptions: {
