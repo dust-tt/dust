@@ -35,7 +35,7 @@ export async function sendWorkspaceInvitationEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    templateId: "d-ffc08cf316764a2ba90233562dfd5778",
+    templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
       inviteLink: invitationUrl,
       inviterName: user.fullName,

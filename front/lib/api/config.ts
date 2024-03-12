@@ -22,6 +22,11 @@ const config = {
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },
+  getInvitationEmailTemplate: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
+    );
+  },
 };
 
 export default config;
