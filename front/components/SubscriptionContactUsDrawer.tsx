@@ -54,10 +54,11 @@ export function SubscriptionContactUsDrawer({
             <Page.P size="md">Let's Connect!</Page.P>
           </div>
           <Page.P size="md">
-            We'll be in touch within the next 2 days for a first contact call.
+            Please share your email and answer a few questions about your
+            company.
           </Page.P>
           <Page.P size="md">
-            Please share your email and answer a few questions.
+            We'll be in touch shortly for an intro call.
           </Page.P>
 
           <Page.Vertical gap="sm" align="stretch">
@@ -83,6 +84,7 @@ export function SubscriptionContactUsDrawer({
                 icon={ArrowRightIcon}
                 label=""
                 labelVisible={false}
+                disabledTooltip={true}
                 onClick={() => submit.submit()}
               />
             </Page.Horizontal>
