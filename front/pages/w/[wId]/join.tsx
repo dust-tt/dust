@@ -170,7 +170,7 @@ export default function Join({
 
         <div className="flex flex-col items-center justify-center gap-4 ">
           <Button
-            variant="tertiary"
+            variant="primary"
             size="sm"
             label="Sign up"
             icon={LoginIcon}
