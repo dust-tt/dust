@@ -13,8 +13,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { SENDGRID_API_KEY = "", URL, DUST_INVITE_TOKEN_SECRET } = process.env;
-
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
 };
@@ -97,13 +95,6 @@ async function handler(
               "Workspace has reached its member limit. Please upgrade or remove inactive members to add more.",
           },
         });
-      }
-
-      if (!URL) {
-        throw new Error("URL is not set");
-      }
-      if (!DUST_INVITE_TOKEN_SECRET) {
-        throw new Error("DUST_INVITE_TOKEN_SECRET is not set");
       }
 
       if (subscription.paymentFailingSince) {
