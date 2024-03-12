@@ -942,7 +942,8 @@ export async function archiveAgentConfiguration(
     }
   );
 
-  return updated[0] > 0;
+  const affectedCount = updated[0];
+  return affectedCount > 0;
 }
 
 export async function restoreAgentConfiguration(
@@ -976,7 +977,8 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  return updated[0] > 0;
+  const affectedCount = updated[0];
+  return affectedCount > 0;
 }
 
 /**

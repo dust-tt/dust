@@ -61,7 +61,20 @@ async function handler(
         });
       }
 
-      await restoreAgentConfiguration(auth, agentConfiguration.sId);
+      const restored = await restoreAgentConfiguration(
+        auth,
+        agentConfiguration.sId
+      );
+
+      if (!restored) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not restore the agent configuration.",
+          },
+        });
+      }
 
       return res.status(200).json({ success: true });
 

@@ -19,7 +19,6 @@ async function handler(
     WithAPIErrorReponse<GetAgentConfigurationsResponseBody | void>
   >
 ): Promise<void> {
-  console.log("\n\n\n----------\n\n", req.query, "\n\n\n----------\n\n");
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
