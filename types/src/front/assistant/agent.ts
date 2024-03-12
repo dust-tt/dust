@@ -116,6 +116,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'admin_internal': Grants access to all agents, including private ones.
+ * - 'archived': Retrieves all agents that are archived. Only available to super users.
  *   Intended strictly for internal use with necessary superuser or admin
  *   authorization.
  */
@@ -128,7 +129,8 @@ export type AgentsGetViewType =
   | "workspace"
   | "published"
   | "global"
-  | "admin_internal";
+  | "admin_internal"
+  | "archived";
 
 export type AgentUsageType = {
   userCount: number;

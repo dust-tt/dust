@@ -1,5 +1,8 @@
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
+import { EmotionLaughIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
+import type {
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -18,7 +21,7 @@ type AgentConfigurationDisplayType = {
 
 export function makeColumnsForAssistants(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
+  agentConfigurations: LightAgentConfigurationType[],
   reload: () => void
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
@@ -96,11 +99,15 @@ export function makeColumnsForAssistants(
 
         return (
           <IconButton
-            icon={TrashIcon}
+            icon={
+              assistant.status !== "archived" ? TrashIcon : EmotionLaughIcon
+            }
             size="xs"
             variant="tertiary"
             onClick={async () => {
-              await archiveAssistant(owner, reload, assistant);
+              await (assistant.status !== "archived"
+                ? archiveAssistant(owner, reload, assistant)
+                : restoreAssistant(owner, reload, assistant));
             }}
           />
         );
@@ -116,7 +123,7 @@ async function archiveAssistant(
 ) {
   if (
     !window.confirm(
-      `Are you sure you want to archive the ${agentConfiguration.name} assistant? There is no going back.`
+      `Are you sure you want to archive the ${agentConfiguration.name} assistant?`
     )
   ) {
     return;
@@ -140,5 +147,39 @@ async function archiveAssistant(
   } catch (e) {
     console.error(e);
     window.alert("An error occurred while archiving the agent configuration.");
+  }
+}
+
+async function restoreAssistant(
+  owner: WorkspaceType,
+  reload: () => void,
+  agentConfiguration: AgentConfigurationDisplayType
+) {
+  if (
+    !window.confirm(
+      `Are you sure you want to restore the ${agentConfiguration.name} assistant?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const r = await fetch(
+      `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}/restore`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!r.ok) {
+      throw new Error("Failed to restore agent configuration.");
+    }
+
+    reload();
+  } catch (e) {
+    console.error(e);
+    window.alert("An error occurred while restoring the agent configuration.");
   }
 }

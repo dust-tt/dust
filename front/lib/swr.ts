@@ -597,6 +597,38 @@ export function useAgentConfigurations({
   };
 }
 
+/*
+ * Agent configurations for poke. Currently only supports archived assistant.
+ * A null agentsGetView means no fetching
+ */
+export function usePokeAgentConfigurations({
+  workspaceId,
+  agentsGetView,
+}: {
+  workspaceId: string;
+  agentsGetView: "archived" | null;
+}) {
+  const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    agentsGetView
+      ? `/api/poke/workspaces/${workspaceId}/agent_configurations?view=${agentsGetView}`
+      : null,
+    agentConfigurationsFetcher
+  );
+
+  return {
+    agentConfigurations: useMemo(
+      () => (data ? data.agentConfigurations : []),
+      [data]
+    ),
+    isAgentConfigurationsLoading: !error && !data,
+    isAgentConfigurationsError: error,
+    mutateAgentConfigurations: mutate,
+  };
+}
+
 export function useAgentConfiguration({
   workspaceId,
   agentConfigurationId,

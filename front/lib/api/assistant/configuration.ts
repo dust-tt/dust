@@ -24,7 +24,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 import type { Order, Transaction } from "sequelize";
-import { Op, UniqueConstraintError } from "sequelize";
+import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import {
   getGlobalAgents,
@@ -54,7 +54,7 @@ import {
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { generateModelSId } from "@app/lib/utils";
 
-type SortStrategyType = "alphabetical" | "priority";
+type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
 interface SortStrategy {
   dbOrder: Order | undefined;
@@ -73,6 +73,10 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   priority: {
     dbOrder: [["name", "ASC"]],
     compareFunction: compareAgentsForSort,
+  },
+  updatedAt: {
+    dbOrder: [["updatedAt", "DESC"]],
+    compareFunction: () => 0,
   },
 };
 
@@ -112,6 +116,7 @@ function determineGlobalAgentIdsToFetch(
   switch (agentsGetView) {
     case "workspace":
     case "published":
+    case "archived":
       return []; // fetch no global agents
     case "global":
     case "list":
@@ -218,6 +223,27 @@ async function fetchAgentConfigurationsForView(
       return AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
+      });
+    case "archived":
+      // Get the latest version of all archived agents.
+      // For each sId, we want to fetch the one with the highest version, only if it's status is "archived".
+      return AgentConfiguration.findAll({
+        attributes: [[Sequelize.fn("MAX", Sequelize.col("id")), "maxId"]],
+        group: "sId",
+        raw: true,
+      }).then(async (result) => {
+        const maxIds = result.map(
+          (entry) => (entry as unknown as { maxId: number }).maxId
+        );
+
+        return AgentConfiguration.findAll({
+          where: {
+            id: {
+              [Op.in]: maxIds,
+            },
+            status: "archived",
+          },
+        });
       });
 
     case "all":
@@ -633,6 +659,11 @@ export async function getAgentConfigurations<V extends "light" | "full">({
       "Superuser view is for dust superusers or internal admin auths only."
     );
   }
+
+  if (agentsGetView === "archived" && !auth.isDustSuperUser()) {
+    throw new Error("Archived view is for dust superusers only.");
+  }
+
   if (agentsGetView === "list" && !user) {
     throw new Error("List view is specific to a user.");
   }
@@ -911,7 +942,43 @@ export async function archiveAgentConfiguration(
     }
   );
 
-  return updated[0] > 0;
+  const affectedCount = updated[0];
+  return affectedCount > 0;
+}
+
+export async function restoreAgentConfiguration(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+  const latestConfig = await AgentConfiguration.findOne({
+    where: {
+      sId: agentConfigurationId,
+      workspaceId: owner.id,
+    },
+    order: [["version", "DESC"]],
+    limit: 1,
+  });
+  if (!latestConfig) {
+    throw new Error("Could not find agent configuration");
+  }
+  if (latestConfig.status !== "archived") {
+    throw new Error("Agent configuration is not archived");
+  }
+  const updated = await AgentConfiguration.update(
+    { status: "active" },
+    {
+      where: {
+        id: latestConfig.id,
+      },
+    }
+  );
+
+  const affectedCount = updated[0];
+  return affectedCount > 0;
 }
 
 /**
