@@ -3,6 +3,7 @@ import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "@connectors/connectors/confluence/temporal/activities";
+import { ConfluenceCastKnownErrorsInterceptor } from "@connectors/connectors/confluence/temporal/cast_known_errors";
 import { QUEUE_NAME } from "@connectors/connectors/confluence/temporal/config";
 import * as sync_status from "@connectors/lib/sync_status";
 import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
@@ -23,6 +24,7 @@ export async function runConfluenceWorker() {
         (ctx: Context) => {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
+        () => new ConfluenceCastKnownErrorsInterceptor(),
       ],
     },
     bundlerOptions: {

@@ -1,7 +1,6 @@
+import { ConfluenceClientError } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-
-import { HTTPError } from "@connectors/lib/error";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -164,9 +163,13 @@ export class ConfluenceClient {
     });
 
     if (!response.ok) {
-      throw new HTTPError(
+      throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
-        response.status
+        {
+          type: "http_response_error",
+          status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        }
       );
     }
 
@@ -174,7 +177,9 @@ export class ConfluenceClient {
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
-      throw new Error("Response validation failed");
+      throw new ConfluenceClientError("Response validation failed", {
+        type: "validation_error",
+      });
     }
 
     return result.right;
@@ -195,9 +200,13 @@ export class ConfluenceClient {
     });
 
     if (!response.ok) {
-      throw new HTTPError(
+      throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
-        response.status
+        {
+          type: "http_response_error",
+          status: response.status,
+          data: { url: `${this.apiUrl}${endpoint}`, response },
+        }
       );
     }
 
@@ -209,7 +218,9 @@ export class ConfluenceClient {
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
-      throw new Error("Response validation failed");
+      throw new ConfluenceClientError("Response validation failed", {
+        type: "validation_error",
+      });
     }
 
     return result.right;
