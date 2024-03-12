@@ -3,19 +3,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getAgentConfiguration,
-  resurrectAgentConfiguration,
+  restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type ResurrectAgentConfigurationResponseBody = {
+export type RestoreAgentConfigurationResponseBody = {
   success: true;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<ResurrectAgentConfigurationResponseBody>
+    WithAPIErrorReponse<RestoreAgentConfigurationResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -61,7 +61,7 @@ async function handler(
         });
       }
 
-      await resurrectAgentConfiguration(auth, agentConfiguration.sId);
+      await restoreAgentConfiguration(auth, agentConfiguration.sId);
 
       return res.status(200).json({ success: true });
 

@@ -31,24 +31,24 @@ export function AssistantsDataTable({
   agentConfigurations,
 }: AssistantsDataTableProps) {
   const router = useRouter();
-  const [showResurrectAssistantModal, setShowDustAppLogsModal] =
+  const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
     useState(false);
 
   return (
     <>
-      <ResurrectAssistantModal
-        show={showResurrectAssistantModal}
-        onClose={() => setShowDustAppLogsModal(false)}
+      <RestoreAssistantModal
+        show={showRestoreAssistantModal}
+        onClose={() => setShowRestoreAssistantModal(false)}
         owner={owner}
       />
       <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
         <a
           className="mb-4 cursor-pointer text-xs text-action-400"
           onClick={() => {
-            setShowDustAppLogsModal(true);
+            setShowRestoreAssistantModal(true);
           }}
         >
-          resurrect an assistant
+          restore an assistant
         </a>
         <h2 className="text-md mb-4 font-bold">Assistants:</h2>
         <DataTable
@@ -64,7 +64,7 @@ export function AssistantsDataTable({
   );
 }
 
-function ResurrectAssistantModal({
+function RestoreAssistantModal({
   show,
   onClose,
   owner,
@@ -84,7 +84,7 @@ function ResurrectAssistantModal({
       isOpen={show}
       onClose={onClose}
       hasChanged={false}
-      title="Resurrect an assistant"
+      title="Restore an assistant"
       variant="full-screen"
     >
       <div className="mx-auto mt-4 max-w-4xl">

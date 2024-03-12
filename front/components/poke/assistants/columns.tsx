@@ -107,7 +107,7 @@ export function makeColumnsForAssistants(
             onClick={async () => {
               await (assistant.status !== "archived"
                 ? archiveAssistant(owner, reload, assistant)
-                : resurrectAssistant(owner, reload, assistant));
+                : restoreAssistant(owner, reload, assistant));
             }}
           />
         );
@@ -150,14 +150,14 @@ async function archiveAssistant(
   }
 }
 
-async function resurrectAssistant(
+async function restoreAssistant(
   owner: WorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
   if (
     !window.confirm(
-      `Are you sure you want to resurrect the ${agentConfiguration.name} assistant?`
+      `Are you sure you want to restore the ${agentConfiguration.name} assistant?`
     )
   ) {
     return;
@@ -165,7 +165,7 @@ async function resurrectAssistant(
 
   try {
     const r = await fetch(
-      `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}/resurrect`,
+      `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}/restore`,
       {
         method: "POST",
         headers: {
@@ -174,14 +174,12 @@ async function resurrectAssistant(
       }
     );
     if (!r.ok) {
-      throw new Error("Failed to resurrect agent configuration.");
+      throw new Error("Failed to restore agent configuration.");
     }
 
     reload();
   } catch (e) {
     console.error(e);
-    window.alert(
-      "An error occurred while resurrecting the agent configuration."
-    );
+    window.alert("An error occurred while restoring the agent configuration.");
   }
 }

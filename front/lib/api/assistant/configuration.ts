@@ -945,7 +945,7 @@ export async function archiveAgentConfiguration(
   return updated[0] > 0;
 }
 
-export async function resurrectAgentConfiguration(
+export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<boolean> {
