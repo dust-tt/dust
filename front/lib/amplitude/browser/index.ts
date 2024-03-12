@@ -14,7 +14,7 @@ export function getBrowserClient() {
   ampli.load({
     // The environment property is a depreacted value, but still needed by the SDK. We don't use it.
     environment: "dustprod",
-    disabled: false,
+    disabled: disabled,
     client: {
       apiKey: AMPLITUDE_PUBLIC_API_KEY,
       configuration: {
