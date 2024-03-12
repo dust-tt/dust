@@ -1,24 +1,20 @@
 import {
   AnthropicWhiteLogo,
-  ArrowRightIcon,
   Button,
   Div3D,
   DriveLogo,
   GithubWhiteLogo,
   GoogleLogo,
   Hover3D,
-  Input,
   LoginIcon,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
   LogoHorizontalWhiteLogo,
   MicrosoftLogo,
   MistralLogo,
-  Modal,
   MoreIcon,
   NotionLogo,
   OpenaiWhiteLogo,
-  Page,
   RocketIcon,
   SalesforceLogo,
   SlackLogo,
@@ -45,19 +41,17 @@ import {
 
 const defaultFlexClasses = "flex flex-col gap-4";
 
-import { LogoSquareColorLogo } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 
 import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
-import { getBrowserClient } from "@app/lib/amplitude/browser";
+import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { getSession } from "@app/lib/auth";
-import { useSubmitFunction } from "@app/lib/client/utils";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-import { classNames, isEmailValid } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -136,7 +130,7 @@ export default function Home({
 
   return (
     <>
-      <ContactUsDrawer
+      <SubscriptionContactUsDrawer
         show={showContactUsDrawer}
         onClose={() => {
           setShowContactUsDrawer(false);
@@ -1083,82 +1077,3 @@ const CookieBanner = ({
     </Transition>
   );
 };
-
-function ContactUsDrawer({
-  show,
-  onClose,
-}: {
-  show: boolean;
-  onClose: () => void;
-}) {
-  const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState<null | string>(null);
-
-  const submit = useSubmitFunction(async () => {
-    if (isEmailValid(email)) {
-      setEmailError(null);
-      const amplitude = getBrowserClient();
-      amplitude.clickedEnterpriseContactUs({
-        email: email,
-      });
-      window.location.href = `https://docs.google.com/forms/d/e/1FAIpQLSdZdNPHm0J1k5SoKAoDdmnFZCzVDHUKnDE3MVM_1ii2fLrp8w/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
-        email
-      )}`;
-    } else {
-      setEmailError("Invalid email address.");
-    }
-  });
-
-  return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      variant="side-sm"
-      hasChanged={false}
-      title="Contact Us"
-    >
-      <div className="mx-1 pt-8">
-        <Page.Vertical gap="lg" align="stretch">
-          <LogoSquareColorLogo className="h-8 w-8" />
-          <div className="font-bold">
-            <Page.P size="md">Let's Connect!</Page.P>
-          </div>
-          <Page.P size="md">
-            We'll be in touch within the next 2 days for a first contact call.
-          </Page.P>
-          <Page.P size="md">
-            Please share your email and answer a few questions.
-          </Page.P>
-
-          <Page.Vertical gap="sm" align="stretch">
-            <Page.P size="md" variant="secondary">
-              email
-            </Page.P>
-            <Input
-              placeholder="name@example.com"
-              value={email}
-              onChange={(value) => {
-                setEmail(value);
-                setEmailError(null);
-              }}
-              error={emailError}
-              name="assistantName"
-              showErrorLabel
-              className="text-sm"
-            />
-            <Page.Horizontal align="right">
-              <Button
-                variant="primary"
-                size="md"
-                icon={ArrowRightIcon}
-                label=""
-                labelVisible={false}
-                onClick={() => submit.submit()}
-              />
-            </Page.Horizontal>
-          </Page.Vertical>
-        </Page.Vertical>
-      </div>
-    </Modal>
-  );
-}
