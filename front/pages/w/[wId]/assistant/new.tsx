@@ -1,7 +1,6 @@
 import {
   AssistantPreview,
   Avatar,
-  BookOpenIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowLeftRightIcon,
@@ -303,18 +302,6 @@ export default function AssistantNew({
                               }}
                             />
                           </div>
-                          {!isBuilder && (
-                            <div>
-                              <Link href={`/w/${owner.sId}/assistant/gallery`}>
-                                <Button
-                                  variant="primary"
-                                  icon={BookOpenIcon}
-                                  size="xs"
-                                  label="Explore the Assistants Gallery"
-                                />
-                              </Link>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
