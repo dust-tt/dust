@@ -173,7 +173,26 @@ async function handler(
               },
             });
           }
+          if (!/^https?:\/\/[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(urlConfig.url)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Invalid URL.",
+              },
+            });
+          }
+
           dataSourceName = urlToDataSourceName(urlConfig.url);
+          if (!dataSourceName.length) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Invalid URL.",
+              },
+            });
+          }
           dataSourceDescription = urlConfig.url;
           break;
         }
