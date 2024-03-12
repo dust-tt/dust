@@ -349,7 +349,7 @@ function TableBlock({ children }: { children: React.ReactNode }) {
         return getNodeText(node.props.children);
       }
 
-      throw new Error(`Unexpected node type: ${typeof node}`);
+      return "";
     };
 
     const [headNode, bodyNode] = Array.from(children as [any, any]);
