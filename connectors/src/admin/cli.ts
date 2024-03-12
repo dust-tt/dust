@@ -99,7 +99,7 @@ const connectors = async (command: string, args: parseArgs.ParsedArgs) => {
   // a given workspace.
   const connector = await ConnectorModel.findOne({
     where: {
-      workspaceId: args.wId,
+      workspaceId: `${args.wId}`,
       dataSourceName: args.dataSourceName,
     },
   });
@@ -179,7 +179,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await ConnectorModel.findOne({
         where: {
           type: "github",
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
         },
       });
@@ -232,7 +232,7 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await ConnectorModel.findOne({
         where: {
           type: "github",
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
         },
       });
@@ -339,7 +339,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
         },
       });
@@ -400,7 +400,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
         },
       });
@@ -476,7 +476,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: "managed-notion",
         },
       });
@@ -529,7 +529,7 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const connector = await ConnectorModel.findOne({
         where: {
           type: "notion",
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: "managed-notion",
         },
       });
@@ -727,7 +727,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const connector = await ConnectorModel.findOne({
         where: {
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
           type: "google_drive",
         },
@@ -755,7 +755,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const connector = await ConnectorModel.findOne({
         where: {
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
         },
       });
@@ -800,7 +800,7 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const connector = await ConnectorModel.findOne({
         where: {
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           dataSourceName: args.dataSourceName,
         },
       });
@@ -836,7 +836,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const connector = await ConnectorModel.findOne({
         where: {
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           type: "slack",
         },
       });
@@ -886,7 +886,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const connector = await ConnectorModel.findOne({
         where: {
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           type: "slack",
         },
       });
@@ -976,7 +976,7 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const connector = await ConnectorModel.findOne({
         where: {
-          workspaceId: args.wId,
+          workspaceId: `${args.wId}`,
           type: "slack",
         },
       });
