@@ -47,6 +47,7 @@ import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
+import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -98,6 +99,8 @@ export default function Home({
 
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+  const [showContactUsDrawer, setShowContactUsDrawer] =
+    useState<boolean>(false);
 
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
@@ -127,6 +130,12 @@ export default function Home({
 
   return (
     <>
+      <SubscriptionContactUsDrawer
+        show={showContactUsDrawer}
+        onClose={() => {
+          setShowContactUsDrawer(false);
+        }}
+      />
       <Header />
       <ScrollingHeader showItemY={logoY}>
         <div className="flex h-full w-full items-center gap-10 px-4">
@@ -768,7 +777,11 @@ export default function Home({
             <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
               <PricePlans size="xs" className="lg:hidden" isTabs />
               <PricePlans size="xs" className="hidden lg:flex xl:hidden" />
-              <PricePlans size="sm" className="hidden xl:flex" />
+              <PricePlans
+                size="sm"
+                className="hidden xl:flex"
+                onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
+              />
             </div>
           </Grid>
         </div>

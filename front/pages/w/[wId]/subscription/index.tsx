@@ -7,17 +7,18 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 
 import { PricePlans } from "@app/components/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -33,12 +34,14 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  user: UserType;
   planInvitation: PlanInvitationType | null;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !auth.isAdmin() || !subscription) {
+  const user = auth.user();
+  if (!owner || !auth.isAdmin() || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -52,12 +55,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       planInvitation: planInvitation,
       gaTrackingId: GA_TRACKING_ID,
+      user,
     },
   };
 });
 
 export default function Subscription({
   owner,
+  user,
   subscription,
   planInvitation,
   gaTrackingId,
@@ -66,6 +71,8 @@ export default function Subscription({
   const sendNotification = useContext(SendNotificationsContext);
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
+
+  const [showContactUsDrawer, setShowContactUsDrawer] = useState(false);
 
   useEffect(() => {
     if (router.query.type === "succeeded") {
@@ -161,7 +168,7 @@ export default function Subscription({
 
   const onClickProPlan = async () => handleSubscribePlan();
   const onClickEnterprisePlan = () => {
-    window.open("mailto:team@dust.tt?subject=Upgrading to Enteprise plan");
+    setShowContactUsDrawer(true);
   };
   const onSubscribeEnterprisePlan = async () => {
     if (!planInvitation) {
@@ -178,6 +185,13 @@ export default function Subscription({
       topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
+      <SubscriptionContactUsDrawer
+        show={showContactUsDrawer}
+        onClose={() => {
+          setShowContactUsDrawer(false);
+        }}
+        initialEmail={user.email}
+      />
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"

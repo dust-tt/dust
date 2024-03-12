@@ -1,4 +1,4 @@
-import { Button, PriceTable, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
+import { Button, PriceTable, RocketIcon } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
@@ -127,7 +127,6 @@ function EnterprisePriceTable({
             variant="primary"
             size={biggerButtonSize}
             label="Contact us"
-            icon={SparklesIcon}
             disabled={isProcessing}
             onClick={onClick}
           />
