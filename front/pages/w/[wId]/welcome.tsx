@@ -11,7 +11,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Confetti from "react-confetti";
-import useWindowSize from "react-use/lib/useWindowSize";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
@@ -83,8 +82,6 @@ export default function Welcome({
     useState<string>(defaultAdminInterest);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
   const [showFinalScreen, setShowFinalScreen] = useState<boolean>(false);
-
-  const { widht, height } = useWindowSize();
 
   useEffect(() => {
     setIsFormValid(
@@ -250,7 +247,7 @@ export default function Welcome({
         headerTitle="Joining Dust"
         headerRightActions={<></>}
       >
-        <Confetti width={widht} height={height} wind={0.02} gravity={0.08} />
+        <Confetti wind={0.02} gravity={0.08} />
         <div className="flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
           <Page.Header title={`You are all set!`} icon={SparklesIcon} />
           <Page.P>

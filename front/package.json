@@ -87,7 +87,6 @@
     "react-slick": "^0.29.0",
     "react-syntax-highlighter": "^15.5.0",
     "react-textarea-autosize": "^8.4.0",
-    "react-use": "^17.5.0",
     "redis": "^4.6.8",
     "remark-directive": "^2.0.1",
     "remark-gfm": "^3.0.1",
