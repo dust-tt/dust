@@ -1,16 +1,9 @@
+import { ConfluenceClientError } from "@dust-tt/types";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
-function isConfluenceError(err: unknown): err is { statusCode: number } {
-  return (
-    err instanceof Error &&
-    typeof (err as { statusCode?: unknown }).statusCode === "number" &&
-    err.message.includes("Confluence")
-  );
-}
 
 export class ConfluenceCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
@@ -22,7 +15,11 @@ export class ConfluenceCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
-      if (isConfluenceError(err) && err.statusCode === 500) {
+      if (
+        err instanceof ConfluenceClientError &&
+        err.type === "http_response_error" &&
+        err.status === 500
+      ) {
         throw {
           __is_dust_error: true,
           message: "Confluence Internal Error",
