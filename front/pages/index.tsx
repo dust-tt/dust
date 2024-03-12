@@ -48,6 +48,7 @@ import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
+import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -119,6 +120,13 @@ export default function Home({
       setLogoY(logoPosition);
     }
   }, []);
+
+  useEffect(() => {
+    const amplitude = getBrowserClient();
+    amplitude.pageViewed({
+      pathname: router.pathname,
+    });
+  }, [router.pathname]);
 
   function getReturnToUrl(routerQuery: ParsedUrlQuery): string {
     let callbackUrl = "/api/login";
