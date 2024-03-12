@@ -173,11 +173,7 @@ async function handler(
               },
             });
           }
-          if (
-            !/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(
-              urlConfig.url
-            )
-          ) {
+          if (!/^https?:\/\/[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(urlConfig.url)) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
