@@ -1098,10 +1098,11 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
       let i = 0;
       do {
         console.log(`Fetching page ${++i}`);
-        openWfRes = await c.workflowService.listOpenWorkflowExecutions({
+        openWfRes = await c.workflowService.listWorkflowExecutions({
           namespace: process.env.TEMPORAL_NAMESPACE || "default",
-          maximumPageSize: 500,
+          pageSize: 500,
           nextPageToken: npt,
+          query: `ExecutionStatus="Running"`,
         });
         npt = openWfRes.nextPageToken;
         if (openWfRes.executions) {
