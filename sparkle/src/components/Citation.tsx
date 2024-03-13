@@ -11,7 +11,7 @@ import {
   Slack,
 } from "@sparkle/logo/platforms";
 
-import { Avatar, Icon, IconButton, Tooltip, XCircleIcon } from "..";
+import { Avatar, CardButton, Icon, IconButton, Tooltip, XCircleIcon } from "..";
 
 interface CitationProps {
   type?:
@@ -100,31 +100,36 @@ export function Citation({
   );
   if (href) {
     return (
-      <a
+      <CardButton
+        variant="secondary"
+        size="sm"
         href={href}
         target="_blank"
         rel="noopener noreferrer"
         className={classNames(
-          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-bg-white s-p-3",
+          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
-          "s-bg-whites-transition s-cursor-pointer s-duration-300 hover:s-bg-structure-100"
-        )}
-      >
-        {cardContent}
-      </a>
-    );
-  } else {
-    return (
-      <div
-        className={classNames(
-          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1 s-rounded-xl s-border s-border-structure-100 s-bg-white s-p-3",
           size === "sm" ? "sm:s-w-64" : "",
           isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
         )}
       >
         {cardContent}
-      </div>
+      </CardButton>
+    );
+  } else {
+    return (
+      <CardButton
+        variant="secondary"
+        size="sm"
+        className={classNames(
+          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+          sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
+          size === "sm" ? "sm:s-w-64" : "",
+          isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
+        )}
+      >
+        {cardContent}
+      </CardButton>
     );
   }
 }

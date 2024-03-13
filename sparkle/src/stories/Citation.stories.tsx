@@ -12,6 +12,8 @@ export default meta;
 
 export const CitationsExample = () => (
   <div className="s-flex s-flex-col s-gap-8">
+    <h2>Size XS</h2>
+    <h3>In Flex</h3>
     <div className="s-flex s-gap-2">
       <Citation
         title="With close action"
@@ -21,7 +23,6 @@ export const CitationsExample = () => (
         onClose={() => alert("Close action clicked")}
         isBlinking={true}
       />
-
       <Citation
         title="With avatarUrl"
         size="xs"
@@ -31,6 +32,7 @@ export const CitationsExample = () => (
         avatarUrl="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
       />
     </div>
+    <h3>In Grid</h3>
     <div className="s-w-full">
       <div className="s-grid s-grid-cols-2 s-items-stretch s-gap-2 md:s-grid-cols-3 lg:s-grid-cols-4">
         <Citation
@@ -99,11 +101,7 @@ export const CitationsExample = () => (
         href="https://www.google.com"
       />
     </div>
-    <Citation
-      title="Source: Thread on #general"
-      type="slack"
-      href="https://www.google.com"
-    />
+    <h2>Size SM</h2>
     <div className="s-flex s-gap-2">
       <Citation
         title="Title"

@@ -10,6 +10,9 @@ export { Hoverable };
 import { Button } from "./components/Button";
 export { Button };
 
+import { CardButton } from "./components/CardButton";
+export { CardButton };
+
 import { SliderToggle } from "./components/SliderToggle";
 export { SliderToggle };
 
