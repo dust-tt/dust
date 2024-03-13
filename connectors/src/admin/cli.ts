@@ -1090,32 +1090,21 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
 
     case "find-unprocessed-workflows": {
       const c = await getTemporalClient();
-      let npt: Uint8Array | null = null;
       const queues = new Set<string>();
-      let openWfRes: Awaited<
-        ReturnType<typeof c.workflowService.listOpenWorkflowExecutions>
-      > | null = null;
-      let i = 0;
-      do {
-        console.log(`Fetching page ${++i}`);
-        openWfRes = await c.workflowService.listWorkflowExecutions({
-          namespace: process.env.TEMPORAL_NAMESPACE || "default",
-          pageSize: 500,
-          nextPageToken: npt,
-          query: `ExecutionStatus="Running"`,
-        });
-        npt = openWfRes.nextPageToken;
-        if (openWfRes.executions?.length) {
-          console.log(`got ${openWfRes.executions.length} results`);
-          for (const x of openWfRes.executions) {
-            if (x.taskQueue) {
-              queues.add(x.taskQueue);
-            }
+
+      const openWfRes = await c.workflowService.listWorkflowExecutions({
+        namespace: process.env.TEMPORAL_NAMESPACE || "default",
+        pageSize: 5000,
+        query: `ExecutionStatus="Running"`,
+      });
+      if (openWfRes.executions?.length) {
+        console.log(`got ${openWfRes.executions.length} results`);
+        for (const x of openWfRes.executions) {
+          if (x.taskQueue) {
+            queues.add(x.taskQueue);
           }
-        } else {
-          break;
         }
-      } while (npt);
+      }
 
       for (const q of queues) {
         console.log("looking at queue", q);
