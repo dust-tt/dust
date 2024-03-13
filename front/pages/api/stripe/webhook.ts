@@ -447,7 +447,6 @@ async function handler(
           ) {
             const subscription = await Subscription.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
-              include: [Workspace],
             });
             if (!subscription) {
               return apiError(req, res, {
