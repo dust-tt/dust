@@ -5,6 +5,7 @@ import type {
   DustAppParameters,
   DustAppRunActionType,
   GenerationTokensEvent,
+  SubscriptionType,
   TablesQueryActionType,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -42,7 +43,7 @@ import {
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Transaction } from "sequelize";
+import type { Transaction, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -67,6 +68,7 @@ import {
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
+import { isTrial } from "@app/lib/plans/trial";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -859,7 +861,11 @@ export async function* postUserMessage(
     return;
   }
   // Check plan limit
-  const isAboveMessageLimit = await isMessagesLimitReached({ owner, plan });
+  const isAboveMessageLimit = await isMessagesLimitReached({
+    owner,
+    plan,
+    subscription,
+  });
   if (isAboveMessageLimit) {
     yield {
       type: "user_message_error",
@@ -1970,13 +1976,30 @@ async function* streamRunAgentEvents(
 async function isMessagesLimitReached({
   owner,
   plan,
+  subscription,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
+  subscription: SubscriptionType;
 }): Promise<boolean> {
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
+
+  const whereClauses: WhereOptions<Message> = {
+    agentMessageId: { [Op.ne]: null },
+  };
+
+  if (isTrial(subscription)) {
+    // For trials, the limit applies to the last 24 hours.
+    const lastDay = new Date();
+    lastDay.setDate(lastDay.getDate() - 1);
+
+    whereClauses.createdAt = {
+      [Op.gte]: lastDay,
+    };
+  }
+
   const messages = await Message.findAll({
     attributes: ["id"],
     include: [
@@ -1988,9 +2011,9 @@ async function isMessagesLimitReached({
         where: { workspaceId: owner.id },
       },
     ],
-    where: { agentMessageId: { [Op.ne]: null } },
+    where: whereClauses,
     limit: plan.limits.assistant.maxMessages,
   });
 
-  return messages.length === plan.limits.assistant.maxMessages;
+  return messages.length >= plan.limits.assistant.maxMessages;
 }
