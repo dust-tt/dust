@@ -11,6 +11,7 @@ RUN npm run build
 WORKDIR /app
 
 COPY /front/package*.json ./
+ARG STOP=1
 RUN npm ci
 
 COPY /front .
