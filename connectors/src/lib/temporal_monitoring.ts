@@ -58,7 +58,6 @@ export class ActivityInboundLogInterceptor
     ];
 
     try {
-      this.logger.info("Activity started.");
       return await tracer.trace(
         `${this.context.info.workflowType}-${this.context.info.activityType}`,
         {
@@ -149,7 +148,6 @@ export class ActivityInboundLogInterceptor
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);
       } else {
-        this.logger.info({ durationMs: durationMs }, "Activity completed.");
         statsDClient.increment("activities_success.count", 1, tags);
       }
     }
