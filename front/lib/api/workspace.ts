@@ -19,6 +19,7 @@ import {
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models";
+import { getTrialLimits, isTrial } from "@app/lib/plans/free_trial";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -215,11 +216,21 @@ export async function checkWorkspaceSeatAvailabilityUsingAuth(
   return evaluateWorkspaceSeatAvailability(owner, subscription);
 }
 
+function getMaxUsersForSubscription(subscription: SubscriptionType) {
+  if (isTrial(subscription)) {
+    return getTrialLimits().maxUsersInWorkspace;
+  }
+
+  const { maxUsers } = subscription.plan.limits.users;
+
+  return maxUsers;
+}
+
 export async function evaluateWorkspaceSeatAvailability(
   workspace: WorkspaceType | Workspace,
   subscription: SubscriptionType
 ): Promise<boolean> {
-  const { maxUsers } = subscription.plan.limits.users;
+  const maxUsers = getMaxUsersForSubscription(subscription);
   if (maxUsers === -1) {
     return true;
   }
