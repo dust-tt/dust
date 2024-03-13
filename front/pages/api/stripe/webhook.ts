@@ -454,7 +454,7 @@ async function handler(
                 api_error: {
                   type: "internal_server_error",
                   message:
-                    "[Stripe Webhook] canceling subscription: Subscription not found.",
+                    "[Stripe Webhook] Failed to update subscription after trial ended: Subscription not found.",
                 },
               });
             }
