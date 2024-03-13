@@ -1,7 +1,7 @@
 import type { SubscriptionType } from "@dust-tt/types";
 
 const TRIAL_LIMITS = {
-  maxMessages: 50,
+  maxUsersInWorkspace: 5,
 };
 
 export function isTrial(subscription: SubscriptionType) {
