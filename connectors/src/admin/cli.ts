@@ -1111,6 +1111,8 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
               queues.add(x.taskQueue);
             }
           }
+        } else {
+          break;
         }
       } while (npt);
 
