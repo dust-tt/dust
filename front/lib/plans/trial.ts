@@ -1,16 +1,19 @@
 import type { SubscriptionType } from "@dust-tt/types";
 
-import type { Subscription } from "@app/lib/models";
+import type { Plan, Subscription } from "@app/lib/models";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { TRIAL_PLAN_CODE } from "@app/lib/plans/plan_codes";
 
-export const TRIAL_PLAN_DATA: PlanAttributes = {
-  ...FREE_TEST_PLAN_DATA,
-  code: TRIAL_PLAN_CODE,
-  name: "Trial",
+const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxUsersInWorkspace: 5,
+  maxMessages: 25,
 };
+
+export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
+  return {
+    ...plan.get(),
+    ...TRIAL_LIMITS,
+  };
+}
 
 export function isTrial(subscription: SubscriptionType | Subscription) {
   return subscription.status === "trialing";

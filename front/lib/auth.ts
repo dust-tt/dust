@@ -39,7 +39,7 @@ import {
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { isTrial, TRIAL_PLAN_DATA } from "@app/lib/plans/trial";
+import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -551,7 +551,7 @@ export async function subscriptionForWorkspace(
 
     // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
     if (isTrial(activeSubscription)) {
-      plan = TRIAL_PLAN_DATA;
+      plan = await getTrialVersionForPlan(activeSubscription.plan);
     } else if (activeSubscription.plan) {
       plan = activeSubscription.plan;
     } else {
