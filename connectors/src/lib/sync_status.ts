@@ -6,6 +6,7 @@ import type {
 
 import type { Result } from "@connectors/lib/result";
 import { Err, Ok } from "@connectors/lib/result";
+import { heartbeat } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 async function syncFinished({
@@ -56,7 +57,7 @@ export async function reportInitialSyncProgress(
     firstSyncProgress: progress,
     lastSyncSuccessfulTime: null,
   });
-
+  await heartbeat();
   return new Ok(undefined);
 }
 
@@ -68,7 +69,7 @@ export async function syncSucceeded(connectorId: ModelId, at?: Date) {
   if (!at) {
     at = new Date();
   }
-
+  await heartbeat();
   return syncFinished({
     connectorId: connectorId,
     status: "succeeded",

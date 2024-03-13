@@ -24,6 +24,7 @@ import {
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { HTTPError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
@@ -184,25 +185,27 @@ export async function syncFiles(
     .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
     .map((f) => f.id);
 
-  const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
-  const results = await Promise.all(
-    filesToSync.map((file) => {
-      return queue.add(async () => {
-        if (!file.trashed) {
-          return syncOneFile(
-            connectorId,
-            authCredentials,
-            dataSourceConfig,
-            file,
-            startSyncTs,
-            true // isBatchSync
-          );
-        } else {
-          await deleteOneFile(connectorId, file);
-        }
-      });
-    })
+  const results = await concurrentExecutor(
+    filesToSync,
+    async (file) => {
+      if (!file.trashed) {
+        await syncOneFile(
+          connectorId,
+          authCredentials,
+          dataSourceConfig,
+          file,
+          startSyncTs,
+          true // isBatchSync
+        );
+      } else {
+        await deleteOneFile(connectorId, file);
+      }
+
+      await heartbeat();
+    },
+    { concurrency: FILES_SYNC_CONCURRENCY }
   );
+
   return {
     nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
     count: results.filter((r) => r).length,

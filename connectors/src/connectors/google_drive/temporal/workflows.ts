@@ -36,12 +36,14 @@ const { incrementalSync } = proxyActivities<typeof activities>({
 // Temporarily increase timeout on syncFiles until table upsertion is moved to the upsert queue.
 const { syncFiles } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+  heartbeatTimeout: "5 minutes",
 });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
 >({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "5 minutes",
+  heartbeatTimeout: "5 minutes",
 });
 
 export async function googleDriveFullSync(
