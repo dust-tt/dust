@@ -1106,6 +1106,7 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
         });
         npt = openWfRes.nextPageToken;
         if (openWfRes.executions?.length) {
+          console.log(`got ${openWfRes.executions.length} results`);
           for (const x of openWfRes.executions) {
             if (x.taskQueue) {
               queues.add(x.taskQueue);
