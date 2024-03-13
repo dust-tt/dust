@@ -19,7 +19,7 @@ import {
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models";
-import { getTrialLimits, isTrial } from "@app/lib/plans/free_trial";
+import { getTrialLimits, isTrial } from "@app/lib/plans/trial";
 
 export async function getWorkspaceInfos(
   wId: string
