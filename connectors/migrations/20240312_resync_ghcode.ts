@@ -31,6 +31,7 @@ async function main() {
         (await launchGithubFullSyncWorkflow({
           connectorId: connector.id,
           syncCodeOnly: true,
+          forceCodeResync: true,
         }));
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));

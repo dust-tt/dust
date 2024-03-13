@@ -37,9 +37,11 @@ const logger = mainLogger.child({ provider: "github" });
 export async function launchGithubFullSyncWorkflow({
   connectorId,
   syncCodeOnly,
+  forceCodeResync = false,
 }: {
   connectorId: ModelId;
   syncCodeOnly: boolean;
+  forceCodeResync?: boolean;
 }) {
   const client = await getTemporalClient();
 
@@ -65,7 +67,13 @@ export async function launchGithubFullSyncWorkflow({
   }
 
   await client.workflow.start(githubFullSyncWorkflow, {
-    args: [dataSourceConfig, githubInstallationId, connectorId, syncCodeOnly],
+    args: [
+      dataSourceConfig,
+      githubInstallationId,
+      connectorId,
+      syncCodeOnly,
+      forceCodeResync,
+    ],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
     searchAttributes: {

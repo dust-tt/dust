@@ -847,6 +847,7 @@ export async function githubCodeSyncActivity({
   repoId,
   loggerArgs,
   isBatchSync,
+  forceResync = false,
 }: {
   dataSourceConfig: DataSourceConfig;
   installationId: string;
@@ -855,6 +856,7 @@ export async function githubCodeSyncActivity({
   repoId: number;
   loggerArgs: Record<string, string | number>;
   isBatchSync: boolean;
+  forceResync?: boolean;
 }) {
   const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
@@ -1017,7 +1019,8 @@ export async function githubCodeSyncActivity({
         const needsUpdate =
           f.fileName !== githubCodeFile.fileName ||
           f.sourceUrl !== githubCodeFile.sourceUrl ||
-          contentHash !== githubCodeFile.contentHash;
+          contentHash !== githubCodeFile.contentHash ||
+          forceResync;
 
         if (needsUpdate) {
           // Record the parent directories to update their updatedAt.

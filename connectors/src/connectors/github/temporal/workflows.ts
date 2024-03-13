@@ -60,7 +60,8 @@ export async function githubFullSyncWorkflow(
   githubInstallationId: string,
   connectorId: ModelId,
   // Used to re-trigger a code-only full-sync after code syncing is enabled/disabled.
-  syncCodeOnly: boolean
+  syncCodeOnly: boolean,
+  forceCodeResync = false
 ) {
   await githubSaveStartSyncActivity(dataSourceConfig);
   const loggerArgs = {
@@ -106,6 +107,7 @@ export async function githubFullSyncWorkflow(
                 repoLogin: repo.login,
                 syncCodeOnly,
                 isFullSync: true,
+                forceCodeResync,
               },
             ],
             parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_TERMINATE,
@@ -294,6 +296,7 @@ export async function githubRepoSyncWorkflow({
   repoLogin,
   syncCodeOnly,
   isFullSync,
+  forceCodeResync = false,
 }: {
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
@@ -303,6 +306,7 @@ export async function githubRepoSyncWorkflow({
   repoLogin: string;
   syncCodeOnly: boolean;
   isFullSync: boolean;
+  forceCodeResync?: boolean;
 }) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
@@ -391,6 +395,7 @@ export async function githubRepoSyncWorkflow({
     repoId,
     loggerArgs,
     isBatchSync: true,
+    forceResync: forceCodeResync,
   });
 }
 
