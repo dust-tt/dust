@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { Context } from "@temporalio/activity";
 import type { ConnectionOptions } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
@@ -128,4 +129,11 @@ export async function terminateAllWorkflowsForConnectorId(
   }
 
   return;
+}
+
+// This function allows to heartbeat back to the temporal workflow, but also
+// awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
+export async function heartbeat() {
+  Context.current().heartbeat();
+  await Context.current().sleep(0);
 }
