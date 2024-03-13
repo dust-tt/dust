@@ -1105,7 +1105,7 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
           query: `ExecutionStatus="Running"`,
         });
         npt = openWfRes.nextPageToken;
-        if (openWfRes.executions) {
+        if (openWfRes.executions?.length) {
           for (const x of openWfRes.executions) {
             if (x.taskQueue) {
               queues.add(x.taskQueue);
