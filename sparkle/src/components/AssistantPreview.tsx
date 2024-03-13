@@ -1,6 +1,6 @@
 import React, { SyntheticEvent, useState } from "react";
 
-import { Button, PlayIcon } from "@sparkle/_index";
+import { Button, CardButton, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -234,16 +234,15 @@ export function AssistantPreview(props: AssistantPreviewProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div
-      className={classNames(
-        "s-flex s-flex-col s-gap-2 s-border s-border-structure-100/0 s-transition s-duration-200 hover:s-cursor-pointer hover:s-border-structure-100 hover:s-bg-structure-50",
-        variant === "item" ? "s-rounded-2xl s-p-3" : " s-rounded-3xl s-p-4"
-      )}
+    <CardButton
+      variant="tertiary"
+      className={classNames("s-flex s-flex-col s-gap-2 s-border")}
+      size={variant === "item" ? "sm" : "lg"}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {renderVariantContent({ ...props, isHovered })}
-    </div>
+    </CardButton>
   );
 }
