@@ -1071,6 +1071,61 @@ const webcrawler = async (command: string) => {
   }
 };
 
+const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "check-queue": {
+      const q = args.queue;
+      if (!q) {
+        throw new Error("Missing --queue argument");
+      }
+      const c = await getTemporalClient();
+      const describeTqRes = await c.workflowService.describeTaskQueue({
+        namespace: process.env.TEMPORAL_NAMESPACE || "default",
+        taskQueue: { name: q },
+      });
+
+      console.log({ describeTqRes });
+      break;
+    }
+
+    case "find-unprocessed-workflows": {
+      const c = await getTemporalClient();
+      let npt: Uint8Array | null = null;
+      const queues = new Set<string>();
+      let openWfRes: Awaited<
+        ReturnType<typeof c.workflowService.listOpenWorkflowExecutions>
+      > | null = null;
+      let i = 0;
+      do {
+        console.log(`Fetching page ${++i}`);
+        openWfRes = await c.workflowService.listOpenWorkflowExecutions({
+          namespace: process.env.TEMPORAL_NAMESPACE || "default",
+          maximumPageSize: 500,
+          nextPageToken: npt,
+        });
+        npt = openWfRes.nextPageToken;
+        if (openWfRes.executions) {
+          for (const x of openWfRes.executions) {
+            if (x.taskQueue) {
+              queues.add(x.taskQueue);
+            }
+          }
+        }
+      } while (npt);
+
+      for (const q of queues) {
+        console.log("looking at queue", q);
+        const qRes = await c.workflowService.describeTaskQueue({
+          namespace: process.env.TEMPORAL_NAMESPACE || "default",
+          taskQueue: { name: q },
+        });
+        console.log({ qRes });
+        console.log("Queue has", qRes.pollers?.length, "pollers");
+      }
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -1109,6 +1164,9 @@ const main = async () => {
       return;
     case "webcrawler":
       await webcrawler(command);
+      return;
+    case "temporal":
+      await temporal(command, argv);
       return;
     default:
       throw new Error(`Unknown object type: ${objectType}`);
