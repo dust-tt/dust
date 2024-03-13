@@ -37,7 +37,7 @@ import {
   Workspace,
 } from "@app/lib/models";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { new_id } from "@app/lib/utils";
@@ -541,7 +541,7 @@ export async function subscriptionForWorkspace(
   });
 
   // Default values when no subscription
-  let plan: PlanAttributes = FREE_TEST_PLAN_DATA;
+  let plan: PlanAttributes = FREE_NO_PLAN_DATA;
   let startDate = null;
   let endDate = null;
 
@@ -567,7 +567,7 @@ export async function subscriptionForWorkspace(
 
   return {
     status: activeSubscription?.status ?? "active",
-    subscriptionId: activeSubscription?.sId || null,
+    sId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,
     startDate: startDate?.getTime() || null,
@@ -603,6 +603,7 @@ export async function subscriptionForWorkspace(
         users: {
           maxUsers: plan.maxUsersInWorkspace,
         },
+        canUseProduct: plan.canUseProduct,
       },
       trialPeriodDays: plan.trialPeriodDays,
     },

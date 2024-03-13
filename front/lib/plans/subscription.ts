@@ -11,7 +11,7 @@ import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
@@ -32,8 +32,88 @@ import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 /**
- * Internal function to subscribe to the default FREE_TEST_PLAN.
+ * Internal function to subscribe to the FREE_NO_PLAN.
  * This is the only plan without a database entry: no need to create a subscription, we just end the active one if any.
+ */
+export const internalSubscribeWorkspaceToFreeNoPlan = async ({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<SubscriptionType> => {
+  const workspace = await Workspace.findOne({
+    where: { sId: workspaceId },
+  });
+  if (!workspace) {
+    throw new Error(`Cannot find workspace ${workspaceId}`);
+  }
+  const now = new Date();
+
+  return front_sequelize.transaction(async (t) => {
+    // We end the active subscription if any
+    const activeSubscription = await Subscription.findOne({
+      where: { workspaceId: workspace.id, status: "active" },
+      transaction: t,
+    });
+
+    if (activeSubscription) {
+      await activeSubscription.update(
+        {
+          status: "ended",
+          endDate: now,
+        },
+        { transaction: t }
+      );
+    }
+
+    const plan: PlanAttributes = FREE_NO_PLAN_DATA;
+
+    return {
+      status: "active",
+      sId: null,
+      stripeSubscriptionId: null,
+      stripeCustomerId: null,
+      startDate: null,
+      endDate: null,
+      paymentFailingSince: null,
+      plan: {
+        code: plan.code,
+        name: plan.name,
+        stripeProductId: null,
+        billingType: plan.billingType,
+        limits: {
+          assistant: {
+            isSlackBotAllowed: plan.isSlackbotAllowed,
+            maxMessages: plan.maxMessages,
+          },
+          connections: {
+            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
+            isSlackAllowed: plan.isManagedSlackAllowed,
+            isNotionAllowed: plan.isManagedNotionAllowed,
+            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+            isGithubAllowed: plan.isManagedGithubAllowed,
+            isIntercomAllowed: plan.isManagedIntercomAllowed,
+            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
+          },
+          dataSources: {
+            count: plan.maxDataSourcesCount,
+            documents: {
+              count: plan.maxDataSourcesDocumentsCount,
+              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+            },
+          },
+          users: {
+            maxUsers: plan.maxUsersInWorkspace,
+          },
+          canUseProduct: plan.canUseProduct,
+        },
+        trialPeriodDays: plan.trialPeriodDays,
+      },
+    };
+  });
+};
+
+/**
+ * Internal function to subscribe to the FREE_TEST_PLAN.
  */
 export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   workspaceId,
@@ -46,62 +126,90 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   if (!workspace) {
     throw new Error(`Cannot find workspace ${workspaceId}`);
   }
-  // We end the active subscription if any
-  const activeSubscription = await Subscription.findOne({
-    where: { workspaceId: workspace.id, status: "active" },
+  const plan = await Plan.findOne({
+    where: { code: FREE_TEST_PLAN_CODE },
   });
-
-  if (activeSubscription) {
-    await activeSubscription.update({
-      status: "ended",
-      endDate: new Date(),
-    });
+  if (!plan) {
+    throw new Error(
+      `Cannot subscribe to plan ${FREE_TEST_PLAN_CODE}:  not found.`
+    );
   }
 
-  // We return the default subscription to FREE_TEST_PLAN
-  const freeTestPlan: PlanAttributes = FREE_TEST_PLAN_DATA;
+  const now = new Date();
 
-  return {
-    status: "active",
-    subscriptionId: null,
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    startDate: null,
-    endDate: null,
-    paymentFailingSince: null,
-    plan: {
-      code: freeTestPlan.code,
-      name: freeTestPlan.name,
-      stripeProductId: null,
-      billingType: freeTestPlan.billingType,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: freeTestPlan.isSlackbotAllowed,
-          maxMessages: freeTestPlan.maxMessages,
+  return front_sequelize.transaction(async (t) => {
+    // We end the active subscription if any
+    const activeSubscription = await Subscription.findOne({
+      where: { workspaceId: workspace.id, status: "active" },
+      transaction: t,
+    });
+
+    if (activeSubscription) {
+      await activeSubscription.update(
+        {
+          status: "ended",
+          endDate: now,
         },
-        connections: {
-          isConfluenceAllowed: freeTestPlan.isManagedConfluenceAllowed,
-          isSlackAllowed: freeTestPlan.isManagedSlackAllowed,
-          isNotionAllowed: freeTestPlan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: freeTestPlan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: freeTestPlan.isManagedGithubAllowed,
-          isIntercomAllowed: freeTestPlan.isManagedIntercomAllowed,
-          isWebCrawlerAllowed: freeTestPlan.isManagedWebCrawlerAllowed,
-        },
-        dataSources: {
-          count: freeTestPlan.maxDataSourcesCount,
-          documents: {
-            count: freeTestPlan.maxDataSourcesDocumentsCount,
-            sizeMb: freeTestPlan.maxDataSourcesDocumentsSizeMb,
-          },
-        },
-        users: {
-          maxUsers: freeTestPlan.maxUsersInWorkspace,
-        },
+        { transaction: t }
+      );
+    }
+
+    // We create a new subscription
+    const newSubscription = await Subscription.create(
+      {
+        sId: generateModelSId(),
+        workspaceId: workspace.id,
+        planId: plan.id,
+        status: "active",
+        startDate: now,
+        stripeCustomerId: activeSubscription?.stripeCustomerId || null,
       },
-      trialPeriodDays: freeTestPlan.trialPeriodDays,
-    },
-  };
+      { transaction: t }
+    );
+
+    return {
+      status: "active",
+      sId: newSubscription.sId,
+      stripeSubscriptionId: null,
+      stripeCustomerId: null,
+      startDate: null,
+      endDate: null,
+      paymentFailingSince: null,
+      plan: {
+        code: plan.code,
+        name: plan.name,
+        stripeProductId: null,
+        billingType: plan.billingType,
+        limits: {
+          assistant: {
+            isSlackBotAllowed: plan.isSlackbotAllowed,
+            maxMessages: plan.maxMessages,
+          },
+          connections: {
+            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
+            isSlackAllowed: plan.isManagedSlackAllowed,
+            isNotionAllowed: plan.isManagedNotionAllowed,
+            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+            isGithubAllowed: plan.isManagedGithubAllowed,
+            isIntercomAllowed: plan.isManagedIntercomAllowed,
+            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
+          },
+          dataSources: {
+            count: plan.maxDataSourcesCount,
+            documents: {
+              count: plan.maxDataSourcesDocumentsCount,
+              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+            },
+          },
+          users: {
+            maxUsers: plan.maxUsersInWorkspace,
+          },
+          canUseProduct: plan.canUseProduct,
+        },
+        trialPeriodDays: plan.trialPeriodDays,
+      },
+    };
+  });
 };
 
 /**
@@ -136,17 +244,20 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   });
   if (activeSubscription && activeSubscription.planId === plan.id) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}:  already subscribed.`
+      `Cannot subscribe to plan ${planCode}: already subscribed.`
     );
   }
 
   return front_sequelize.transaction(async (t) => {
     // We end the active subscription if any
     if (activeSubscription) {
-      await activeSubscription.update({
-        status: "ended",
-        endDate: now,
-      });
+      await activeSubscription.update(
+        {
+          status: "ended",
+          endDate: now,
+        },
+        { transaction: t }
+      );
     }
 
     // We create a new subscription
@@ -164,7 +275,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
 
     return {
       status: "active",
-      subscriptionId: newSubscription.sId,
+      sId: newSubscription.sId,
       stripeSubscriptionId: newSubscription.stripeSubscriptionId,
       stripeCustomerId: newSubscription.stripeCustomerId,
       startDate: newSubscription.startDate.getTime(),
@@ -199,6 +310,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
           users: {
             maxUsers: plan.maxUsersInWorkspace,
           },
+          canUseProduct: plan.canUseProduct,
         },
         trialPeriodDays: plan.trialPeriodDays,
       },
@@ -366,6 +478,7 @@ export const getCheckoutUrlForUpgrade = async (
         users: {
           maxUsers: plan.maxUsersInWorkspace,
         },
+        canUseProduct: plan.canUseProduct,
       },
       trialPeriodDays: plan.trialPeriodDays,
     },
@@ -446,10 +559,13 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
         },
       ],
     });
+
     if (!activeSubscription) {
-      // No active subscription: the workspace is in the free default plan
-      return;
+      throw new Error(
+        "Cannot process update usage in subscription: workspace has no subscription."
+      );
     }
+
     if (activeSubscription.plan.billingType !== "per_seat") {
       // We only update the usage for plans with billingType === "per_seat"
       return;
