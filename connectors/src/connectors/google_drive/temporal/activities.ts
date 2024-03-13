@@ -34,6 +34,7 @@ import {
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import { syncFailed } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -294,6 +295,8 @@ export async function incrementalSync(
       `Got changes.`
     );
     for (const change of changesRes.data.changes) {
+      await heartbeat();
+
       if (change.changeType !== "file" || !change.file) {
         continue;
       }
@@ -356,6 +359,7 @@ export async function incrementalSync(
 
         continue;
       }
+
       await syncOneFile(
         connectorId,
         authCredentials,
