@@ -22,6 +22,7 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import { Op } from "sequelize";
 
 import { isDevelopment } from "@app/lib/development";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -38,6 +39,7 @@ import {
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_TEST_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -519,15 +521,16 @@ export async function subscriptionForWorkspace(
 ): Promise<Promise<SubscriptionType>> {
   const activeSubscription = await Subscription.findOne({
     attributes: [
-      "id",
-      "sId",
-      "stripeSubscriptionId",
-      "stripeCustomerId",
-      "startDate",
       "endDate",
+      "id",
       "paymentFailingSince",
+      "sId",
+      "startDate",
+      "status",
+      "stripeCustomerId",
+      "stripeSubscriptionId",
     ],
-    where: { workspaceId: w.id, status: "active" },
+    where: { workspaceId: w.id, status: { [Op.in]: ["active", "trialing"] } },
     include: [
       {
         model: Plan,
@@ -545,7 +548,11 @@ export async function subscriptionForWorkspace(
   if (activeSubscription) {
     startDate = activeSubscription.startDate;
     endDate = activeSubscription.endDate;
-    if (activeSubscription.plan) {
+
+    // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
+    if (isTrial(activeSubscription)) {
+      plan = await getTrialVersionForPlan(activeSubscription.plan);
+    } else if (activeSubscription.plan) {
       plan = activeSubscription.plan;
     } else {
       logger.error(
@@ -559,7 +566,7 @@ export async function subscriptionForWorkspace(
   }
 
   return {
-    status: "active",
+    status: activeSubscription?.status ?? "active",
     subscriptionId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,
