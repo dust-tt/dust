@@ -22,6 +22,7 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import { Op } from "sequelize";
 
 import { isDevelopment } from "@app/lib/development";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -519,15 +520,16 @@ export async function subscriptionForWorkspace(
 ): Promise<Promise<SubscriptionType>> {
   const activeSubscription = await Subscription.findOne({
     attributes: [
-      "id",
-      "sId",
-      "stripeSubscriptionId",
-      "stripeCustomerId",
-      "startDate",
       "endDate",
+      "id",
       "paymentFailingSince",
+      "sId",
+      "startDate",
+      "status",
+      "stripeCustomerId",
+      "stripeSubscriptionId",
     ],
-    where: { workspaceId: w.id, status: "active" },
+    where: { workspaceId: w.id, status: { [Op.in]: ["active", "trialing"] } },
     include: [
       {
         model: Plan,
@@ -559,7 +561,7 @@ export async function subscriptionForWorkspace(
   }
 
   return {
-    status: "active",
+    status: activeSubscription?.status ?? "active",
     subscriptionId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,

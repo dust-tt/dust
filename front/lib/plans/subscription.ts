@@ -578,3 +578,7 @@ export async function getPlanInvitation(
     secret: planInvitations[0].secret,
   };
 }
+
+export async function isTrial(subscription: SubscriptionType) {
+  return subscription.status === "trialing";
+}
