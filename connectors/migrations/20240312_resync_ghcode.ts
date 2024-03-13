@@ -17,6 +17,7 @@ async function main() {
     ],
   });
 
+  console.log(`Found ${connectors.length} connectors with codeSyncEnabled`);
   // for all connectors, launch a full resync of code only
   // batches of 10 connectors, sleeping 5s between batches
   for (let i = 0; i < connectors.length; i += 10) {
