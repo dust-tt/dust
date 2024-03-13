@@ -40,7 +40,7 @@ export const PAID_BILLING_TYPES = [
 export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
 export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 
-export const SUBSCRIPTION_STATUSES = ["active", "ended"] as const;
+export const SUBSCRIPTION_STATUSES = ["active", "ended", "trialing"] as const;
 export type SubscriptionStatusType = (typeof SUBSCRIPTION_STATUSES)[number];
 
 export type PlanType = {

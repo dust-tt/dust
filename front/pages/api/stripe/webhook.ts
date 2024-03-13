@@ -431,6 +431,7 @@ async function handler(
           // - when the number of seats changes for a metered billing.
           // - when the subscription is canceled by the user: it is ended at the of the billing period, and we will receive a "customer.subscription.deleted" event.
           // - when the subscription is activated again after being canceled but before the end of the billing period.
+          // - when trial expires, and the subscription transitions to a paid plan.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.subscription.updated event."
@@ -440,6 +441,26 @@ async function handler(
           if (!previousAttributes) break; // should not happen by definition of the subscription.updated event
 
           if (
+            stripeSubscription.status === "active" &&
+            "status" in previousAttributes &&
+            previousAttributes.status === "trialing"
+          ) {
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+            });
+            if (!subscription) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "[Stripe Webhook] Failed to update subscription after trial ended: Subscription not found.",
+                },
+              });
+            }
+
+            await subscription.update({ status: "active" });
+          } else if (
             // The subscription is canceled (but not yet ended) or reactivated
             stripeSubscription.status === "active" &&
             "cancel_at_period_end" in previousAttributes
