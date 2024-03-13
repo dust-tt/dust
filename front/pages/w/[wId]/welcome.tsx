@@ -1,15 +1,16 @@
 import {
   Button,
   Input,
-  Logo,
   LogoSquareColorLogo,
   Page,
   RadioButton,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Confetti from "react-confetti";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
@@ -17,9 +18,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
-
-const ADMIN_YOUTUBE_ID = "f9n4mqBX2aw";
-const MEMBER_YOUTUBE_ID = null; // We don't have the video yet.
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -83,9 +81,7 @@ export default function Welcome({
   const [adminInterest, setAdminInterest] =
     useState<string>(defaultAdminInterest);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
-  const [displayVideoScreen, setDisplayVideoScreen] = useState<boolean>(false);
-
-  const youtubeId = isAdmin ? ADMIN_YOUTUBE_ID : MEMBER_YOUTUBE_ID;
+  const [showFinalScreen, setShowFinalScreen] = useState<boolean>(false);
 
   useEffect(() => {
     setIsFormValid(
@@ -122,12 +118,7 @@ export default function Welcome({
         });
       }
     }
-    // We don't block the user if it fails here.
-    if (youtubeId) {
-      setDisplayVideoScreen(true);
-    } else {
-      await redirectToApp();
-    }
+    setShowFinalScreen(true);
   });
 
   const redirectToApp = async () => {
@@ -138,7 +129,7 @@ export default function Welcome({
     }
   };
 
-  if (!displayVideoScreen) {
+  if (!showFinalScreen) {
     return (
       <OnboardingLayout
         owner={owner}
@@ -146,7 +137,7 @@ export default function Welcome({
         headerTitle="Joining Dust"
         headerRightActions={
           <Button
-            label={youtubeId ? "Next" : "Ok"}
+            label={"Next"}
             disabled={!isFormValid || isSubmitting}
             size="sm"
             onClick={submit}
@@ -239,7 +230,7 @@ export default function Welcome({
           </div>
           <div className="flex justify-end">
             <Button
-              label={youtubeId ? "Next" : "Ok"}
+              label={"Next"}
               disabled={!isFormValid || isSubmitting}
               size="md"
               onClick={submit}
@@ -248,68 +239,27 @@ export default function Welcome({
         </div>
       </OnboardingLayout>
     );
-  } else if (displayVideoScreen && youtubeId !== null) {
+  } else if (showFinalScreen) {
     return (
       <OnboardingLayout
         owner={owner}
         gaTrackingId={gaTrackingId}
         headerTitle="Joining Dust"
-        headerRightActions={
-          <Button
-            label="Ok"
-            disabled={!isFormValid}
-            size="sm"
-            onClick={redirectToApp}
-          />
-        }
+        headerRightActions={<></>}
       >
+        <Confetti wind={0.02} gravity={0.08} />
         <div className="flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
-          <Page.Header
-            title={`You're ready to go!`}
-            icon={() => <Logo className="-ml-8 h-4 w-32" />}
-          />
-          <p className="text-element-800">
-            Here is a short video to get you started with Dust.
-          </p>
-          <div>
-            <YoutubeIframe youtubeId={youtubeId} />
-          </div>
-          <div className="flex justify-center">
-            <Button
-              label="Ok"
-              disabled={!isFormValid}
-              size="md"
-              onClick={redirectToApp}
-            />
+          <Page.Header title={`You are all set!`} icon={SparklesIcon} />
+          <Page.P>
+            We're glad to have you onboard.
+            <br />
+            Thank you for your trust.
+          </Page.P>
+          <div className="flex w-full flex-col items-end">
+            <Button label="Let's roll" size="md" onClick={redirectToApp} />
           </div>
         </div>
       </OnboardingLayout>
     );
   }
 }
-
-const YoutubeIframe = ({ youtubeId }: { youtubeId: string }) => {
-  return (
-    <div
-      className="video"
-      style={{
-        position: "relative",
-        paddingBottom: "56.25%" /* 16:9 */,
-        paddingTop: 25,
-        height: 0,
-      }}
-    >
-      <iframe
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-        src={`https://www.youtube.com/embed/${youtubeId}`}
-        frameBorder="0"
-      />
-    </div>
-  );
-};

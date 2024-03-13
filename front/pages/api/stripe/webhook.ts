@@ -519,6 +519,10 @@ async function handler(
                 },
               });
             }
+            logger.info(
+              { event },
+              "[Stripe Webhook] Received customer.subscription.deleted event."
+            );
             await activeSubscription.update({
               status: "ended",
               endDate: new Date(),

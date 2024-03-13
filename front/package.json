@@ -76,6 +76,7 @@
     "react": "^18.2.0",
     "react-accessible-treeview": "^2.6.0",
     "react-beforeunload": "^2.5.3",
+    "react-confetti": "^6.1.0",
     "react-cookie": "^6.1.1",
     "react-cropper": "^2.3.3",
     "react-dom": "^18.2.0",
