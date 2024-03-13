@@ -565,8 +565,6 @@ export async function subscriptionForWorkspace(
     }
   }
 
-  console.log(">> plan:", plan);
-
   return {
     status: activeSubscription?.status ?? "active",
     subscriptionId: activeSubscription?.sId || null,
