@@ -2,22 +2,16 @@ import type {
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import sgMail from "@sendgrid/mail";
-import { sign } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { sendWorkspaceInvitationEmail } from "@app/lib/api/invitation";
 import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getPendingInvitations,
 } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { MembershipInvitation } from "@app/lib/models";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { SENDGRID_API_KEY = "", URL, DUST_INVITE_TOKEN_SECRET } = process.env;
-
-sgMail.setApiKey(SENDGRID_API_KEY);
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
@@ -34,7 +28,8 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const user = auth.user();
+  if (!owner || !user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -102,13 +97,6 @@ async function handler(
         });
       }
 
-      if (!URL) {
-        throw new Error("URL is not set");
-      }
-      if (!DUST_INVITE_TOKEN_SECRET) {
-        throw new Error("DUST_INVITE_TOKEN_SECRET is not set");
-      }
-
       if (subscription.paymentFailingSince) {
         return apiError(req, res, {
           status_code: 402,
@@ -120,32 +108,12 @@ async function handler(
         });
       }
 
-      // Create MembershipInvitation
-      const inviteEmail = req.body.inviteEmail;
-      const invitation = await MembershipInvitation.create({
-        workspaceId: owner.id,
-        inviteEmail,
-        status: "pending",
-      });
-
-      const invitationToken = sign(
-        { membershipInvitationId: invitation.id },
-        DUST_INVITE_TOKEN_SECRET
+      const invitation = await sendWorkspaceInvitationEmail(
+        owner,
+        user,
+        req.body.inviteEmail
       );
 
-      const invitationUrl = `${URL}/w/${owner.sId}/join/?t=${invitationToken}`;
-
-      // Send invite email
-      const message = {
-        to: invitation.inviteEmail,
-        from: {
-          name: "Dust team",
-          email: "team@dust.tt",
-        },
-        subject: `[Dust] You have been invited to join the '${owner.name}' workspace`,
-        text: `Welcome to Dust!\n\nYou have been invited to join the '${owner.name}' workspace.\n\nClick the link below to accept the invitation:\n\n${invitationUrl}`,
-      };
-      await sgMail.send(message);
       res.status(200).json({
         invitations: [
           {
