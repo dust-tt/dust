@@ -45,11 +45,11 @@ import {
   useAgentUsage,
   useApp,
   useConnectorPermissions,
+  useDataSourceContentNodes,
   useDataSources,
 } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -361,52 +361,17 @@ function DataSourceSelectedNodes({
   setDataSourceToDisplay: (ds: DataSourceType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasLoadingError, setHasLoadingError] = useState(false);
-  const [nodes, setNodes] = useState<ContentNode[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const fetchSelectedNodes = useCallback(async () => {
-    setIsLoading(true);
-    setHasLoadingError(false);
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource?.name || ""
-        )}/managed/content_nodes`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
-          }),
-        }
-      );
-      if (!res.ok) {
-        throw new Error("Failed to fetch nodes");
-      }
-      const json: GetContentNodeResponseBody = await res.json();
-      setNodes(json.nodes);
-    } catch (e) {
-      setHasLoadingError(true);
-      setNodes([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [owner, dataSource?.name, dataSourceConfiguration.filter.parents?.in]);
-
-  useEffect(() => {
-    if (isLoading || hasLoadingError || nodes.length) {
-      return;
-    }
-    fetchSelectedNodes().catch(console.error);
-  }, [fetchSelectedNodes, isLoading, hasLoadingError, nodes.length]);
+  const dataSourceSelectedNodes = useDataSourceContentNodes({
+    owner,
+    dataSource,
+    internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
+  });
 
   return (
     <>
-      {nodes.map((node) => (
+      {dataSourceSelectedNodes.nodes.map((node: ContentNode) => (
         <Tree.Item
           key={node.internalId}
           collapsed={!expanded[node.internalId]}
