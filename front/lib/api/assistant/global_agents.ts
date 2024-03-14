@@ -12,6 +12,7 @@ import type {
 import type { GlobalAgentStatus } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -242,6 +243,38 @@ async function _getClaude2GlobalAgent({
       model: {
         providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
+      },
+      temperature: 0.7,
+    },
+    action: null,
+  };
+}
+
+async function _getClaude3HaikuGlobalAgent({
+  settings,
+}: {
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  const status = settings ? settings.status : "disabled_by_admin";
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-3-haiku",
+    description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    generation: {
+      id: -1,
+      prompt: "",
+      model: {
+        providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
     },
@@ -867,6 +900,11 @@ export async function getGlobalAgent(
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
+      agentConfiguration = await _getClaude3HaikuGlobalAgent({
+        settings,
+      });
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
       agentConfiguration = await _getClaude2GlobalAgent({ auth, settings });
       break;
@@ -930,7 +968,10 @@ export async function getGlobalAgent(
 
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
-const RETIRED_GLOABL_AGENTS_SID = [GLOBAL_AGENTS_SID.CLAUDE_2];
+const RETIRED_GLOABL_AGENTS_SID = [
+  GLOBAL_AGENTS_SID.CLAUDE_2,
+  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+];
 
 export async function getGlobalAgents(
   auth: Authenticator,

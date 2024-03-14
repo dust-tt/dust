@@ -49,6 +49,8 @@ export const GPT_3_5_TURBO_MODEL_CONFIG = {
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_SONNET_2024029_MODEL_ID =
   "claude-3-sonnet-20240229" as const;
+export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
+  "claude-3-haiku-20240307" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 
@@ -69,11 +71,23 @@ export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG = {
   modelId: CLAUDE_3_SONNET_2024029_MODEL_ID,
   displayName: "Claude 3 Sonnet",
   contextSize: 200000,
-  recommendedTopK: 32,
+  recommendedTopK: 64,
   largeModel: true,
   description:
     "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
   shortDescription: "Anthropic's balanced model.",
+} as const;
+
+export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG = {
+  providerId: "anthropic" as const,
+  modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
+  displayName: "Claude 3 Haiku",
+  contextSize: 200000,
+  recommendedTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
+  shortDescription: "Anthropic's quick model.",
 } as const;
 
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG = {
@@ -154,6 +168,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   GPT_4_TURBO_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
