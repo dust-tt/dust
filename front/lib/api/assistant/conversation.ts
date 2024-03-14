@@ -5,6 +5,7 @@ import type {
   DustAppParameters,
   DustAppRunActionType,
   GenerationTokensEvent,
+  SubscriptionType,
   TablesQueryActionType,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -34,7 +35,12 @@ import type {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG, md5, removeNulls } from "@dust-tt/types";
+import {
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  md5,
+  rateLimiter,
+  removeNulls,
+} from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
@@ -67,6 +73,7 @@ import {
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
+import { isTrial } from "@app/lib/plans/trial";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -859,16 +866,31 @@ export async function* postUserMessage(
     return;
   }
   // Check plan limit
-  const isAboveMessageLimit = await isMessagesLimitReached({ owner, plan });
+  const isAboveMessageLimit = await isMessagesLimitReached({
+    owner,
+    plan,
+    subscription,
+  });
   if (isAboveMessageLimit) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "test_plan_message_limit_reached",
-        message: "The free plan message limit has been reached.",
-      },
-    };
+    if (isTrial(subscription)) {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "free_trial_message_limit_reached",
+          message: "The free trial message limit has been reached.",
+        },
+      };
+    } else {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "test_plan_message_limit_reached",
+          message: "The free plan message limit has been reached.",
+        },
+      };
+    }
     return;
   }
 
@@ -1970,13 +1992,28 @@ async function* streamRunAgentEvents(
 async function isMessagesLimitReached({
   owner,
   plan,
+  subscription,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
+  subscription: SubscriptionType;
 }): Promise<boolean> {
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
+
+  if (isTrial(subscription)) {
+    // For trials, the limit applies to the last 24 hours.
+    const remaining = await rateLimiter({
+      key: `workspace:${owner.id}:agent_message_count:last_24_hours`,
+      maxPerTimeframe: 25,
+      timeframeSeconds: 60 * 60 * 24, // 1 day.
+      logger,
+    });
+
+    return remaining <= 0;
+  }
+
   const messages = await Message.findAll({
     attributes: ["id"],
     include: [
@@ -1992,5 +2029,5 @@ async function isMessagesLimitReached({
     limit: plan.limits.assistant.maxMessages,
   });
 
-  return messages.length === plan.limits.assistant.maxMessages;
+  return messages.length >= plan.limits.assistant.maxMessages;
 }
