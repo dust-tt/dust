@@ -48,7 +48,7 @@ import {
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Transaction, WhereOptions } from "sequelize";
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
