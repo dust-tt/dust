@@ -54,14 +54,6 @@ export default function Subscribe({
         title: "Subscription failed",
         description: "Failed to subscribe to a new plan.",
       });
-      // Then we remove the query params to avoid going through this logic again.
-      void router.push(
-        { pathname: `/w/${owner.sId}/subscription` },
-        undefined,
-        {
-          shallow: true,
-        }
-      );
     } else {
       const content = await res.json();
       if (content.checkoutUrl) {
