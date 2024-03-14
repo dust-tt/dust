@@ -4,7 +4,14 @@ import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Membership, Subscription, User, Workspace } from "@app/lib/models";
+import {
+  Membership,
+  Plan,
+  Subscription,
+  User,
+  Workspace,
+} from "@app/lib/models";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -92,6 +99,15 @@ async function handler(
             status: "active",
           },
           attributes: ["workspaceId"],
+          include: [
+            {
+              model: Plan,
+              as: "plan",
+              where: {
+                code: { [Op.ne]: FREE_TEST_PLAN_CODE },
+              },
+            },
+          ],
         });
         const workspaceIds = subscriptions.map((s) => s.workspaceId);
         if (upgraded) {

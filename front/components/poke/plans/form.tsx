@@ -100,6 +100,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
+      canUseProduct: true,
     },
     billingType: editingPlan.billingType,
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),

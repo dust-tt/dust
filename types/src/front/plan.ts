@@ -28,6 +28,7 @@ export type LimitsType = {
   users: {
     maxUsers: number;
   };
+  canUseProduct: boolean;
 };
 
 export const FREE_BILLING_TYPES = ["free"] as const;
@@ -53,7 +54,8 @@ export type PlanType = {
 };
 
 export type SubscriptionType = {
-  subscriptionId: string | null; // null for the free test plan that is not in the database
+  // null for FREE_NO_PLAN which is the default plan when there is no Subscription in DB.
+  sId: string | null;
   status: "active" | "ended" | "trialing";
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;

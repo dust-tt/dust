@@ -2,6 +2,7 @@ import type { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models";
 import {
+  FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -14,22 +15,24 @@ export type PlanAttributes = Omit<
 /**
  * We have 3 categories of plans:
  * - Free: plans with no paid subscription.
- * - Pro: plans with a paid subscription, not tailored. -> i.e. the same plan is used by all Pro workspaces.
- * - Entreprise: plans with a paid subscription, tailored to the needs of the entreprise. -> i.e. we will have one plan per "Entreprise".
+ * - Pro: plans with a paid subscription, not tailored. -> i.e. the same plan is used by all Pro
+ *        workspaces.
+ * - Entreprise: plans with a paid subscription, tailored to the needs of the entreprise.
+ *               -> i.e. we will have one plan per "Entreprise".
  *
  * This file about Free plans.
  */
 
 /**
- * FREE_TEST plan is our default plan: this is the plan used by all workspaces until they subscribe to a plan.
- * It is not stored in the database (as we don't create a subsription).
+ * FREE_NO_PLAN is the plan used for workspaces that are being created and have not yet subscribed
+ * to a plan (card has not been entered yet for free trial). It prevents using the product entirely.
  */
-export const FREE_TEST_PLAN_DATA: PlanAttributes = {
-  code: FREE_TEST_PLAN_CODE,
-  name: "Free",
+export const FREE_NO_PLAN_DATA: PlanAttributes = {
+  code: FREE_NO_PLAN_CODE,
+  name: "No Plan",
   stripeProductId: null,
   billingType: "free",
-  maxMessages: 50,
+  maxMessages: 0,
   maxUsersInWorkspace: 1,
   isSlackbotAllowed: false,
   isManagedConfluenceAllowed: false,
@@ -39,17 +42,39 @@ export const FREE_TEST_PLAN_DATA: PlanAttributes = {
   isManagedGithubAllowed: false,
   isManagedIntercomAllowed: false,
   isManagedWebCrawlerAllowed: false,
-  maxDataSourcesCount: 5,
-  maxDataSourcesDocumentsCount: 10,
-  maxDataSourcesDocumentsSizeMb: 2,
+  maxDataSourcesCount: 0,
+  maxDataSourcesDocumentsCount: 0,
+  maxDataSourcesDocumentsSizeMb: 0,
   trialPeriodDays: 0,
+  canUseProduct: false,
 };
 
 /**
- * Other FREE plans are stored in the database.
+ * FREE plans are stored in the database.
  * We can update existing plans or add new one but never remove anything from this list.
  */
 const FREE_PLANS_DATA: PlanAttributes[] = [
+  {
+    code: FREE_TEST_PLAN_CODE,
+    name: "Free",
+    stripeProductId: null,
+    billingType: "free",
+    maxMessages: 50,
+    maxUsersInWorkspace: 1,
+    isSlackbotAllowed: false,
+    isManagedConfluenceAllowed: false,
+    isManagedSlackAllowed: false,
+    isManagedNotionAllowed: false,
+    isManagedGoogleDriveAllowed: false,
+    isManagedGithubAllowed: false,
+    isManagedIntercomAllowed: false,
+    isManagedWebCrawlerAllowed: false,
+    maxDataSourcesCount: 5,
+    maxDataSourcesDocumentsCount: 10,
+    maxDataSourcesDocumentsSizeMb: 2,
+    trialPeriodDays: 0,
+    canUseProduct: true,
+  },
   {
     code: FREE_UPGRADED_PLAN_CODE,
     name: "Free Trial",
@@ -69,6 +94,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 0,
+    canUseProduct: true,
   },
 ];
 

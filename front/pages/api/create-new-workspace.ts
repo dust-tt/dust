@@ -56,6 +56,7 @@ async function handler(
     userId: user.id,
     role: "admin",
   });
+
   await internalSubscribeWorkspaceToFreeTestPlan({
     workspaceId: workspace.sId,
   });
