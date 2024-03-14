@@ -281,10 +281,8 @@ async function handler(
                   sId: generateModelSId(),
                   workspaceId: workspace.id,
                   planId: plan.id,
-                  status:
-                    stripeSubscription.status === "trialing"
-                      ? "trialing"
-                      : "active",
+                  status: "active",
+                  trialing: stripeSubscription.status === "trialing",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                   stripeCustomerId: stripeCustomerId,
@@ -466,7 +464,7 @@ async function handler(
               });
             }
 
-            await subscription.update({ status: "active" });
+            await subscription.update({ status: "active", trialing: false });
           } else if (
             // The subscription is canceled (but not yet ended) or reactivated
             stripeSubscription.status === "active" &&

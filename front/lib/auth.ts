@@ -22,7 +22,6 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
-import { Op } from "sequelize";
 
 import { isDevelopment } from "@app/lib/development";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -532,7 +531,7 @@ export async function subscriptionForWorkspace(
       "stripeCustomerId",
       "stripeSubscriptionId",
     ],
-    where: { workspaceId: w.id, status: { [Op.in]: ["active", "trialing"] } },
+    where: { workspaceId: w.id, status: "active" },
     include: [
       {
         model: Plan,

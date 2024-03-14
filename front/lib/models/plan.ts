@@ -172,6 +172,7 @@ export class Subscription extends Model<
 
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
+  declare trialing: boolean | null;
   declare paymentFailingSince: Date | null;
 
   declare startDate: Date;
@@ -213,6 +214,11 @@ Subscription.init(
       validate: {
         isIn: [SUBSCRIPTION_STATUSES],
       },
+    },
+    trialing: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
     paymentFailingSince: {
       type: DataTypes.DATE,
