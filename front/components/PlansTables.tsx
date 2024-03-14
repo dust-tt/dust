@@ -42,7 +42,7 @@ function FreePriceTable({ size }: { size: "sm" | "xs" }) {
   );
 }
 
-function ProPriceTable({
+export function ProPriceTable({
   size,
   plan,
   onClick,
