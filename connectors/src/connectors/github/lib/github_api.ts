@@ -1,5 +1,5 @@
+import { Err, Ok } from "@dust-tt/types";
 import { createAppAuth } from "@octokit/auth-app";
-import { ApplicationFailure } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
@@ -25,6 +25,7 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 const API_PAGE_SIZE = 100;
@@ -674,16 +675,7 @@ export async function processRepository({
     ).data;
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
-      localLogger.info({ err }, "Missing Github repository tarball. Skipping.");
-
-      throw ApplicationFailure.nonRetryable(
-        err.message,
-        "GithubNotFoundNonRetryableError",
-        [
-          "Could not find tarball.",
-          `/repos/${repoLogin}/${repoName}/tarball/${defaultBranch}`,
-        ]
-      );
+      return new Err(new ExternalOauthTokenError(err));
     }
 
     throw err;
@@ -818,11 +810,11 @@ export async function processRepository({
       }
     }
 
-    return {
+    return new Ok({
       tempDir,
       files,
       directories,
-    };
+    });
   } catch (e) {
     localLogger.info(
       { error: e },
