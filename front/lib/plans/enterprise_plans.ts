@@ -37,4 +37,5 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,
   trialPeriodDays: 0,
+  canUseProduct: true,
 };

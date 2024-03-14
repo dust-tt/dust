@@ -37,6 +37,7 @@ export const PlanTypeSchema = t.type({
     users: t.type({
       maxUsers: t.number,
     }),
+    canUseProduct: t.boolean,
   }),
   stripeProductId: t.union([t.string, t.null]),
   billingType: t.union([
@@ -107,6 +108,7 @@ async function handler(
           users: {
             maxUsers: plan.maxUsersInWorkspace,
           },
+          canUseProduct: plan.canUseProduct,
         },
         billingType: plan.billingType,
         trialPeriodDays: plan.trialPeriodDays,
@@ -193,6 +195,7 @@ async function handler(
         maxUsersInWorkspace: body.limits.users.maxUsers,
         billingType: body.billingType,
         trialPeriodDays: body.trialPeriodDays,
+        canUseProduct: body.limits.canUseProduct,
       });
       res.status(200).json({
         plan: body,
