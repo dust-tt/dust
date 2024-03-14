@@ -102,13 +102,13 @@ export const createCheckoutSession = async ({
   }
 
   // Only allow a subscription to have a trial if the workspace never had a
-  // trial before.
+  // subscription before.
+  // User under the grandfathered free plan are not allowed to have a trial.
   let trialAllowed = true;
   if (
     await Subscription.findOne({
       where: {
         workspaceId: owner.id,
-        startedWithTrialPeriod: true,
       },
     })
   ) {

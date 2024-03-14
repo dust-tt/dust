@@ -285,8 +285,6 @@ async function handler(
                     stripeSubscription.status === "trialing"
                       ? "trialing"
                       : "active",
-                  startedWithTrialPeriod:
-                    stripeSubscription.status === "trialing",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                   stripeCustomerId: stripeCustomerId,
