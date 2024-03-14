@@ -83,6 +83,7 @@ export function renderSubscriptionFromModels({
 }): SubscriptionType {
   return {
     status: activeSubscription?.status ?? "active",
+    trialing: activeSubscription?.trialing === true,
     sId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
     stripeCustomerId: activeSubscription?.stripeCustomerId || null,

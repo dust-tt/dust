@@ -52,7 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const planInvitation = await getPlanInvitation(auth);
 
   let trialDaysRemaining = null;
-  if (subscription.status === "trialing" && subscription.stripeSubscriptionId) {
+  if (subscription.trialing && subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
