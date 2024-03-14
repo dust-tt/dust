@@ -54,7 +54,8 @@ export type PlanType = {
 };
 
 export type SubscriptionType = {
-  sId: string | null; // null for FREE_NO_PLAN which is the default plan when there is no Subscription in DB.
+  // null for FREE_NO_PLAN which is the default plan when there is no Subscription in DB.
+  sId: string | null;
   status: "active" | "ended";
   trialing: boolean;
   stripeSubscriptionId: string | null;
