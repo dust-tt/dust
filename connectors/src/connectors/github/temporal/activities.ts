@@ -1,7 +1,5 @@
-import {
-  assertNever,
-  type CoreAPIDataSourceDocumentSection,
-} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
@@ -30,6 +28,7 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -42,7 +41,6 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
 
 const logger = mainLogger.child({
   provider: "github",
