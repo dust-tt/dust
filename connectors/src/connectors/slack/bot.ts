@@ -4,6 +4,7 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
+  Result,
   RetrievalDocumentType,
   UserMessageType,
 } from "@dust-tt/types";
@@ -11,7 +12,7 @@ import type {
   AgentGenerationSuccessEvent,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import { sectionFullText } from "@dust-tt/types";
+import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
@@ -32,8 +33,6 @@ import {
   SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models/slack";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 

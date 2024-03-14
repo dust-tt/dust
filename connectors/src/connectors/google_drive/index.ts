@@ -14,8 +14,6 @@ import {
   GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
-import type { Result } from "@connectors/lib/result.js";
-import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
@@ -31,8 +29,9 @@ import type {
   ContentNode,
   ContentNodeType,
   ModelId,
+  Result,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";

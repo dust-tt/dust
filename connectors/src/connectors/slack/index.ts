@@ -3,7 +3,9 @@ import type {
   ConnectorsAPIError,
   ContentNode,
   ModelId,
+  Result,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -28,8 +30,6 @@ import {
   nango_client,
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client.js";
-import type { Result } from "@connectors/lib/result.js";
-import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";

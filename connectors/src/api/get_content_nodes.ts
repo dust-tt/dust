@@ -1,5 +1,6 @@
 import type {
   ContentNode,
+  Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
@@ -8,7 +9,6 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE } from "@connectors/connectors";
-import type { Result } from "@connectors/lib/result";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 

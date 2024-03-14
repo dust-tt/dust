@@ -1,5 +1,10 @@
-import type { ConnectorsAPIError, ContentNode, ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import type {
+  ConnectorsAPIError,
+  ContentNode,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
@@ -23,8 +28,6 @@ import {
   GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";

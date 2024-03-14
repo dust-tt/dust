@@ -1,12 +1,10 @@
-import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import { HTTPError } from "@connectors/lib/error";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import type { Result } from "@connectors/lib/result.js";
-import { Err, Ok } from "@connectors/lib/result.js";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 

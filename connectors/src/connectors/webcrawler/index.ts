@@ -3,12 +3,15 @@ import type {
   ContentNode,
   CreateConnectorUrlRequestBody,
   ModelId,
+  Result,
   WebCrawlerConfigurationType,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   DepthOptions,
+  Err,
   isDepthOption,
+  Ok,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
@@ -23,8 +26,6 @@ import {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
-import type { Result } from "@connectors/lib/result.js";
-import { Err, Ok } from "@connectors/lib/result.js";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
