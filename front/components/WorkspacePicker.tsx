@@ -8,10 +8,12 @@ export default function WorkspacePicker({
   user,
   workspace,
   onWorkspaceUpdate,
+  displayDropDownOrigin,
 }: {
   user: UserTypeWithWorkspaces;
   workspace: LightWorkspaceType | null;
   readOnly: boolean;
+  displayDropDownOrigin: "topRight" | "topLeft";
   onWorkspaceUpdate: (w: LightWorkspaceType) => void;
 }) {
   return (
@@ -20,7 +22,7 @@ export default function WorkspacePicker({
         label={workspace ? workspace.name : "Select workspace"}
       />
 
-      <DropdownMenu.Items origin="topLeft">
+      <DropdownMenu.Items origin={displayDropDownOrigin}>
         {user.workspaces.map((w) => {
           return (
             <DropdownMenu.Item

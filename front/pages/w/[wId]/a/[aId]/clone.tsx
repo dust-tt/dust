@@ -200,6 +200,7 @@ export default function CloneView({
                         user={user}
                         workspace={targetWorkspace}
                         readOnly={false}
+                        displayDropDownOrigin="topLeft"
                         onWorkspaceUpdate={(w) => {
                           setTargetWorkspace(w);
                         }}
