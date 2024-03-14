@@ -6,8 +6,6 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 // These limits are applied to all plans during the trial period.
 const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxUsersInWorkspace: 5,
-  // The maxMessages limit applies to the last 24 hours.
-  maxMessages: 25,
 };
 
 export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
