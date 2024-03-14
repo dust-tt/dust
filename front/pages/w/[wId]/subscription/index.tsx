@@ -27,6 +27,7 @@ import {
   isUpgraded,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -36,6 +37,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   user: UserType;
   planInvitation: PlanInvitationType | null;
+  trialDaysRemaining: number | null;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -49,10 +51,24 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const planInvitation = await getPlanInvitation(auth);
 
+  let trialDaysRemaining = null;
+  if (subscription.status === "trialing" && subscription.stripeSubscriptionId) {
+    const stripeSubscription = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    trialDaysRemaining = stripeSubscription.trial_end
+      ? Math.ceil(
+          (stripeSubscription.trial_end * 1000 - Date.now()) /
+            (1000 * 60 * 60 * 24)
+        )
+      : null;
+  }
+
   return {
     props: {
       owner,
       subscription,
+      trialDaysRemaining,
       planInvitation: planInvitation,
       gaTrackingId: GA_TRACKING_ID,
       user,
@@ -65,6 +81,7 @@ export default function Subscription({
   user,
   subscription,
   planInvitation,
+  trialDaysRemaining,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -210,6 +227,11 @@ export default function Subscription({
                     <>
                       You're on&nbsp;&nbsp;
                       <Chip size="sm" color={chipColor} label={plan.name} />
+                      {trialDaysRemaining !== null && (
+                        <Chip size="sm" className="ml-2" color="emerald">
+                          Free trial ending in {trialDaysRemaining} days
+                        </Chip>
+                      )}
                     </>
                   )}
                 </div>
