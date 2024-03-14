@@ -4,7 +4,7 @@ import { assertNever } from "@dust-tt/types";
 import Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
-import { Plan } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
@@ -101,6 +101,20 @@ export const createCheckoutSession = async ({
       assertNever(plan.billingType);
   }
 
+  // Only allow a subscription to have a trial if the workspace never had a
+  // subscription before.
+  // User under the grandfathered free plan are not allowed to have a trial.
+  let trialAllowed = true;
+  if (
+    await Subscription.findOne({
+      where: {
+        workspaceId: owner.id,
+      },
+    })
+  ) {
+    trialAllowed = false;
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     client_reference_id: owner.sId,
@@ -112,7 +126,8 @@ export const createCheckoutSession = async ({
         workspaceId: owner.sId,
       },
       // If trialPeriodDays is 0, we send "undefined" to Stripe.
-      trial_period_days: plan.trialPeriodDays || undefined,
+      trial_period_days:
+        trialAllowed && plan.trialPeriodDays ? plan.trialPeriodDays : undefined,
     },
     metadata: {
       planCode: planCode,

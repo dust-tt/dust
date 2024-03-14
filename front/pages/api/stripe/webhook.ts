@@ -272,12 +272,19 @@ async function handler(
                   { transaction: t }
                 );
               }
+              const stripeSubscription = await stripe.subscriptions.retrieve(
+                stripeSubscriptionId
+              );
+
               await Subscription.create(
                 {
                   sId: generateModelSId(),
                   workspaceId: workspace.id,
                   planId: plan.id,
-                  status: "active",
+                  status:
+                    stripeSubscription.status === "trialing"
+                      ? "trialing"
+                      : "active",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                   stripeCustomerId: stripeCustomerId,
