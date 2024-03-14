@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 
-import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";

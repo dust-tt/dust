@@ -1,3 +1,4 @@
+import type { Result } from "@dust-tt/types";
 import { isConnectorError } from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import parseArgs from "minimist";
@@ -51,7 +52,6 @@ import {
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
-import type { Result } from "@connectors/lib/result";
 import {
   getTemporalClient,
   terminateAllWorkflowsForConnectorId,

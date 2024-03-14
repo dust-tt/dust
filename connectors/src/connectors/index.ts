@@ -1,4 +1,5 @@
 import type { ConnectorProvider, ModelId } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import {
   cleanupConfluenceConnector,
@@ -89,7 +90,6 @@ import {
   updateSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 import {

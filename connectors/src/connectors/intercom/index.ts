@@ -5,6 +5,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -47,7 +48,6 @@ import {
 } from "@connectors/lib/models/intercom";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";

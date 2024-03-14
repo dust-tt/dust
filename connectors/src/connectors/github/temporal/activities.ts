@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
@@ -27,6 +28,7 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -938,7 +940,7 @@ export async function githubCodeSyncActivity({
   );
 
   Context.current().heartbeat();
-  const { tempDir, files, directories } = await processRepository({
+  const repoRes = await processRepository({
     installationId,
     repoLogin,
     repoName,
@@ -946,6 +948,40 @@ export async function githubCodeSyncActivity({
     loggerArgs,
   });
   Context.current().heartbeat();
+
+  if (repoRes.isErr()) {
+    if (repoRes.error instanceof ExternalOauthTokenError) {
+      localLogger.info(
+        { err: repoRes.error },
+        "Missing Github repository tarball: Garbage collecting repo."
+      );
+
+      await garbageCollectCodeSync(
+        dataSourceConfig,
+        connector,
+        repoId,
+        new Date(),
+        { ...loggerArgs, task: "garbageCollectRepoNotFound" }
+      );
+
+      Context.current().heartbeat();
+
+      // Finally delete the repository object if it exists.
+      await GithubCodeRepository.destroy({
+        where: {
+          connectorId: connector.id,
+          repoId: repoId.toString(),
+        },
+      });
+
+      return;
+    }
+
+    // There is no other error returned for now.
+    assertNever(repoRes.error);
+  }
+
+  const { tempDir, files, directories } = repoRes.value;
 
   try {
     localLogger.info(

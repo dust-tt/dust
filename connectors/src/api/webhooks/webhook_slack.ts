@@ -1,4 +1,5 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
@@ -9,7 +10,6 @@ import {
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
-import { Ok } from "@connectors/lib/result";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";

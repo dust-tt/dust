@@ -3,7 +3,9 @@ import type {
   ConnectorsAPIError,
   ContentNode,
   ModelId,
+  Result,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
@@ -44,8 +46,6 @@ import {
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";

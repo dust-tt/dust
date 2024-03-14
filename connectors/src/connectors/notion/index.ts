@@ -1,4 +1,10 @@
-import type { ConnectorsAPIError, ContentNode, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorsAPIError,
+  ContentNode,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
@@ -18,8 +24,6 @@ import {
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";

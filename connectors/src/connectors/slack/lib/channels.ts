@@ -1,11 +1,10 @@
-import type { ConnectorPermission, ModelId } from "@dust-tt/types";
+import type { ConnectorPermission, ModelId, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
 import { SlackChannel } from "@connectors/lib/models/slack";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 

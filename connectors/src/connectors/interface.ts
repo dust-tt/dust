@@ -4,9 +4,9 @@ import type {
   ContentNode,
   CreateConnectorUrlRequestBody,
   ModelId,
+  Result,
 } from "@dust-tt/types";
 
-import type { Result } from "@connectors/lib/result";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export type ConnectorCreatorOAuth = (
