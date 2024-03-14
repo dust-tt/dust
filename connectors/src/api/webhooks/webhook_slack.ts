@@ -1,5 +1,5 @@
-import type {WithConnectorsAPIErrorReponse} from "@dust-tt/types";
-import { Ok  } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";

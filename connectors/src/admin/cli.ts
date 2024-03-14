@@ -1,4 +1,4 @@
-import type { Result} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { isConnectorError } from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import parseArgs from "minimist";
