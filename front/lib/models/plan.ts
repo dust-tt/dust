@@ -167,6 +167,7 @@ export class Subscription extends Model<
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
   declare paymentFailingSince: Date | null;
+  declare startedWithTrialPeriod: boolean | null;
 
   declare startDate: Date;
   declare endDate: Date | null;
@@ -210,6 +211,10 @@ Subscription.init(
     },
     paymentFailingSince: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    startedWithTrialPeriod: {
+      type: DataTypes.BOOLEAN,
       allowNull: true,
     },
     startDate: {
