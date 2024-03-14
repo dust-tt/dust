@@ -42,6 +42,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { new_id } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { renderSubscriptionFromModels } from "./plans/subscription";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
@@ -542,16 +543,11 @@ export async function subscriptionForWorkspace(
 
   // Default values when no subscription
   let plan: PlanAttributes = FREE_NO_PLAN_DATA;
-  let startDate = null;
-  let endDate = null;
 
   if (activeSubscription) {
-    startDate = activeSubscription.startDate;
-    endDate = activeSubscription.endDate;
-
     // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
     if (isTrial(activeSubscription)) {
-      plan = await getTrialVersionForPlan(activeSubscription.plan);
+      plan = getTrialVersionForPlan(activeSubscription.plan);
     } else if (activeSubscription.plan) {
       plan = activeSubscription.plan;
     } else {
@@ -565,49 +561,7 @@ export async function subscriptionForWorkspace(
     }
   }
 
-  return {
-    status: activeSubscription?.status ?? "active",
-    sId: activeSubscription?.sId || null,
-    stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
-    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
-    startDate: startDate?.getTime() || null,
-    endDate: endDate?.getTime() || null,
-    paymentFailingSince:
-      activeSubscription?.paymentFailingSince?.getTime() || null,
-    plan: {
-      code: plan.code,
-      name: plan.name,
-      stripeProductId: plan.stripeProductId,
-      billingType: plan.billingType,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: plan.isSlackbotAllowed,
-          maxMessages: plan.maxMessages,
-        },
-        connections: {
-          isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-          isSlackAllowed: plan.isManagedSlackAllowed,
-          isNotionAllowed: plan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: plan.isManagedGithubAllowed,
-          isIntercomAllowed: plan.isManagedIntercomAllowed,
-          isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-        },
-        dataSources: {
-          count: plan.maxDataSourcesCount,
-          documents: {
-            count: plan.maxDataSourcesDocumentsCount,
-            sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-          },
-        },
-        users: {
-          maxUsers: plan.maxUsersInWorkspace,
-        },
-        canUseProduct: plan.canUseProduct,
-      },
-      trialPeriodDays: plan.trialPeriodDays,
-    },
-  };
+  return renderSubscriptionFromModels({ plan, activeSubscription });
 }
 
 /**

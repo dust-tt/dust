@@ -31,6 +31,69 @@ import { redisClient } from "@app/lib/redis";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+// Helper function to render PlanType from PlanAttributes
+export function renderPlanFromModel({
+  plan,
+}: {
+  plan: PlanAttributes;
+}): PlanType {
+  return {
+    code: plan.code,
+    name: plan.name,
+    stripeProductId: plan.stripeProductId,
+    billingType: plan.billingType,
+    limits: {
+      assistant: {
+        isSlackBotAllowed: plan.isSlackbotAllowed,
+        maxMessages: plan.maxMessages,
+      },
+      connections: {
+        isConfluenceAllowed: plan.isManagedConfluenceAllowed,
+        isSlackAllowed: plan.isManagedSlackAllowed,
+        isNotionAllowed: plan.isManagedNotionAllowed,
+        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
+        isGithubAllowed: plan.isManagedGithubAllowed,
+        isIntercomAllowed: plan.isManagedIntercomAllowed,
+        isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
+      },
+      dataSources: {
+        count: plan.maxDataSourcesCount,
+        documents: {
+          count: plan.maxDataSourcesDocumentsCount,
+          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
+        },
+      },
+      users: {
+        maxUsers: plan.maxUsersInWorkspace,
+      },
+      canUseProduct: plan.canUseProduct,
+    },
+    trialPeriodDays: plan.trialPeriodDays,
+  };
+}
+
+// Helper in charge of rendering the SubscriptionType object form PlanAttributes and optionally an
+// active Subscription model.
+export function renderSubscriptionFromModels({
+  plan,
+  activeSubscription,
+}: {
+  plan: PlanAttributes;
+  activeSubscription: Subscription | null;
+}): SubscriptionType {
+  return {
+    status: activeSubscription?.status ?? "active",
+    sId: activeSubscription?.sId || null,
+    stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
+    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+    startDate: activeSubscription?.startDate?.getTime() || null,
+    endDate: activeSubscription?.endDate?.getTime() || null,
+    paymentFailingSince:
+      activeSubscription?.paymentFailingSince?.getTime() || null,
+    plan: renderPlanFromModel({ plan }),
+  };
+}
+
 /**
  * Internal function to subscribe to the FREE_NO_PLAN.
  * This is the only plan without a database entry: no need to create a subscription, we just end the active one if any.
@@ -67,48 +130,11 @@ export const internalSubscribeWorkspaceToFreeNoPlan = async ({
 
     const plan: PlanAttributes = FREE_NO_PLAN_DATA;
 
-    return {
-      status: "active",
-      sId: null,
-      stripeSubscriptionId: null,
-      stripeCustomerId: null,
-      startDate: null,
-      endDate: null,
-      paymentFailingSince: null,
-      plan: {
-        code: plan.code,
-        name: plan.name,
-        stripeProductId: null,
-        billingType: plan.billingType,
-        limits: {
-          assistant: {
-            isSlackBotAllowed: plan.isSlackbotAllowed,
-            maxMessages: plan.maxMessages,
-          },
-          connections: {
-            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-            isSlackAllowed: plan.isManagedSlackAllowed,
-            isNotionAllowed: plan.isManagedNotionAllowed,
-            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-            isGithubAllowed: plan.isManagedGithubAllowed,
-            isIntercomAllowed: plan.isManagedIntercomAllowed,
-            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-          },
-          dataSources: {
-            count: plan.maxDataSourcesCount,
-            documents: {
-              count: plan.maxDataSourcesDocumentsCount,
-              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-            },
-          },
-          users: {
-            maxUsers: plan.maxUsersInWorkspace,
-          },
-          canUseProduct: plan.canUseProduct,
-        },
-        trialPeriodDays: plan.trialPeriodDays,
-      },
-    };
+    return renderSubscriptionFromModels({
+      plan,
+      // No active subscription for FREE_NO_PLAN
+      activeSubscription: null,
+    });
   });
 };
 
@@ -167,48 +193,10 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
       { transaction: t }
     );
 
-    return {
-      status: "active",
-      sId: newSubscription.sId,
-      stripeSubscriptionId: null,
-      stripeCustomerId: null,
-      startDate: null,
-      endDate: null,
-      paymentFailingSince: null,
-      plan: {
-        code: plan.code,
-        name: plan.name,
-        stripeProductId: null,
-        billingType: plan.billingType,
-        limits: {
-          assistant: {
-            isSlackBotAllowed: plan.isSlackbotAllowed,
-            maxMessages: plan.maxMessages,
-          },
-          connections: {
-            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-            isSlackAllowed: plan.isManagedSlackAllowed,
-            isNotionAllowed: plan.isManagedNotionAllowed,
-            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-            isGithubAllowed: plan.isManagedGithubAllowed,
-            isIntercomAllowed: plan.isManagedIntercomAllowed,
-            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-          },
-          dataSources: {
-            count: plan.maxDataSourcesCount,
-            documents: {
-              count: plan.maxDataSourcesDocumentsCount,
-              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-            },
-          },
-          users: {
-            maxUsers: plan.maxUsersInWorkspace,
-          },
-          canUseProduct: plan.canUseProduct,
-        },
-        trialPeriodDays: plan.trialPeriodDays,
-      },
-    };
+    return renderSubscriptionFromModels({
+      plan,
+      activeSubscription: newSubscription,
+    });
   });
 };
 
@@ -273,48 +261,10 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
       { transaction: t }
     );
 
-    return {
-      status: "active",
-      sId: newSubscription.sId,
-      stripeSubscriptionId: newSubscription.stripeSubscriptionId,
-      stripeCustomerId: newSubscription.stripeCustomerId,
-      startDate: newSubscription.startDate.getTime(),
-      endDate: newSubscription.endDate?.getTime() || null,
-      paymentFailingSince: null,
-      plan: {
-        code: plan.code,
-        name: plan.name,
-        stripeProductId: null,
-        billingType: "free",
-        limits: {
-          assistant: {
-            isSlackBotAllowed: plan.isSlackbotAllowed,
-            maxMessages: plan.maxMessages,
-          },
-          connections: {
-            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-            isSlackAllowed: plan.isManagedSlackAllowed,
-            isNotionAllowed: plan.isManagedNotionAllowed,
-            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-            isGithubAllowed: plan.isManagedGithubAllowed,
-            isIntercomAllowed: plan.isManagedIntercomAllowed,
-            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-          },
-          dataSources: {
-            count: plan.maxDataSourcesCount,
-            documents: {
-              count: plan.maxDataSourcesDocumentsCount,
-              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-            },
-          },
-          users: {
-            maxUsers: plan.maxUsersInWorkspace,
-          },
-          canUseProduct: plan.canUseProduct,
-        },
-        trialPeriodDays: plan.trialPeriodDays,
-      },
-    };
+    return renderSubscriptionFromModels({
+      plan,
+      activeSubscription: newSubscription,
+    });
   });
 };
 
@@ -449,39 +399,7 @@ export const getCheckoutUrlForUpgrade = async (
 
   return {
     checkoutUrl,
-    plan: {
-      code: plan.code,
-      name: plan.name,
-      stripeProductId: plan.stripeProductId,
-      billingType: plan.billingType,
-      limits: {
-        assistant: {
-          isSlackBotAllowed: plan.isSlackbotAllowed,
-          maxMessages: plan.maxMessages,
-        },
-        connections: {
-          isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-          isSlackAllowed: plan.isManagedSlackAllowed,
-          isNotionAllowed: plan.isManagedNotionAllowed,
-          isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-          isGithubAllowed: plan.isManagedGithubAllowed,
-          isIntercomAllowed: plan.isManagedIntercomAllowed,
-          isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-        },
-        dataSources: {
-          count: plan.maxDataSourcesCount,
-          documents: {
-            count: plan.maxDataSourcesDocumentsCount,
-            sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-          },
-        },
-        users: {
-          maxUsers: plan.maxUsersInWorkspace,
-        },
-        canUseProduct: plan.canUseProduct,
-      },
-      trialPeriodDays: plan.trialPeriodDays,
-    },
+    plan: renderPlanFromModel({ plan }),
   };
 };
 

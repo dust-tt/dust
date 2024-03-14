@@ -8,6 +8,7 @@ import Stripe from "stripe";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan } from "@app/lib/models";
 import { getProduct } from "@app/lib/plans/stripe";
+import { renderPlanFromModel } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const PlanTypeSchema = t.type({
@@ -79,40 +80,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
-      const plans: PlanType[] = planModels.map((plan) => ({
-        code: plan.code,
-        name: plan.name,
-        stripeProductId: plan.stripeProductId,
-        status: "active",
-        limits: {
-          assistant: {
-            isSlackBotAllowed: plan.isSlackbotAllowed,
-            maxMessages: plan.maxMessages,
-          },
-          connections: {
-            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-            isSlackAllowed: plan.isManagedSlackAllowed,
-            isNotionAllowed: plan.isManagedNotionAllowed,
-            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-            isGithubAllowed: plan.isManagedGithubAllowed,
-            isIntercomAllowed: plan.isManagedIntercomAllowed,
-            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-          },
-          dataSources: {
-            count: plan.maxDataSourcesCount,
-            documents: {
-              count: plan.maxDataSourcesDocumentsCount,
-              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-            },
-          },
-          users: {
-            maxUsers: plan.maxUsersInWorkspace,
-          },
-          canUseProduct: plan.canUseProduct,
-        },
-        billingType: plan.billingType,
-        trialPeriodDays: plan.trialPeriodDays,
-      }));
+      const plans: PlanType[] = planModels.map((plan) =>
+        renderPlanFromModel({ plan })
+      );
 
       const stripeProductIds = plans
         .filter(
