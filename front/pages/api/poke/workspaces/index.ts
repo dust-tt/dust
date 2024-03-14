@@ -11,9 +11,9 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 
 export type GetWorkspacesResponseBody = {
   workspaces: LightWorkspaceType[];
