@@ -189,8 +189,10 @@ const github = async (command: string, args: parseArgs.ParsedArgs) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
         );
       }
-
-      console.log("Resyncing repo " + args.owner + "/" + args.repo);
+      logger.info(
+        { commandType: "github", command, args },
+        "[Poke Admin] Resyncing repo " + args.owner + "/" + args.repo
+      );
 
       const installationId = connector.connectionId;
 
@@ -304,8 +306,13 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           (completed && completed % 10 === 0) ||
           completed === connectors.length
         ) {
-          console.log(
-            `completed ${completed} / ${connectors.length} (${failed} failed)`
+          logger.info(
+            {
+              commandType: "notion",
+              command,
+              args,
+            },
+            `[Poke Admin] completed ${completed} / ${connectors.length} (${failed} failed)`
           );
         }
       };
@@ -358,12 +365,18 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
 
       if (args.remove) {
         if (existingPage) {
-          console.log(`Removing skipped page reason for ${pageId}`);
+          logger.info(
+            { commandType: "notion", command, args },
+            `[Poke Admin] Removing skipped page reason for ${pageId}`
+          );
           await existingPage.update({
             skipReason: null,
           });
         } else {
-          console.log(`Page ${pageId} is not skipped, nothing to remove`);
+          logger.info(
+            { commandType: "notion", command, args },
+            `[Poke Admin] Page ${pageId} is not skipped, nothing to remove`
+          );
         }
         return;
       }
@@ -422,13 +435,17 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
 
       if (args.remove) {
         if (existingDatabase) {
-          console.log(`Removing skipped database reason for ${databaseId}`);
+          logger.info(
+            { commandType: "notion", command, args },
+            `[Poke Admin] Removing skipped database reason for ${databaseId}`
+          );
           await existingDatabase.update({
             skipReason: null,
           });
         } else {
-          console.log(
-            `Database ${databaseId} is not skipped, nothing to remove`
+          logger.info(
+            { commandType: "notion", command, args },
+            `[Poke Admin] Database ${databaseId} is not skipped, nothing to remove`
           );
         }
         return;
@@ -436,24 +453,27 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
 
       if (existingDatabase) {
         if (args.reason) {
-          console.log(
-            `Updating existing skipped database ${databaseId} with skip reason ${args.reason}`
+          logger.info(
+            { commandType: "notion", command, args },
+            `[Poke Admin] Updating existing skipped database ${databaseId} with skip reason ${args.reason}`
           );
           await existingDatabase.update({
             skipReason: args.reason,
           });
           return;
         }
-        console.log(
-          `Database ${databaseId} is already skipped with reason ${existingDatabase.skipReason}`
+        logger.info(
+          { commandType: "notion", command, args },
+          `[Poke Admin] Database ${databaseId} is already skipped with reason ${existingDatabase.skipReason}`
         );
         return;
       }
 
       const skipReason = args.reason || "blacklisted";
 
-      console.log(
-        `Creating new skipped database ${databaseId} with reason ${skipReason}`
+      logger.info(
+        { commandType: "notion", command, args },
+        `[Poke Admin] Creating new skipped database ${databaseId} with reason ${skipReason}`
       );
 
       await NotionDatabase.create({
@@ -485,10 +505,12 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
-      logger.info("Upserting page", { pageId });
+      logger.info(
+        { pageId, commandType: "notion", command, args },
+        "[Poke Admin] Upserting page"
+      );
       const connectorId = connector.id;
       const client = await getTemporalClient();
-
       const wf = await client.workflow.start(upsertPageWorkflow, {
         args: [
           {
@@ -509,10 +531,14 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const wfId = wf.workflowId;
       const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
       if (!temporalNamespace) {
-        console.log(`Started temporal workflow with id: ${wfId}`);
+        logger.info(
+          { commandType: "notion", command, args },
+          `[Poke Admin] Started temporal workflow with id: ${wfId}`
+        );
       } else {
-        console.log(
-          `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+        logger.info(
+          { commandType: "notion", command, args },
+          `[Poke Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
       break;
@@ -538,10 +564,12 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
-      logger.info("Upserting database", { databaseId });
+      logger.info(
+        { databaseId, commandType: "notion", command, args },
+        "[Poke Admin] Upserting database"
+      );
       const connectorId = connector.id;
       const client = await getTemporalClient();
-
       const wf = await client.workflow.start(upsertDatabaseWorkflow, {
         args: [
           {
@@ -563,10 +591,14 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const wfId = wf.workflowId;
       const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
       if (!temporalNamespace) {
-        console.log(`Started temporal workflow with id: ${wfId}`);
+        logger.info(
+          { commandType: "notion", command, args },
+          `[Poke Admin] Started temporal workflow with id: ${wfId}`
+        );
       } else {
-        console.log(
-          `Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+        logger.info(
+          { commandType: "notion", command, args },
+          `[Poke Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
       break;
@@ -625,16 +657,18 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
       const notionClient = new Client({
         auth: notionAccessToken,
       });
-
       const me = await notionClient.users.me({});
-
-      console.log(me);
-      // @ts-expect-error untyped bot field
-      console.log(me.bot.owner);
-
+      logger.info(
+        { commandType: "notion", command, args },
+        "[Poke Admin] " + JSON.stringify(me)
+      );
+      logger.info(
+        { commandType: "notion", command, args },
+        // @ts-expect-error untyped bot field
+        "[Poke Admin] " + JSON.stringify(me.bot.owner)
+      );
       break;
     }
-
     case "stop-all-garbage-collectors": {
       const connectors = await ConnectorModel.findAll({
         where: {
@@ -642,13 +676,18 @@ const notion = async (command: string, args: parseArgs.ParsedArgs) => {
         },
       });
       logger.info(
-        { connectorsCount: connectors.length },
-        "Stopping all notion garbage collectors"
+        {
+          connectorsCount: connectors.length,
+          commandType: "notion",
+          command,
+          args,
+        },
+        "[Poke Admin] Stopping all notion garbage collectors"
       );
       for (const connector of connectors) {
         logger.info(
-          { connectorId: connector.id },
-          "Stopping notion garbage collector"
+          { connectorId: connector.id, commandType: "notion", command, args },
+          "[Poke Admin] Stopping notion garbage collector"
         );
         await stopNotionGarbageCollectorWorkflow(connector.id);
       }
@@ -690,7 +729,10 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
           `Invalid or missing --fileType argument: ${args.fileType}`
         );
       }
-      console.log(`Checking gdrive file`);
+      logger.info(
+        { commandType: "google_drive", command, args },
+        "[Poke Admin] Checking gdrive file"
+      );
       const connector = await ConnectorResource.fetchById(args.connectorId);
       if (!connector) {
         throw new Error(`Connector ${args.connectorId} not found`);
@@ -707,10 +749,10 @@ const google_drive = async (command: string, args: parseArgs.ParsedArgs) => {
               : "application/vnd.google-apps.presentation"
           ],
       });
-      console.log(`Status: ${res.status}`);
-      console.log(`Type: ${typeof res.data}`);
-      console.log(`Content:`);
-      console.log(res.data);
+      logger.info(
+        { content: res.data, commandType: "google_drive", command, args },
+        `[Poke Admin] Status: ${res.status}, Type: ${typeof res.data}`
+      );
       return;
     }
     case "restart-google-webhooks": {
@@ -958,7 +1000,10 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
           if (answer.toLowerCase() !== "y") {
             continue;
           }
-          console.log("Uninstalling Slack and cleaning connection id...");
+          logger.info(
+            { commandType: "slack", command, args },
+            "[Poke Admin] Uninstalling Slack and cleaning connection id..."
+          );
           await uninstallSlack(connection.connection_id);
         }
       }
@@ -980,18 +1025,19 @@ const slack = async (command: string, args: parseArgs.ParsedArgs) => {
           type: "slack",
         },
       });
+
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
       const whitelistedDomainsArray = whitelistedDomains.split(",");
       // TODO(2024-01-10 flav) Add domain validation.
-      console.log(
-        `Whitelisting following domains for slack:\n- ${whitelistedDomainsArray.join(
+      logger.info(
+        { commandType: "slack", command, args },
+        `[Poke Admin] Whitelisting following domains for slack:\n- ${whitelistedDomainsArray.join(
           "\n-"
         )}`
       );
-
       await SlackConfiguration.update(
         {
           whitelistedDomains: whitelistedDomainsArray,
@@ -1043,7 +1089,10 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       if (answer !== "y") {
-        console.log("Cancelled");
+        logger.info(
+          { commandType: "batch", command, args },
+          "[Poke Admin] Cancelled"
+        );
         return;
       }
 
@@ -1051,8 +1100,9 @@ const batch = async (command: string, args: parseArgs.ParsedArgs) => {
         await throwOnError(
           SYNC_CONNECTOR_BY_TYPE[connector.type](connector.id, fromTs)
         );
-        console.log(
-          `Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
+        logger.info(
+          { commandType: "batch", command, args },
+          `[Poke Admin] Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
         );
       }
       return;
@@ -1083,8 +1133,10 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
         namespace: process.env.TEMPORAL_NAMESPACE || "default",
         taskQueue: { name: q },
       });
-
-      console.log({ describeTqRes });
+      logger.info(
+        { describeTqRes, commandType: "temporal", command, args },
+        "[Poke Admin] DescribeTqRes"
+      );
       break;
     }
 
@@ -1098,7 +1150,10 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
         query: `ExecutionStatus="Running"`,
       });
       if (openWfRes.executions?.length) {
-        console.log(`got ${openWfRes.executions.length} results`);
+        logger.info(
+          { commandType: "temporal", command, args },
+          `[Poke Admin] got ${openWfRes.executions.length} results`
+        );
         for (const x of openWfRes.executions) {
           if (x.taskQueue) {
             queues.add(x.taskQueue);
@@ -1107,13 +1162,18 @@ const temporal = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       for (const q of queues) {
-        console.log("looking at queue", q);
+        logger.info(
+          { q, commandType: "temporal", command, args },
+          "[Poke Admin] looking at queue"
+        );
         const qRes = await c.workflowService.describeTaskQueue({
           namespace: process.env.TEMPORAL_NAMESPACE || "default",
           taskQueue: { name: q },
         });
-        console.log({ qRes });
-        console.log("Queue has", qRes.pollers?.length, "pollers");
+        logger.info(
+          { commandType: "temporal", command, args, qRes },
+          "[Poke Admin] Queue has " + qRes.pollers?.length + " pollers"
+        );
       }
     }
   }
