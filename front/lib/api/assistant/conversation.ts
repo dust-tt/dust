@@ -35,7 +35,12 @@ import type {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG, md5, removeNulls } from "@dust-tt/types";
+import {
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  md5,
+  rateLimiter,
+  removeNulls,
+} from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
@@ -1986,18 +1991,16 @@ async function isMessagesLimitReached({
     return false;
   }
 
-  const whereClauses: WhereOptions<Message> = {
-    agentMessageId: { [Op.ne]: null },
-  };
-
   if (isTrial(subscription)) {
     // For trials, the limit applies to the last 24 hours.
-    const lastDay = new Date();
-    lastDay.setDate(lastDay.getDate() - 1);
+    const remaining = await rateLimiter({
+      key: `workspace:${owner.id}:agent_message_count:last_24_hours`,
+      maxPerTimeframe: plan.limits.assistant.maxMessages,
+      timeframeSeconds: 60 * 60 * 24, // 1 day.
+      logger,
+    });
 
-    whereClauses.createdAt = {
-      [Op.gte]: lastDay,
-    };
+    return remaining <= 0;
   }
 
   const messages = await Message.findAll({
@@ -2011,7 +2014,7 @@ async function isMessagesLimitReached({
         where: { workspaceId: owner.id },
       },
     ],
-    where: whereClauses,
+    where: { agentMessageId: { [Op.ne]: null } },
     limit: plan.limits.assistant.maxMessages,
   });
 
