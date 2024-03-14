@@ -728,84 +728,101 @@ export async function processRepository({
     // Iterate over the files in the temp directory.
     for await (const file of getFiles(tempDir)) {
       const ext = extname(file).toLowerCase();
-      const { size } = await fs.stat(file);
 
       const isWithelisted =
         (EXTENSION_WHITELIST.includes(ext) ||
           FILENAME_WHITELIST.includes(file)) &&
         !SUFFIX_BLACKLIST.some((suffix) => file.endsWith(suffix));
 
-      const isUnderLimit = size < 1024 * 1024;
+      if (!isWithelisted) {
+        continue;
+      }
 
-      if (isWithelisted && isUnderLimit) {
-        const path = file
-          .substring(tempDir.length + 1)
-          .split("/")
-          .slice(1, -1);
-        const fileName = basename(file);
+      try {
+        const { size } = await fs.stat(file);
 
-        const parents = [];
-        for (let i = 0; i < path.length; i++) {
-          const p = `github-code-${repoId}-dir-${path
-            .slice(0, i + 1)
-            .join("/")}`;
-          const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
-            .toString("hex")
-            .substring(0, 16)}`;
-          parents.push({
-            internalId: pathInternalId,
-            dirName: path[i] as string,
-            dirPath: path.slice(0, i),
-          });
+        const isUnderLimit = size < 1024 * 1024;
+
+        if (!isUnderLimit) {
+          localLogger.info(
+            { file, size },
+            "File is over the size limit, skipping."
+          );
+          continue;
         }
+      } catch (e) {
+        localLogger.info(
+          { error: e, file },
+          "Caught exception while stating file, skipping."
+        );
+        continue;
+      }
 
-        const documentId = `github-code-${repoId}-file-${blake3(
-          `github-code-${repoId}-file-${path.join("/")}/${fileName}`
-        )
+      const path = file
+        .substring(tempDir.length + 1)
+        .split("/")
+        .slice(1, -1);
+      const fileName = basename(file);
+
+      const parents = [];
+      for (let i = 0; i < path.length; i++) {
+        const p = `github-code-${repoId}-dir-${path.slice(0, i + 1).join("/")}`;
+        const pathInternalId = `github-code-${repoId}-dir-${blake3(p)
           .toString("hex")
           .substring(0, 16)}`;
-
-        const parentInternalId =
-          parents.length === 0
-            ? null
-            : (parents[parents.length - 1]?.internalId as string);
-
-        // Files
-        files.push({
-          fileName,
-          filePath: path,
-          sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-            path.join("/"),
-            fileName
-          )}`,
-          sizeBytes: size,
-          documentId,
-          parentInternalId,
-          parents: [documentId, ...parents.map((p) => p.internalId)],
-          localFilePath: file,
+        parents.push({
+          internalId: pathInternalId,
+          dirName: path[i] as string,
+          dirPath: path.slice(0, i),
         });
+      }
 
-        // Directories
-        for (let i = 0; i < parents.length; i++) {
-          const p = parents[i];
-          if (p && !seenDirs[p.internalId]) {
-            seenDirs[p.internalId] = true;
+      const documentId = `github-code-${repoId}-file-${blake3(
+        `github-code-${repoId}-file-${path.join("/")}/${fileName}`
+      )
+        .toString("hex")
+        .substring(0, 16)}`;
 
-            const dirParent = parents[i - 1];
-            const dirParentInternalId = dirParent ? dirParent.internalId : null;
+      const parentInternalId =
+        parents.length === 0
+          ? null
+          : (parents[parents.length - 1]?.internalId as string);
 
-            directories.push({
-              dirName: p.dirName,
-              dirPath: p.dirPath,
-              sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
-                p.dirPath.join("/"),
-                p.dirName
-              )}`,
-              internalId: p.internalId,
-              parentInternalId: dirParentInternalId,
-              parents: parents.slice(0, i).map((p) => p.internalId),
-            });
-          }
+      // Files
+      files.push({
+        fileName,
+        filePath: path,
+        sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
+          path.join("/"),
+          fileName
+        )}`,
+        sizeBytes: size,
+        documentId,
+        parentInternalId,
+        parents: [documentId, ...parents.map((p) => p.internalId)],
+        localFilePath: file,
+      });
+
+      // Directories
+      for (let i = 0; i < parents.length; i++) {
+        const p = parents[i];
+        if (p && !seenDirs[p.internalId]) {
+          seenDirs[p.internalId] = true;
+
+          const dirParent = parents[i - 1];
+          const dirParentInternalId = dirParent ? dirParent.internalId : null;
+
+          directories.push({
+            dirName: p.dirName,
+            dirPath: p.dirPath,
+            sourceUrl: `https://github.com/${repoLogin}/${repoName}/blob/${defaultBranch}/${join(
+              p.dirPath.join("/"),
+              p.dirName
+            )}`,
+            internalId: p.internalId,
+            parentInternalId: dirParentInternalId,
+            parents: parents.slice(0, i).map((p) => p.internalId),
+          });
         }
       }
     }
