@@ -194,6 +194,11 @@ export default function Subscription({
     await handleSubscribePlan();
   };
 
+  const planLabel =
+    trialDaysRemaining === null
+      ? plan.name
+      : `${plan.name} (${trialDaysRemaining} days free trial remaining)`;
+
   return (
     <AppLayout
       subscription={subscription}
@@ -226,12 +231,7 @@ export default function Subscription({
                   ) : (
                     <>
                       You're on&nbsp;&nbsp;
-                      <Chip size="sm" color={chipColor} label={plan.name} />
-                      {trialDaysRemaining !== null && (
-                        <Chip size="sm" className="ml-2" color="emerald">
-                          Free trial ending in {trialDaysRemaining} days
-                        </Chip>
-                      )}
+                      <Chip size="sm" color={chipColor} label={planLabel} />
                     </>
                   )}
                 </div>
