@@ -15,6 +15,8 @@ export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
   };
 }
 
-export function isTrial(subscription: SubscriptionType | Subscription) {
-  return subscription.status === "trialing";
+export function isTrial(
+  subscription: SubscriptionType | Subscription
+): boolean {
+  return subscription.trialing === true;
 }
