@@ -59,7 +59,12 @@ export default function Subscribe({
       if (content.checkoutUrl) {
         await router.push(content.checkoutUrl);
       } else if (content.success) {
-        router.reload(); // We cannot swr the plan so we just reload the page.
+        sendNotification({
+          type: "error",
+          title: "Subscription failed",
+          description:
+            "Failed to subscribe to a new plan. Please try again in a few minutes.",
+        });
       }
     }
   });
