@@ -1,5 +1,4 @@
 import { BarHeader, Button, Page } from "@dust-tt/sparkle";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
@@ -17,12 +16,10 @@ const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
-  subscription: SubscriptionType;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
-  const subscription = auth.subscription();
-  if (!owner || !auth.isUser() || !subscription) {
+  if (!owner || !auth.isUser()) {
     return {
       notFound: true,
     };
@@ -31,7 +28,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
-      subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
