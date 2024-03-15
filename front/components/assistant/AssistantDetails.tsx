@@ -34,7 +34,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
-import { timeAgoFrom } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 type AssistantDetailsProps = {
@@ -120,7 +120,12 @@ export function AssistantDetails({
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
-          <div className="text-lg font-bold text-element-900">{`@${agentConfiguration.name}`}</div>
+          <div
+            className={classNames(
+              "font-bold text-element-900",
+              agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
+            )}
+          >{`@${agentConfiguration.name}`}</div>
           <SharingDropdown
             owner={owner}
             agentConfiguration={agentConfiguration}
