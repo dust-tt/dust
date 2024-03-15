@@ -1,5 +1,5 @@
 import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, md5, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { trackUserMemberships } from "@app/lib/amplitude/back";
@@ -196,6 +196,17 @@ async function handleRegularSignupFlow(
     });
   }
 
+  const {
+    user: { email },
+  } = session;
+  const [, emailDomain] = email.split("@");
+  if (["f2e6532f96ffa342d8a8bbfa9ea5e012"].includes(md5(emailDomain))) {
+    return new Err(
+      new Error(
+        "This email domain is not allowed to sign up. Please contact support."
+      )
+    );
+  }
   const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
     session
   );
