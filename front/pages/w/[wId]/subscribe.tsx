@@ -10,12 +10,12 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
+export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
   gaTrackingId: string;
 }>(async (context, auth) => {
