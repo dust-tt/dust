@@ -86,7 +86,7 @@ function NavigationBar({
           <div className="flex flex-1"></div>
           {user && (
             <DropdownMenu>
-              <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
+              <DropdownMenu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none">
                 <span className="sr-only">Open user menu</span>
                 <Avatar
                   size="md"
