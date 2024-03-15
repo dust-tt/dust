@@ -96,7 +96,7 @@ export const TemporalCommandSchema = t.type({
 
 export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
 
-export const PokeAdminCommandSchema = t.union([
+export const AdminCommandSchema = t.union([
   ConnectorsCommandSchema,
   GithubCommandSchema,
   NotionCommandSchema,
@@ -107,4 +107,12 @@ export const PokeAdminCommandSchema = t.union([
   TemporalCommandSchema,
 ]);
 
-export type PokeAdminCommandType = t.TypeOf<typeof PokeAdminCommandSchema>;
+export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
+
+export const AdminSuccessResponseSchema = t.type({
+  success: t.literal(true),
+});
+
+export type AdminSuccessResponseType = t.TypeOf<
+  typeof AdminSuccessResponseSchema
+>;
