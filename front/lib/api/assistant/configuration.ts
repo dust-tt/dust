@@ -231,6 +231,9 @@ async function fetchAgentConfigurationsForView(
         attributes: [[Sequelize.fn("MAX", Sequelize.col("id")), "maxId"]],
         group: "sId",
         raw: true,
+        where: {
+          workspaceId: owner.id,
+        },
       }).then(async (result) => {
         const maxIds = result.map(
           (entry) => (entry as unknown as { maxId: number }).maxId
