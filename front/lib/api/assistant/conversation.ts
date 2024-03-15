@@ -396,7 +396,7 @@ async function batchRenderAgentMessages(
         ) || null;
     }
     const agentConfiguration = agentConfigurations.find(
-      (a) => a.sId === message.agentMessage?.agentConfigurationId
+      (a) => a.sId === agentMessage.agentConfigurationId
     );
     if (!agentConfiguration) {
       throw new Error(
