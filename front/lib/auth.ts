@@ -530,6 +530,7 @@ export async function subscriptionForWorkspace(
       "status",
       "stripeCustomerId",
       "stripeSubscriptionId",
+      "trialing",
     ],
     where: { workspaceId: w.id, status: "active" },
     include: [
