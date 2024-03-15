@@ -65,7 +65,6 @@ async function handleChatBot(req: Request, res: Response, logger: Logger) {
     !slackMessage ||
     !slackTeamId ||
     !slackChannel ||
-    !slackUserId ||
     !slackMessageTs ||
     (!slackBotId && !slackUserId)
   ) {
