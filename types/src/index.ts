@@ -1,3 +1,4 @@
+export * from "./connectors/admin/cli";
 export * from "./connectors/api";
 export * from "./connectors/api_handlers/create_connector";
 export * from "./connectors/api_handlers/update_connector";

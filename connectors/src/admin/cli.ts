@@ -1,6 +1,19 @@
-import type { Result } from "@dust-tt/types";
-import { isConnectorError } from "@dust-tt/types";
+import type {
+  BatchCommandType,
+  ConnectorsCommandType,
+  GithubCommandType,
+  GoogleDriveCommandType,
+  NotionCommandType,
+  PokeAdminCommandType,
+  Result,
+  SlackCommandType,
+  TemporalCommandType,
+  WebcrawlerCommandType,
+} from "@dust-tt/types";
+import { isConnectorError, PokeAdminCommandSchema } from "@dust-tt/types";
 import { Client } from "@notionhq/client";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import parseArgs from "minimist";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -59,9 +72,6 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import * as t from "io-ts";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
@@ -89,117 +99,6 @@ async function getConnectorOrThrow({
   }
   return connector;
 }
-
-// io-ts type for the command line arguments
-
-const ConnectorsCommandSchema = t.type({
-  majorCommand: t.literal("connectors"),
-  command: t.union([
-    t.literal("stop"),
-    t.literal("delete"),
-    t.literal("resume"),
-    t.literal("full-resync"),
-    t.literal("set-error"),
-    t.literal("restart"),
-  ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
-
-const GithubCommandSchema = t.type({
-  majorCommand: t.literal("github"),
-  command: t.union([t.literal("resync-repo"), t.literal("code-sync")]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
-
-const NotionCommandSchema = t.type({
-  majorCommand: t.literal("notion"),
-  command: t.union([
-    t.literal("restart-all"),
-    t.literal("skip-page"),
-    t.literal("skip-database"),
-    t.literal("upsert-page"),
-    t.literal("upsert-database"),
-    t.literal("search-pages"),
-    t.literal("check-url"),
-    t.literal("me"),
-    t.literal("stop-all-garbage-collectors"),
-  ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type NotionCommandType = t.TypeOf<typeof NotionCommandSchema>;
-
-const GoogleDriveCommandSchema = t.type({
-  majorCommand: t.literal("google_drive"),
-  command: t.union([
-    t.literal("garbage-collect-all"),
-    t.literal("check-file"),
-    t.literal("restart-google-webhooks"),
-    t.literal("start-incremental-sync"),
-    t.literal("skip-file"),
-    t.literal("register-webhook"),
-  ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type GoogleDriveCommandType = t.TypeOf<typeof GoogleDriveCommandSchema>;
-
-const SlackCommandSchema = t.type({
-  majorCommand: t.literal("slack"),
-  command: t.union([
-    t.literal("enable-bot"),
-    t.literal("sync-channel"),
-    t.literal("sync-thread"),
-    t.literal("uninstall-for-unknown-team-ids"),
-    t.literal("whitelist-domains"),
-  ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
-
-const BatchCommandSchema = t.type({
-  majorCommand: t.literal("batch"),
-  command: t.literal("full-resync"),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
-
-const WebcrawlerCommandSchema = t.type({
-  majorCommand: t.literal("webcrawler"),
-  command: t.literal("start-scheduler"),
-});
-
-type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
-
-const TemporalCommandSchema = t.type({
-  majorCommand: t.literal("temporal"),
-  command: t.union([
-    t.literal("find-unprocessed-workflows"),
-    t.literal("check-queue"),
-  ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
-});
-
-type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
-
-const PokeAdminCommandSchema = t.union([
-  ConnectorsCommandSchema,
-  GithubCommandSchema,
-  NotionCommandSchema,
-  GoogleDriveCommandSchema,
-  SlackCommandSchema,
-  BatchCommandSchema,
-  WebcrawlerCommandSchema,
-  TemporalCommandSchema,
-]);
-
-type PokeAdminCommandType = t.TypeOf<typeof PokeAdminCommandSchema>;
 
 const connectors = async ({ command, args }: ConnectorsCommandType) => {
   if (!args.wId) {
@@ -1324,7 +1223,8 @@ const main = async () => {
     );
     throw new Error(`Invalid command: ${pathError}`);
   }
-  const pokeAdminCommand = pokeAdminCommandValidation.right;
+  const pokeAdminCommand: PokeAdminCommandType =
+    pokeAdminCommandValidation.right;
 
   switch (pokeAdminCommand.majorCommand) {
     case "connectors":
