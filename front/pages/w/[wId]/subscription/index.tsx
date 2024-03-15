@@ -276,6 +276,7 @@ export default function Subscription({
                   <Page.H variant="h5">Manage my plan</Page.H>
                   <div className="s-h-full s-w-full pt-2">
                     <PricePlans
+                      display="landing"
                       size="xs"
                       className="lg:hidden"
                       isTabs
@@ -285,6 +286,7 @@ export default function Subscription({
                       isProcessing={isProcessing}
                     />
                     <PricePlans
+                      display="landing"
                       size="xs"
                       flexCSS="gap-3"
                       className="hidden lg:flex"

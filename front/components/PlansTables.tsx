@@ -15,7 +15,143 @@ interface PricePlanProps {
   onClickEnterprisePlan?: () => void;
   isProcessing?: boolean;
   flexCSS?: string;
+  display: PriceTableDisplay;
 }
+
+type PriceTableDisplay = "landing" | "subscribe";
+
+type PriceTableItem = {
+  label: string;
+  variant: "check" | "dash" | "xmark";
+  display: PriceTableDisplay[];
+};
+
+const PRO_PLAN_ITEMS: PriceTableItem[] = [
+  { label: "From 1 user", variant: "check", display: ["landing", "subscribe"] },
+  {
+    label: "One workspace",
+    variant: "dash",
+    display: ["landing"],
+  },
+  {
+    label: "Privacy and Data Security",
+    variant: "check",
+    display: ["landing"],
+  },
+  {
+    label: "Advanced models (GPT-4, Claude…)",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Unlimited custom assistants",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Unlimited messages",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Up to 1Gb/user of data sources",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Single Sign-on (Google, GitHub)",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Dust Slackbot",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Assistants can execute actions",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Workspace role and permissions",
+    variant: "dash",
+    display: ["landing"],
+  },
+];
+
+const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
+  {
+    label: "From 100 users",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Multiple workspaces",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Privacy and Data Security",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Advanced models (GPT-4, Claude…)",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Unlimited custom assistants",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Unlimited messages",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Unlimited data sources",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Single Sign-on",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Dust Slackbot",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Assistants can execute actions",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Advanced workspace role and permissions",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Dedicated account support",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+];
 
 function FreePriceTable({ size }: { size: "sm" | "xs" }) {
   return (
@@ -47,11 +183,13 @@ export function ProPriceTable({
   plan,
   onClick,
   isProcessing,
+  display,
 }: {
   size: "sm" | "xs";
   plan?: PlanType;
   onClick?: () => void;
   isProcessing?: boolean;
+  display: PriceTableDisplay;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
@@ -63,21 +201,15 @@ export function ProPriceTable({
       size={size}
       magnified={false}
     >
-      <PriceTable.Item label="From 1 user" />
-      <PriceTable.Item label="One workspace" variant="dash" />
-      <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item label="Advanced models (GPT-4, Claude…)" />
-      <PriceTable.Item label="Unlimited custom assistants" />
-      <PriceTable.Item label="Unlimited messages" />
-      <PriceTable.Item label="Up to 1Gb/user of data sources" />
-      <PriceTable.Item
-        label="Connections
-  (GitHub, Google Drive, Notion, Slack)"
-      />
-      <PriceTable.Item label="Single Sign-on (Google, GitHub)" />
-      <PriceTable.Item label="Dust Slackbot" />
-      <PriceTable.Item label="Assistants can execute actions" />
-      <PriceTable.Item label="Workspace role and permissions" variant="dash" />
+      {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
+        (item) => (
+          <PriceTable.Item
+            key={item.label}
+            label={item.label}
+            variant={item.variant}
+          />
+        )
+      )}
       <PriceTable.ActionContainer>
         {plan && plan.code !== PRO_PLAN_SEAT_29_CODE && (
           <Button
@@ -105,22 +237,13 @@ function EnterprisePriceTable({
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
-      <PriceTable.Item label="From 100 users" />
-      <PriceTable.Item label="Multiple workspaces" />
-      <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item label="Advanced models (GPT-4, Claude…)" />
-      <PriceTable.Item label="Unlimited custom assistants" />
-      <PriceTable.Item label="Unlimited messages" />
-      <PriceTable.Item label="Unlimited data sources" />
-      <PriceTable.Item
-        label="Connections
-  (GitHub, Google Drive, Notion, Slack…)"
-      />
-      <PriceTable.Item label="Single Sign-on" />
-      <PriceTable.Item label="Dust Slackbot" />
-      <PriceTable.Item label="Assistants can execute actions" />
-      <PriceTable.Item label="Advanced workspace role and permissions" />
-      <PriceTable.Item label="Dedicated account support" />
+      {ENTERPRISE_PLAN_ITEMS.map((item) => (
+        <PriceTable.Item
+          key={item.label}
+          label={item.label}
+          variant={item.variant}
+        />
+      ))}
       <PriceTable.ActionContainer>
         {onClick && (
           <Button
@@ -145,6 +268,7 @@ export function PricePlans({
   onClickProPlan,
   onClickEnterprisePlan,
   isProcessing,
+  display,
 }: PricePlanProps) {
   if (isTabs) {
     return (
@@ -215,6 +339,7 @@ export function PricePlans({
             </Tab.Panel>
             <Tab.Panel>
               <ProPriceTable
+                display={display}
                 size={size}
                 plan={plan}
                 isProcessing={isProcessing}
@@ -241,6 +366,7 @@ export function PricePlans({
           plan={plan}
           isProcessing={isProcessing}
           onClick={onClickProPlan}
+          display={display}
         />
         <EnterprisePriceTable
           size={size}
