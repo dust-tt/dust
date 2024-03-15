@@ -11,7 +11,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton"];
+const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton", "Dust"];
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
