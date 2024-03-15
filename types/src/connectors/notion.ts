@@ -2,6 +2,7 @@ import type {
   BlockObjectResponse,
   PageObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import * as t from "io-ts";
 
 // notion SDK types
 export type PageObjectProperties = PageObjectResponse["properties"];
@@ -54,10 +55,17 @@ export type ParsedNotionBlock = {
   childDatabaseTitle: string | null;
 };
 
-export type ParsedNotionDatabase = {
-  id: string;
-  url: string;
-  title?: string;
-  parentType: "database" | "page" | "block" | "workspace";
-  parentId: string;
-};
+export const ParsedNotionDatabaseSchema = t.type({
+  id: t.string,
+  url: t.string,
+  title: t.union([t.string, t.undefined]),
+  parentType: t.union([
+    t.literal("database"),
+    t.literal("page"),
+    t.literal("block"),
+    t.literal("workspace"),
+  ]),
+  parentId: t.string,
+});
+
+export type ParsedNotionDatabase = t.TypeOf<typeof ParsedNotionDatabaseSchema>;

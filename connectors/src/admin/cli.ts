@@ -1,17 +1,25 @@
 import type {
+  AdminCommandType,
+  AdminSuccessResponseType,
   BatchCommandType,
   ConnectorsCommandType,
   GithubCommandType,
+  GoogleDriveCheckFileResponseType,
   GoogleDriveCommandType,
+  NotionCheckUrlResponseType,
   NotionCommandType,
-  AdminCommandType,
+  NotionMeResponseType,
+  NotionRestartAllResponseType,
+  NotionSearchPagesResponseType,
+  NotionUpsertResponseType,
   Result,
   SlackCommandType,
+  TemporalCheckQueueResponseType,
   TemporalCommandType,
+  TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
-  AdminSuccessResponseType,
 } from "@dust-tt/types";
-import { isConnectorError, AdminCommandSchema } from "@dust-tt/types";
+import { AdminCommandSchema, isConnectorError } from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -291,7 +299,17 @@ const github = async ({
   }
 };
 
-const notion = async ({ command, args }: NotionCommandType) => {
+const notion = async ({
+  command,
+  args,
+}: NotionCommandType): Promise<
+  | AdminSuccessResponseType
+  | NotionRestartAllResponseType
+  | NotionUpsertResponseType
+  | NotionSearchPagesResponseType
+  | NotionCheckUrlResponseType
+  | NotionMeResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "notion", command, args });
   switch (command) {
     case "restart-all": {
@@ -342,7 +360,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
 
       await Promise.all(promises);
 
-      return { success: true };
+      return { restartSuccesses: success, restartFailures: failed };
     }
 
     case "skip-page": {
@@ -539,7 +557,12 @@ const notion = async ({ command, args }: NotionCommandType) => {
           `[Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
-      break;
+      return {
+        workflowId: wfId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+          : undefined,
+      };
     }
 
     case "upsert-database": {
@@ -592,7 +615,12 @@ const notion = async ({ command, args }: NotionCommandType) => {
           `[Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
-      break;
+      return {
+        workflowId: wfId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+          : undefined,
+      };
     }
 
     case "search-pages": {
@@ -613,9 +641,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
         query,
       });
 
-      console.table(pages);
-
-      break;
+      return { pages };
     }
 
     case "check-url": {
@@ -636,9 +662,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
         url,
       });
 
-      console.log(r);
-
-      break;
+      return r;
     }
 
     case "me": {
@@ -657,13 +681,10 @@ const notion = async ({ command, args }: NotionCommandType) => {
         auth: notionAccessToken,
       });
       const me = await notionClient.users.me({});
-      logger.info("[Admin] " + JSON.stringify(me));
-      logger.info(
-        // @ts-expect-error untyped bot field
-        "[Admin] " + JSON.stringify(me.bot.owner)
-      );
-      break;
+      // @ts-expect-error untyped bot field
+      return { me, botOwner: me.bot.owner };
     }
+
     case "stop-all-garbage-collectors": {
       const connectors = await ConnectorModel.findAll({
         where: {
@@ -690,8 +711,12 @@ const notion = async ({ command, args }: NotionCommandType) => {
       throw new Error("Unknown notion command: " + command);
   }
 };
-
-const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
+const google_drive = async ({
+  command,
+  args,
+}: GoogleDriveCommandType): Promise<
+  AdminSuccessResponseType | GoogleDriveCheckFileResponseType
+> => {
   const logger = topLogger.child({
     majorCommand: "google_drive",
     command,
@@ -743,11 +768,7 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
               : "application/vnd.google-apps.presentation"
           ],
       });
-      logger.info(
-        { content: res.data },
-        `[Admin] Status: ${res.status}, Type: ${typeof res.data}`
-      );
-      return { success: true };
+      return { status: res.status, content: res.data, type: typeof res.data };
     }
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
@@ -864,7 +885,10 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
   }
 };
 
-const slack = async ({ command, args }: SlackCommandType) => {
+const slack = async ({
+  command,
+  args,
+}: SlackCommandType): Promise<AdminSuccessResponseType> => {
   const logger = topLogger.child({ majorCommand: "slack", command, args });
   switch (command) {
     case "enable-bot": {
@@ -881,7 +905,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
       await throwOnError(toggleSlackbot(connector.id, true));
-      break;
+      return { success: true };
     }
 
     case "sync-channel": {
@@ -908,7 +932,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         maybeLaunchSlackSyncWorkflowForChannelId(connector.id, channelId)
       );
 
-      break;
+      return { success: true };
     }
 
     case "sync-thread": {
@@ -938,7 +962,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         )
       );
 
-      break;
+      return { success: true };
     }
 
     case "uninstall-for-unknown-team-ids": {
@@ -1001,7 +1025,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
           await uninstallSlack(connection.connection_id);
         }
       }
-      break;
+      return { success: true };
     }
 
     case "whitelist-domains": {
@@ -1042,7 +1066,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         }
       );
 
-      break;
+      return { success: true };
     }
 
     default:
@@ -1050,7 +1074,10 @@ const slack = async ({ command, args }: SlackCommandType) => {
   }
 };
 
-const batch = async ({ command, args }: BatchCommandType) => {
+const batch = async ({
+  command,
+  args,
+}: BatchCommandType): Promise<AdminSuccessResponseType> => {
   const logger = topLogger.child({ majorCommand: "batch", command, args });
   switch (command) {
     case "full-resync": {
@@ -1102,16 +1129,25 @@ const batch = async ({ command, args }: BatchCommandType) => {
   }
 };
 
-const webcrawler = async ({ command }: WebcrawlerCommandType) => {
+const webcrawler = async ({
+  command,
+}: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
   switch (command) {
     case "start-scheduler": {
       await throwOnError(launchCrawlWebsiteSchedulerWorkflow());
-      break;
+      return { success: true };
     }
   }
 };
 
-const temporal = async ({ command, args }: TemporalCommandType) => {
+const temporal = async ({
+  command,
+  args,
+}: TemporalCommandType): Promise<
+  | AdminSuccessResponseType
+  | TemporalCheckQueueResponseType
+  | TemporalUnprocessedWorkflowsResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "temporal", command, args });
   switch (command) {
     case "check-queue": {
@@ -1125,7 +1161,7 @@ const temporal = async ({ command, args }: TemporalCommandType) => {
         taskQueue: { name: q },
       });
       logger.info({ describeTqRes }, "[Admin] DescribeTqRes");
-      break;
+      return { taskQueue: describeTqRes.toJSON() };
     }
 
     case "find-unprocessed-workflows": {
@@ -1146,8 +1182,8 @@ const temporal = async ({ command, args }: TemporalCommandType) => {
         }
       }
 
+      const queuesAndPollers = [];
       for (const q of queues) {
-        logger.info({ q }, "[Admin] looking at queue");
         const qRes = await c.workflowService.describeTaskQueue({
           namespace: process.env.TEMPORAL_NAMESPACE || "default",
           taskQueue: { name: q },
@@ -1156,7 +1192,17 @@ const temporal = async ({ command, args }: TemporalCommandType) => {
           { qRes },
           "[Admin] Queue has " + qRes.pollers?.length + " pollers"
         );
+        queuesAndPollers.push({
+          queue: q,
+          pollers: qRes.pollers?.length || 0,
+        });
       }
+      return {
+        queuesAndPollers,
+        unprocessedQueues: queuesAndPollers
+          .filter((q) => q.pollers === 0)
+          .map((q) => q.queue),
+      };
     }
   }
 };
@@ -1188,36 +1234,29 @@ const main = async () => {
 
   switch (adminCommand.majorCommand) {
     case "connectors":
-      await connectors(adminCommand);
-      return { success: true };
+      return connectors(adminCommand);
     case "batch":
-      await batch(adminCommand);
-      return { success: true };
+      return batch(adminCommand);
     case "notion":
-      await notion(adminCommand);
-      return { success: true };
+      return notion(adminCommand);
     case "github":
-      await github(adminCommand);
-      return { success: true };
+      return github(adminCommand);
     case "google_drive":
-      await google_drive(adminCommand);
-      return { success: true };
+      return google_drive(adminCommand);
     case "slack":
-      await slack(adminCommand);
-      return { success: true };
+      return slack(adminCommand);
     case "webcrawler":
-      await webcrawler(adminCommand);
-      return { success: true };
+      return webcrawler(adminCommand);
     case "temporal":
-      await temporal(adminCommand);
-      return { success: true };
+      return temporal(adminCommand);
     default:
       throw new Error(`Unknown object type: ${objectType}`);
   }
 };
 
 main()
-  .then(() => {
+  .then((res) => {
+    console.log(JSON.stringify(res, null, 2));
     console.error("\x1b[32m%s\x1b[0m", `Done`);
     process.exit(0);
   })
