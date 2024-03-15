@@ -1,10 +1,4 @@
-import {
-  Avatar,
-  BarHeader,
-  Button,
-  DropdownMenu,
-  Page,
-} from "@dust-tt/sparkle";
+import { BarHeader, Button, Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
@@ -13,6 +7,7 @@ import { useContext } from "react";
 
 import { ProPriceTable } from "@app/components/PlansTables";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -103,32 +98,7 @@ export default function Subscribe({
                     />
                   </div>
                 )}
-                <div>
-                  {user && (
-                    <DropdownMenu>
-                      <DropdownMenu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none">
-                        <span className="sr-only">Open user menu</span>
-                        <Avatar
-                          size="md"
-                          visual={
-                            user.image
-                              ? user.image
-                              : "https://gravatar.com/avatar/anonymous?d=mp"
-                          }
-                          onClick={() => {
-                            "clickable";
-                          }}
-                        />
-                      </DropdownMenu.Button>
-                      <DropdownMenu.Items origin="topRight">
-                        <DropdownMenu.Item
-                          label="Sign&nbsp;out"
-                          href="/api/auth/logout"
-                        />
-                      </DropdownMenu.Items>
-                    </DropdownMenu>
-                  )}
-                </div>
+                <div>{user && <UserMenu user={user} />}</div>
               </div>
             </>
           }
