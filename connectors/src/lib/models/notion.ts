@@ -1,3 +1,4 @@
+import type { NotionBlockType, PageObjectProperties } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -6,10 +7,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type {
-  NotionBlockType,
-  PageObjectProperties,
-} from "@connectors/connectors/notion/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
