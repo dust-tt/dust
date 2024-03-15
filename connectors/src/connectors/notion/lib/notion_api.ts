@@ -1,3 +1,10 @@
+import type {
+  PageObjectProperties,
+  ParsedNotionBlock,
+  ParsedNotionDatabase,
+  ParsedNotionPage,
+  PropertyKeys,
+} from "@dust-tt/types";
 import {
   assertNever,
   cacheWithRedis,
@@ -24,13 +31,6 @@ import type {
 import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
-import type {
-  PageObjectProperties,
-  ParsedNotionBlock,
-  ParsedNotionDatabase,
-  ParsedNotionPage,
-  PropertyKeys,
-} from "@connectors/connectors/notion/lib/types";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";

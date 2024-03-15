@@ -26,6 +26,7 @@
     "typescript": "^5.0.3"
   },
   "dependencies": {
+    "@notionhq/client": "^2.2.4",
     "dts-cli": "^2.0.3",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eventsource-parser": "^1.1.1",
