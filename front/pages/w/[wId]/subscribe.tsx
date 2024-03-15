@@ -1,4 +1,10 @@
-import { BarHeader, Button, Page } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  BarHeader,
+  Button,
+  DropdownMenu,
+  Page,
+} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
@@ -76,26 +82,55 @@ export default function Subscribe({
           title={"Joining Dust"}
           className="ml-10 lg:ml-0"
           rightActions={
-            user &&
-            user.workspaces.length > 1 && (
-              <div className="mr-10 flex flex-row gap-2">
-                <div className="text-sm text-slate-500">Workspace:</div>
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  readOnly={false}
-                  displayDropDownOrigin="topRight"
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
+            <>
+              <div className="flex flex-row items-center">
+                {user && user.workspaces.length > 1 && (
+                  <div className="mr-4 flex flex-row gap-2">
+                    <div className="text-sm text-slate-500">Workspace:</div>
+                    <WorkspacePicker
+                      user={user}
+                      workspace={owner}
+                      readOnly={false}
+                      displayDropDownOrigin="topRight"
+                      onWorkspaceUpdate={(workspace) => {
+                        const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                        if (workspace.id !== owner.id) {
+                          void router
+                            .push(assistantRoute)
+                            .then(() => router.reload());
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+                <div>
+                  {user && (
+                    <DropdownMenu>
+                      <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
+                        <span className="sr-only">Open user menu</span>
+                        <Avatar
+                          size="md"
+                          visual={
+                            user.image
+                              ? user.image
+                              : "https://gravatar.com/avatar/anonymous?d=mp"
+                          }
+                          onClick={() => {
+                            "clickable";
+                          }}
+                        />
+                      </DropdownMenu.Button>
+                      <DropdownMenu.Items origin="topRight">
+                        <DropdownMenu.Item
+                          label="Sign&nbsp;out"
+                          href="/api/auth/logout"
+                        />
+                      </DropdownMenu.Items>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
-            )
+            </>
           }
         />
       </div>
