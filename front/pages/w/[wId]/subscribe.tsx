@@ -130,7 +130,7 @@ export default function Subscribe({
             ></Button>
           </Page.Vertical>
           <Page.Vertical sizing="grow">
-            <ProPriceTable size="xs"></ProPriceTable>
+            <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
           </Page.Vertical>
         </Page.Horizontal>
       </Page>
