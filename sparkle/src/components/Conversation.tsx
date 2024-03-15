@@ -12,23 +12,23 @@ import {
 } from "@sparkle/_index";
 import { classNames } from "@sparkle/lib/utils";
 
+type SizeType = "normal" | "compact";
+type MessageType = "user" | "agent" | "fragment";
+
 interface ConversationProps {
   children: React.ReactNode;
-  size?: "normal" | "compact";
+  size?: SizeType;
 }
 
 export function Conversation({ children, size = "normal" }: ConversationProps) {
   return (
     <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-2">
       {React.Children.map(children, (child) => {
-        // Ensure child is a valid React element before proceeding
-        if (React.isValidElement(child)) {
-          // Check if the child has a specific property or type indicating it's a Conversation.Message
-          // Here we assume a prop 'isMessageComponent' for identification. Adjust as necessary.
-          if (typeof child.type !== "string" && child.props.type) {
-            // Clone the element with the new variant prop
-            return cloneElement(child as ReactElement<any>, { size });
-          }
+        if (React.isValidElement<MessageProps>(child)) {
+          const clonedChild: ReactElement<MessageProps> = cloneElement(child, {
+            size,
+          });
+          return clonedChild;
         }
         return child;
       })}
@@ -37,19 +37,19 @@ export function Conversation({ children, size = "normal" }: ConversationProps) {
 }
 
 interface MessageProps {
-  message: React.ReactNode;
-  header: React.ReactNode;
+  header: MessageHeaderProps;
+  message: MessageContentProps;
   actions?: React.ReactNode;
-  size?: "compact" | "normal";
-  type: "user" | "agent" | "fragment";
+  size?: SizeType;
+  type: MessageType;
 }
 
-const sizeClasses = {
+const messageSizeClasses = {
   compact: "s-p-3",
   normal: "s-p-4",
 };
 
-const typeClasses = {
+const messageTypeClasses = {
   user: "s-bg-structure-50",
   agent: "",
   fragment: "",
@@ -65,12 +65,12 @@ Conversation.Message = function ({
     <div
       className={classNames(
         "s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-2xl",
-        typeClasses[type],
-        sizeClasses[size]
+        messageTypeClasses[type],
+        messageSizeClasses[size]
       )}
     >
-      {header}
-      {message}
+      <Conversation.MessageHeader {...header} size={size} />
+      <Conversation.MessageContent {...message} size={size} />
       <MessageActions type={type} />
     </div>
   );
@@ -80,6 +80,7 @@ interface MessageHeaderProps {
   name: string;
   avatarUrl?: string;
   onClick?: () => void;
+  size?: SizeType;
   isBusy?: boolean;
 }
 
@@ -88,16 +89,32 @@ Conversation.MessageHeader = function ({
   avatarUrl,
   onClick,
   isBusy = false,
+  size = "normal",
 }: MessageHeaderProps) {
   return (
     <div className="s-flex s-items-center s-gap-2">
-      <Avatar size="md" name={name} visual={avatarUrl} busy={isBusy} />
+      <Avatar
+        size={size === "compact" ? "xs" : "md"}
+        name={name}
+        visual={avatarUrl}
+        busy={isBusy}
+      />
       <div className="s-flex s-items-center s-gap-2">
-        <div className="s-pb-1 s-text-base s-font-medium s-text-element-900">
+        <div
+          className={classNames(
+            "s-pb-1 s-text-base s-font-medium s-text-element-900",
+            size === "compact" ? "s-text-sm" : "s-text-base"
+          )}
+        >
           {name}
         </div>
         {onClick && (
-          <IconButton variant="tertiary" icon={MoreIcon} onClick={onClick} />
+          <IconButton
+            variant="tertiary"
+            icon={MoreIcon}
+            onClick={onClick}
+            size={size === "compact" ? "xs" : "sm"}
+          />
         )}
       </div>
     </div>
@@ -108,19 +125,38 @@ interface MessageContentProps {
   action?: React.ReactNode;
   message?: React.ReactNode;
   citations?: React.ReactNode;
+  size?: SizeType;
 }
 
 Conversation.MessageContent = function ({
   action,
   message,
   citations,
+  size = "normal",
 }: MessageContentProps) {
   return (
-    <div className="s-flex s-flex-col s-justify-stretch s-gap-4">
+    <div
+      className={classNames(
+        "s-flex s-flex-col s-justify-stretch",
+        size === "compact" ? "s-gap-3" : "s-gap-4"
+      )}
+    >
       {action && <div>{action}</div>}
-      <div className="s-px-3">{message}</div>
+      <div
+        className={classNames(
+          "s-px-3 s-font-normal s-text-element-900",
+          size === "compact" ? "s-text-sm" : "s-text-base"
+        )}
+      >
+        {message}
+      </div>
       {citations && (
-        <div className="s-grid s-grid-cols-2 s-gap-2 md:s-grid-cols-3 lg:s-grid-cols-4">
+        <div
+          className={classNames(
+            "s-grid s-gap-2",
+            size === "compact" ? "s-grid-cols-2" : "s-grid-cols-4"
+          )}
+        >
           {citations}
         </div>
       )}
@@ -129,7 +165,7 @@ Conversation.MessageContent = function ({
 };
 
 interface MessageActionsProps {
-  type?: "agent" | "user" | "fragment";
+  type?: MessageType;
 }
 
 function MessageActions({ type }: MessageActionsProps) {
