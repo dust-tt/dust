@@ -1,17 +1,15 @@
 import type { WorkspaceDomain } from "@dust-tt/types";
 import { cacheWithRedis, DustAPI } from "@dust-tt/types";
-import type { UsersInfoResponse, WebClient } from "@slack/web-api";
-import type {
-  Profile,
-  User,
-} from "@slack/web-api/dist/response/UsersInfoResponse";
+import type { WebClient } from "@slack/web-api";
+import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton", "Dust"];
+const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton", "Dust", "Retool"];
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
@@ -89,27 +87,22 @@ export const getVerifiedDomainsForWorkspaceMemoized = cacheWithRedis(
 );
 
 function getSlackUserEmailFromProfile(
-  profile: Profile | undefined
+  slackUserInfo: SlackUserInfo | undefined
 ): string | undefined {
-  return profile?.email?.toLowerCase();
+  return slackUserInfo?.email?.toLowerCase();
 }
 
 function getSlackUserEmailDomainFromProfile(
-  profile: Profile | undefined
+  slackUserInfo: SlackUserInfo | undefined
 ): string | undefined {
-  return getSlackUserEmailFromProfile(profile)?.split("@")[1];
+  return getSlackUserEmailFromProfile(slackUserInfo)?.split("@")[1];
 }
 
 async function isAutoJoinEnabledForDomain(
   connector: ConnectorResource,
-  slackUserInfo: UsersInfoResponse
+  slackUserInfo: SlackUserInfo
 ): Promise<boolean> {
-  const { user } = slackUserInfo;
-  if (!user || !user.profile) {
-    return false;
-  }
-
-  const userDomain = getSlackUserEmailDomainFromProfile(user.profile);
+  const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
   if (!userDomain) {
     return false;
   }
@@ -171,7 +164,7 @@ function makeSlackMembershipAccessBlocksForConnector(
 async function postMessageForUnhautorizedUser(
   connector: ConnectorResource,
   slackClient: WebClient,
-  slackUserInfo: UsersInfoResponse,
+  slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos
 ) {
   const { slackChannelId, slackMessageTs } = slackInfos;
@@ -208,18 +201,16 @@ export async function isActiveMemberOfWorkspace(
   return workspaceActiveMemberEmails.includes(slackUserEmail);
 }
 
-function isBotAllowed(user: User) {
-  const { profile } = user;
-
-  const displayName = profile?.display_name ?? "";
-  const realName = profile?.real_name ?? "";
+function isBotAllowed(slackUserInfo: SlackUserInfo) {
+  const displayName = slackUserInfo.display_name ?? "";
+  const realName = slackUserInfo.real_name ?? "";
 
   const isWhitelistedBotName =
     WHITELISTED_BOT_NAME.includes(displayName) ||
     WHITELISTED_BOT_NAME.includes(realName);
 
   if (!isWhitelistedBotName) {
-    logger.info({ user }, "Ignoring bot message");
+    logger.info({ user: slackUserInfo }, "Ignoring bot message");
   }
 
   return isWhitelistedBotName;
@@ -237,13 +228,13 @@ interface SlackInfos {
 // See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619.
 async function isExternalUserAllowed(
   slackClient: WebClient,
-  profile: Profile,
+  slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
   whitelistedDomains?: readonly string[]
 ) {
   const { slackChannelId } = slackInfos;
 
-  const userDomain = getSlackUserEmailDomainFromProfile(profile);
+  const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
   // Ensure the domain matches exactly.
   const isWhitelistedDomain = userDomain
     ? whitelistedDomains?.includes(userDomain) ?? false
@@ -260,12 +251,12 @@ async function isExternalUserAllowed(
 
 async function isUserAllowed(
   connector: ConnectorResource,
-  profile: Profile,
+  slackUserInfo: SlackUserInfo,
   whitelistedDomains?: readonly string[]
 ) {
   const isMember = await isActiveMemberOfWorkspace(
     connector,
-    getSlackUserEmailFromProfile(profile)
+    getSlackUserEmailFromProfile(slackUserInfo)
   );
   if (isMember) {
     return true;
@@ -274,7 +265,7 @@ async function isUserAllowed(
   // To de-risk while releasing, we relies on an array of whitelisted domains.
   // TODO(2024-02-08 flav) Remove once released is completed.
   if (whitelistedDomains && whitelistedDomains.length > 0) {
-    const userDomain = getSlackUserEmailDomainFromProfile(profile);
+    const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
 
     if (userDomain) {
       return whitelistedDomains.includes(userDomain);
@@ -285,7 +276,7 @@ async function isUserAllowed(
 }
 
 async function isSlackUserAllowed(
-  user: User,
+  slackUserInfo: SlackUserInfo,
   connector: ConnectorResource,
   slackClient: WebClient,
   slackInfos: SlackInfos,
@@ -295,10 +286,10 @@ async function isSlackUserAllowed(
     is_restricted,
     is_stranger: isStranger,
     is_ultra_restricted,
-    profile,
-  } = user;
+    teamId,
+  } = slackUserInfo;
 
-  const isInWorkspace = profile?.team === slackInfos.slackTeamId;
+  const isInWorkspace = teamId === slackInfos.slackTeamId;
   if (!isInWorkspace) {
     return false;
   }
@@ -309,7 +300,7 @@ async function isSlackUserAllowed(
     isExternal &&
     (await isExternalUserAllowed(
       slackClient,
-      profile,
+      slackUserInfo,
       slackInfos,
       whitelistedDomains
     ));
@@ -319,27 +310,26 @@ async function isSlackUserAllowed(
   }
 
   // Otherwise, ensure that the slack user is an active member in the workspace.
-  return isUserAllowed(connector, profile, whitelistedDomains);
+  return isUserAllowed(connector, slackUserInfo, whitelistedDomains);
 }
 
 export async function notifyIfSlackUserIsNotAllowed(
   connector: ConnectorResource,
   slackClient: WebClient,
-  slackUserInfo: UsersInfoResponse,
+  slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
   whitelistedDomains?: readonly string[]
 ): Promise<boolean> {
-  const { user } = slackUserInfo;
-  if (!user) {
+  if (!slackUserInfo) {
     return false;
   }
 
-  if (user.is_bot) {
-    return isBotAllowed(user);
+  if (slackUserInfo.is_bot) {
+    return isBotAllowed(slackUserInfo);
   }
 
   const isAllowed = await isSlackUserAllowed(
-    user,
+    slackUserInfo,
     connector,
     slackClient,
     slackInfos,
@@ -351,9 +341,7 @@ export async function notifyIfSlackUserIsNotAllowed(
       {
         connectorId: connector.id,
         slackInfos,
-        slackUserEmail: getSlackUserEmailFromProfile(
-          slackUserInfo.user?.profile
-        ),
+        slackUserEmail: getSlackUserEmailFromProfile(slackUserInfo),
       },
       "Unauthorized Slack user attempted to access webhook."
     );
