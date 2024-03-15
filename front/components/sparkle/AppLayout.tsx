@@ -1,12 +1,4 @@
-import {
-  Avatar,
-  Banner,
-  DropdownMenu,
-  Item,
-  Logo,
-  Tab,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Banner, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
@@ -23,6 +15,7 @@ import type {
   TopNavigationId,
 } from "@app/components/sparkle/navigation";
 import { topNavigation } from "@app/components/sparkle/navigation";
+import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { useUser } from "@app/lib/swr";
@@ -84,30 +77,7 @@ function NavigationBar({
             ) : null}
           </div>
           <div className="flex flex-1"></div>
-          {user && (
-            <DropdownMenu>
-              <DropdownMenu.Button className="focus:outline-nonek flex rounded-full bg-gray-800 text-sm">
-                <span className="sr-only">Open user menu</span>
-                <Avatar
-                  size="md"
-                  visual={
-                    user.image
-                      ? user.image
-                      : "https://gravatar.com/avatar/anonymous?d=mp"
-                  }
-                  onClick={() => {
-                    "clickable";
-                  }}
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight">
-                <DropdownMenu.Item
-                  label="Sign&nbsp;out"
-                  href="/api/auth/logout"
-                />
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          )}
+          {user && <UserMenu user={user} />}
         </div>
 
         {subscription.endDate && (

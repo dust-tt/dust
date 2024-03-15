@@ -7,6 +7,7 @@ import { useContext } from "react";
 
 import { ProPriceTable } from "@app/components/PlansTables";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -76,26 +77,30 @@ export default function Subscribe({
           title={"Joining Dust"}
           className="ml-10 lg:ml-0"
           rightActions={
-            user &&
-            user.workspaces.length > 1 && (
-              <div className="mr-10 flex flex-row gap-2">
-                <div className="text-sm text-slate-500">Workspace:</div>
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  readOnly={false}
-                  displayDropDownOrigin="topRight"
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
+            <>
+              <div className="flex flex-row items-center">
+                {user && user.workspaces.length > 1 && (
+                  <div className="mr-4 flex flex-row gap-2">
+                    <div className="text-sm text-slate-500">Workspace:</div>
+                    <WorkspacePicker
+                      user={user}
+                      workspace={owner}
+                      readOnly={false}
+                      displayDropDownOrigin="topRight"
+                      onWorkspaceUpdate={(workspace) => {
+                        const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                        if (workspace.id !== owner.id) {
+                          void router
+                            .push(assistantRoute)
+                            .then(() => router.reload());
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+                <div>{user && <UserMenu user={user} />}</div>
               </div>
-            )
+            </>
           }
         />
       </div>
