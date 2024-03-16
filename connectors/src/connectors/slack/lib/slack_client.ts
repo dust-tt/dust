@@ -104,10 +104,64 @@ export async function getSlackClient(
   return proxied;
 }
 
-export async function getSlackUserInfo(slackClient: WebClient, userId: string) {
-  return slackClient.users.info({
-    user: userId,
-  });
+export type SlackUserInfo = {
+  email: string | null;
+  is_bot: boolean;
+  display_name?: string;
+  real_name?: string;
+  is_restricted: boolean;
+  is_stranger: boolean;
+  is_ultra_restricted: boolean;
+  teamId: string | null;
+  tz: string | null;
+  image_512: string | null;
+};
+
+export async function getSlackUserInfo(
+  slackClient: WebClient,
+  userId: string
+): Promise<SlackUserInfo> {
+  const res = await slackClient.users.info({ user: userId });
+
+  if (!res.ok) {
+    throw res.error;
+  }
+
+  return {
+    is_bot: false,
+    email: res.user?.profile?.email || null,
+    display_name: res.user?.profile?.display_name,
+    real_name: res.user?.profile?.real_name,
+    is_restricted: res.user?.is_restricted || false,
+    is_stranger: res.user?.is_stranger || false,
+    is_ultra_restricted: res.user?.is_ultra_restricted || false,
+    teamId: res.user?.team_id || null,
+    tz: res.user?.tz || null,
+    image_512: res.user?.profile?.image_512 || null,
+  };
+}
+
+export async function getSlackBotInfo(
+  slackClient: WebClient,
+  botId: string
+): Promise<SlackUserInfo> {
+  const slackBot = await slackClient.bots.info({ bot: botId });
+  if (slackBot.error) {
+    throw slackBot.error;
+  }
+
+  return {
+    display_name: slackBot.bot?.name,
+    real_name: slackBot.bot?.name,
+    email: null,
+    image_512: slackBot.bot?.icons?.image_72 || null,
+    tz: null,
+    is_restricted: false,
+    is_stranger: false,
+    is_ultra_restricted: false,
+    is_bot: true,
+    teamId: null,
+  };
 }
 
 export async function getSlackConversationInfo(
