@@ -9,6 +9,9 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
+// Whitelisted bot names that are allowed to interact with the bot.
+// This is just a workaround to allow our customers to use their own bot to talk to our @Dust Slack bot.
+// There is a more elaborated version in the work.
 const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton", "Dust", "Retool"];
 
 async function getActiveMemberEmails(
