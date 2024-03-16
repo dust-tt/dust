@@ -13,7 +13,13 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 // This means that we rely on the bot security measures
 // to not ping Dust from actions done by non verified members of the workspace.
 // Make sure to be explicit about this with users as you whitelist a new bot.
-const WHITELISTED_BOT_NAME = ["Beaver", "feedback-hackaton", "Dust", "Retool"];
+const WHITELISTED_BOT_NAME = [
+  "Beaver",
+  "feedback-hackaton",
+  "Dust",
+  "Retool",
+  "DustWorkflowTest",
+];
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
