@@ -28,11 +28,12 @@ const main = async () => {
   }
 
   const [objectType, command] = argv._;
+  const args = { ...argv, _: undefined, "--": undefined };
 
   const adminCommandValidation = AdminCommandSchema.decode({
     majorCommand: objectType,
     command,
-    args: argv,
+    args,
   });
 
   if (isLeft(adminCommandValidation)) {
