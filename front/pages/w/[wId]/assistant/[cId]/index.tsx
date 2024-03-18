@@ -201,8 +201,10 @@ export default function AssistantConversation({
           conversationId={conversationId}
         />
         <LimitReachedPopup
-          planLimitReached={planLimitReached}
+          isOpened={planLimitReached}
+          onClose={() => setPlanLimitReached(false)}
           workspaceId={owner.sId}
+          subscription={subscription}
         />
       </AppLayout>
     </GenerationContextProvider>

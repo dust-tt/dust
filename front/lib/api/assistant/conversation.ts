@@ -872,25 +872,14 @@ export async function* postUserMessage(
     subscription,
   });
   if (isAboveMessageLimit) {
-    if (isTrial(subscription)) {
-      yield {
-        type: "user_message_error",
-        created: Date.now(),
-        error: {
-          code: "free_trial_message_limit_reached",
-          message: "The free trial message limit has been reached.",
-        },
-      };
-    } else {
-      yield {
-        type: "user_message_error",
-        created: Date.now(),
-        error: {
-          code: "test_plan_message_limit_reached",
-          message: "The free plan message limit has been reached.",
-        },
-      };
-    }
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "test_plan_message_limit_reached",
+        message: "The free plan message limit has been reached.",
+      },
+    };
     return;
   }
 
@@ -2003,10 +1992,9 @@ async function isMessagesLimitReached({
   }
 
   if (isTrial(subscription)) {
-    // For trials, the limit applies to the last 24 hours.
     const remaining = await rateLimiter({
       key: `workspace:${owner.id}:agent_message_count:last_24_hours`,
-      maxPerTimeframe: 25,
+      maxPerTimeframe: plan.limits.assistant.maxMessages,
       timeframeSeconds: 60 * 60 * 24, // 1 day.
       logger,
     });
