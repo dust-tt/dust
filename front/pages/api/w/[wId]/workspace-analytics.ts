@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetWorkspaceAnalyticsResponse = {
@@ -94,7 +94,7 @@ async function getAnalytics(
 ): Promise<GetWorkspaceAnalyticsResponse> {
   const [memberCountResults, activeUsersResult, averageWeeklyDauResult] =
     await Promise.all([
-      front_sequelize.query<MemberCountQueryResult>(
+      frontSequelize.query<MemberCountQueryResult>(
         `
       SELECT COUNT(DISTINCT "memberships"."userId") AS "member_count"
       FROM "memberships"
@@ -109,7 +109,7 @@ async function getAnalytics(
           type: QueryTypes.SELECT,
         }
       ),
-      front_sequelize.query<ActiveUsersQueryResult>(
+      frontSequelize.query<ActiveUsersQueryResult>(
         `WITH activity_periods AS (
         SELECT
           "user_messages"."userId",
@@ -161,7 +161,7 @@ async function getAnalytics(
           type: QueryTypes.SELECT,
         }
       ),
-      front_sequelize.query<AverageWeeklyDailyActiveUsersQueryResult>(
+      frontSequelize.query<AverageWeeklyDailyActiveUsersQueryResult>(
         `
         WITH daily_activity AS (
           SELECT

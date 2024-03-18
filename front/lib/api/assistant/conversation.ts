@@ -59,7 +59,6 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   AgentDustAppRunAction,
   AgentMessage,
@@ -71,9 +70,10 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { isTrial } from "@app/lib/plans/trial";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -803,7 +803,7 @@ async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
-  await front_sequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
   });
@@ -896,7 +896,7 @@ export async function* postUserMessage(
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
-    await front_sequelize.transaction(async (t) => {
+    await frontSequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       let nextMessageRank =
@@ -1310,7 +1310,7 @@ export async function* editUserMessage(
   let agentMessageRows: AgentMessage[] = [];
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
-    const result = await front_sequelize.transaction(async (t) => {
+    const result = await frontSequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1633,7 +1633,7 @@ export async function* retryAgentMessage(
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
-    agentMessageResult = await front_sequelize.transaction(async (t) => {
+    agentMessageResult = await frontSequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1820,7 +1820,7 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
+  const { contentFragmentRow, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 

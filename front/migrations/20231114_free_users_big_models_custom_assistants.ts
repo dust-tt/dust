@@ -1,11 +1,11 @@
-import { front_sequelize } from "@app/lib/databases";
 import { AgentGenerationConfiguration } from "@app/lib/models";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 const { LIVE } = process.env;
 
 async function main() {
   console.log("Updating GPT-4 agents...");
-  const gpt4GenerationConfigIdsRes = await front_sequelize.query(
+  const gpt4GenerationConfigIdsRes = await frontSequelize.query(
     `
     SELECT agc.id FROM
       agent_configurations ac
@@ -38,7 +38,7 @@ async function main() {
 
   console.log("Updating claude-2 agents...");
 
-  const claude2GenerationConfigIdsRes = await front_sequelize.query(
+  const claude2GenerationConfigIdsRes = await frontSequelize.query(
     `
     SELECT agc.id FROM
       agent_configurations ac

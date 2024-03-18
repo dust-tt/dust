@@ -18,8 +18,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class Plan extends Model<
   InferAttributes<Plan>,
@@ -157,7 +157,7 @@ Plan.init(
   },
   {
     modelName: "plan",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ unique: true, fields: ["code"] }],
   }
 );
@@ -243,7 +243,7 @@ Subscription.init(
   },
   {
     modelName: "subscription",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "status"] },
@@ -321,7 +321,7 @@ PlanInvitation.init(
   },
   {
     modelName: "plan_invitation",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 

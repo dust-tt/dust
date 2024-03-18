@@ -10,9 +10,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class EventSchema extends Model<
   InferAttributes<EventSchema>,
@@ -77,7 +77,7 @@ EventSchema.init(
   },
   {
     modelName: "event_schema",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "marker"], unique: true },
       { fields: ["sId"], unique: true },
@@ -162,7 +162,7 @@ ExtractedEvent.init(
   },
   {
     modelName: "extracted_event",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["eventSchemaId"] },
       { fields: ["dataSourceName", "documentId"] },

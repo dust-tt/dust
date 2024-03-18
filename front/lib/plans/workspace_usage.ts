@@ -1,8 +1,8 @@
 import type { WorkspaceType } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { Membership, Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export async function countActiveSeatsInWorkspace(
   workspaceId: string
@@ -36,7 +36,7 @@ export async function countActiveUsersInWorkspaceSince({
   workspace: WorkspaceType;
   since: Date;
 }): Promise<number> {
-  const result = await front_sequelize.query<{
+  const result = await frontSequelize.query<{
     count: string;
   }>(
     `

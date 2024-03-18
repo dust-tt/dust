@@ -8,8 +8,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { DataSource } from "@app/lib/models/data_source";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 /**
  * Action Retrieval configuration
@@ -88,7 +88,7 @@ AgentRetrievalConfiguration.init(
   },
   {
     modelName: "agent_retrieval_configuration",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for templated Query
@@ -189,7 +189,7 @@ AgentDataSourceConfiguration.init(
         fields: ["retrievalConfigurationId"],
       },
     ],
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
         if (
@@ -287,7 +287,7 @@ AgentRetrievalAction.init(
   },
   {
     modelName: "agent_retrieval_action",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalAction) => {
         // Validation for Timeframe
@@ -376,7 +376,7 @@ RetrievalDocument.init(
   },
   {
     modelName: "retrieval_document",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["retrievalActionId"] }],
   }
 );
@@ -436,7 +436,7 @@ RetrievalDocumentChunk.init(
   },
   {
     modelName: "retrieval_document_chunk",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["retrievalDocumentId"] }],
   }
 );

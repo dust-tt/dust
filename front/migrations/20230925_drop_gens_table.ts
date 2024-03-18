@@ -1,8 +1,8 @@
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 async function main() {
   console.log("dropping gens_templates table");
-  await front_sequelize.query(`DROP TABLE IF EXISTS gens_templates`);
+  await frontSequelize.query(`DROP TABLE IF EXISTS gens_templates`);
 }
 
 main()
