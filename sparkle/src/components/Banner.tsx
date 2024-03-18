@@ -38,7 +38,7 @@ export function Banner({
     <div
       className={classNames(
         variantClasses[variant],
-        "sm:s-before:flex-1 s-flex s-min-h-16 s-items-center s-px-6 s-py-4 s-text-sm sm:s-px-3.5",
+        "sm:s-before:flex-1 s-min-h-16 s-flex s-items-center s-px-6 s-py-4 s-text-sm sm:s-px-3.5",
         className
       )}
     >
