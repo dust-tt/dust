@@ -407,11 +407,18 @@ export async function syncSpreadSheet(
 
   const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
 
-  const getSpreadsheet = async () => {
+  const getSpreadsheet = (id: string) =>
+    sheetsAPI.spreadsheets.get({ spreadsheetId: id });
+  let spreadsheet: Awaited<ReturnType<typeof getSpreadsheet>>;
+  // We do 3 local retries for 500 Internal Server Error.
+  // If we still get 500 Internal Server Error after 3 retries and the activity already
+  // has been retried 20 times, we mark the file as skipped.
+  let internalErrorsCount = 0;
+  const maxInternalErrors = 3;
+  for (;;) {
     try {
-      return await sheetsAPI.spreadsheets.get({
-        spreadsheetId: file.id,
-      });
+      spreadsheet = await getSpreadsheet(file.id);
+      break;
     } catch (err) {
       if (isGAxiosServiceUnavailablError(err)) {
         throw {
@@ -420,39 +427,25 @@ export async function syncSpreadSheet(
           message: "Got 503 Service Unavailable from Google Sheets",
           type: "google_sheets_503_service_unavailable",
         };
-      }
-      throw err;
-    }
-  };
-
-  let internalErrorsCount = 0;
-  const maxInternalErrors = 3;
-  let spreadsheet: Awaited<ReturnType<typeof getSpreadsheet>>;
-  // If we consistently get 500 Internal Server Error from Google Sheets after 20 activity failures, we skip the file.
-  for (;;) {
-    try {
-      spreadsheet = await getSpreadsheet();
-      break;
-    } catch (err) {
-      if (err instanceof Error && "code" in err && err.code === 500) {
+      } else if (err instanceof Error && "code" in err && err.code === 500) {
         internalErrorsCount++;
-      } else {
-        throw err;
+        if (internalErrorsCount > maxInternalErrors) {
+          if (Context.current().info.attempt > 20) {
+            localLogger.info(
+              "[Spreadsheet] Consistently getting 500 Internal Server Error from Google Sheets, skipping further processing."
+            );
+            return {
+              isSupported: true,
+              skipReason: "google_internal_server_error",
+            };
+          }
+        } else {
+          // Allow to locally retry the API call.
+          continue;
+        }
       }
 
-      if (internalErrorsCount > maxInternalErrors) {
-        if (Context.current().info.attempt > 20) {
-          localLogger.info(
-            "[Spreadsheet] Consistently getting 500 Internal Server Error from Google Sheets, skipping further processing."
-          );
-          return {
-            isSupported: true,
-            skipReason: "google_internal_server_error",
-          };
-        }
-      } else {
-        throw err;
-      }
+      throw err;
     }
   }
 
