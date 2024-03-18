@@ -304,14 +304,45 @@ impl MistralAILLM {
         &self,
         messages: &Vec<ChatMessage>,
     ) -> Result<Vec<MistralChatMessage>, anyhow::Error> {
-        let mistral_messages: Result<Vec<MistralChatMessage>, _> = messages
+        let mistral_messages = messages
             .iter()
             .map(|m| MistralChatMessage::try_from(m))
-            .collect();
+            .collect::<Result<Vec<_>>>()?;
 
-        // If mistral_messages is Err, the error will be returned from the function.
-        // If it's Ok, the inner Vec<ChatMessage> will be returned.
-        mistral_messages
+        let mistral_messages = mistral_messages.iter().fold(
+            vec![],
+            |mut acc: Vec<MistralChatMessage>, cm: &MistralChatMessage| {
+                match acc.last_mut() {
+                    Some(last)
+                        if cm.role == MistralChatMessageRole::Tool
+                            && last.role != MistralChatMessageRole::Assistant =>
+                    {
+                        let name = match cm.name.as_ref() {
+                            Some(name) => name.clone(),
+                            None => String::from("unknown_tool"),
+                        };
+                        acc.push(MistralChatMessage {
+                            role: MistralChatMessageRole::Assistant,
+                            name: None,
+                            content: None,
+                            tool_calls: Some(vec![MistralToolCall {
+                                function: MistralToolCallFunction {
+                                    name,
+                                    arguments: String::from("{}"),
+                                },
+                            }]),
+                        });
+                        acc.push(cm.clone());
+                    }
+                    _ => {
+                        acc.push(cm.clone());
+                    }
+                };
+                acc
+            },
+        );
+
+        Ok(mistral_messages)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
