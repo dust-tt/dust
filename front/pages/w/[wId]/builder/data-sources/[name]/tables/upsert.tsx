@@ -14,7 +14,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, getSanitizedHeaders, isSlugified, Ok } from "@dust-tt/types";
-import { parse } from "csv-parse/sync";
+import { CsvError, parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -181,7 +181,7 @@ export default function TableUpsert({
           const delimiter = [",", ";", "\t"];
           for (const [index, d] of delimiter.entries()) {
             try {
-              // If parsing CSV with current delimiter fails and it throws an error.
+              // If parsing CSV with current delimiter fails, it throws an error.
               const records = parse(content, {
                 columns: (c) => {
                   return getSanitizedHeaders(c);
@@ -193,12 +193,12 @@ export default function TableUpsert({
 
               return new Ok(stringifiedContent);
             } catch (err) {
-              // If we still have some delimiters to test, move to the next delimiter.
-              if (index < delimiter.length - 1) {
-                continue;
-              }
-
               if (err instanceof Error) {
+                // If it's a CSV error and we still have some delimiters to test, move to the next delimiter.
+                if (err instanceof CsvError && index < delimiter.length - 1) {
+                  continue;
+                }
+
                 sendNotification({
                   type: "error",
                   title: "Error uploading file",
