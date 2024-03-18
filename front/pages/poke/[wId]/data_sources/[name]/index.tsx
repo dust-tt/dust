@@ -5,10 +5,15 @@ import {
   EyeIcon,
   Icon,
   InformationCircleIcon,
+  Input,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import type { CoreAPIDataSource, DataSourceType } from "@dust-tt/types";
+import type {
+  CoreAPIDataSource,
+  DataSourceType,
+  NotionCheckUrlResponseType,
+} from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
@@ -26,7 +31,11 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import {
+  classNames,
+  formatTimestampToFriendlyDate,
+  timeAgoFrom,
+} from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
@@ -282,6 +291,8 @@ const DataSourcePage = ({
     }
   };
 
+  const [notionUrlToCheck, setNotionUrlToCheck] = useState("");
+
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
@@ -350,6 +361,13 @@ const DataSourcePage = ({
                 onClick={onSlackbotToggle}
               />
             </div>
+          )}
+          {dataSource.connectorProvider === "notion" && (
+            <NotionUrlChecker
+              notionUrlToCheck={notionUrlToCheck}
+              setNotionUrlToCheck={setNotionUrlToCheck}
+              owner={owner}
+            />
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
@@ -512,5 +530,113 @@ const DataSourcePage = ({
     </div>
   );
 };
+
+async function handleCheckNotionUrl(
+  url: string,
+  wId: string
+): Promise<NotionCheckUrlResponseType | null> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "notion",
+      command: "check-url",
+      args: {
+        url,
+        wId,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(
+      `Failed to check Notion URL: ${
+        err.error?.connectors_error?.message
+      }\n\n${JSON.stringify(err)}`
+    );
+    return null;
+  }
+  return res.json();
+}
+
+function NotionUrlChecker({
+  notionUrlToCheck,
+  setNotionUrlToCheck,
+  owner,
+}: {
+  notionUrlToCheck: string;
+  setNotionUrlToCheck: (value: string) => void;
+  owner: WorkspaceType;
+}) {
+  const [urlDetails, setUrlDetails] =
+    useState<NotionCheckUrlResponseType | null>(null);
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+      <div className="flex items-center gap-2 ">
+        <div>Check Notion URL</div>
+        <div className="grow">
+          <Input
+            placeholder="Notion URL"
+            onChange={setNotionUrlToCheck}
+            value={notionUrlToCheck}
+            name={""}
+          />
+        </div>
+        <Button
+          variant="secondary"
+          label="Check"
+          onClick={async () =>
+            setUrlDetails(
+              await handleCheckNotionUrl(notionUrlToCheck, owner.sId)
+            )
+          }
+        />
+      </div>
+      <div className="text-gray-800">
+        <p>
+          Check if we have access to the Notion URL, if it's a page or a DB, and
+          provide a few details.
+        </p>
+        {urlDetails && (
+          <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
+            <span
+              className={classNames(
+                "font-bold",
+                urlDetails.page || urlDetails.db
+                  ? "text-emerald-800"
+                  : "text-red-800"
+              )}
+            >
+              {(() => {
+                if (urlDetails.page) {
+                  return "Page found";
+                }
+                if (urlDetails.db) {
+                  return "Database found";
+                }
+                return "Not found";
+              })()}
+            </span>
+            {(urlDetails.page || urlDetails.db) && (
+              <div>
+                <span className="font-bold">Details:</span>{" "}
+                <span>
+                  {urlDetails.page ? (
+                    <JsonViewer value={urlDetails.page} rootName={false} />
+                  ) : (
+                    <JsonViewer value={urlDetails.db} rootName={false} />
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default DataSourcePage;
