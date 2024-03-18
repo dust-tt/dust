@@ -387,6 +387,8 @@ export async function retrieveGoogleDriveConnectorPermissions({
         parentId: parentInternalId,
       };
       if (isTablesView) {
+        // In tables view, we only show folders, spreadhsheets and sheets.
+        // We filter out folders that only contain Documents.
         where.mimeType = [
           "application/vnd.google-apps.folder",
           "application/vnd.google-apps.spreadsheet",
