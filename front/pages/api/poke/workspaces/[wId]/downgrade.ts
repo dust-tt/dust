@@ -2,7 +2,7 @@ import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { internalSubscribeWorkspaceToFreeTestPlan } from "@app/lib/plans/subscription";
+import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type DowngradeWorkspaceResponseBody = {
@@ -33,7 +33,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      await internalSubscribeWorkspaceToFreeTestPlan({
+      await internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: owner.sId,
       });
 
