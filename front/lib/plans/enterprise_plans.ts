@@ -24,6 +24,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   stripeProductId: null,
   billingType: "fixed",
   maxMessages: -1,
+  maxMessagesTimeframe: "lifetime",
   maxUsersInWorkspace: -1,
   isSlackbotAllowed: true,
   isManagedConfluenceAllowed: true,

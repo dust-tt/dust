@@ -16,6 +16,7 @@ export type LimitsType = {
   assistant: {
     isSlackBotAllowed: boolean;
     maxMessages: number;
+    maxMessagesTimeframe: "day" | "lifetime";
   };
   connections: ManageDataSourcesLimitsType;
   dataSources: {

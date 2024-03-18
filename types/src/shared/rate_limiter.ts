@@ -78,3 +78,15 @@ export async function rateLimiter({
     }
   }
 }
+
+export function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: "day" | "lifetime"
+): number {
+  switch (timeframeLiteral) {
+    case "day":
+      return 60 * 60 * 24; // 1 day.
+
+    default:
+      return 0;
+  }
+}

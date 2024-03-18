@@ -36,6 +36,7 @@ import type {
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
 import {
+  getTimeframeSecondsFromLiteral,
   GPT_3_5_TURBO_MODEL_CONFIG,
   md5,
   rateLimiter,
@@ -1991,17 +1992,20 @@ async function isMessagesLimitReached({
     return false;
   }
 
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
   if (isTrial(subscription)) {
     const remaining = await rateLimiter({
-      key: `workspace:${owner.id}:agent_message_count:last_24_hours`,
-      maxPerTimeframe: plan.limits.assistant.maxMessages,
-      timeframeSeconds: 60 * 60 * 24, // 1 day.
+      key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+      maxPerTimeframe: maxMessages,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
       logger,
     });
 
     return remaining <= 0;
   }
 
+  // TODO(2024-03-18 flav) Should we keep this?
   const messages = await Message.findAll({
     attributes: ["id"],
     include: [
