@@ -12,17 +12,12 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext } from "react";
 
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
 import { useConversations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
-export function AssistantSidebarMenu({
-  owner,
-  triggerInputAnimation,
-}: {
-  owner: WorkspaceType;
-  triggerInputAnimation: (() => void) | null;
-}) {
+export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
   const router = useRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsLoading, isConversationsError } =
@@ -73,6 +68,12 @@ export function AssistantSidebarMenu({
       ? groupConversationsByDate(conversations)
       : {};
 
+  const { setAnimate } = useContext(InputBarContext);
+
+  const triggerInputAnimation = () => {
+    setAnimate(true);
+  };
+
   return (
     <div
       className={classNames(
@@ -102,8 +103,6 @@ export function AssistantSidebarMenu({
                   triggerInputAnimation
                 ) {
                   triggerInputAnimation();
-                  // input bar is bound to be there given the router check
-                  document.getElementById("dust-input-bar")?.focus();
                 }
               }}
             >

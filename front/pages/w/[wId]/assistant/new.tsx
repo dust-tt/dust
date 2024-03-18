@@ -206,23 +206,18 @@ export default function AssistantNew({
     }
   );
 
-  const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
   const [greeting, setGreeting] = useState<string>("");
-  const [selectedAssistant, setSelectedAssistant] =
-    useState<AgentMention | null>(null);
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
+
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
-  // TODO:
-  // const triggerInputAnimation = () => {
-  //   setShouldAnimateInput(true);
-  // };
-
   useEffect(() => {
-    if (shouldAnimateInput) {
-      setShouldAnimateInput(false);
+    if (animate) {
+      setAnimate(false);
     }
-  }, [shouldAnimateInput]);
+  }, [animate, setAnimate]);
 
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
@@ -238,9 +233,7 @@ export default function AssistantNew({
   });
 
   return (
-    <InputBarContext.Provider
-      value={{ animate: shouldAnimateInput, selectedAssistant }}
-    >
+    <>
       <QuickStartGuide
         owner={owner}
         user={user}
@@ -335,7 +328,7 @@ export default function AssistantNew({
                                   setSelectedAssistant({
                                     configurationId: agent.sId,
                                   });
-                                  setShouldAnimateInput(true);
+                                  setAnimate(true);
                                 }}
                               />
                             </div>
@@ -473,7 +466,7 @@ export default function AssistantNew({
         planLimitReached={planLimitReached}
         workspaceId={owner.sId}
       />
-    </InputBarContext.Provider>
+    </>
   );
 }
 
