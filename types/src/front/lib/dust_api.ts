@@ -15,9 +15,9 @@ import {
 } from "../../front/assistant/conversation";
 import { DataSourceType } from "../../front/data_source";
 import { CoreAPITokenType } from "../../front/lib/core_api";
+import { Err, Ok, Result } from "../../front/lib/result";
 import { RunType } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
-import { Err, Ok, Result } from "../../shared/result";
 import { WhitelistableFeature } from "../feature_flags";
 import { WorkspaceDomain } from "../workspace";
 import {

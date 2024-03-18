@@ -2,7 +2,7 @@ import { danger, fail, warn } from "danger";
 
 function failMigrationAck() {
   fail(
-    "Files in `**/models/` have been modified. " +
+    "Files in `front/lib/models/` or `connectors/src/lib/models/` have been modified. " +
       `Addition and deletion should be in 2 separate PRs:
       1. Addition: migrate and deploy
       2. Deletion: deploy and migrate
@@ -13,7 +13,7 @@ function failMigrationAck() {
 
 function warnMigrationAck(migrationAckLabel: string) {
   warn(
-    "Files in `**/models/` have been modified and the PR has the `" +
+    "Files in `front/lib/models/` or `connectors/src/lib/models/` have been modified and the PR has the `" +
       migrationAckLabel +
       "` label. Don't forget to run the migration from the `-edge` infrastructure."
   );
@@ -50,9 +50,7 @@ function checkModifiedModelFiles() {
   const modifiedModelFiles = danger.git.modified_files.filter((path) => {
     return (
       path.startsWith("front/lib/models/") ||
-      path.startsWith("front/lib/resources/storage/models") ||
-      path.startsWith("connectors/src/lib/models/") ||
-      path.startsWith("connectors/src/resources/storage/models")
+      path.startsWith("connectors/src/lib/models/")
     );
   });
 
