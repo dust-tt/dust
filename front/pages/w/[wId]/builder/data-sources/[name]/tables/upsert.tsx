@@ -178,36 +178,44 @@ export default function TableUpsert({
           }
 
           const { content } = res.value;
-          try {
-            const records = parse(content, {
-              columns: (c) => {
-                return getSanitizedHeaders(c);
-              },
-              delimiter: [";", ",", "\t"],
-            });
+          const delimiter = [",", ";", "\t"];
+          for (const [index, d] of delimiter.entries()) {
+            try {
+              // If parsing CSV with current delimiter fails and it throws an error.
+              const records = parse(content, {
+                columns: (c) => {
+                  return getSanitizedHeaders(c);
+                },
+                delimiter: d,
+              });
 
-            const stringifiedContent = stringify(records, { header: true });
+              const stringifiedContent = stringify(records, { header: true });
 
-            return new Ok(stringifiedContent);
-          } catch (err) {
-            if (err instanceof Error) {
+              return new Ok(stringifiedContent);
+            } catch (err) {
+              // If we still have some delimiters to test, move to the next delimiter.
+              if (index < delimiter.length - 1) {
+                continue;
+              }
+
+              if (err instanceof Error) {
+                sendNotification({
+                  type: "error",
+                  title: "Error uploading file",
+                  description: `Invalid headers: ${err.message}.`,
+                });
+                return new Err(null);
+              }
+
               sendNotification({
                 type: "error",
                 title: "Error uploading file",
-                description: `Invalid headers: ${err.message}.`,
+                description: `An error occured: ${err}.`,
               });
               return new Err(null);
             }
-
-            sendNotification({
-              type: "error",
-              title: "Error uploading file",
-              description: `An error occured: ${err}.`,
-            });
-            return new Err(null);
           }
         }
-
         return new Ok(null);
       })();
 
