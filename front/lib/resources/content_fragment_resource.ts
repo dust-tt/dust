@@ -44,6 +44,20 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return new this(ContentFragmentModel, contentFragment.get());
   }
 
+  static fromMessage(
+    message: Message & { contentFragment?: ContentFragmentModel }
+  ) {
+    if (!message.contentFragment) {
+      throw new Error(
+        "ContentFragmentResource.fromMessage must be called with a content fragment"
+      );
+    }
+    return new ContentFragmentResource(
+      ContentFragmentModel,
+      message.contentFragment.get()
+    );
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
@@ -59,7 +73,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     }
   }
 
-  renderFromMessage({ message }: { message: Message }): ContentFragmentType {
+  renderFromMessage(message: Message): ContentFragmentType {
     return {
       id: message.id,
       sId: message.sId,

@@ -448,20 +448,11 @@ async function batchRenderContentFragment(
     );
   }
 
-  return messagesWithContentFragment.map((message) => {
-    if (!message.contentFragment) {
-      throw new Error(
-        "Unreachable: batchRenderContentFragment must be called with only content fragments"
-      );
-    }
-
-    const contentFragment = new ContentFragmentResource(
-      ContentFragmentModel,
-      message.contentFragment
-    );
+  return messagesWithContentFragment.map((message: Message) => {
+    const contentFragment = ContentFragmentResource.fromMessage(message);
 
     return {
-      m: contentFragment.renderFromMessage({ message }),
+      m: contentFragment.renderFromMessage(message),
       rank: message.rank,
       version: message.version,
     };
@@ -1841,7 +1832,7 @@ export async function postNewContentFragment(
     }
   );
 
-  return contentFragment.renderFromMessage({ message: messageRow });
+  return contentFragment.renderFromMessage(messageRow);
 }
 
 async function* streamRunAgentEvents(
