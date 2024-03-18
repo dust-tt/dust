@@ -257,3 +257,35 @@ export const updateStripeSubscriptionUsage = async ({
     quantity: quantity,
   });
 };
+
+/**
+ *
+ * Move a subscription from a free trial state to a paying state,
+ * immediately charging the customer.
+ */
+export async function skipSubscriptionFreeTrial({
+  stripeSubscriptionId,
+}: {
+  stripeSubscriptionId: string;
+}) {
+  return stripe.subscriptions.update(stripeSubscriptionId, {
+    trial_end: "now",
+  });
+}
+
+/**
+ * Cancel a subscription immediately,
+ * without waiting for the end of the billing period.
+ */
+export async function cancelSubscriptionImmediately({
+  stripeSubscriptionId,
+}: {
+  stripeSubscriptionId: string;
+}) {
+  await stripe.subscriptions.update(stripeSubscriptionId, {
+    cancel_at_period_end: false,
+  });
+  await stripe.subscriptions.cancel(stripeSubscriptionId, { prorate: true });
+
+  return true;
+}
