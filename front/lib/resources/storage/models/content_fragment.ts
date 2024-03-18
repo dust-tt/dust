@@ -10,9 +10,9 @@ import { DataTypes, Model } from "sequelize";
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-export class ContentFragment extends Model<
-  InferAttributes<ContentFragment>,
-  InferCreationAttributes<ContentFragment>
+export class ContentFragmentModel extends Model<
+  InferAttributes<ContentFragmentModel>,
+  InferCreationAttributes<ContentFragmentModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -31,7 +31,7 @@ export class ContentFragment extends Model<
   declare userId: ForeignKey<User["id"]> | null;
 }
 
-ContentFragment.init(
+ContentFragmentModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -87,9 +87,9 @@ ContentFragment.init(
   }
 );
 
-User.hasMany(ContentFragment, {
+User.hasMany(ContentFragmentModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = ContentFragment is not associated with a user
 });
-ContentFragment.belongsTo(User, {
+ContentFragmentModel.belongsTo(User, {
   foreignKey: { name: "userId", allowNull: true },
 });

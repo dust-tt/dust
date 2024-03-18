@@ -72,8 +72,9 @@ import {
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { isTrial } from "@app/lib/plans/trial";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -435,33 +436,6 @@ async function batchRenderAgentMessages(
   });
 }
 
-function renderContentFragment({
-  message,
-  contentFragment,
-}: {
-  message: Message;
-  contentFragment: ContentFragment;
-}): ContentFragmentType {
-  return {
-    id: message.id,
-    sId: message.sId,
-    created: message.createdAt.getTime(),
-    type: "content_fragment",
-    visibility: message.visibility,
-    version: message.version,
-    title: contentFragment.title,
-    content: contentFragment.content,
-    url: contentFragment.url,
-    contentType: contentFragment.contentType,
-    context: {
-      profilePictureUrl: contentFragment.userContextProfilePictureUrl,
-      fullName: contentFragment.userContextFullName,
-      email: contentFragment.userContextEmail,
-      username: contentFragment.userContextUsername,
-    },
-  };
-}
-
 async function batchRenderContentFragment(
   messages: Message[]
 ): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
@@ -474,16 +448,11 @@ async function batchRenderContentFragment(
     );
   }
 
-  return messagesWithContentFragment.map((message) => {
-    if (!message.contentFragment) {
-      throw new Error(
-        "Unreachable: batchRenderContentFragment must be called with only content fragments"
-      );
-    }
-    const contentFragment = message.contentFragment;
+  return messagesWithContentFragment.map((message: Message) => {
+    const contentFragment = ContentFragmentResource.fromMessage(message);
 
     return {
-      m: renderContentFragment({ message, contentFragment }),
+      m: contentFragment.renderFromMessage(message),
       rank: message.rank,
       version: message.version,
     };
@@ -590,8 +559,11 @@ export async function getConversation(
         as: "agentMessage",
         required: false,
       },
+      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
+      // along with messages in one query). Only once we move to a MessageResource will we be able
+      // to properly abstract this.
       {
-        model: ContentFragment,
+        model: ContentFragmentModel,
         as: "contentFragment",
         required: false,
       },
@@ -1820,11 +1792,11 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  const { contentFragmentRow, messageRow } = await frontSequelize.transaction(
+  const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      const contentFragmentRow = await ContentFragment.create(
+      const contentFragment = await ContentFragmentResource.makeNew(
         {
           content,
           title,
@@ -1836,7 +1808,7 @@ export async function postNewContentFragment(
           userContextFullName: context.fullName,
           userContextUsername: context.username,
         },
-        { transaction: t }
+        t
       );
       const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
@@ -1850,22 +1822,17 @@ export async function postNewContentFragment(
           sId: generateModelSId(),
           rank: nextMessageRank,
           conversationId: conversation.id,
-          contentFragmentId: contentFragmentRow.id,
+          contentFragmentId: contentFragment.id,
         },
         {
           transaction: t,
         }
       );
-      return { contentFragmentRow, messageRow };
+      return { contentFragment, messageRow };
     }
   );
 
-  const contentFragment = renderContentFragment({
-    message: messageRow,
-    contentFragment: contentFragmentRow,
-  });
-
-  return contentFragment;
+  return contentFragment.renderFromMessage(messageRow);
 }
 
 async function* streamRunAgentEvents(
