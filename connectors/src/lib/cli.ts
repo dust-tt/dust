@@ -1,4 +1,5 @@
 import type {
+  AdminCommandType,
   AdminSuccessResponseType,
   BatchCommandType,
   ConnectorsCommandType,
@@ -18,7 +19,7 @@ import type {
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@dust-tt/types";
-import { isConnectorError } from "@dust-tt/types";
+import { assertNever, isConnectorError } from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -1207,6 +1208,29 @@ export const temporal = async ({
     }
   }
 };
+
+export async function runCommand(adminCommand: AdminCommandType) {
+  switch (adminCommand.majorCommand) {
+    case "connectors":
+      return connectors(adminCommand);
+    case "batch":
+      return batch(adminCommand);
+    case "notion":
+      return notion(adminCommand);
+    case "github":
+      return github(adminCommand);
+    case "google_drive":
+      return google_drive(adminCommand);
+    case "slack":
+      return slack(adminCommand);
+    case "webcrawler":
+      return webcrawler(adminCommand);
+    case "temporal":
+      return temporal(adminCommand);
+    default:
+      assertNever(adminCommand);
+  }
+}
 
 async function throwOnError<T>(p: Promise<Result<T, Error>>) {
   const res = await p;

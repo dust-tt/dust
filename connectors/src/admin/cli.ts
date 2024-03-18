@@ -10,6 +10,7 @@ import {
   github,
   google_drive,
   notion,
+  runCommand,
   slack,
   temporal,
   webcrawler,
@@ -43,27 +44,7 @@ const main = async () => {
     throw new Error(`Invalid command: ${pathError}`);
   }
   const adminCommand: AdminCommandType = adminCommandValidation.right;
-
-  switch (adminCommand.majorCommand) {
-    case "connectors":
-      return connectors(adminCommand);
-    case "batch":
-      return batch(adminCommand);
-    case "notion":
-      return notion(adminCommand);
-    case "github":
-      return github(adminCommand);
-    case "google_drive":
-      return google_drive(adminCommand);
-    case "slack":
-      return slack(adminCommand);
-    case "webcrawler":
-      return webcrawler(adminCommand);
-    case "temporal":
-      return temporal(adminCommand);
-    default:
-      throw new Error(`Unknown object type: ${objectType}`);
-  }
+  return runCommand(adminCommand);
 };
 
 main()
