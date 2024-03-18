@@ -165,8 +165,8 @@ function DataSourceResourceSelectorChildren({
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
             const checkStatus = getCheckStatus(r.internalId);
-            const checkable =
-              checkStatus === "partial" || !isTablesView || !!r.dustTableId;
+            const checkable = !isTablesView || !!r.dustTableId;
+            const showCheckbox = checkable || checkStatus !== "unchecked";
             return (
               <div key={r.internalId}>
                 <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
@@ -209,7 +209,7 @@ function DataSourceResourceSelectorChildren({
                     {r.title}
                   </span>
                   <div className="ml-32 flex-grow">
-                    {checkable && (
+                    {showCheckbox && (
                       <Checkbox
                         variant="checkable"
                         className={classNames(
@@ -221,7 +221,7 @@ function DataSourceResourceSelectorChildren({
                         onChange={(checked) =>
                           onSelectChange(r, parents, checked)
                         }
-                        disabled={isChecked || fullySelected}
+                        disabled={isChecked || fullySelected || !checkable}
                       />
                     )}
                   </div>
