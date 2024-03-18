@@ -32,6 +32,7 @@ export type AssistantBuilderTableConfiguration = {
   workspaceId: string;
   tableId: string;
   tableName: string;
+  connectorContentNodeInternalId?: string;
 };
 
 export type AssistantBuilderDataSourceConfigurations = Record<
