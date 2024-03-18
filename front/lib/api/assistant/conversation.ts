@@ -568,8 +568,8 @@ export async function getConversation(
         as: "agentMessage",
         required: false,
       },
-      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragment
-      // along with messgaes in one query). Only once we move to a MessageResource will we be able
+      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
+      // along with messages in one query). Only once we move to a MessageResource will we be able
       // to properly abstract this.
       {
         model: ContentFragmentModel,
