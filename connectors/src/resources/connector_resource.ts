@@ -1,5 +1,5 @@
-import type { ConnectorProvider, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, ReadonlyAttributesType, Result } from "@dust-tt/types";
+import { BaseResource, Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -7,7 +7,6 @@ import type {
   WhereOptions,
 } from "sequelize";
 
-import { BaseResource } from "@connectors/resources/base_resource";
 import type {
   ConnectorProviderModelMapping,
   ConnectorProviderStrategy,
@@ -15,7 +14,6 @@ import type {
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

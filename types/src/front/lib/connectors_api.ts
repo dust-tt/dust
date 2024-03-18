@@ -6,8 +6,8 @@ import {
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { WebCrawlerConfigurationType } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
-import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
+import { Err, Ok, Result } from "../../shared/result";
 
 const {
   CONNECTORS_API = "http://127.0.0.1:3002",
