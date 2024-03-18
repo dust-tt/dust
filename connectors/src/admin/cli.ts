@@ -4,17 +4,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import parseArgs from "minimist";
 
-import {
-  batch,
-  connectors,
-  github,
-  google_drive,
-  notion,
-  runCommand,
-  slack,
-  temporal,
-  webcrawler,
-} from "@connectors/lib/cli";
+import { runCommand } from "@connectors/lib/cli";
 
 const main = async () => {
   // set env var INTERACTIVE=1 to enable interactive mode

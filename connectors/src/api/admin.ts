@@ -1,18 +1,15 @@
-import {
-  AdminCommandSchema,
-  type AdminCommandType,
-  type AdminResponseType,
-  type WithConnectorsAPIErrorReponse,
+import type {
+  AdminCommandType,
+  AdminResponseType,
+  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
+import { AdminCommandSchema } from "@dust-tt/types";
 import type { Request, Response } from "express";
-
-import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import { errorFromAny } from "@connectors/lib/error";
-import logger from "@connectors/logger/logger";
-import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
+
+import { runCommand } from "@connectors/lib/cli";
+import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 const whitelistedCommands = [
   {
@@ -22,7 +19,7 @@ const whitelistedCommands = [
 ];
 
 const _adminAPIHandler = async (
-  req: Request<any, AdminResponseType, AdminCommandType>,
+  req: Request<Record<string, string>, AdminResponseType, AdminCommandType>,
   res: Response<WithConnectorsAPIErrorReponse<AdminResponseType>>
 ) => {
   const adminCommandValidation = AdminCommandSchema.decode(req.body);
@@ -60,6 +57,8 @@ const _adminAPIHandler = async (
 
   switch (req.method) {
     case "POST": {
+      const result = await runCommand(adminCommand);
+      return res.json(result);
     }
     default: {
       return apiError(req, res, {
