@@ -250,29 +250,64 @@ struct MistralTool {
     pub function: MistralToolFunction,
 }
 
+// There are at least 3 format of errors coming from Mistral:
+// ```
+// {
+//   "object":"error",
+//   "message":{
+//     "detail":[
+//       {
+//         "type":"enum",
+//         "loc":["body","messages",3,"role"],
+//         "msg":"Input should be 'system', 'user' or 'assistant'",
+//         "input":"tool",
+//         "ctx":{"expected":"'system', 'user' or 'assistant'"}
+//       }
+//     ]
+//   },
+//   "type":"invalid_request_error",
+//   "param":null,
+//   "code":null
+// }
+//
+// {
+//   "param":null,
+//   "code":2201,
+//   "type":"invalid_request_filter",
+//   "message":"Request body is not a valid query",
+//   "object":"error"
+// }
+//
+// {
+//   "object":"error",
+//   "message":"Expected last role to be user but got assistant",
+//   "type":"invalid_request_error",
+//   "param":null,
+//   "code":null
+// }
+// ```
+// So we just take message as a Value and dump it for now. A bit ugly but easy.
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct MistralAPIError {
     #[serde(alias = "type")]
     pub _type: Option<String>,
-    pub code: Option<String>,
-    pub message: String,
+    // pub code: Option<String>, (can be number or string)
+    pub message: Value,
     pub object: Option<String>,
     pub param: Option<String>,
 }
 
 impl MistralAPIError {
     pub fn message(&self) -> String {
-        match self._type.as_ref() {
-            Some(t) => format!("MistralAIError: [{}] {}", t, self.message),
-            None => format!("MistralAIError: {}", self.message),
-        }
+        self.message.to_string()
     }
 
     pub fn retryable(&self) -> bool {
         match self.object.as_ref() {
             Some(o) => match o.as_str() {
                 "error" => match self._type {
-                    Some(_) => self.message.contains("retry"),
+                    Some(_) => self.message().contains("retry"),
                     None => false,
                 },
                 _ => false,
