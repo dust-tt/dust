@@ -14,7 +14,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, getSanitizedHeaders, isSlugified, Ok } from "@dust-tt/types";
-import { CsvError, parse } from "csv-parse/sync";
+import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -210,6 +210,7 @@ export default function TableUpsert({
             return new Err(null);
           }
         }
+
         return new Ok(null);
       })();
 
