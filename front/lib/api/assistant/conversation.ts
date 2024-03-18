@@ -1988,11 +1988,11 @@ async function isMessagesLimitReached({
   plan: PlanType;
   subscription: SubscriptionType;
 }): Promise<boolean> {
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
-
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
   if (isTrial(subscription)) {
     const remaining = await rateLimiter({
