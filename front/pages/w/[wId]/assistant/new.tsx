@@ -11,7 +11,6 @@ import {
   RobotSharedIcon,
 } from "@dust-tt/sparkle";
 import type {
-  AgentMention,
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
