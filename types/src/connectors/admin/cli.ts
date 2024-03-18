@@ -215,3 +215,17 @@ export const TemporalUnprocessedWorkflowsResponseSchema = t.type({
 export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
   typeof TemporalUnprocessedWorkflowsResponseSchema
 >;
+
+export const AdminResponseSchema = t.union([
+  AdminSuccessResponseSchema,
+  NotionRestartAllResponseSchema,
+  NotionUpsertResponseSchema,
+  NotionSearchPagesResponseSchema,
+  NotionCheckUrlResponseSchema,
+  NotionMeResponseSchema,
+  GoogleDriveCheckFileResponseSchema,
+  TemporalCheckQueueResponseSchema,
+  TemporalUnprocessedWorkflowsResponseSchema,
+]);
+
+export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
