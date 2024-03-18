@@ -8,9 +8,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class DataSource extends Model<
   InferAttributes<DataSource>,
@@ -84,7 +84,7 @@ DataSource.init(
   },
   {
     modelName: "data_source",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId", "name"], unique: true }],
   }
 );

@@ -6,7 +6,7 @@ const { FRONT_DATABASE_URI } = process.env;
 
 const acquireAttempts = new WeakMap();
 
-export const front_sequelize = new Sequelize(FRONT_DATABASE_URI as string, {
+export const frontSequelize = new Sequelize(FRONT_DATABASE_URI as string, {
   pool: {
     // default is 5
     max: 50,

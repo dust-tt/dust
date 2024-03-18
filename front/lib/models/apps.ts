@@ -8,8 +8,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class App extends Model<
   InferAttributes<App>,
@@ -78,7 +78,7 @@ App.init(
   },
   {
     modelName: "app",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "visibility"] },
@@ -132,7 +132,7 @@ Provider.init(
   },
   {
     modelName: "provider",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId"] }],
   }
 );
@@ -187,7 +187,7 @@ Dataset.init(
   },
   {
     modelName: "dataset",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId", "appId", "name"] }],
   }
 );
@@ -247,7 +247,7 @@ Clone.init(
   },
   {
     modelName: "clone",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 Clone.belongsTo(App, {
@@ -304,7 +304,7 @@ Run.init(
   },
   {
     modelName: "run",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "appId", "runType", "createdAt"] },
       { unique: true, fields: ["dustRunId"] },

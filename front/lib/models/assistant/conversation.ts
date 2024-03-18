@@ -1,6 +1,5 @@
 import type {
   AgentMessageStatus,
-  ContentFragmentContentType,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
@@ -14,12 +13,13 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
 
 export class Conversation extends Model<
   InferAttributes<Conversation>,
@@ -75,7 +75,7 @@ Conversation.init(
         fields: ["sId"],
       },
     ],
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 
@@ -128,7 +128,7 @@ ConversationParticipant.init(
   },
   {
     modelName: "conversation_participant",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       {
         fields: ["userId"],
@@ -218,7 +218,7 @@ UserMessage.init(
   },
   {
     modelName: "user_message",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 
@@ -310,7 +310,7 @@ AgentMessage.init(
         fields: ["agentRetrievalActionId"],
       },
     ],
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
         const actionsTypes: (keyof AgentMessage)[] = [
@@ -352,90 +352,6 @@ AgentTablesQueryAction.hasOne(AgentMessage, {
 });
 AgentMessage.belongsTo(AgentTablesQueryAction, {
   foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no Tables Query action set for this Agent
-});
-
-export class ContentFragment extends Model<
-  InferAttributes<ContentFragment>,
-  InferCreationAttributes<ContentFragment>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare title: string;
-  declare content: string;
-  declare url: string | null;
-  declare contentType: ContentFragmentContentType;
-
-  declare userContextUsername: string | null;
-  declare userContextFullName: string | null;
-  declare userContextEmail: string | null;
-  declare userContextProfilePictureUrl: string | null;
-
-  declare userId: ForeignKey<User["id"]> | null;
-}
-
-ContentFragment.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    title: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    url: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    contentType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    userContextProfilePictureUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    userContextUsername: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    userContextFullName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    userContextEmail: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "content_fragment",
-    sequelize: front_sequelize,
-  }
-);
-
-User.hasMany(ContentFragment, {
-  foreignKey: { name: "userId", allowNull: true }, // null = ContentFragment is not associated with a user
-});
-ContentFragment.belongsTo(User, {
-  foreignKey: { name: "userId", allowNull: true },
 });
 
 export class Message extends Model<
@@ -503,7 +419,7 @@ Message.init(
   },
   {
     modelName: "message",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       {
         unique: true,
@@ -620,7 +536,7 @@ MessageReaction.init(
   },
   {
     modelName: "message_reaction",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       {
         unique: true,
@@ -686,7 +602,7 @@ Mention.init(
   },
   {
     modelName: "mention",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       {
         fields: ["messageId"],

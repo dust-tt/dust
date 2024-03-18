@@ -8,9 +8,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import type { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class Workspace extends Model<
   InferAttributes<Workspace>,
@@ -71,7 +71,7 @@ Workspace.init(
   },
   {
     modelName: "workspace",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ unique: true, fields: ["sId"] }],
   }
 );
@@ -117,7 +117,7 @@ WorkspaceHasDomain.init(
   },
   {
     modelName: "workspace_has_domains",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ unique: true, fields: ["domain"] }],
   }
 );
@@ -164,7 +164,7 @@ Membership.init(
   },
   {
     modelName: "membership",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["userId", "role"] }],
   }
 );
@@ -229,7 +229,7 @@ MembershipInvitation.init(
   },
   {
     modelName: "membership_invitation",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["workspaceId", "status"] }],
   }
 );
@@ -291,7 +291,7 @@ Key.init(
   },
   {
     modelName: "keys",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["secret"] },
       { fields: ["userId"] },

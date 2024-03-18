@@ -16,12 +16,12 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 /**
  * Configuration of Agent generation.
@@ -76,7 +76,7 @@ AgentGenerationConfiguration.init(
   },
   {
     modelName: "agent_generation_configuration",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 
@@ -174,7 +174,7 @@ AgentConfiguration.init(
   },
   {
     modelName: "agent_configuration",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId"] },
       { fields: ["workspaceId", "name"] },
@@ -314,7 +314,7 @@ GlobalAgentSettings.init(
   },
   {
     modelName: "global_agent_settings",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId"] },
       { fields: ["workspaceId", "agentId"], unique: true },
@@ -375,7 +375,7 @@ AgentUserRelation.init(
   },
   {
     modelName: "agent_user_relation",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "userId"] },
       {

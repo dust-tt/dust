@@ -7,8 +7,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class FeatureFlag extends Model<
   InferAttributes<FeatureFlag>,
@@ -46,7 +46,7 @@ FeatureFlag.init(
     },
   },
   {
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     modelName: "feature_flags",
     indexes: [
       {

@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { QueryTypes } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "./resources/storage";
 
 export interface WorkpsaceUsageQueryResult {
   createdAt: string;
@@ -23,7 +23,7 @@ export async function unsafeGetUsageData(
   endDate: Date,
   wId: string
 ): Promise<string> {
-  const results = await front_sequelize.query<WorkpsaceUsageQueryResult>(
+  const results = await frontSequelize.query<WorkpsaceUsageQueryResult>(
     `
       SELECT
         TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",

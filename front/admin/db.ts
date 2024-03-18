@@ -44,10 +44,10 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
-import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
 
 async function main() {
   await User.sync({ alter: true });

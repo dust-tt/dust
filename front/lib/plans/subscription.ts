@@ -7,7 +7,6 @@ import type {
 import { v4 as uuidv4 } from "uuid";
 
 import type { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
@@ -28,6 +27,7 @@ import {
   countActiveUsersInWorkspaceSince,
 } from "@app/lib/plans/workspace_usage";
 import { redisClient } from "@app/lib/redis";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -112,7 +112,7 @@ export const internalSubscribeWorkspaceToFreeNoPlan = async ({
   }
   const now = new Date();
 
-  return front_sequelize.transaction(async (t) => {
+  return frontSequelize.transaction(async (t) => {
     // We end the active subscription if any
     const activeSubscription = await Subscription.findOne({
       where: { workspaceId: workspace.id, status: "active" },
@@ -164,7 +164,7 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
 
   const now = new Date();
 
-  return front_sequelize.transaction(async (t) => {
+  return frontSequelize.transaction(async (t) => {
     // We end the active subscription if any
     const activeSubscription = await Subscription.findOne({
       where: { workspaceId: workspace.id, status: "active" },
@@ -237,7 +237,7 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
     );
   }
 
-  return front_sequelize.transaction(async (t) => {
+  return frontSequelize.transaction(async (t) => {
     // We end the active subscription if any
     if (activeSubscription) {
       await activeSubscription.update(
@@ -316,7 +316,7 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
     return invitation;
   }
 
-  const model = await front_sequelize.transaction(async (t) => {
+  const model = await frontSequelize.transaction(async (t) => {
     if (invitation) {
       await PlanInvitation.destroy({
         where: { workspaceId: owner.id, consumedAt: null },

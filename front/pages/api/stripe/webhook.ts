@@ -13,7 +13,6 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { deleteDataSource } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   sendAdminDowngradeTooMuchDataEmail,
   sendAdminSubscriptionPaymentFailedEmail,
@@ -30,6 +29,7 @@ import {
 } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -161,7 +161,7 @@ async function handler(
               );
             }
 
-            await front_sequelize.transaction(async (t) => {
+            await frontSequelize.transaction(async (t) => {
               const activeSubscription = await Subscription.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [

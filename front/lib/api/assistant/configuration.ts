@@ -34,7 +34,6 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
@@ -52,6 +51,7 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -793,7 +793,7 @@ export async function createAgentConfiguration(
   let listStatusOverride: AgentUserListStatus | null = null;
 
   try {
-    const agent = await front_sequelize.transaction(
+    const agent = await frontSequelize.transaction(
       async (t): Promise<AgentConfiguration> => {
         if (agentConfigurationId) {
           const [existing, userRelation] = await Promise.all([
@@ -1060,7 +1060,7 @@ export async function createAgentActionConfiguration(
   }
 
   if (action.type === "retrieval_configuration") {
-    return front_sequelize.transaction(async (t) => {
+    return frontSequelize.transaction(async (t) => {
       const retrievalConfig = await AgentRetrievalConfiguration.create(
         {
           sId: generateModelSId(),
@@ -1113,7 +1113,7 @@ export async function createAgentActionConfiguration(
       appId: action.appId,
     };
   } else if (action.type === "tables_query_configuration") {
-    return front_sequelize.transaction(async (t) => {
+    return frontSequelize.transaction(async (t) => {
       const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
         {
           sId: generateModelSId(),

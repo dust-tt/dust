@@ -1,6 +1,6 @@
 import sgMail from "@sendgrid/mail";
 
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 const { SENDGRID_API_KEY = "", LIVE = false } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);
@@ -29,9 +29,9 @@ export const sendAPIUserEmail = async ({
 };
 
 async function main() {
-  const [rows] = await front_sequelize.query(
+  const [rows] = await frontSequelize.query(
     `select max(ws.name) ws_name, max(ws."sId") ws_sid, u.name user_name, u.email user_email, u.id user_id
-    from 
+    from
         agent_generation_configurations agc
         inner join agent_configurations ac on ac."generationConfigurationId" = agc.id
         inner join workspaces ws on ws.id = ac."workspaceId"
