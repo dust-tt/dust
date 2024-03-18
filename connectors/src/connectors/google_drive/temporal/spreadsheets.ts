@@ -4,6 +4,7 @@ import {
   InvalidStructuredDataHeaderError,
   makeStructuredDataTableName,
 } from "@dust-tt/types";
+import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
@@ -367,7 +368,15 @@ export async function syncSpreadSheet(
   oauth2client: OAuth2Client,
   connectorId: ModelId,
   file: GoogleDriveObjectType
-): Promise<boolean> {
+): Promise<
+  | {
+      isSupported: false;
+    }
+  | {
+      isSupported: true;
+      skipReason?: string;
+    }
+> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Connector not found.");
@@ -377,31 +386,23 @@ export async function syncSpreadSheet(
     connectorId,
   };
 
-  logger.info(
-    {
-      ...loggerArgs,
-      spreadsheet: {
-        id: file.id,
-        size: file.size,
-      },
+  const localLogger = logger.child({
+    ...loggerArgs,
+    spreadsheet: {
+      id: file.id,
+      size: file.size,
     },
-    "[Spreadsheet] Syncing Google Spreadsheet."
-  );
+  });
+
+  localLogger.info("[Spreadsheet] Syncing Google Spreadsheet.");
 
   // Avoid import attempts for sheets exceeding the max size due to Node constraints.
   if (file.size && file.size > MAX_FILE_SIZE) {
-    logger.info(
-      {
-        ...loggerArgs,
-        spreadsheet: {
-          id: file.id,
-          size: file.size,
-        },
-      },
+    localLogger.info(
       "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
     );
 
-    return false;
+    return { isSupported: false };
   }
 
   const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
@@ -424,7 +425,36 @@ export async function syncSpreadSheet(
     }
   };
 
-  const spreadsheet = await getSpreadsheet();
+  let internalErrorsCount = 0;
+  const maxInternalErrors = 3;
+  let spreadsheet: Awaited<ReturnType<typeof getSpreadsheet>>;
+  // If we consistently get 500 Internal Server Error from Google Sheets after 20 activity failures, we skip the file.
+  for (;;) {
+    try {
+      spreadsheet = await getSpreadsheet();
+      break;
+    } catch (err) {
+      if (err instanceof Error && "code" in err && err.code === 500) {
+        internalErrorsCount++;
+      } else {
+        throw err;
+      }
+
+      if (internalErrorsCount > maxInternalErrors) {
+        if (Context.current().info.attempt > 20) {
+          localLogger.info(
+            "[Spreadsheet] Consistently getting 500 Internal Server Error from Google Sheets, skipping further processing."
+          );
+          return {
+            isSupported: true,
+            skipReason: "google_internal_server_error",
+          };
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
 
   const sheets = await getAllSheetsFromSpreadSheet(
     sheetsAPI,
@@ -464,7 +494,7 @@ export async function syncSpreadSheet(
     });
   }
 
-  return true;
+  return { isSupported: true };
 }
 
 async function deleteSheetForSpreadsheet(
