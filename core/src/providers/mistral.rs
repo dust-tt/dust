@@ -119,7 +119,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
+        let mut mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
         // `name` is taken into account by Mistral only for tool roles. We therefore inject it for
@@ -127,6 +127,20 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
         // account there. For `assistant` message we don't inject it to avoid having the model
         // injecting similar prefixes.
         let meta_prompt = match cm.role {
+            ChatMessageRole::Function => match cm.name.as_ref() {
+                // We have a very special cases for our content attachments. We inject them as
+                // function messages in the conversation but Mistral does not support having a tool
+                // message followed by a `user` message. So we cast them to a `user` message with a
+                // meta prompt.
+                Some(name)
+                    if name == "inject_slack_thread_content"
+                        || name == "inject_file_attachment" =>
+                {
+                    mistral_role = MistralChatMessageRole::User;
+                    format!("[tool: {}] ", name)
+                }
+                _ => String::from(""),
+            },
             ChatMessageRole::User => match cm.name.as_ref() {
                 Some(name) => format!("[user: {}] ", name), // Include space here.
                 None => String::from(""),
