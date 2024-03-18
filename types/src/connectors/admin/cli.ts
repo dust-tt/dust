@@ -1,5 +1,7 @@
 import * as t from "io-ts";
 
+import { ParsedNotionDatabaseSchema } from "../notion";
+
 export const ConnectorsCommandSchema = t.type({
   majorCommand: t.literal("connectors"),
   command: t.union([
@@ -96,7 +98,7 @@ export const TemporalCommandSchema = t.type({
 
 export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
 
-export const PokeAdminCommandSchema = t.union([
+export const AdminCommandSchema = t.union([
   ConnectorsCommandSchema,
   GithubCommandSchema,
   NotionCommandSchema,
@@ -107,4 +109,109 @@ export const PokeAdminCommandSchema = t.union([
   TemporalCommandSchema,
 ]);
 
-export type PokeAdminCommandType = t.TypeOf<typeof PokeAdminCommandSchema>;
+export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
+
+export const AdminSuccessResponseSchema = t.type({
+  success: t.literal(true),
+});
+
+export type AdminSuccessResponseType = t.TypeOf<
+  typeof AdminSuccessResponseSchema
+>;
+
+export const NotionRestartAllResponseSchema = t.type({
+  restartSuccesses: t.number,
+  restartFailures: t.number,
+});
+
+export type NotionRestartAllResponseType = t.TypeOf<
+  typeof NotionRestartAllResponseSchema
+>;
+
+export const NotionUpsertResponseSchema = t.type({
+  workflowId: t.string,
+  workflowUrl: t.union([t.string, t.undefined]),
+});
+
+export type NotionUpsertResponseType = t.TypeOf<
+  typeof NotionUpsertResponseSchema
+>;
+
+export const NotionSearchPagesResponseSchema = t.type({
+  pages: t.array(
+    t.type({
+      id: t.string,
+      title: t.union([t.string, t.undefined]),
+      type: t.union([t.literal("page"), t.literal("database")]),
+      isSkipped: t.boolean,
+      isFull: t.boolean,
+    })
+  ),
+});
+
+export type NotionSearchPagesResponseType = t.TypeOf<
+  typeof NotionSearchPagesResponseSchema
+>;
+
+export const NotionCheckUrlResponseSchema = t.union([
+  t.type({
+    page: t.UnknownRecord, // notion type, can't be iots'd
+    db: t.null,
+  }),
+  t.type({
+    page: t.null,
+    db: ParsedNotionDatabaseSchema,
+  }),
+  t.type({
+    page: t.null,
+    db: t.null,
+  }),
+]);
+
+export type NotionCheckUrlResponseType = t.TypeOf<
+  typeof NotionCheckUrlResponseSchema
+>;
+
+export const NotionMeResponseSchema = t.type({
+  me: t.UnknownRecord, // notion type, can't be iots'd
+  botOwner: t.UnknownRecord, // notion type, can't be iots'd
+});
+
+export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
+
+export const GoogleDriveCheckFileResponseSchema = t.type({
+  status: t.number,
+  // all literals from js `typeof`
+  type: t.union([
+    t.literal("undefined"),
+    t.literal("object"),
+    t.literal("boolean"),
+    t.literal("number"),
+    t.literal("string"),
+    t.literal("function"),
+    t.literal("symbol"),
+    t.literal("bigint"),
+  ]),
+  content: t.unknown, // google drive type, can't be iots'd
+});
+
+export type GoogleDriveCheckFileResponseType = t.TypeOf<
+  typeof GoogleDriveCheckFileResponseSchema
+>;
+
+export const TemporalCheckQueueResponseSchema = t.type({
+  taskQueue: t.UnknownRecord, // temporal type, can't be iots'd
+});
+
+export type TemporalCheckQueueResponseType = t.TypeOf<
+  typeof TemporalCheckQueueResponseSchema
+>;
+
+export const TemporalUnprocessedWorkflowsResponseSchema = t.type({
+  queuesAndPollers: t.array(t.type({ queue: t.string, pollers: t.number })),
+  unprocessedQueues: t.array(t.string),
+});
+
+export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
+  typeof TemporalUnprocessedWorkflowsResponseSchema
+>;

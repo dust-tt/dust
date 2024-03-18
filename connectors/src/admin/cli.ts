@@ -1,16 +1,25 @@
 import type {
+  AdminCommandType,
+  AdminSuccessResponseType,
   BatchCommandType,
   ConnectorsCommandType,
   GithubCommandType,
+  GoogleDriveCheckFileResponseType,
   GoogleDriveCommandType,
+  NotionCheckUrlResponseType,
   NotionCommandType,
-  PokeAdminCommandType,
+  NotionMeResponseType,
+  NotionRestartAllResponseType,
+  NotionSearchPagesResponseType,
+  NotionUpsertResponseType,
   Result,
   SlackCommandType,
+  TemporalCheckQueueResponseType,
   TemporalCommandType,
+  TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@dust-tt/types";
-import { isConnectorError, PokeAdminCommandSchema } from "@dust-tt/types";
+import { AdminCommandSchema, isConnectorError } from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -100,7 +109,10 @@ async function getConnectorOrThrow({
   return connector;
 }
 
-const connectors = async ({ command, args }: ConnectorsCommandType) => {
+const connectors = async ({
+  command,
+  args,
+}: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
@@ -127,18 +139,18 @@ const connectors = async ({ command, args }: ConnectorsCommandType) => {
   switch (command) {
     case "stop": {
       await throwOnError(STOP_CONNECTOR_BY_TYPE[provider](connector.id));
-      return;
+      return { success: true };
     }
     case "delete": {
       await throwOnError(
         DELETE_CONNECTOR_BY_TYPE[provider](connector.id, true)
       );
       await terminateAllWorkflowsForConnectorId(connector.id);
-      return;
+      return { success: true };
     }
     case "resume": {
       await throwOnError(RESUME_CONNECTOR_BY_TYPE[provider](connector.id));
-      return;
+      return { success: true };
     }
     case "full-resync": {
       let fromTs: number | null = null;
@@ -148,7 +160,7 @@ const connectors = async ({ command, args }: ConnectorsCommandType) => {
       await throwOnError(
         SYNC_CONNECTOR_BY_TYPE[provider](connector.id, fromTs)
       );
-      return;
+      return { success: true };
     }
 
     case "set-error": {
@@ -160,20 +172,23 @@ const connectors = async ({ command, args }: ConnectorsCommandType) => {
       }
       connector.errorType = args.error;
       await connector.save();
-      return;
+      return { success: true };
     }
 
     case "restart": {
       await throwOnError(STOP_CONNECTOR_BY_TYPE[provider](connector.id));
       await throwOnError(RESUME_CONNECTOR_BY_TYPE[provider](connector.id));
-      return;
+      return { success: true };
     }
     default:
       throw new Error(`Unknown workspace command: ${command}`);
   }
 };
 
-const github = async ({ command, args }: GithubCommandType) => {
+const github = async ({
+  command,
+  args,
+}: GithubCommandType): Promise<AdminSuccessResponseType> => {
   const logger = topLogger.child({ majorCommand: "github", command, args });
   switch (command) {
     case "resync-repo": {
@@ -203,9 +218,7 @@ const github = async ({ command, args }: GithubCommandType) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
         );
       }
-      logger.info(
-        "[Poke Admin] Resyncing repo " + args.owner + "/" + args.repo
-      );
+      logger.info("[Admin] Resyncing repo " + args.owner + "/" + args.repo);
 
       const installationId = connector.connectionId;
 
@@ -225,7 +238,7 @@ const github = async ({ command, args }: GithubCommandType) => {
         repoId
       );
 
-      return;
+      return { success: true };
     }
 
     case "code-sync": {
@@ -279,14 +292,24 @@ const github = async ({ command, args }: GithubCommandType) => {
         syncCodeOnly: true,
       });
 
-      return;
+      return { success: true };
     }
     default:
       throw new Error("Unknown github command: " + command);
   }
 };
 
-const notion = async ({ command, args }: NotionCommandType) => {
+const notion = async ({
+  command,
+  args,
+}: NotionCommandType): Promise<
+  | AdminSuccessResponseType
+  | NotionRestartAllResponseType
+  | NotionUpsertResponseType
+  | NotionSearchPagesResponseType
+  | NotionCheckUrlResponseType
+  | NotionMeResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "notion", command, args });
   switch (command) {
     case "restart-all": {
@@ -321,7 +344,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
           completed === connectors.length
         ) {
           logger.info(
-            `[Poke Admin] completed ${completed} / ${connectors.length} (${failed} failed)`
+            `[Admin] completed ${completed} / ${connectors.length} (${failed} failed)`
           );
         }
       };
@@ -337,7 +360,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
 
       await Promise.all(promises);
 
-      return;
+      return { restartSuccesses: success, restartFailures: failed };
     }
 
     case "skip-page": {
@@ -374,18 +397,16 @@ const notion = async ({ command, args }: NotionCommandType) => {
 
       if (args.remove) {
         if (existingPage) {
-          logger.info(
-            `[Poke Admin] Removing skipped page reason for ${pageId}`
-          );
+          logger.info(`[Admin] Removing skipped page reason for ${pageId}`);
           await existingPage.update({
             skipReason: null,
           });
         } else {
           logger.info(
-            `[Poke Admin] Page ${pageId} is not skipped, nothing to remove`
+            `[Admin] Page ${pageId} is not skipped, nothing to remove`
           );
         }
-        return;
+        return { success: true };
       }
 
       const skipReason = args.reason || "blacklisted";
@@ -402,7 +423,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
           lastSeenTs: new Date(),
         });
       }
-      return;
+      return { success: true };
     }
 
     case "skip-database": {
@@ -443,39 +464,39 @@ const notion = async ({ command, args }: NotionCommandType) => {
       if (args.remove) {
         if (existingDatabase) {
           logger.info(
-            `[Poke Admin] Removing skipped database reason for ${databaseId}`
+            `[Admin] Removing skipped database reason for ${databaseId}`
           );
           await existingDatabase.update({
             skipReason: null,
           });
         } else {
           logger.info(
-            `[Poke Admin] Database ${databaseId} is not skipped, nothing to remove`
+            `[Admin] Database ${databaseId} is not skipped, nothing to remove`
           );
         }
-        return;
+        return { success: true };
       }
 
       if (existingDatabase) {
         if (args.reason) {
           logger.info(
-            `[Poke Admin] Updating existing skipped database ${databaseId} with skip reason ${args.reason}`
+            `[Admin] Updating existing skipped database ${databaseId} with skip reason ${args.reason}`
           );
           await existingDatabase.update({
             skipReason: args.reason,
           });
-          return;
+          return { success: true };
         }
         logger.info(
-          `[Poke Admin] Database ${databaseId} is already skipped with reason ${existingDatabase.skipReason}`
+          `[Admin] Database ${databaseId} is already skipped with reason ${existingDatabase.skipReason}`
         );
-        return;
+        return { success: true };
       }
 
       const skipReason = args.reason || "blacklisted";
 
       logger.info(
-        `[Poke Admin] Creating new skipped database ${databaseId} with reason ${skipReason}`
+        `[Admin] Creating new skipped database ${databaseId} with reason ${skipReason}`
       );
 
       await NotionDatabase.create({
@@ -485,7 +506,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
         lastSeenTs: new Date(),
       });
 
-      return;
+      return { success: true };
     }
     case "upsert-page": {
       if (!args.wId) {
@@ -507,7 +528,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
-      logger.info({ pageId }, "[Poke Admin] Upserting page");
+      logger.info({ pageId }, "[Admin] Upserting page");
       const connectorId = connector.id;
       const client = await getTemporalClient();
       const wf = await client.workflow.start(upsertPageWorkflow, {
@@ -530,13 +551,18 @@ const notion = async ({ command, args }: NotionCommandType) => {
       const wfId = wf.workflowId;
       const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
       if (!temporalNamespace) {
-        logger.info(`[Poke Admin] Started temporal workflow with id: ${wfId}`);
+        logger.info(`[Admin] Started temporal workflow with id: ${wfId}`);
       } else {
         logger.info(
-          `[Poke Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+          `[Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
-      break;
+      return {
+        workflowId: wfId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+          : undefined,
+      };
     }
 
     case "upsert-database": {
@@ -559,7 +585,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
         );
       }
-      logger.info({ databaseId }, "[Poke Admin] Upserting database");
+      logger.info({ databaseId }, "[Admin] Upserting database");
       const connectorId = connector.id;
       const client = await getTemporalClient();
       const wf = await client.workflow.start(upsertDatabaseWorkflow, {
@@ -583,13 +609,18 @@ const notion = async ({ command, args }: NotionCommandType) => {
       const wfId = wf.workflowId;
       const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
       if (!temporalNamespace) {
-        logger.info(`[Poke Admin] Started temporal workflow with id: ${wfId}`);
+        logger.info(`[Admin] Started temporal workflow with id: ${wfId}`);
       } else {
         logger.info(
-          `[Poke Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+          `[Admin] Started temporal workflow with id: ${wfId} - https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
         );
       }
-      break;
+      return {
+        workflowId: wfId,
+        workflowUrl: temporalNamespace
+          ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${wfId}`
+          : undefined,
+      };
     }
 
     case "search-pages": {
@@ -610,9 +641,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
         query,
       });
 
-      console.table(pages);
-
-      break;
+      return { pages };
     }
 
     case "check-url": {
@@ -633,9 +662,7 @@ const notion = async ({ command, args }: NotionCommandType) => {
         url,
       });
 
-      console.log(r);
-
-      break;
+      return r;
     }
 
     case "me": {
@@ -654,13 +681,10 @@ const notion = async ({ command, args }: NotionCommandType) => {
         auth: notionAccessToken,
       });
       const me = await notionClient.users.me({});
-      logger.info("[Poke Admin] " + JSON.stringify(me));
-      logger.info(
-        // @ts-expect-error untyped bot field
-        "[Poke Admin] " + JSON.stringify(me.bot.owner)
-      );
-      break;
+      // @ts-expect-error untyped bot field
+      return { me, botOwner: me.bot.owner };
     }
+
     case "stop-all-garbage-collectors": {
       const connectors = await ConnectorModel.findAll({
         where: {
@@ -671,24 +695,28 @@ const notion = async ({ command, args }: NotionCommandType) => {
         {
           connectorsCount: connectors.length,
         },
-        "[Poke Admin] Stopping all notion garbage collectors"
+        "[Admin] Stopping all notion garbage collectors"
       );
       for (const connector of connectors) {
         logger.info(
           { connectorId: connector.id },
-          "[Poke Admin] Stopping notion garbage collector"
+          "[Admin] Stopping notion garbage collector"
         );
         await stopNotionGarbageCollectorWorkflow(connector.id);
       }
-      return;
+      return { success: true };
     }
 
     default:
       throw new Error("Unknown notion command: " + command);
   }
 };
-
-const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
+const google_drive = async ({
+  command,
+  args,
+}: GoogleDriveCommandType): Promise<
+  AdminSuccessResponseType | GoogleDriveCheckFileResponseType
+> => {
   const logger = topLogger.child({
     majorCommand: "google_drive",
     command,
@@ -706,7 +734,7 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
           GARBAGE_COLLECT_BY_TYPE[connector.type](connector.id)
         );
       }
-      return;
+      return { success: true };
     }
     case "check-file": {
       if (!args.connectorId) {
@@ -723,7 +751,7 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
           `Invalid or missing --fileType argument: ${args.fileType}`
         );
       }
-      logger.info("[Poke Admin] Checking gdrive file");
+      logger.info("[Admin] Checking gdrive file");
       const connector = await ConnectorResource.fetchById(args.connectorId);
       if (!connector) {
         throw new Error(`Connector ${args.connectorId} not found`);
@@ -740,15 +768,11 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
               : "application/vnd.google-apps.presentation"
           ],
       });
-      logger.info(
-        { content: res.data },
-        `[Poke Admin] Status: ${res.status}, Type: ${typeof res.data}`
-      );
-      return;
+      return { status: res.status, content: res.data, type: typeof res.data };
     }
     case "restart-google-webhooks": {
       await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
-      return;
+      return { success: true };
     }
     case "start-incremental-sync": {
       if (!args.wId) {
@@ -773,7 +797,7 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
       await throwOnError(
         launchGoogleDriveIncrementalSyncWorkflow(connector.id)
       );
-      return;
+      return { success: true };
     }
     case "skip-file": {
       if (!args.wId) {
@@ -819,7 +843,7 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
         });
       }
 
-      return;
+      return { success: true };
     }
     case "register-webhook": {
       // Re-register a webhook for a given connectors. Used for selected connectors who eneded up
@@ -854,14 +878,17 @@ const google_drive = async ({ command, args }: GoogleDriveCommandType) => {
           connectorId: connector.id,
         });
       }
-      return;
+      return { success: true };
     }
     default:
       throw new Error("Unknown google command: " + command);
   }
 };
 
-const slack = async ({ command, args }: SlackCommandType) => {
+const slack = async ({
+  command,
+  args,
+}: SlackCommandType): Promise<AdminSuccessResponseType> => {
   const logger = topLogger.child({ majorCommand: "slack", command, args });
   switch (command) {
     case "enable-bot": {
@@ -878,7 +905,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
       await throwOnError(toggleSlackbot(connector.id, true));
-      break;
+      return { success: true };
     }
 
     case "sync-channel": {
@@ -905,7 +932,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         maybeLaunchSlackSyncWorkflowForChannelId(connector.id, channelId)
       );
 
-      break;
+      return { success: true };
     }
 
     case "sync-thread": {
@@ -935,7 +962,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         )
       );
 
-      break;
+      return { success: true };
     }
 
     case "uninstall-for-unknown-team-ids": {
@@ -993,12 +1020,12 @@ const slack = async ({ command, args }: SlackCommandType) => {
             continue;
           }
           logger.info(
-            "[Poke Admin] Uninstalling Slack and cleaning connection id..."
+            "[Admin] Uninstalling Slack and cleaning connection id..."
           );
           await uninstallSlack(connection.connection_id);
         }
       }
-      break;
+      return { success: true };
     }
 
     case "whitelist-domains": {
@@ -1024,7 +1051,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
       const whitelistedDomainsArray = whitelistedDomains.split(",");
       // TODO(2024-01-10 flav) Add domain validation.
       logger.info(
-        `[Poke Admin] Whitelisting following domains for slack:\n- ${whitelistedDomainsArray.join(
+        `[Admin] Whitelisting following domains for slack:\n- ${whitelistedDomainsArray.join(
           "\n-"
         )}`
       );
@@ -1039,7 +1066,7 @@ const slack = async ({ command, args }: SlackCommandType) => {
         }
       );
 
-      break;
+      return { success: true };
     }
 
     default:
@@ -1047,7 +1074,10 @@ const slack = async ({ command, args }: SlackCommandType) => {
   }
 };
 
-const batch = async ({ command, args }: BatchCommandType) => {
+const batch = async ({
+  command,
+  args,
+}: BatchCommandType): Promise<AdminSuccessResponseType> => {
   const logger = topLogger.child({ majorCommand: "batch", command, args });
   switch (command) {
     case "full-resync": {
@@ -1080,8 +1110,8 @@ const batch = async ({ command, args }: BatchCommandType) => {
       });
 
       if (answer !== "y") {
-        logger.info("[Poke Admin] Cancelled");
-        return;
+        logger.info("[Admin] Cancelled");
+        return { success: true };
       }
 
       for (const connector of connectors) {
@@ -1089,26 +1119,35 @@ const batch = async ({ command, args }: BatchCommandType) => {
           SYNC_CONNECTOR_BY_TYPE[connector.type](connector.id, fromTs)
         );
         logger.info(
-          `[Poke Admin] Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
+          `[Admin] Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
         );
       }
-      return;
+      return { success: true };
     }
     default:
       throw new Error("Unknown batch command: " + command);
   }
 };
 
-const webcrawler = async ({ command }: WebcrawlerCommandType) => {
+const webcrawler = async ({
+  command,
+}: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
   switch (command) {
     case "start-scheduler": {
       await throwOnError(launchCrawlWebsiteSchedulerWorkflow());
-      break;
+      return { success: true };
     }
   }
 };
 
-const temporal = async ({ command, args }: TemporalCommandType) => {
+const temporal = async ({
+  command,
+  args,
+}: TemporalCommandType): Promise<
+  | AdminSuccessResponseType
+  | TemporalCheckQueueResponseType
+  | TemporalUnprocessedWorkflowsResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "temporal", command, args });
   switch (command) {
     case "check-queue": {
@@ -1121,8 +1160,8 @@ const temporal = async ({ command, args }: TemporalCommandType) => {
         namespace: process.env.TEMPORAL_NAMESPACE || "default",
         taskQueue: { name: q },
       });
-      logger.info({ describeTqRes }, "[Poke Admin] DescribeTqRes");
-      break;
+      logger.info({ describeTqRes }, "[Admin] DescribeTqRes");
+      return { taskQueue: describeTqRes.toJSON() };
     }
 
     case "find-unprocessed-workflows": {
@@ -1135,7 +1174,7 @@ const temporal = async ({ command, args }: TemporalCommandType) => {
         query: `ExecutionStatus="Running"`,
       });
       if (openWfRes.executions?.length) {
-        logger.info(`[Poke Admin] got ${openWfRes.executions.length} results`);
+        logger.info(`[Admin] got ${openWfRes.executions.length} results`);
         for (const x of openWfRes.executions) {
           if (x.taskQueue) {
             queues.add(x.taskQueue);
@@ -1143,17 +1182,27 @@ const temporal = async ({ command, args }: TemporalCommandType) => {
         }
       }
 
+      const queuesAndPollers = [];
       for (const q of queues) {
-        logger.info({ q }, "[Poke Admin] looking at queue");
         const qRes = await c.workflowService.describeTaskQueue({
           namespace: process.env.TEMPORAL_NAMESPACE || "default",
           taskQueue: { name: q },
         });
         logger.info(
           { qRes },
-          "[Poke Admin] Queue has " + qRes.pollers?.length + " pollers"
+          "[Admin] Queue has " + qRes.pollers?.length + " pollers"
         );
+        queuesAndPollers.push({
+          queue: q,
+          pollers: qRes.pollers?.length || 0,
+        });
       }
+      return {
+        queuesAndPollers,
+        unprocessedQueues: queuesAndPollers
+          .filter((q) => q.pollers === 0)
+          .map((q) => q.queue),
+      };
     }
   }
 };
@@ -1169,53 +1218,45 @@ const main = async () => {
 
   const [objectType, command] = argv._;
 
-  const pokeAdminCommandValidation = PokeAdminCommandSchema.decode({
+  const adminCommandValidation = AdminCommandSchema.decode({
     majorCommand: objectType,
     command,
     args: argv,
   });
 
-  if (isLeft(pokeAdminCommandValidation)) {
+  if (isLeft(adminCommandValidation)) {
     const pathError = reporter.formatValidationErrors(
-      pokeAdminCommandValidation.left
+      adminCommandValidation.left
     );
     throw new Error(`Invalid command: ${pathError}`);
   }
-  const pokeAdminCommand: PokeAdminCommandType =
-    pokeAdminCommandValidation.right;
+  const adminCommand: AdminCommandType = adminCommandValidation.right;
 
-  switch (pokeAdminCommand.majorCommand) {
+  switch (adminCommand.majorCommand) {
     case "connectors":
-      await connectors(pokeAdminCommand);
-      return;
+      return connectors(adminCommand);
     case "batch":
-      await batch(pokeAdminCommand);
-      return;
+      return batch(adminCommand);
     case "notion":
-      await notion(pokeAdminCommand);
-      return;
+      return notion(adminCommand);
     case "github":
-      await github(pokeAdminCommand);
-      return;
+      return github(adminCommand);
     case "google_drive":
-      await google_drive(pokeAdminCommand);
-      return;
+      return google_drive(adminCommand);
     case "slack":
-      await slack(pokeAdminCommand);
-      return;
+      return slack(adminCommand);
     case "webcrawler":
-      await webcrawler(pokeAdminCommand);
-      return;
+      return webcrawler(adminCommand);
     case "temporal":
-      await temporal(pokeAdminCommand);
-      return;
+      return temporal(adminCommand);
     default:
       throw new Error(`Unknown object type: ${objectType}`);
   }
 };
 
 main()
-  .then(() => {
+  .then((res) => {
+    console.log(JSON.stringify(res, null, 2));
     console.error("\x1b[32m%s\x1b[0m", `Done`);
     process.exit(0);
   })
