@@ -4,7 +4,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, getNotionDatabaseTableId, Ok } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
@@ -342,6 +342,7 @@ async function deleteNangoConnection(connectionId: NangoConnectionId) {
 export async function retrieveNotionConnectorPermissions({
   connectorId,
   parentInternalId,
+  viewType,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ContentNode[], Error>
 > {
@@ -384,7 +385,7 @@ export async function retrieveNotionConnectorPermissions({
       }),
     ]);
 
-    const expandable = childPage || childDB ? true : false;
+    const expandable = !!(childPage || childDB);
 
     return {
       provider: c.type,
@@ -398,12 +399,18 @@ export async function retrieveNotionConnectorPermissions({
       permission: "read",
       dustDocumentId: `notion-${page.notionPageId}`,
       lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+      dustTableId: null,
     };
   };
 
-  const pageNodes = await Promise.all(pages.map((p) => getPageNodes(p)));
+  let pageNodes = await Promise.all(pages.map((p) => getPageNodes(p)));
+  // In structured data mode, we remove leaf node pages
+  if (viewType === "tables") {
+    pageNodes = pageNodes.filter((p) => p.expandable);
+  }
 
   const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
+    const tableId = getNotionDatabaseTableId(db.notionDatabaseId);
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
@@ -416,6 +423,7 @@ export async function retrieveNotionConnectorPermissions({
       permission: "read",
       dustDocumentId: `notion-database-${db.notionDatabaseId}`,
       lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
+      dustTableId: db.structuredDataUpsertedTs ? tableId : null,
     };
   };
 
@@ -453,6 +461,7 @@ export async function retrieveNotionConnectorPermissions({
         permission: "read",
         dustDocumentId: null,
         lastUpdatedAt: null,
+        dustTableId: null,
       });
     }
   }
@@ -528,6 +537,7 @@ export async function retrieveNotionContentNodes(
     permission: "read",
     dustDocumentId: `notion-${page.notionPageId}`,
     lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+    dustTableId: null,
   }));
 
   const dbNodes: ContentNode[] = dbs.map((db) => ({
@@ -542,6 +552,7 @@ export async function retrieveNotionContentNodes(
     permission: "read",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    dustTableId: getNotionDatabaseTableId(db.notionDatabaseId),
   }));
 
   const contentNodes = pageNodes.concat(dbNodes);

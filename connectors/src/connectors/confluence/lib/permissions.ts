@@ -56,6 +56,7 @@ export function createContentNodeFromSpace(
     permission,
     dustDocumentId: null,
     lastUpdatedAt: null,
+    dustTableId: null,
   };
 }
 
@@ -79,6 +80,7 @@ export function createContentNodeFromPage(
     permission: "read",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    dustTableId: null,
   };
 }
 

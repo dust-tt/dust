@@ -47,6 +47,21 @@ const _getConnectorPermissions = async (
     }
   }
 
+  const viewType = req.query.viewType;
+  if (
+    !viewType ||
+    typeof viewType !== "string" ||
+    (viewType !== "tables" && viewType !== "documents")
+  ) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid viewType. Required: tables | documents",
+      },
+    });
+  }
+
   const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
     return apiError(req, res, {
@@ -65,6 +80,7 @@ const _getConnectorPermissions = async (
     connectorId: connector.id,
     parentInternalId,
     filterPermission,
+    viewType,
   });
 
   if (pRes.isErr()) {

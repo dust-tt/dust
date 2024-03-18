@@ -368,11 +368,13 @@ export async function retrieveIntercomConnectorPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
+      viewType: "documents",
     });
     const convosNodes = await retrieveIntercomConversationsPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
+      viewType: "documents",
     });
     const nodes = [...helpCenterNodes, ...convosNodes];
     return new Ok(nodes);
@@ -586,6 +588,7 @@ export async function retrieveIntercomContentNodes(
       permission: helpCenter.permission,
       dustDocumentId: null,
       lastUpdatedAt: null,
+      dustTableId: null,
     });
   }
   for (const collection of collections) {
@@ -605,6 +608,7 @@ export async function retrieveIntercomContentNodes(
       permission: collection.permission,
       dustDocumentId: null,
       lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
+      dustTableId: null,
     });
   }
   for (const article of articles) {
@@ -624,6 +628,7 @@ export async function retrieveIntercomContentNodes(
       permission: article.permission,
       dustDocumentId: null,
       lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
+      dustTableId: null,
     });
   }
   if (isAllTeams) {
@@ -638,6 +643,7 @@ export async function retrieveIntercomContentNodes(
       permission: "none",
       dustDocumentId: null,
       lastUpdatedAt: null,
+      dustTableId: null,
     });
   }
   for (const team of teams) {
@@ -652,6 +658,7 @@ export async function retrieveIntercomContentNodes(
       permission: team.permission,
       dustDocumentId: null,
       lastUpdatedAt: null,
+      dustTableId: null,
     });
   }
 

@@ -424,6 +424,7 @@ export async function retrieveSlackConnectorPermissions({
     permission: ch.permission,
     dustDocumentId: null,
     lastUpdatedAt: null,
+    dustTableId: null,
   }));
 
   resources.sort((a, b) => {
@@ -592,6 +593,7 @@ export async function retrieveSlackContentNodes(
     permission: ch.permission,
     dustDocumentId: null,
     lastUpdatedAt: null,
+    dustTableId: null,
   }));
 
   return new Ok(contentNodes);

@@ -43,6 +43,7 @@ export type APIErrorType =
   | "connector_update_error"
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
+  | "connector_provider_not_supported"
   | "conversation_not_found"
   | "agent_configuration_not_found"
   | "message_not_found"

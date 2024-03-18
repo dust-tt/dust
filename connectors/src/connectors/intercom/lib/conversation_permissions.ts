@@ -105,6 +105,7 @@ export async function retrieveIntercomConversationsPermissions({
     permission: "none",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    dustTableId: null,
   };
 
   const teamsWithReadPermission = await IntercomTeam.findAll({
@@ -134,6 +135,7 @@ export async function retrieveIntercomConversationsPermissions({
           permission: team.permission,
           dustDocumentId: null,
           lastUpdatedAt: null,
+          dustTableId: null,
         });
       });
     }
@@ -164,6 +166,7 @@ export async function retrieveIntercomConversationsPermissions({
           permission: isTeamInDb ? "read" : "none",
           dustDocumentId: null,
           lastUpdatedAt: null,
+          dustTableId: null,
         });
       });
     }

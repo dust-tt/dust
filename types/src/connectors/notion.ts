@@ -69,3 +69,20 @@ export const ParsedNotionDatabaseSchema = t.type({
 });
 
 export type ParsedNotionDatabase = t.TypeOf<typeof ParsedNotionDatabaseSchema>;
+// Returns the Table ID for a Notion database from the Notion-provided database ID.
+export function getNotionDatabaseTableId(notionDatabaseId: string): string {
+  return `notion-${notionDatabaseId}`;
+}
+
+// Recover the Content Node ID for a Notion database (which is also the notion-provided database ID)
+// from the Table ID.
+export function getNotionDatabaseContentNodeInternalIdFromTableId(
+  tableId: string
+): string {
+  if (!tableId.startsWith("notion-")) {
+    throw new Error(
+      `Invalid tableId format. Expected a tableId in the format notion-<databaseId>`
+    );
+  }
+  return tableId.replace("notion-", "");
+}

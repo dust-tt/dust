@@ -3,6 +3,8 @@ export * from "./connectors/api";
 export * from "./connectors/api_handlers/create_connector";
 export * from "./connectors/api_handlers/update_connector";
 export * from "./connectors/confluence";
+export * from "./connectors/content_nodes";
+export * from "./connectors/google_drive";
 export * from "./connectors/intercom";
 export * from "./connectors/notion";
 export * from "./connectors/webcrawler";
