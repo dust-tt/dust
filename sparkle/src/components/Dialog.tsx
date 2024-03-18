@@ -1,6 +1,7 @@
 import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
 import React, { Fragment } from "react";
 
+import { Spinner } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
@@ -26,6 +27,7 @@ export function Dialog({
   validateLabel = "Ok",
   validateVariant = "primary",
   title,
+  isSaving,
 }: ModalProps) {
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
@@ -66,16 +68,21 @@ export function Dialog({
                 <div className="s-text-base s-text-element-700">{children}</div>
                 <div className="s-flex s-w-full s-justify-end">
                   <Button.List>
-                    <Button
-                      label={cancelLabel}
-                      variant="tertiary"
-                      onClick={onCancel}
-                    />
-                    <Button
-                      label={validateLabel}
-                      variant={validateVariant}
-                      onClick={onValidate}
-                    />
+                    {!isSaving && (
+                      <>
+                        <Button
+                          label={cancelLabel}
+                          variant="tertiary"
+                          onClick={onCancel}
+                        />
+                        <Button
+                          label={validateLabel}
+                          variant={validateVariant}
+                          onClick={onValidate}
+                        />
+                      </>
+                    )}
+                    {isSaving && <Spinner />}
                   </Button.List>
                 </div>
               </HeadlessDialog.Panel>

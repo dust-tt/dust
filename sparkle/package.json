@@ -7,6 +7,7 @@
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",
+    "format": "prettier --write .",
     "lint": "eslint ."
   },
   "main": "dist/cjs/index.js",
