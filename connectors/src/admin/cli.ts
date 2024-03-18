@@ -46,21 +46,21 @@ const main = async () => {
 
   switch (adminCommand.majorCommand) {
     case "connectors":
-      return await connectors(adminCommand);
+      return connectors(adminCommand);
     case "batch":
-      return await batch(adminCommand);
+      return batch(adminCommand);
     case "notion":
-      return await notion(adminCommand);
+      return notion(adminCommand);
     case "github":
-      return await github(adminCommand);
+      return github(adminCommand);
     case "google_drive":
-      return await google_drive(adminCommand);
+      return google_drive(adminCommand);
     case "slack":
-      return await slack(adminCommand);
+      return slack(adminCommand);
     case "webcrawler":
-      return await webcrawler(adminCommand);
+      return webcrawler(adminCommand);
     case "temporal":
-      return await temporal(adminCommand);
+      return temporal(adminCommand);
     default:
       throw new Error(`Unknown object type: ${objectType}`);
   }
