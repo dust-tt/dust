@@ -29,10 +29,11 @@ export abstract class BaseResource<M extends Model> {
     this: BaseResourceConstructor<T, M> & {
       model: ModelStatic<M>;
     },
-    id: number | string
+    id: number | string,
+    transaction?: Transaction
   ): Promise<T | null> {
     const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
-    const blob = await this.model.findByPk(parsedId);
+    const blob = await this.model.findByPk(parsedId, { transaction });
     if (!blob) {
       return null;
     }
@@ -44,13 +45,15 @@ export abstract class BaseResource<M extends Model> {
   abstract delete(transaction?: Transaction): Promise<Result<undefined, Error>>;
 
   async update(
-    blob: Partial<Attributes<M>>
+    blob: Partial<Attributes<M>>,
+    transaction?: Transaction
   ): Promise<[affectedCount: number, affectedRows: M[]]> {
     return this.model.update(blob, {
       // @ts-expect-error TS cannot infer the presence of 'id' in Sequelize models, but our models always include 'id'.
       where: {
         id: this.id,
       },
+      transaction,
     });
   }
 }

@@ -1,9 +1,14 @@
-import type { Result } from "@dust-tt/types";
+import type { ContentFragmentType, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
+import type { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -16,37 +21,62 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   static model: ModelStatic<ContentFragmentModel> = ContentFragmentModel;
 
   // TODO(2024-02-20 flav): Delete Model from the constructor, once `update` has been migrated.
-  constructor(blob: Attributes<ContentFragmentModel>) {
+  constructor(
+    model: ModelStatic<ContentFragmentModel>,
+    blob: Attributes<ContentFragmentModel>
+  ) {
     super(ContentFragmentModel, blob);
   }
 
-  static async makeNew(blob: CreationAttributes<ContentFragmentModel>) {
-    return frontSequelize.transaction(async (transaction) => {
-      const contentFragment = await ContentFragmentModel.create(
-        {
-          ...blob,
-        },
-        { transaction }
-      );
+  static async makeNew(
+    blob: CreationAttributes<ContentFragmentModel>,
+    transaction?: Transaction
+  ) {
+    const contentFragment = await ContentFragmentModel.create(
+      {
+        ...blob,
+      },
+      {
+        transaction,
+      }
+    );
 
-      return new this(contentFragment.get());
-    });
+    return new this(ContentFragmentModel, contentFragment.get());
   }
 
-  async delete(): Promise<Result<undefined, Error>> {
-    return frontSequelize.transaction(async (transaction) => {
-      try {
-        await this.model.destroy({
-          where: {
-            id: this.id,
-          },
-          transaction,
-        });
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    try {
+      await this.model.destroy({
+        where: {
+          id: this.id,
+        },
+        transaction,
+      });
 
-        return new Ok(undefined);
-      } catch (err) {
-        return new Err(err as Error);
-      }
-    });
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
+  }
+
+  renderFromMessage({ message }: { message: Message }): ContentFragmentType {
+    return {
+      id: message.id,
+      sId: message.sId,
+      created: message.createdAt.getTime(),
+      type: "content_fragment",
+      visibility: message.visibility,
+      version: message.version,
+      title: this.title,
+      content: this.content,
+      url: this.url,
+      contentType: this.contentType,
+      context: {
+        profilePictureUrl: this.userContextProfilePictureUrl,
+        fullName: this.userContextFullName,
+        email: this.userContextEmail,
+        username: this.userContextUsername,
+      },
+    };
   }
 }
