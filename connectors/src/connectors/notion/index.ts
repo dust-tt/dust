@@ -385,7 +385,7 @@ export async function retrieveNotionConnectorPermissions({
       }),
     ]);
 
-    const expandable = !!(childPage || childDB);
+    const expandable = childPage || childDB ? true : false;
 
     return {
       provider: c.type,
