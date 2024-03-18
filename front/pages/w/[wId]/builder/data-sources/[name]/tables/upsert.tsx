@@ -25,6 +25,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { guessDelimiter } from "@app/lib/api/csv";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -178,42 +179,35 @@ export default function TableUpsert({
           }
 
           const { content } = res.value;
-          const delimiter = [",", ";", "\t"];
-          for (const [index, d] of delimiter.entries()) {
-            try {
-              // If parsing CSV with current delimiter fails, it throws an error.
-              const records = parse(content, {
-                columns: (c) => {
-                  return getSanitizedHeaders(c);
-                },
-                delimiter: d,
-              });
+          try {
+            const delimiter = await guessDelimiter(content);
 
-              const stringifiedContent = stringify(records, { header: true });
+            const records = parse(content, {
+              columns: (c) => {
+                return getSanitizedHeaders(c);
+              },
+              delimiter,
+            });
 
-              return new Ok(stringifiedContent);
-            } catch (err) {
-              if (err instanceof Error) {
-                // If it's a CSV error and we still have some delimiters to test, move to the next delimiter.
-                if (err instanceof CsvError && index < delimiter.length - 1) {
-                  continue;
-                }
+            const stringifiedContent = stringify(records, { header: true });
 
-                sendNotification({
-                  type: "error",
-                  title: "Error uploading file",
-                  description: `Invalid headers: ${err.message}.`,
-                });
-                return new Err(null);
-              }
-
+            return new Ok(stringifiedContent);
+          } catch (err) {
+            if (err instanceof Error) {
               sendNotification({
                 type: "error",
                 title: "Error uploading file",
-                description: `An error occured: ${err}.`,
+                description: `Invalid headers: ${err.message}.`,
               });
               return new Err(null);
             }
+
+            sendNotification({
+              type: "error",
+              title: "Error uploading file",
+              description: `An error occured: ${err}.`,
+            });
+            return new Err(null);
           }
         }
         return new Ok(null);
