@@ -1,5 +1,6 @@
-import type { Result } from "@dust-tt/types";
 import type { Attributes, Model, ModelStatic, Transaction } from "sequelize";
+
+import { Result } from "../result";
 
 interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
   new (model: ModelStatic<M>, blob: Attributes<M>): T;
@@ -54,3 +55,10 @@ export abstract class BaseResource<M extends Model> {
     });
   }
 }
+
+export type AttributesType<T extends Model> = Attributes<T>;
+
+export type ReadonlyAttributesType<T extends Model> = {
+  // Omit `id` since we define it in `BaseResource`.
+  readonly [K in keyof Omit<AttributesType<T>, "id">]: AttributesType<T>[K];
+};
