@@ -250,29 +250,64 @@ struct MistralTool {
     pub function: MistralToolFunction,
 }
 
+// There are at least 3 format of errors coming from Mistral:
+// ```
+// {
+//   "object":"error",
+//   "message":{
+//     "detail":[
+//       {
+//         "type":"enum",
+//         "loc":["body","messages",3,"role"],
+//         "msg":"Input should be 'system', 'user' or 'assistant'",
+//         "input":"tool",
+//         "ctx":{"expected":"'system', 'user' or 'assistant'"}
+//       }
+//     ]
+//   },
+//   "type":"invalid_request_error",
+//   "param":null,
+//   "code":null
+// }
+//
+// {
+//   "param":null,
+//   "code":2201,
+//   "type":"invalid_request_filter",
+//   "message":"Request body is not a valid query",
+//   "object":"error"
+// }
+//
+// {
+//   "object":"error",
+//   "message":"Expected last role to be user but got assistant",
+//   "type":"invalid_request_error",
+//   "param":null,
+//   "code":null
+// }
+// ```
+// So we just take message as a Value and dump it for now. A bit ugly but easy.
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct MistralAPIError {
     #[serde(alias = "type")]
     pub _type: Option<String>,
-    pub code: Option<String>,
-    pub message: String,
+    // pub code: Option<String>, (can be number or string)
+    pub message: Value,
     pub object: Option<String>,
     pub param: Option<String>,
 }
 
 impl MistralAPIError {
     pub fn message(&self) -> String {
-        match self._type.as_ref() {
-            Some(t) => format!("MistralAIError: [{}] {}", t, self.message),
-            None => format!("MistralAIError: {}", self.message),
-        }
+        self.message.to_string()
     }
 
     pub fn retryable(&self) -> bool {
         match self.object.as_ref() {
             Some(o) => match o.as_str() {
                 "error" => match self._type {
-                    Some(_) => self.message.contains("retry"),
+                    Some(_) => self.message().contains("retry"),
                     None => false,
                 },
                 _ => false,
@@ -304,14 +339,45 @@ impl MistralAILLM {
         &self,
         messages: &Vec<ChatMessage>,
     ) -> Result<Vec<MistralChatMessage>, anyhow::Error> {
-        let mistral_messages: Result<Vec<MistralChatMessage>, _> = messages
+        let mistral_messages = messages
             .iter()
             .map(|m| MistralChatMessage::try_from(m))
-            .collect();
+            .collect::<Result<Vec<_>>>()?;
 
-        // If mistral_messages is Err, the error will be returned from the function.
-        // If it's Ok, the inner Vec<ChatMessage> will be returned.
-        mistral_messages
+        let mistral_messages = mistral_messages.iter().fold(
+            vec![],
+            |mut acc: Vec<MistralChatMessage>, cm: &MistralChatMessage| {
+                match acc.last_mut() {
+                    Some(last)
+                        if cm.role == MistralChatMessageRole::Tool
+                            && last.role != MistralChatMessageRole::Assistant =>
+                    {
+                        let name = match cm.name.as_ref() {
+                            Some(name) => name.clone(),
+                            None => String::from("unknown_tool"),
+                        };
+                        acc.push(MistralChatMessage {
+                            role: MistralChatMessageRole::Assistant,
+                            name: None,
+                            content: None,
+                            tool_calls: Some(vec![MistralToolCall {
+                                function: MistralToolCallFunction {
+                                    name,
+                                    arguments: String::from("{}"),
+                                },
+                            }]),
+                        });
+                        acc.push(cm.clone());
+                    }
+                    _ => {
+                        acc.push(cm.clone());
+                    }
+                };
+                acc
+            },
+        );
+
+        Ok(mistral_messages)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
