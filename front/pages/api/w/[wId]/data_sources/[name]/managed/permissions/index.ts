@@ -246,11 +246,27 @@ export async function getManagedDataSourcePermissionsHandler(
       assertNever(filterPermission);
   }
 
+  const viewType = req.query.viewType;
+  if (
+    !viewType ||
+    typeof viewType !== "string" ||
+    (viewType !== "tables" && viewType !== "documents")
+  ) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid viewType. Required: tables | documents",
+      },
+    });
+  }
+
   const connectorsAPI = new ConnectorsAPI(logger);
   const permissionsRes = await connectorsAPI.getConnectorPermissions({
     connectorId: dataSource.connectorId,
     parentId,
     filterPermission,
+    viewType,
   });
   if (permissionsRes.isErr()) {
     return apiError(req, res, {
