@@ -73,7 +73,7 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import { isTrial } from "@app/lib/plans/trial";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -440,7 +440,7 @@ function renderContentFragment({
   contentFragment,
 }: {
   message: Message;
-  contentFragment: ContentFragment;
+  contentFragment: ContentFragmentModel;
 }): ContentFragmentType {
   return {
     id: message.id,
@@ -591,7 +591,7 @@ export async function getConversation(
         required: false,
       },
       {
-        model: ContentFragment,
+        model: ContentFragmentModel,
         as: "contentFragment",
         required: false,
       },
@@ -1824,7 +1824,7 @@ export async function postNewContentFragment(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      const contentFragmentRow = await ContentFragment.create(
+      const contentFragmentRow = await ContentFragmentModel.create(
         {
           content,
           title,

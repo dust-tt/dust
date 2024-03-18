@@ -47,7 +47,7 @@ import {
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
-import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
 async function main() {
   await User.sync({ alter: true });
@@ -93,7 +93,7 @@ async function main() {
   await ConversationParticipant.sync({ alter: true });
   await UserMessage.sync({ alter: true });
   await AgentMessage.sync({ alter: true });
-  await ContentFragment.sync({ alter: true });
+  await ContentFragmentModel.sync({ alter: true });
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });

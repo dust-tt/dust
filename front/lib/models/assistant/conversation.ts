@@ -19,7 +19,7 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
 export class Conversation extends Model<
   InferAttributes<Conversation>,
@@ -373,11 +373,11 @@ export class Message extends Model<
   declare parentId: ForeignKey<Message["id"]> | null;
   declare userMessageId: ForeignKey<UserMessage["id"]> | null;
   declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
-  declare contentFragmentId: ForeignKey<ContentFragment["id"]> | null;
+  declare contentFragmentId: ForeignKey<ContentFragmentModel["id"]> | null;
 
   declare userMessage?: NonAttribute<UserMessage>;
   declare agentMessage?: NonAttribute<AgentMessage>;
-  declare contentFragment?: NonAttribute<ContentFragment>;
+  declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReaction[]>;
 }
 
@@ -477,11 +477,11 @@ Message.belongsTo(AgentMessage, {
 Message.belongsTo(Message, {
   foreignKey: { name: "parentId", allowNull: true },
 });
-ContentFragment.hasOne(Message, {
+ContentFragmentModel.hasOne(Message, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-Message.belongsTo(ContentFragment, {
+Message.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
