@@ -471,14 +471,16 @@ export function useConversation({
   conversationId,
   workspaceId,
 }: {
-  conversationId: string;
+  conversationId: string | null;
   workspaceId: string;
 }) {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
+      : null,
     conversationFetcher
   );
 
