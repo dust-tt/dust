@@ -10,9 +10,9 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type {
-  CheckNotionUrlResponse,
   CoreAPIDataSource,
   DataSourceType,
+  NotionCheckUrlResponseType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
@@ -534,16 +534,22 @@ const DataSourcePage = ({
 async function handleCheckNotionUrl(
   url: string,
   wId: string
-): Promise<CheckNotionUrlResponse | null> {
-  const res = await fetch(
-    `/api/poke/workspaces/${wId}/data_sources/managed-notion/managed/check_notion_url?url=${url}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
+): Promise<NotionCheckUrlResponseType | null> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "notion",
+      command: "check-url",
+      args: {
+        url,
+        wId,
       },
-    }
-  );
+    }),
+  });
+
   if (!res.ok) {
     const err = await res.json();
     alert(
@@ -565,9 +571,8 @@ function NotionUrlChecker({
   setNotionUrlToCheck: (value: string) => void;
   owner: WorkspaceType;
 }) {
-  const [urlDetails, setUrlDetails] = useState<CheckNotionUrlResponse | null>(
-    null
-  );
+  const [urlDetails, setUrlDetails] =
+    useState<NotionCheckUrlResponseType | null>(null);
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
       <div className="flex items-center gap-2 ">

@@ -13,8 +13,8 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 
 const whitelistedCommands = [
   {
-    majorCommand: "connectors",
-    command: "resume",
+    majorCommand: "notion",
+    command: "check-url",
   },
 ];
 
@@ -49,7 +49,7 @@ const _adminAPIHandler = async (
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
-        message: `Command not whitelisted: ${JSON.stringify(adminCommand)}`,
+        message: `Command not whitelisted: ${adminCommand.majorCommand} ${adminCommand.command}`,
       },
       status_code: 400,
     });
