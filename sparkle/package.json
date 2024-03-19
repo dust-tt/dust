@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.119",
+  "version": "0.2.120",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -80,6 +80,7 @@
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "esbuild": "^0.20.0",
+    "react-confetti": "^6.1.0",
     "tailwind-scrollbar-hide": "^1.1.7"
   }
 }

@@ -91,6 +91,9 @@ export { Spinner };
 import { Modal } from "./components/Modal";
 export { Modal };
 
+import ConfettiBackground from "./components/ConfettiBackground";
+export { ConfettiBackground };
+
 import { ElementModal } from "./components/ElementModal";
 export { ElementModal };
 
