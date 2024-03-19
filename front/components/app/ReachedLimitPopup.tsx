@@ -1,4 +1,4 @@
-import { Dialog } from "@dust-tt/sparkle";
+import { Dialog, Page } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 
@@ -6,13 +6,23 @@ import { isTrial } from "@app/lib/plans/trial";
 
 function getUpsellDialogDetailsForFreeTrial() {
   return {
-    title: "You’ve reach the Free Trial daily messages limit",
-    validateLabel: "Skip trial & upgrade now",
+    title: "Fair usage limit reached",
+    validateLabel: "Manage your subscription",
     children: (
-      <p className="text-sm font-normal text-element-800">
-        Come back tomorrow for a fresh start or{" "}
-        <span className="font-bold">skip the trial and start paying now.</span>
-      </p>
+      <>
+        <Page.Vertical gap="lg">
+          <Page.P>
+            We limit usage of Dust during the trial. You've reached your limit
+            for today.
+          </Page.P>
+          <p className="text-sm font-normal text-element-800">
+            Come back tomorrow for a fresh start or{" "}
+            <span className="font-bold">
+              end your trial and start paying now.
+            </span>
+          </p>
+        </Page.Vertical>
+      </>
     ),
   };
 }

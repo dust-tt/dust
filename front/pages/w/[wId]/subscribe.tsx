@@ -112,16 +112,17 @@ export default function Subscribe({
               title="Setting up your subscription"
             />
             <Page.P>
-              <span className="font-bold">Your first two weeks are free!</span>
+              <span className="font-bold">
+                You can try the Pro plan for free for two weeks.
+              </span>
             </Page.P>
-            <Page.P>Cancel at any time, no question asked.</Page.P>
             <Page.P>
-              After that, payments are monthly, subscription can be cancelled at
-              any time.
+              After your trial ends, you will be charged monthly. You can cancel
+              at any time.
             </Page.P>
             <Button
               variant="primary"
-              label="Subscribe"
+              label="Start your trial"
               icon={CreditCardIcon}
               size="md"
               onClick={() => {

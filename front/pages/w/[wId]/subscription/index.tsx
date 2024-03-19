@@ -276,7 +276,7 @@ export default function Subscription({
   const planLabel =
     trialDaysRemaining === null
       ? plan.name
-      : `${plan.name} Trial: ${trialDaysRemaining} Days remaining`;
+      : `${plan.name}: ${trialDaysRemaining} days of trial remaining`;
 
   return (
     <AppLayout
@@ -294,6 +294,7 @@ export default function Subscription({
       />
 
       <SkipFreeTrialDialog
+        plan={subscription.plan}
         show={showSkipFreeTrialDialog}
         onClose={() => {
           setShowSkipFreeTrialDialog(false);
@@ -314,7 +315,7 @@ export default function Subscription({
         <Page.Header
           title="Subscription"
           icon={ShapesIcon}
-          description="Manage and discover Dust plans."
+          description="Manage your plan."
         />
         {!planInvitation ? (
           <Page.Vertical align="stretch" gap="md">
@@ -326,25 +327,26 @@ export default function Subscription({
                 <>
                   <Page.Horizontal gap="sm">
                     <Chip size="sm" color={chipColor} label={planLabel} />
-                    {!subscription.trialing && (
-                      <DropdownMenu>
-                        <DropdownMenu.Button>
-                          <Button
-                            icon={MoreIcon}
-                            variant="tertiary"
-                            labelVisible={false}
-                            disabledTooltip={true}
-                            label=""
-                          />
-                        </DropdownMenu.Button>
-                        <DropdownMenu.Items origin="auto" width={210}>
-                          <DropdownMenu.Item
-                            label="Manage my subscription"
-                            onClick={handleGoToStripePortal}
-                          />
-                        </DropdownMenu.Items>
-                      </DropdownMenu>
-                    )}
+                    {!subscription.trialing &&
+                      subscription.stripeSubscriptionId && (
+                        <DropdownMenu>
+                          <DropdownMenu.Button>
+                            <Button
+                              icon={MoreIcon}
+                              variant="tertiary"
+                              labelVisible={false}
+                              disabledTooltip={true}
+                              label=""
+                            />
+                          </DropdownMenu.Button>
+                          <DropdownMenu.Items origin="auto" width={210}>
+                            <DropdownMenu.Item
+                              label="Manage my subscription"
+                              onClick={handleGoToStripePortal}
+                            />
+                          </DropdownMenu.Items>
+                        </DropdownMenu>
+                      )}
                   </Page.Horizontal>
                 </>
               )}
@@ -354,10 +356,10 @@ export default function Subscription({
                 <Page.Horizontal gap="sm">
                   <Button
                     onClick={() => setShowSkipFreeTrialDialog(true)}
-                    label="Skip trial & Upgrade now"
+                    label="End trial & get full access"
                   />
                   <Button
-                    label="Cancel my trial and downgrade now"
+                    label="Cancel subscription"
                     variant="tertiary"
                     onClick={() => setShowCancelFreeTrialDialog(true)}
                   />
@@ -365,40 +367,43 @@ export default function Subscription({
               </Page.Vertical>
             )}
             <div className="h-4"></div>
-            <Page.Vertical gap="sm">
-              <Page.H variant="h5">Payment, invoicing & billing</Page.H>
-              {plan.billingType === "per_seat" && (
-                <>
-                  <Page.P>
-                    Estimated monthly billing:{" "}
-                    <span className="font-bold">
-                      {estimatedMonthlyBilling}€
-                    </span>{" "}
-                    (excluding taxes)
-                  </Page.P>
-                  <Page.P>
-                    {workspaceSeats === 1 ? (
-                      <>
-                        {workspaceSeats} member, {PRO_PLAN_29_COST_EUR}€ per
-                        member
-                      </>
-                    ) : (
-                      <>
-                        {workspaceSeats} members, {PRO_PLAN_29_COST_EUR}€ per
-                        members
-                      </>
-                    )}
-                  </Page.P>
-                </>
-              )}
-              <div className="my-5">
-                <Button
-                  icon={CardIcon}
-                  label="Dust’s dashboard on Stripe"
-                  variant="tertiary"
-                />
-              </div>
-            </Page.Vertical>
+            {subscription.stripeSubscriptionId && (
+              <Page.Vertical gap="sm">
+                <Page.H variant="h5">Billing</Page.H>
+                {plan.billingType === "per_seat" && (
+                  <>
+                    <Page.P>
+                      Estimated monthly billing:{" "}
+                      <span className="font-bold">
+                        {estimatedMonthlyBilling}€
+                      </span>{" "}
+                      (excluding taxes).
+                    </Page.P>
+                    <Page.P>
+                      {workspaceSeats === 1 ? (
+                        <>
+                          {workspaceSeats} member, {PRO_PLAN_29_COST_EUR}€ per
+                          member.
+                        </>
+                      ) : (
+                        <>
+                          {workspaceSeats} members, {PRO_PLAN_29_COST_EUR}€ per
+                          members
+                        </>
+                      )}
+                    </Page.P>
+                  </>
+                )}
+                <div className="my-5">
+                  <Button
+                    icon={CardIcon}
+                    label="Your billing dashboard on Stripe"
+                    variant="tertiary"
+                    onClick={handleGoToStripePortal}
+                  />
+                </div>
+              </Page.Vertical>
+            )}
             {!plan ||
               ([FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE].includes(
                 plan.code
@@ -457,6 +462,7 @@ function SkipFreeTrialDialog({
   workspaceSeats,
   estimatedMonthlyBilling,
   isSaving,
+  plan,
 }: {
   show: boolean;
   onClose: () => void;
@@ -464,37 +470,47 @@ function SkipFreeTrialDialog({
   workspaceSeats: number;
   estimatedMonthlyBilling: number;
   isSaving: boolean;
+  plan: SubscriptionType["plan"];
 }) {
   return (
     <Dialog
       isOpen={show}
-      title={`Skip trial`}
+      title={`End trial`}
       onCancel={onClose}
-      validateLabel="Upgrade now"
+      validateLabel="End trial & get full access"
       validateVariant="primary"
       onValidate={() => {
         onValidate();
       }}
       isSaving={isSaving}
     >
-      <Page.P>
-        {(() => {
-          if (workspaceSeats === 1) {
+      <Page.Vertical gap="md">
+        <Page.P>
+          Ending your trial will allow you to invite more than{" "}
+          {plan.limits.users.maxUsers} members to your workspace.
+        </Page.P>
+        <Page.P>
+          {(() => {
+            if (workspaceSeats === 1) {
+              return (
+                <>
+                  Billing will start immediately for your workspace. <br />
+                  Currently: {workspaceSeats} member, {estimatedMonthlyBilling}€
+                  monthly (excluding taxes).
+                </>
+              );
+            }
             return (
               <>
-                Billing will start immediately for {workspaceSeats} member of
-                your workspace ({estimatedMonthlyBilling}€ monthly).
+                Billing will start immediately for your workspace:.
+                <br />
+                Currently: {workspaceSeats} members, {estimatedMonthlyBilling}€
+                monthly (excluding taxes).
               </>
             );
-          }
-          return (
-            <>
-              Billing will start immediately for the {workspaceSeats} members of
-              your workspace ({estimatedMonthlyBilling}€ monthly).
-            </>
-          );
-        })()}
-      </Page.P>
+          })()}
+        </Page.P>
+      </Page.Vertical>
     </Dialog>
   );
 }
@@ -513,9 +529,9 @@ function CancelFreeTrialDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Cancel my trial`}
+      title={`Cancel subscription`}
       onCancel={onClose}
-      validateLabel="Yes, cancel trial"
+      validateLabel="Yes, cancel subscription"
       validateVariant="primaryWarning"
       onValidate={onValidate}
       isSaving={isSaving}
