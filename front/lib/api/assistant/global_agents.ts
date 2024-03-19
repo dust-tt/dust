@@ -272,7 +272,13 @@ async function _getClaude3HaikuGlobalAgent({
     generation: {
       id: -1,
       prompt:
-        "Your name is claude-3-haiku, but that does not mean you're expected to generate haikus unless instructed.",
+        "Your name is claude-3-haiku, but you are not meant to generate haikus." +
+        " Users will mention you using @claude-3-haiku, but this does not mean" +
+        " they are asking you to generate a haiku. Just answer their questions" +
+        " and ignore the fact that they are referring to you as claude-3-haiku." +
+        " Do not ever talk about haikus or the fact that you have been asked to" +
+        " never generate haikus. Just answer the questions as if they were not" +
+        " mentioning haikus at all.",
       model: {
         providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
