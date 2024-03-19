@@ -382,7 +382,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         permission: helpCenter.permission,
         dustDocumentId: null,
         lastUpdatedAt: helpCenter.updatedAt.getTime(),
-        dustTableId: null,
       }));
     } else {
       const helpCenters = await fetchIntercomHelpCenters(
@@ -400,7 +399,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         permission: "none",
         dustDocumentId: null,
         lastUpdatedAt: null,
-        dustTableId: null,
       }));
     }
     nodes.sort((a, b) => {
@@ -449,7 +447,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         permission: collection.permission,
         dustDocumentId: null,
         lastUpdatedAt: collection.updatedAt.getTime() || null,
-        dustTableId: null,
       }));
     } else {
       const collectionsInIntercom = await fetchIntercomCollections(
@@ -480,7 +477,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: matchingCollectionInDb ? "read" : "none",
           dustDocumentId: null,
           lastUpdatedAt: matchingCollectionInDb?.updatedAt.getTime() || null,
-          dustTableId: null,
         };
       });
     }
@@ -522,7 +518,6 @@ export async function retrieveIntercomHelpCentersPermissions({
           permission: collection.permission,
           dustDocumentId: null,
           lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
-          dustTableId: null,
         })
       );
 
@@ -549,7 +544,6 @@ export async function retrieveIntercomHelpCentersPermissions({
         permission: article.permission,
         dustDocumentId: null,
         lastUpdatedAt: article.updatedAt.getTime(),
-        dustTableId: null,
       }));
 
       collectionNodes.sort((a, b) => {

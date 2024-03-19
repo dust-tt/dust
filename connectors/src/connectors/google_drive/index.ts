@@ -682,27 +682,21 @@ export async function retrieveGoogleDriveContentNodes(
     { concurrency: 4 }
   );
 
-  const sheetNodes = await concurrentExecutor(
-    sheets,
-    async (s): Promise<ContentNode> => {
-      return {
-        provider: "google_drive",
-        internalId: getGoogleSheetContentNodeInternalId(
-          s.driveFileId,
-          s.driveSheetId
-        ),
-        parentInternalId: s.driveFileId,
-        type: "database",
-        title: s.name || "",
-        dustDocumentId: null,
-        lastUpdatedAt: s.updatedAt.getTime() || null,
-        sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`,
-        expandable: false,
-        permission: "read",
-      };
-    },
-    { concurrency: 4 }
-  );
+  const sheetNodes: ContentNode[] = sheets.map((s) => ({
+    provider: "google_drive",
+    internalId: getGoogleSheetContentNodeInternalId(
+      s.driveFileId,
+      s.driveSheetId
+    ),
+    parentInternalId: s.driveFileId,
+    type: "database",
+    title: s.name || "",
+    dustDocumentId: null,
+    lastUpdatedAt: s.updatedAt.getTime() || null,
+    sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`,
+    expandable: false,
+    permission: "read",
+  }));
 
   // Return the nodes in the same order as the input internalIds.
   const nodeByInternalId = new Map(

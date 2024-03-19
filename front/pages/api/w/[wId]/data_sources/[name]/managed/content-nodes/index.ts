@@ -28,6 +28,17 @@ async function handler(
     req.query.wId as string
   );
 
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
+      },
+    });
+  }
+
   const owner = auth.workspace();
 
   if (!owner || !auth.isUser()) {
@@ -88,16 +99,6 @@ async function handler(
       }
 
       const connectorsAPI = new ConnectorsAPI(logger);
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
-          },
-        });
-      }
 
       const body = req.body;
       if (!body) {
