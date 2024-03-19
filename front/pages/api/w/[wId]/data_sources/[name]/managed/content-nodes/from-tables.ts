@@ -148,8 +148,6 @@ async function handler(
         }
       })();
 
-      console.log("\n\n", { contentNodeIds }, "\n\n");
-
       const connectorsRes = await connectorsAPI.getContentNodes({
         connectorId: dataSource.connectorId,
         internalIds: contentNodeIds,

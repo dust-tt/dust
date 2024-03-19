@@ -53,6 +53,10 @@ import {
   getPermissionViewType,
 } from "@connectors/connectors/google_drive/lib/permissions";
 import {
+  isGoogleDriveFolder,
+  isGoogleDriveSpreadSheetFile,
+} from "@connectors/connectors/google_drive/temporal/mime_types";
+import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
@@ -340,16 +344,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
           const fd = await getGoogleDriveObject(authCredentials, f.folderId);
           if (!fd) {
             return null;
-          }
-          const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
-            connectorId: connectorId,
-            parentId: f.folderId,
-          };
-          if (isTablesView) {
-            where.mimeType = [
-              "application/vnd.google-apps.folder",
-              "application/vnd.google-apps.spreadsheet",
-            ];
           }
           return {
             provider: c.type,
@@ -659,9 +653,9 @@ export async function retrieveGoogleDriveContentNodes(
       const type = getPermissionViewType(f, viewType);
       let sourceUrl = null;
 
-      if (f.mimeType === "application/vnd.google-apps.spreadsheet") {
+      if (isGoogleDriveSpreadSheetFile(f)) {
         sourceUrl = `https://docs.google.com/spreadsheets/d/${f.driveFileId}/edit`;
-      } else if (f.mimeType === "application/vnd.google-apps.folder") {
+      } else if (isGoogleDriveFolder(f)) {
         sourceUrl = `https://drive.google.com/drive/folders/${f.driveFileId}`;
       } else {
         sourceUrl = `https://drive.google.com/file/d/${f.driveFileId}/view`;
