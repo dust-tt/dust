@@ -92,7 +92,7 @@ export function Dialog({
                     {isSaving && <Spinner />}
                   </Button.List>
                 </div>
-                {hasBackground != "none" && (
+                {hasBackground !== "none" && (
                   <div className="s-absolute s-bottom-0 s-left-0 s-right-0 s-top-0 s-z-0">
                     <ConfettiBackground
                       variant={hasBackground}
