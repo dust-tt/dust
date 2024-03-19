@@ -1,7 +1,15 @@
 import type { PlanType, WithAPIErrorReponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import {
+  cancelSubscriptionImmediately,
+  skipSubscriptionFreeTrial,
+} from "@app/lib/plans/stripe";
 import {
   downgradeWorkspaceToFreePlan,
   getCheckoutUrlForUpgrade,
@@ -14,9 +22,21 @@ export type PostSubscriptionResponseBody = {
   checkoutUrl?: string;
 };
 
+type PatchSubscriptionResponseBody = {
+  success: boolean;
+};
+
+export const PatchSubscriptionRequestBody = t.type({
+  action: t.union([t.literal("cancel_free_trial"), t.literal("pay_now")]),
+});
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostSubscriptionResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<
+      PostSubscriptionResponseBody | PatchSubscriptionResponseBody
+    >
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -48,7 +68,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
+    case "POST": {
       try {
         const { checkoutUrl, plan: newPlan } = await getCheckoutUrlForUpgrade(
           auth
@@ -65,6 +85,92 @@ async function handler(
         });
       }
       break;
+    }
+
+    case "PATCH": {
+      const bodyValidation = PatchSubscriptionRequestBody.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+      const subscription = auth.subscription();
+      if (!subscription) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "subscription_not_found",
+            message: "The subscription was not found.",
+          },
+        });
+      }
+
+      const { action } = bodyValidation.right;
+
+      switch (action) {
+        case "cancel_free_trial":
+          if (!subscription.trialing) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "action_unknown_error",
+                message: "The subscription is not in a trialing state.",
+              },
+            });
+          }
+          if (!subscription.stripeSubscriptionId) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "subscription_state_invalid",
+                message: "The subscription free trial can't be cancelled.",
+              },
+            });
+          }
+
+          await cancelSubscriptionImmediately({
+            stripeSubscriptionId: subscription.stripeSubscriptionId,
+          });
+          break;
+        case "pay_now":
+          {
+            if (!subscription.trialing) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "subscription_state_invalid",
+                  message: "The subscription is not in a trialing state.",
+                },
+              });
+            }
+            if (!subscription.stripeSubscriptionId) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "subscription_state_invalid",
+                  message: "The subscription free trial can't be skipped.",
+                },
+              });
+            }
+
+            await skipSubscriptionFreeTrial({
+              stripeSubscriptionId: subscription.stripeSubscriptionId,
+            });
+          }
+          break;
+
+        default:
+          assertNever(action);
+      }
+
+      res.status(200).json({ success: true });
+      break;
+    }
     case "DELETE":
       try {
         const newPlan = await downgradeWorkspaceToFreePlan(auth);

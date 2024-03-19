@@ -51,6 +51,8 @@ export type APIErrorType =
   | "stripe_invalid_product_id_error"
   | "rate_limit_error"
   | "subscription_payment_failed"
+  | "subscription_not_found"
+  | "subscription_state_invalid"
   // Used in the DustAPI client:
   | "unexpected_error_format"
   | "unexpected_response_format"

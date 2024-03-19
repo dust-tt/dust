@@ -3,6 +3,7 @@ import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
+import { PRO_PLAN_29_COST_EUR } from "@app/lib/client/subscription";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
@@ -195,7 +196,7 @@ export function ProPriceTable({
   return (
     <PriceTable
       title="Pro"
-      price="29€"
+      price={`${PRO_PLAN_29_COST_EUR}€`}
       color="sky"
       priceLabel="/ month / user"
       size={size}
