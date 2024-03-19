@@ -16,6 +16,7 @@ import {
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
 import { Membership, Workspace } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 /**
@@ -181,6 +182,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
       ) {
         if (typeof context.query.wId !== "string") {
           // this should never happen.
+          logger.error(
+            { panic: true, path: context.resolvedUrl },
+            "canUseProduct should never be true outside of a workspace context."
+          );
           throw new Error(
             "canUseProduct should never be true outside of a workspace context."
           );
