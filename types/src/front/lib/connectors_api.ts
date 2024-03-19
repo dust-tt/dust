@@ -169,48 +169,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async stopConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/stop/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async resumeConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/resume/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async syncConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/sync/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async deleteConnector(
     connectorId: string,
     force = false

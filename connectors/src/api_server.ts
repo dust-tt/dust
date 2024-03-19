@@ -11,14 +11,11 @@ import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getContentNodesParentsAPIHandler } from "@connectors/api/get_content_node_parents";
 import { getContentNodesAPIHandler } from "@connectors/api/get_content_nodes";
-import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import {
   getSlackChannelsLinkedWithAgentHandler,
   patchSlackChannelsLinkedWithAgentHandler,
 } from "@connectors/api/slack_channels_linked_with_agent";
-import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
-import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
@@ -88,11 +85,8 @@ export function startServer(port: number) {
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", getConnectorUpdateAPIHandler);
-  app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
-  app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
-  app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
