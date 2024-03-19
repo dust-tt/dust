@@ -1,18 +1,22 @@
 import {
   Avatar,
-  CloudArrowDownIcon,
+  BracesIcon,
   CommandLineIcon,
   ElementModal,
+  ExternalLinkIcon,
+  IconButton,
   Page,
   ServerIcon,
   Spinner,
+  Tree,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  ConnectorProvider,
+  ContentNode,
   CoreAPITable,
   DataSourceConfiguration,
+  DataSourceType,
   DustAppRunConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
@@ -30,10 +34,20 @@ import AssistantListActions from "@app/components/assistant/AssistantListActions
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useAgentConfiguration, useAgentUsage, useApp } from "@app/lib/swr";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  useAgentConfiguration,
+  useAgentUsage,
+  useApp,
+  useConnectorPermissions,
+  useDataSourceContentNodes,
+  useDataSources,
+} from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
@@ -62,6 +76,9 @@ export function AssistantDetails({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
+
+  const { dataSources } = useDataSources(owner);
+
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
   if (!agentConfiguration) {
@@ -204,7 +221,11 @@ export function AssistantDetails({
           <div className="text-lg font-bold text-element-800">
             Data source(s)
           </div>
-          <DataSourcesSection dataSourceConfigurations={action.dataSources} />
+          <DataSourcesSection
+            owner={owner}
+            dataSources={dataSources}
+            dataSourceConfigurations={action.dataSources}
+          />
         </div>
       ) : isTablesQueryConfiguration(action) ? (
         <div className="flex flex-col gap-2">
@@ -232,57 +253,185 @@ export function AssistantDetails({
 }
 
 function DataSourcesSection({
+  owner,
+  dataSources,
   dataSourceConfigurations,
 }: {
+  owner: WorkspaceType;
+  dataSources: DataSourceType[];
   dataSourceConfigurations: DataSourceConfiguration[];
 }) {
-  const getProviderName = (ds: DataSourceConfiguration) =>
-    ds.dataSourceId.startsWith("managed-")
-      ? (ds.dataSourceId.slice(8) as ConnectorProvider)
-      : undefined;
-
-  const compareDatasourceNames = (
-    a: DataSourceConfiguration,
-    b: DataSourceConfiguration
-  ) => {
-    const aProviderName = getProviderName(a);
-    const bProviderName = getProviderName(b);
-    if (aProviderName && bProviderName) {
-      return aProviderName > bProviderName ? -1 : 1;
-    }
-    if (aProviderName) {
-      return -1;
-    }
-    if (bProviderName) {
-      return 1;
-    }
-    return a.dataSourceId > b.dataSourceId ? -1 : 1;
-  };
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
+    null
+  );
+  const [dataSourceToDisplay, setDataSourceToDisplay] =
+    useState<DataSourceType | null>(null);
 
   return (
     <div className="flex flex-col gap-1">
-      {dataSourceConfigurations.sort(compareDatasourceNames).map((ds) => {
-        const providerName = getProviderName(ds);
-        const DsLogo = providerName
-          ? CONNECTOR_CONFIGURATIONS[providerName].logoComponent
-          : CloudArrowDownIcon;
-        const dsDocumentNumberText = `(${
-          ds.filter.parents?.in.length ?? "all"
-        } element(s))`;
-        return (
-          <div className="flex flex-col gap-2" key={ds.dataSourceId}>
-            <div className="flex items-center gap-2">
-              <div>
-                <DsLogo />
-              </div>
-              <div>{`${
-                providerName ?? ds.dataSourceId
-              } ${dsDocumentNumberText}`}</div>
-            </div>
-          </div>
-        );
-      })}
+      <ManagedDataSourceDocumentModal
+        owner={owner}
+        dataSource={dataSourceToDisplay}
+        documentId={documentToDisplay}
+        isOpen={!!documentToDisplay}
+        setOpen={(open) => {
+          if (!open) {
+            setDocumentToDisplay(null);
+          }
+        }}
+      />
+      <Tree>
+        {dataSourceConfigurations.map((dsConfig) => {
+          const ds = dataSources.find(
+            (ds) => ds.name === dsConfig.dataSourceId
+          );
+
+          let DsLogo = null;
+          let dataSourceName = dsConfig.dataSourceId;
+
+          if (ds) {
+            DsLogo = ds.connectorProvider
+              ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
+              : null;
+            dataSourceName = getDisplayNameForDataSource(ds);
+          }
+
+          const isAllSelected = dsConfig.filter.parents === null;
+
+          return (
+            <Tree.Item
+              key={dsConfig.dataSourceId}
+              collapsed={!expanded[dsConfig.dataSourceId]}
+              onChevronClick={() => {
+                setExpanded((prev) => ({
+                  ...prev,
+                  [dsConfig.dataSourceId]: prev[dsConfig.dataSourceId]
+                    ? false
+                    : true,
+                }));
+              }}
+              type={ds && ds.connectorId ? "node" : "leaf"}
+              label={dataSourceName}
+              visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
+              variant="folder" // in case LogoComponent is null
+              className="whitespace-nowrap"
+            >
+              {ds && isAllSelected && (
+                <PermissionTreeChildren
+                  owner={owner}
+                  dataSource={ds}
+                  parentId={null}
+                  permissionFilter="read"
+                  canUpdatePermissions={false}
+                  displayDocumentSource={(documentId: string) => {
+                    setDataSourceToDisplay(ds);
+                    setDocumentToDisplay(documentId);
+                  }}
+                  useConnectorPermissionsHook={useConnectorPermissions}
+                />
+              )}
+              {ds && !isAllSelected && (
+                <DataSourceSelectedNodes
+                  owner={owner}
+                  dataSource={ds}
+                  dataSourceConfiguration={dsConfig}
+                  setDataSourceToDisplay={setDataSourceToDisplay}
+                  setDocumentToDisplay={setDocumentToDisplay}
+                />
+              )}
+            </Tree.Item>
+          );
+        })}
+      </Tree>
     </div>
+  );
+}
+
+function DataSourceSelectedNodes({
+  owner,
+  dataSource,
+  dataSourceConfiguration,
+  setDataSourceToDisplay,
+  setDocumentToDisplay,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  dataSourceConfiguration: DataSourceConfiguration;
+  setDataSourceToDisplay: (ds: DataSourceType) => void;
+  setDocumentToDisplay: (documentId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const dataSourceSelectedNodes = useDataSourceContentNodes({
+    owner,
+    dataSource,
+    internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
+  });
+
+  return (
+    <>
+      {dataSourceSelectedNodes.nodes.map((node: ContentNode) => (
+        <Tree.Item
+          key={node.internalId}
+          collapsed={!expanded[node.internalId]}
+          onChevronClick={() => {
+            setExpanded((prev) => ({
+              ...prev,
+              [node.internalId]: prev[node.internalId] ? false : true,
+            }));
+          }}
+          label={node.titleWithParentsContext ?? node.title}
+          type={node.expandable ? "node" : "leaf"}
+          variant={node.type}
+          className="whitespace-nowrap"
+          actions={
+            <div className="mr-8 flex flex-row gap-2">
+              <IconButton
+                size="xs"
+                icon={ExternalLinkIcon}
+                onClick={() => {
+                  if (node.sourceUrl) {
+                    window.open(node.sourceUrl, "_blank");
+                  }
+                }}
+                className={classNames(
+                  node.sourceUrl ? "" : "pointer-events-none opacity-0"
+                )}
+                disabled={!node.sourceUrl}
+              />
+              <IconButton
+                size="xs"
+                icon={BracesIcon}
+                onClick={() => {
+                  if (node.dustDocumentId) {
+                    setDataSourceToDisplay(dataSource);
+                    setDocumentToDisplay(node.dustDocumentId);
+                  }
+                }}
+                className={classNames(
+                  node.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                )}
+                disabled={!node.dustDocumentId}
+              />
+            </div>
+          }
+        >
+          <PermissionTreeChildren
+            owner={owner}
+            dataSource={dataSource}
+            parentId={node.internalId}
+            permissionFilter="read"
+            canUpdatePermissions={true}
+            displayDocumentSource={(documentId: string) => {
+              setDataSourceToDisplay(dataSource);
+              setDocumentToDisplay(documentId);
+            }}
+            useConnectorPermissionsHook={useConnectorPermissions}
+          />
+        </Tree.Item>
+      ))}
+    </>
   );
 }
 

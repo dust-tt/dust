@@ -29,6 +29,7 @@ import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sou
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
+import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
@@ -269,6 +270,44 @@ export function useEventSchemas(owner: WorkspaceType) {
     schemas: useMemo(() => (data ? data.schemas : []), [data]),
     isSchemasLoading: !error && !data,
     isSchemasError: error,
+  };
+}
+
+export function useDataSourceContentNodes({
+  owner,
+  dataSource,
+  internalIds,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  internalIds: string[];
+}): {
+  nodes: GetContentNodeResponseBody["nodes"];
+  isNodesLoading: boolean;
+  isNodesError: boolean;
+} {
+  const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+    dataSource.name
+  )}/managed/content_nodes`;
+  const body = JSON.stringify({ internalIds });
+
+  const fetchKey = useMemo(() => {
+    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness
+  }, [url, body]);
+
+  const { data, error } = useSWR(fetchKey, async () => {
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    };
+    return fetcher(url, options);
+  });
+
+  return {
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    isNodesLoading: !error && !data,
+    isNodesError: !!error,
   };
 }
 
