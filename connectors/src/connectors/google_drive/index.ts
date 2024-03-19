@@ -705,10 +705,9 @@ export async function retrieveGoogleDriveContentNodes(
   );
 
   // Return the nodes in the same order as the input internalIds.
-  const nodeByInternalId = new Map<string, ContentNode>();
-  for (const node of folderOrFileNodes.concat(sheetNodes)) {
-    nodeByInternalId.set(node.internalId, node);
-  }
+  const nodeByInternalId = new Map(
+    [...folderOrFileNodes, ...sheetNodes].map((n) => [n.internalId, n])
+  );
   return new Ok(
     internalIds.map((id) => {
       const node = nodeByInternalId.get(id);
