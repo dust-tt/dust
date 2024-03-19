@@ -271,7 +271,8 @@ async function _getClaude3HaikuGlobalAgent({
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
+      prompt:
+        "Your name is claude-3-haiku, but that does not mean you're expected to generate haikus unless instructed.",
       model: {
         providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
@@ -308,7 +309,8 @@ async function _getClaude3SonnetGlobalAgent({
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
+      prompt:
+        "Your name is claude-3-sonnet, but that does not mean you're expected to generate sonnets unless instructed.",
       model: {
         providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
