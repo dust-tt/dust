@@ -456,6 +456,32 @@ export default function AssistantNew({
   );
 }
 
+function getUpsellDialogDetailsForFreeTrial() {
+  return {
+    title: "You’ve reach the Free Trial daily messages limit",
+    validateLabel: "Skip trial & upgrade now",
+    children: (
+      <p className="text-sm font-normal text-element-800">
+        Come back tomorrow for a fresh start or{" "}
+        <span className="font-bold">skip the trial and start paying now.</span>
+      </p>
+    ),
+  };
+}
+
+function getUpsellDialogDetailsForFreePlan() {
+  return {
+    title: "You’ve reach the messages limit",
+    validateLabel: "Check Dust plans",
+    children: (
+      <p className="text-sm font-normal text-element-800">
+        Looks like you've used up all your messages. Check out our paid plans to
+        get unlimited messages.
+      </p>
+    ),
+  };
+}
+
 export function LimitReachedPopup({
   isOpened,
   onClose,
@@ -469,39 +495,23 @@ export function LimitReachedPopup({
 }) {
   const router = useRouter();
 
-  if (isTrial(subscription)) {
-    return (
-      <Dialog
-        isOpen={isOpened}
-        title="You’ve reach the Free Trial daily messages limit"
-        onValidate={() => {
-          void router.push(`/w/${workspaceId}/subscription`);
-        }}
-        onCancel={() => onClose()}
-        cancelLabel="Close"
-        validateLabel="Skip trial & upgrade now"
-      >
-        <p className="text-sm font-normal text-element-800">
-          Come back tomorrow for a fresh start or{" "}
-          <span className="font-bold">
-            skip the trial and start paying now.
-          </span>
-        </p>
-      </Dialog>
-    );
-  }
+  const { children, title, validateLabel } = isTrial(subscription)
+    ? getUpsellDialogDetailsForFreeTrial()
+    : getUpsellDialogDetailsForFreePlan();
 
   return (
-    <Popup
-      show={isOpened}
-      chipLabel="Free plan"
-      description="Looks like you've used up all your messages. Check out our paid plans to get unlimited messages."
-      buttonLabel="Check Dust plans"
-      buttonClick={() => {
+    <Dialog
+      isOpen={isOpened}
+      title={title}
+      onValidate={() => {
         void router.push(`/w/${workspaceId}/subscription`);
       }}
-      className="fixed bottom-16 right-16"
-    />
+      onCancel={() => onClose()}
+      cancelLabel="Close"
+      validateLabel={validateLabel}
+    >
+      {children}
+    </Dialog>
   );
 }
 
