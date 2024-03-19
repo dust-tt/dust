@@ -4,10 +4,8 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowLeftRightIcon,
-  Dialog,
   FolderOpenIcon,
   Page,
-  Popup,
   QuestionMarkCircleIcon,
   RobotSharedIcon,
 } from "@dust-tt/sparkle";
@@ -15,7 +13,6 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
-  SubscriptionType,
   UserType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -24,6 +21,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
@@ -39,7 +37,6 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isTrial } from "@app/lib/plans/trial";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 
@@ -446,62 +443,13 @@ export default function AssistantNew({
         onSubmit={handleSubmit}
         conversationId={null}
       />
-      <LimitReachedPopup
+      <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
         workspaceId={owner.sId}
       />
     </>
-  );
-}
-
-export function LimitReachedPopup({
-  isOpened,
-  onClose,
-  subscription,
-  workspaceId,
-}: {
-  isOpened: boolean;
-  onClose: () => void;
-  subscription: SubscriptionType;
-  workspaceId: string;
-}) {
-  const router = useRouter();
-
-  if (isTrial(subscription)) {
-    return (
-      <Dialog
-        isOpen={isOpened}
-        title="You’ve reach the Free Trial daily messages limit"
-        onValidate={() => {
-          void router.push(`/w/${workspaceId}/subscription`);
-        }}
-        onCancel={() => onClose()}
-        cancelLabel="Close"
-        validateLabel="Skip trial & upgrade now"
-      >
-        <p className="text-sm font-normal text-element-800">
-          Come back tomorrow for a fresh start or{" "}
-          <span className="font-bold">
-            skip the trial and start paying now.
-          </span>
-        </p>
-      </Dialog>
-    );
-  }
-
-  return (
-    <Popup
-      show={isOpened}
-      chipLabel="Free plan"
-      description="Looks like you've used up all your messages. Check out our paid plans to get unlimited messages."
-      buttonLabel="Check Dust plans"
-      buttonClick={() => {
-        void router.push(`/w/${workspaceId}/subscription`);
-      }}
-      className="fixed bottom-16 right-16"
-    />
   );
 }
 

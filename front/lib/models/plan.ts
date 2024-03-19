@@ -106,8 +106,7 @@ Plan.init(
     },
     maxMessagesTimeframe: {
       type: DataTypes.ENUM("day", "lifetime"),
-      // TODO(2024-03-18 flav) Set to false, once migrated.
-      allowNull: true,
+      allowNull: false,
     },
     maxUsersInWorkspace: {
       type: DataTypes.INTEGER,
