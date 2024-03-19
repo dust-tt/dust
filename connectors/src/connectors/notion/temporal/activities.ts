@@ -4,7 +4,11 @@ import type {
   NotionGarbageCollectionMode,
 } from "@dust-tt/types";
 import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
-import { assertNever, makeStructuredDataTableName } from "@dust-tt/types";
+import {
+  assertNever,
+  getNotionDatabaseTableId,
+  makeStructuredDataTableName,
+} from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -2414,7 +2418,7 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   tableName: string;
   tableDescription: string;
 } {
-  const tableId = `notion-${database.notionDatabaseId}`;
+  const tableId = getNotionDatabaseTableId(database.notionDatabaseId);
   const name =
     database.title ?? `Untitled Database (${database.notionDatabaseId})`;
   const tableName = makeStructuredDataTableName(

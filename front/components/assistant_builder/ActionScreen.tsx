@@ -31,6 +31,7 @@ import TablesSelectionSection from "@app/components/assistant_builder/TablesSele
 import type {
   ActionMode,
   AssistantBuilderState,
+  AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { classNames } from "@app/lib/utils";
@@ -217,13 +218,18 @@ export default function ActionScreen({
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
         dataSources={dataSources}
-        onSave={(t) => {
+        onSave={(tables) => {
           setEdited(true);
+          const newTables: Record<string, AssistantBuilderTableConfiguration> =
+            {};
+          for (const t of tables) {
+            newTables[tableKey(t)] = t;
+          }
           setBuilderState((state) => ({
             ...state,
             tablesQueryConfiguration: {
               ...state.tablesQueryConfiguration,
-              [tableKey(t)]: t,
+              ...newTables,
             },
           }));
         }}

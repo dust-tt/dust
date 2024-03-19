@@ -368,11 +368,13 @@ export async function retrieveIntercomConnectorPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
+      viewType: "documents",
     });
     const convosNodes = await retrieveIntercomConversationsPermissions({
       connectorId,
       parentInternalId,
       filterPermission,
+      viewType: "documents",
     });
     const nodes = [...helpCenterNodes, ...convosNodes];
     return new Ok(nodes);

@@ -1,10 +1,21 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import type { ContentNodesViewType, ModelId, Result } from "@dust-tt/types";
+import {
+  cacheWithRedis,
+  Err,
+  getGoogleIdsFromSheetContentNodeInternalId,
+  isGoogleSheetContentNodeInternalId,
+  Ok,
+} from "@dust-tt/types";
+import type { InferAttributes, WhereOptions } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
+import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import { HTTPError } from "@connectors/lib/error";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveFiles,
+  GoogleDriveSheet,
+} from "@connectors/lib/models/google_drive";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -65,34 +76,87 @@ export async function registerWebhook(
   }
 }
 
+export async function isDriveObjectExpandable({
+  objectId,
+  mimeType,
+  connectorId,
+  viewType,
+}: {
+  objectId: string;
+  mimeType: string;
+  connectorId: ModelId;
+  viewType: ContentNodesViewType;
+}): Promise<boolean> {
+  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "tables") {
+    // In tables view, Spreadsheets can be expanded to show their sheets.
+    return !!(await GoogleDriveSheet.findOne({
+      attributes: ["id"],
+      where: {
+        driveFileId: objectId,
+        connectorId: connectorId,
+      },
+    }));
+  }
+
+  const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
+    connectorId: connectorId,
+    parentId: objectId,
+  };
+
+  if (viewType === "tables") {
+    // In tables view, we only show folders and spreadhsheets.
+    // A folder that only contains Documents is not expandable.
+    where.mimeType = [
+      "application/vnd.google-apps.folder",
+      "application/vnd.google-apps.spreadsheet",
+    ];
+  }
+
+  return !!(await GoogleDriveFiles.findOne({
+    attributes: ["id"],
+    where,
+  }));
+}
+
 async function _getLocalParents(
   connectorId: ModelId,
-  driveObjectId: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
+  contentNodeInternalId: string,
   memoizationKey: string
 ): Promise<string[]> {
-  const parents: string[] = [driveObjectId];
+  const parents: string[] = [contentNodeInternalId];
 
-  const object = await GoogleDriveFiles.findOne({
-    where: {
-      connectorId,
-      driveFileId: driveObjectId,
-    },
-  });
+  let parentId: string | null = null;
 
-  if (!object || !object.parentId) {
+  if (isGoogleSheetContentNodeInternalId(contentNodeInternalId)) {
+    // For a Google Sheet, the parent ID is the ContentNodeInternalId
+    // of the Google Spreadsheet that contains the sheet.
+    const { googleFileId } = getGoogleIdsFromSheetContentNodeInternalId(
+      contentNodeInternalId
+    );
+    parentId = googleFileId;
+  } else {
+    const object = await GoogleDriveFiles.findOne({
+      where: {
+        connectorId,
+        driveFileId: contentNodeInternalId,
+      },
+    });
+    parentId = object?.parentId ?? null;
+  }
+
+  if (!parentId) {
     return parents;
   }
 
   return parents.concat(
-    await getLocalParents(connectorId, object.parentId, memoizationKey)
+    await getLocalParents(connectorId, parentId, memoizationKey)
   );
 }
 
 export const getLocalParents = cacheWithRedis(
   _getLocalParents,
-  (connectorId, driveObjectId, memoizationKey) => {
-    return `${connectorId}:${driveObjectId}:${memoizationKey}`;
+  (connectorId, contentNodeInternalId, memoizationKey) => {
+    return `${connectorId}:${contentNodeInternalId}:${memoizationKey}`;
   },
   60 * 10 * 1000
 );

@@ -8,6 +8,7 @@ import {
   CreateConnectorUrlRequestBody,
 } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
+import { ContentNodesViewType } from "../../connectors/content_nodes";
 import { WebCrawlerConfigurationType } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
@@ -231,14 +232,16 @@ export class ConnectorsAPI {
     connectorId,
     parentId,
     filterPermission,
+    viewType = "documents",
   }: {
     connectorId: string;
     parentId?: string;
     filterPermission?: ConnectorPermission;
+    viewType?: ContentNodesViewType;
   }): Promise<ConnectorsAPIResponse<{ resources: ContentNode[] }>> {
     let url = `${CONNECTORS_API}/connectors/${encodeURIComponent(
       connectorId
-    )}/permissions?`;
+    )}/permissions?viewType=${viewType}`;
     if (parentId) {
       url += `&parentId=${encodeURIComponent(parentId)}`;
     }
@@ -259,7 +262,10 @@ export class ConnectorsAPI {
     resources,
   }: {
     connectorId: string;
-    resources: { internalId: string; permission: ConnectorPermission }[];
+    resources: {
+      internalId: string;
+      permission: ConnectorPermission;
+    }[];
   }): Promise<ConnectorsAPIResponse<void>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
@@ -371,9 +377,11 @@ export class ConnectorsAPI {
   async getContentNodes({
     connectorId,
     internalIds,
+    viewType = "documents",
   }: {
     connectorId: string;
     internalIds: string[];
+    viewType?: ContentNodesViewType;
   }): Promise<
     ConnectorsAPIResponse<{
       nodes: ContentNode[];
@@ -388,6 +396,7 @@ export class ConnectorsAPI {
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           internalIds,
+          viewType,
         }),
       }
     );

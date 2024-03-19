@@ -3,6 +3,7 @@ import type {
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
+  ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
@@ -317,17 +318,19 @@ export function useConnectorPermissions({
   parentId,
   filterPermission,
   disabled,
+  viewType = "documents",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
+  viewType?: ContentNodesViewType;
 }) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?`;
+  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }

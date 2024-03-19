@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
+  getGoogleSheetTableId,
   getSanitizedHeaders,
   InvalidStructuredDataHeaderError,
   makeStructuredDataTableName,
@@ -32,10 +33,6 @@ type Sheet = sheets_v4.Schema$ValueRange & {
   title: string;
 };
 
-function makeTableIdFromSheetId(spreadsheetId: string, sheetId: number) {
-  return `google-spreadsheet-${spreadsheetId}-sheet-${sheetId}`;
-}
-
 async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
   await GoogleDriveSheet.upsert({
     connectorId: connector.id,
@@ -54,7 +51,7 @@ async function upsertTable(
   const dataSourceConfig = await dataSourceConfigFromConnector(connector);
 
   const { id, spreadsheet, title } = sheet;
-  const tableId = makeTableIdFromSheetId(spreadsheet.id, id);
+  const tableId = getGoogleSheetTableId(spreadsheet.id, id);
 
   const name = `${spreadsheet.title} - ${title}`;
   const tableName = makeStructuredDataTableName(
@@ -511,7 +508,7 @@ async function deleteSheetForSpreadsheet(
   // First remove the upserted table in core.
   await deleteTable({
     dataSourceConfig,
-    tableId: makeTableIdFromSheetId(spreadsheetFileId, sheet.driveSheetId),
+    tableId: getGoogleSheetTableId(spreadsheetFileId, sheet.driveSheetId),
     loggerArgs: {
       connectorId: connector.id,
       sheetId: sheet.driveSheetId,
