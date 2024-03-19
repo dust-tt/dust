@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Confetti from "react-confetti";
 
 function randomInt(min: number, max: number): number {
@@ -24,13 +24,48 @@ function drawSnowflake(ctx: CanvasRenderingContext2D): void {
 }
 
 export interface ConfettiBackgroundProps {
+  width?: number;
+  height?: number;
   variant?: "confetti" | "snow";
+  referentSize?: React.RefObject<HTMLElement>;
 }
 
 const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
+  width,
+  height,
   variant = "confetti",
+  referentSize,
 }) => {
+  const [referentWidth, setReferentWidth] = useState(0);
+  const [referentHeight, setReferentHeight] = useState(0);
+  const resizeObserver = useRef<ResizeObserver | null>(null);
+
+  useEffect(() => {
+    if (referentSize && referentSize.current) {
+      const { clientWidth, clientHeight } = referentSize.current;
+      setReferentWidth(clientWidth);
+      setReferentHeight(clientHeight);
+
+      resizeObserver.current = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setReferentWidth(entry.target.clientWidth);
+          setReferentHeight(entry.target.clientHeight);
+        }
+      });
+
+      resizeObserver.current.observe(referentSize.current);
+    }
+
+    return () => {
+      if (resizeObserver.current && referentSize && referentSize.current) {
+        resizeObserver.current.unobserve(referentSize.current);
+      }
+    };
+  }, [referentSize]);
+
   const confettiProps = {
+    width: referentSize ? referentWidth : width,
+    height: referentSize ? referentHeight : height,
     wind: 0.005,
     gravity: 0.02,
     numberOfPieces: 80,
@@ -38,6 +73,8 @@ const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
   };
 
   const snowProps = {
+    width: referentSize ? referentWidth : width,
+    height: referentSize ? referentHeight : height,
     wind: 0.003,
     gravity: 0.01,
     numberOfPieces: 100,

@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react";
-import React from "react";
+import React, { useRef } from "react";
 
 import { ConfettiBackground } from "@sparkle/index";
 
@@ -11,16 +11,18 @@ const meta = {
 export default meta;
 
 export const ConfettiExample = () => {
+  const referentRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="s-h-full s-w-full">
-      <ConfettiBackground variant="confetti" />
+    <div className="s-h-[100vh] s-w-full" ref={referentRef}>
+      <ConfettiBackground variant="confetti" referentSize={referentRef} />
     </div>
   );
 };
 export const SnowExample = () => {
+  const referentRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="s-h-full s-w-full">
-      <ConfettiBackground variant="snow" />
+    <div className="s-h-[100vh] s-w-full" ref={referentRef}>
+      <ConfettiBackground variant="snow" referentSize={referentRef} />
     </div>
   );
 };
