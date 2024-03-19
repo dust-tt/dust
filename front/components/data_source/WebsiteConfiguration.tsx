@@ -88,8 +88,12 @@ export default function WebsiteConfiguration({
   };
 
   const formValidation = useCallback(() => {
-    const urlRegex =
-      /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+    let urlIsValid = true;
+    try {
+      new URL(dataSourceUrl);
+    } catch (e) {
+      urlIsValid = false;
+    }
 
     let edited = false;
     let valid = true;
@@ -112,7 +116,7 @@ export default function WebsiteConfiguration({
         "DataSource name cannot start with the prefix `managed-`"
       );
       valid = false;
-    } else if (!dataSourceUrl.match(urlRegex)) {
+    } else if (!urlIsValid) {
       setDataSourceNameError(
         "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
       );
