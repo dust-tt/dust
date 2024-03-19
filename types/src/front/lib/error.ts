@@ -46,7 +46,7 @@ export type APIErrorType =
   | "conversation_not_found"
   | "agent_configuration_not_found"
   | "message_not_found"
-  | "test_plan_message_limit_reached"
+  | "plan_message_limit_exceeded"
   | "global_agent_error"
   | "stripe_invalid_product_id_error"
   | "rate_limit_error"
