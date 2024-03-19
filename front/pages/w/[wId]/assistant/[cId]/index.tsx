@@ -6,7 +6,6 @@ import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
@@ -59,7 +58,6 @@ export default function AssistantConversation({
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const [detailViewContent, setDetailViewContent] = useState("");
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -75,38 +73,6 @@ export default function AssistantConversation({
       window.removeEventListener("keydown", handleNewConvoShortcut);
     };
   }, [owner.sId, router]);
-
-  const handleCloseModal = () => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { assistantDetails, ...restQuery } = router.query;
-    void router.push(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  };
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const assistantSId = router.query.assistantDetails ?? [];
-      if (assistantSId && typeof assistantSId === "string") {
-        setDetailViewContent(assistantSId);
-      } else {
-        setDetailViewContent("");
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.query, router.events]);
 
   const handleSubmit = async (
     input: string,
@@ -137,11 +103,6 @@ export default function AssistantConversation({
 
   return (
     <>
-      <AssistantDetails
-        owner={owner}
-        assistantId={detailViewContent || null}
-        onClose={handleCloseModal}
-      />
       <Conversation
         owner={owner}
         user={user}

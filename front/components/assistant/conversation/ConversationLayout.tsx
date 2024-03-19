@@ -1,8 +1,9 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { useRouter } from "next/navigation";
-import React, { useContext } from "react";
+import { useRouter } from "next/router";
+import React, { useContext, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -32,6 +33,40 @@ export default function ConversationLayout({
 
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
+
+  const [detailViewContent, setDetailViewContent] = useState("");
+
+  const handleCloseModal = () => {
+    const currentPathname = router.pathname;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { assistantDetails, ...restQuery } = router.query;
+    void router.push(
+      { pathname: currentPathname, query: restQuery },
+      undefined,
+      {
+        shallow: true,
+      }
+    );
+  };
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const assistantSId = router.query.assistantDetails ?? [];
+      if (assistantSId && typeof assistantSId === "string") {
+        setDetailViewContent(assistantSId);
+      } else {
+        setDetailViewContent("");
+      }
+    };
+
+    // Initial check in case the component mounts with the query already set.
+    handleRouteChange();
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.query, router.events]);
 
   const { conversation } = useConversation({
     conversationId,
@@ -73,6 +108,11 @@ export default function ConversationLayout({
           }
           navChildren={<AssistantSidebarMenu owner={owner} />}
         >
+          <AssistantDetails
+            owner={owner}
+            assistantId={detailViewContent || null}
+            onClose={handleCloseModal}
+          />
           <GenerationContextProvider>{children}</GenerationContextProvider>
         </AppLayout>
       </InputBarProvider>

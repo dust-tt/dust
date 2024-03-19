@@ -19,10 +19,9 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -134,40 +133,43 @@ export default function AssistantNew({
   }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
 
   const { submit: handleSubmit } = useSubmitFunction(
-    async (
-      input: string,
-      mentions: MentionType[],
-      contentFragment?: {
-        title: string;
-        content: string;
-      }
-    ) => {
-      const conversationRes = await createConversationWithMessage({
-        owner,
-        user,
-        messageData: {
-          input,
-          mentions,
-          contentFragment,
-        },
-      });
-      if (conversationRes.isErr()) {
-        if (conversationRes.error.type === "plan_limit_reached_error") {
-          setPlanLimitReached(true);
-        } else {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
+    useCallback(
+      async (
+        input: string,
+        mentions: MentionType[],
+        contentFragment?: {
+          title: string;
+          content: string;
         }
-      } else {
-        // We start the push before creating the message to optimize for instantaneity as well.
-        void router.push(
-          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
-        );
-      }
-    }
+      ) => {
+        const conversationRes = await createConversationWithMessage({
+          owner,
+          user,
+          messageData: {
+            input,
+            mentions,
+            contentFragment,
+          },
+        });
+        if (conversationRes.isErr()) {
+          if (conversationRes.error.type === "plan_limit_reached_error") {
+            setPlanLimitReached(true);
+          } else {
+            sendNotification({
+              title: conversationRes.error.title,
+              description: conversationRes.error.message,
+              type: "error",
+            });
+          }
+        } else {
+          // We start the push before creating the message to optimize for instantaneity as well.
+          void router.push(
+            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
+          );
+        }
+      },
+      [owner, user, router, sendNotification]
+    )
   );
 
   const { submit: handleOpenHelpConversation } = useSubmitFunction(
@@ -201,9 +203,6 @@ export default function AssistantNew({
   const [greeting, setGreeting] = useState<string>("");
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
-
-  const [showDetails, setShowDetails] =
-    useState<LightAgentConfigurationType | null>(null);
 
   useEffect(() => {
     if (animate) {
@@ -244,11 +243,6 @@ export default function AssistantNew({
           onClose={() => setConversationHelperModal(null)}
         />
       )}
-      <AssistantDetails
-        owner={owner}
-        assistantId={showDetails?.sId || null}
-        onClose={() => setShowDetails(null)}
-      />
       <div className="flex h-full items-center pb-20">
         <div className="flex text-sm font-normal text-element-800">
           <Page.Vertical gap="md" align="left">
@@ -295,37 +289,52 @@ export default function AssistantNew({
                       isBuilder ? "" : "sm:grid-cols-4"
                     }`}
                   >
-                    {displayedAgents.map((agent) => (
-                      <AssistantPreview
-                        variant="item"
-                        title={agent.name}
-                        description={agent.description}
-                        pictureUrl={agent.pictureUrl}
-                        key={agent.sId}
-                        onClick={() => {
-                          setShowDetails(agent);
-                        }}
-                        subtitle={agent.lastAuthors?.join(", ") || ""}
-                        actions={
-                          <div className="s-flex s-justify-end">
-                            <Button
-                              icon={ChatBubbleBottomCenterTextIcon}
-                              label="Chat"
-                              variant="tertiary"
-                              size="xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                    {displayedAgents.map((agent) => {
+                      const href = {
+                        pathname: router.pathname,
+                        query: {
+                          ...router.query,
+                          assistantDetails: agent.sId,
+                        },
+                      };
 
-                                setSelectedAssistant({
-                                  configurationId: agent.sId,
-                                });
-                                setAnimate(true);
-                              }}
-                            />
-                          </div>
-                        }
-                      />
-                    ))}
+                      return (
+                        <Link
+                          href={href}
+                          key={agent.sId}
+                          shallow
+                          className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+                        >
+                          <AssistantPreview
+                            variant="item"
+                            title={agent.name}
+                            description={agent.description}
+                            pictureUrl={agent.pictureUrl}
+                            key={agent.sId}
+                            subtitle={agent.lastAuthors?.join(", ") || ""}
+                            actions={
+                              <div className="s-flex s-justify-end">
+                                <Button
+                                  icon={ChatBubbleBottomCenterTextIcon}
+                                  label="Chat"
+                                  variant="tertiary"
+                                  size="xs"
+                                  onClick={(e) => {
+                                    // Prevent click event from propagating to parent component.
+                                    e.preventDefault();
+
+                                    setSelectedAssistant({
+                                      configurationId: agent.sId,
+                                    });
+                                    setAnimate(true);
+                                  }}
+                                />
+                              </div>
+                            }
+                          />
+                        </Link>
+                      );
+                    })}
                   </div>
                   <Button.List isWrapping={true}>
                     <div className="flex flex-wrap gap-2">
