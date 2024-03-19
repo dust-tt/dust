@@ -175,13 +175,19 @@ export default function AssistantBuilderTablesModal({
     // fetch the content nodes for those tables and add them to the selected
     // managed tables.
 
+    const hasSelectedTables = !!Object.keys(tablesQueryConfiguration).length;
+    const selectedDataSourceIsConnector = !!selectedDataSource?.connectorId;
+    const hasExistingTablesQueryConfiguration = !!Object.keys(
+      tablesQueryConfiguration
+    ).length;
+
     if (
       !selectedDataSource ||
-      !selectedDataSource.connectorId ||
+      !selectedDataSourceIsConnector ||
       isInitializingNodes ||
-      !!selectedManagedTables.length ||
-      !Object.keys(tablesQueryConfiguration).length ||
-      !!nodeIntializationError
+      hasSelectedTables ||
+      !hasExistingTablesQueryConfiguration ||
+      nodeIntializationError
     ) {
       return;
     }

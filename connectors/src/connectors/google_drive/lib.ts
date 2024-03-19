@@ -9,6 +9,7 @@ import {
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
+import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import { HTTPError } from "@connectors/lib/error";
 import {
@@ -86,10 +87,7 @@ export async function isDriveObjectExpandable({
   connectorId: ModelId;
   viewType: ContentNodesViewType;
 }): Promise<boolean> {
-  if (
-    mimeType === "application/vnd.google-apps.spreadsheet" &&
-    viewType === "tables"
-  ) {
+  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "tables") {
     // In tables view, Spreadsheets can be expanded to show their sheets.
     return !!(await GoogleDriveSheet.findOne({
       attributes: ["id"],
