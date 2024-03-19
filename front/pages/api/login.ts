@@ -308,8 +308,21 @@ async function handler(
     inviteToken
   );
   if (membershipInviteRes.isErr()) {
-    throw membershipInviteRes.error;
+    const { error } = membershipInviteRes;
+
+    if (error instanceof AuthFlowError) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+
+    throw error;
   }
+
   const membershipInvite = membershipInviteRes.value;
 
   // Login flow: first step is to attempt to find the user.
