@@ -14,7 +14,11 @@ import type {
   CoreAPITable,
   DataSourceType,
 } from "@dust-tt/types";
-import { getTableIdForContentNode } from "@dust-tt/types";
+import {
+  getGoogleSheetContentNodeInternalIdFromTableId,
+  getNotionDatabaseContentNodeInternalIdFromTableId,
+  getTableIdForContentNode,
+} from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -33,18 +37,18 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
 const getContentNodes = async (
   workspaceSid: string,
   dataSourceName: string,
-  tableIds: string[]
+  internalIds: string[]
 ): Promise<ContentNode[]> => {
   const res = await fetch(
     `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
       dataSourceName
-    )}/managed/content-nodes/from-tables`,
+    )}/managed/content-nodes`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ tableIds }),
+      body: JSON.stringify({ internalIds }),
     }
   );
 
@@ -135,17 +139,29 @@ export default function AssistantBuilderTablesModal({
       dataSource: DataSourceType,
       tableConfigs: AssistantBuilderTableConfiguration[]
     ) => {
-      const tableIds = tableConfigs.map((config) => config.tableId);
+      // const tableIds = tableConfigs.map((config) => config.tableId);
+      const internalIds = tableConfigs.map((c) => {
+        switch (dataSource.connectorProvider) {
+          case "google_drive":
+            return getGoogleSheetContentNodeInternalIdFromTableId(c.tableId);
+          case "notion":
+            return getNotionDatabaseContentNodeInternalIdFromTableId(c.tableId);
+          default:
+            throw new Error(
+              `Unsupported connector provider: ${dataSource.connectorProvider}`
+            );
+        }
+      });
 
       const contentNodes = await getContentNodes(
         owner.sId,
         dataSource.name,
-        tableIds
+        internalIds
       );
 
-      if (contentNodes.length !== tableIds.length) {
+      if (contentNodes.length !== internalIds.length) {
         throw new Error(
-          `Failed to fetch content nodes for all tables. Expected ${tableIds.length}, got ${contentNodes.length}.`
+          `Failed to fetch content nodes for all tables. Expected ${internalIds.length}, got ${contentNodes.length}.`
         );
       }
 

@@ -1,10 +1,5 @@
 import type { ContentNode, WithAPIErrorReponse } from "@dust-tt/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-  getGoogleSheetContentNodeInternalIdFromTableId,
-  getNotionDatabaseContentNodeInternalIdFromTableId,
-} from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,19 +10,17 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const GetContentNodesFromTableIdsRequestBody = t.type({
-  tableIds: t.array(t.string),
+const GetContentNodesRequestBody = t.type({
+  internalIds: t.array(t.string),
 });
 
-export type GetContentNodesFromTableIdsResponseBody = {
+export type GetContentNodesResponseBody = {
   contentNodes: ContentNode[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorReponse<GetContentNodesFromTableIdsResponseBody>
-  >
+  res: NextApiResponse<WithAPIErrorReponse<GetContentNodesResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -117,9 +110,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = GetContentNodesFromTableIdsRequestBody.decode(
-        req.body
-      );
+      const bodyValidation = GetContentNodesRequestBody.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -131,26 +122,11 @@ async function handler(
         });
       }
 
-      const { tableIds } = bodyValidation.right;
-
-      const contentNodeIds = (() => {
-        switch (dataSource.connectorProvider) {
-          case "notion":
-            return tableIds.map((tableId) =>
-              getNotionDatabaseContentNodeInternalIdFromTableId(tableId)
-            );
-          case "google_drive":
-            return tableIds.map((tableId) =>
-              getGoogleSheetContentNodeInternalIdFromTableId(tableId)
-            );
-          default:
-            assertNever(dataSource.connectorProvider);
-        }
-      })();
+      const { internalIds } = bodyValidation.right;
 
       const connectorsRes = await connectorsAPI.getContentNodes({
         connectorId: dataSource.connectorId,
-        internalIds: contentNodeIds,
+        internalIds,
         viewType: "tables",
       });
 
@@ -160,7 +136,7 @@ async function handler(
           api_error: {
             type: "internal_server_error",
             message:
-              "Failed to get the content nodes for the provided table IDs.",
+              "Failed to get the content nodes for the provided internal IDs.",
             connectors_error: connectorsRes.error,
           },
         });
