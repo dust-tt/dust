@@ -39,6 +39,14 @@ export function getGoogleIdsFromSheetContentNodeInternalId(
   return { googleFileId, googleSheetId };
 }
 
+// Get the Table ID for a sheet within a Google Spreadsheet from the
+// Content Node ID of the sheet.
+export function getGoogleSheetTableIdFromContentNodeInternalId(
+  internalId: string
+): string {
+  return internalId;
+}
+
 // Check if a Content Node ID is a valid Content Node ID for a sheet within a
 // Google Spreadsheet.
 export function isGoogleSheetContentNodeInternalId(

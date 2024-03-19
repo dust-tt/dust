@@ -261,7 +261,6 @@ export async function retrieveGithubConnectorPermissions({
           permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: null,
-          dustTableId: null,
         }))
       );
     }
@@ -313,7 +312,6 @@ export async function retrieveGithubConnectorPermissions({
           permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: directory.codeUpdatedAt.getTime(),
-          dustTableId: null,
         });
       });
 
@@ -329,7 +327,6 @@ export async function retrieveGithubConnectorPermissions({
           permission: "read",
           dustDocumentId: file.documentId,
           lastUpdatedAt: file.codeUpdatedAt.getTime(),
-          dustTableId: null,
         });
       });
 
@@ -391,7 +388,6 @@ export async function retrieveGithubConnectorPermissions({
           permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: latestIssue.updatedAt.getTime(),
-          dustTableId: null,
         });
       }
 
@@ -407,7 +403,6 @@ export async function retrieveGithubConnectorPermissions({
           permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
-          dustTableId: null,
         });
       }
 
@@ -423,7 +418,6 @@ export async function retrieveGithubConnectorPermissions({
           permission: "read",
           dustDocumentId: null,
           lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
-          dustTableId: null,
         });
       }
 
@@ -540,7 +534,6 @@ export async function retrieveGithubReposContentNodes(
       permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: null,
-      dustTableId: null,
     });
   });
 
@@ -562,7 +555,6 @@ export async function retrieveGithubReposContentNodes(
       permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: null,
-      dustTableId: null,
     });
   });
   allDiscussionsFromRepoIds.forEach((repoId) => {
@@ -582,7 +574,6 @@ export async function retrieveGithubReposContentNodes(
       permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: null,
-      dustTableId: null,
     });
   });
 
@@ -601,7 +592,6 @@ export async function retrieveGithubReposContentNodes(
       permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
-      dustTableId: null,
     });
   });
 
@@ -622,7 +612,6 @@ export async function retrieveGithubReposContentNodes(
       permission: "read",
       dustDocumentId: null,
       lastUpdatedAt: directory.codeUpdatedAt.getTime(),
-      dustTableId: null,
     });
   });
 
@@ -643,7 +632,6 @@ export async function retrieveGithubReposContentNodes(
       permission: "read",
       dustDocumentId: file.documentId,
       lastUpdatedAt: file.codeUpdatedAt.getTime(),
-      dustTableId: null,
     });
   });
 

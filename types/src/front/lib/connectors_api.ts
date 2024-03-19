@@ -105,7 +105,6 @@ export type ContentNode = {
   permission: ConnectorPermission;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
-  dustTableId: string | null;
 };
 
 export type GoogleDriveFolderType = {

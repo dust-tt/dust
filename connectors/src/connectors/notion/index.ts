@@ -399,7 +399,6 @@ export async function retrieveNotionConnectorPermissions({
       permission: "read",
       dustDocumentId: `notion-${page.notionPageId}`,
       lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-      dustTableId: null,
     };
   };
 
@@ -410,7 +409,6 @@ export async function retrieveNotionConnectorPermissions({
   }
 
   const getDbNodes = async (db: NotionDatabase): Promise<ContentNode> => {
-    const tableId = getNotionDatabaseTableId(db.notionDatabaseId);
     return {
       provider: c.type,
       internalId: db.notionDatabaseId,
@@ -423,7 +421,6 @@ export async function retrieveNotionConnectorPermissions({
       permission: "read",
       dustDocumentId: `notion-database-${db.notionDatabaseId}`,
       lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
-      dustTableId: db.structuredDataUpsertedTs ? tableId : null,
     };
   };
 
@@ -461,7 +458,6 @@ export async function retrieveNotionConnectorPermissions({
         permission: "read",
         dustDocumentId: null,
         lastUpdatedAt: null,
-        dustTableId: null,
       });
     }
   }

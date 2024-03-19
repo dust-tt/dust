@@ -14,7 +14,7 @@ import type {
   CoreAPITable,
   DataSourceType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { getTableIdForContentNode } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -248,9 +248,10 @@ export default function AssistantBuilderTablesModal({
     setIsSaving(true);
 
     try {
-      const tableIds = removeNulls(
-        selectedManagedTables.map((n) => n.dustTableId)
+      const tableIds = selectedManagedTables.map((n) =>
+        getTableIdForContentNode(n)
       );
+
       const tables = await Promise.all(
         tableIds.map(async (id) => {
           const tableRes = await fetch(

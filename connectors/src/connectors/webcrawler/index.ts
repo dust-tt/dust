@@ -224,7 +224,6 @@ export async function retrieveWebcrawlerConnectorPermissions({
           dustDocumentId: null,
           type: "folder",
           lastUpdatedAt: folder.updatedAt.getTime(),
-          dustTableId: null,
         };
       })
       .concat(
@@ -253,7 +252,6 @@ export async function retrieveWebcrawlerConnectorPermissions({
             dustDocumentId: page.documentId,
             type: "file",
             lastUpdatedAt: page.updatedAt.getTime(),
-            dustTableId: null,
           };
         })
       )
@@ -325,7 +323,6 @@ export async function retrieveWebCrawlerContentNodes(
       dustDocumentId: null,
       type: "folder",
       lastUpdatedAt: folder.updatedAt.getTime(),
-      dustTableId: null,
     });
   });
   pages.forEach((page) => {
@@ -340,7 +337,6 @@ export async function retrieveWebCrawlerContentNodes(
       dustDocumentId: page.documentId,
       type: "file",
       lastUpdatedAt: page.updatedAt.getTime(),
-      dustTableId: null,
     });
   });
 

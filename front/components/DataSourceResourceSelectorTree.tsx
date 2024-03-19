@@ -165,7 +165,7 @@ function DataSourceResourceSelectorChildren({
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
             const checkStatus = getCheckStatus(r.internalId);
-            const checkable = !isTablesView || !!r.dustTableId;
+            const checkable = !isTablesView || r.type === "database";
             const showCheckbox = checkable || checkStatus !== "unchecked";
             return (
               <div key={r.internalId}>

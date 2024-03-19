@@ -367,7 +367,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
               viewType,
             }),
             permission: "read",
-            dustTableId: null,
           };
         },
         { concurrency: 4 }
@@ -427,7 +426,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
               viewType,
             }),
             permission: "read",
-            dustTableId: null,
           };
         },
         { concurrency: 4 }
@@ -495,7 +493,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
             }))
               ? "read"
               : "none",
-            dustTableId: null,
           };
         })
       );
@@ -558,7 +555,6 @@ export async function retrieveGoogleDriveConnectorPermissions({
             }))
               ? "read"
               : "none",
-            dustTableId: null,
           };
         })
       );
@@ -687,7 +683,6 @@ export async function retrieveGoogleDriveContentNodes(
           viewType,
         }),
         permission: "read",
-        dustTableId: null,
       };
     },
     { concurrency: 4 }
@@ -710,7 +705,6 @@ export async function retrieveGoogleDriveContentNodes(
         sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit`,
         expandable: false,
         permission: "read",
-        dustTableId: getGoogleSheetTableId(s.driveFileId, s.driveSheetId),
       };
     },
     { concurrency: 4 }

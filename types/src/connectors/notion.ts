@@ -69,9 +69,19 @@ export const ParsedNotionDatabaseSchema = t.type({
 });
 
 export type ParsedNotionDatabase = t.TypeOf<typeof ParsedNotionDatabaseSchema>;
+
 // Returns the Table ID for a Notion database from the Notion-provided database ID.
 export function getNotionDatabaseTableId(notionDatabaseId: string): string {
   return `notion-${notionDatabaseId}`;
+}
+
+// Returns the Table ID for a Notion database from the Content Node ID.
+export function getNotionDatabaseTableIdFromContentNodeInternalId(
+  internalId: string
+): string {
+  // The internalId is also the notion-provided database ID
+  // so we can just use the same function.
+  return getNotionDatabaseTableId(internalId);
 }
 
 // Recover the Content Node ID for a Notion database (which is also the notion-provided database ID)
