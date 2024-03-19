@@ -294,6 +294,7 @@ export default function Subscription({
       />
 
       <SkipFreeTrialDialog
+        plan={subscription.plan}
         show={showSkipFreeTrialDialog}
         onClose={() => {
           setShowSkipFreeTrialDialog(false);
@@ -355,10 +356,10 @@ export default function Subscription({
                 <Page.Horizontal gap="sm">
                   <Button
                     onClick={() => setShowSkipFreeTrialDialog(true)}
-                    label="End trial & upgrade now"
+                    label="End trial & get full access"
                   />
                   <Button
-                    label="End my trial now"
+                    label="Cancel subscription"
                     variant="tertiary"
                     onClick={() => setShowCancelFreeTrialDialog(true)}
                   />
@@ -461,6 +462,7 @@ function SkipFreeTrialDialog({
   workspaceSeats,
   estimatedMonthlyBilling,
   isSaving,
+  plan,
 }: {
   show: boolean;
   onClose: () => void;
@@ -468,37 +470,47 @@ function SkipFreeTrialDialog({
   workspaceSeats: number;
   estimatedMonthlyBilling: number;
   isSaving: boolean;
+  plan: SubscriptionType["plan"];
 }) {
   return (
     <Dialog
       isOpen={show}
-      title={`Skip trial`}
+      title={`End trial`}
       onCancel={onClose}
-      validateLabel="Upgrade now"
+      validateLabel="End trial & get full access"
       validateVariant="primary"
       onValidate={() => {
         onValidate();
       }}
       isSaving={isSaving}
     >
-      <Page.P>
-        {(() => {
-          if (workspaceSeats === 1) {
+      <Page.Vertical gap="md">
+        <Page.P>
+          Ending your trial will allow you to invite more than{" "}
+          {plan.limits.users.maxUsers} members to your workspace.
+        </Page.P>
+        <Page.P>
+          {(() => {
+            if (workspaceSeats === 1) {
+              return (
+                <>
+                  Billing will start immediately for your workspace. <br />
+                  Currently: {workspaceSeats} member, {estimatedMonthlyBilling}€
+                  monthly (excluding taxes).
+                </>
+              );
+            }
             return (
               <>
-                Billing will start immediately for {workspaceSeats} member of
-                your workspace ({estimatedMonthlyBilling}€ monthly).
+                Billing will start immediately for your workspace:.
+                <br />
+                Currently: {workspaceSeats} members, {estimatedMonthlyBilling}€
+                monthly (excluding taxes).
               </>
             );
-          }
-          return (
-            <>
-              Billing will start immediately for the {workspaceSeats} members of
-              your workspace ({estimatedMonthlyBilling}€ monthly).
-            </>
-          );
-        })()}
-      </Page.P>
+          })()}
+        </Page.P>
+      </Page.Vertical>
     </Dialog>
   );
 }
@@ -517,9 +529,9 @@ function CancelFreeTrialDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Cancel my trial`}
+      title={`Cancel subscription`}
       onCancel={onClose}
-      validateLabel="Yes, cancel trial"
+      validateLabel="Yes, cancel subscription"
       validateVariant="primaryWarning"
       onValidate={onValidate}
       isSaving={isSaving}
