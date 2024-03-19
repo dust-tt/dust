@@ -88,10 +88,9 @@ export default function WebsiteConfiguration({
   };
 
   const formValidation = useCallback(() => {
-    let urlIsValid = false;
+    let urlIsValid = true;
     try {
       new URL(dataSourceUrl);
-      urlIsValid = true;
     } catch (e) {
       urlIsValid = false;
     }
