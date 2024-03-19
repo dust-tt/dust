@@ -4,10 +4,8 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowLeftRightIcon,
-  Dialog,
   FolderOpenIcon,
   Page,
-  Popup,
   QuestionMarkCircleIcon,
   RobotSharedIcon,
 } from "@dust-tt/sparkle";
@@ -15,7 +13,6 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
-  SubscriptionType,
   UserType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -40,7 +37,6 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isTrial } from "@app/lib/plans/trial";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 
