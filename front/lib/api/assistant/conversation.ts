@@ -870,7 +870,6 @@ export async function* postUserMessage(
   const isAboveMessageLimit = await isMessagesLimitReached({
     owner,
     plan,
-    subscription,
   });
   if (isAboveMessageLimit) {
     yield {
@@ -1982,11 +1981,9 @@ async function* streamRunAgentEvents(
 async function isMessagesLimitReached({
   owner,
   plan,
-  subscription,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
-  subscription: SubscriptionType;
 }): Promise<boolean> {
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
@@ -1994,32 +1991,12 @@ async function isMessagesLimitReached({
     return false;
   }
 
-  if (isTrial(subscription)) {
-    const remaining = await rateLimiter({
-      key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
-      maxPerTimeframe: maxMessages,
-      timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
-      logger,
-    });
-
-    return remaining <= 0;
-  }
-
-  // TODO(2024-03-18 flav) Should we keep this?
-  const messages = await Message.findAll({
-    attributes: ["id"],
-    include: [
-      {
-        model: Conversation,
-        as: "conversation",
-        attributes: ["id", "workspaceId"],
-        required: true,
-        where: { workspaceId: owner.id },
-      },
-    ],
-    where: { agentMessageId: { [Op.ne]: null } },
-    limit: plan.limits.assistant.maxMessages,
+  const remaining = await rateLimiter({
+    key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+    maxPerTimeframe: maxMessages,
+    timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+    logger,
   });
 
-  return messages.length >= plan.limits.assistant.maxMessages;
+  return remaining <= 0;
 }

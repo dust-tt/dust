@@ -523,7 +523,7 @@ export function LimitReachedPopup({
           void router.push(`/w/${workspaceId}/subscription`);
         }}
         onCancel={() => onClose()}
-        cancelLabel="Ok"
+        cancelLabel="Close"
         validateLabel="Skip trial & upgrade now"
       >
         <p className="text-sm font-normal text-element-800">
