@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -13,7 +14,6 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/i
 import { submitMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -154,7 +154,7 @@ export default function AssistantConversation({
         stickyMentions={stickyMentions}
         conversationId={conversationId}
       />
-      <LimitReachedPopup
+      <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
