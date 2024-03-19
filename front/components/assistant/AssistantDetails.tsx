@@ -311,7 +311,7 @@ function DataSourcesSection({
                     : true,
                 }));
               }}
-              type={ds ? "node" : "leaf"}
+              type={ds && ds.connectorId ? "node" : "leaf"}
               label={dataSourceName}
               visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
               variant="folder" // in case LogoComponent is null

@@ -29,7 +29,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  if (!owner || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -56,17 +56,6 @@ async function handler(
       api_error: {
         type: "data_source_not_managed",
         message: "The data source you requested is not managed.",
-      },
-    });
-  }
-
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `users` for the current workspace can retrieve a list of connector resources.",
       },
     });
   }
