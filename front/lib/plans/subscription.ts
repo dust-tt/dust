@@ -46,6 +46,7 @@ export function renderPlanFromModel({
       assistant: {
         isSlackBotAllowed: plan.isSlackbotAllowed,
         maxMessages: plan.maxMessages,
+        maxMessagesTimeframe: plan.maxMessagesTimeframe,
       },
       connections: {
         isConfluenceAllowed: plan.isManagedConfluenceAllowed,

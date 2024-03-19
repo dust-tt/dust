@@ -50,9 +50,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 export default function AssistantConversation({
-  user,
-  owner,
   conversationId,
+  owner,
+  subscription,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
@@ -154,7 +155,9 @@ export default function AssistantConversation({
         conversationId={conversationId}
       />
       <LimitReachedPopup
-        planLimitReached={planLimitReached}
+        isOpened={planLimitReached}
+        onClose={() => setPlanLimitReached(false)}
+        subscription={subscription}
         workspaceId={owner.sId}
       />
     </>

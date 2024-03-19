@@ -33,6 +33,7 @@ if (isDevelopment()) {
     stripeProductId: "prod_OwKvN4XrUwFw5a",
     billingType: "per_seat",
     maxMessages: -1,
+    maxMessagesTimeframe: "lifetime",
     maxUsersInWorkspace: 1000,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,

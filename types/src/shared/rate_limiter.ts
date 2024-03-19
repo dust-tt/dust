@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
+import { MaxMessagesTimeframeType } from "../front/plan";
 import { LoggerInterface } from "../shared/logger";
 import { redisClient } from "../shared/redis_client";
 import { getStatsDClient } from "./statsd";
@@ -76,5 +77,21 @@ export async function rateLimiter({
     if (redis) {
       await redis.quit();
     }
+  }
+}
+
+export function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType
+): number {
+  switch (timeframeLiteral) {
+    case "day":
+      return 60 * 60 * 24; // 1 day.
+
+    // Lifetime is intentionally mapped to a 30-day period.
+    case "lifetime":
+      return 60 * 60 * 24 * 30; // 30 days.
+
+    default:
+      return 0;
   }
 }

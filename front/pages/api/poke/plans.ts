@@ -18,6 +18,7 @@ export const PlanTypeSchema = t.type({
     assistant: t.type({
       isSlackBotAllowed: t.boolean,
       maxMessages: t.number,
+      maxMessagesTimeframe: t.union([t.literal("day"), t.literal("lifetime")]),
     }),
     connections: t.type({
       isConfluenceAllowed: t.boolean,
@@ -151,6 +152,7 @@ async function handler(
         stripeProductId: body.stripeProductId,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxMessages: body.limits.assistant.maxMessages,
+        maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
         isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
         isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
         isManagedNotionAllowed: body.limits.connections.isNotionAllowed,

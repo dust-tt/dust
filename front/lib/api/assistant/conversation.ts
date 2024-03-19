@@ -5,7 +5,6 @@ import type {
   DustAppParameters,
   DustAppRunActionType,
   GenerationTokensEvent,
-  SubscriptionType,
   TablesQueryActionType,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -36,6 +35,7 @@ import type {
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
 import {
+  getTimeframeSecondsFromLiteral,
   GPT_3_5_TURBO_MODEL_CONFIG,
   md5,
   rateLimiter,
@@ -71,7 +71,6 @@ import {
 } from "@app/lib/models";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
-import { isTrial } from "@app/lib/plans/trial";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -841,28 +840,16 @@ export async function* postUserMessage(
   const isAboveMessageLimit = await isMessagesLimitReached({
     owner,
     plan,
-    subscription,
   });
   if (isAboveMessageLimit) {
-    if (isTrial(subscription)) {
-      yield {
-        type: "user_message_error",
-        created: Date.now(),
-        error: {
-          code: "free_trial_message_limit_reached",
-          message: "The free trial message limit has been reached.",
-        },
-      };
-    } else {
-      yield {
-        type: "user_message_error",
-        created: Date.now(),
-        error: {
-          code: "test_plan_message_limit_reached",
-          message: "The free plan message limit has been reached.",
-        },
-      };
-    }
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "plan_message_limit_exceeded",
+        message: "The message limit for this plan has been exceeded.",
+      },
+    };
     return;
   }
 
@@ -1959,42 +1946,22 @@ async function* streamRunAgentEvents(
 async function isMessagesLimitReached({
   owner,
   plan,
-  subscription,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
-  subscription: SubscriptionType;
 }): Promise<boolean> {
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
 
-  if (isTrial(subscription)) {
-    // For trials, the limit applies to the last 24 hours.
-    const remaining = await rateLimiter({
-      key: `workspace:${owner.id}:agent_message_count:last_24_hours`,
-      maxPerTimeframe: 25,
-      timeframeSeconds: 60 * 60 * 24, // 1 day.
-      logger,
-    });
-
-    return remaining <= 0;
-  }
-
-  const messages = await Message.findAll({
-    attributes: ["id"],
-    include: [
-      {
-        model: Conversation,
-        as: "conversation",
-        attributes: ["id", "workspaceId"],
-        required: true,
-        where: { workspaceId: owner.id },
-      },
-    ],
-    where: { agentMessageId: { [Op.ne]: null } },
-    limit: plan.limits.assistant.maxMessages,
+  const remaining = await rateLimiter({
+    key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+    maxPerTimeframe: maxMessages,
+    timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+    logger,
   });
 
-  return messages.length >= plan.limits.assistant.maxMessages;
+  return remaining <= 0;
 }

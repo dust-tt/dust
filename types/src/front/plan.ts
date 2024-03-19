@@ -1,8 +1,9 @@
+export type MaxMessagesTimeframeType = "day" | "lifetime";
+
 /**
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.
  * */
-
 export type ManageDataSourcesLimitsType = {
   isConfluenceAllowed: boolean;
   isSlackAllowed: boolean;
@@ -16,6 +17,7 @@ export type LimitsType = {
   assistant: {
     isSlackBotAllowed: boolean;
     maxMessages: number;
+    maxMessagesTimeframe: MaxMessagesTimeframeType;
   };
   connections: ManageDataSourcesLimitsType;
   dataSources: {

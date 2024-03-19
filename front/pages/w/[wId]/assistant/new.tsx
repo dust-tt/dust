@@ -4,6 +4,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   CloudArrowLeftRightIcon,
+  Dialog,
   FolderOpenIcon,
   Page,
   Popup,
@@ -14,6 +15,7 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
+  SubscriptionType,
   UserType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -37,6 +39,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { isTrial } from "@app/lib/plans/trial";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 
@@ -79,10 +82,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 export default function AssistantNew({
-  user,
+  helper,
   isBuilder,
   owner,
-  helper,
+  subscription,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
@@ -443,7 +447,9 @@ export default function AssistantNew({
         conversationId={null}
       />
       <LimitReachedPopup
-        planLimitReached={planLimitReached}
+        isOpened={planLimitReached}
+        onClose={() => setPlanLimitReached(false)}
+        subscription={subscription}
         workspaceId={owner.sId}
       />
     </>
@@ -451,16 +457,43 @@ export default function AssistantNew({
 }
 
 export function LimitReachedPopup({
-  planLimitReached,
+  isOpened,
+  onClose,
+  subscription,
   workspaceId,
 }: {
-  planLimitReached: boolean;
+  isOpened: boolean;
+  onClose: () => void;
+  subscription: SubscriptionType;
   workspaceId: string;
 }) {
   const router = useRouter();
+
+  if (isTrial(subscription)) {
+    return (
+      <Dialog
+        isOpen={isOpened}
+        title="You’ve reach the Free Trial daily messages limit"
+        onValidate={() => {
+          void router.push(`/w/${workspaceId}/subscription`);
+        }}
+        onCancel={() => onClose()}
+        cancelLabel="Close"
+        validateLabel="Skip trial & upgrade now"
+      >
+        <p className="text-sm font-normal text-element-800">
+          Come back tomorrow for a fresh start or{" "}
+          <span className="font-bold">
+            skip the trial and start paying now.
+          </span>
+        </p>
+      </Dialog>
+    );
+  }
+
   return (
     <Popup
-      show={planLimitReached}
+      show={isOpened}
       chipLabel="Free plan"
       description="Looks like you've used up all your messages. Check out our paid plans to get unlimited messages."
       buttonLabel="Check Dust plans"

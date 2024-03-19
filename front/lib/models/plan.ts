@@ -1,5 +1,6 @@
 import type {
   FreeBillingType,
+  MaxMessagesTimeframeType,
   PaidBillingType,
   SubscriptionStatusType,
 } from "@dust-tt/types";
@@ -38,6 +39,7 @@ export class Plan extends Model<
 
   // workspace limitations
   declare maxMessages: number;
+  declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare maxUsersInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedConfluenceAllowed: boolean;
@@ -101,6 +103,11 @@ Plan.init(
     maxMessages: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    maxMessagesTimeframe: {
+      type: DataTypes.ENUM("day", "lifetime"),
+      // TODO(2024-03-18 flav) Set to false, once migrated.
+      allowNull: true,
     },
     maxUsersInWorkspace: {
       type: DataTypes.INTEGER,
