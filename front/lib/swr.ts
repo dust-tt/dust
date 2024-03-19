@@ -363,7 +363,7 @@ export function usePokeConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?`;
+  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?viewType=documents`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
