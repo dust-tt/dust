@@ -16,7 +16,7 @@ type ModalProps = {
   validateLabel?: string;
   validateVariant?: "primary" | "primaryWarning";
   isSaving?: boolean;
-  hasBackground?: "confetti" | "snow" | "none";
+  backgroundType?: "confetti" | "snow" | "none";
 };
 
 export function Dialog({
@@ -29,7 +29,7 @@ export function Dialog({
   validateVariant = "primary",
   title,
   isSaving,
-  hasBackground = "none",
+  backgroundType = "none",
 }: ModalProps) {
   const referentRef = useRef<HTMLDivElement>(null);
 
@@ -92,10 +92,10 @@ export function Dialog({
                     {isSaving && <Spinner />}
                   </Button.List>
                 </div>
-                {hasBackground !== "none" && (
+                {backgroundType !== "none" && (
                   <div className="s-absolute s-bottom-0 s-left-0 s-right-0 s-top-0 s-z-0">
                     <ConfettiBackground
-                      variant={hasBackground}
+                      variant={backgroundType}
                       referentSize={referentRef}
                     />
                   </div>

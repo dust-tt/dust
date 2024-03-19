@@ -1,6 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import Confetti from "react-confetti";
 
+const baseConfettiProps = {
+  wind: 0.005,
+  gravity: 0.02,
+  numberOfPieces: 80,
+  colors: ["#FCD34D", "#6EE7B7", "#7DD3FC", "#F9A8D4", "#FCA5A5", "#D8B4FE"],
+};
+
+const baseSnowProps = {
+  wind: 0.003,
+  gravity: 0.01,
+  numberOfPieces: 100,
+  colors: ["#BFDBFE", "#93C5FD", "#DBEAFE", "#EFF6FF"],
+  drawShape: drawSnowflake,
+};
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -64,22 +79,15 @@ const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
   }, [referentSize]);
 
   const confettiProps = {
+    ...baseConfettiProps,
     width: referentSize ? referentWidth : width,
     height: referentSize ? referentHeight : height,
-    wind: 0.005,
-    gravity: 0.02,
-    numberOfPieces: 80,
-    colors: ["#FCD34D", "#6EE7B7", "#7DD3FC", "#F9A8D4", "#FCA5A5", "#D8B4FE"],
   };
 
   const snowProps = {
+    ...baseSnowProps,
     width: referentSize ? referentWidth : width,
     height: referentSize ? referentHeight : height,
-    wind: 0.003,
-    gravity: 0.01,
-    numberOfPieces: 100,
-    colors: ["#BFDBFE", "#93C5FD", "#DBEAFE", "#EFF6FF"],
-    drawShape: drawSnowflake,
   };
 
   switch (variant) {

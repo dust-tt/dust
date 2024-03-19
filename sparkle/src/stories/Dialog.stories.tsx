@@ -51,7 +51,7 @@ export const DialogExample = () => {
           title="Dialog title"
           onValidate={() => setisOpen3(false)}
           onCancel={() => setisOpen3(false)}
-          hasBackground="snow"
+          backgroundType="snow"
         >
           <div>I'm the modal content</div>
         </Dialog>
