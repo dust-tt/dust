@@ -1,36 +1,29 @@
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { UserType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import Conversation from "@app/components/assistant/conversation/Conversation";
-import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
+import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import {
-  deleteConversation,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import { submitMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useConversation } from "@app/lib/swr";
 import { LimitReachedPopup } from "@app/pages/w/[wId]/assistant/new";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  gaTrackingId: string;
-  baseUrl: string;
-  conversationId: string;
-}>(async (context, auth) => {
+export const getServerSideProps = withDefaultUserAuthRequirements<
+  ConversationLayoutProps & {
+    // Here, override conversationId.
+    conversationId: string;
+    user: UserType;
+  }
+>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
   const subscription = auth.subscription();
@@ -57,12 +50,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function AssistantConversation({
-  user,
+  conversationId,
   owner,
   subscription,
-  gaTrackingId,
-  baseUrl,
-  conversationId,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
@@ -117,11 +108,6 @@ export default function AssistantConversation({
     };
   }, [router.query, router.events]);
 
-  const { conversation } = useConversation({
-    conversationId,
-    workspaceId: owner.sId,
-  });
-
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
@@ -150,63 +136,34 @@ export default function AssistantConversation({
   };
 
   return (
-    <GenerationContextProvider>
-      <AppLayout
-        subscription={subscription}
+    <>
+      <AssistantDetails
         owner={owner}
-        isWideMode={true}
-        pageTitle={
-          conversation?.title
-            ? `Dust - ${conversation?.title}`
-            : `Dust - New Conversation`
-        }
-        gaTrackingId={gaTrackingId}
-        topNavigationCurrent="conversations"
-        titleChildren={
-          conversation && (
-            <ConversationTitle
-              owner={owner}
-              conversation={conversation}
-              shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
-              onDelete={async () => {
-                await deleteConversation({
-                  workspaceId: owner.sId,
-                  conversationId,
-                  sendNotification,
-                });
-                void router.push(`/w/${owner.sId}/assistant/new`);
-              }}
-            />
-          )
-        }
-        navChildren={
-          <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
-        }
-      >
-        <AssistantDetails
-          owner={owner}
-          assistantId={detailViewContent || null}
-          onClose={handleCloseModal}
-        />
-        <Conversation
-          owner={owner}
-          user={user}
-          conversationId={conversationId}
-          onStickyMentionsChange={setStickyMentions}
-        />
-        <FixedAssistantInputBar
-          owner={owner}
-          onSubmit={handleSubmit}
-          stickyMentions={stickyMentions}
-          conversationId={conversationId}
-        />
-        <LimitReachedPopup
-          isOpened={planLimitReached}
-          onClose={() => setPlanLimitReached(false)}
-          workspaceId={owner.sId}
-          subscription={subscription}
-        />
-      </AppLayout>
-    </GenerationContextProvider>
+        assistantId={detailViewContent || null}
+        onClose={handleCloseModal}
+      />
+      <Conversation
+        owner={owner}
+        user={user}
+        conversationId={conversationId}
+        onStickyMentionsChange={setStickyMentions}
+      />
+      <FixedAssistantInputBar
+        owner={owner}
+        onSubmit={handleSubmit}
+        stickyMentions={stickyMentions}
+        conversationId={conversationId}
+      />
+      <LimitReachedPopup
+        isOpened={planLimitReached}
+        onClose={() => setPlanLimitReached(false)}
+        subscription={subscription}
+        workspaceId={owner.sId}
+      />
+    </>
   );
 }
+
+AssistantConversation.getLayout = (page: ReactElement, pageProps: any) => {
+  return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
+};

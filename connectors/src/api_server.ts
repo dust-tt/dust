@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import express from "express";
 import morgan from "morgan";
 
+import { adminAPIHandler } from "@connectors/api/admin";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
@@ -155,6 +156,8 @@ export function startServer(port: number) {
     "/connectors/webcrawler/:connector_id/configuration",
     getWebcrawlerConfiguration
   );
+
+  app.post("/connectors/admin", adminAPIHandler);
 
   const server = app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);

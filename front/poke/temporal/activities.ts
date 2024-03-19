@@ -41,8 +41,8 @@ import {
   MessageReaction,
 } from "@app/lib/models/assistant/conversation";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -151,7 +151,7 @@ export async function deleteConversationsActivity({
       }
       await Promise.all(
         chunk.map((c) => {
-          return (async () => {
+          return (async (): Promise<void> => {
             const messages = await Message.findAll({
               where: { conversationId: c.id },
               transaction: t,
@@ -194,10 +194,13 @@ export async function deleteConversationsActivity({
                 }
               }
               if (msg.contentFragmentId) {
-                await ContentFragment.destroy({
-                  where: { id: msg.contentFragmentId },
-                  transaction: t,
-                });
+                const contentFragment = await ContentFragmentResource.fetchById(
+                  msg.contentFragmentId,
+                  t
+                );
+                if (contentFragment) {
+                  await contentFragment.delete(t);
+                }
               }
               await MessageReaction.destroy({
                 where: { messageId: msg.id },

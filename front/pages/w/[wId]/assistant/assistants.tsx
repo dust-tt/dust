@@ -87,9 +87,7 @@ export default function MyAssistants({
       }
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="conversations"
-      navChildren={
-        <AssistantSidebarMenu owner={owner} triggerInputAnimation={null} />
-      }
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <AssistantDetails
         owner={owner}

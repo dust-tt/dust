@@ -1,3 +1,7 @@
+import {
+  AdminCommandType,
+  AdminResponseType,
+} from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import {
   CreateConnectorOAuthRequestBody,
@@ -456,6 +460,18 @@ export class ConnectorsAPI {
         headers: this.getDefaultHeaders(),
       }
     );
+
+    return this._resultFromResponse(res);
+  }
+
+  async admin(
+    adminCommand: AdminCommandType
+  ): Promise<ConnectorsAPIResponse<AdminResponseType>> {
+    const res = await fetch(`${CONNECTORS_API}/connectors/admin`, {
+      method: "POST",
+      headers: this.getDefaultHeaders(),
+      body: JSON.stringify(adminCommand),
+    });
 
     return this._resultFromResponse(res);
   }
