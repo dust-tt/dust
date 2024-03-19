@@ -696,7 +696,7 @@ export async function retrieveGoogleDriveContentNodes(
         title: s.name || "",
         dustDocumentId: null,
         lastUpdatedAt: s.updatedAt.getTime() || null,
-        sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit`,
+        sourceUrl: `https://docs.google.com/spreadsheets/d/${s.driveFileId}/edit#gid=${s.driveSheetId}`,
         expandable: false,
         permission: "read",
       };
