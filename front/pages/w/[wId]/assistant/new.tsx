@@ -11,31 +11,28 @@ import {
   RobotSharedIcon,
 } from "@dust-tt/sparkle";
 import type {
-  AgentMention,
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
-  SubscriptionType,
   UserType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import Conversation from "@app/components/assistant/conversation/Conversation";
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
+import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
-import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import config from "@app/lib/api/config";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -45,14 +42,13 @@ import { setUserMetadataFromClient } from "@app/lib/user";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
-  isBuilder: boolean;
-  subscription: SubscriptionType;
-  owner: WorkspaceType;
-  helper: LightAgentConfigurationType | null;
-  gaTrackingId: string;
-}>(async (context, auth) => {
+export const getServerSideProps = withDefaultUserAuthRequirements<
+  ConversationLayoutProps & {
+    user: UserType;
+    isBuilder: boolean;
+    helper: LightAgentConfigurationType | null;
+  }
+>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
   const subscription = auth.subscription();
@@ -70,12 +66,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      user,
+      baseUrl: config.getAppUrl(),
+      conversationId: null,
+      gaTrackingId: GA_TRACKING_ID,
+      helper,
       isBuilder: auth.isBuilder(),
       owner,
-      helper,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      user,
     },
   };
 });
@@ -85,15 +83,10 @@ export default function AssistantNew({
   isBuilder,
   owner,
   helper,
-  subscription,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    null
-  );
   const [conversationHelperModal, setConversationHelperModal] =
     useState<ConversationType | null>(null);
 
@@ -168,10 +161,6 @@ export default function AssistantNew({
           });
         }
       } else {
-        // We use this to clear the UI start rendering the conversation immediately to give an
-        // impression of instantaneity.
-        setConversation(conversationRes.value);
-
         // We start the push before creating the message to optimize for instantaneity as well.
         void router.push(
           `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
@@ -208,22 +197,18 @@ export default function AssistantNew({
     }
   );
 
-  const [shouldAnimateInput, setShouldAnimateInput] = useState<boolean>(false);
   const [greeting, setGreeting] = useState<string>("");
-  const [selectedAssistant, setSelectedAssistant] =
-    useState<AgentMention | null>(null);
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
+
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
-  const triggerInputAnimation = () => {
-    setShouldAnimateInput(true);
-  };
-
   useEffect(() => {
-    if (shouldAnimateInput) {
-      setShouldAnimateInput(false);
+    if (animate) {
+      setAnimate(false);
     }
-  }, [shouldAnimateInput]);
+  }, [animate, setAnimate]);
 
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
@@ -239,261 +224,229 @@ export default function AssistantNew({
   });
 
   return (
-    <InputBarContext.Provider
-      value={{ animate: shouldAnimateInput, selectedAssistant }}
-    >
-      <GenerationContextProvider>
-        <AppLayout
-          subscription={subscription}
+    <>
+      <QuickStartGuide
+        owner={owner}
+        user={user}
+        show={showQuickGuide}
+        onClose={() => {
+          void persistQuickGuideSeen();
+        }}
+      />
+      {conversationHelperModal && helper && (
+        <TryAssistantModal
           owner={owner}
-          isWideMode={conversation ? true : false}
-          pageTitle={"Dust - New Conversation"}
-          gaTrackingId={gaTrackingId}
-          topNavigationCurrent="conversations"
-          navChildren={
-            <AssistantSidebarMenu
-              owner={owner}
-              triggerInputAnimation={triggerInputAnimation}
-            />
-          }
-        >
-          <QuickStartGuide
-            owner={owner}
-            user={user}
-            show={showQuickGuide}
-            onClose={() => {
-              void persistQuickGuideSeen();
-            }}
-          />
-          {conversationHelperModal && helper && (
-            <TryAssistantModal
-              owner={owner}
-              user={user}
-              title="Getting @help"
-              assistant={helper}
-              openWithConversation={conversationHelperModal}
-              onClose={() => setConversationHelperModal(null)}
-            />
-          )}
-          <AssistantDetails
-            owner={owner}
-            assistantId={showDetails?.sId || null}
-            onClose={() => setShowDetails(null)}
-          />
-          {!conversation ? (
-            <div className="flex h-full items-center pb-20">
-              <div className="flex text-sm font-normal text-element-800">
-                <Page.Vertical gap="md" align="left">
-                  {/* FEATURED AGENTS */}
-                  <Page.Vertical gap="lg" align="left">
-                    <div className="flex w-full flex-row gap-4">
-                      <div className="flex w-full flex-row justify-between">
-                        <Page.SectionHeader title={greeting} />
+          user={user}
+          title="Getting @help"
+          assistant={helper}
+          openWithConversation={conversationHelperModal}
+          onClose={() => setConversationHelperModal(null)}
+        />
+      )}
+      <AssistantDetails
+        owner={owner}
+        assistantId={showDetails?.sId || null}
+        onClose={() => setShowDetails(null)}
+      />
+      <div className="flex h-full items-center pb-20">
+        <div className="flex text-sm font-normal text-element-800">
+          <Page.Vertical gap="md" align="left">
+            {/* FEATURED AGENTS */}
+            <Page.Vertical gap="lg" align="left">
+              <div className="flex w-full flex-row gap-4">
+                <div className="flex w-full flex-row justify-between">
+                  <Page.SectionHeader title={greeting} />
 
-                        <div className="flex-cols flex gap-2">
-                          <div>
-                            <Button
-                              icon={QuestionMarkCircleIcon}
-                              variant="tertiary"
-                              label="Quick Start Guide"
-                              size="xs"
-                              onClick={() => {
-                                setShowQuickGuide(true);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                  <div className="flex-cols flex gap-2">
+                    <div>
+                      <Button
+                        icon={QuestionMarkCircleIcon}
+                        variant="tertiary"
+                        label="Quick Start Guide"
+                        size="xs"
+                        onClick={() => {
+                          setShowQuickGuide(true);
+                        }}
+                      />
                     </div>
-                    <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
-                      <div className="flex w-full flex-col gap-2">
-                        {isBuilder && (
-                          <>
-                            <div className="text-base font-bold text-element-800">
-                              Assistants
-                            </div>
-                            <Link href={`/w/${owner.sId}/builder/assistants`}>
-                              <Button
-                                variant="secondary"
-                                icon={RobotSharedIcon}
-                                size="xs"
-                                label="Manage Assistants"
-                              />
-                            </Link>
-                          </>
-                        )}
-                        <div
-                          className={`grid grid-cols-2 items-start gap-4 py-2 ${
-                            isBuilder ? "" : "sm:grid-cols-4"
-                          }`}
-                        >
-                          {displayedAgents.map((agent) => (
-                            <AssistantPreview
-                              variant="item"
-                              title={agent.name}
-                              description={agent.description}
-                              pictureUrl={agent.pictureUrl}
-                              key={agent.sId}
-                              onClick={() => {
-                                setShowDetails(agent);
-                              }}
-                              subtitle={agent.lastAuthors?.join(", ") || ""}
-                              actions={
-                                <div className="s-flex s-justify-end">
-                                  <Button
-                                    icon={ChatBubbleBottomCenterTextIcon}
-                                    label="Chat"
-                                    variant="tertiary"
-                                    size="xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-
-                                      setSelectedAssistant({
-                                        configurationId: agent.sId,
-                                      });
-                                      setShouldAnimateInput(true);
-                                    }}
-                                  />
-                                </div>
-                              }
-                            />
-                          ))}
-                        </div>
-                        <Button.List isWrapping={true}>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              variant="tertiary"
-                              icon={ChatBubbleBottomCenterTextIcon}
-                              label={
-                                "@help, what can I use the assistants for?"
-                              }
-                              size="xs"
-                              hasMagnifying={false}
-                              onClick={async () => {
-                                await handleOpenHelpConversation(
-                                  "@help, what can I use the assistants for?"
-                                );
-                              }}
-                            />
-                            <Button
-                              variant="tertiary"
-                              icon={ChatBubbleBottomCenterTextIcon}
-                              label={
-                                "@help, what are the limitations of assistants?"
-                              }
-                              size="xs"
-                              hasMagnifying={false}
-                              onClick={async () => {
-                                await handleOpenHelpConversation(
-                                  "@help, what are the limitations of assistants?"
-                                );
-                              }}
-                            />
-                          </div>
-                        </Button.List>
-                      </div>
-                      {isBuilder && (
-                        <div className="flex w-full flex-col gap-2">
-                          <div className="text-base font-bold text-element-800">
-                            Data Sources
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/w/${owner.sId}/builder/data-sources/managed`}
-                            >
-                              <Button
-                                variant="secondary"
-                                icon={CloudArrowLeftRightIcon}
-                                size="xs"
-                                label="Manage Connections"
-                              />
-                            </Link>
-                            <Link
-                              href={`/w/${owner.sId}/builder/data-sources/static`}
-                            >
-                              <Button
-                                variant="secondary"
-                                icon={FolderOpenIcon}
-                                size="xs"
-                                label={"Manage Folders"}
-                              />
-                            </Link>
-                          </div>
-                          <div className="flex flex-wrap gap-2 py-2">
-                            <Link
-                              href={`/w/${owner.sId}/builder/data-sources/managed`}
-                              className="flex flex-wrap gap-2 py-2"
-                            >
-                              <Avatar
-                                size="md"
-                                visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
-                              />
-                              <Avatar
-                                size="md"
-                                visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
-                              />
-                              <Avatar
-                                size="md"
-                                visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
-                              />
-                              <Avatar
-                                size="md"
-                                visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
-                              />
-                              <Avatar
-                                size="md"
-                                visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
-                              />
-                            </Link>
-                          </div>
-                          <div className="py-0.5 text-xs font-normal text-element-700">
-                            Manage access to your company’s knowledge and data
-                            through connections (to GDrive, Notion,...) and
-                            uploads (Folder).
-                          </div>
-                          <Button.List isWrapping={true}>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="tertiary"
-                                icon={ChatBubbleBottomCenterTextIcon}
-                                label={"@help, tell me about Data Sources"}
-                                size="xs"
-                                hasMagnifying={false}
-                                onClick={async () => {
-                                  await handleOpenHelpConversation(
-                                    "@help, tell me about Data Sources"
-                                  );
-                                }}
-                              />
-                            </div>
-                          </Button.List>
-                        </div>
-                      )}
-                    </div>
-                  </Page.Vertical>
-                </Page.Vertical>
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <Conversation
-              owner={owner}
-              user={user}
-              conversationId={conversation.sId}
-            />
-          )}
+              <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
+                <div className="flex w-full flex-col gap-2">
+                  {isBuilder && (
+                    <>
+                      <div className="text-base font-bold text-element-800">
+                        Assistants
+                      </div>
+                      <Link href={`/w/${owner.sId}/builder/assistants`}>
+                        <Button
+                          variant="secondary"
+                          icon={RobotSharedIcon}
+                          size="xs"
+                          label="Manage Assistants"
+                        />
+                      </Link>
+                    </>
+                  )}
+                  <div
+                    className={`grid grid-cols-2 items-start gap-4 py-2 ${
+                      isBuilder ? "" : "sm:grid-cols-4"
+                    }`}
+                  >
+                    {displayedAgents.map((agent) => (
+                      <AssistantPreview
+                        variant="item"
+                        title={agent.name}
+                        description={agent.description}
+                        pictureUrl={agent.pictureUrl}
+                        key={agent.sId}
+                        onClick={() => {
+                          setShowDetails(agent);
+                        }}
+                        subtitle={agent.lastAuthors?.join(", ") || ""}
+                        actions={
+                          <div className="s-flex s-justify-end">
+                            <Button
+                              icon={ChatBubbleBottomCenterTextIcon}
+                              label="Chat"
+                              variant="tertiary"
+                              size="xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
 
-          <FixedAssistantInputBar
-            owner={owner}
-            onSubmit={handleSubmit}
-            conversationId={conversation?.sId || null}
-          />
-          <LimitReachedPopup
-            planLimitReached={planLimitReached}
-            workspaceId={owner.sId}
-          />
-        </AppLayout>
-      </GenerationContextProvider>
-    </InputBarContext.Provider>
+                                setSelectedAssistant({
+                                  configurationId: agent.sId,
+                                });
+                                setAnimate(true);
+                              }}
+                            />
+                          </div>
+                        }
+                      />
+                    ))}
+                  </div>
+                  <Button.List isWrapping={true}>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="tertiary"
+                        icon={ChatBubbleBottomCenterTextIcon}
+                        label={"@help, what can I use the assistants for?"}
+                        size="xs"
+                        hasMagnifying={false}
+                        onClick={async () => {
+                          await handleOpenHelpConversation(
+                            "@help, what can I use the assistants for?"
+                          );
+                        }}
+                      />
+                      <Button
+                        variant="tertiary"
+                        icon={ChatBubbleBottomCenterTextIcon}
+                        label={"@help, what are the limitations of assistants?"}
+                        size="xs"
+                        hasMagnifying={false}
+                        onClick={async () => {
+                          await handleOpenHelpConversation(
+                            "@help, what are the limitations of assistants?"
+                          );
+                        }}
+                      />
+                    </div>
+                  </Button.List>
+                </div>
+                {isBuilder && (
+                  <div className="flex w-full flex-col gap-2">
+                    <div className="text-base font-bold text-element-800">
+                      Data Sources
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/w/${owner.sId}/builder/data-sources/managed`}
+                      >
+                        <Button
+                          variant="secondary"
+                          icon={CloudArrowLeftRightIcon}
+                          size="xs"
+                          label="Manage Connections"
+                        />
+                      </Link>
+                      <Link
+                        href={`/w/${owner.sId}/builder/data-sources/static`}
+                      >
+                        <Button
+                          variant="secondary"
+                          icon={FolderOpenIcon}
+                          size="xs"
+                          label={"Manage Folders"}
+                        />
+                      </Link>
+                    </div>
+                    <div className="flex flex-wrap gap-2 py-2">
+                      <Link
+                        href={`/w/${owner.sId}/builder/data-sources/managed`}
+                        className="flex flex-wrap gap-2 py-2"
+                      >
+                        <Avatar
+                          size="md"
+                          visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
+                        />
+                        <Avatar
+                          size="md"
+                          visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
+                        />
+                        <Avatar
+                          size="md"
+                          visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
+                        />
+                        <Avatar
+                          size="md"
+                          visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
+                        />
+                        <Avatar
+                          size="md"
+                          visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
+                        />
+                      </Link>
+                    </div>
+                    <div className="py-0.5 text-xs font-normal text-element-700">
+                      Manage access to your company’s knowledge and data through
+                      connections (to GDrive, Notion,...) and uploads (Folder).
+                    </div>
+                    <Button.List isWrapping={true}>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="tertiary"
+                          icon={ChatBubbleBottomCenterTextIcon}
+                          label={"@help, tell me about Data Sources"}
+                          size="xs"
+                          hasMagnifying={false}
+                          onClick={async () => {
+                            await handleOpenHelpConversation(
+                              "@help, tell me about Data Sources"
+                            );
+                          }}
+                        />
+                      </div>
+                    </Button.List>
+                  </div>
+                )}
+              </div>
+            </Page.Vertical>
+          </Page.Vertical>
+        </div>
+      </div>
+
+      <FixedAssistantInputBar
+        owner={owner}
+        onSubmit={handleSubmit}
+        conversationId={null}
+      />
+      <LimitReachedPopup
+        planLimitReached={planLimitReached}
+        workspaceId={owner.sId}
+      />
+    </>
   );
 }
 
@@ -518,3 +471,10 @@ export function LimitReachedPopup({
     />
   );
 }
+
+AssistantNew.getLayout = (
+  page: ReactElement,
+  pageProps: ConversationLayoutProps
+) => {
+  return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
+};
