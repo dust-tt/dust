@@ -72,7 +72,6 @@ import {
 } from "@app/lib/models";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
-import { isTrial } from "@app/lib/plans/trial";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragment } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
