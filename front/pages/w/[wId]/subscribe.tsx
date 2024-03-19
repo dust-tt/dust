@@ -116,7 +116,6 @@ export default function Subscribe({
                 You can try the Pro plan for free for two weeks.
               </span>
             </Page.P>
-            {/* <Page.P>Cancel at any time, no question asked.</Page.P> */}
             <Page.P>
               After your trial ends, you will be charged monthly. You can cancel
               at any time.
