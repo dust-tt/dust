@@ -1,7 +1,9 @@
 import { Dialog, Page } from "@dust-tt/sparkle";
-import type { SubscriptionType } from "@dust-tt/types";
+import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
+import { useEffect } from "react";
 
+import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { isTrial } from "@app/lib/plans/trial";
 
 function getUpsellDialogDetailsForFreeTrial() {
@@ -44,25 +46,38 @@ export function ReachedLimitPopup({
   isOpened,
   onClose,
   subscription,
-  workspaceId,
+  owner,
 }: {
   isOpened: boolean;
   onClose: () => void;
   subscription: SubscriptionType;
-  workspaceId: string;
+  owner: WorkspaceType;
 }) {
   const router = useRouter();
+  const trialing = isTrial(subscription);
 
-  const { children, title, validateLabel } = isTrial(subscription)
+  const { children, title, validateLabel } = trialing
     ? getUpsellDialogDetailsForFreeTrial()
     : getUpsellDialogDetailsForFreePlan();
+
+  useEffect(() => {
+    if (isOpened) {
+      const amplitude = getBrowserClient();
+      amplitude.fairUsageDialogViewed({
+        workspaceId: owner.sId,
+        workspaceName: owner.name,
+        trialing,
+      });
+      amplitude.flush();
+    }
+  }, [isOpened, owner.name, owner.sId, trialing]);
 
   return (
     <Dialog
       isOpen={isOpened}
       title={title}
       onValidate={() => {
-        void router.push(`/w/${workspaceId}/subscription`);
+        void router.push(`/w/${owner.sId}/subscription`);
       }}
       onCancel={() => onClose()}
       cancelLabel="Close"

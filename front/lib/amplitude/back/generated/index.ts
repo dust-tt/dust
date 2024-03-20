@@ -75,6 +75,22 @@ export interface IdentifyProperties {
   SignupDate?: string;
 }
 
+export interface PageViewedProperties {
+  pathname: string;
+}
+
+export interface SubscriptionCreatedProperties {
+  plan: string;
+  workspaceId: string;
+  workspaceName: string;
+  /**
+   * | Rule | Value |
+   * |---|---|
+   * | Type | number |
+   */
+  workspaceSeats: number;
+}
+
 export interface UserMessagePostedProperties {
   conversationId: string;
   isGlobalAgent: boolean;
@@ -99,8 +115,24 @@ export class Identify implements BaseEvent {
   }
 }
 
+export class PageViewed implements BaseEvent {
+  event_type = "PageViewed";
+
+  constructor(public event_properties: PageViewedProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
 export class SignUp implements BaseEvent {
   event_type = "SignUp";
+}
+
+export class SubscriptionCreated implements BaseEvent {
+  event_type = "SubscriptionCreated";
+
+  constructor(public event_properties: SubscriptionCreatedProperties) {
+    this.event_properties = event_properties;
+  }
 }
 
 export class UserMessagePosted implements BaseEvent {
@@ -229,6 +261,25 @@ export class Ampli {
   }
 
   /**
+   * PageViewed
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/PageViewed)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param userId The user's ID.
+   * @param properties The event's properties (e.g. pathname)
+   * @param options Amplitude event options.
+   */
+  pageViewed(
+    userId: string | undefined,
+    properties: PageViewedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(userId, new PageViewed(properties), options);
+  }
+
+  /**
    * SignUp
    *
    * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/SignUp)
@@ -243,6 +294,25 @@ export class Ampli {
     options?: EventOptions,
   ) {
     return this.track(userId, new SignUp(), options);
+  }
+
+  /**
+   * SubscriptionCreated
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/SubscriptionCreated)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param userId The user's ID.
+   * @param properties The event's properties (e.g. plan)
+   * @param options Amplitude event options.
+   */
+  subscriptionCreated(
+    userId: string | undefined,
+    properties: SubscriptionCreatedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(userId, new SubscriptionCreated(properties), options);
   }
 
   /**

@@ -131,6 +131,7 @@ export const createCheckoutSession = async ({
     },
     metadata: {
       planCode: planCode,
+      userId: `${user.id}`,
     },
     line_items: [item],
     allow_promotion_codes: true,
