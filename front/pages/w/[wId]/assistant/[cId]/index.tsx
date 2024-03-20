@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
-import { ReachedMessagesLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import Conversation from "@app/components/assistant/conversation/Conversation";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
@@ -115,11 +115,12 @@ export default function AssistantConversation({
         stickyMentions={stickyMentions}
         conversationId={conversationId}
       />
-      <ReachedMessagesLimitPopup
+      <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
         owner={owner}
+        code="message_limit"
       />
     </>
   );

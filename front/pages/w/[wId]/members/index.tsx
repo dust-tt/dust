@@ -29,8 +29,8 @@ import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import type { WorkspaceInviteLimit } from "@app/components/app/ReachedLimitPopup";
-import { ReachedMembersLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -207,7 +207,7 @@ export default function WorkspaceAdmin({
       user: "emerald",
     };
     const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
-      useState<WorkspaceInviteLimit | null>(null);
+      useState<WorkspaceLimit | null>(null);
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
@@ -256,12 +256,12 @@ export default function WorkspaceAdmin({
       }
 
       return (
-        <ReachedMembersLimitPopup
+        <ReachedLimitPopup
           isOpened={!!inviteBlockedPopupReason}
           onClose={() => setInviteBlockedPopupReason(null)}
           subscription={subscription}
           owner={owner}
-          limitReached={inviteBlockedPopupReason}
+          code={inviteBlockedPopupReason}
         />
       );
     }, [inviteBlockedPopupReason, setInviteBlockedPopupReason]);
@@ -304,19 +304,23 @@ export default function WorkspaceAdmin({
                 icon={PlusIcon}
                 onClick={() => {
                   if (!isUpgraded(plan)) {
-                    setInviteBlockedPopupReason("free_plan");
+                    setInviteBlockedPopupReason("cant_invite_free_plan");
                   } else if (subscription.paymentFailingSince) {
-                    setInviteBlockedPopupReason("payment_failure");
+                    setInviteBlockedPopupReason("cant_invite_payment_failure");
                   } else if (
                     !workspaceHasAvailableSeats &&
                     !subscription.trialing
                   ) {
-                    setInviteBlockedPopupReason("no_seats_available");
+                    setInviteBlockedPopupReason(
+                      "cant_invite_no_seats_available"
+                    );
                   } else if (
                     !workspaceHasAvailableSeats &&
                     subscription.trialing
                   ) {
-                    setInviteBlockedPopupReason("no_seats_available_trialing");
+                    setInviteBlockedPopupReason(
+                      "cant_invite_no_seats_available"
+                    );
                   } else {
                     setInviteEmailModalOpen(true);
                   }
