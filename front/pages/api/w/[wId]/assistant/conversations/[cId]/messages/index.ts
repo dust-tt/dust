@@ -5,13 +5,19 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ message: UserMessageType }>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<
+      { message: UserMessageType } | FetchConversationMessagesResponse
+    >
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -74,6 +80,24 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      const messages = await fetchConversationMessages(auth, conversationId, {
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+      });
+
+      if (!messages) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: "Conversation not found",
+          },
+        });
+      }
+
+      res.status(200).json(messages);
+      break;
+
     case "POST":
       const bodyValidation = InternalPostMessagesRequestBodySchema.decode(
         req.body

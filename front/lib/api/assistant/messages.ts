@@ -289,3 +289,92 @@ export async function batchRenderContentFragment(
   });
 }
 
+export interface FetchConversationMessagesResponse {
+  messages: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+  // nextPageCursor: string | null;
+}
+
+export async function fetchConversationMessages(
+  auth: Authenticator,
+  conversationId: string,
+  { limit }: { limit: number }
+): Promise<FetchConversationMessagesResponse | null> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!conversation) {
+    // TODO: Return  not found error.
+    return null;
+  }
+
+  const where: WhereOptions<Message> = {
+    conversationId: conversation.id,
+  };
+
+  const messages = await Message.findAll({
+    where,
+    order: [
+      ["rank", "DESC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+      },
+      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
+      // along with messages in one query). Only once we move to a MessageResource will we be able
+      // to properly abstract this.
+      {
+        model: ContentFragmentModel,
+        as: "contentFragment",
+        required: false,
+      },
+    ],
+    // Optimistic limit.
+    limit: 100,
+  });
+
+  const [userMessages, agentMessages, contentFragments] = await Promise.all([
+    batchRenderUserMessages(messages),
+    batchRenderAgentMessages(auth, messages),
+    batchRenderContentFragment(messages),
+  ]);
+
+  const render = [...userMessages, ...agentMessages, ...contentFragments];
+  render.sort((a, b) => {
+    if (a.rank !== b.rank) {
+      return b.rank - a.rank;
+    }
+    return b.version - a.version;
+  });
+
+  const latestVersionsMap = new Map();
+  render.forEach((item) => {
+    if (
+      !latestVersionsMap.has(item.rank) ||
+      latestVersionsMap.get(item.rank).version < item.version
+    ) {
+      latestVersionsMap.set(item.rank, item);
+    }
+  });
+
+  return {
+    messages: [...latestVersionsMap.values()].map((i) => i.m).slice(0, limit),
+  };
+}

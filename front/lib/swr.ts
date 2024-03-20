@@ -1,13 +1,16 @@
 import type {
   AgentConfigurationType,
+  AgentMessageType,
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
+  ContentFragmentType,
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
   RunRunType,
+  UserMessageType,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -576,6 +579,30 @@ export function useConversationReactions({
     isReactionsLoading: !error && !data,
     isReactionsError: error,
     mutateReactions: mutate,
+  };
+}
+
+export function useConversationMessages({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string;
+  workspaceId: string;
+}) {
+  const messagesFetcher: Fetcher<{
+    messages: (AgentMessageType | ContentFragmentType | UserMessageType)[];
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
+    messagesFetcher
+  );
+
+  return {
+    messages: useMemo(() => (data ? data.messages.reverse() : []), [data]),
+    isMessagesLoading: !error && !data,
+    isMessagesError: error,
+    mutateMessages: mutate,
   };
 }
 

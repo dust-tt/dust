@@ -16,6 +16,7 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   useConversation,
+  useConversationMessages,
   useConversationReactions,
   useConversations,
 } from "@app/lib/swr";
@@ -57,54 +58,51 @@ export default function Conversation({
     workspaceId: owner.sId,
   });
 
+  const { mutateMessages, messages } = useConversationMessages({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
   const { reactions } = useConversationReactions({
     workspaceId: owner.sId,
     conversationId,
   });
 
   useEffect(() => {
+    // TODO: Here, we will have to make sure that
+    // we don't scroll all the way back every time we fetch a new page of messages.
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
     if (mainTag) {
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
-  }, [conversation?.content.length, isInModal]);
+  }, [messages, isInModal]);
 
   useEffect(() => {
     if (!onStickyMentionsChange) {
       return;
     }
-    const lastUserMessageContent = conversation?.content.findLast(
-      (versionedMessages) =>
-        versionedMessages.some(
-          (message) =>
-            isUserMessageType(message) &&
-            message.visibility !== "deleted" &&
-            message.user?.id === user.id
-        )
+
+    const lastUserMessage = messages.findLast(
+      (message) =>
+        isUserMessageType(message) &&
+        message.visibility !== "deleted" &&
+        message.user?.id === user.id
     );
 
-    if (!lastUserMessageContent) {
+    if (!lastUserMessage) {
       return;
     }
-
-    const lastUserMessage =
-      lastUserMessageContent[lastUserMessageContent.length - 1];
 
     if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
       return;
     }
 
-    const mentions = lastUserMessage.mentions;
+    const { mentions } = lastUserMessage;
     const agentMentions = mentions.filter(isAgentMention);
     onStickyMentionsChange(agentMentions);
-  }, [
-    conversation?.content,
-    conversation?.content.length,
-    onStickyMentionsChange,
-    user.id,
-  ]);
+  }, [messages, onStickyMentionsChange, user.id]);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -142,15 +140,12 @@ export default function Conversation({
           case "user_message_new":
           case "agent_message_new":
           case "agent_generation_cancelled":
-            const isMessageAlreadyInConversation = conversation?.content?.some(
-              (contentBlock) =>
-                contentBlock.some(
-                  (message) =>
-                    "sId" in message && message.sId === event.messageId
-                )
-            );
+            const isMessageAlreadyInConversation = messages?.some((message) => {
+              return "sId" in message && message.sId === event.messageId;
+            });
+
             if (!isMessageAlreadyInConversation) {
-              void mutateConversation();
+              void mutateMessages();
             }
             break;
           case "conversation_title": {
@@ -165,7 +160,7 @@ export default function Conversation({
         }
       }
     },
-    [mutateConversation, mutateConversations, conversation]
+    [mutateConversation, mutateConversations, messages, mutateMessages]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, {
@@ -185,8 +180,7 @@ export default function Conversation({
 
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
-      {conversation.content.map((versionedMessages) => {
-        const m = versionedMessages[versionedMessages.length - 1];
+      {messages.map((m) => {
         const convoReactions = reactions.find((r) => r.messageId === m.sId);
         const messageReactions = convoReactions?.reactions || [];
 
