@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useRef } from "react";
+import { useInView } from "react-intersection-observer";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
@@ -21,6 +22,8 @@ import {
   useConversations,
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+
+const PAGE_SIZE = 10;
 
 /**
  *
@@ -58,15 +61,27 @@ export default function Conversation({
     workspaceId: owner.sId,
   });
 
-  const { mutateMessages, messages } = useConversationMessages({
+  const {
+    mutateMessages,
+    messages,
+    size,
+    setSize,
+    isMessagesLoading,
+    isLoadingInitialData,
+    isValidating,
+  } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
   });
+
+  console.log(">> messages:", messages);
 
   const { reactions } = useConversationReactions({
     workspaceId: owner.sId,
     conversationId,
   });
+
+  const { ref, inView } = useInView();
 
   useEffect(() => {
     // TODO: Here, we will have to make sure that
@@ -74,10 +89,10 @@ export default function Conversation({
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
-    if (mainTag) {
+    if (mainTag && !inView) {
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
-  }, [messages, isInModal]);
+  }, [messages, isInModal, inView]);
 
   useEffect(() => {
     if (!onStickyMentionsChange) {
@@ -140,9 +155,20 @@ export default function Conversation({
           case "user_message_new":
           case "agent_message_new":
           case "agent_generation_cancelled":
-            const isMessageAlreadyInConversation = messages?.some((message) => {
-              return "sId" in message && message.sId === event.messageId;
-            });
+            console.log(">> isLoadingInitialData:", isLoadingInitialData);
+            const isMessageAlreadyInConversation = messages?.some(
+              (messages) => {
+                return messages.messages.some(
+                  (message) =>
+                    "sId" in message && message.sId === event.messageId
+                );
+              }
+            );
+
+            console.log(
+              ">> isMessageAlreadyInConversation:",
+              isMessageAlreadyInConversation
+            );
 
             if (!isMessageAlreadyInConversation) {
               void mutateMessages();
@@ -160,12 +186,43 @@ export default function Conversation({
         }
       }
     },
-    [mutateConversation, mutateConversations, messages, mutateMessages]
+    [
+      mutateConversation,
+      mutateConversations,
+      messages,
+      isLoadingInitialData,
+      mutateMessages,
+    ]
   );
+
+  const hasMore = messages.at(-1)?.messages.length === PAGE_SIZE;
+  useEffect(() => {
+    console.log(">> inView:", inView);
+    console.log(">> isMessagesLoading:", isMessagesLoading);
+    console.log(">> hasMore:", hasMore);
+    console.log(">> isLoadingInitialData:", isLoadingInitialData);
+    if (
+      !isLoadingInitialData &&
+      inView &&
+      !isMessagesLoading &&
+      hasMore &&
+      !isValidating
+    ) {
+      void setSize(size + 1);
+    }
+  }, [
+    inView,
+    isMessagesLoading,
+    isLoadingInitialData,
+    hasMore,
+    setSize,
+    size,
+    isValidating,
+  ]);
 
   useEventSource(buildEventSourceURL, onEventCallback, {
     // We only start consuming the stream when the conversation has been loaded.
-    isReadyToConsumeStream: !isConversationLoading,
+    isReadyToConsumeStream: !isConversationLoading && messages.length !== 0,
   });
   const eventIds = useRef<string[]>([]);
 
@@ -180,64 +237,76 @@ export default function Conversation({
 
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
-      {messages.map((m) => {
-        const convoReactions = reactions.find((r) => r.messageId === m.sId);
-        const messageReactions = convoReactions?.reactions || [];
+      {hasMore && (
+        <button
+          ref={ref}
+          onClick={() => {
+            void setSize(size + 1);
+          }}
+        >
+          {inView ? "loading more" : "sleeping"}!
+        </button>
+      )}
+      {messages.map((page) => {
+        return page.messages.map((m) => {
+          const convoReactions = reactions.find((r) => r.messageId === m.sId);
+          const messageReactions = convoReactions?.reactions || [];
 
-        if (m.visibility === "deleted") {
-          return null;
-        }
-        switch (m.type) {
-          case "user_message":
-            return (
-              <div
-                key={`message-id-${m.sId}`}
-                className="bg-structure-50 px-2 py-8"
-              >
-                <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                  <UserMessage
-                    message={m}
-                    conversation={conversation}
-                    owner={owner}
-                    user={user}
-                    reactions={messageReactions}
-                    hideReactions={hideReactions}
-                  />
+          if (m.visibility === "deleted") {
+            return null;
+          }
+          switch (m.type) {
+            case "user_message":
+              return (
+                <div
+                  key={`message-id-${m.sId}`}
+                  className="bg-structure-50 px-2 py-8"
+                >
+                  <div className="mx-auto flex max-w-4xl flex-col gap-4">
+                    <UserMessage
+                      message={m}
+                      conversation={conversation}
+                      owner={owner}
+                      user={user}
+                      reactions={messageReactions}
+                      hideReactions={hideReactions}
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          case "agent_message":
-            return (
-              <div key={`message-id-${m.sId}`} className="px-2 py-8">
-                <div className="mx-auto flex max-w-4xl gap-4">
-                  <AgentMessage
-                    message={m}
-                    owner={owner}
-                    user={user}
-                    conversationId={conversationId}
-                    reactions={messageReactions}
-                    isInModal={isInModal}
-                    hideReactions={hideReactions}
-                  />
+              );
+            case "agent_message":
+              return (
+                <div key={`message-id-${m.sId}`} className="px-2 py-8">
+                  <div className="mx-auto flex max-w-4xl gap-4">
+                    <AgentMessage
+                      message={m}
+                      owner={owner}
+                      user={user}
+                      conversationId={conversationId}
+                      reactions={messageReactions}
+                      isInModal={isInModal}
+                      hideReactions={hideReactions}
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          case "content_fragment":
-            return (
-              <div
-                key={`message-id-${m.sId}`}
-                className="items-center bg-structure-50  px-2 pt-8"
-              >
-                <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                  <ContentFragment message={m} />
+              );
+            case "content_fragment":
+              return (
+                <div
+                  key={`message-id-${m.sId}`}
+                  className="items-center bg-structure-50  px-2 pt-8"
+                >
+                  <div className="mx-auto flex max-w-4xl flex-col gap-4">
+                    <ContentFragment message={m} />
+                  </div>
                 </div>
-              </div>
-            );
-          default:
-            ((message: never) => {
-              console.error("Unknown message type", message);
-            })(m);
-        }
+              );
+            default:
+              ((message: never) => {
+                console.error("Unknown message type", message);
+              })(m);
+          }
+        });
       })}
     </div>
   );

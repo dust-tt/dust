@@ -297,7 +297,7 @@ export interface FetchConversationMessagesResponse {
 export async function fetchConversationMessages(
   auth: Authenticator,
   conversationId: string,
-  { limit }: { limit: number }
+  { page, limit }: { page: number; limit: number }
 ): Promise<FetchConversationMessagesResponse | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -347,7 +347,9 @@ export async function fetchConversationMessages(
       },
     ],
     // Optimistic limit.
-    limit: 100,
+    // TODO: support messages that have been re-rendered
+    limit: limit + 1,
+    offset: page ? page * limit : 0,
   });
 
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
@@ -375,6 +377,9 @@ export async function fetchConversationMessages(
   });
 
   return {
-    messages: [...latestVersionsMap.values()].map((i) => i.m).slice(0, limit),
+    messages: [...latestVersionsMap.values()]
+      .map((i) => i.m)
+      .slice(0, limit)
+      .reverse(),
   };
 }

@@ -17,6 +17,7 @@ import type {
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
@@ -593,16 +594,36 @@ export function useConversationMessages({
     messages: (AgentMessageType | ContentFragmentType | UserMessageType)[];
   }> = fetcher;
 
-  const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
-    messagesFetcher
-  );
+  const { data, error, mutate, size, setSize, isLoading, isValidating } =
+    useSWRInfinite(
+      (pageIndex: number, previousPageData) => {
+        if (previousPageData && previousPageData.messages.length === 0) {
+          return null;
+        }
+
+        console.log(">> pageIndex:", pageIndex);
+
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?page=${pageIndex}&limit=10`;
+      },
+      messagesFetcher,
+      {
+        revalidateAll: false,
+        // revalidateOnFocus: false,
+        // revalidateFirstPage: false,
+      }
+    );
+
+  console.log(">> initialLoad:", !error && !data);
 
   return {
-    messages: useMemo(() => (data ? data.messages.reverse() : []), [data]),
-    isMessagesLoading: !error && !data,
+    messages: useMemo(() => (data ? data.reverse() : []), [data]),
+    isLoadingInitialData: !error && !data,
     isMessagesError: error,
     mutateMessages: mutate,
+    size,
+    setSize,
+    isMessagesLoading: isLoading,
+    isValidating,
   };
 }
 

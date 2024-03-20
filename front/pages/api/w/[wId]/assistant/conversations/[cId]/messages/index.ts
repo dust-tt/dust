@@ -83,6 +83,7 @@ async function handler(
     case "GET":
       const messages = await fetchConversationMessages(auth, conversationId, {
         limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+        page: req.query.page ? parseInt(req.query.page as string) : 0,
       });
 
       if (!messages) {
