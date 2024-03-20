@@ -1779,6 +1779,17 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  const textUrl = await storeContentFragmentText({
+    conversation,
+    title,
+    content,
+    url,
+    contentType,
+  });
+
+  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
+  const textTokens = textUrl ? await countTokens(content) : null;
+
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
@@ -1788,6 +1799,10 @@ export async function postNewContentFragment(
           content,
           title,
           url,
+          sourceUrl: url,
+          textUrl,
+          textBytes,
+          textTokens,
           contentType,
           userId: auth.user()?.id,
           userContextProfilePictureUrl: context.profilePictureUrl,
@@ -1964,4 +1979,30 @@ async function isMessagesLimitReached({
   });
 
   return remaining <= 0;
+}
+
+async function storeContentFragmentText({
+  conversation,
+  title,
+  content,
+  url,
+  contentType,
+}: {
+  conversation: ConversationType;
+  title: string;
+  content: string;
+  url: string | null;
+  contentType: ContentFragmentContentType;
+}): Promise<string | null> {
+  if (!conversation && !title && !content && !url && !contentType) {
+    throw new Error("Invalid content fragment data");
+  }
+  return null;
+}
+
+async function countTokens(content: string): Promise<number | null> {
+  if (!content) {
+    return null;
+  }
+  throw new Error("Function not implemented.");
 }
