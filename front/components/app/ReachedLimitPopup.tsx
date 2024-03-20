@@ -161,7 +161,7 @@ export function ReachedMembersLimitPopup({
                 You can invite up to {subscription.plan.limits.users.maxUsers}{" "}
                 members in during trial.
               </Page.P>
-              <p className="text-sm font-normal text-element-800">
+              <p className="text-sm font-bold text-element-800">
                 You can end your trial and start paying now to invite more
                 members.
               </p>
