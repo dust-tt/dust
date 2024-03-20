@@ -457,6 +457,7 @@ export default function AssistantNew({
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
         owner={owner}
+        code="message_limit"
       />
     </>
   );
