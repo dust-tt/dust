@@ -10,10 +10,7 @@ import {
   cancelSubscriptionImmediately,
   skipSubscriptionFreeTrial,
 } from "@app/lib/plans/stripe";
-import {
-  downgradeWorkspaceToFreePlan,
-  getCheckoutUrlForUpgrade,
-} from "@app/lib/plans/subscription";
+import { getCheckoutUrlForUpgrade } from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -171,23 +168,6 @@ async function handler(
       res.status(200).json({ success: true });
       break;
     }
-    case "DELETE":
-      try {
-        const newPlan = await downgradeWorkspaceToFreePlan(auth);
-        return res.status(200).json({ plan: newPlan });
-      } catch (error) {
-        logger.error(
-          { error },
-          "Error while downgrading workspace to free plan"
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Error while downgrading workspace to free plan",
-          },
-        });
-      }
 
     default:
       return apiError(req, res, {

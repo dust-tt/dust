@@ -405,55 +405,6 @@ export const getCheckoutUrlForUpgrade = async (
   };
 };
 
-export const downgradeWorkspaceToFreePlan = async (
-  auth: Authenticator
-): Promise<PlanType> => {
-  const user = auth.user();
-  const owner = auth.workspace();
-  const activePlan = auth.plan();
-
-  if (!user || !auth.isAdmin() || !owner || !activePlan) {
-    throw new Error(
-      "Unauthorized `auth` data: cannot process to subscription of new Plan."
-    );
-  }
-
-  const freeTestPlan = await Plan.findOne({
-    where: { code: FREE_TEST_PLAN_CODE },
-  });
-  if (!freeTestPlan) {
-    throw new Error(
-      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: not found.`
-    );
-  }
-  if (freeTestPlan.stripeProductId) {
-    throw new Error(
-      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: has a Stripe Product ID.`
-    );
-  }
-  if (freeTestPlan.billingType !== "free") {
-    throw new Error(
-      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: billingType is not "free".`
-    );
-  }
-
-  const existingSubscription = auth.subscription();
-  if (
-    existingSubscription &&
-    existingSubscription.plan.code === freeTestPlan.code
-  ) {
-    throw new Error(
-      `Cannot downgrade to free plan ${FREE_TEST_PLAN_CODE}: already subscribed.`
-    );
-  }
-
-  const sub = await internalSubscribeWorkspaceToFreeTestPlan({
-    workspaceId: owner.sId,
-  });
-
-  return sub.plan;
-};
-
 export const updateWorkspacePerSeatSubscriptionUsage = async ({
   workspaceId,
 }: {
