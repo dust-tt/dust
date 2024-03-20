@@ -601,8 +601,6 @@ export function useConversationMessages({
           return null;
         }
 
-        console.log(">> pageIndex:", pageIndex);
-
         return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?page=${pageIndex}&limit=10`;
       },
       messagesFetcher,
@@ -612,8 +610,6 @@ export function useConversationMessages({
         // revalidateFirstPage: false,
       }
     );
-
-  console.log(">> initialLoad:", !error && !data);
 
   return {
     messages: useMemo(() => (data ? data.reverse() : []), [data]),

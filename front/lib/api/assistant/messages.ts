@@ -260,7 +260,11 @@ export async function batchRenderAgentMessages(
       action,
       content: agentMessage.content,
       error,
-      configuration: agentConfiguration,
+      configuration: {
+        sId: agentConfiguration.sId,
+        name: agentConfiguration.name,
+        pictureUrl: agentConfiguration.pictureUrl,
+      },
     } satisfies AgentMessageType;
     return { m, rank: message.rank, version: message.version };
   });

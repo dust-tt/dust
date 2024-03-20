@@ -7,7 +7,7 @@ import type {
   UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -74,8 +74,6 @@ export default function Conversation({
     workspaceId: owner.sId,
   });
 
-  console.log(">> messages:", messages);
-
   const { reactions } = useConversationReactions({
     workspaceId: owner.sId,
     conversationId,
@@ -83,28 +81,57 @@ export default function Conversation({
 
   const { ref, inView } = useInView();
 
+  // TODO:
   useEffect(() => {
     // TODO: Here, we will have to make sure that
     // we don't scroll all the way back every time we fetch a new page of messages.
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
-    if (mainTag && !inView) {
+    // TODO.
+    console.log(">> useEffect!");
+    if (mainTag) {
+      console.log(">> scrolling down!");
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
-  }, [messages, isInModal, inView]);
+  }, [isInModal, messages.length]);
+
+  const [prevFirstMessageIndex, setPrevFirstMessageIndex] = useState<
+    string | null
+  >(null);
+  const prevFirstMessageRef = useRef(null);
+
+  useEffect(() => {
+    if (
+      prevFirstMessageIndex &&
+      prevFirstMessageRef.current &&
+      !isMessagesLoading &&
+      !isValidating
+    ) {
+      console.log(">> moving to previous message");
+      prevFirstMessageRef.current.scrollIntoView({ behavior: "instant" });
+      setPrevFirstMessageIndex(null);
+    }
+  }, [
+    prevFirstMessageIndex,
+    prevFirstMessageRef,
+    isMessagesLoading,
+    isValidating,
+  ]);
 
   useEffect(() => {
     if (!onStickyMentionsChange) {
       return;
     }
 
-    const lastUserMessage = messages.findLast(
-      (message) =>
-        isUserMessageType(message) &&
-        message.visibility !== "deleted" &&
-        message.user?.id === user.id
-    );
+    const lastUserMessage = messages
+      .at(-1)
+      ?.messages.findLast(
+        (message) =>
+          isUserMessageType(message) &&
+          message.visibility !== "deleted" &&
+          message.user?.id === user.id
+      );
 
     if (!lastUserMessage) {
       return;
@@ -155,7 +182,6 @@ export default function Conversation({
           case "user_message_new":
           case "agent_message_new":
           case "agent_generation_cancelled":
-            console.log(">> isLoadingInitialData:", isLoadingInitialData);
             const isMessageAlreadyInConversation = messages?.some(
               (messages) => {
                 return messages.messages.some(
@@ -163,11 +189,6 @@ export default function Conversation({
                     "sId" in message && message.sId === event.messageId
                 );
               }
-            );
-
-            console.log(
-              ">> isMessageAlreadyInConversation:",
-              isMessageAlreadyInConversation
             );
 
             if (!isMessageAlreadyInConversation) {
@@ -186,21 +207,15 @@ export default function Conversation({
         }
       }
     },
-    [
-      mutateConversation,
-      mutateConversations,
-      messages,
-      isLoadingInitialData,
-      mutateMessages,
-    ]
+    [mutateConversation, mutateConversations, messages, mutateMessages]
   );
 
-  const hasMore = messages.at(-1)?.messages.length === PAGE_SIZE;
+  const hasMore = messages.at(0)?.messages.length === PAGE_SIZE;
   useEffect(() => {
-    console.log(">> inView:", inView);
-    console.log(">> isMessagesLoading:", isMessagesLoading);
-    console.log(">> hasMore:", hasMore);
-    console.log(">> isLoadingInitialData:", isLoadingInitialData);
+    // console.log(">> inView:", inView);
+    // console.log(">> isMessagesLoading:", isMessagesLoading);
+    // console.log(">> hasMore:", hasMore);
+    // console.log(">> isLoadingInitialData:", isLoadingInitialData);
     if (
       !isLoadingInitialData &&
       inView &&
@@ -208,6 +223,9 @@ export default function Conversation({
       hasMore &&
       !isValidating
     ) {
+      setPrevFirstMessageIndex(
+        messages.length > 0 ? messages.at(0)?.messages[0]?.sId ?? null : null
+      );
       void setSize(size + 1);
     }
   }, [
@@ -218,6 +236,9 @@ export default function Conversation({
     setSize,
     size,
     isValidating,
+    setPrevFirstMessageIndex,
+    prevFirstMessageIndex,
+    messages,
   ]);
 
   useEventSource(buildEventSourceURL, onEventCallback, {
@@ -255,12 +276,16 @@ export default function Conversation({
           if (m.visibility === "deleted") {
             return null;
           }
+
           switch (m.type) {
             case "user_message":
               return (
                 <div
                   key={`message-id-${m.sId}`}
                   className="bg-structure-50 px-2 py-8"
+                  ref={
+                    m.sId === prevFirstMessageIndex ? prevFirstMessageRef : null
+                  }
                 >
                   <div className="mx-auto flex max-w-4xl flex-col gap-4">
                     <UserMessage
@@ -276,7 +301,13 @@ export default function Conversation({
               );
             case "agent_message":
               return (
-                <div key={`message-id-${m.sId}`} className="px-2 py-8">
+                <div
+                  key={`message-id-${m.sId}`}
+                  className="px-2 py-8"
+                  ref={
+                    m.sId === prevFirstMessageIndex ? prevFirstMessageRef : null
+                  }
+                >
                   <div className="mx-auto flex max-w-4xl gap-4">
                     <AgentMessage
                       message={m}
@@ -294,7 +325,10 @@ export default function Conversation({
               return (
                 <div
                   key={`message-id-${m.sId}`}
-                  className="items-center bg-structure-50  px-2 pt-8"
+                  className="items-center bg-structure-50 px-2 pt-8"
+                  ref={
+                    m.sId === prevFirstMessageIndex ? prevFirstMessageRef : null
+                  }
                 >
                   <div className="mx-auto flex max-w-4xl flex-col gap-4">
                     <ContentFragment message={m} />
