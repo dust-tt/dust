@@ -456,7 +456,7 @@ export default function AssistantNew({
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
-        workspaceId={owner.sId}
+        owner={owner}
       />
     </>
   );
