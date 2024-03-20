@@ -550,6 +550,9 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
       <Property name="title" type="string">
         A string representing the title of the fragment. It must be a non-empty string.
       </Property>
+      <Property name="url" type="string | null">
+        URL pointing to the original document pertaining to the fragment. Set to null if no such URL is available.
+      </Property>
     </Properties>
 
   </Col>

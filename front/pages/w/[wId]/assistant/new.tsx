@@ -140,6 +140,7 @@ export default function AssistantNew({
         contentFragment?: {
           title: string;
           content: string;
+          url: string | null;
         }
       ) => {
         const conversationRes = await createConversationWithMessage({

@@ -158,6 +158,7 @@ export async function createConversationWithMessage({
     contentFragment?: {
       title: string;
       content: string;
+      url: string | null;
     };
   };
   visibility?: ConversationVisibility;
@@ -179,7 +180,6 @@ export async function createConversationWithMessage({
       ? {
           ...contentFragment,
           contentType: "file_attachment",
-          url: null,
           context: {
             profilePictureUrl: user.image,
           },

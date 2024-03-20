@@ -286,6 +286,7 @@ function useTryAssistantCore({
     contentFragment?: {
       title: string;
       content: string;
+      url: string | null;
     }
   ) => {
     if (!user) return;

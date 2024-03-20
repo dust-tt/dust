@@ -61,7 +61,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragment?: { title: string; content: string }
+    contentFragment?: { title: string; content: string; url: string | null }
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -335,7 +335,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragment?: { title: string; content: string }
+    contentFragment?: { title: string; content: string; url: string | null }
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
