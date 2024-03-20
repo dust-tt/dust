@@ -591,7 +591,9 @@ export function useConversationMessages({
   workspaceId: string;
 }) {
   const messagesFetcher: Fetcher<{
+    // TODO: Use proper type here. Shared!
     messages: (AgentMessageType | ContentFragmentType | UserMessageType)[];
+    total: number;
   }> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =

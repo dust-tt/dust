@@ -7,7 +7,7 @@ import type {
   UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -80,6 +80,25 @@ export default function Conversation({
   });
 
   const { ref, inView } = useInView();
+  // This does not work!
+  // We could remove this if the endpoint returns the total number of messages.
+  const lastMessageIds = useMemo(() => {
+    const lastPage = messages.at(-1);
+    if (!lastPage) {
+      return null;
+    }
+
+    return new Set([...lastPage.messages.map((m) => m.sId)]);
+  }, [messages]);
+
+  // console.log(">> lastMessageIds:", lastMessageIds);
+
+  // This work!
+  // Always check the most recent page.
+  const totalMessages = useMemo(() => messages.at(-1)?.total, [messages]);
+
+  console.log(">> messages:", messages);
+  console.log(">> lastMessageIds:", lastMessageIds);
 
   // TODO:
   useEffect(() => {
@@ -94,7 +113,7 @@ export default function Conversation({
       console.log(">> scrolling down!");
       mainTag.scrollTo(0, mainTag.scrollHeight);
     }
-  }, [isInModal, messages.length]);
+  }, [isInModal, /* totalMessages /* */ totalMessages]);
 
   const [prevFirstMessageIndex, setPrevFirstMessageIndex] = useState<
     string | null
@@ -109,7 +128,10 @@ export default function Conversation({
       !isValidating
     ) {
       console.log(">> moving to previous message");
-      prevFirstMessageRef.current.scrollIntoView({ behavior: "instant" });
+      prevFirstMessageRef.current.scrollIntoView({
+        behavior: "instant",
+        block: "start",
+      });
       setPrevFirstMessageIndex(null);
     }
   }, [
@@ -221,8 +243,13 @@ export default function Conversation({
       inView &&
       !isMessagesLoading &&
       hasMore &&
-      !isValidating
+      !isValidating &&
+      !prevFirstMessageIndex
     ) {
+      console.log(
+        "> seeting prev first message to:",
+        messages.length > 0 ? messages.at(0)?.messages[0]?.sId ?? null : null
+      );
       setPrevFirstMessageIndex(
         messages.length > 0 ? messages.at(0)?.messages[0]?.sId ?? null : null
       );

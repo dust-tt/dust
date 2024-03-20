@@ -260,6 +260,7 @@ export async function batchRenderAgentMessages(
       action,
       content: agentMessage.content,
       error,
+      // TODO:
       configuration: {
         sId: agentConfiguration.sId,
         name: agentConfiguration.name,
@@ -295,6 +296,7 @@ export async function batchRenderContentFragment(
 
 export interface FetchConversationMessagesResponse {
   messages: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+  total: number;
   // nextPageCursor: string | null;
 }
 
@@ -356,6 +358,10 @@ export async function fetchConversationMessages(
     offset: page ? page * limit : 0,
   });
 
+  const totalMessages = await Message.count({
+    where,
+  });
+
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
@@ -385,5 +391,6 @@ export async function fetchConversationMessages(
       .map((i) => i.m)
       .slice(0, limit)
       .reverse(),
+    total: totalMessages,
   };
 }
