@@ -22,7 +22,15 @@ export class ContentFragmentModel extends Model<
   declare content: string;
   declare url: string | null;
   declare contentType: ContentFragmentContentType;
+  declare sourceUrl: string | null; // GCS (upload) or Slack or ...
 
+  // Fields below are set of all types that can be transduced to text or
+  // are textual in nature (PDF, text, CSV, future: .docx...)
+  declare textUrl: string | null; // url to GCS
+  declare textBytes: number | null; // number of textUrl bytes
+  declare textTokens: number | null; // number of textUrl tokens
+
+  // user-related context
   declare userContextUsername: string | null;
   declare userContextFullName: string | null;
   declare userContextEmail: string | null;
@@ -63,6 +71,22 @@ ContentFragmentModel.init(
     contentType: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    sourceUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    textUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    textBytes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    textTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     userContextProfilePictureUrl: {
       type: DataTypes.STRING,
