@@ -154,31 +154,6 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
 ];
 
-function FreePriceTable({ size }: { size: "sm" | "xs" }) {
-  return (
-    <PriceTable
-      title="Free"
-      price="0€"
-      priceLabel=""
-      color="emerald"
-      size={size}
-      magnified={false}
-    >
-      <PriceTable.Item size={size} label="One user" variant="dash" />
-      <PriceTable.Item size={size} label="One workspace" variant="dash" />
-      <PriceTable.Item label="Privacy and Data Security" />
-      <PriceTable.Item
-        label="Regular models (GPT-3.5, Claude instant...)"
-        variant="dash"
-      />
-      <PriceTable.Item label="Unlimited custom assistants" />
-      <PriceTable.Item label="50 assistant messages" variant="dash" />
-      <PriceTable.Item label="50 documents as data sources" variant="dash" />
-      <PriceTable.Item label="No connections" variant="xmark" />
-    </PriceTable>
-  );
-}
-
 export function ProPriceTable({
   size,
   plan,
@@ -296,21 +271,6 @@ export function PricePlans({
                   "md:py-3 md:text-lg",
                   "ring-0 focus:outline-none",
                   selected
-                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
-                )
-              }
-            >
-              Free
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-2 text-sm",
-                  "md:py-3 md:text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
                     ? "bg-sky-400 text-white shadow dark:bg-sky-500"
                     : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
                 )
@@ -336,9 +296,6 @@ export function PricePlans({
           </Tab.List>
           <Tab.Panels className="mt-8">
             <Tab.Panel>
-              <FreePriceTable size={size} />
-            </Tab.Panel>
-            <Tab.Panel>
               <ProPriceTable
                 display={display}
                 size={size}
@@ -361,7 +318,6 @@ export function PricePlans({
   } else {
     return (
       <div className={classNames(flexCSS, className)}>
-        <FreePriceTable size={size} />
         <ProPriceTable
           size={size}
           plan={plan}
