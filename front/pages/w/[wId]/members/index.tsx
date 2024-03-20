@@ -307,17 +307,7 @@ export default function WorkspaceAdmin({
                     setInviteBlockedPopupReason("cant_invite_free_plan");
                   } else if (subscription.paymentFailingSince) {
                     setInviteBlockedPopupReason("cant_invite_payment_failure");
-                  } else if (
-                    !workspaceHasAvailableSeats &&
-                    !subscription.trialing
-                  ) {
-                    setInviteBlockedPopupReason(
-                      "cant_invite_no_seats_available"
-                    );
-                  } else if (
-                    !workspaceHasAvailableSeats &&
-                    subscription.trialing
-                  ) {
+                  } else if (!workspaceHasAvailableSeats) {
                     setInviteBlockedPopupReason(
                       "cant_invite_no_seats_available"
                     );
