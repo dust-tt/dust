@@ -21,7 +21,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
 
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { ReachedMessagesLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -452,7 +452,7 @@ export default function AssistantNew({
         onSubmit={handleSubmit}
         conversationId={null}
       />
-      <ReachedLimitPopup
+      <ReachedMessagesLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}

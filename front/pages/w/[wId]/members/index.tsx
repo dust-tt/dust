@@ -29,6 +29,8 @@ import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import type { WorkspaceInviteLimit } from "@app/components/app/ReachedLimitPopup";
+import { ReachedMembersLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -94,24 +96,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     },
   };
 });
-
-const workspaceInviteLimitsPopup = {
-  no_seats_available: {
-    chipLabel: "Plan Limits",
-    description:
-      "Workspace has reached its member limit. Please upgrade or remove inactive members to add more.",
-  },
-  free_plan: {
-    chipLabel: "Free plan",
-    description:
-      "You cannot invite other members with the free plan. Upgrade your plan for unlimited members.",
-  },
-  payment_failure: {
-    chipLabel: "Failed Payment",
-    description:
-      "You cannot invite other members while your workspace has a failed payment.",
-  },
-};
 
 export default function WorkspaceAdmin({
   user,
@@ -222,9 +206,8 @@ export default function WorkspaceAdmin({
       builder: "amber",
       user: "emerald",
     };
-    const [inviteBlockedPopupReason, setInviteBlockedPopupReason] = useState<
-      keyof typeof workspaceInviteLimitsPopup | null
-    >(null);
+    const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
+      useState<WorkspaceInviteLimit | null>(null);
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
@@ -272,20 +255,13 @@ export default function WorkspaceAdmin({
         return <></>;
       }
 
-      const { chipLabel, description } =
-        workspaceInviteLimitsPopup[inviteBlockedPopupReason];
-
       return (
-        <Popup
-          show={inviteBlockedPopupReason !== null}
-          chipLabel={chipLabel}
-          description={description}
-          buttonLabel="Check Dust plans"
-          buttonClick={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          }}
-          className="absolute bottom-8 right-0"
+        <ReachedMembersLimitPopup
+          isOpened={!!inviteBlockedPopupReason}
           onClose={() => setInviteBlockedPopupReason(null)}
+          subscription={subscription}
+          owner={owner}
+          limitReached={inviteBlockedPopupReason}
         />
       );
     }, [inviteBlockedPopupReason, setInviteBlockedPopupReason]);
@@ -331,8 +307,16 @@ export default function WorkspaceAdmin({
                     setInviteBlockedPopupReason("free_plan");
                   } else if (subscription.paymentFailingSince) {
                     setInviteBlockedPopupReason("payment_failure");
-                  } else if (!workspaceHasAvailableSeats) {
+                  } else if (
+                    !workspaceHasAvailableSeats &&
+                    !subscription.trialing
+                  ) {
                     setInviteBlockedPopupReason("no_seats_available");
+                  } else if (
+                    !workspaceHasAvailableSeats &&
+                    subscription.trialing
+                  ) {
+                    setInviteBlockedPopupReason("no_seats_available_trialing");
                   } else {
                     setInviteEmailModalOpen(true);
                   }
