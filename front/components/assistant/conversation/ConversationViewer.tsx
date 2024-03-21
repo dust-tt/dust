@@ -86,7 +86,7 @@ export default function ConversationViewer({
 
   const { hasMore, latestPage, oldestPage } = useMemo(() => {
     return {
-      hasMore: messages.at(-1)?.hasMore,
+      hasMore: messages.at(0)?.hasMore,
       latestPage: messages.at(-1),
       oldestPage: messages.at(0),
     };
