@@ -70,6 +70,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.363.0",
     "luxon": "^3.4.4",
+    "mermaid": "^10.9.0",
     "minimist": "^1.2.8",
     "moment-timezone": "^0.5.43",
     "next": "^13.5.6",

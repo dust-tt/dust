@@ -1,3 +1,5 @@
+import "mermaid";
+
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -25,11 +27,15 @@ import {
 import { visit } from "unist-util-visit";
 
 import { linkFromDocument } from "@app/components/assistant/conversation/RetrievalAction";
+import MermaidGraph from "@app/components/assistant/MermaidGraph";
+import { classNames } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
 );
+
+import mermaid from "mermaid";
 
 function useCopyToClipboard(
   resetInterval = 2000
@@ -158,17 +164,17 @@ export const CitationsContext = React.createContext<CitationsContextType>({
 
 export function RenderMessageMarkdown({
   content,
-  blinkingCursor,
+  isStreaming,
   agentConfigurations,
   citationsContext,
 }: {
   content: string;
-  blinkingCursor: boolean;
+  isStreaming: boolean;
   agentConfigurations?: LightAgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
   return (
-    <div className={blinkingCursor ? "blinking-cursor" : ""}>
+    <div className={isStreaming ? "blinking-cursor" : ""}>
       <CitationsContext.Provider
         value={
           citationsContext || {
@@ -181,8 +187,18 @@ export function RenderMessageMarkdown({
         <ReactMarkdown
           linkTarget="_blank"
           components={{
-            pre: PreBlock,
-            code: CodeBlock,
+            pre: ({ children }) => (
+              <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
+            ),
+            code: ({ inline, className, children }) => (
+              <CodeBlock
+                inline={inline}
+                className={className}
+                isStreaming={isStreaming}
+              >
+                {children}
+              </CodeBlock>
+            ),
             a: LinkBlock,
             ul: UlBlock,
             ol: OlBlock,
@@ -459,7 +475,13 @@ function LinkBlock({
   );
 }
 
-function PreBlock({ children }: { children: React.ReactNode }) {
+function PreBlock({
+  children,
+  isStreaming,
+}: {
+  children: React.ReactNode;
+  isStreaming: boolean;
+}) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const validChildrenContent =
     Array.isArray(children) && children[0]
@@ -486,8 +508,28 @@ function PreBlock({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const [isMermaid, setIsMermaid] = useState(false);
+  useEffect(() => {
+    if (isStreaming || !validChildrenContent || isMermaid) {
+      return;
+    }
+    void mermaid
+      .parse(validChildrenContent)
+      .then(() => {
+        setIsMermaid(true);
+      })
+      .catch(() => {
+        setIsMermaid(false);
+      });
+  }, [isStreaming, isMermaid, validChildrenContent]);
+
   return (
-    <pre className="my-2 w-full break-all rounded-md bg-slate-800">
+    <pre
+      className={classNames(
+        "my-2 w-full break-all rounded-md",
+        isMermaid ? "bg-slate-100" : "bg-slate-800"
+      )}
+    >
       <div className="relative">
         <div className="absolute right-2 top-2">
           {(validChildrenContent || fallbackData) && (
@@ -545,10 +587,12 @@ function CodeBlock({
   inline,
   className,
   children,
+  isStreaming,
 }: {
   inline?: boolean;
   className?: string;
   children?: React.ReactNode;
+  isStreaming: boolean;
 }): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
@@ -568,6 +612,31 @@ function CodeBlock({
   };
 
   const languageToUse = languageOverrides[language] || language;
+  const validChildrenContent = String(children).trim();
+
+  const [isMermaid, setIsMermaid] = useState(false);
+  useEffect(() => {
+    if (isStreaming || !validChildrenContent || isMermaid) {
+      return;
+    }
+    void mermaid
+      .parse(validChildrenContent)
+      .then(() => {
+        setIsMermaid(true);
+      })
+      .catch(() => {
+        setIsMermaid(false);
+      });
+  }, [isStreaming, isMermaid, validChildrenContent]);
+
+  if (
+    !inline &&
+    language &&
+    language.toLowerCase() === "mermaid" &&
+    isMermaid
+  ) {
+    return <MermaidGraph chart={validChildrenContent} />;
+  }
 
   return !inline && language ? (
     <SyntaxHighlighter

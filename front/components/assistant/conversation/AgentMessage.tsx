@@ -427,7 +427,7 @@ export function AgentMessage({
               <>
                 <RenderMessageMarkdown
                   content={agentMessage.content}
-                  blinkingCursor={streaming}
+                  isStreaming={streaming}
                   citationsContext={{
                     references,
                     updateActiveReferences,
