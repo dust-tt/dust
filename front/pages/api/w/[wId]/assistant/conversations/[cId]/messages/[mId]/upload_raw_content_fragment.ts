@@ -7,15 +7,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline } from "stream/promises";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import appConfig from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
   ContentFragmentResource,
   rawContentFragmentUrl,
 } from "@app/lib/resources/content_fragment_resource";
+import { gcsConfig } from "@app/lib/resources/storage/config";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { DUST_PRIVATE_UPLOADS_BUCKET = "dust-test-data", SERVICE_ACCOUNT } =
-  process.env;
 
 export const config = {
   api: {
@@ -132,10 +131,10 @@ async function handler(
         const [file] = maybeFiles;
 
         const storage = new Storage({
-          keyFilename: SERVICE_ACCOUNT,
+          keyFilename: appConfig.getServiceAccount(),
         });
 
-        const bucket = storage.bucket(DUST_PRIVATE_UPLOADS_BUCKET);
+        const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
         const filePath = rawContentFragmentUrl({
           worskpaceId: owner.sId,
           conversationId,
@@ -153,7 +152,7 @@ async function handler(
           })
         );
 
-        const fileUrl = `https://storage.googleapis.com/${DUST_PRIVATE_UPLOADS_BUCKET}/${filePath}`;
+        const fileUrl = `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`;
 
         // set content fragment's sourceUrl to the uploaded file
         const cf = await ContentFragmentResource.fromMessageId(message.id);
