@@ -102,13 +102,9 @@ export default function Conversation({
 
   // TODO:
   useEffect(() => {
-    // TODO: Here, we will have to make sure that
-    // we don't scroll all the way back every time we fetch a new page of messages.
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
-    // TODO.
-    console.log(">> useEffect!");
     if (mainTag) {
       console.log(">> scrolling down!");
       mainTag.scrollTo(0, mainTag.scrollHeight);
@@ -285,7 +281,7 @@ export default function Conversation({
 
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
-      {hasMore && (
+      {hasMore && !isMessagesLoading && !prevFirstMessageIndex && (
         <button
           ref={ref}
           onClick={() => {
@@ -294,6 +290,9 @@ export default function Conversation({
         >
           {inView ? "loading more" : "sleeping"}!
         </button>
+      )}
+      {(isMessagesLoading || prevFirstMessageIndex) && (
+        <div>Loading more...</div>
       )}
       {messages.map((page) => {
         return page.messages.map((m) => {
