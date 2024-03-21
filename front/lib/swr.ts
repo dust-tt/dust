@@ -622,7 +622,7 @@ export function useConversationMessages({
     isMessagesError: error,
     isMessagesLoading: isLoading,
     isValidating,
-    messages: useMemo(() => (data ? data.reverse() : []), [data]),
+    messages: useMemo(() => (data ? [...data].reverse() : []), [data]),
     mutateMessages: mutate,
     setSize,
     size,
