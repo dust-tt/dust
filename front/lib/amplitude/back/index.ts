@@ -83,14 +83,8 @@ export async function populateWorkspaceProperties(workspace: Workspace) {
   groupProperties.set("name", workspace.name);
   groupProperties.set("plan", subscription.plan.code);
   groupProperties.set("memberCount", memberCount);
-  const promise = amplitude.client.groupIdentify(
-    GROUP_TYPE,
-    workspace.sId,
-    groupProperties
-  );
+  amplitude.client.groupIdentify(GROUP_TYPE, workspace.sId, groupProperties);
   alreadyPopulatedWorkspaces.add(workspace.sId);
-
-  return promise.promise;
 }
 
 export function trackSignup(user: UserType) {
