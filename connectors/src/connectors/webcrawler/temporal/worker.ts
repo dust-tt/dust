@@ -15,7 +15,6 @@ export async function runWebCrawlerWorker() {
     activities,
     taskQueue: QUEUE_NAME,
     connection,
-    reuseV8Context: true,
     namespace,
     maxConcurrentActivityTaskExecutions: 16,
     interceptors: {

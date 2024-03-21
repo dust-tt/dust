@@ -18,7 +18,6 @@ export async function runGoogleWorker() {
     taskQueue: QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 4,
     connection,
-    reuseV8Context: true,
     namespace,
     interceptors: {
       activityInbound: [
