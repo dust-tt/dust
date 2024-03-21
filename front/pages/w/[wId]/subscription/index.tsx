@@ -22,7 +22,10 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
-import { PRO_PLAN_29_COST_EUR } from "@app/lib/client/subscription";
+import {
+  getPriceWithCurrency,
+  PRO_PLAN_29_COST,
+} from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -72,7 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       : null;
   }
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const estimatedMonthlyBilling = PRO_PLAN_29_COST_EUR * workspaceSeats;
+  const estimatedMonthlyBilling = PRO_PLAN_29_COST * workspaceSeats;
 
   return {
     props: {
@@ -375,20 +378,20 @@ export default function Subscription({
                     <Page.P>
                       Estimated monthly billing:{" "}
                       <span className="font-bold">
-                        {estimatedMonthlyBilling}€
+                        {getPriceWithCurrency(estimatedMonthlyBilling)}
                       </span>{" "}
                       (excluding taxes).
                     </Page.P>
                     <Page.P>
                       {workspaceSeats === 1 ? (
                         <>
-                          {workspaceSeats} member, {PRO_PLAN_29_COST_EUR}€ per
-                          member.
+                          {workspaceSeats} member,{" "}
+                          {getPriceWithCurrency(PRO_PLAN_29_COST)} per member.
                         </>
                       ) : (
                         <>
-                          {workspaceSeats} members, {PRO_PLAN_29_COST_EUR}€ per
-                          members
+                          {workspaceSeats} members,{" "}
+                          {getPriceWithCurrency(PRO_PLAN_29_COST)} per member.
                         </>
                       )}
                     </Page.P>
@@ -495,7 +498,8 @@ function SkipFreeTrialDialog({
               return (
                 <>
                   Billing will start immediately for your workspace. <br />
-                  Currently: {workspaceSeats} member, {estimatedMonthlyBilling}€
+                  Currently: {workspaceSeats} member,{" "}
+                  {getPriceWithCurrency(estimatedMonthlyBilling)}
                   monthly (excluding taxes).
                 </>
               );
@@ -504,7 +508,8 @@ function SkipFreeTrialDialog({
               <>
                 Billing will start immediately for your workspace:.
                 <br />
-                Currently: {workspaceSeats} members, {estimatedMonthlyBilling}€
+                Currently: {workspaceSeats} members,{" "}
+                {getPriceWithCurrency(estimatedMonthlyBilling)}
                 monthly (excluding taxes).
               </>
             );

@@ -3,7 +3,10 @@ import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
-import { PRO_PLAN_29_COST_EUR } from "@app/lib/client/subscription";
+import {
+  getPriceWithCurrency,
+  PRO_PLAN_29_COST,
+} from "@app/lib/client/subscription";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
@@ -167,15 +170,11 @@ export function ProPriceTable({
   isProcessing?: boolean;
   display: PriceTableDisplay;
 }) {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const isLikelyInUS = timeZone.startsWith("America");
-  const currency = isLikelyInUS ? "$" : "€";
-
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <PriceTable
       title="Pro"
-      price={`${PRO_PLAN_29_COST_EUR}${currency}`}
+      price={getPriceWithCurrency(PRO_PLAN_29_COST)}
       color="sky"
       priceLabel="/ month / user"
       size={size}
