@@ -294,13 +294,15 @@ export async function batchRenderContentFragment(
   });
 }
 
-// This function retrieves the latest version of each message for the current page,
-// because there's no easy way to fetch only the latest version of a message.
+/**
+ * This function retrieves the latest version of each message for the current page,
+ * because there's no easy way to fetch only the latest version of a message.
+ */
 async function getMaxRankMessages(
   conversation: Conversation,
-  pagination: PaginationParams
+  paginationParams: PaginationParams
 ): Promise<ModelId[]> {
-  const { limit, orderColumn, orderDirection, lastValue } = pagination;
+  const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
 
   const where: WhereOptions<Message> = {
     conversationId: conversation.id,
@@ -332,11 +334,11 @@ async function getMaxRankMessages(
 
 async function fetchMessagesForPage(
   conversation: Conversation,
-  pagination: PaginationParams
+  paginationParams: PaginationParams
 ): Promise<{ hasMore: boolean; messages: Message[] }> {
-  const { orderColumn, orderDirection, limit } = pagination;
+  const { orderColumn, orderDirection, limit } = paginationParams;
 
-  const messageIds = await getMaxRankMessages(conversation, pagination);
+  const messageIds = await getMaxRankMessages(conversation, paginationParams);
 
   const hasMore = messageIds.length > limit;
   const relevantMessageIds = hasMore ? messageIds.slice(0, limit) : messageIds;
@@ -404,7 +406,7 @@ export interface FetchConversationMessagesResponse {
 export async function fetchConversationMessages(
   auth: Authenticator,
   conversationId: string,
-  pagination: PaginationParams
+  paginationParams: PaginationParams
 ): Promise<Result<FetchConversationMessagesResponse, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -423,7 +425,7 @@ export async function fetchConversationMessages(
 
   const { hasMore, messages } = await fetchMessagesForPage(
     conversation,
-    pagination
+    paginationParams
   );
 
   const renderedMessages = await batchRenderMessages(auth, messages);

@@ -41,16 +41,16 @@ const PaginationParamsCodec = (supportedOrderColumns: string[]) =>
     limit: LimitCodec,
   });
 
-interface KeySetPaginationParams {
+interface PaginationOptions {
   defaultLimit: number;
   defaultOrderColumn: string;
   defaultOrderDirection: "asc" | "desc";
   supportedOrderColumn: string[];
 }
 
-export function getKeysetPagination(
+export function getPaginationParams(
   req: NextApiRequest,
-  defaults: KeySetPaginationParams
+  defaults: PaginationOptions
 ): Result<PaginationParams, InvalidPaginationParamsError> {
   const rawParams = {
     // Don't support a default order column.

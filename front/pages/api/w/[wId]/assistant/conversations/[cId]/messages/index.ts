@@ -8,7 +8,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { getKeysetPagination } from "@app/lib/api/pagination";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -82,7 +82,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const paginationRes = getKeysetPagination(req, {
+      const paginationRes = getPaginationParams(req, {
         defaultLimit: 10,
         defaultOrderColumn: "rank",
         defaultOrderDirection: "desc",
