@@ -23,7 +23,7 @@ import {
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
-const DEFAULT_PAGE_LIMIT = 10;
+const DEFAULT_PAGE_LIMIT = 100;
 
 interface ConversationViewerProps {
   conversationId: string;
