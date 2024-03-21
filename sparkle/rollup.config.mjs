@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
+import tsConfigPaths from "rollup-plugin-tsconfig-paths";
 import tailwindcss from "tailwindcss";
 import { fileURLToPath } from "url";
 
@@ -48,6 +49,7 @@ const config = {
     resolve(),
     commonjs(),
     typescript(tsPluginOptions),
+    tsConfigPaths(),
     postcss({
       plugins: [
         tailwindcss({
