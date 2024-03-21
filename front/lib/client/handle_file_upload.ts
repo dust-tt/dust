@@ -22,7 +22,6 @@ export async function handleFileUploadToText(
             )
           )
         );
-        return;
       }
     };
     const handleFileLoadedPDF = async (e: ProgressEvent<FileReader>) => {
