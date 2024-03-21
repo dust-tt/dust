@@ -100,16 +100,22 @@ export default function Conversation({
   console.log(">> messages:", messages);
   console.log(">> lastMessageIds:", lastMessageIds);
 
+  const latestMessageIdRef = useRef<string | null>(null);
   // TODO:
   useEffect(() => {
-    const mainTag = document.getElementById(
-      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-    );
-    if (mainTag) {
-      console.log(">> scrolling down!");
-      mainTag.scrollTo(0, mainTag.scrollHeight);
+    const lastestMessageId = messages.at(-1)?.messages.at(-1)?.sId;
+    if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
+      const mainTag = document.getElementById(
+        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
+      );
+      if (mainTag) {
+        console.log(">> scrolling down!");
+        mainTag.scrollTo(0, mainTag.scrollHeight);
+      }
+
+      latestMessageIdRef.current = lastestMessageId;
     }
-  }, [isInModal, /* totalMessages /* */ totalMessages]);
+  }, [isInModal, messages]);
 
   const [prevFirstMessageIndex, setPrevFirstMessageIndex] = useState<
     string | null

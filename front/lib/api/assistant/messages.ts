@@ -400,7 +400,6 @@ export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
   messages: MessageWithRankType[];
-  total: number;
 }
 
 export async function fetchConversationMessages(
@@ -430,15 +429,9 @@ export async function fetchConversationMessages(
 
   const renderedMessages = await batchRenderMessages(auth, messages);
 
-  // TODO: Try to remove.
-  const totalMessages = await Message.count({
-    where: { conversationId: conversation.id },
-  });
-
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
-    total: totalMessages,
   });
 }
