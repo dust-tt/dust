@@ -60,7 +60,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
   static async fromMessageId(id: ModelId) {
     const message = await Message.findByPk(id, {
-      include: [ContentFragmentModel],
+      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
     });
     if (!message) {
       throw new Error(

@@ -8,7 +8,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { DUST_PRIVATE_UPLOADS_BUCKET = "dust-test-data", SERVICE_ACCOUNT } =
@@ -111,12 +110,10 @@ async function handler(
         });
       }
       try {
-        logger.info("RAW: Starting POST handler");
         const form = new IncomingForm();
         const [_fields, files] = await form.parse(req);
         void _fields;
 
-        logger.warn("RAW: connecting to GCS");
         const maybeFiles = files.file;
 
         if (!maybeFiles) {
@@ -135,12 +132,11 @@ async function handler(
           keyFilename: SERVICE_ACCOUNT,
         });
 
-        logger.info("Uploading file to GCS");
         const bucket = storage.bucket(DUST_PRIVATE_UPLOADS_BUCKET);
-        const filePath = `content_fragments/${owner.sId}/${conversation.sId}/${message.sId}/raw`;
+        const filePath = `content_fragments/w/${owner.sId}/assistant/conversations/${conversation.sId}/content_fragment/${message.sId}/raw`;
         const gcsFile = bucket.file(filePath);
         const fileStream = fs.createReadStream(file.filepath);
-        logger.info("Starting uploading file to GCS");
+
         await new Promise((resolve, reject) =>
           fileStream
             .pipe(
@@ -153,7 +149,7 @@ async function handler(
             .on("error", reject)
             .on("finish", resolve)
         );
-        logger.info("Done uploading file to GCS");
+
         const fileUrl = `https://storage.googleapis.com/${DUST_PRIVATE_UPLOADS_BUCKET}/${filePath}`;
 
         // set content fragment's sourceUrl to the uploaded file
