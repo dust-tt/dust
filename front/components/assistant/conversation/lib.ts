@@ -182,7 +182,15 @@ export async function createConversationWithMessage({
   visibility?: ConversationVisibility;
   title?: string;
 }): Promise<Result<ConversationType, ConversationErrorType>> {
-  const { input, mentions, contentFragment } = messageData;
+  const {
+    input,
+    mentions,
+    contentFragment: contentFragmentWithFile,
+  } = messageData;
+  const contentFragment = contentFragmentWithFile
+    ? { ...contentFragmentWithFile, file: undefined }
+    : undefined;
+
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
     visibility,
@@ -196,7 +204,8 @@ export async function createConversationWithMessage({
     },
     contentFragment: contentFragment
       ? {
-          ...{ ...contentFragment, file: undefined },
+          content: contentFragment.content,
+          title: contentFragment.title,
           url: null, // sourceUrl will be set on raw content upload success
           contentType: "file_attachment",
           context: {
