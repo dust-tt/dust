@@ -157,9 +157,8 @@ async function handler(
         const fileUrl = `https://storage.googleapis.com/${DUST_PRIVATE_UPLOADS_BUCKET}/${filePath}`;
 
         // set content fragment's sourceUrl to the uploaded file
-        (await ContentFragmentResource.fromMessageId(message.id)).update({
-          sourceUrl: fileUrl,
-        });
+        const cf = await ContentFragmentResource.fromMessageId(message.id);
+        await cf.update({ sourceUrl: fileUrl });
 
         res.status(200).json({ sourceUrl: fileUrl });
         return;
