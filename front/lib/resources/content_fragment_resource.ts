@@ -67,7 +67,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         "No message found for the given id when trying to create a ContentFragmentResource"
       );
     }
-    return this.fromMessage(message);
+    return ContentFragmentResource.fromMessage(message);
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
@@ -107,6 +107,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 }
 
+// TODO(2024-03-22 pr): Move as method of message resource after migration of
+// message to resource pattern
 export function rawContentFragmentUrl({
   worskpaceId,
   conversationId,
