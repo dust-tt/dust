@@ -1,17 +1,13 @@
 import type {
   AgentConfigurationType,
-  AgentMessageType,
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
-  ContentFragmentType,
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
-  MessageWithRankType,
   RunRunType,
-  UserMessageType,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -20,6 +16,7 @@ import type { Fetcher } from "swr";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
@@ -587,47 +584,48 @@ export function useConversationReactions({
 export function useConversationMessages({
   conversationId,
   workspaceId,
+  limit,
 }: {
   conversationId: string;
   workspaceId: string;
+  limit: number;
 }) {
-  const messagesFetcher: Fetcher<{
-    // TODO: Use proper type here. Shared!
-    messages: MessageWithRankType[];
-    total: number;
-    lastValue: string;
-  }> = fetcher;
+  const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfinite(
       (pageIndex: number, previousPageData) => {
-        if (previousPageData && previousPageData.messages.length === 0) {
+        // If we have reached the last page and there are no more
+        // messages or the previous page has no messages, return null.
+        if (
+          previousPageData &&
+          (previousPageData.messages.length === 0 || !previousPageData.hasMore)
+        ) {
           return null;
         }
 
         if (pageIndex === 0) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=10`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=10`;
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
       },
       messagesFetcher,
       {
         revalidateAll: false,
-        // revalidateOnFocus: false,
-        // revalidateFirstPage: false,
+        revalidateOnFocus: false,
       }
     );
 
   return {
-    messages: useMemo(() => (data ? data.reverse() : []), [data]),
     isLoadingInitialData: !error && !data,
     isMessagesError: error,
-    mutateMessages: mutate,
-    size,
-    setSize,
     isMessagesLoading: isLoading,
     isValidating,
+    messages: useMemo(() => (data ? data.reverse() : []), [data]),
+    mutateMessages: mutate,
+    setSize,
+    size,
   };
 }
 

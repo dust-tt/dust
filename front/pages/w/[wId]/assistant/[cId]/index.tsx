@@ -8,7 +8,7 @@ import { useContext, useEffect, useState } from "react";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
-import Conversation from "@app/components/assistant/conversation/ConversationViewer";
+import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { submitMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -103,11 +103,12 @@ export default function AssistantConversation({
 
   return (
     <>
-      <Conversation
+      <ConversationViewer
         owner={owner}
         user={user}
         conversationId={conversationId}
         onStickyMentionsChange={setStickyMentions}
+        key={conversationId}
       />
       <FixedAssistantInputBar
         owner={owner}

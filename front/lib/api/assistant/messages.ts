@@ -2,7 +2,6 @@ import type {
   AgentActionType,
   DustAppParameters,
   DustAppRunActionType,
-  MessageType,
   MessageWithRankType,
   ModelId,
   Result,

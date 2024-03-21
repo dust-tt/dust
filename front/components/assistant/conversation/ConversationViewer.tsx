@@ -1,3 +1,5 @@
+// TODO(2024-03-21 flav) Replace by Spinner2 when available.
+import { Spinner } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { AgentMention } from "@dust-tt/types";
 import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
@@ -7,7 +9,7 @@ import type {
   UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
@@ -21,14 +23,26 @@ import {
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_LIMIT = 10;
+
+interface ConversationViewerProps {
+  conversationId: string;
+  hideReactions?: boolean;
+  isFading?: boolean;
+  isInModal?: boolean;
+  // Use a key to trigger a re-render whenever the conversation changes.
+  key: string;
+  onStickyMentionsChange?: (mentions: AgentMention[]) => void;
+  owner: WorkspaceType;
+  user: UserType;
+}
 
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
  * @returns
  */
-export default function Conversation({
+export default function ConversationViewer({
   owner,
   user,
   conversationId,
@@ -36,15 +50,7 @@ export default function Conversation({
   isInModal = false,
   hideReactions = false,
   isFading = false,
-}: {
-  owner: WorkspaceType;
-  user: UserType;
-  conversationId: string;
-  onStickyMentionsChange?: (mentions: AgentMention[]) => void;
-  isInModal?: boolean;
-  hideReactions?: boolean;
-  isFading?: boolean;
-}) {
+}: ConversationViewerProps) {
   const {
     conversation,
     isConversationError,
@@ -60,16 +66,17 @@ export default function Conversation({
   });
 
   const {
-    mutateMessages,
-    messages,
-    size,
-    setSize,
-    isMessagesLoading,
     isLoadingInitialData,
+    isMessagesLoading,
     isValidating,
+    messages,
+    mutateMessages,
+    setSize,
+    size,
   } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
+    limit: DEFAULT_PAGE_LIMIT,
   });
 
   const { reactions } = useConversationReactions({
@@ -77,31 +84,46 @@ export default function Conversation({
     conversationId,
   });
 
-  const { ref, inView } = useInView();
+  const { hasMore, latestPage, oldestPage } = useMemo(() => {
+    return {
+      hasMore: messages.at(-1)?.hasMore,
+      latestPage: messages.at(-1),
+      oldestPage: messages.at(0),
+    };
+  }, [messages]);
 
+  // Handle scroll to bottom on new message input.
   const latestMessageIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const lastestMessageId = messages.at(-1)?.messages.at(-1)?.sId;
+    const lastestMessageId = latestPage?.messages.at(-1)?.sId;
+
+    // If latest message Id has changed, scroll to bottom of conversation.
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
       const mainTag = document.getElementById(
         CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
       );
+
       if (mainTag) {
         mainTag.scrollTo(0, mainTag.scrollHeight);
       }
 
       latestMessageIdRef.current = lastestMessageId;
     }
-  }, [isInModal, messages]);
+  }, [isInModal, latestPage]);
 
-  const [prevFirstMessageIndex, setPrevFirstMessageIndex] = useState<
-    string | null
-  >(null);
-  const prevFirstMessageRef = useRef(null);
+  // Keep a reference to the previous oldest message to maintain user position
+  // after fetching more data. This is a best effort approach to keep the user
+  // roughly at the same place they were before the new data is loaded.
+  const [prevFirstMessageId, setPrevFirstMessageId] = useState<string | null>(
+    null
+  );
+  const prevFirstMessageRef = useRef<HTMLDivElement>(null);
 
+  // Instantly scroll user back to previous position after new data is loaded.
+  // Note: scrolling is from the bottom of the screen.
   useEffect(() => {
     if (
-      prevFirstMessageIndex &&
+      prevFirstMessageId &&
       prevFirstMessageRef.current &&
       !isMessagesLoading &&
       !isValidating
@@ -110,32 +132,28 @@ export default function Conversation({
         behavior: "instant",
         block: "start",
       });
-      setPrevFirstMessageIndex(null);
+
+      setPrevFirstMessageId(null);
     }
   }, [
-    prevFirstMessageIndex,
+    prevFirstMessageId,
     prevFirstMessageRef,
     isMessagesLoading,
     isValidating,
   ]);
 
+  // Handle sticky mentions changes.
   useEffect(() => {
     if (!onStickyMentionsChange) {
       return;
     }
 
-    const lastUserMessage = messages
-      .at(-1)
-      ?.messages.findLast(
-        (message) =>
-          isUserMessageType(message) &&
-          message.visibility !== "deleted" &&
-          message.user?.id === user.id
-      );
-
-    if (!lastUserMessage) {
-      return;
-    }
+    const lastUserMessage = latestPage?.messages.findLast(
+      (message) =>
+        isUserMessageType(message) &&
+        message.visibility !== "deleted" &&
+        message.user?.id === user.id
+    );
 
     if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
       return;
@@ -144,7 +162,43 @@ export default function Conversation({
     const { mentions } = lastUserMessage;
     const agentMentions = mentions.filter(isAgentMention);
     onStickyMentionsChange(agentMentions);
-  }, [messages, onStickyMentionsChange, user.id]);
+  }, [latestPage, onStickyMentionsChange, user.id]);
+
+  const { ref, inView: isTopOfListVisible } = useInView();
+
+  // On page load or when new data is loaded, check if the top of the list
+  // is visible and there is more data to load. If so, set the current
+  // highest message ID and increment the page number to load more data.
+  useEffect(() => {
+    const isLoadingData =
+      isLoadingInitialData ||
+      isMessagesLoading ||
+      isValidating ||
+      prevFirstMessageId;
+
+    if (!isLoadingData && isTopOfListVisible && hasMore) {
+      // Set the current highest message Id.
+      setPrevFirstMessageId(
+        oldestPage ? oldestPage?.messages[0]?.sId ?? null : null
+      );
+
+      // Increment the page number to load more data.
+      void setSize(size + 1);
+    }
+  }, [
+    isLoadingInitialData,
+    isMessagesLoading,
+    isValidating,
+    prevFirstMessageId,
+    isTopOfListVisible,
+    hasMore,
+    oldestPage,
+    size,
+    setPrevFirstMessageId,
+    setSize,
+  ]);
+
+  // Hooks related to message streaming.
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -210,34 +264,6 @@ export default function Conversation({
     [mutateConversation, mutateConversations, messages, mutateMessages]
   );
 
-  const hasMore = messages.at(0)?.messages.length === PAGE_SIZE;
-  useEffect(() => {
-    if (
-      !isLoadingInitialData &&
-      inView &&
-      !isMessagesLoading &&
-      hasMore &&
-      !isValidating &&
-      !prevFirstMessageIndex
-    ) {
-      setPrevFirstMessageIndex(
-        messages.length > 0 ? messages.at(0)?.messages[0]?.sId ?? null : null
-      );
-      void setSize(size + 1);
-    }
-  }, [
-    inView,
-    isMessagesLoading,
-    isLoadingInitialData,
-    hasMore,
-    setSize,
-    size,
-    isValidating,
-    setPrevFirstMessageIndex,
-    prevFirstMessageIndex,
-    messages,
-  ]);
-
   useEventSource(buildEventSourceURL, onEventCallback, {
     // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
     isReadyToConsumeStream:
@@ -256,18 +282,14 @@ export default function Conversation({
 
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
-      {hasMore && !isMessagesLoading && !prevFirstMessageIndex && (
-        <button
-          ref={ref}
-          onClick={() => {
-            void setSize(size + 1);
-          }}
-        >
-          {inView ? "loading more" : "sleeping"}!
-        </button>
+      {/* Invisible span to detect when the user has scrolled to the top of the list. */}
+      {hasMore && !isMessagesLoading && !prevFirstMessageId && (
+        <span ref={ref} className="py-4" />
       )}
-      {(isMessagesLoading || prevFirstMessageIndex) && (
-        <div>Loading more...</div>
+      {(isMessagesLoading || prevFirstMessageId) && (
+        <div className="flex justify-center py-4">
+          <Spinner size="xs" />
+        </div>
       )}
       {messages.map((page) => {
         return page.messages.map((message) => {
@@ -281,9 +303,9 @@ export default function Conversation({
               owner={owner}
               reactions={reactions}
               ref={
-                message.sId === prevFirstMessageIndex
+                message.sId === prevFirstMessageId
                   ? prevFirstMessageRef
-                  : null
+                  : undefined
               }
               user={user}
             />
