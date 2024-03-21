@@ -1,8 +1,8 @@
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 async function main() {
   console.log("dropping payment_status column from subscriptions table");
-  await front_sequelize.query(
+  await frontSequelize.query(
     `ALTER TABLE "subscriptions" DROP COLUMN "paymentStatus"`
   );
 }

@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { ConfluenceClientError } from "@dust-tt/types";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
@@ -170,6 +171,14 @@ export async function confluenceGetSpaceNameActivity({
   } catch (err) {
     if (isNotFoundError(err)) {
       localLogger.info("Deleting stale Confluence space.");
+
+      return null;
+    }
+
+    if (err instanceof ConfluenceClientError && err.status === 403) {
+      localLogger.info(
+        "Confluence space is not accessible (status code 403). Deleting."
+      );
 
       return null;
     }

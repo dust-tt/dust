@@ -27,13 +27,16 @@ export function SubscriptionContactUsDrawer({
   const submit = useSubmitFunction(async () => {
     if (isEmailValid(email)) {
       setEmailError(null);
+      const formURL = `https://docs.google.com/forms/d/e/1FAIpQLSdZdNPHm0J1k5SoKAoDdmnFZCzVDHUKnDE3MVM_1ii2fLrp8w/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
+        email
+      )}`;
       const amplitude = getBrowserClient();
       amplitude.clickedEnterpriseContactUs({
         email: email,
       });
-      window.location.href = `https://docs.google.com/forms/d/e/1FAIpQLSdZdNPHm0J1k5SoKAoDdmnFZCzVDHUKnDE3MVM_1ii2fLrp8w/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
-        email
-      )}`;
+      amplitude.flush().promise.finally(() => {
+        window.location.href = formURL;
+      });
     } else {
       setEmailError("Invalid email address.");
     }

@@ -6,9 +6,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class TrackedDocument extends Model<
   InferAttributes<TrackedDocument>,
@@ -54,7 +54,7 @@ TrackedDocument.init(
   },
   {
     modelName: "tracked_document",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { fields: ["userId", "dataSourceId", "documentId"], unique: true },
       { fields: ["dataSourceId"] },
@@ -113,7 +113,7 @@ DocumentTrackerChangeSuggestion.init(
   },
   {
     modelName: "document_tracker_change_suggestion",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["trackedDocumentId"] }],
   }
 );

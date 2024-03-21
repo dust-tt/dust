@@ -1,8 +1,9 @@
+export type MaxMessagesTimeframeType = "day" | "lifetime";
+
 /**
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.
  * */
-
 export type ManageDataSourcesLimitsType = {
   isConfluenceAllowed: boolean;
   isSlackAllowed: boolean;
@@ -16,6 +17,7 @@ export type LimitsType = {
   assistant: {
     isSlackBotAllowed: boolean;
     maxMessages: number;
+    maxMessagesTimeframe: MaxMessagesTimeframeType;
   };
   connections: ManageDataSourcesLimitsType;
   dataSources: {
@@ -28,6 +30,7 @@ export type LimitsType = {
   users: {
     maxUsers: number;
   };
+  canUseProduct: boolean;
 };
 
 export const FREE_BILLING_TYPES = ["free"] as const;
@@ -53,8 +56,10 @@ export type PlanType = {
 };
 
 export type SubscriptionType = {
-  subscriptionId: string | null; // null for the free test plan that is not in the database
+  // null for FREE_NO_PLAN which is the default plan when there is no Subscription in DB.
+  sId: string | null;
   status: "active" | "ended";
+  trialing: boolean;
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
   startDate: number | null;

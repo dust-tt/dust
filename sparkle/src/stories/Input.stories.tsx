@@ -74,5 +74,23 @@ export const InputExample = () => (
         showErrorLabel
       />
     </div>
+    <div className="s-grid s-grid-cols-3 s-gap-4">
+      <Input
+        placeholder="placeholder"
+        name="input"
+        size="sm"
+        label="Firstname"
+        value=""
+        showErrorLabel
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        size="sm"
+        label="Lastname"
+        value=""
+        showErrorLabel
+      />
+    </div>
   </div>
 );

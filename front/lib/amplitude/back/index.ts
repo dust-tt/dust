@@ -7,7 +7,7 @@ import type {
 } from "@dust-tt/types";
 
 import type { Ampli } from "@app/lib/amplitude/back/generated";
-import { ampli } from "@app/lib/amplitude/back/generated";
+import { ampli, UserMessagePosted } from "@app/lib/amplitude/back/generated";
 import { AMPLITUDE_PUBLIC_API_KEY } from "@app/lib/amplitude/config";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import { Membership } from "@app/lib/models";
@@ -123,25 +123,27 @@ export function trackUserMessage({
   conversationId: string;
 }) {
   const amplitude = getBackendClient();
-  amplitude.userMessagePosted(
+  const event = new UserMessagePosted({
+    messageId: userMessage.sId,
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
+    version: userMessage.version,
+    mentions: userMessage.mentions.map((mention) => mention.configurationId),
+    mentionsCount: userMessage.mentions.length,
+    conversationId,
+    // We are mostly interested in tracking the usage of non global agents,
+    // so if there is at least one non global agent in the list, that's enough to set
+    // isGlobalAgent to false.
+    isGlobalAgent: !(
+      userMessage.mentions.filter(
+        (mention) => isGlobalAgentId(mention.configurationId) === false
+      ).length > 0
+    ),
+  });
+
+  amplitude.track(
     userId,
-    {
-      messageId: userMessage.sId,
-      workspaceId: workspace.sId,
-      workspaceName: workspace.name,
-      version: userMessage.version,
-      mentions: userMessage.mentions.map((mention) => mention.configurationId),
-      mentionsCount: userMessage.mentions.length,
-      conversationId,
-      // We are mostly interested in tracking the usage of non global agents,
-      // so if there is at least one non global agent in the list, that's enough to set
-      // isGlobalAgent to false.
-      isGlobalAgent: !(
-        userMessage.mentions.filter(
-          (mention) => isGlobalAgentId(mention.configurationId) === false
-        ).length > 0
-      ),
-    },
+    { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
     {
       time: userMessage.created,
       insert_id: `user_message_${userMessage.sId}-${userMessage.version}`,

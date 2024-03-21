@@ -34,7 +34,9 @@ export function AssistantPicker({
   size?: "sm" | "md";
 }) {
   const [searchText, setSearchText] = useState("");
-  const [searchedAssistants, setSearchedAssistants] = useState(assistants);
+  const [searchedAssistants, setSearchedAssistants] = useState<
+    LightAgentConfigurationType[]
+  >([]);
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 

@@ -29,12 +29,12 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   AgentRetrievalAction,
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models";
+import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 
 /**
@@ -777,7 +777,7 @@ export async function* runRetrieval(
 
   // We are done, store documents and chunks in database and yield the final events.
 
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     for (const d of documents) {
       const document = await RetrievalDocument.create(
         {

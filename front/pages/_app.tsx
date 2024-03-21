@@ -1,60 +1,29 @@
 import "@app/styles/global.css";
 
-import { UserProvider } from "@auth0/nextjs-auth0/client";
-import { SparkleContext } from "@dust-tt/sparkle";
+import type { NextPage } from "next";
 import type { AppProps } from "next/app";
-import Link from "next/link";
-import type { MouseEvent, ReactNode } from "react";
 
-import { SidebarProvider } from "@app/components/sparkle/AppLayout";
-import { NotificationArea } from "@app/components/sparkle/Notification";
+import RootLayout from "@app/components/app/RootLayout";
 
-function NextLinkWrapper({
-  href,
-  className,
-  children,
-  ariaCurrent,
-  ariaLabel,
-  onClick,
-}: {
-  href: string;
-  className?: string;
-  children: ReactNode;
-  ariaLabel?: string;
-  ariaCurrent?:
-    | boolean
-    | "time"
-    | "false"
-    | "true"
-    | "page"
-    | "step"
-    | "location"
-    | "date";
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-}) {
-  return (
-    <Link
-      href={href}
-      className={className}
-      onClick={onClick}
-      aria-current={ariaCurrent}
-      aria-label={ariaLabel}
-    >
-      {children}
-    </Link>
-  );
-}
+export type NextPageWithLayout<P = unknown, IP = P> = NextPage<P, IP> & {
+  getLayout?: (
+    page: React.ReactElement,
+    pageProps: AppProps
+  ) => React.ReactNode;
+};
 
-export default function App({ Component, pageProps }: AppProps) {
-  return (
-    <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
-      <UserProvider>
-        <SidebarProvider>
-          <NotificationArea>
-            <Component {...pageProps} />
-          </NotificationArea>
-        </SidebarProvider>
-      </UserProvider>
-    </SparkleContext.Provider>
+type AppPropsWithLayout = AppProps & {
+  Component: NextPageWithLayout;
+};
+
+export default function App({ Component, pageProps }: AppPropsWithLayout) {
+  // Use the layout defined at the page level, if available.
+  const getLayout = Component.getLayout ?? ((page) => page);
+
+  return getLayout(
+    <RootLayout>
+      <Component {...pageProps} />
+    </RootLayout>,
+    pageProps
   );
 }

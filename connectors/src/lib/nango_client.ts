@@ -1,3 +1,5 @@
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import axios from "axios";
 
@@ -7,8 +9,6 @@ import {
   NANGO_ERROR_TYPES,
   NangoError,
 } from "@connectors/lib/error";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 
 const { NANGO_SECRET_KEY } = process.env;

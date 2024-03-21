@@ -3,7 +3,6 @@ import { Storage } from "@google-cloud/storage";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
@@ -37,12 +36,13 @@ import {
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import {
-  ContentFragment,
   ConversationParticipant,
   Mention,
   MessageReaction,
 } from "@app/lib/models/assistant/conversation";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -143,7 +143,7 @@ export async function deleteConversationsActivity({
     chunks.push(conversations.slice(i, i + chunkSize));
   }
 
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       if (!chunk) {
@@ -151,7 +151,7 @@ export async function deleteConversationsActivity({
       }
       await Promise.all(
         chunk.map((c) => {
-          return (async () => {
+          return (async (): Promise<void> => {
             const messages = await Message.findAll({
               where: { conversationId: c.id },
               transaction: t,
@@ -194,10 +194,13 @@ export async function deleteConversationsActivity({
                 }
               }
               if (msg.contentFragmentId) {
-                await ContentFragment.destroy({
-                  where: { id: msg.contentFragmentId },
-                  transaction: t,
-                });
+                const contentFragment = await ContentFragmentResource.fetchById(
+                  msg.contentFragmentId,
+                  t
+                );
+                if (contentFragment) {
+                  await contentFragment.delete(t);
+                }
               }
               await MessageReaction.destroy({
                 where: { messageId: msg.id },
@@ -239,7 +242,7 @@ export async function deleteAgentsActivity({
       workspaceId: workspace.id,
     },
   });
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     await GlobalAgentSettings.destroy({
       where: {
         workspaceId: workspace.id,
@@ -310,7 +313,7 @@ export async function deleteAppsActivity({
     where: { workspaceId: workspace.id },
   });
 
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     for (const app of apps) {
       const res = await coreAPI.deleteProject({
         projectId: app.dustAPIProjectId,
@@ -388,7 +391,7 @@ export async function deleteRunOnDustAppsActivity({
     chunks.push(runs.slice(i, i + chunkSize));
   }
 
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       if (!chunk) {
@@ -426,7 +429,7 @@ export async function deleteMembersActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     await MembershipInvitation.destroy({
       where: {
         workspaceId: workspace.id,
@@ -486,7 +489,7 @@ export async function deleteWorkspaceActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  await front_sequelize.transaction(async (t) => {
+  await frontSequelize.transaction(async (t) => {
     await Subscription.destroy({
       where: {
         workspaceId: workspace.id,

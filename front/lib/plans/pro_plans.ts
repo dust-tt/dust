@@ -2,8 +2,7 @@ import type { Attributes } from "sequelize";
 
 import { isDevelopment } from "@app/lib/development";
 import { Plan } from "@app/lib/models";
-
-import { PRO_PLAN_SEAT_29_CODE } from "./plan_codes";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -34,6 +33,7 @@ if (isDevelopment()) {
     stripeProductId: "prod_OwKvN4XrUwFw5a",
     billingType: "per_seat",
     maxMessages: -1,
+    maxMessagesTimeframe: "lifetime",
     maxUsersInWorkspace: 1000,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
@@ -47,6 +47,7 @@ if (isDevelopment()) {
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
     trialPeriodDays: 0,
+    canUseProduct: true,
   });
 }
 

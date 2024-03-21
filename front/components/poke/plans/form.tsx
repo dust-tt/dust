@@ -80,6 +80,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       assistant: {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
         maxMessages: parseMaybeNumber(editingPlan.maxMessages),
+        maxMessagesTimeframe: "lifetime",
       },
       connections: {
         isConfluenceAllowed: editingPlan.isConfluenceAllowed,
@@ -100,6 +101,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
+      canUseProduct: true,
     },
     billingType: editingPlan.billingType,
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),

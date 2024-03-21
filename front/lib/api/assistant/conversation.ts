@@ -34,7 +34,13 @@ import type {
   AgentMessageErrorEvent,
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
-import { GPT_3_5_TURBO_MODEL_CONFIG, md5, removeNulls } from "@dust-tt/types";
+import {
+  getTimeframeSecondsFromLiteral,
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  md5,
+  rateLimiter,
+  removeNulls,
+} from "@dust-tt/types";
 import {
   isAgentMention,
   isAgentMessageType,
@@ -53,7 +59,6 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   AgentDustAppRunAction,
   AgentMessage,
@@ -65,8 +70,10 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { ContentFragment } from "@app/lib/models/assistant/conversation";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -389,7 +396,7 @@ async function batchRenderAgentMessages(
         ) || null;
     }
     const agentConfiguration = agentConfigurations.find(
-      (a) => a.sId === message.agentMessage?.agentConfigurationId
+      (a) => a.sId === agentMessage.agentConfigurationId
     );
     if (!agentConfiguration) {
       throw new Error(
@@ -428,33 +435,6 @@ async function batchRenderAgentMessages(
   });
 }
 
-function renderContentFragment({
-  message,
-  contentFragment,
-}: {
-  message: Message;
-  contentFragment: ContentFragment;
-}): ContentFragmentType {
-  return {
-    id: message.id,
-    sId: message.sId,
-    created: message.createdAt.getTime(),
-    type: "content_fragment",
-    visibility: message.visibility,
-    version: message.version,
-    title: contentFragment.title,
-    content: contentFragment.content,
-    url: contentFragment.url,
-    contentType: contentFragment.contentType,
-    context: {
-      profilePictureUrl: contentFragment.userContextProfilePictureUrl,
-      fullName: contentFragment.userContextFullName,
-      email: contentFragment.userContextEmail,
-      username: contentFragment.userContextUsername,
-    },
-  };
-}
-
 async function batchRenderContentFragment(
   messages: Message[]
 ): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
@@ -467,16 +447,11 @@ async function batchRenderContentFragment(
     );
   }
 
-  return messagesWithContentFragment.map((message) => {
-    if (!message.contentFragment) {
-      throw new Error(
-        "Unreachable: batchRenderContentFragment must be called with only content fragments"
-      );
-    }
-    const contentFragment = message.contentFragment;
+  return messagesWithContentFragment.map((message: Message) => {
+    const contentFragment = ContentFragmentResource.fromMessage(message);
 
     return {
-      m: renderContentFragment({ message, contentFragment }),
+      m: contentFragment.renderFromMessage(message),
       rank: message.rank,
       version: message.version,
     };
@@ -583,8 +558,11 @@ export async function getConversation(
         as: "agentMessage",
         required: false,
       },
+      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
+      // along with messages in one query). Only once we move to a MessageResource will we be able
+      // to properly abstract this.
       {
-        model: ContentFragment,
+        model: ContentFragmentModel,
         as: "contentFragment",
         required: false,
       },
@@ -796,7 +774,7 @@ async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
-  await front_sequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },
   });
@@ -859,14 +837,17 @@ export async function* postUserMessage(
     return;
   }
   // Check plan limit
-  const isAboveMessageLimit = await isMessagesLimitReached({ owner, plan });
+  const isAboveMessageLimit = await isMessagesLimitReached({
+    owner,
+    plan,
+  });
   if (isAboveMessageLimit) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "test_plan_message_limit_reached",
-        message: "The free plan message limit has been reached.",
+        code: "plan_message_limit_exceeded",
+        message: "The message limit for this plan has been exceeded.",
       },
     };
     return;
@@ -874,7 +855,7 @@ export async function* postUserMessage(
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
-    await front_sequelize.transaction(async (t) => {
+    await frontSequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       let nextMessageRank =
@@ -1288,7 +1269,7 @@ export async function* editUserMessage(
   let agentMessageRows: AgentMessage[] = [];
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
-    const result = await front_sequelize.transaction(async (t) => {
+    const result = await frontSequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1611,7 +1592,7 @@ export async function* retryAgentMessage(
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
-    agentMessageResult = await front_sequelize.transaction(async (t) => {
+    agentMessageResult = await frontSequelize.transaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1798,11 +1779,11 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  const { contentFragmentRow, messageRow } = await front_sequelize.transaction(
+  const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      const contentFragmentRow = await ContentFragment.create(
+      const contentFragment = await ContentFragmentResource.makeNew(
         {
           content,
           title,
@@ -1814,7 +1795,7 @@ export async function postNewContentFragment(
           userContextFullName: context.fullName,
           userContextUsername: context.username,
         },
-        { transaction: t }
+        t
       );
       const nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
@@ -1828,22 +1809,17 @@ export async function postNewContentFragment(
           sId: generateModelSId(),
           rank: nextMessageRank,
           conversationId: conversation.id,
-          contentFragmentId: contentFragmentRow.id,
+          contentFragmentId: contentFragment.id,
         },
         {
           transaction: t,
         }
       );
-      return { contentFragmentRow, messageRow };
+      return { contentFragment, messageRow };
     }
   );
 
-  const contentFragment = renderContentFragment({
-    message: messageRow,
-    contentFragment: contentFragmentRow,
-  });
-
-  return contentFragment;
+  return contentFragment.renderFromMessage(messageRow);
 }
 
 async function* streamRunAgentEvents(
@@ -1974,23 +1950,18 @@ async function isMessagesLimitReached({
   owner: WorkspaceType;
   plan: PlanType;
 }): Promise<boolean> {
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
-  const messages = await Message.findAll({
-    attributes: ["id"],
-    include: [
-      {
-        model: Conversation,
-        as: "conversation",
-        attributes: ["id", "workspaceId"],
-        required: true,
-        where: { workspaceId: owner.id },
-      },
-    ],
-    where: { agentMessageId: { [Op.ne]: null } },
-    limit: plan.limits.assistant.maxMessages,
+
+  const remaining = await rateLimiter({
+    key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+    maxPerTimeframe: maxMessages,
+    timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+    logger,
   });
 
-  return messages.length === plan.limits.assistant.maxMessages;
+  return remaining <= 0;
 }

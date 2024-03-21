@@ -4,20 +4,18 @@ import type { NextFunction, Request, Response } from "express";
 import express from "express";
 import morgan from "morgan";
 
+import { adminAPIHandler } from "@connectors/api/admin";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getContentNodesParentsAPIHandler } from "@connectors/api/get_content_node_parents";
 import { getContentNodesAPIHandler } from "@connectors/api/get_content_nodes";
-import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import {
   getSlackChannelsLinkedWithAgentHandler,
   patchSlackChannelsLinkedWithAgentHandler,
 } from "@connectors/api/slack_channels_linked_with_agent";
-import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
-import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
@@ -87,11 +85,8 @@ export function startServer(port: number) {
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", getConnectorUpdateAPIHandler);
-  app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
-  app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
-  app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(
     "/connectors/:connector_id/permissions",
     getConnectorPermissionsAPIHandler
@@ -155,6 +150,8 @@ export function startServer(port: number) {
     "/connectors/webcrawler/:connector_id/configuration",
     getWebcrawlerConfiguration
   );
+
+  app.post("/connectors/admin", adminAPIHandler);
 
   const server = app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);

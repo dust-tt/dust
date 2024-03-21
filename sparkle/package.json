@@ -1,12 +1,13 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.116",
+  "version": "0.2.121",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",
+    "format": "prettier --write .",
     "lint": "eslint ."
   },
   "main": "dist/cjs/index.js",
@@ -79,6 +80,8 @@
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "esbuild": "^0.20.0",
+    "react-confetti": "^6.1.0",
+    "lottie-react": "^2.4.0",
     "tailwind-scrollbar-hide": "^1.1.7"
   }
 }

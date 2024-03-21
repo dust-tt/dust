@@ -1,4 +1,5 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
@@ -9,7 +10,6 @@ import {
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
-import { Ok } from "@connectors/lib/result";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -46,6 +46,7 @@ async function handleChatBot(req: Request, res: Response, logger: Logger) {
   const slackTeamId = req.body.team_id;
   const slackChannel = event.channel;
   const slackUserId = event.user;
+  const slackBotId = event.bot_id || null;
   const slackMessageTs = event.ts;
   const slackThreadTs = event.thread_ts || null;
 
@@ -64,9 +65,20 @@ async function handleChatBot(req: Request, res: Response, logger: Logger) {
     !slackMessage ||
     !slackTeamId ||
     !slackChannel ||
-    !slackUserId ||
-    !slackMessageTs
+    !slackMessageTs ||
+    (!slackBotId && !slackUserId)
   ) {
+    logger.error(
+      {
+        slackMessage,
+        slackTeamId,
+        slackChannel,
+        slackUserId,
+        slackBotId,
+        slackMessageTs,
+      },
+      "Missing required fields in request body"
+    );
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
@@ -84,6 +96,7 @@ async function handleChatBot(req: Request, res: Response, logger: Logger) {
     slackTeamId,
     slackChannel,
     slackUserId,
+    slackBotId,
     slackMessageTs,
     slackThreadTs
   );

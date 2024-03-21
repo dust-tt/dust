@@ -2,11 +2,12 @@ import type {
   ConnectorPermission,
   ConnectorsAPIError,
   ContentNode,
+  ContentNodesViewType,
   CreateConnectorUrlRequestBody,
   ModelId,
+  Result,
 } from "@dust-tt/types";
 
-import type { Result } from "@connectors/lib/result";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export type ConnectorCreatorOAuth = (
@@ -54,6 +55,7 @@ export type ConnectorPermissionRetriever = (params: {
   connectorId: ModelId;
   parentInternalId: string | null;
   filterPermission: ConnectorPermission | null;
+  viewType: ContentNodesViewType;
 }) => Promise<Result<ContentNode[], Error>>;
 
 export type ConnectorPermissionSetter = (
@@ -62,14 +64,10 @@ export type ConnectorPermissionSetter = (
   permissions: Record<string, ConnectorPermission>
 ) => Promise<Result<void, Error>>;
 
-export type ConnectorBatchResourceTitleRetriever = (
-  connectorId: ModelId,
-  internalIds: string[]
-) => Promise<Result<Record<string, string | null>, Error>>;
-
 export type ConnectorBatchContentNodesRetriever = (
   connectorId: ModelId,
-  internalIds: string[]
+  internalIds: string[],
+  viewType: ContentNodesViewType
 ) => Promise<Result<ContentNode[], Error>>;
 
 export type ContentNodeParentsRetriever = (

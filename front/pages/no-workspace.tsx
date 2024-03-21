@@ -11,7 +11,7 @@ import { useRouter } from "next/router";
 
 import {
   getUserFromSession,
-  withDefaultUserAuthRequirements,
+  withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
 import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import logger from "@app/logger/logger";
@@ -56,7 +56,7 @@ async function fetchRevokedWorkspace(
   return Workspace.findByPk(revokedWorkspaceId);
 }
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
+export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   status: "auto-join-disabled" | "revoked";
   userFirstName: string;
   workspaceName: string;

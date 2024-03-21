@@ -1,5 +1,6 @@
 import type {
   FreeBillingType,
+  MaxMessagesTimeframeType,
   PaidBillingType,
   SubscriptionStatusType,
 } from "@dust-tt/types";
@@ -18,8 +19,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { Workspace } from "@app/lib/models/workspace";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class Plan extends Model<
   InferAttributes<Plan>,
@@ -34,9 +35,11 @@ export class Plan extends Model<
   declare stripeProductId: string | null;
   declare billingType: FreeBillingType | PaidBillingType;
   declare trialPeriodDays: number;
+  declare canUseProduct: boolean;
 
   // workspace limitations
   declare maxMessages: number;
+  declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare maxUsersInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedConfluenceAllowed: boolean;
@@ -92,8 +95,17 @@ Plan.init(
       allowNull: false,
       defaultValue: 0,
     },
+    canUseProduct: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
     maxMessages: {
       type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    maxMessagesTimeframe: {
+      type: DataTypes.ENUM("day", "lifetime"),
       allowNull: false,
     },
     maxUsersInWorkspace: {
@@ -151,7 +163,7 @@ Plan.init(
   },
   {
     modelName: "plan",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ unique: true, fields: ["code"] }],
   }
 );
@@ -166,6 +178,7 @@ export class Subscription extends Model<
 
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
+  declare trialing: boolean | null;
   declare paymentFailingSince: Date | null;
 
   declare startDate: Date;
@@ -208,6 +221,11 @@ Subscription.init(
         isIn: [SUBSCRIPTION_STATUSES],
       },
     },
+    trialing: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+    },
     paymentFailingSince: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -231,7 +249,7 @@ Subscription.init(
   },
   {
     modelName: "subscription",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "status"] },
@@ -309,7 +327,7 @@ PlanInvitation.init(
   },
   {
     modelName: "plan_invitation",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 

@@ -1,5 +1,6 @@
 import type {
   ContentNode,
+  Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
@@ -8,12 +9,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE } from "@connectors/connectors";
-import type { Result } from "@connectors/lib/result";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const GetContentNodesRequestBodySchema = t.type({
   internalIds: t.array(t.string),
+  viewType: t.union([t.literal("tables"), t.literal("documents")]),
 });
 type GetContentNodesRequestBody = t.TypeOf<
   typeof GetContentNodesRequestBodySchema
@@ -54,12 +55,13 @@ const _getContentNodes = async (
     });
   }
 
-  const { internalIds } = bodyValidation.right;
+  const { internalIds, viewType } = bodyValidation.right;
 
   const contentNodesRes: Result<ContentNode[], Error> =
     await BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE[connector.type](
       connector.id,
-      internalIds
+      internalIds,
+      viewType
     );
 
   if (contentNodesRes.isErr()) {

@@ -4,6 +4,7 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
+  Result,
   RetrievalDocumentType,
   UserMessageType,
 } from "@dust-tt/types";
@@ -11,7 +12,7 @@ import type {
   AgentGenerationSuccessEvent,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import { sectionFullText } from "@dust-tt/types";
+import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
@@ -20,7 +21,9 @@ import removeMarkdown from "remove-markdown";
 import slackifyMarkdown from "slackify-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
+  getSlackBotInfo,
   getSlackClient,
   getSlackUserInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
@@ -32,8 +35,6 @@ import {
   SlackChatBotMessage,
   SlackConfiguration,
 } from "@connectors/lib/models/slack";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -59,7 +60,8 @@ export async function botAnswerMessageWithErrorHandling(
   message: string,
   slackTeamId: string,
   slackChannel: string,
-  slackUserId: string,
+  slackUserId: string | null,
+  slackBotId: string | null,
   slackMessageTs: string,
   slackThreadTs: string | null
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
@@ -86,6 +88,7 @@ export async function botAnswerMessageWithErrorHandling(
       slackTeamId,
       slackChannel,
       slackUserId,
+      slackBotId,
       slackMessageTs,
       slackThreadTs,
       connector,
@@ -152,7 +155,8 @@ async function botAnswerMessage(
   message: string,
   slackTeamId: string,
   slackChannel: string,
-  slackUserId: string,
+  slackUserId: string | null,
+  slackBotId: string | null,
   slackMessageTs: string,
   slackThreadTs: string | null,
   connector: ConnectorResource,
@@ -173,10 +177,16 @@ async function botAnswerMessage(
 
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
-  const slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
 
-  if (!slackUserInfo.ok || !slackUserInfo.user) {
-    throw new Error(`Failed to get user info: ${slackUserInfo.error}`);
+  let slackUserInfo: SlackUserInfo | null = null;
+  if (slackUserId) {
+    slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
+  } else if (slackBotId) {
+    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+  }
+
+  if (!slackUserInfo) {
+    throw new Error("Failed to get slack user info");
   }
 
   const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
@@ -194,22 +204,26 @@ async function botAnswerMessage(
     return new Ok(undefined);
   }
 
-  const slackUser = slackUserInfo.user;
-  const displayName = slackUser.profile?.display_name ?? "";
-  const realName = slackUser.profile?.real_name ?? "";
+  const displayName = slackUserInfo.display_name ?? "";
+  const realName = slackUserInfo.real_name ?? "";
+
+  const slackUserIdOrBotId = slackUserId || slackBotId;
+  if (!slackUserIdOrBotId) {
+    throw new Error("Failed to get slack user id or bot id");
+  }
 
   const slackChatBotMessage = await SlackChatBotMessage.create({
     connectorId: connector.id,
     message: message,
-    slackUserId: slackUserId,
-    slackEmail: slackUser.profile?.email || "unknown",
+    slackUserId: slackUserIdOrBotId,
+    slackEmail: slackUserInfo?.email || "unknown",
     slackUserName:
       // A slack bot has no display name but just a real name so we use it if we could not find the
       // display name.
       displayName || realName || "unknown",
-    slackFullName: slackUser.profile?.real_name || "unknown",
-    slackTimezone: slackUser.tz || null,
-    slackAvatar: slackUser.profile?.image_512 || null,
+    slackFullName: slackUserInfo.real_name || "unknown",
+    slackTimezone: slackUserInfo.tz || null,
+    slackAvatar: slackUserInfo.image_512 || null,
     channelId: slackChannel,
     messageTs: slackMessageTs,
     threadTs:

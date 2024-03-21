@@ -783,9 +783,19 @@ export default function Home({
               </div>
             </div>
             <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
-              <PricePlans size="xs" className="lg:hidden" isTabs />
-              <PricePlans size="xs" className="hidden lg:flex xl:hidden" />
               <PricePlans
+                display="landing"
+                size="xs"
+                className="lg:hidden"
+                isTabs
+              />
+              <PricePlans
+                display="landing"
+                size="xs"
+                className="hidden lg:flex xl:hidden"
+              />
+              <PricePlans
+                display="landing"
                 size="sm"
                 className="hidden xl:flex"
                 onClickEnterprisePlan={() => setShowContactUsDrawer(true)}

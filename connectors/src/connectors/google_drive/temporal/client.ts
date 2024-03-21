@@ -1,11 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-import { rateLimiter, RateLimitError } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, Ok, rateLimiter, RateLimitError } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import type { Result } from "@connectors/lib/result";
-import { Err, Ok } from "@connectors/lib/result";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";

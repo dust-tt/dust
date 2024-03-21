@@ -98,7 +98,7 @@ export default function DataSourceSelectionSection({
                         : true,
                     }));
                   }}
-                  type="node"
+                  type={dsConfig.dataSource.connectorId ? "node" : "leaf"} // todo make useConnectorPermissions hook work for non managed ds (Folders)
                   label={getDisplayNameForDataSource(dsConfig.dataSource)}
                   visual={
                     LogoComponent ? (

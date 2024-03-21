@@ -106,7 +106,7 @@ export async function submitMessage({
     const data = await mRes.json();
     return new Err({
       type:
-        data.error.type === "test_plan_message_limit_reached"
+        data.error.type === "plan_message_limit_exceeded"
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
@@ -200,7 +200,7 @@ export async function createConversationWithMessage({
     const data = await cRes.json();
     return new Err({
       type:
-        data.error.type === "test_plan_message_limit_reached"
+        data.error.type === "plan_message_limit_exceeded"
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",

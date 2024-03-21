@@ -3,6 +3,7 @@ import type {
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
+  ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
@@ -29,6 +30,7 @@ import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sou
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
+import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
@@ -272,23 +274,65 @@ export function useEventSchemas(owner: WorkspaceType) {
   };
 }
 
+export function useDataSourceContentNodes({
+  owner,
+  dataSource,
+  internalIds,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  internalIds: string[];
+}): {
+  nodes: GetContentNodeResponseBody["nodes"];
+  isNodesLoading: boolean;
+  isNodesError: boolean;
+} {
+  const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+    dataSource.name
+  )}/managed/content_nodes`;
+  const body = JSON.stringify({ internalIds });
+
+  const fetchKey = useMemo(() => {
+    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness
+  }, [url, body]);
+
+  const { data, error } = useSWR(fetchKey, async () => {
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    };
+    return fetcher(url, options);
+  });
+
+  return {
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    isNodesLoading: !error && !data,
+    isNodesError: !!error,
+  };
+}
+
 export function useConnectorPermissions({
   owner,
   dataSource,
   parentId,
   filterPermission,
   disabled,
+  viewType = "documents",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
+  viewType?: ContentNodesViewType;
 }) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?`;
+  let url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+    dataSource.name
+  )}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
@@ -321,7 +365,7 @@ export function usePokeConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?`;
+  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?viewType=documents`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
@@ -350,7 +394,9 @@ export function useConnectorConfig({
   const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
     fetcher;
 
-  const url = `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/${configKey}`;
+  const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+    dataSource.name
+  )}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWR(url, configFetcher);
 
@@ -471,14 +517,16 @@ export function useConversation({
   conversationId,
   workspaceId,
 }: {
-  conversationId: string;
+  conversationId: string | null;
   workspaceId: string;
 }) {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
+      : null,
     conversationFetcher
   );
 

@@ -6,7 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentTablesQueryConfiguration extends Model<
   InferAttributes<AgentTablesQueryConfiguration>,
@@ -50,7 +50,7 @@ AgentTablesQueryConfiguration.init(
         name: "agent_tables_query_configuration_s_id",
       },
     ],
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 
@@ -116,7 +116,7 @@ AgentTablesQueryConfigurationTable.init(
         name: "agent_tables_query_configuration_table_unique",
       },
     ],
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 
@@ -177,6 +177,6 @@ AgentTablesQueryAction.init(
   },
   {
     modelName: "agent_tables_query_action",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );

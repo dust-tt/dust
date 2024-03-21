@@ -1,6 +1,7 @@
 import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
-import React, { Fragment } from "react";
+import React, { Fragment, useRef } from "react";
 
+import { ConfettiBackground, Spinner } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
@@ -15,6 +16,7 @@ type ModalProps = {
   validateLabel?: string;
   validateVariant?: "primary" | "primaryWarning";
   isSaving?: boolean;
+  backgroundType?: "confetti" | "snow" | "none";
 };
 
 export function Dialog({
@@ -26,7 +28,11 @@ export function Dialog({
   validateLabel = "Ok",
   validateVariant = "primary",
   title,
+  isSaving,
+  backgroundType = "none",
 }: ModalProps) {
+  const referentRef = useRef<HTMLDivElement>(null);
+
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
       <HeadlessDialog as="div" className="s-relative s-z-50" onClose={onCancel}>
@@ -55,29 +61,45 @@ export function Dialog({
             >
               <HeadlessDialog.Panel
                 className={classNames(
-                  "s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4  s-shadow-xl s-transition-all",
-                  "overflow-hidden s-w-full sm:s-w-[448px]",
+                  "s-relative  s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4  s-shadow-xl s-transition-all",
+                  "s-w-full sm:s-w-[448px]",
                   "s-flex s-flex-col s-gap-6"
                 )}
+                ref={referentRef}
               >
                 <HeadlessDialog.Title className="s-text-element-950 s-truncate s-text-lg s-font-medium">
                   {title}
                 </HeadlessDialog.Title>
-                <div className="s-text-base s-text-element-700">{children}</div>
-                <div className="s-flex s-w-full s-justify-end">
+                <div className="s-z-10 s-text-base s-text-element-700">
+                  {children}
+                </div>
+                <div className="s-z-10 s-flex s-w-full s-justify-end">
                   <Button.List>
-                    <Button
-                      label={cancelLabel}
-                      variant="tertiary"
-                      onClick={onCancel}
-                    />
-                    <Button
-                      label={validateLabel}
-                      variant={validateVariant}
-                      onClick={onValidate}
-                    />
+                    {!isSaving && (
+                      <>
+                        <Button
+                          label={cancelLabel}
+                          variant="tertiary"
+                          onClick={onCancel}
+                        />
+                        <Button
+                          label={validateLabel}
+                          variant={validateVariant}
+                          onClick={onValidate}
+                        />
+                      </>
+                    )}
+                    {isSaving && <Spinner />}
                   </Button.List>
                 </div>
+                {backgroundType !== "none" && (
+                  <div className="s-absolute s-bottom-0 s-left-0 s-right-0 s-top-0 s-z-0">
+                    <ConfettiBackground
+                      variant={backgroundType}
+                      referentSize={referentRef}
+                    />
+                  </div>
+                )}
               </HeadlessDialog.Panel>
             </Transition.Child>
           </div>

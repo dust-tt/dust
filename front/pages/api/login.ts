@@ -20,10 +20,7 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation, User } from "@app/lib/models";
 import { Membership, Workspace } from "@app/lib/models";
-import {
-  internalSubscribeWorkspaceToFreeTestPlan,
-  updateWorkspacePerSeatSubscriptionUsage,
-} from "@app/lib/plans/subscription";
+import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -264,10 +261,6 @@ async function handleRegularSignupFlow(
       role: "admin",
     });
 
-    await internalSubscribeWorkspaceToFreeTestPlan({
-      workspaceId: workspace.sId,
-    });
-
     return new Ok({ flow: null, workspace });
   } else {
     // Redirect the user to their existing workspace if they are not allowed to join the target workspace.
@@ -308,8 +301,21 @@ async function handler(
     inviteToken
   );
   if (membershipInviteRes.isErr()) {
-    throw membershipInviteRes.error;
+    const { error } = membershipInviteRes;
+
+    if (error instanceof AuthFlowError) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+
+    throw error;
   }
+
   const membershipInvite = membershipInviteRes.value;
 
   // Login flow: first step is to attempt to find the user.

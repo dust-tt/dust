@@ -3,5 +3,6 @@ export function urlToDataSourceName(url: string) {
     .trim()
     .replace(/https?:\/\//, "")
     .replace(/\/$/, "")
-    .replace(/\//g, "-");
+    .replace(/\//g, "-")
+    .replace(/\?/g, "-");
 }

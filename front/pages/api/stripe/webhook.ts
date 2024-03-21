@@ -5,6 +5,7 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
+import { getBackendClient } from "@app/lib/amplitude/back";
 import {
   archiveAgentConfiguration,
   getAgentConfigurations,
@@ -13,7 +14,6 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { deleteDataSource } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { front_sequelize } from "@app/lib/databases";
 import {
   sendAdminDowngradeTooMuchDataEmail,
   sendAdminSubscriptionPaymentFailedEmail,
@@ -30,6 +30,8 @@ import {
 } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -107,6 +109,7 @@ async function handler(
           const stripeCustomerId = session.customer;
           const stripeSubscriptionId = session.subscription;
           const planCode = session?.metadata?.planCode || null;
+          const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
             // Open: The checkout session is still in progress. Payment processing has not started.
@@ -161,7 +164,7 @@ async function handler(
               );
             }
 
-            await front_sequelize.transaction(async (t) => {
+            await frontSequelize.transaction(async (t) => {
               const activeSubscription = await Subscription.findOne({
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
@@ -272,12 +275,17 @@ async function handler(
                   { transaction: t }
                 );
               }
+              const stripeSubscription = await stripe.subscriptions.retrieve(
+                stripeSubscriptionId
+              );
+
               await Subscription.create(
                 {
                   sId: generateModelSId(),
                   workspaceId: workspace.id,
                   planId: plan.id,
                   status: "active",
+                  trialing: stripeSubscription.status === "trialing",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                   stripeCustomerId: stripeCustomerId,
@@ -285,7 +293,18 @@ async function handler(
                 { transaction: t }
               );
             });
-
+            if (userId) {
+              const workspaceSeats = await countActiveSeatsInWorkspace(
+                workspace.sId
+              );
+              const amplitude = getBackendClient();
+              amplitude.subscriptionCreated(`user-${userId}`, {
+                workspaceId: workspace.sId,
+                workspaceName: workspace.name,
+                plan: plan.code,
+                workspaceSeats: workspaceSeats,
+              });
+            }
             return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(
@@ -431,6 +450,7 @@ async function handler(
           // - when the number of seats changes for a metered billing.
           // - when the subscription is canceled by the user: it is ended at the of the billing period, and we will receive a "customer.subscription.deleted" event.
           // - when the subscription is activated again after being canceled but before the end of the billing period.
+          // - when trial expires, and the subscription transitions to a paid plan.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.subscription.updated event."
@@ -440,6 +460,26 @@ async function handler(
           if (!previousAttributes) break; // should not happen by definition of the subscription.updated event
 
           if (
+            stripeSubscription.status === "active" &&
+            "status" in previousAttributes &&
+            previousAttributes.status === "trialing"
+          ) {
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+            });
+            if (!subscription) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "[Stripe Webhook] Failed to update subscription after trial ended: Subscription not found.",
+                },
+              });
+            }
+
+            await subscription.update({ status: "active", trialing: false });
+          } else if (
             // The subscription is canceled (but not yet ended) or reactivated
             stripeSubscription.status === "active" &&
             "cancel_at_period_end" in previousAttributes

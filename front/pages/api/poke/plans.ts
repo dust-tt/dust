@@ -8,6 +8,7 @@ import Stripe from "stripe";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan } from "@app/lib/models";
 import { getProduct } from "@app/lib/plans/stripe";
+import { renderPlanFromModel } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const PlanTypeSchema = t.type({
@@ -17,6 +18,7 @@ export const PlanTypeSchema = t.type({
     assistant: t.type({
       isSlackBotAllowed: t.boolean,
       maxMessages: t.number,
+      maxMessagesTimeframe: t.union([t.literal("day"), t.literal("lifetime")]),
     }),
     connections: t.type({
       isConfluenceAllowed: t.boolean,
@@ -37,6 +39,7 @@ export const PlanTypeSchema = t.type({
     users: t.type({
       maxUsers: t.number,
     }),
+    canUseProduct: t.boolean,
   }),
   stripeProductId: t.union([t.string, t.null]),
   billingType: t.union([
@@ -78,39 +81,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
-      const plans: PlanType[] = planModels.map((plan) => ({
-        code: plan.code,
-        name: plan.name,
-        stripeProductId: plan.stripeProductId,
-        status: "active",
-        limits: {
-          assistant: {
-            isSlackBotAllowed: plan.isSlackbotAllowed,
-            maxMessages: plan.maxMessages,
-          },
-          connections: {
-            isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-            isSlackAllowed: plan.isManagedSlackAllowed,
-            isNotionAllowed: plan.isManagedNotionAllowed,
-            isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-            isGithubAllowed: plan.isManagedGithubAllowed,
-            isIntercomAllowed: plan.isManagedIntercomAllowed,
-            isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-          },
-          dataSources: {
-            count: plan.maxDataSourcesCount,
-            documents: {
-              count: plan.maxDataSourcesDocumentsCount,
-              sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-            },
-          },
-          users: {
-            maxUsers: plan.maxUsersInWorkspace,
-          },
-        },
-        billingType: plan.billingType,
-        trialPeriodDays: plan.trialPeriodDays,
-      }));
+      const plans: PlanType[] = planModels.map((plan) =>
+        renderPlanFromModel({ plan })
+      );
 
       const stripeProductIds = plans
         .filter(
@@ -179,6 +152,7 @@ async function handler(
         stripeProductId: body.stripeProductId,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxMessages: body.limits.assistant.maxMessages,
+        maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
         isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
         isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
         isManagedNotionAllowed: body.limits.connections.isNotionAllowed,
@@ -193,6 +167,7 @@ async function handler(
         maxUsersInWorkspace: body.limits.users.maxUsers,
         billingType: body.billingType,
         trialPeriodDays: body.trialPeriodDays,
+        canUseProduct: body.limits.canUseProduct,
       });
       res.status(200).json({
         plan: body,

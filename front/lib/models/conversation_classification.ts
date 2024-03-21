@@ -7,8 +7,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
 import { Conversation } from "@app/lib/models/assistant/conversation";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class ConversationClassification extends Model<
   InferAttributes<ConversationClassification>,
@@ -48,7 +48,7 @@ ConversationClassification.init(
     },
   },
   {
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     modelName: "ConversationClassification",
     tableName: "conversation_classifications",
     indexes: [

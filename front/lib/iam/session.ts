@@ -16,6 +16,7 @@ import {
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
 import { Membership, Workspace } from "@app/lib/models";
+import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 /**
@@ -91,6 +92,7 @@ interface MakeGetServerSidePropsRequirementsWrapperOptions<
 > {
   enableLogging?: boolean;
   requireUserPrivilege: R;
+  requireCanUseProduct?: boolean;
 }
 
 export type CustomGetServerSideProps<
@@ -151,6 +153,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
 >({
   enableLogging = true,
   requireUserPrivilege,
+  requireCanUseProduct = false,
 }: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
     getServerSideProps: CustomGetServerSideProps<
@@ -173,6 +176,27 @@ export function makeGetServerSidePropsRequirementsWrapper<
         requireUserPrivilege
       );
 
+      if (
+        requireCanUseProduct &&
+        !auth?.subscription()?.plan.limits.canUseProduct
+      ) {
+        if (typeof context.query.wId !== "string") {
+          // this should never happen.
+          logger.error(
+            { panic: true, path: context.resolvedUrl },
+            "canUseProduct should never be true outside of a workspace context."
+          );
+          throw new Error(
+            "canUseProduct should never be true outside of a workspace context."
+          );
+        }
+        return {
+          redirect: {
+            permanent: false,
+            destination: `/w/${context.query.wId}/subscribe`,
+          },
+        };
+      }
       if (requireUserPrivilege !== "none") {
         if (!session || !isValidSession(session)) {
           return {
@@ -216,10 +240,20 @@ export function makeGetServerSidePropsRequirementsWrapper<
   };
 }
 
+export const withDefaultUserAuthPaywallWhitelisted =
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "user",
+    requireCanUseProduct: false,
+  });
+
 export const withDefaultUserAuthRequirements =
-  makeGetServerSidePropsRequirementsWrapper({ requireUserPrivilege: "user" });
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "user",
+    requireCanUseProduct: true,
+  });
 
 export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "superuser",
+    requireCanUseProduct: false,
   });

@@ -217,7 +217,7 @@ GithubCodeRepository.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
   },
@@ -293,7 +293,7 @@ GithubCodeFile.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     contentHash: {
@@ -375,7 +375,7 @@ GithubCodeDirectory.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
   },

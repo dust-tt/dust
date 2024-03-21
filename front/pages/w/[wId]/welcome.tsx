@@ -15,11 +15,11 @@ import Confetti from "react-confetti";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
+export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
@@ -247,7 +247,19 @@ export default function Welcome({
         headerTitle="Joining Dust"
         headerRightActions={<></>}
       >
-        <Confetti wind={0.02} gravity={0.08} />
+        <Confetti
+          wind={0.02}
+          gravity={0.08}
+          numberOfPieces={100}
+          colors={[
+            "#FCD34D",
+            "#6EE7B7",
+            "#7DD3FC",
+            "#F9A8D4",
+            "#FCA5A5",
+            "#D8B4FE",
+          ]}
+        />
         <div className="flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
           <Page.Header title={`You are all set!`} icon={SparklesIcon} />
           <Page.P>

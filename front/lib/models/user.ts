@@ -7,7 +7,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export class User extends Model<
   InferAttributes<User>,
@@ -92,7 +92,7 @@ User.init(
   },
   {
     modelName: "user",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["username"] }, { fields: ["provider", "providerId"] }],
   }
 );
@@ -136,7 +136,7 @@ UserMetadata.init(
   },
   {
     modelName: "user_metadata",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
     indexes: [{ fields: ["userId", "key"], unique: true }],
   }
 );

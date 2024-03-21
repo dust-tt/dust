@@ -77,6 +77,8 @@ export async function syncOneFile(
     return false;
   }
 
+  let skipReason: string | undefined = undefined;
+
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const drive = await getDriveClient(oauth2client);
     try {
@@ -244,9 +246,22 @@ export async function syncOneFile(
     }
   } else if (isGoogleDriveSpreadSheetFile(file)) {
     // If Google Spreadsheet FF is not enabled, it returns false.
-    const isSupported = await syncSpreadSheet(oauth2client, connectorId, file);
-    if (!isSupported) {
+    const res = await syncSpreadSheet(oauth2client, connectorId, file);
+    if (!res.isSupported) {
       return false;
+    } else {
+      if (res.skipReason) {
+        logger.info(
+          {
+            documentId,
+            dataSourceConfig,
+            fileId: file.id,
+            title: file.name,
+          },
+          `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
+        );
+        skipReason = res.skipReason;
+      }
     }
   } else {
     // We do not support this file type.
@@ -345,6 +360,7 @@ export async function syncOneFile(
     mimeType: file.mimeType,
     parentId: file.parent,
     lastSeenTs: new Date(),
+    skipReason,
   };
 
   if (upsertTimestampMs) {

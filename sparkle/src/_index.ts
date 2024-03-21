@@ -91,8 +91,14 @@ export { Avatar };
 import Spinner from "./components/Spinner";
 export { Spinner };
 
+import { Spinner2 } from "./components/Spinner";
+export { Spinner2 };
+
 import { Modal } from "./components/Modal";
 export { Modal };
+
+import ConfettiBackground from "./components/ConfettiBackground";
+export { ConfettiBackground };
 
 import { ElementModal } from "./components/ElementModal";
 export { ElementModal };

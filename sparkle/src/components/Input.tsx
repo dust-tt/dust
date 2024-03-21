@@ -13,6 +13,7 @@ type InputProps = {
   isPassword?: boolean;
   disabled?: boolean;
   className?: string;
+  label?: string;
 };
 
 const sizeInputClasses = {
@@ -31,9 +32,18 @@ export function Input({
   isPassword = false,
   disabled = false,
   className = "",
+  label,
 }: InputProps) {
   return (
     <div className="s-flex s-flex-col s-gap-1 s-p-px">
+      {label && (
+        <label
+          htmlFor={name}
+          className="s-text-sm s-text-element-800 dark:s-text-element-800-dark"
+        >
+          {label}
+        </label>
+      )}
       <input
         type={isPassword ? "password" : "text"}
         name={name}

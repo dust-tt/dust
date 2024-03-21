@@ -6,7 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { front_sequelize } from "@app/lib/databases";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 /**
  * Action DustAppRun Configuration
@@ -63,7 +63,7 @@ AgentDustAppRunConfiguration.init(
         fields: ["sId"],
       },
     ],
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );
 
@@ -134,6 +134,6 @@ AgentDustAppRunAction.init(
   },
   {
     modelName: "agent_dust_app_run_action",
-    sequelize: front_sequelize,
+    sequelize: frontSequelize,
   }
 );

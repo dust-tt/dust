@@ -8,6 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ContentNode,
+  ContentNodesViewType,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -27,6 +28,7 @@ export default function DataSourceResourceSelectorTree({
   parentsById,
   fullySelected,
   filterPermission = "read",
+  viewType = "documents",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -40,6 +42,7 @@ export default function DataSourceResourceSelectorTree({
   parentsById: Record<string, Set<string>>;
   fullySelected: boolean;
   filterPermission?: ConnectorPermission;
+  viewType?: ContentNodesViewType;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -55,6 +58,7 @@ export default function DataSourceResourceSelectorTree({
         isChecked={false}
         fullySelected={fullySelected}
         filterPermission={filterPermission}
+        viewType={viewType}
       />
     </div>
   );
@@ -95,6 +99,7 @@ function DataSourceResourceSelectorChildren({
   parents,
   fullySelected,
   filterPermission,
+  viewType = "documents",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -111,6 +116,7 @@ function DataSourceResourceSelectorChildren({
   parentsById: Record<string, Set<string>>;
   fullySelected: boolean;
   filterPermission: ConnectorPermission;
+  viewType: ContentNodesViewType;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -119,6 +125,7 @@ function DataSourceResourceSelectorChildren({
       parentId,
       filterPermission,
       disabled: dataSource.connectorId === null,
+      viewType,
     });
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -147,6 +154,8 @@ function DataSourceResourceSelectorChildren({
     );
   }
 
+  const isTablesView = viewType === "tables";
+
   return (
     <>
       {isResourcesLoading ? (
@@ -156,6 +165,8 @@ function DataSourceResourceSelectorChildren({
           {resources.map((r) => {
             const IconComponent = getIconForType(r.type);
             const checkStatus = getCheckStatus(r.internalId);
+            const checkable = !isTablesView || r.type === "database";
+            const showCheckbox = checkable || checkStatus !== "unchecked";
             return (
               <div key={r.internalId}>
                 <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
@@ -198,19 +209,21 @@ function DataSourceResourceSelectorChildren({
                     {r.title}
                   </span>
                   <div className="ml-32 flex-grow">
-                    <Checkbox
-                      variant="checkable"
-                      className={classNames(
-                        "ml-auto",
-                        checkStatus === "partial" ? "bg-element-600" : ""
-                      )}
-                      checked={checkStatus === "checked"}
-                      partialChecked={checkStatus === "partial"}
-                      onChange={(checked) =>
-                        onSelectChange(r, parents, checked)
-                      }
-                      disabled={isChecked || fullySelected}
-                    />
+                    {showCheckbox && (
+                      <Checkbox
+                        variant="checkable"
+                        className={classNames(
+                          "ml-auto",
+                          checkStatus === "partial" ? "bg-element-600" : ""
+                        )}
+                        checked={checkStatus === "checked"}
+                        partialChecked={checkStatus === "partial"}
+                        onChange={(checked) =>
+                          onSelectChange(r, parents, checked)
+                        }
+                        disabled={isChecked || fullySelected || !checkable}
+                      />
+                    )}
                   </div>
                 </div>
                 {expanded[r.internalId] && (
@@ -228,6 +241,7 @@ function DataSourceResourceSelectorChildren({
                       parents={[...parents, r.internalId]}
                       fullySelected={fullySelected}
                       filterPermission={filterPermission}
+                      viewType={viewType}
                     />
                   </div>
                 )}

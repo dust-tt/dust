@@ -2,7 +2,14 @@ import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -161,44 +168,46 @@ export function AssistantInputBar({
     setContentFragmentBody(undefined);
   };
 
-  const onInputFileChange: InputBarContainerProps["onInputFileChange"] = async (
-    event
-  ) => {
-    const file = (event?.target as HTMLInputElement)?.files?.[0];
-    if (!file) return;
-    if (file.size > 10_000_000) {
-      sendNotification({
-        type: "error",
-        title: "File too large.",
-        description:
-          "PDF uploads are limited to 10Mb per file. Please consider uploading a smaller file.",
-      });
-      return;
-    }
-    const res = await handleFileUploadToText(file);
+  const onInputFileChange: InputBarContainerProps["onInputFileChange"] =
+    useCallback(
+      async (event) => {
+        const file = (event?.target as HTMLInputElement)?.files?.[0];
+        if (!file) return;
+        if (file.size > 10_000_000) {
+          sendNotification({
+            type: "error",
+            title: "File too large.",
+            description:
+              "PDF uploads are limited to 10Mb per file. Please consider uploading a smaller file.",
+          });
+          return;
+        }
+        const res = await handleFileUploadToText(file);
 
-    if (res.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Error uploading file.",
-        description: res.error.message,
-      });
-      return;
-    }
-    if (res.value.content.length > 1_000_000) {
-      // This error should pretty much never be triggered but it is a possible case, so here it is.
-      sendNotification({
-        type: "error",
-        title: "File too large.",
-        description:
-          "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-      });
-      return;
-    }
+        if (res.isErr()) {
+          sendNotification({
+            type: "error",
+            title: "Error uploading file.",
+            description: res.error.message,
+          });
+          return;
+        }
+        if (res.value.content.length > 1_000_000) {
+          // This error should pretty much never be triggered but it is a possible case, so here it is.
+          sendNotification({
+            type: "error",
+            title: "File too large.",
+            description:
+              "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+          });
+          return;
+        }
 
-    setContentFragmentFilename(res.value.title);
-    setContentFragmentBody(res.value.content);
-  };
+        setContentFragmentFilename(res.value.title);
+        setContentFragmentBody(res.value.content);
+      },
+      [sendNotification]
+    );
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 

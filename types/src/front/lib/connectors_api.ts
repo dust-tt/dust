@@ -1,13 +1,18 @@
+import {
+  AdminCommandType,
+  AdminResponseType,
+} from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import {
   CreateConnectorOAuthRequestBody,
   CreateConnectorUrlRequestBody,
 } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
+import { ContentNodesViewType } from "../../connectors/content_nodes";
 import { WebCrawlerConfigurationType } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
-import { Err, Ok, Result } from "../../front/lib/result";
 import { LoggerInterface } from "../../shared/logger";
+import { Err, Ok, Result } from "../../shared/result";
 
 const {
   CONNECTORS_API = "http://127.0.0.1:3002",
@@ -164,48 +169,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async stopConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/stop/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async resumeConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/resume/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async syncConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/sync/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async deleteConnector(
     connectorId: string,
     force = false
@@ -227,14 +190,16 @@ export class ConnectorsAPI {
     connectorId,
     parentId,
     filterPermission,
+    viewType = "documents",
   }: {
     connectorId: string;
     parentId?: string;
     filterPermission?: ConnectorPermission;
+    viewType?: ContentNodesViewType;
   }): Promise<ConnectorsAPIResponse<{ resources: ContentNode[] }>> {
     let url = `${CONNECTORS_API}/connectors/${encodeURIComponent(
       connectorId
-    )}/permissions?`;
+    )}/permissions?viewType=${viewType}`;
     if (parentId) {
       url += `&parentId=${encodeURIComponent(parentId)}`;
     }
@@ -255,7 +220,10 @@ export class ConnectorsAPI {
     resources,
   }: {
     connectorId: string;
-    resources: { internalId: string; permission: ConnectorPermission }[];
+    resources: {
+      internalId: string;
+      permission: ConnectorPermission;
+    }[];
   }): Promise<ConnectorsAPIResponse<void>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
@@ -367,9 +335,11 @@ export class ConnectorsAPI {
   async getContentNodes({
     connectorId,
     internalIds,
+    viewType = "documents",
   }: {
     connectorId: string;
     internalIds: string[];
+    viewType?: ContentNodesViewType;
   }): Promise<
     ConnectorsAPIResponse<{
       nodes: ContentNode[];
@@ -384,6 +354,7 @@ export class ConnectorsAPI {
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           internalIds,
+          viewType,
         }),
       }
     );
@@ -456,6 +427,18 @@ export class ConnectorsAPI {
         headers: this.getDefaultHeaders(),
       }
     );
+
+    return this._resultFromResponse(res);
+  }
+
+  async admin(
+    adminCommand: AdminCommandType
+  ): Promise<ConnectorsAPIResponse<AdminResponseType>> {
+    const res = await fetch(`${CONNECTORS_API}/connectors/admin`, {
+      method: "POST",
+      headers: this.getDefaultHeaders(),
+      body: JSON.stringify(adminCommand),
+    });
 
     return this._resultFromResponse(res);
   }
