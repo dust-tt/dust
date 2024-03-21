@@ -7,7 +7,7 @@ import type {
   UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
@@ -80,28 +80,8 @@ export default function Conversation({
   });
 
   const { ref, inView } = useInView();
-  // This does not work!
-  // We could remove this if the endpoint returns the total number of messages.
-  const lastMessageIds = useMemo(() => {
-    const lastPage = messages.at(-1);
-    if (!lastPage) {
-      return null;
-    }
-
-    return new Set([...lastPage.messages.map((m) => m.sId)]);
-  }, [messages]);
-
-  // console.log(">> lastMessageIds:", lastMessageIds);
-
-  // This work!
-  // Always check the most recent page.
-  const totalMessages = useMemo(() => messages.at(-1)?.total, [messages]);
-
-  console.log(">> messages:", messages);
-  console.log(">> lastMessageIds:", lastMessageIds);
 
   const latestMessageIdRef = useRef<string | null>(null);
-  // TODO:
   useEffect(() => {
     const lastestMessageId = messages.at(-1)?.messages.at(-1)?.sId;
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
@@ -109,7 +89,6 @@ export default function Conversation({
         CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
       );
       if (mainTag) {
-        console.log(">> scrolling down!");
         mainTag.scrollTo(0, mainTag.scrollHeight);
       }
 
@@ -129,7 +108,6 @@ export default function Conversation({
       !isMessagesLoading &&
       !isValidating
     ) {
-      console.log(">> moving to previous message");
       prevFirstMessageRef.current.scrollIntoView({
         behavior: "instant",
         block: "start",
@@ -236,10 +214,6 @@ export default function Conversation({
 
   const hasMore = messages.at(0)?.messages.length === PAGE_SIZE;
   useEffect(() => {
-    // console.log(">> inView:", inView);
-    // console.log(">> isMessagesLoading:", isMessagesLoading);
-    // console.log(">> hasMore:", hasMore);
-    // console.log(">> isLoadingInitialData:", isLoadingInitialData);
     if (
       !isLoadingInitialData &&
       inView &&
@@ -248,10 +222,6 @@ export default function Conversation({
       !isValidating &&
       !prevFirstMessageIndex
     ) {
-      console.log(
-        "> seeting prev first message to:",
-        messages.length > 0 ? messages.at(0)?.messages[0]?.sId ?? null : null
-      );
       setPrevFirstMessageIndex(
         messages.length > 0 ? messages.at(0)?.messages[0]?.sId ?? null : null
       );
@@ -271,8 +241,9 @@ export default function Conversation({
   ]);
 
   useEventSource(buildEventSourceURL, onEventCallback, {
-    // We only start consuming the stream when the conversation has been loaded.
-    isReadyToConsumeStream: !isConversationLoading && messages.length !== 0,
+    // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
+    isReadyToConsumeStream:
+      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
   });
   const eventIds = useRef<string[]>([]);
 
