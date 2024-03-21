@@ -167,11 +167,15 @@ export function ProPriceTable({
   isProcessing?: boolean;
   display: PriceTableDisplay;
 }) {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const isLikelyInUS = timeZone.startsWith("America");
+  const currency = isLikelyInUS ? "$" : "€";
+
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <PriceTable
       title="Pro"
-      price={`${PRO_PLAN_29_COST_EUR}€`}
+      price={`${PRO_PLAN_29_COST_EUR}${currency}`}
       color="sky"
       priceLabel="/ month / user"
       size={size}
