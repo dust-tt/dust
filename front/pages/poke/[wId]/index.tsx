@@ -38,11 +38,7 @@ import {
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import {
-  FREE_TEST_PLAN_CODE,
-  FREE_UPGRADED_PLAN_CODE,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
 
@@ -114,29 +110,12 @@ const WorkspacePage = ({
 
   const [showDustAppLogsModal, setShowDustAppLogsModal] = React.useState(false);
 
-  const { submit: onUpgrade } = useSubmitFunction(async () => {
-    if (!window.confirm("Are you sure you want to upgrade this workspace?")) {
-      return;
-    }
-    try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!r.ok) {
-        throw new Error("Failed to upgrade workspace.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while upgrading the workspace.");
-    }
-  });
-
   const { submit: onDowngrade } = useSubmitFunction(async () => {
-    if (!window.confirm("Are you sure you want to downgrade this workspace?")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to downgrade this workspace to no plan?"
+      )
+    ) {
       return;
     }
     try {
@@ -364,19 +343,10 @@ const WorkspacePage = ({
                 {plans && (
                   <div className="pt-8">
                     <Collapsible>
-                      <Collapsible.Button label="Invite or Upgrade to plan" />
+                      <Collapsible.Button label="Manage plan" />
                       <Collapsible.Panel>
                         <div className="flex flex-col gap-2 pt-4">
                           {plans.map((p) => {
-                            if (
-                              [
-                                FREE_TEST_PLAN_CODE,
-                                FREE_UPGRADED_PLAN_CODE,
-                              ].includes(p.code)
-                            ) {
-                              return null;
-                            }
-
                             return (
                               <div key={p.code}>
                                 <Button
@@ -395,40 +365,23 @@ const WorkspacePage = ({
                               </div>
                             );
                           })}
+                          <div>
+                            <Button
+                              label="Downgrade to NO PLAN"
+                              variant="secondaryWarning"
+                              onClick={onDowngrade}
+                              disabled={
+                                subscription.plan.code === FREE_NO_PLAN_CODE ||
+                                subscription.stripeSubscriptionId !== null ||
+                                workspaceHasManagedDataSources
+                              }
+                            />
+                          </div>
                         </div>
                       </Collapsible.Panel>
                     </Collapsible>
                   </div>
                 )}
-                <div>
-                  <Collapsible>
-                    <Collapsible.Button label="Legacy plan actions" />
-                    <Collapsible.Panel>
-                      <div className="flex flex-col gap-2 pt-4">
-                        <div>
-                          <Button
-                            label="Downgrade back to free test plan"
-                            variant="secondaryWarning"
-                            onClick={onDowngrade}
-                            disabled={
-                              !isUpgraded(subscription.plan) ||
-                              subscription.stripeSubscriptionId !== null ||
-                              workspaceHasManagedDataSources
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Button
-                            label="Upgrade to free upgraded plan"
-                            variant="tertiary"
-                            onClick={onUpgrade}
-                            disabled={isUpgraded(subscription.plan)}
-                          />
-                        </div>
-                      </div>
-                    </Collapsible.Panel>
-                  </Collapsible>
-                </div>
                 <div>
                   <Collapsible>
                     <Collapsible.Button label="Delete workspace data (GDPR)" />
@@ -440,7 +393,7 @@ const WorkspacePage = ({
                               Delete data sources before deleting the workspace.
                             </p>
                           )}
-                          {subscription.plan.code !== FREE_TEST_PLAN_CODE && (
+                          {subscription.plan.code !== FREE_NO_PLAN_CODE && (
                             <p className="text-warning mb-4 text-sm ">
                               Downgrade to free test plan before deleting the
                               workspace.
@@ -457,8 +410,7 @@ const WorkspacePage = ({
                               variant="secondaryWarning"
                               onClick={onDeleteWorkspace}
                               disabled={
-                                subscription.plan.code !==
-                                  FREE_TEST_PLAN_CODE ||
+                                subscription.plan.code !== FREE_NO_PLAN_CODE ||
                                 workspaceHasManagedDataSources
                               }
                             />
@@ -469,7 +421,7 @@ const WorkspacePage = ({
                   </Collapsible>
                 </div>
               </div>
-              {subscription.plan.code !== FREE_TEST_PLAN_CODE &&
+              {subscription.plan.code !== FREE_NO_PLAN_CODE &&
                 workspaceHasManagedDataSources && (
                   <div className="pl-2 pt-4">
                     <p className="text-warning mb-4 text-sm">

@@ -3,12 +3,13 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 
 import { ProPriceTable } from "@app/components/PlansTables";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr";
@@ -40,6 +41,17 @@ export default function Subscribe({
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
+
+  useEffect(() => {
+    const amplitude = getBrowserClient();
+    if (user?.id) {
+      const userId = `user-${user.id}`;
+      amplitude.identify(userId);
+      amplitude.pageViewed({
+        pathname: router.pathname,
+      });
+    }
+  }, [router.pathname, user?.id]);
 
   const { submit: handleSubscribePlan } = useSubmitFunction(async () => {
     const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {

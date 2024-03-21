@@ -15,11 +15,11 @@ import Confetti from "react-confetti";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { getUserMetadata } from "@app/lib/api/user";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
+export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;

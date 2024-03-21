@@ -5,6 +5,7 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
+import { getBackendClient } from "@app/lib/amplitude/back";
 import {
   archiveAgentConfiguration,
   getAgentConfigurations,
@@ -29,6 +30,7 @@ import {
 } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -107,6 +109,7 @@ async function handler(
           const stripeCustomerId = session.customer;
           const stripeSubscriptionId = session.subscription;
           const planCode = session?.metadata?.planCode || null;
+          const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
             // Open: The checkout session is still in progress. Payment processing has not started.
@@ -290,7 +293,18 @@ async function handler(
                 { transaction: t }
               );
             });
-
+            if (userId) {
+              const workspaceSeats = await countActiveSeatsInWorkspace(
+                workspace.sId
+              );
+              const amplitude = getBackendClient();
+              amplitude.subscriptionCreated(`user-${userId}`, {
+                workspaceId: workspace.sId,
+                workspaceName: workspace.name,
+                plan: plan.code,
+                workspaceSeats: workspaceSeats,
+              });
+            }
             return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(

@@ -20,10 +20,7 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation, User } from "@app/lib/models";
 import { Membership, Workspace } from "@app/lib/models";
-import {
-  internalSubscribeWorkspaceToFreeTestPlan,
-  updateWorkspacePerSeatSubscriptionUsage,
-} from "@app/lib/plans/subscription";
+import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -262,10 +259,6 @@ async function handleRegularSignupFlow(
       workspace,
       userId: user.id,
       role: "admin",
-    });
-
-    await internalSubscribeWorkspaceToFreeTestPlan({
-      workspaceId: workspace.sId,
     });
 
     return new Ok({ flow: null, workspace });

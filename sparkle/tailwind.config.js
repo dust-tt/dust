@@ -113,7 +113,7 @@ module.exports = {
         },
       },
       animation: {
-        "move-square": "move-square 4s ease-out infinite",
+        "move-square": "move-square 3s ease-out infinite",
         breathing: "breathing 4s infinite ease-in-out",
       },
       colors: {
