@@ -1,4 +1,5 @@
 import type {
+  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
@@ -11,6 +12,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
+import { isTextualFile } from "@app/lib/client/handle_file_upload";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -46,6 +48,7 @@ export async function submitMessage({
     contentFragment?: {
       title: string;
       content: string;
+      file: File;
     };
   };
 }): Promise<Result<void, ConversationErrorType>> {
@@ -81,6 +84,20 @@ export async function submitMessage({
         message: data.error.message || "Please try again or contact us.",
       });
     }
+
+    if (
+      // textual files are already uploaded via textUrl
+      !isTextualFile(contentFragment.file)
+    ) {
+      const cfData = (await mcfRes.json())
+        .contentFragment as ContentFragmentType;
+      uploadRawContentFragment({
+        workspaceId: owner.sId,
+        conversationId,
+        contentFragmentId: cfData.sId,
+        file: contentFragment.file,
+      });
+    }
   }
 
   // Create a new user message.
@@ -113,6 +130,7 @@ export async function submitMessage({
       message: data.error.message || "Please try again or contact us.",
     });
   }
+
   return new Ok(undefined);
 }
 
@@ -158,7 +176,7 @@ export async function createConversationWithMessage({
     contentFragment?: {
       title: string;
       content: string;
-      url: string | null;
+      file: File;
     };
   };
   visibility?: ConversationVisibility;
@@ -178,7 +196,8 @@ export async function createConversationWithMessage({
     },
     contentFragment: contentFragment
       ? {
-          ...contentFragment,
+          ...{ ...contentFragment, file: undefined },
+          url: null, // sourceUrl will be set on raw content upload success
           contentType: "file_attachment",
           context: {
             profilePictureUrl: user.image,
@@ -208,7 +227,49 @@ export async function createConversationWithMessage({
     });
   }
 
-  return new Ok(
-    ((await cRes.json()) as PostConversationsResponseBody).conversation
-  );
+  const conversationData = (await cRes.json()) as PostConversationsResponseBody;
+
+  if (
+    contentFragment &&
+    conversationData.contentFragment &&
+    // textual files are already uploaded via textUrl
+    !isTextualFile(contentFragment.file)
+  ) {
+    uploadRawContentFragment({
+      workspaceId: owner.sId,
+      conversationId: conversationData.conversation.sId,
+      contentFragmentId: conversationData.contentFragment?.sId,
+      file: contentFragment.file,
+    });
+  }
+
+  return new Ok(conversationData.conversation);
+}
+
+function uploadRawContentFragment({
+  workspaceId,
+  conversationId,
+  contentFragmentId,
+  file,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  contentFragmentId: string;
+  file: File;
+}) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  // do not await, to avoid slowing the UX
+  // an error from this function does not prevent the conversation from continuing
+  // API errors are handled server side
+  fetch(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/upload_raw_content_fragment`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  ).catch((e) => {
+    console.error(`Error uploading raw content for file`, e);
+  });
 }

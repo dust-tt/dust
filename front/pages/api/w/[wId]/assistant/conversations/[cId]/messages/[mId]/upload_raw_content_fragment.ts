@@ -1,15 +1,18 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { isContentFragmentType } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
+import { IncomingForm } from "formidable";
 import fs from "fs";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import { IncomingForm } from "formidable";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { DUST_UPLOAD_BUCKET = "dust-test-data", SERVICE_ACCOUNT } = process.env;
+const { DUST_PRIVATE_UPLOADS_BUCKET = "dust-test-data", SERVICE_ACCOUNT } =
+  process.env;
 
 export const config = {
   api: {
@@ -19,9 +22,8 @@ export const config = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ success: true }>>
+  res: NextApiResponse<WithAPIErrorReponse<{ sourceUrl: string }>>
 ): Promise<void> {
-  logger.info("RAW: Starting handler");
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
@@ -40,7 +42,7 @@ async function handler(
   }
 
   const user = auth.user();
-  if (!user || !auth.isUser()) {
+  if (!user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -50,6 +52,16 @@ async function handler(
     });
   }
 
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users of the current workspace can update chat sessions.",
+      },
+    });
+  }
   if (!(typeof req.query.cId === "string")) {
     return apiError(req, res, {
       status_code: 400,
@@ -72,8 +84,32 @@ async function handler(
     });
   }
 
+  if (!(typeof req.query.mId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `mId` (string) is required.",
+      },
+    });
+  }
+  const messageId = req.query.mId;
+
   switch (req.method) {
     case "POST":
+      const message = conversation.content
+        .flat()
+        .find((m) => m.sId === messageId);
+      if (!message || !isContentFragmentType(message)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Uploading raw content fragment is only supported for 'content fragment' messages.",
+          },
+        });
+      }
       try {
         logger.info("RAW: Starting POST handler");
         const form = new IncomingForm();
@@ -98,9 +134,11 @@ async function handler(
         const storage = new Storage({
           keyFilename: SERVICE_ACCOUNT,
         });
+
         logger.info("Uploading file to GCS");
-        const bucket = storage.bucket(DUST_UPLOAD_BUCKET);
-        const gcsFile = bucket.file(file.newFilename);
+        const bucket = storage.bucket(DUST_PRIVATE_UPLOADS_BUCKET);
+        const filePath = `content_fragments/${owner.sId}/${conversation.sId}/${message.sId}/raw`;
+        const gcsFile = bucket.file(filePath);
         const fileStream = fs.createReadStream(file.filepath);
         logger.info("Starting uploading file to GCS");
         await new Promise((resolve, reject) =>
@@ -116,9 +154,14 @@ async function handler(
             .on("finish", resolve)
         );
         logger.info("Done uploading file to GCS");
-        const fileUrl = `https://storage.googleapis.com/${DUST_UPLOAD_BUCKET}/${file.newFilename}`;
+        const fileUrl = `https://storage.googleapis.com/${DUST_PRIVATE_UPLOADS_BUCKET}/${filePath}`;
 
-        res.status(200).json({ success: true });
+        // set content fragment's sourceUrl to the uploaded file
+        (await ContentFragmentResource.fromMessageId(message.id)).update({
+          sourceUrl: fileUrl,
+        });
+
+        res.status(200).json({ sourceUrl: fileUrl });
         return;
       } catch (error) {
         return apiError(
@@ -134,7 +177,6 @@ async function handler(
           error instanceof Error ? error : new Error(JSON.stringify(error))
         );
       }
-
     default:
       return apiError(req, res, {
         status_code: 405,

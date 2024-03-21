@@ -1,4 +1,4 @@
-import type { ContentFragmentType, Result } from "@dust-tt/types";
+import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -7,7 +7,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { Message } from "@app/lib/models";
+import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -56,6 +56,18 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       ContentFragmentModel,
       message.contentFragment.get()
     );
+  }
+
+  static async fromMessageId(id: ModelId) {
+    const message = await Message.findByPk(id, {
+      include: [ContentFragmentModel],
+    });
+    if (!message) {
+      throw new Error(
+        "No message found for the given id when trying to create a ContentFragmentResource"
+      );
+    }
+    return this.fromMessage(message);
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
