@@ -106,3 +106,15 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     };
   }
 }
+
+export function rawContentFragmentUrl({
+  worskpaceId,
+  conversationId,
+  messageId,
+}: {
+  worskpaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  return `content_fragments/w/${worskpaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/raw`;
+}

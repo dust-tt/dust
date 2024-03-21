@@ -4,10 +4,14 @@ import { Storage } from "@google-cloud/storage";
 import { IncomingForm } from "formidable";
 import fs from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { pipeline } from "stream/promises";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import {
+  ContentFragmentResource,
+  rawContentFragmentUrl,
+} from "@app/lib/resources/content_fragment_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { DUST_PRIVATE_UPLOADS_BUCKET = "dust-test-data", SERVICE_ACCOUNT } =
@@ -111,8 +115,7 @@ async function handler(
       }
       try {
         const form = new IncomingForm();
-        const [_fields, files] = await form.parse(req);
-        void _fields;
+        const [, files] = await form.parse(req);
 
         const maybeFiles = files.file;
 
@@ -126,28 +129,28 @@ async function handler(
           });
         }
 
-        const file = maybeFiles[0];
+        const [file] = maybeFiles;
 
         const storage = new Storage({
           keyFilename: SERVICE_ACCOUNT,
         });
 
         const bucket = storage.bucket(DUST_PRIVATE_UPLOADS_BUCKET);
-        const filePath = `content_fragments/w/${owner.sId}/assistant/conversations/${conversation.sId}/content_fragment/${message.sId}/raw`;
+        const filePath = rawContentFragmentUrl({
+          worskpaceId: owner.sId,
+          conversationId,
+          messageId,
+        });
         const gcsFile = bucket.file(filePath);
         const fileStream = fs.createReadStream(file.filepath);
 
-        await new Promise((resolve, reject) =>
-          fileStream
-            .pipe(
-              gcsFile.createWriteStream({
-                metadata: {
-                  contentType: file.mimetype,
-                },
-              })
-            )
-            .on("error", reject)
-            .on("finish", resolve)
+        await pipeline(
+          fileStream,
+          gcsFile.createWriteStream({
+            metadata: {
+              contentType: file.mimetype,
+            },
+          })
         );
 
         const fileUrl = `https://storage.googleapis.com/${DUST_PRIVATE_UPLOADS_BUCKET}/${filePath}`;

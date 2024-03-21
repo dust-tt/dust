@@ -187,6 +187,7 @@ export async function createConversationWithMessage({
     mentions,
     contentFragment: contentFragmentWithFile,
   } = messageData;
+  const { file } = contentFragmentWithFile ?? {};
   const contentFragment = contentFragmentWithFile
     ? { ...contentFragmentWithFile, file: undefined }
     : undefined;
@@ -239,16 +240,16 @@ export async function createConversationWithMessage({
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
   if (
-    contentFragment &&
+    file &&
     conversationData.contentFragment &&
     // textual files are already uploaded via textUrl
-    !isTextualFile(contentFragment.file)
+    !isTextualFile(file)
   ) {
     uploadRawContentFragment({
       workspaceId: owner.sId,
       conversationId: conversationData.conversation.sId,
       contentFragmentId: conversationData.contentFragment?.sId,
-      file: contentFragment.file,
+      file,
     });
   }
 
