@@ -9,7 +9,7 @@ import type {
 import type { WorkspaceType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import Conversation from "@app/components/assistant/conversation/Conversation";
+import Conversation from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   AssistantInputBar,
