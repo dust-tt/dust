@@ -8,6 +8,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { getKeysetPagination } from "@app/lib/api/pagination";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -81,12 +82,34 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const messages = await fetchConversationMessages(auth, conversationId, {
-        limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
-        page: req.query.page ? parseInt(req.query.page as string) : 0,
+      const paginationRes = getKeysetPagination(req, {
+        defaultLimit: 10,
+        defaultOrderColumn: "rank",
+        defaultOrderDirection: "desc",
+        supportedOrderColumn: ["rank"],
       });
+      if (paginationRes.isErr()) {
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 400,
+            api_error: {
+              type: "invalid_pagination_parameters",
+              message: "Invalid pagination parameters",
+            },
+          },
+          paginationRes.error
+        );
+      }
 
-      if (!messages) {
+      const messagesRes = await fetchConversationMessages(
+        auth,
+        conversationId,
+        paginationRes.value
+      );
+
+      if (messagesRes.isErr()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -96,7 +119,7 @@ async function handler(
         });
       }
 
-      res.status(200).json(messages);
+      res.status(200).json(messagesRes.value);
       break;
 
     case "POST":

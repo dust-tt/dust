@@ -2,6 +2,10 @@ import type {
   AgentActionType,
   DustAppParameters,
   DustAppRunActionType,
+  MessageType,
+  MessageWithRankType,
+  ModelId,
+  Result,
   TablesQueryActionType,
 } from "@dust-tt/types";
 import type {
@@ -10,12 +14,13 @@ import type {
   LightAgentConfigurationType,
   UserMessageType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentDustAppRunAction,
@@ -260,12 +265,8 @@ export async function batchRenderAgentMessages(
       action,
       content: agentMessage.content,
       error,
-      // TODO:
-      configuration: {
-        sId: agentConfiguration.sId,
-        name: agentConfiguration.name,
-        pictureUrl: agentConfiguration.pictureUrl,
-      },
+      // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
+      configuration: agentConfiguration,
     } satisfies AgentMessageType;
     return { m, rank: message.rank, version: message.version };
   });
@@ -294,44 +295,62 @@ export async function batchRenderContentFragment(
   });
 }
 
-export interface FetchConversationMessagesResponse {
-  messages: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
-  total: number;
-  // nextPageCursor: string | null;
-}
-
-export async function fetchConversationMessages(
-  auth: Authenticator,
-  conversationId: string,
-  { page, limit }: { page: number; limit: number }
-): Promise<FetchConversationMessagesResponse | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: conversationId,
-      workspaceId: owner.id,
-    },
-  });
-
-  if (!conversation) {
-    // TODO: Return  not found error.
-    return null;
-  }
+// This function retrieves the latest version of each message for the current page,
+// because there's no easy way to fetch only the latest version of a message.
+async function getMaxRankMessages(
+  conversation: Conversation,
+  pagination: PaginationParams
+): Promise<ModelId[]> {
+  const { limit, orderColumn, orderDirection, lastValue } = pagination;
 
   const where: WhereOptions<Message> = {
     conversationId: conversation.id,
   };
 
+  if (lastValue) {
+    const op = orderDirection === "desc" ? Op.lt : Op.gt;
+
+    where[orderColumn as any] = {
+      [op]: lastValue,
+    };
+  }
+
+  // Retrieve the latest version and corresponding Id of each message for the current page,
+  // grouped by rank and limited to the desired page size plus one to detect the presence of a next page.
   const messages = await Message.findAll({
-    where,
-    order: [
-      ["rank", "DESC"],
-      ["version", "ASC"],
+    attributes: [
+      [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+      [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
     ],
+    where,
+    group: ["rank"],
+    order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+    limit: limit + 1,
+  });
+
+  return messages.map((m) => m.id);
+}
+
+async function fetchMessagesForPage(
+  conversation: Conversation,
+  pagination: PaginationParams
+): Promise<{ hasMore: boolean; messages: Message[] }> {
+  const { orderColumn, orderDirection, limit } = pagination;
+
+  const messageIds = await getMaxRankMessages(conversation, pagination);
+
+  const hasMore = messageIds.length > limit;
+  const relevantMessageIds = hasMore ? messageIds.slice(0, limit) : messageIds;
+
+  // Then fetch all those messages and their associated resources.
+  const messages = await Message.findAll({
+    where: {
+      conversationId: conversation.id,
+      id: {
+        [Op.in]: relevantMessageIds,
+      },
+    },
+    order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
     include: [
       {
         model: UserMessage,
@@ -352,45 +371,74 @@ export async function fetchConversationMessages(
         required: false,
       },
     ],
-    // Optimistic limit.
-    // TODO: support messages that have been re-rendered
-    limit: limit + 1,
-    offset: page ? page * limit : 0,
   });
 
-  const totalMessages = await Message.count({
-    where,
-  });
+  return {
+    hasMore,
+    messages,
+  };
+}
 
+async function batchRenderMessages(
+  auth: Authenticator,
+  messages: Message[]
+): Promise<MessageWithRankType[]> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(messages),
   ]);
 
-  const render = [...userMessages, ...agentMessages, ...contentFragments];
-  render.sort((a, b) => {
-    if (a.rank !== b.rank) {
-      return b.rank - a.rank;
-    }
-    return b.version - a.version;
+  const render = [...userMessages, ...agentMessages, ...contentFragments].sort(
+    (a, b) => a.rank - b.rank
+  );
+
+  return render.map((r) => ({ ...r.m, rank: r.rank }));
+}
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: MessageWithRankType[];
+  total: number;
+}
+
+export async function fetchConversationMessages(
+  auth: Authenticator,
+  conversationId: string,
+  pagination: PaginationParams
+): Promise<Result<FetchConversationMessagesResponse, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err(new Error("Unexpected `auth` without `workspace`."));
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: owner.id,
+    },
+  });
+  if (!conversation) {
+    return new Err(new Error("Conversation not found."));
+  }
+
+  const { hasMore, messages } = await fetchMessagesForPage(
+    conversation,
+    pagination
+  );
+
+  const renderedMessages = await batchRenderMessages(auth, messages);
+
+  // TODO: Try to remove.
+  const totalMessages = await Message.count({
+    where: { conversationId: conversation.id },
   });
 
-  const latestVersionsMap = new Map();
-  render.forEach((item) => {
-    if (
-      !latestVersionsMap.has(item.rank) ||
-      latestVersionsMap.get(item.rank).version < item.version
-    ) {
-      latestVersionsMap.set(item.rank, item);
-    }
-  });
-
-  return {
-    messages: [...latestVersionsMap.values()]
-      .map((i) => i.m)
-      .slice(0, limit)
-      .reverse(),
+  return new Ok({
+    hasMore,
+    lastValue: renderedMessages.at(0)?.rank ?? null,
+    messages: renderedMessages,
     total: totalMessages,
-  };
+  });
 }

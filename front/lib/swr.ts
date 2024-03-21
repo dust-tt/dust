@@ -594,6 +594,7 @@ export function useConversationMessages({
     // TODO: Use proper type here. Shared!
     messages: (AgentMessageType | ContentFragmentType | UserMessageType)[];
     total: number;
+    lastValue: string;
   }> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
@@ -603,7 +604,11 @@ export function useConversationMessages({
           return null;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?page=${pageIndex}&limit=10`;
+        if (pageIndex === 0) {
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=10`;
+        }
+
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=10`;
       },
       messagesFetcher,
       {
