@@ -11,6 +11,7 @@ import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { gcsConfig } from "@app/lib/resources/storage/config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -109,14 +110,20 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
 // TODO(2024-03-22 pr): Move as method of message resource after migration of
 // message to resource pattern
-export function rawContentFragmentUrl({
-  worskpaceId,
+export function contentFragmentUrl({
+  workspaceId,
   conversationId,
   messageId,
+  contentFormat,
 }: {
-  worskpaceId: string;
+  workspaceId: string;
   conversationId: string;
   messageId: string;
+  contentFormat: "raw" | "text";
 }) {
-  return `content_fragments/w/${worskpaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/raw`;
+  const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+  return {
+    filePath,
+    fileUrl: `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`,
+  };
 }

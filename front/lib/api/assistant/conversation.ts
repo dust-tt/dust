@@ -67,11 +67,18 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import {
+  ContentFragmentResource,
+  contentFragmentUrl,
+} from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { Storage } from "@google-cloud/storage";
+import { gcsConfig } from "@app/lib/resources/storage/config";
+import appConfig from "@app/lib/api/config";
+import { tokenCountForText } from "@app/lib/tokenization";
 /**
  * Conversation Creation, update and deletion
  */
@@ -1516,17 +1523,6 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  const textUrl = await storeContentFragmentText({
-    conversation,
-    title,
-    content,
-    url,
-    contentType,
-  });
-
-  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
-  const textTokens = textUrl ? await countTokens(content) : null;
-
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
@@ -1537,9 +1533,6 @@ export async function postNewContentFragment(
           title,
           url,
           sourceUrl: url,
-          textUrl,
-          textBytes,
-          textTokens,
           contentType,
           userId: auth.user()?.id,
           userContextProfilePictureUrl: context.profilePictureUrl,
@@ -1570,6 +1563,23 @@ export async function postNewContentFragment(
       return { contentFragment, messageRow };
     }
   );
+
+  // Content is stored in GCS once content fragment is created and has an sId
+  const textUrl = await storeContentFragmentText({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+    messageId: messageRow.sId,
+    content,
+  });
+
+  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
+  const textTokens = textUrl ? await countTokens(content) : null;
+
+  contentFragment.update({
+    textUrl,
+    textBytes,
+    textTokens,
+  });
 
   return contentFragment.renderFromMessage(messageRow);
 }
@@ -1719,27 +1729,51 @@ async function isMessagesLimitReached({
 }
 
 async function storeContentFragmentText({
-  conversation,
-  title,
+  workspaceId,
+  conversationId,
+  messageId,
   content,
-  url,
-  contentType,
 }: {
-  conversation: ConversationType;
-  title: string;
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
   content: string;
-  url: string | null;
-  contentType: ContentFragmentContentType;
 }): Promise<string | null> {
-  if (!conversation && !title && !content && !url && !contentType) {
-    throw new Error("Invalid content fragment data");
-  }
-  return null;
-}
-
-async function countTokens(content: string): Promise<number | null> {
-  if (!content) {
+  if (content === "") {
     return null;
   }
-  throw new Error("Function not implemented.");
+
+  const { filePath, fileUrl } = contentFragmentUrl({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "text",
+  });
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(filePath);
+
+  await gcsFile.save(content, {
+    contentType: "text/plain",
+  });
+
+  return fileUrl;
+}
+
+async function countTokens(content: string): Promise<number> {
+  // Since contentFragments can be in a conversation with multiple models but
+  // are not tied to any, we have to pick one (or not count tokens). At this
+  // time, we do all tokenization operations via openai anyways so this has no
+  // impact for now
+  const res = await tokenCountForText(content, {
+    providerId: "openai",
+    modelId: "gpt-4",
+  });
+  if (res.isErr()) {
+    throw new Error(`Error counting tokens: ${res.error}`);
+  }
+  return res.value;
 }
