@@ -9,6 +9,7 @@ import type {
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  MessageWithRankType,
   RunRunType,
   UserMessageType,
   WorkspaceEnterpriseConnection,
@@ -592,7 +593,7 @@ export function useConversationMessages({
 }) {
   const messagesFetcher: Fetcher<{
     // TODO: Use proper type here. Shared!
-    messages: (AgentMessageType | ContentFragmentType | UserMessageType)[];
+    messages: MessageWithRankType[];
     total: number;
     lastValue: string;
   }> = fetcher;

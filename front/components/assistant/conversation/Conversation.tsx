@@ -10,10 +10,8 @@ import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   useConversation,
@@ -35,8 +33,8 @@ export default function Conversation({
   user,
   conversationId,
   onStickyMentionsChange,
-  isInModal,
-  hideReactions,
+  isInModal = false,
+  hideReactions = false,
   isFading = false,
 }: {
   owner: WorkspaceType;
@@ -272,77 +270,24 @@ export default function Conversation({
         <div>Loading more...</div>
       )}
       {messages.map((page) => {
-        return page.messages.map((m) => {
-          const convoReactions = reactions.find((r) => r.messageId === m.sId);
-          const messageReactions = convoReactions?.reactions || [];
-
-          if (m.visibility === "deleted") {
-            return null;
-          }
-
-          switch (m.type) {
-            case "user_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="bg-structure-50 px-2 py-8"
-                  ref={
-                    m.sId === prevFirstMessageIndex ? prevFirstMessageRef : null
-                  }
-                >
-                  <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                    <UserMessage
-                      message={m}
-                      conversation={conversation}
-                      owner={owner}
-                      user={user}
-                      reactions={messageReactions}
-                      hideReactions={hideReactions}
-                    />
-                  </div>
-                </div>
-              );
-            case "agent_message":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="px-2 py-8"
-                  ref={
-                    m.sId === prevFirstMessageIndex ? prevFirstMessageRef : null
-                  }
-                >
-                  <div className="mx-auto flex max-w-4xl gap-4">
-                    <AgentMessage
-                      message={m}
-                      owner={owner}
-                      user={user}
-                      conversationId={conversationId}
-                      reactions={messageReactions}
-                      isInModal={isInModal}
-                      hideReactions={hideReactions}
-                    />
-                  </div>
-                </div>
-              );
-            case "content_fragment":
-              return (
-                <div
-                  key={`message-id-${m.sId}`}
-                  className="items-center bg-structure-50 px-2 pt-8"
-                  ref={
-                    m.sId === prevFirstMessageIndex ? prevFirstMessageRef : null
-                  }
-                >
-                  <div className="mx-auto flex max-w-4xl flex-col gap-4">
-                    <ContentFragment message={m} />
-                  </div>
-                </div>
-              );
-            default:
-              ((message: never) => {
-                console.error("Unknown message type", message);
-              })(m);
-          }
+        return page.messages.map((message) => {
+          return (
+            <MessageItem
+              key={message.sId}
+              conversation={conversation}
+              hideReactions={hideReactions}
+              isInModal={isInModal}
+              message={message}
+              owner={owner}
+              reactions={reactions}
+              ref={
+                message.sId === prevFirstMessageIndex
+                  ? prevFirstMessageRef
+                  : null
+              }
+              user={user}
+            />
+          );
         });
       })}
     </div>
