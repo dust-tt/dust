@@ -9,7 +9,7 @@ import type {
 import type { WorkspaceType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import Conversation from "@app/components/assistant/conversation/Conversation";
+import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   AssistantInputBar,
@@ -74,12 +74,13 @@ export function TryAssistantModal({
       >
         <GenerationContextProvider>
           {conversation && (
-            <Conversation
+            <ConversationViewer
               owner={owner}
               user={user}
               conversationId={conversation.sId}
               onStickyMentionsChange={setStickyMentions}
               isInModal
+              key={conversation.sId}
             />
           )}
 
@@ -140,7 +141,7 @@ export function TryAssistant({
               className="max-h-[100%] overflow-y-auto overflow-x-hidden"
               id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
             >
-              <Conversation
+              <ConversationViewer
                 owner={owner}
                 user={user}
                 conversationId={conversation.sId}
@@ -148,6 +149,7 @@ export function TryAssistant({
                 isInModal
                 hideReactions
                 isFading={conversationFading}
+                key={conversation.sId}
               />
             </div>
           )}

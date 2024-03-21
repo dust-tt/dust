@@ -5,13 +5,20 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ message: UserMessageType }>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<
+      { message: UserMessageType } | FetchConversationMessagesResponse
+    >
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -74,6 +81,47 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      const paginationRes = getPaginationParams(req, {
+        defaultLimit: 10,
+        defaultOrderColumn: "rank",
+        defaultOrderDirection: "desc",
+        supportedOrderColumn: ["rank"],
+      });
+      if (paginationRes.isErr()) {
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 400,
+            api_error: {
+              type: "invalid_pagination_parameters",
+              message: "Invalid pagination parameters",
+            },
+          },
+          paginationRes.error
+        );
+      }
+
+      const messagesRes = await fetchConversationMessages(
+        auth,
+        conversationId,
+        paginationRes.value
+      );
+
+      if (messagesRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: "Conversation not found",
+          },
+        });
+      }
+
+      res.status(200).json(messagesRes.value);
+      break;
+
     case "POST":
       const bodyValidation = InternalPostMessagesRequestBodySchema.decode(
         req.body

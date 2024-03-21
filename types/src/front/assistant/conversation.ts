@@ -35,6 +35,13 @@ export type MessageReactionType = {
   }[];
 };
 
+export type MessageType =
+  | AgentMessageType
+  | UserMessageType
+  | ContentFragmentType;
+
+export type MessageWithRankType = MessageType & { rank: number };
+
 /**
  * User messages
  */
@@ -60,9 +67,7 @@ export type UserMessageType = {
   context: UserMessageContext;
 };
 
-export function isUserMessageType(
-  arg: UserMessageType | AgentMessageType | ContentFragmentType
-): arg is UserMessageType {
+export function isUserMessageType(arg: MessageType): arg is UserMessageType {
   return arg.type === "user_message";
 }
 
@@ -107,9 +112,7 @@ export type AgentMessageType = {
   } | null;
 };
 
-export function isAgentMessageType(
-  arg: UserMessageType | AgentMessageType | ContentFragmentType
-): arg is AgentMessageType {
+export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
 }
 
@@ -143,7 +146,7 @@ export type ContentFragmentType = {
 };
 
 export function isContentFragmentType(
-  arg: UserMessageType | AgentMessageType | ContentFragmentType
+  arg: MessageType
 ): arg is ContentFragmentType {
   return arg.type === "content_fragment";
 }
