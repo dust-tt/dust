@@ -75,6 +75,21 @@ export interface IdentifyProperties {
   SignupDate?: string;
 }
 
+export interface AssistantCreatedProperties {
+  assistantActionType: string;
+  assistantId: string;
+  assistantName: string;
+  assistantScope: string;
+  /**
+   * | Rule | Value |
+   * |---|---|
+   * | Type | number |
+   */
+  assistantVersion: number;
+  workspaceId: string;
+  workspaceName: string;
+}
+
 export interface DataSourceCreatedProperties {
   assistantDefaultSelected: boolean;
   dataSourceName: string;
@@ -110,7 +125,14 @@ export interface UserMessagePostedProperties {
    */
   mentionsCount: number;
   messageId: string;
-  version: any;
+  /**
+   * Current version of your application identified for the user.
+   *
+   * | Rule | Value |
+   * |---|---|
+   * | Type | number |
+   */
+  version?: number;
   workspaceId: string;
   workspaceName: string;
 }
@@ -119,6 +141,14 @@ export class Identify implements BaseEvent {
   event_type = amplitude.Types.SpecialEventType.IDENTIFY;
 
   constructor(public event_properties?: IdentifyProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class AssistantCreated implements BaseEvent {
+  event_type = "AssistantCreated";
+
+  constructor(public event_properties: AssistantCreatedProperties) {
     this.event_properties = event_properties;
   }
 }
@@ -274,6 +304,25 @@ export class Ampli {
     }
 
     return this.amplitude!.flush();
+  }
+
+  /**
+   * AssistantCreated
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/AssistantCreated)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param userId The user's ID.
+   * @param properties The event's properties (e.g. assistantActionType)
+   * @param options Amplitude event options.
+   */
+  assistantCreated(
+    userId: string | undefined,
+    properties: AssistantCreatedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(userId, new AssistantCreated(properties), options);
   }
 
   /**
