@@ -46,7 +46,6 @@ export function UserMessage({
     >
       <div className="flex flex-col gap-4">
         <div>
-          Message ID: {message.sId}
           <RenderMessageMarkdown
             content={message.content}
             blinkingCursor={false}
