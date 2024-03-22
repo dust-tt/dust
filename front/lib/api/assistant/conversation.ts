@@ -675,6 +675,7 @@ export async function* postUserMessage(
         mentions: mentions,
         content,
         context: context,
+        rank: m.rank,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =

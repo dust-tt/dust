@@ -234,6 +234,7 @@ export default function ConversationViewer({
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
+            break;
           case "agent_message_new":
           case "agent_generation_cancelled":
             const isMessageAlreadyInConversation = messages?.some(

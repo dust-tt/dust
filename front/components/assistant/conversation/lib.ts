@@ -5,6 +5,7 @@ import type {
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
+  UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -51,7 +52,7 @@ export async function submitMessage({
       file: File;
     };
   };
-}): Promise<Result<void, ConversationErrorType>> {
+}): Promise<Result<{ message: UserMessageType }, ConversationErrorType>> {
   const { input, mentions, contentFragment } = messageData;
   // Create a new content fragment.
   if (contentFragment) {
@@ -131,7 +132,7 @@ export async function submitMessage({
     });
   }
 
-  return new Ok(undefined);
+  return new Ok(await mRes.json());
 }
 
 export async function deleteConversation({
