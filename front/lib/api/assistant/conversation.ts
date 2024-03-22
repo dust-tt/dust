@@ -1523,6 +1523,17 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  const messageId = generateModelSId();
+  const textUrl = await storeContentFragmentText({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+    messageId,
+    content,
+  });
+
+  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
+  const textTokens = textUrl ? await countTokens(content) : null;
+
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
@@ -1533,6 +1544,9 @@ export async function postNewContentFragment(
           title,
           url,
           sourceUrl: url,
+          textUrl,
+          textBytes,
+          textTokens,
           contentType,
           userId: auth.user()?.id,
           userContextProfilePictureUrl: context.profilePictureUrl,
@@ -1551,7 +1565,7 @@ export async function postNewContentFragment(
         })) ?? -1) + 1;
       const messageRow = await Message.create(
         {
-          sId: generateModelSId(),
+          sId: messageId,
           rank: nextMessageRank,
           conversationId: conversation.id,
           contentFragmentId: contentFragment.id,
@@ -1563,23 +1577,6 @@ export async function postNewContentFragment(
       return { contentFragment, messageRow };
     }
   );
-
-  // Content is stored in GCS once content fragment is created and has an sId
-  const textUrl = await storeContentFragmentText({
-    workspaceId: owner.sId,
-    conversationId: conversation.sId,
-    messageId: messageRow.sId,
-    content,
-  });
-
-  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
-  const textTokens = textUrl ? await countTokens(content) : null;
-
-  contentFragment.update({
-    textUrl,
-    textBytes,
-    textTokens,
-  });
 
   return contentFragment.renderFromMessage(messageRow);
 }
