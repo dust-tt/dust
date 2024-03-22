@@ -80,6 +80,7 @@ export default function AssistantConversation({
     contentFragment?: {
       title: string;
       content: string;
+      file: File;
     }
   ) => {
     const messageData = { input, mentions, contentFragment };

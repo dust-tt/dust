@@ -1,4 +1,4 @@
-import type { ContentFragmentType, Result } from "@dust-tt/types";
+import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -7,7 +7,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { Message } from "@app/lib/models";
+import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -58,6 +58,18 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
+  static async fromMessageId(id: ModelId) {
+    const message = await Message.findByPk(id, {
+      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
+    });
+    if (!message) {
+      throw new Error(
+        "No message found for the given id when trying to create a ContentFragmentResource"
+      );
+    }
+    return ContentFragmentResource.fromMessage(message);
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
@@ -93,4 +105,18 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       },
     };
   }
+}
+
+// TODO(2024-03-22 pr): Move as method of message resource after migration of
+// message to resource pattern
+export function rawContentFragmentUrl({
+  worskpaceId,
+  conversationId,
+  messageId,
+}: {
+  worskpaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  return `content_fragments/w/${worskpaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/raw`;
 }

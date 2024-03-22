@@ -1525,6 +1525,7 @@ export async function postNewContentFragment(
           content,
           title,
           url,
+          sourceUrl: url,
           contentType,
           userId: auth.user()?.id,
           userContextProfilePictureUrl: context.profilePictureUrl,

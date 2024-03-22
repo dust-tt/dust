@@ -140,6 +140,7 @@ export default function AssistantNew({
         contentFragment?: {
           title: string;
           content: string;
+          file: File;
         }
       ) => {
         const conversationRes = await createConversationWithMessage({

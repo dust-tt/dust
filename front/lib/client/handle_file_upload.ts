@@ -22,7 +22,6 @@ export async function handleFileUploadToText(
             )
           )
         );
-        return;
       }
     };
     const handleFileLoadedPDF = async (e: ProgressEvent<FileReader>) => {
@@ -70,14 +69,7 @@ export async function handleFileUploadToText(
         fileReader.onloadend = handleFileLoadedPDF;
         fileReader.readAsArrayBuffer(file);
       } else if (
-        [
-          "text/plain",
-          "text/csv",
-          "text/markdown",
-          "text/tsv",
-          "text/comma-separated-values",
-          "text/tab-separated-values",
-        ].includes(file.type) ||
+        isTextualFile(file) ||
         supportedFileExtensions
           .map((ext) => file.name.endsWith(ext))
           .includes(true)
@@ -103,4 +95,15 @@ export async function handleFileUploadToText(
       );
     }
   });
+}
+
+export function isTextualFile(file: File): boolean {
+  return [
+    "text/plain",
+    "text/csv",
+    "text/markdown",
+    "text/tsv",
+    "text/comma-separated-values",
+    "text/tab-separated-values",
+  ].includes(file.type);
 }

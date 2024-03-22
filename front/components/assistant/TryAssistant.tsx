@@ -288,6 +288,7 @@ function useTryAssistantCore({
     contentFragment?: {
       title: string;
       content: string;
+      file: File;
     }
   ) => {
     if (!user) return;
