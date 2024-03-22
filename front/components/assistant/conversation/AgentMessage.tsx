@@ -7,7 +7,7 @@ import {
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Spinner,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionEvent,
@@ -409,7 +409,7 @@ export function AgentMessage({
           <div className="pb-2 text-xs font-bold text-element-600">
             I'm thinking...
           </div>
-          <Spinner size="sm" />
+          <Spinner2 size="sm" />
         </div>
       );
     }

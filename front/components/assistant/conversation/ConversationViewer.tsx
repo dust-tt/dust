@@ -1,5 +1,4 @@
-// TODO(2024-03-21 flav) Replace by Spinner2 when available.
-import { Spinner } from "@dust-tt/sparkle";
+import { Spinner2 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { AgentMention } from "@dust-tt/types";
 import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
@@ -288,7 +287,7 @@ export default function ConversationViewer({
       )}
       {(isMessagesLoading || prevFirstMessageId) && (
         <div className="flex justify-center py-4">
-          <Spinner size="xs" />
+          <Spinner2 variant="color" size="xs" />
         </div>
       )}
       {messages.map((page) => {
