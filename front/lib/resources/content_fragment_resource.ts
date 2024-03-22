@@ -1,5 +1,6 @@
 import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { Storage } from "@google-cloud/storage";
 import type {
   Attributes,
   CreationAttributes,
@@ -7,8 +8,10 @@ import type {
   Transaction,
 } from "sequelize";
 
+import appConfig from "@app/lib/api/config";
 import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { gcsConfig } from "@app/lib/resources/storage/config";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -109,14 +112,55 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
 // TODO(2024-03-22 pr): Move as method of message resource after migration of
 // message to resource pattern
-export function rawContentFragmentUrl({
-  worskpaceId,
+export function contentFragmentUrl({
+  workspaceId,
   conversationId,
   messageId,
+  contentFormat,
 }: {
-  worskpaceId: string;
+  workspaceId: string;
   conversationId: string;
   messageId: string;
+  contentFormat: "raw" | "text";
 }) {
-  return `content_fragments/w/${worskpaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/raw`;
+  const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+  return {
+    filePath,
+    fileUrl: `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`,
+  };
+}
+
+export async function storeContentFragmentText({
+  workspaceId,
+  conversationId,
+  messageId,
+  content,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  content: string;
+}): Promise<string | null> {
+  if (content === "") {
+    return null;
+  }
+
+  const { filePath, fileUrl } = contentFragmentUrl({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "text",
+  });
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(filePath);
+
+  await gcsFile.save(content, {
+    contentType: "text/plain",
+  });
+
+  return fileUrl;
 }

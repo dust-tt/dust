@@ -67,7 +67,10 @@ import {
   UserMessage,
 } from "@app/lib/models";
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import {
+  ContentFragmentResource,
+  storeContentFragmentText,
+} from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
@@ -1516,6 +1519,16 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  const messageId = generateModelSId();
+  const textUrl = await storeContentFragmentText({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+    messageId,
+    content,
+  });
+
+  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
+
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
       await getConversationRankVersionLock(conversation, t);
@@ -1525,7 +1538,9 @@ export async function postNewContentFragment(
           content,
           title,
           url,
-          sourceUrl: url,
+          sourceUrl: url ?? textUrl,
+          textUrl,
+          textBytes,
           contentType,
           userId: auth.user()?.id,
           userContextProfilePictureUrl: context.profilePictureUrl,
@@ -1544,7 +1559,7 @@ export async function postNewContentFragment(
         })) ?? -1) + 1;
       const messageRow = await Message.create(
         {
-          sId: generateModelSId(),
+          sId: messageId,
           rank: nextMessageRank,
           conversationId: conversation.id,
           contentFragmentId: contentFragment.id,
