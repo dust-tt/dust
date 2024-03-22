@@ -85,7 +85,7 @@ export async function populateWorkspaceProperties(workspace: Workspace) {
   }
   const amplitude = getBackendClient();
 
-  const subscription = await subscriptionForWorkspace(workspace);
+  const subscription = await subscriptionForWorkspace(workspace.id);
   const memberCount = await countActiveSeatsInWorkspace(workspace.sId);
   const groupProperties = new Identify();
   groupProperties.set("name", workspace.name);

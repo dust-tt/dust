@@ -219,7 +219,7 @@ async function handleRegularSignupFlow(
     }
 
     const workspaceSubscription = await subscriptionForWorkspace(
-      existingWorkspace
+      existingWorkspace.id
     );
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
