@@ -2,12 +2,12 @@ import Lottie from "lottie-react";
 import React from "react";
 
 import { classNames } from "@sparkle/lib/utils";
-import animColor from "@sparkle/lottie/spinnerColor.json";
-import animDark from "@sparkle/lottie/spinnerDark.json";
-import animLight from "@sparkle/lottie/spinnerLight.json";
-import animSimpleColor from "@sparkle/lottie/spinnerSimpleColor.json";
-import animSimpleDark from "@sparkle/lottie/spinnerSimpleDark.json";
-import animSimpleLight from "@sparkle/lottie/spinnerSimpleLight.json";
+import animColor from "@sparkle/lottie/spinnerColor";
+import animDark from "@sparkle/lottie/spinnerDark";
+import animLight from "@sparkle/lottie/spinnerLight";
+import animSimpleColor from "@sparkle/lottie/spinnerSimpleColor";
+import animSimpleDark from "@sparkle/lottie/spinnerSimpleDark";
+import animSimpleLight from "@sparkle/lottie/spinnerSimpleLight";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
