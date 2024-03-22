@@ -419,7 +419,9 @@ async function handler(
           owner.name
         }\` sId: \`${owner.sId}\` connectorId: \`${
           connectorsRes.value.id
-        }\` provider: \`${provider}\``,
+        }\` provider: \`${provider}\` trialing: \`${
+          auth.subscription()?.trialing ? "true" : "false"
+        }}\``,
       });
 
       dataSource = await dataSource.update({
