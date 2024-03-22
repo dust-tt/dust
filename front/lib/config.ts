@@ -1,6 +1,7 @@
 import type { BlockRunConfig, SpecificationType } from "@dust-tt/types";
 
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
+  console.log("extractConfig", spec);
   const c = {} as { [key: string]: any };
   for (let i = 0; i < spec.length; i++) {
     const type = spec[i].type;
