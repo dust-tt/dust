@@ -9,9 +9,9 @@ import type {
 
 import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { gcsConfig } from "@app/lib/resources/storage/config";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { gcsConfig } from "@app/lib/resources/storage/config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

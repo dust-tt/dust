@@ -1,5 +1,7 @@
+import type { Result } from "@dust-tt/types";
+import { CoreAPI, Err, Ok, safeSubstring } from "@dust-tt/types";
+
 import logger from "@app/logger/logger";
-import { CoreAPI, Err, Ok, Result, safeSubstring } from "@dust-tt/types";
 
 export async function tokenCountForText(
   text: string,

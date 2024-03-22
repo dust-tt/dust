@@ -42,6 +42,7 @@ import {
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { Storage } from "@google-cloud/storage";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -56,6 +57,7 @@ import {
   batchRenderContentFragment,
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
+import appConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -72,13 +74,11 @@ import {
   contentFragmentUrl,
 } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { gcsConfig } from "@app/lib/resources/storage/config";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { tokenCountForText } from "@app/lib/tokenization";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { Storage } from "@google-cloud/storage";
-import { gcsConfig } from "@app/lib/resources/storage/config";
-import appConfig from "@app/lib/api/config";
-import { tokenCountForText } from "@app/lib/tokenization";
 /**
  * Conversation Creation, update and deletion
  */
@@ -1543,7 +1543,7 @@ export async function postNewContentFragment(
           content,
           title,
           url,
-          sourceUrl: url,
+          sourceUrl: url ?? textUrl,
           textUrl,
           textBytes,
           textTokens,
