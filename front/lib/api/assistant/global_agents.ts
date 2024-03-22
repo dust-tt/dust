@@ -99,6 +99,7 @@ async function _getHelperGlobalAgent(
       };
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.HELPER,
     version: 0,
     versionCreatedAt: null,
@@ -127,6 +128,7 @@ async function _getGPT35TurboGlobalAgent({
   const status = settings ? settings.status : "active";
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
     version: 0,
     versionCreatedAt: null,
@@ -158,6 +160,7 @@ async function _getGPT4GlobalAgent({
   const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.GPT4,
     version: 0,
     versionCreatedAt: null,
@@ -190,6 +193,7 @@ async function _getClaudeInstantGlobalAgent({
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
     version: 0,
     versionCreatedAt: null,
@@ -227,6 +231,7 @@ async function _getClaude2GlobalAgent({
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.CLAUDE_2,
     version: 0,
     versionCreatedAt: null,
@@ -259,6 +264,7 @@ async function _getClaude3HaikuGlobalAgent({
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
     version: 0,
     versionCreatedAt: null,
@@ -303,6 +309,7 @@ async function _getClaude3SonnetGlobalAgent({
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
     version: 0,
     versionCreatedAt: null,
@@ -341,6 +348,7 @@ async function _getClaude3OpusGlobalAgent({
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
     version: 0,
     versionCreatedAt: null,
@@ -378,6 +386,7 @@ async function _getMistralLargeGlobalAgent({
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
     version: 0,
     versionCreatedAt: null,
@@ -415,6 +424,7 @@ async function _getMistralMediumGlobalAgent({
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
     version: 0,
     versionCreatedAt: null,
@@ -446,6 +456,7 @@ async function _getMistralSmallGlobalAgent({
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
     version: 0,
     versionCreatedAt: null,
@@ -482,6 +493,7 @@ async function _getGeminiProGlobalAgent({
   }
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
     version: 0,
     versionCreatedAt: null,
@@ -542,6 +554,7 @@ async function _getManagedDataSourceAgent(
   if (settings && settings.status === "disabled_by_admin") {
     return {
       id: -1,
+      createdAt: null,
       sId: agentId,
       version: 0,
       versionCreatedAt: null,
@@ -564,6 +577,7 @@ async function _getManagedDataSourceAgent(
   if (filteredDataSources.length === 0) {
     return {
       id: -1,
+      createdAt: null,
       sId: agentId,
       version: 0,
       versionCreatedAt: null,
@@ -581,6 +595,7 @@ async function _getManagedDataSourceAgent(
 
   return {
     id: -1,
+    createdAt: null,
     sId: agentId,
     version: 0,
     versionCreatedAt: null,
@@ -764,6 +779,7 @@ async function _getDustGlobalAgent(
   if (settings && settings.status === "disabled_by_admin") {
     return {
       id: -1,
+      createdAt: null,
       sId: GLOBAL_AGENTS_SID.DUST,
       version: 0,
       versionCreatedAt: null,
@@ -794,6 +810,7 @@ async function _getDustGlobalAgent(
   if (dataSources.length === 0) {
     return {
       id: -1,
+      createdAt: null,
       sId: GLOBAL_AGENTS_SID.DUST,
       version: 0,
       versionCreatedAt: null,
@@ -811,6 +828,7 @@ async function _getDustGlobalAgent(
 
   return {
     id: -1,
+    createdAt: null,
     sId: GLOBAL_AGENTS_SID.DUST,
     version: 0,
     versionCreatedAt: null,

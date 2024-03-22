@@ -145,7 +145,8 @@ export type AgentRecentAuthors = readonly string[];
 
 export type LightAgentConfigurationType = {
   id: ModelId;
-
+  // Global agents don't have a creation date.
+  createdAt: number | null;
   versionCreatedAt: string | null;
 
   sId: string;

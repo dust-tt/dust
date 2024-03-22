@@ -580,6 +580,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
+      createdAt: agent.createdAt.getTime(),
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
@@ -890,6 +891,7 @@ export async function createAgentConfiguration(
      */
     const agentConfiguration: AgentConfigurationType = {
       id: agent.id,
+      createdAt: agent.createdAt.getTime(),
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
