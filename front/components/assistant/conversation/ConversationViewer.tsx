@@ -309,6 +309,7 @@ export default function ConversationViewer({
                   : undefined
               }
               user={user}
+              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
             />
           );
         });

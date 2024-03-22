@@ -1,7 +1,7 @@
 import type {
   ConversationMessageReactions,
   ConversationType,
-  MessageWithRankType,
+  MessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -15,7 +15,8 @@ interface MessageItemProps {
   conversation: ConversationType;
   hideReactions: boolean;
   isInModal: boolean;
-  message: MessageWithRankType;
+  isLastMessage: boolean;
+  message: MessageType;
   owner: WorkspaceType;
   reactions: ConversationMessageReactions;
   user: UserType;
@@ -27,6 +28,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversation,
       hideReactions,
       isInModal,
+      isLastMessage,
       message,
       owner,
       reactions,
@@ -59,6 +61,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 user={user}
                 reactions={messageReactions}
                 hideReactions={hideReactions}
+                isLastMessage={isLastMessage}
               />
             </div>
           </div>
