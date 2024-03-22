@@ -47,13 +47,17 @@ export abstract class BaseResource<M extends Model> {
   async update(
     blob: Partial<Attributes<M>>,
     transaction?: Transaction
-  ): Promise<[affectedCount: number, affectedRows: M[]]> {
-    return this.model.update(blob, {
+  ): Promise<[affectedCount: number]> {
+    const [affectedCount, affectedRows] = await this.model.update(blob, {
       // @ts-expect-error TS cannot infer the presence of 'id' in Sequelize models, but our models always include 'id'.
       where: {
         id: this.id,
       },
       transaction,
+      returning: true,
     });
+    // Update the current instance with the new values to avoid stale data
+    Object.assign(this, affectedRows[0].get());
+    return [affectedCount];
   }
 }
