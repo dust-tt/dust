@@ -1532,7 +1532,6 @@ export async function postNewContentFragment(
   });
 
   const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
-  const textTokens = textUrl ? await countTokens(content) : null;
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
@@ -1546,7 +1545,6 @@ export async function postNewContentFragment(
           sourceUrl: url ?? textUrl,
           textUrl,
           textBytes,
-          textTokens,
           contentType,
           userId: auth.user()?.id,
           userContextProfilePictureUrl: context.profilePictureUrl,
@@ -1758,19 +1756,4 @@ async function storeContentFragmentText({
   });
 
   return fileUrl;
-}
-
-async function countTokens(content: string): Promise<number> {
-  // Since contentFragments can be in a conversation with multiple models but
-  // are not tied to any, we have to pick one (or not count tokens). At this
-  // time, we do all tokenization operations via openai anyways so this has no
-  // impact for now
-  const res = await tokenCountForText(content, {
-    providerId: "openai",
-    modelId: "gpt-4",
-  });
-  if (res.isErr()) {
-    throw new Error(`Error counting tokens: ${res.error}`);
-  }
-  return res.value;
 }

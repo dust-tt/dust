@@ -28,7 +28,6 @@ export class ContentFragmentModel extends Model<
   // are textual in nature (PDF, text, CSV, future: .docx...)
   declare textUrl: string | null; // url to GCS
   declare textBytes: number | null; // number of textUrl bytes
-  declare textTokens: number | null; // number of textUrl tokens
 
   // user-related context
   declare userContextUsername: string | null;
