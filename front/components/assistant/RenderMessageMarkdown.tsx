@@ -1,13 +1,14 @@
-import "mermaid";
-
 import {
   ClipboardCheckIcon,
   ClipboardIcon,
   IconButton,
+  SparklesIcon,
   Tooltip,
+  WrenchIcon,
 } from "@dust-tt/sparkle";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
+import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -27,15 +28,17 @@ import {
 import { visit } from "unist-util-visit";
 
 import { linkFromDocument } from "@app/components/assistant/conversation/RetrievalAction";
-import MermaidGraph from "@app/components/assistant/MermaidGraph";
+import {
+  MermaidDisplayProvider,
+  MermaidGraph,
+  useMermaidDisplay,
+} from "@app/components/assistant/RenderMermaid";
 import { classNames } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
 );
-
-import mermaid from "mermaid";
 
 function useCopyToClipboard(
   resetInterval = 2000
@@ -184,90 +187,84 @@ export function RenderMessageMarkdown({
           }
         }
       >
-        <ReactMarkdown
-          linkTarget="_blank"
-          components={{
-            pre: ({ children }) => (
-              <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
-            ),
-            code: ({ inline, className, children }) => (
-              <CodeBlock
-                inline={inline}
-                className={className}
-                isStreaming={isStreaming}
-              >
-                {children}
-              </CodeBlock>
-            ),
-            a: LinkBlock,
-            ul: UlBlock,
-            ol: OlBlock,
-            li: LiBlock,
-            p: ParagraphBlock,
-            sup: CiteBlock,
-            table: TableBlock,
-            thead: TableHeadBlock,
-            tbody: TableBodyBlock,
-            th: TableHeaderBlock,
-            td: TableDataBlock,
-            h1: ({ children }) => (
-              <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
-                {children}
-              </h1>
-            ),
-            h2: ({ children }) => (
-              <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
-                {children}
-              </h2>
-            ),
-            h3: ({ children }) => (
-              <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
-                {children}
-              </h3>
-            ),
-            h4: ({ children }) => (
-              <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
-                {children}
-              </h4>
-            ),
-            h5: ({ children }) => (
-              <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
-                {children}
-              </h5>
-            ),
-            h6: ({ children }) => (
-              <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
-                {children}
-              </h6>
-            ),
-            strong: ({ children }) => (
-              <strong className="font-semibold text-element-900">
-                {children}
-              </strong>
-            ),
-            // @ts-expect-error - `mention` is a custom tag, currently refused by
-            // react-markdown types although the functionality is supported
-            mention: ({ agentName, agentSId }) => {
-              const agentConfiguration = agentConfigurations?.find(
-                (agentConfiguration) => agentConfiguration.sId === agentSId
-              );
-              return (
-                <MentionBlock
-                  agentConfiguration={agentConfiguration}
-                  agentName={agentName}
-                />
-              );
-            },
-          }}
-          remarkPlugins={[
-            remarkDirective,
-            mentionDirective,
-            citeDirective(),
-            remarkGfm,
-          ]}
-        >
-          {addClosingBackticks(content)}
-        </ReactMarkdown>
+        <MermaidDisplayProvider>
+          <ReactMarkdown
+            linkTarget="_blank"
+            components={{
+              pre: ({ children }) => (
+                <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
+              ),
+              code: CodeBlock,
+              a: LinkBlock,
+              ul: UlBlock,
+              ol: OlBlock,
+              li: LiBlock,
+              p: ParagraphBlock,
+              sup: CiteBlock,
+              table: TableBlock,
+              thead: TableHeadBlock,
+              tbody: TableBodyBlock,
+              th: TableHeaderBlock,
+              td: TableDataBlock,
+              h1: ({ children }) => (
+                <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
+                  {children}
+                </h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
+                  {children}
+                </h3>
+              ),
+              h4: ({ children }) => (
+                <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
+                  {children}
+                </h4>
+              ),
+              h5: ({ children }) => (
+                <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
+                  {children}
+                </h5>
+              ),
+              h6: ({ children }) => (
+                <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
+                  {children}
+                </h6>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-element-900">
+                  {children}
+                </strong>
+              ),
+              // @ts-expect-error - `mention` is a custom tag, currently refused by
+              // react-markdown types although the functionality is supported
+              mention: ({ agentName, agentSId }) => {
+                const agentConfiguration = agentConfigurations?.find(
+                  (agentConfiguration) => agentConfiguration.sId === agentSId
+                );
+                return (
+                  <MentionBlock
+                    agentConfiguration={agentConfiguration}
+                    agentName={agentName}
+                  />
+                );
+              },
+            }}
+            remarkPlugins={[
+              remarkDirective,
+              mentionDirective,
+              citeDirective(),
+              remarkGfm,
+            ]}
+          >
+            {addClosingBackticks(content)}
+          </ReactMarkdown>
+        </MermaidDisplayProvider>
       </CitationsContext.Provider>
     </div>
   );
@@ -508,33 +505,72 @@ function PreBlock({
     );
   };
 
-  const [isMermaid, setIsMermaid] = useState(false);
+  const { isValidMermaid, showMermaid, setIsValidMermaid, setShowMermaid } =
+    useMermaidDisplay();
+
   useEffect(() => {
-    if (isStreaming || !validChildrenContent || isMermaid) {
+    if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
       return;
     }
     void mermaid
       .parse(validChildrenContent)
       .then(() => {
-        setIsMermaid(true);
+        setIsValidMermaid(true);
+        setShowMermaid(true);
       })
       .catch(() => {
-        setIsMermaid(false);
+        setIsValidMermaid(false);
+        setShowMermaid(false);
       });
-  }, [isStreaming, isMermaid, validChildrenContent]);
+  }, [
+    isStreaming,
+    isValidMermaid,
+    showMermaid,
+    setIsValidMermaid,
+    setShowMermaid,
+    validChildrenContent,
+  ]);
 
   return (
     <pre
       className={classNames(
         "my-2 w-full break-all rounded-md",
-        isMermaid ? "bg-slate-100" : "bg-slate-800"
+        showMermaid ? "bg-slate-100" : "bg-slate-800"
       )}
     >
       <div className="relative">
         <div className="absolute right-2 top-2">
           {(validChildrenContent || fallbackData) && (
             <div className="flex gap-2 align-bottom">
-              <div className="text-xs text-slate-300">
+              {isValidMermaid && (
+                <>
+                  <div
+                    className={classNames(
+                      "text-xs",
+                      showMermaid ? "text-slate-400" : "text-slate-300"
+                    )}
+                  >
+                    <a
+                      onClick={() => setShowMermaid(!showMermaid)}
+                      className="cursor-pointer"
+                    >
+                      {showMermaid ? "See Code" : "See Graph"}
+                    </a>
+                  </div>
+                  <IconButton
+                    variant="tertiary"
+                    size="xs"
+                    icon={showMermaid ? WrenchIcon : SparklesIcon}
+                    onClick={() => setShowMermaid(!showMermaid)}
+                  />
+                </>
+              )}
+              <div
+                className={classNames(
+                  "text-xs",
+                  showMermaid ? "text-slate-400" : "text-slate-300"
+                )}
+              >
                 <a onClick={handleCopyPre} className="cursor-pointer">
                   {isCopied ? "Copied!" : "Copy"}
                 </a>
@@ -587,12 +623,10 @@ function CodeBlock({
   inline,
   className,
   children,
-  isStreaming,
 }: {
   inline?: boolean;
   className?: string;
   children?: React.ReactNode;
-  isStreaming: boolean;
 }): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
@@ -614,27 +648,9 @@ function CodeBlock({
   const languageToUse = languageOverrides[language] || language;
   const validChildrenContent = String(children).trim();
 
-  const [isMermaid, setIsMermaid] = useState(false);
-  useEffect(() => {
-    if (isStreaming || !validChildrenContent || isMermaid) {
-      return;
-    }
-    void mermaid
-      .parse(validChildrenContent)
-      .then(() => {
-        setIsMermaid(true);
-      })
-      .catch(() => {
-        setIsMermaid(false);
-      });
-  }, [isStreaming, isMermaid, validChildrenContent]);
+  const { isValidMermaid, showMermaid } = useMermaidDisplay();
 
-  if (
-    !inline &&
-    language &&
-    language.toLowerCase() === "mermaid" &&
-    isMermaid
-  ) {
+  if (!inline && isValidMermaid && showMermaid) {
     return <MermaidGraph chart={validChildrenContent} />;
   }
 
