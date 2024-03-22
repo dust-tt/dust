@@ -75,6 +75,14 @@ export interface IdentifyProperties {
   SignupDate?: string;
 }
 
+export interface DataSourceCreatedProperties {
+  assistantDefaultSelected: boolean;
+  dataSourceName: string;
+  dataSourceProvider: string;
+  workspaceId: string;
+  workspaceName: string;
+}
+
 export interface PageViewedProperties {
   pathname: string;
 }
@@ -111,6 +119,14 @@ export class Identify implements BaseEvent {
   event_type = amplitude.Types.SpecialEventType.IDENTIFY;
 
   constructor(public event_properties?: IdentifyProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class DataSourceCreated implements BaseEvent {
+  event_type = "DataSourceCreated";
+
+  constructor(public event_properties: DataSourceCreatedProperties) {
     this.event_properties = event_properties;
   }
 }
@@ -258,6 +274,25 @@ export class Ampli {
     }
 
     return this.amplitude!.flush();
+  }
+
+  /**
+   * DataSourceCreated
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/DataSourceCreated)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param userId The user's ID.
+   * @param properties The event's properties (e.g. assistantDefaultSelected)
+   * @param options Amplitude event options.
+   */
+  dataSourceCreated(
+    userId: string | undefined,
+    properties: DataSourceCreatedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(userId, new DataSourceCreated(properties), options);
   }
 
   /**

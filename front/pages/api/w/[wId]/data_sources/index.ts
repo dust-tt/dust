@@ -8,7 +8,8 @@ import {
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSources } from "@app/lib/api/data_sources";
+import { trackDataSourceCreated } from "@app/lib/amplitude/back";
+import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
@@ -169,6 +170,11 @@ async function handler(
         assistantDefaultSelected: req.body.assistantDefaultSelected,
         editedByUserId: user.id,
       });
+
+      const dataSourceType = await getDataSource(auth, ds.name);
+      if (dataSourceType) {
+        trackDataSourceCreated(auth, { dataSource: dataSourceType });
+      }
 
       res.status(201).json({
         dataSource: {
