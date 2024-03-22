@@ -173,6 +173,7 @@ async function handler(
       res.status(201).json({
         dataSource: {
           id: ds.id,
+          createdAt: ds.createdAt.getTime(),
           name: ds.name,
           description: ds.description,
           dustAPIProjectId: ds.dustAPIProjectId,
