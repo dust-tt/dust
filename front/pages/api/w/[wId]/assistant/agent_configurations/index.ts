@@ -15,6 +15,7 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { trackAssistantCreated } from "@app/lib/amplitude/back";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -278,7 +279,7 @@ export async function createOrUpgradeAgentConfiguration(
     });
   }
 
-  return createAgentConfiguration(auth, {
+  const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
     pictureUrl,
@@ -288,4 +289,12 @@ export async function createOrUpgradeAgentConfiguration(
     action: actionConfig,
     agentConfigurationId,
   });
+  if (agentConfigurationRes.isOk()) {
+    // We are not tracking draft agents
+    if (agentConfigurationRes.value.status === "active") {
+      trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
+    }
+  }
+
+  return agentConfigurationRes;
 }

@@ -1,5 +1,6 @@
 import { Identify } from "@amplitude/analytics-node";
 import type {
+  AgentConfigurationType,
   DataSourceType,
   ModelId,
   UserMessageType,
@@ -10,6 +11,7 @@ import type {
 import type { Ampli } from "@app/lib/amplitude/back/generated";
 import {
   ampli,
+  AssistantCreated,
   DataSourceCreated,
   UserMessagePosted,
 } from "@app/lib/amplitude/back/generated";
@@ -170,6 +172,37 @@ export function trackDataSourceCreated(
     {
       time: dataSource.createdAt,
       insert_id: `data_source_created_${dataSource.id}`,
+    }
+  );
+}
+
+export function trackAssistantCreated(
+  auth: Authenticator,
+  { assistant }: { assistant: AgentConfigurationType }
+) {
+  const userId = auth.user()?.id;
+  const workspace = auth.workspace();
+  if (!workspace || !userId) {
+    return;
+  }
+  const amplitude = getBackendClient();
+  const event = new AssistantCreated({
+    assistantId: assistant.sId,
+    assistantName: assistant.name,
+    workspaceName: workspace.name,
+    workspaceId: workspace.sId,
+    assistantScope: assistant.scope,
+    assistantActionType: assistant.action?.type || "",
+    assistantVersion: assistant.version,
+  });
+  amplitude.track(
+    `user-${userId}`,
+    { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
+    {
+      time: assistant.versionCreatedAt
+        ? new Date(assistant.versionCreatedAt).getTime()
+        : Date.now(),
+      insert_id: `assistant_created_${assistant.sId}`,
     }
   );
 }
