@@ -83,10 +83,6 @@ ContentFragmentModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    textTokens: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
     userContextProfilePictureUrl: {
       type: DataTypes.STRING,
       allowNull: true,

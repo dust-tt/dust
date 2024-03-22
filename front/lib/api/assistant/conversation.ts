@@ -42,7 +42,6 @@ import {
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -57,7 +56,6 @@ import {
   batchRenderContentFragment,
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
-import appConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -71,12 +69,10 @@ import {
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import {
   ContentFragmentResource,
-  contentFragmentUrl,
+  storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { gcsConfig } from "@app/lib/resources/storage/config";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { tokenCountForText } from "@app/lib/tokenization";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 /**
@@ -1721,39 +1717,4 @@ async function isMessagesLimitReached({
   });
 
   return remaining <= 0;
-}
-
-async function storeContentFragmentText({
-  workspaceId,
-  conversationId,
-  messageId,
-  content,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-  content: string;
-}): Promise<string | null> {
-  if (content === "") {
-    return null;
-  }
-
-  const { filePath, fileUrl } = contentFragmentUrl({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "text",
-  });
-  const storage = new Storage({
-    keyFilename: appConfig.getServiceAccount(),
-  });
-
-  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-  const gcsFile = bucket.file(filePath);
-
-  await gcsFile.save(content, {
-    contentType: "text/plain",
-  });
-
-  return fileUrl;
 }
