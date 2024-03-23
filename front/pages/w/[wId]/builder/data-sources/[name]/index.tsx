@@ -26,7 +26,7 @@ import type {
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
@@ -258,8 +258,13 @@ function DatasourceDocumentsTabView({
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
 
-  const { documents, total, isDocumentsLoading, isDocumentsError } =
-    useDocuments(owner, dataSource, limit, offset);
+  const {
+    documents,
+    total,
+    isDocumentsLoading,
+    isDocumentsError,
+    mutateDocuments,
+  } = useDocuments(owner, dataSource, limit, offset);
   const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
@@ -289,22 +294,35 @@ function DatasourceDocumentsTabView({
       async: false,
     };
 
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${
-        dataSource.name
-      }/documents/${encodeURIComponent(documentId)}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/data_sources/${
+          dataSource.name
+        }/documents/${encodeURIComponent(documentId)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
-    if (!res.ok) {
-      throw new Error("Error uploading document.");
+      if (!res.ok) {
+        let errMsg = "";
+        try {
+          const data = await res.json();
+          errMsg = data.error.message;
+        } catch (e) {
+          errMsg = "An error occurred while uploading your document.";
+        }
+        return new Err(errMsg);
+      }
+    } catch (e) {
+      return new Err("An error occurred while uploading your document.");
     }
+
+    return new Ok(null);
   };
 
   useEffect(() => {
@@ -402,8 +420,12 @@ function DatasourceDocumentsTabView({
                   isOpen={bulkFilesUploading !== null}
                   title={`Uploading files`}
                 >
-                  Processing {bulkFilesUploading?.completed}/
-                  {bulkFilesUploading?.total}
+                  {bulkFilesUploading && (
+                    <>
+                      Processing files {bulkFilesUploading.completed} /{" "}
+                      {bulkFilesUploading.total}
+                    </>
+                  )}
                 </Dialog>
                 <input
                   className="hidden"
@@ -425,15 +447,25 @@ function DatasourceDocumentsTabView({
                           completed: i++,
                         });
                         try {
-                          const res = await handleFileUploadToText(file);
-                          if (res.isOk()) {
-                            await handleUpsert(res.value.content, file.name);
-                          } else {
+                          const uploadRes = await handleFileUploadToText(file);
+                          if (uploadRes.isErr()) {
                             sendNotification({
                               type: "error",
                               title: `Error uploading document ${file.name}`,
-                              description: res.error.message,
+                              description: uploadRes.error.message,
                             });
+                          } else {
+                            const upsertRes = await handleUpsert(
+                              uploadRes.value.content,
+                              file.name
+                            );
+                            if (upsertRes.isErr()) {
+                              sendNotification({
+                                type: "error",
+                                title: `Error uploading document ${file.name}`,
+                                description: upsertRes.error,
+                              });
+                            }
                           }
                         } catch (e) {
                           sendNotification({
@@ -444,7 +476,7 @@ function DatasourceDocumentsTabView({
                         }
                       }
                       setBulkFilesUploading(null);
-                      router.reload();
+                      await mutateDocuments();
                     }
                   }}
                 ></input>
