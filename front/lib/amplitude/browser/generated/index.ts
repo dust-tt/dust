@@ -78,6 +78,15 @@ export interface FairUsageDialogViewedProperties {
   workspaceName: string;
 }
 
+export interface MultiFilesUploadUsedProperties {
+  /**
+   * | Rule | Value |
+   * |---|---|
+   * | Type | number |
+   */
+  fileCount: number;
+}
+
 export interface PageViewedProperties {
   pathname: string;
 }
@@ -113,6 +122,14 @@ export class FairUsageDialogViewed implements BaseEvent {
   event_type = "FairUsageDialogViewed";
 
   constructor(public event_properties: FairUsageDialogViewedProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class MultiFilesUploadUsed implements BaseEvent {
+  event_type = "MultiFilesUploadUsed";
+
+  constructor(public event_properties: MultiFilesUploadUsedProperties) {
     this.event_properties = event_properties;
   }
 }
@@ -282,6 +299,23 @@ export class Ampli {
     options?: EventOptions,
   ) {
     return this.track(new FairUsageDialogViewed(properties), options);
+  }
+
+  /**
+   * MultiFilesUploadUsed
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/MultiFilesUploadUsed)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param properties The event's properties (e.g. fileCount)
+   * @param options Amplitude event options.
+   */
+  multiFilesUploadUsed(
+    properties: MultiFilesUploadUsedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(new MultiFilesUploadUsed(properties), options);
   }
 
   /**
