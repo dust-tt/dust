@@ -1,10 +1,11 @@
+import { Op } from "sequelize";
+
 import { Conversation, Message, Workspace } from "@app/lib/models";
 import {
   ContentFragmentResource,
   storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { Op } from "sequelize";
 
 const { LIVE } = process.env;
 
@@ -21,12 +22,12 @@ async function migrateContentFragment(
       workspaceId,
       conversationId,
       messageId: cfMessage.sId,
-      // @ts-ignore content was removed from ContentFragmentResource
+      // @ts-expect-error content was removed from ContentFragmentResource
       content: cf.content,
     });
     await cf.update({
       textUrl: fileUrl,
-      // @ts-ignore content was removed from ContentFragmentResource
+      // @ts-expect-error content was removed from ContentFragmentResource
       textBytes: Buffer.byteLength(cf.content),
     });
   }
@@ -35,7 +36,7 @@ async function migrateContentFragment(
   // is null, set sourceUrl to textUrl
   if (!cf.sourceUrl) {
     await cf.update({
-      // @ts-ignore url was removed from ContentFragmentResource
+      // @ts-expect-error url was removed from ContentFragmentResource
       sourceUrl: cf.url ?? cf.textUrl,
     });
   }

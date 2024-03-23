@@ -19,8 +19,6 @@ export class ContentFragmentModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare title: string;
-  declare content: string;
-  declare url: string | null;
   declare contentType: ContentFragmentContentType;
   declare sourceUrl: string | null; // GCS (upload) or Slack or ...
 
@@ -58,14 +56,6 @@ ContentFragmentModel.init(
     title: {
       type: DataTypes.TEXT,
       allowNull: false,
-    },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    url: {
-      type: DataTypes.TEXT,
-      allowNull: true,
     },
     contentType: {
       type: DataTypes.STRING,
