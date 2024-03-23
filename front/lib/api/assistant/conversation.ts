@@ -1555,7 +1555,6 @@ export async function postNewContentFragment(
 
       const contentFragment = await ContentFragmentResource.makeNew(
         {
-          content,
           title,
           url,
           sourceUrl,
