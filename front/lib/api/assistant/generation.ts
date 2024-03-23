@@ -111,18 +111,34 @@ export async function renderConversationForModel({
         content,
       });
     } else if (isContentFragmentType(m)) {
-      messages.unshift({
-        role: "content_fragment",
-        name: `inject_${m.contentType}`,
-        content:
-          `TITLE: ${m.title}\n` +
-          `TYPE: ${m.contentType}${
-            m.contentType === "file_attachment" ? " (user provided)" : ""
-          }\n` +
-          `CONTENT:\n${
-            (await getContentFragmentText(m)) || "[NO USABLE CONTENT]"
-          }`,
-      });
+      try {
+        const content = await getContentFragmentText({
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: m.sId,
+        });
+        messages.unshift({
+          role: "content_fragment",
+          name: `inject_${m.contentType}`,
+          content:
+            `TITLE: ${m.title}\n` +
+            `TYPE: ${m.contentType}${
+              m.contentType === "file_attachment" ? " (user provided)" : ""
+            }\n` +
+            `CONTENT:\n${content}`,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          },
+          "Failed to retrieve content fragment text"
+        );
+        return new Err(new Error("Failed to retrieve content fragment text"));
+      }
     } else {
       ((x: never) => {
         throw new Error(`Unexpected message type: ${x}`);
