@@ -62,7 +62,7 @@ export function trackPageView({
   });
 }
 
-export function trackMultiFileUploadUsed({
+export function trackMultiFilesUploadUsed({
   fileCount,
   workspaceId,
 }: {

@@ -42,7 +42,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { trackMultiFileUploadUsed } from "@app/lib/amplitude/browser";
+import { trackMultiFilesUploadUsed } from "@app/lib/amplitude/browser";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -414,7 +414,7 @@ function DatasourceDocumentsTabView({
                   onChange={async (e) => {
                     if (e.target.files && e.target.files.length > 0) {
                       const files = e.target.files;
-                      trackMultiFileUploadUsed({
+                      trackMultiFilesUploadUsed({
                         fileCount: files.length,
                         workspaceId: owner.sId,
                       });
