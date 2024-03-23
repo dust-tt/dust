@@ -168,18 +168,28 @@ export async function storeContentFragmentText({
   return fileUrl;
 }
 
-export async function getContentFragmentText(
-  contentFragment: ContentFragmentType
-): Promise<string | null> {
-  if (!contentFragment.textUrl) {
-    return null;
-  }
-
+export async function getContentFragmentText({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}): Promise<string> {
   const storage = new Storage({
     keyFilename: appConfig.getServiceAccount(),
   });
+
+  const { filePath } = contentFragmentUrl({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "text",
+  });
+
   const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-  const gcsFile = bucket.file(contentFragment.textUrl);
+  const gcsFile = bucket.file(filePath);
 
   const [content] = await gcsFile.download();
   return content.toString();
