@@ -1,7 +1,5 @@
 import type {
-  AgentMessageType,
   AgentMessageWithRankType,
-  UserMessageType,
   UserMessageWithRankType,
   UserType,
 } from "@dust-tt/types";

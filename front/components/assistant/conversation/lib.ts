@@ -5,7 +5,6 @@ import type {
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
-  UserMessageType,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
