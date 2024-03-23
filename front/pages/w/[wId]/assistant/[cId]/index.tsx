@@ -1,4 +1,10 @@
-import type { MessageType, UserType } from "@dust-tt/types";
+import type {
+  AgentMessageType,
+  AgentMessageWithRankType,
+  UserMessageType,
+  UserMessageWithRankType,
+  UserType,
+} from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import { cloneDeep } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -59,9 +65,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
  * If message pages exist, add the optimistic message to the first page, since
  * the message pages array is not yet reversed.
  */
-function updateMessagePagesWithOptimisticData(
+export function updateMessagePagesWithOptimisticData(
   currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  messageOrPlaceholder: MessageType
+  messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
 ): FetchConversationMessagesResponse[] {
   if (!currentMessagePages || currentMessagePages.length === 0) {
     return [
@@ -162,10 +168,14 @@ export default function AssistantConversation({
         {
           // Add optimistic data placeholder.
           optimisticData: (currentMessagePages) => {
+            const lastMessageRank =
+              currentMessagePages?.at(0)?.messages.at(-1)?.rank ?? 0;
+
             const placeholderMessage = createPlaceholderUserMessage({
               input,
               mentions,
               user,
+              lastMessageRank,
             });
             return updateMessagePagesWithOptimisticData(
               currentMessagePages,

@@ -1,6 +1,6 @@
 import {
-  AgentMessageType,
-  UserMessageType,
+  AgentMessageWithRankType,
+  UserMessageWithRankType,
 } from "../../../../front/assistant/conversation";
 
 // Event sent when the user message is created.
@@ -8,7 +8,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageType;
+  message: UserMessageWithRankType;
 };
 
 // Event sent when the user message is created.
@@ -27,7 +27,7 @@ export type AgentMessageNewEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AgentMessageType;
+  message: AgentMessageWithRankType;
 };
 
 // Event sent when the conversation title is updated.

@@ -4,6 +4,7 @@ import type {
   GenerationTokensEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
+  UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type {
@@ -664,7 +665,7 @@ export async function* postUserMessage(
       ]);
 
       const m = result[0];
-      const userMessage: UserMessageType = {
+      const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -675,6 +676,7 @@ export async function* postUserMessage(
         mentions: mentions,
         content,
         context: context,
+        rank: m.rank,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -736,6 +738,7 @@ export async function* postUserMessage(
                   content: null,
                   error: null,
                   configuration,
+                  rank: messageRow.rank,
                 },
               };
             })();
