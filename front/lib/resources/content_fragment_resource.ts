@@ -167,3 +167,20 @@ export async function storeContentFragmentText({
 
   return fileUrl;
 }
+
+export async function getContentFragmentText(
+  contentFragment: ContentFragmentType
+): Promise<string | null> {
+  if (!contentFragment.textUrl) {
+    return null;
+  }
+
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(contentFragment.textUrl);
+
+  const [content] = await gcsFile.download();
+  return content.toString();
+}
