@@ -21,10 +21,12 @@ async function migrateContentFragment(
       workspaceId,
       conversationId,
       messageId: cfMessage.sId,
+      // @ts-ignore content was removed from ContentFragmentResource
       content: cf.content,
     });
     await cf.update({
       textUrl: fileUrl,
+      // @ts-ignore content was removed from ContentFragmentResource
       textBytes: Buffer.byteLength(cf.content),
     });
   }
@@ -33,6 +35,7 @@ async function migrateContentFragment(
   // is null, set sourceUrl to textUrl
   if (!cf.sourceUrl) {
     await cf.update({
+      // @ts-ignore url was removed from ContentFragmentResource
       sourceUrl: cf.url ?? cf.textUrl,
     });
   }
@@ -112,6 +115,13 @@ async function migrateContentFragmentsForWorkspace(workspace: Workspace) {
 }
 
 async function main() {
+  if (LIVE) {
+    throw new Error(
+      `This script was used to migrate columns that are now removed.
+      Manually disable this error and check the tslint ignores if you
+      really need to run it`
+    );
+  }
   // get all ids and sIds of workspaces
   const workspaces = await Workspace.findAll({
     attributes: ["id", "sId"],
