@@ -1,5 +1,9 @@
 import type { Ampli } from "@app/lib/amplitude/browser/generated";
-import { ampli, PageViewed } from "@app/lib/amplitude/browser/generated";
+import {
+  ampli,
+  MultiFilesUploadUsed,
+  PageViewed,
+} from "@app/lib/amplitude/browser/generated";
 import {
   AMPLITUDE_PUBLIC_API_KEY,
   GROUP_TYPE,
@@ -47,6 +51,27 @@ export function trackPageView({
   const client = getBrowserClient();
   const event = new PageViewed({
     pathname,
+  });
+  client.track({
+    ...event,
+    groups: workspaceId
+      ? {
+          [GROUP_TYPE]: workspaceId,
+        }
+      : undefined,
+  });
+}
+
+export function trackMultiFilesUploadUsed({
+  fileCount,
+  workspaceId,
+}: {
+  fileCount: number;
+  workspaceId?: string;
+}) {
+  const client = getBrowserClient();
+  const event = new MultiFilesUploadUsed({
+    fileCount,
   });
   client.track({
     ...event,

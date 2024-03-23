@@ -20,6 +20,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  PostDataSourceDocumentRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -31,7 +32,7 @@ import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
@@ -41,7 +42,9 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { trackMultiFilesUploadUsed } from "@app/lib/amplitude/browser";
 import { getDataSource } from "@app/lib/api/data_sources";
+import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -262,6 +265,47 @@ function DatasourceDocumentsTabView({
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
+  const sendNotification = useContext(SendNotificationsContext);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [bulkFilesUploading, setBulkFilesUploading] = useState<null | {
+    total: number;
+    completed: number;
+  }>(null);
+
+  const handleUpsert = async (text: string, documentId: string) => {
+    const body: PostDataSourceDocumentRequestBody = {
+      timestamp: null,
+      parents: null,
+      section: {
+        prefix: null,
+        content: text,
+        sections: [],
+      },
+      text: null,
+      source_url: undefined,
+      tags: [],
+      light_document_output: true,
+      upsert_context: null,
+      async: false,
+    };
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${
+        dataSource.name
+      }/documents/${encodeURIComponent(documentId)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Error uploading document.");
+    }
+  };
 
   useEffect(() => {
     if (!isDocumentsLoading && !isDocumentsError) {
@@ -343,6 +387,78 @@ function DatasourceDocumentsTabView({
                 }}
                 className="absolute bottom-8 right-0"
               />
+
+              <>
+                <Dialog
+                  onCancel={() => {
+                    //no-op as we can't cancel file upload
+                  }}
+                  onValidate={() => {
+                    //no-op as we can't cancel file upload
+                  }}
+                  // isSaving is always true since we are showing this Dialog while
+                  // uploading files only
+                  isSaving={true}
+                  isOpen={bulkFilesUploading !== null}
+                  title={`Uploading files`}
+                >
+                  Processing {bulkFilesUploading?.completed}/
+                  {bulkFilesUploading?.total}
+                </Dialog>
+                <input
+                  className="hidden"
+                  type="file"
+                  accept=".txt, .pdf, .md, .csv"
+                  ref={fileInputRef}
+                  multiple={true}
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      const files = e.target.files;
+                      trackMultiFilesUploadUsed({
+                        fileCount: files.length,
+                        workspaceId: owner.sId,
+                      });
+                      let i = 0;
+                      for (const file of files) {
+                        setBulkFilesUploading({
+                          total: files.length,
+                          completed: i++,
+                        });
+                        try {
+                          const res = await handleFileUploadToText(file);
+                          if (res.isOk()) {
+                            await handleUpsert(res.value.content, file.name);
+                          } else {
+                            sendNotification({
+                              type: "error",
+                              title: `Error uploading document ${file.name}`,
+                              description: res.error.message,
+                            });
+                          }
+                        } catch (e) {
+                          sendNotification({
+                            type: "error",
+                            title: "Error uploading document",
+                            description: `An error occurred while uploading your documents.`,
+                          });
+                        }
+                      }
+                      setBulkFilesUploading(null);
+                      router.reload();
+                    }
+                  }}
+                ></input>
+
+                <Button
+                  className="mr-2"
+                  variant="secondary"
+                  icon={PlusIcon}
+                  label="Upload multiples files"
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                />
+              </>
 
               <Button
                 variant="primary"
