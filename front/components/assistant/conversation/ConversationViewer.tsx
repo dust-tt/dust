@@ -27,20 +27,20 @@ import { updateMessagePagesWithOptimisticData } from "@app/pages/w/[wId]/assista
 
 const DEFAULT_PAGE_LIMIT = 50;
 
-function shouldProcessEvent(
+function shouldProcessStreamEvent(
   messages: FetchConversationMessagesResponse[] | undefined,
   event:
     | UserMessageNewEvent
     | AgentMessageNewEvent
     | AgentGenerationCancelledEvent
 ): boolean {
-  const isMessageInPage = messages?.some((messages) => {
+  const isMessageAlreadyInPages = messages?.some((messages) => {
     return messages.messages.some(
       (message) => "sId" in message && message.sId === event.messageId
     );
   });
 
-  return !isMessageInPage;
+  return !isMessageAlreadyInPages;
 }
 
 interface ConversationViewerProps {
@@ -255,7 +255,7 @@ export default function ConversationViewer({
             // Ignore user_message_new event as the optimistic mechanism covers it
             break;
           case "agent_message_new":
-            if (shouldProcessEvent(messages, event)) {
+            if (shouldProcessStreamEvent(messages, event)) {
               // Temporarily add agent message using event payload until revalidation.
               void mutateMessages(async (currentMessagePages) => {
                 if (!currentMessagePages) {
@@ -280,7 +280,7 @@ export default function ConversationViewer({
             break;
 
           case "agent_generation_cancelled":
-            if (shouldProcessEvent(messages, event)) {
+            if (shouldProcessStreamEvent(messages, event)) {
               void mutateMessages();
             }
             break;
