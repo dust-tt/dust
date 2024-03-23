@@ -12,7 +12,7 @@ import ConversationLayout from "@app/components/assistant/conversation/Conversat
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
-  createPlaceholderMessage,
+  createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -62,7 +62,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 function updateMessagePagesWithOptimisticData(
   currentMessagePages: FetchConversationMessagesResponse[] | undefined,
   messageOrPlaceholder: MessageType
-) {
+): FetchConversationMessagesResponse[] {
   if (!currentMessagePages || currentMessagePages.length === 0) {
     return [
       {
@@ -70,13 +70,11 @@ function updateMessagePagesWithOptimisticData(
         hasMore: false,
         lastValue: null,
       },
-    ] as FetchConversationMessagesResponse[];
+    ];
   }
 
   // We need to deep clone here, since SWR relies on the reference.
-  const updatedMessages = cloneDeep(
-    currentMessagePages
-  ) as FetchConversationMessagesResponse[];
+  const updatedMessages = cloneDeep(currentMessagePages);
   updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
 
   return updatedMessages;
@@ -164,7 +162,7 @@ export default function AssistantConversation({
         {
           // Add optimistic data placeholder.
           optimisticData: (currentMessagePages) => {
-            const placeholderMessage = createPlaceholderMessage({
+            const placeholderMessage = createPlaceholderUserMessage({
               input,
               mentions,
               user,

@@ -35,7 +35,7 @@ export type ConversationErrorType = {
   message: string;
 };
 
-export function createPlaceholderMessage({
+export function createPlaceholderUserMessage({
   input,
   mentions,
   user,
