@@ -401,7 +401,7 @@ function DatasourceDocumentsTabView({
                   isOpen={bulkFilesUploading !== null}
                   title={`Uploading files`}
                 >
-                  Uploading files {bulkFilesUploading?.completed} /{" "}
+                  Processing {bulkFilesUploading?.completed}/
                   {bulkFilesUploading?.total}
                 </Dialog>
                 <input
