@@ -99,6 +99,9 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       title: this.title,
       content: this.content,
       url: this.url,
+      sourceUrl: this.sourceUrl,
+      textUrl: this.textUrl,
+      textBytes: this.textBytes,
       contentType: this.contentType,
       context: {
         profilePictureUrl: this.userContextProfilePictureUrl,
