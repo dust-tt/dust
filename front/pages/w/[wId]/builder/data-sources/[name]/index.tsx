@@ -434,7 +434,6 @@ function DatasourceDocumentsTabView({
                   ref={fileInputRef}
                   multiple={true}
                   onChange={async (e) => {
-                    console.log("Files selected", e.target.files);
                     if (e.target.files && e.target.files.length > 0) {
                       const files = e.target.files;
                       trackMultiFilesUploadUsed({
