@@ -145,8 +145,6 @@ export type ContentFragmentType = {
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
-  content: string;
-  url: string | null;
   contentType: ContentFragmentContentType;
   context: ContentFragmentContextType;
 };
