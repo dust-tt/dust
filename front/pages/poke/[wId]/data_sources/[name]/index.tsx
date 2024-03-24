@@ -144,7 +144,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         if (gdriveLargeFilesEnabledRes.isErr()) {
           throw gdriveLargeFilesEnabledRes.error;
         }
-        features.googleDrivePdfEnabled =
+        features.googleDriveLargeFilesEnabled =
           gdriveLargeFilesEnabledRes.value.configValue === "true";
         break;
       case "github":
