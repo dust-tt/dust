@@ -138,7 +138,7 @@ export class Authenticator {
             ? (membership.role as RoleType)
             : "none";
         })(),
-        subscriptionForWorkspace(workspace),
+        subscriptionForWorkspace(workspace.sId),
         (async () => {
           return (
             await FeatureFlag.findAll({
@@ -202,7 +202,7 @@ export class Authenticator {
 
     if (workspace) {
       [subscription, flags] = await Promise.all([
-        subscriptionForWorkspace(workspace),
+        subscriptionForWorkspace(workspace.sId),
         (async () => {
           return (
             await FeatureFlag.findAll({
@@ -268,7 +268,7 @@ export class Authenticator {
 
     if (workspace) {
       [subscription, flags] = await Promise.all([
-        subscriptionForWorkspace(workspace),
+        subscriptionForWorkspace(workspace.sId),
         (async () => {
           return (
             await FeatureFlag.findAll({
@@ -313,7 +313,7 @@ export class Authenticator {
     let flags: WhitelistableFeature[] = [];
 
     [subscription, flags] = await Promise.all([
-      subscriptionForWorkspace(workspace),
+      subscriptionForWorkspace(workspace.sId),
       (async () => {
         return (
           await FeatureFlag.findAll({
@@ -350,7 +350,7 @@ export class Authenticator {
     let flags: WhitelistableFeature[] = [];
 
     [subscription, flags] = await Promise.all([
-      subscriptionForWorkspace(workspace),
+      subscriptionForWorkspace(workspace.sId),
       (async () => {
         return (
           await FeatureFlag.findAll({
@@ -518,8 +518,17 @@ export async function getAPIKey(
  * @returns SubscriptionType
  */
 export async function subscriptionForWorkspace(
-  w: Workspace
-): Promise<Promise<SubscriptionType>> {
+  workspaceId: string
+): Promise<SubscriptionType> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+  if (!workspace) {
+    throw new Error(`Could not find workspace with sId ${workspaceId}`);
+  }
+
   const activeSubscription = await Subscription.findOne({
     attributes: [
       "endDate",
@@ -532,7 +541,7 @@ export async function subscriptionForWorkspace(
       "stripeSubscriptionId",
       "trialing",
     ],
-    where: { workspaceId: w.id, status: "active" },
+    where: { workspaceId: workspace.id, status: "active" },
     include: [
       {
         model: Plan,
@@ -554,7 +563,7 @@ export async function subscriptionForWorkspace(
     } else {
       logger.error(
         {
-          workspaceId: w.id,
+          workspaceId: workspaceId,
           activeSubscription,
         },
         "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
