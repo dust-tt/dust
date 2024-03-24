@@ -1,29 +1,27 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
   "application/vnd.google-apps.presentation": "text/plain",
 };
 
-export async function getMimeTypesToDownload(connectorId: ModelId) {
+export function getMimeTypesToDownload({
+  pdfEnabled,
+}: {
+  pdfEnabled: boolean;
+}) {
   const mimeTypes = ["text/plain"];
-  const config = await GoogleDriveConfig.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-  if (config?.pdfEnabled) {
+  if (pdfEnabled) {
     mimeTypes.push("application/pdf");
   }
 
   return mimeTypes;
 }
 
-export async function getMimesTypeToSync(connectorId: ModelId) {
-  const mimeTypes = await getMimeTypesToDownload(connectorId);
+export function getMimeTypesToSync({ pdfEnabled }: { pdfEnabled: boolean }) {
+  const mimeTypes = getMimeTypesToDownload({
+    pdfEnabled,
+  });
   mimeTypes.push(...Object.keys(MIME_TYPES_TO_EXPORT));
   mimeTypes.push("application/vnd.google-apps.folder");
   mimeTypes.push("application/vnd.google-apps.spreadsheet");

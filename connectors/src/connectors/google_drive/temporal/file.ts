@@ -48,7 +48,9 @@ export async function syncOneFile(
     ? MAX_LARGE_DOCUMENT_TXT_LEN
     : MAX_DOCUMENT_TXT_LEN;
 
-  const mimeTypesToDownload = await getMimeTypesToDownload(connectorId);
+  const mimeTypesToDownload = getMimeTypesToDownload({
+    pdfEnabled: config?.pdfEnabled || false,
+  });
   const documentId = getDocumentId(file.id);
   let documentContent: string | undefined = undefined;
 
