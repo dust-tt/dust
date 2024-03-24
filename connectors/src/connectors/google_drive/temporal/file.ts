@@ -18,11 +18,15 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   MAX_DOCUMENT_TXT_LEN,
+  MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveConfig,
+  GoogleDriveFiles,
+} from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -35,7 +39,18 @@ export async function syncOneFile(
   startSyncTs: number,
   isBatchSync = false
 ): Promise<boolean> {
-  const mimeTypesToDownload = await getMimeTypesToDownload(connectorId);
+  const config = await GoogleDriveConfig.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  const maxDocumentLen = config?.largeFilesEnabled
+    ? MAX_LARGE_DOCUMENT_TXT_LEN
+    : MAX_DOCUMENT_TXT_LEN;
+
+  const mimeTypesToDownload = getMimeTypesToDownload({
+    pdfEnabled: config?.pdfEnabled || false,
+  });
   const documentId = getDocumentId(file.id);
   let documentContent: string | undefined = undefined;
 
@@ -183,7 +198,7 @@ export async function syncOneFile(
         // converted to utf-8 it will overcome the limit enforced below. This
         // avoids operations on very long text files, that can cause
         // Buffer.toString to crash if the file is > 500MB
-        if (res.data.byteLength > 4 * MAX_DOCUMENT_TXT_LEN) {
+        if (res.data.byteLength > 4 * maxDocumentLen) {
           logger.info(
             {
               file_id: file.id,
@@ -311,7 +326,7 @@ export async function syncOneFile(
 
     if (
       documentContent.length > 0 &&
-      documentContent.length <= MAX_DOCUMENT_TXT_LEN
+      documentContent.length <= maxDocumentLen
     ) {
       const parents = (
         await getFileParentsMemoized(

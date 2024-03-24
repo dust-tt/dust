@@ -117,6 +117,7 @@ export async function createGoogleDriveConnector(
 
   const googleDriveConfigurationBlob = {
     pdfEnabled: false,
+    largeFilesEnabled: false,
   };
 
   const connector = await ConnectorResource.makeNew(
@@ -769,17 +770,31 @@ export async function setGoogleDriveConfig(
       new Error(`Google Drive config not found with connectorId ${connectorId}`)
     );
   }
+
+  if (!["true", "false"].includes(configValue)) {
+    return new Err(
+      new Error(`Invalid config value ${configValue}, must be true or false`)
+    );
+  }
+
   switch (configKey) {
     case "pdfEnabled": {
-      if (!["true", "false"].includes(configValue)) {
-        return new Err(
-          new Error(
-            `Invalid config value ${configValue}, must be true or false`
-          )
-        );
-      }
       await config.update({
         pdfEnabled: configValue === "true",
+      });
+      const workflowRes = await launchGoogleDriveFullSyncWorkflow(
+        connectorId,
+        null
+      );
+      if (workflowRes.isErr()) {
+        return workflowRes;
+      }
+      return new Ok(void 0);
+    }
+
+    case "largeFilesEnabled": {
+      await config.update({
+        largeFilesEnabled: configValue === "true",
       });
       const workflowRes = await launchGoogleDriveFullSyncWorkflow(
         connectorId,

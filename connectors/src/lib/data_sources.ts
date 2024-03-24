@@ -29,6 +29,8 @@ if (!DUST_FRONT_API) {
 // We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
+// For some data sources we allow large documents (5mb) to be processed (behind flag).
+export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
 
 type UpsertContext = {
   sync_type: "batch" | "incremental";

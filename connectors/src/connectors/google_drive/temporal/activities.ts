@@ -13,7 +13,7 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import {
-  getMimesTypeToSync,
+  getMimeTypesToSync,
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
@@ -28,6 +28,7 @@ import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { HTTPError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
+  GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
@@ -114,7 +115,14 @@ export async function syncFiles(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const mimeTypeToSync = await getMimesTypeToSync(connectorId);
+  const config = await GoogleDriveConfig.findOne({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  const mimeTypesToSync = getMimeTypesToSync({
+    pdfEnabled: config?.pdfEnabled || false,
+  });
   const authCredentials = await getAuthObject(connector.connectionId);
   const driveFolder = await getGoogleDriveObject(
     authCredentials,
@@ -149,7 +157,7 @@ export async function syncFiles(
   }
 
   const drive = await getDriveClient(authCredentials);
-  const mimeTypesSearchString = mimeTypeToSync
+  const mimeTypesSearchString = mimeTypesToSync
     .map((mimeType) => `mimeType='${mimeType}'`)
     .join(" or ");
 
@@ -255,7 +263,14 @@ export async function incrementalSync(
     if (!nextPageToken) {
       nextPageToken = await getSyncPageToken(connectorId, driveId, sharedDrive);
     }
-    const mimeTypesToSync = await getMimesTypeToSync(connectorId);
+    const config = await GoogleDriveConfig.findOne({
+      where: {
+        connectorId: connectorId,
+      },
+    });
+    const mimeTypesToSync = getMimeTypesToSync({
+      pdfEnabled: config?.pdfEnabled || false,
+    });
 
     const selectedFoldersIds = await getFoldersToSync(connectorId);
 
