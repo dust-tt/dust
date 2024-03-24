@@ -117,6 +117,7 @@ export async function createGoogleDriveConnector(
 
   const googleDriveConfigurationBlob = {
     pdfEnabled: false,
+    largeFilesEnabled: false,
   };
 
   const connector = await ConnectorResource.makeNew(
