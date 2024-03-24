@@ -748,6 +748,9 @@ export async function getGoogleDriveConfig(
     case "pdfEnabled": {
       return new Ok(config.pdfEnabled ? "true" : "false");
     }
+    case "largeFilesEnabled": {
+      return new Ok(config.largeFilesEnabled ? "true" : "false");
+    }
     default:
       return new Err(new Error(`Invalid config key ${configKey}`));
   }
