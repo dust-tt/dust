@@ -48,6 +48,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   features: {
     slackBotEnabled: boolean;
     googleDrivePdfEnabled: boolean;
+    googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
   };
   temporalWorkspace: string;
@@ -102,10 +103,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const features: {
     slackBotEnabled: boolean;
     googleDrivePdfEnabled: boolean;
+    googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
   } = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
+    googleDriveLargeFilesEnabled: false,
     githubCodeSyncEnabled: false,
   };
 
@@ -132,6 +135,17 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.googleDrivePdfEnabled =
           gdrivePDFEnabledRes.value.configValue === "true";
+
+        const gdriveLargeFilesEnabledRes =
+          await connectorsAPI.getConnectorConfig(
+            dataSource.connectorId,
+            "largeFilesEnabled"
+          );
+        if (gdriveLargeFilesEnabledRes.isErr()) {
+          throw gdriveLargeFilesEnabledRes.error;
+        }
+        features.googleDrivePdfEnabled =
+          gdriveLargeFilesEnabledRes.value.configValue === "true";
         break;
       case "github":
         const githubConnectorEnabledRes =
@@ -243,12 +257,37 @@ const DataSourcePage = ({
         }
       );
       if (!r.ok) {
-        throw new Error("Failed to toggle Gdrive PDF sync.");
+        throw new Error("Failed to toggle Google Drive PDF sync.");
       }
       router.reload();
     } catch (e) {
       console.error(e);
-      window.alert("Failed to toggle Gdrive PDF sync.");
+      window.alert("Failed to toggle Google Drive PDF sync.");
+    }
+  });
+
+  const { submit: onGdriveLargeFilesToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-google_drive/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "largeFilesEnabled",
+            configValue: `${!features.googleDriveLargeFilesEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle Google Drive Large Files sync.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("Failed to toggle Google Drive Large Files sync.");
     }
   });
 
@@ -370,13 +409,22 @@ const DataSourcePage = ({
             />
           )}
           {dataSource.connectorProvider === "google_drive" && (
-            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
-              <div>PDF syncing enabled?</div>
-              <SliderToggle
-                selected={features.googleDrivePdfEnabled}
-                onClick={onGdrivePDFToggle}
-              />
-            </div>
+            <>
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>PDF syncing enabled?</div>
+                <SliderToggle
+                  selected={features.googleDrivePdfEnabled}
+                  onClick={onGdrivePDFToggle}
+                />
+              </div>
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>Large Files enabled?</div>
+                <SliderToggle
+                  selected={features.googleDriveLargeFilesEnabled}
+                  onClick={onGdriveLargeFilesToggle}
+                />
+              </div>
+            </>
           )}
           {dataSource.connectorProvider === "github" && (
             <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
