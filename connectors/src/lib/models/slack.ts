@@ -290,3 +290,46 @@ SlackChatBotMessage.init(
   }
 );
 ConnectorModel.hasOne(SlackChatBotMessage);
+
+export class SlackBotWhitelist extends Model<
+  InferAttributes<SlackBotWhitelist>,
+  InferCreationAttributes<SlackBotWhitelist>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare botName: string;
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
+}
+
+SlackBotWhitelist.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    botName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    indexes: [{ fields: ["connectorId", "botName"], unique: true }],
+    modelName: "slack_bot_whitelist",
+    tableName: "slack_bot_whitelist",
+  }
+);
+
+ConnectorModel.hasMany(SlackBotWhitelist);

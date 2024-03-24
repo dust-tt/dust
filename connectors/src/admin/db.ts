@@ -38,6 +38,7 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import {
+  SlackBotWhitelist,
   SlackChannel,
   SlackChatBotMessage,
   SlackConfiguration,
@@ -61,6 +62,7 @@ async function main(): Promise<void> {
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
   await SlackChatBotMessage.sync({ alter: true });
+  await SlackBotWhitelist.sync({ alter: true });
   await NotionPage.sync({ alter: true });
   await NotionDatabase.sync({ alter: true });
   await NotionConnectorState.sync({ alter: true });
