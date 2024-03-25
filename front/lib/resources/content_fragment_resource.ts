@@ -99,6 +99,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       title: this.title,
       content: this.content,
       url: this.url,
+      sourceUrl: this.sourceUrl,
+      textBytes: this.textBytes,
       contentType: this.contentType,
       context: {
         profilePictureUrl: this.userContextProfilePictureUrl,
@@ -163,4 +165,31 @@ export async function storeContentFragmentText({
   });
 
   return fileUrl;
+}
+
+export async function getContentFragmentText({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}): Promise<string> {
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+
+  const { filePath } = contentFragmentUrl({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "text",
+  });
+
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(filePath);
+
+  const [content] = await gcsFile.download();
+  return content.toString();
 }

@@ -38,6 +38,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
+import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
@@ -110,16 +111,34 @@ export async function renderConversationForModel({
         content,
       });
     } else if (isContentFragmentType(m)) {
-      messages.unshift({
-        role: "content_fragment",
-        name: `inject_${m.contentType}`,
-        content:
-          `TITLE: ${m.title}\n` +
-          `TYPE: ${m.contentType}${
-            m.contentType === "file_attachment" ? " (user provided)" : ""
-          }\n` +
-          `CONTENT:\n${m.content}`,
-      });
+      try {
+        const content = await getContentFragmentText({
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: m.sId,
+        });
+        messages.unshift({
+          role: "content_fragment",
+          name: `inject_${m.contentType}`,
+          content:
+            `TITLE: ${m.title}\n` +
+            `TYPE: ${m.contentType}${
+              m.contentType === "file_attachment" ? " (user provided)" : ""
+            }\n` +
+            `CONTENT:\n${content}`,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          },
+          "Failed to retrieve content fragment text"
+        );
+        return new Err(new Error("Failed to retrieve content fragment text"));
+      }
     } else {
       ((x: never) => {
         throw new Error(`Unexpected message type: ${x}`);
