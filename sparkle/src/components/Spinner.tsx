@@ -3,11 +3,14 @@ import React from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 import animColor from "@sparkle/lottie/spinnerColor";
+import animColorLG from "@sparkle/lottie/spinnerColorLG";
+import animColorXS from "@sparkle/lottie/spinnerColorXS";
 import animDark from "@sparkle/lottie/spinnerDark";
-import animLight from "@sparkle/lottie/spinnerLight";
-import animSimpleColor from "@sparkle/lottie/spinnerSimpleColor";
-import animSimpleDark from "@sparkle/lottie/spinnerSimpleDark";
-import animSimpleLight from "@sparkle/lottie/spinnerSimpleLight";
+import animDarkLG from "@sparkle/lottie/spinnerDarkLG";
+import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
+import animLightXS from "@sparkle/lottie/spinnerLight";
+import animLightLG from "@sparkle/lottie/spinnerLightLG";
+import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
@@ -65,7 +68,7 @@ const Spinner: React.FC<SpinnerProps> = ({
 };
 
 export interface Spinner2Props {
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
   variant?: "color" | "light" | "dark";
 }
 const pxSizeClasses = {
@@ -73,6 +76,8 @@ const pxSizeClasses = {
   sm: "20",
   md: "24",
   lg: "32",
+  xl: "128",
+  xxl: "192",
 };
 
 const Spinner2: React.FC<Spinner2Props> = ({
@@ -91,18 +96,34 @@ const Spinner2: React.FC<Spinner2Props> = ({
           break;
 
         case "dark":
-          anim = animSimpleDark;
+          anim = animDarkXS;
           break;
 
         default:
-          anim = animSimpleColor;
+          anim = animColorXS;
+      }
+      break;
+
+    case "xl":
+    case "xxl":
+      switch (variant) {
+        case "light":
+          anim = animLightLG;
+          break;
+
+        case "dark":
+          anim = animDarkLG;
+          break;
+
+        default:
+          anim = animColorLG;
       }
       break;
 
     default:
       switch (variant) {
         case "light":
-          anim = animLight;
+          anim = animLightXS;
           break;
 
         case "dark":
