@@ -704,13 +704,15 @@ export async function retrieveGoogleDriveContentNodes(
     [...folderOrFileNodes, ...sheetNodes].map((n) => [n.internalId, n])
   );
   return new Ok(
-    internalIds.map((id) => {
-      const node = nodeByInternalId.get(id);
-      if (!node) {
-        throw new Error(`Could not find node with internalId ${id}`);
-      }
-      return node;
-    })
+    internalIds
+      .filter((id) => nodeByInternalId.has(id))
+      .map((id) => {
+        const node = nodeByInternalId.get(id);
+        if (!node) {
+          throw new Error(`Could not find node with internalId ${id}`);
+        }
+        return node;
+      })
   );
 }
 
