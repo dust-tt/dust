@@ -9,10 +9,7 @@ import { pipeline } from "stream/promises";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import appConfig from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  ContentFragmentResource,
-  fileAttachmentLocation,
-} from "@app/lib/resources/content_fragment_resource";
+import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { gcsConfig } from "@app/lib/resources/storage/config";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -130,7 +127,7 @@ async function handler(
         // since we redirect, the use is immediate so expiry can be short
         expires: Date.now() + 10 * 1000,
         // remove special chars
-        promptSaveAs: message.title.replace(/[^\w\s\.-]/gi, ""),
+        promptSaveAs: message.title.replace(/[^\w\s.-]/gi, ""),
       });
       res.redirect(url);
       return;
@@ -163,10 +160,6 @@ async function handler(
             },
           })
         );
-
-        // set content fragment's sourceUrl to the uploaded file
-        const cf = await ContentFragmentResource.fromMessageId(message.id);
-        await cf.update({ sourceUrl: downloadUrl });
 
         res.status(200).json({ sourceUrl: downloadUrl });
         return;
