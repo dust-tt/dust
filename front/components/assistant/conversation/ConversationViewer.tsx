@@ -14,6 +14,7 @@ import { useInView } from "react-intersection-observer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
   useConversation,
   useConversationMessages,
@@ -21,8 +22,25 @@ import {
   useConversations,
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { updateMessagePagesWithOptimisticData } from "@app/pages/w/[wId]/assistant/[cId]";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+function shouldProcessStreamEvent(
+  messages: FetchConversationMessagesResponse[] | undefined,
+  event:
+    | UserMessageNewEvent
+    | AgentMessageNewEvent
+    | AgentGenerationCancelledEvent
+): boolean {
+  const isMessageAlreadyInPages = messages?.some((messages) => {
+    return messages.messages.some(
+      (message) => "sId" in message && message.sId === event.messageId
+    );
+  });
+
+  return !isMessageAlreadyInPages;
+}
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -233,20 +251,33 @@ export default function ConversationViewer({
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
-            // Ignore user_message_new event as the optimistic mechanism covers it
-            break;
           case "agent_message_new":
-          case "agent_generation_cancelled":
-            const isMessageAlreadyInConversation = messages?.some(
-              (messages) => {
-                return messages.messages.some(
-                  (message) =>
-                    "sId" in message && message.sId === event.messageId
-                );
-              }
-            );
+            if (shouldProcessStreamEvent(messages, event)) {
+              // Temporarily add agent message using event payload until revalidation.
+              void mutateMessages(async (currentMessagePages) => {
+                if (!currentMessagePages) {
+                  return undefined;
+                }
 
-            if (!isMessageAlreadyInConversation) {
+                const { rank } = event.message;
+
+                // We only support adding at the end of the first page.
+                const [firstPage] = currentMessagePages;
+                const firstPageLastMessage = firstPage.messages.at(-1);
+                if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
+                  return updateMessagePagesWithOptimisticData(
+                    currentMessagePages,
+                    event.message
+                  );
+                }
+
+                return currentMessagePages;
+              });
+            }
+            break;
+
+          case "agent_generation_cancelled":
+            if (shouldProcessStreamEvent(messages, event)) {
               void mutateMessages();
             }
             break;

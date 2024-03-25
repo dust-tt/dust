@@ -1,9 +1,11 @@
 import type {
   AgentMessageNewEvent,
+  AgentMessageWithRankType,
   ConversationTitleEvent,
   GenerationTokensEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
+  UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type {
@@ -667,7 +669,7 @@ export async function* postUserMessage(
       ]);
 
       const m = result[0];
-      const userMessage: UserMessageType = {
+      const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -678,6 +680,7 @@ export async function* postUserMessage(
         mentions: mentions,
         content,
         context: context,
+        rank: m.rank,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -739,6 +742,7 @@ export async function* postUserMessage(
                   content: null,
                   error: null,
                   configuration,
+                  rank: messageRow.rank,
                 },
               };
             })();
@@ -747,7 +751,7 @@ export async function* postUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageType;
+        m: AgentMessageWithRankType;
       }[];
 
       return {
@@ -1004,8 +1008,8 @@ export async function* editUserMessage(
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
 
-  let userMessage: UserMessageType | null = null;
-  let agentMessages: AgentMessageType[] = [];
+  let userMessage: UserMessageWithRankType | null = null;
+  let agentMessages: AgentMessageWithRankType[] = [];
   let agentMessageRows: AgentMessage[] = [];
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
@@ -1102,7 +1106,7 @@ export async function* editUserMessage(
       ]);
 
       const m = result[0];
-      const userMessage: UserMessageType = {
+      const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -1113,6 +1117,7 @@ export async function* editUserMessage(
         mentions,
         content,
         context: message.context,
+        rank: m.rank,
       };
 
       // For now agent messages are appended at the end of conversation
@@ -1125,74 +1130,77 @@ export async function* editUserMessage(
           },
           transaction: t,
         })) ?? -1) + 1;
-      const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
-        await Promise.all(
-          mentions.filter(isAgentMention).map((mention) => {
-            // For each assistant/agent mention, create an "empty" agent message.
-            return (async () => {
-              // `getAgentConfiguration` checks that we're only pulling a configuration from the
-              // same workspace or a global one.
-              const configuration = await getAgentConfiguration(
-                auth,
-                mention.configurationId
-              );
-              if (!configuration) {
-                return null;
+      const results: ({
+        row: AgentMessage;
+        m: AgentMessageWithRankType;
+      } | null)[] = await Promise.all(
+        mentions.filter(isAgentMention).map((mention) => {
+          // For each assistant/agent mention, create an "empty" agent message.
+          return (async () => {
+            // `getAgentConfiguration` checks that we're only pulling a configuration from the
+            // same workspace or a global one.
+            const configuration = await getAgentConfiguration(
+              auth,
+              mention.configurationId
+            );
+            if (!configuration) {
+              return null;
+            }
+
+            await Mention.create(
+              {
+                messageId: m.id,
+                agentConfigurationId: configuration.sId,
+              },
+              { transaction: t }
+            );
+
+            const agentMessageRow = await AgentMessage.create(
+              {
+                status: "created",
+                agentConfigurationId: configuration.sId,
+                agentConfigurationVersion: configuration.version,
+              },
+              { transaction: t }
+            );
+            const messageRow = await Message.create(
+              {
+                sId: generateModelSId(),
+                rank: nextMessageRank++,
+                conversationId: conversation.id,
+                parentId: userMessage.id,
+                agentMessageId: agentMessageRow.id,
+              },
+              {
+                transaction: t,
               }
+            );
 
-              await Mention.create(
-                {
-                  messageId: m.id,
-                  agentConfigurationId: configuration.sId,
-                },
-                { transaction: t }
-              );
-
-              const agentMessageRow = await AgentMessage.create(
-                {
-                  status: "created",
-                  agentConfigurationId: configuration.sId,
-                  agentConfigurationVersion: configuration.version,
-                },
-                { transaction: t }
-              );
-              const messageRow = await Message.create(
-                {
-                  sId: generateModelSId(),
-                  rank: nextMessageRank++,
-                  conversationId: conversation.id,
-                  parentId: userMessage.id,
-                  agentMessageId: agentMessageRow.id,
-                },
-                {
-                  transaction: t,
-                }
-              );
-
-              return {
-                row: agentMessageRow,
-                m: {
-                  id: messageRow.id,
-                  created: agentMessageRow.createdAt.getTime(),
-                  sId: messageRow.sId,
-                  type: "agent_message",
-                  visibility: "visible",
-                  version: 0,
-                  parentMessageId: userMessage.sId,
-                  status: "created",
-                  action: null,
-                  content: null,
-                  error: null,
-                  configuration,
-                },
-              };
-            })();
-          })
-        );
+            return {
+              row: agentMessageRow,
+              m: {
+                id: messageRow.id,
+                created: agentMessageRow.createdAt.getTime(),
+                sId: messageRow.sId,
+                type: "agent_message",
+                visibility: "visible",
+                version: 0,
+                parentMessageId: userMessage.sId,
+                status: "created",
+                action: null,
+                content: null,
+                error: null,
+                configuration,
+                rank: messageRow.rank,
+              },
+            };
+          })();
+        })
+      );
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageType;
+        m: AgentMessageWithRankType;
       }[];
       return {
         userMessage,
@@ -1328,7 +1336,7 @@ export async function* retryAgentMessage(
 > {
   class AgentMessageError extends Error {}
   let agentMessageResult: {
-    agentMessage: AgentMessageType;
+    agentMessage: AgentMessageWithRankType;
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
@@ -1387,7 +1395,7 @@ export async function* retryAgentMessage(
           transaction: t,
         }
       );
-      const agentMessage: AgentMessageType = {
+      const agentMessage: AgentMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -1400,6 +1408,7 @@ export async function* retryAgentMessage(
         content: null,
         error: null,
         configuration: message.configuration,
+        rank: m.rank,
       };
       return {
         agentMessage,

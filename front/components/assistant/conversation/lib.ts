@@ -4,9 +4,8 @@ import type {
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
   MentionType,
-  MessageType,
   Result,
-  UserMessageType,
+  UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -39,11 +38,13 @@ export function createPlaceholderUserMessage({
   input,
   mentions,
   user,
+  lastMessageRank,
 }: {
   input: string;
   mentions: MentionType[];
   user: UserType;
-}): MessageType {
+  lastMessageRank: number;
+}): UserMessageWithRankType {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
 
@@ -57,6 +58,7 @@ export function createPlaceholderUserMessage({
     type: "user_message",
     sId: `placeholder-${createdAt.toString()}`,
     version: 0,
+    rank: lastMessageRank + 1,
     context: {
       email,
       fullName,
@@ -85,7 +87,9 @@ export async function submitMessage({
       file: File;
     };
   };
-}): Promise<Result<{ message: UserMessageType }, ConversationErrorType>> {
+}): Promise<
+  Result<{ message: UserMessageWithRankType }, ConversationErrorType>
+> {
   const { input, mentions, contentFragment } = messageData;
   // Create a new content fragment.
   if (contentFragment) {

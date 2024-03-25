@@ -40,7 +40,10 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type MessageWithRankType = MessageType & { rank: number };
+export type WithRank<T> = T & {
+  rank: number;
+};
+export type MessageWithRankType = WithRank<MessageType>;
 
 /**
  * User messages
@@ -66,6 +69,7 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
 };
+export type UserMessageWithRankType = WithRank<UserMessageType>;
 
 export function isUserMessageType(arg: MessageType): arg is UserMessageType {
   return arg.type === "user_message";
@@ -101,7 +105,6 @@ export type AgentMessageType = {
   visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
-
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
@@ -111,6 +114,8 @@ export type AgentMessageType = {
     message: string;
   } | null;
 };
+
+export type AgentMessageWithRankType = WithRank<AgentMessageType>;
 
 export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
