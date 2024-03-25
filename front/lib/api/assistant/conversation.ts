@@ -71,6 +71,7 @@ import {
 import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import {
   ContentFragmentResource,
+  fileAttachmentLocation,
   storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -1536,6 +1537,16 @@ export async function postNewContentFragment(
     content,
   });
 
+  const sourceUrl =
+    contentType === "file_attachment"
+      ? fileAttachmentLocation({
+          workspaceId: owner.sId,
+          conversationId: conversation.sId,
+          messageId,
+          contentFormat: "raw",
+        }).downloadUrl
+      : url;
+
   const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(
@@ -1547,7 +1558,7 @@ export async function postNewContentFragment(
           content,
           title,
           url,
-          sourceUrl: url ?? textUrl,
+          sourceUrl,
           textUrl,
           textBytes,
           contentType,

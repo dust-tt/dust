@@ -9,10 +9,7 @@ import { pipeline } from "stream/promises";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import appConfig from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  ContentFragmentResource,
-  contentFragmentUrl,
-} from "@app/lib/resources/content_fragment_resource";
+import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { gcsConfig } from "@app/lib/resources/storage/config";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -96,22 +93,45 @@ async function handler(
     });
   }
   const messageId = req.query.mId;
+  const message = conversation.content.flat().find((m) => m.sId === messageId);
+  if (!message || !isContentFragmentType(message)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Uploading raw content fragment is only supported for 'content fragment' messages.",
+      },
+    });
+  }
+
+  const { filePath, downloadUrl } = fileAttachmentLocation({
+    workspaceId: owner.sId,
+    conversationId,
+    messageId,
+    contentFormat: "raw",
+  });
+
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(filePath);
 
   switch (req.method) {
+    case "GET":
+      // redirect to a signed URL
+      const [url] = await gcsFile.getSignedUrl({
+        version: "v4",
+        action: "read",
+        // since we redirect, the use is immediate so expiry can be short
+        expires: Date.now() + 10 * 1000,
+        // remove special chars
+        promptSaveAs: message.title.replace(/[^\w\s.-]/gi, ""),
+      });
+      res.redirect(url);
+      return;
     case "POST":
-      const message = conversation.content
-        .flat()
-        .find((m) => m.sId === messageId);
-      if (!message || !isContentFragmentType(message)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Uploading raw content fragment is only supported for 'content fragment' messages.",
-          },
-        });
-      }
       try {
         const form = new IncomingForm();
         const [, files] = await form.parse(req);
@@ -128,21 +148,8 @@ async function handler(
           });
         }
 
-        const { filePath, fileUrl } = contentFragmentUrl({
-          workspaceId: owner.sId,
-          conversationId,
-          messageId,
-          contentFormat: "raw",
-        });
-
         const [file] = maybeFiles;
 
-        const storage = new Storage({
-          keyFilename: appConfig.getServiceAccount(),
-        });
-
-        const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-        const gcsFile = bucket.file(filePath);
         const fileStream = fs.createReadStream(file.filepath);
 
         await pipeline(
@@ -154,11 +161,7 @@ async function handler(
           })
         );
 
-        // set content fragment's sourceUrl to the uploaded file
-        const cf = await ContentFragmentResource.fromMessageId(message.id);
-        await cf.update({ sourceUrl: fileUrl });
-
-        res.status(200).json({ sourceUrl: fileUrl });
+        res.status(200).json({ sourceUrl: downloadUrl });
         return;
       } catch (error) {
         return apiError(

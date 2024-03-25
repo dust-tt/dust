@@ -13,7 +13,6 @@ import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
-import { isTextualFile } from "@app/lib/client/handle_file_upload";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -123,19 +122,13 @@ export async function submitMessage({
       });
     }
 
-    if (
-      // textual files are already uploaded via textUrl
-      !isTextualFile(contentFragment.file)
-    ) {
-      const cfData = (await mcfRes.json())
-        .contentFragment as ContentFragmentType;
-      uploadRawContentFragment({
-        workspaceId: owner.sId,
-        conversationId,
-        contentFragmentId: cfData.sId,
-        file: contentFragment.file,
-      });
-    }
+    const cfData = (await mcfRes.json()).contentFragment as ContentFragmentType;
+    uploadRawContentFragment({
+      workspaceId: owner.sId,
+      conversationId,
+      contentFragmentId: cfData.sId,
+      file: contentFragment.file,
+    });
   }
 
   // Create a new user message.
@@ -277,12 +270,7 @@ export async function createConversationWithMessage({
 
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
-  if (
-    file &&
-    conversationData.contentFragment &&
-    // textual files are already uploaded via textUrl
-    !isTextualFile(file)
-  ) {
+  if (file && conversationData.contentFragment) {
     uploadRawContentFragment({
       workspaceId: owner.sId,
       conversationId: conversationData.conversation.sId,
@@ -312,7 +300,7 @@ function uploadRawContentFragment({
   // an error from this function does not prevent the conversation from continuing
   // API errors are handled server side
   fetch(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/upload_raw_content_fragment`,
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/raw_content_fragment`,
     {
       method: "POST",
       body: formData,
