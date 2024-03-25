@@ -208,8 +208,15 @@ export async function notionSyncWorkflow({
       } while (discoveredResources);
     }
 
-    // Compute parents after all documents are added/updated
-    await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
+    // Compute parents after all documents are added/updated.
+    // We only do this if it's not a garbage collection run, to prevent race conditions.
+    if (!isGarbageCollectionRun) {
+      await updateParentsFields(
+        connectorId,
+        lastSyncedPeriodTs || 0,
+        new Date().getTime()
+      );
+    }
 
     if (!isGarbageCollectionRun) {
       await saveSuccessSync(connectorId);

@@ -1061,7 +1061,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
 
 export async function updateParentsFields(
   connectorId: ModelId,
-  runTimestamp: number,
+  lastSuccessfulSyncTs: number,
   activityExecutionTimestamp: number
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -1077,7 +1077,9 @@ export async function updateParentsFields(
     await NotionPage.findAll({
       where: {
         connectorId: connector.id,
-        lastCreatedOrMovedRunTs: runTimestamp,
+        lastCreatedOrMovedRunTs: {
+          [Op.gt]: lastSuccessfulSyncTs,
+        },
       },
       attributes: ["notionPageId"],
     })
@@ -1087,7 +1089,9 @@ export async function updateParentsFields(
     await NotionDatabase.findAll({
       where: {
         connectorId: connector.id,
-        lastCreatedOrMovedRunTs: runTimestamp,
+        lastCreatedOrMovedRunTs: {
+          [Op.gt]: lastSuccessfulSyncTs,
+        },
       },
       attributes: ["notionDatabaseId"],
     })
