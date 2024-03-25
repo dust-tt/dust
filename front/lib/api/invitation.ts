@@ -15,7 +15,7 @@ export async function sendWorkspaceInvitationEmail(
   // Create MembershipInvitation.
   const invitation = await MembershipInvitation.create({
     workspaceId: owner.id,
-    inviteEmail,
+    inviteEmail: inviteEmail.toLowerCase(),
     status: "pending",
   });
 
