@@ -128,14 +128,6 @@ export default function DatasourceUpsert({
     }
   }, [dataSource.name, loadDocumentId, owner.sId]);
 
-  const alertDataSourcesLimit = () => {
-    sendNotification({
-      type: "error",
-      title: "Upload size limit",
-      description: `Data Source document upload size is limited to ${plan.limits.dataSources.documents.count}MB (of raw text) Contact team@dust.tt if you want to increase this limit.`,
-    });
-  };
-
   const router = useRouter();
 
   const handleUpsert = async () => {
@@ -297,14 +289,6 @@ export default function DatasourceUpsert({
                 ref={fileInputRef}
                 onChange={async (e) => {
                   if (e.target.files && e.target.files.length > 0) {
-                    if (
-                      plan.limits.dataSources.documents.sizeMb != -1 &&
-                      text.length >
-                        1024 * 1024 * plan.limits.dataSources.documents.sizeMb
-                    ) {
-                      alertDataSourcesLimit();
-                      return;
-                    }
                     setUploading(true);
                     const res = await handleFileUploadToText(e.target.files[0]);
                     setUploading(false);
@@ -313,6 +297,21 @@ export default function DatasourceUpsert({
                         type: "error",
                         title: "Error uploading file.",
                         description: res.error.message,
+                      });
+                      return;
+                    }
+                    if (
+                      plan.limits.dataSources.documents.sizeMb != -1 &&
+                      res.value.content.length >
+                        1024 * 1024 * plan.limits.dataSources.documents.sizeMb
+                    ) {
+                      sendNotification({
+                        type: "error",
+                        title: "Upload size limit",
+                        description:
+                          `Data Source document upload size is limited to ` +
+                          `${plan.limits.dataSources.documents.sizeMb}MB (of raw text) ` +
+                          `Contact team@dust.tt if you want to increase this limit.`,
                       });
                       return;
                     }

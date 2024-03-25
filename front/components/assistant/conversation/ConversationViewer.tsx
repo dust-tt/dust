@@ -1,5 +1,4 @@
-// TODO(2024-03-21 flav) Replace by Spinner2 when available.
-import { Spinner } from "@dust-tt/sparkle";
+import { Spinner2 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { AgentMention } from "@dust-tt/types";
 import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
@@ -252,6 +251,8 @@ export default function ConversationViewer({
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
+            // Ignore user_message_new event as the optimistic mechanism covers it
+            break;
           case "agent_message_new":
             if (shouldProcessStreamEvent(messages, event)) {
               // Temporarily add agent message using event payload until revalidation.
@@ -321,7 +322,7 @@ export default function ConversationViewer({
       )}
       {(isMessagesLoading || prevFirstMessageId) && (
         <div className="flex justify-center py-4">
-          <Spinner size="xs" />
+          <Spinner2 variant="color" size="xs" />
         </div>
       )}
       {messages.map((page) => {

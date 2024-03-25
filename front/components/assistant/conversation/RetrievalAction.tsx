@@ -4,7 +4,7 @@ import {
   Chip,
   DocumentTextIcon,
   Icon,
-  Spinner,
+  Spinner2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
@@ -98,7 +98,7 @@ export default function RetrievalAction({
               <div className="pb-2 text-xs font-bold text-element-600">
                 Retrieving...
               </div>
-              <Spinner size="sm" />
+              <Spinner2 size="sm" />
             </div>
           ) : (
             <div className="text-xs font-bold text-element-600">

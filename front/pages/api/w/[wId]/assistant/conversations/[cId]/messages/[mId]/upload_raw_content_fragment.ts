@@ -11,7 +11,7 @@ import appConfig from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
   ContentFragmentResource,
-  rawContentFragmentUrl,
+  contentFragmentUrl,
 } from "@app/lib/resources/content_fragment_resource";
 import { gcsConfig } from "@app/lib/resources/storage/config";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -128,6 +128,13 @@ async function handler(
           });
         }
 
+        const { filePath, fileUrl } = contentFragmentUrl({
+          workspaceId: owner.sId,
+          conversationId,
+          messageId,
+          contentFormat: "raw",
+        });
+
         const [file] = maybeFiles;
 
         const storage = new Storage({
@@ -135,11 +142,6 @@ async function handler(
         });
 
         const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-        const filePath = rawContentFragmentUrl({
-          worskpaceId: owner.sId,
-          conversationId,
-          messageId,
-        });
         const gcsFile = bucket.file(filePath);
         const fileStream = fs.createReadStream(file.filepath);
 
@@ -151,8 +153,6 @@ async function handler(
             },
           })
         );
-
-        const fileUrl = `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`;
 
         // set content fragment's sourceUrl to the uploaded file
         const cf = await ContentFragmentResource.fromMessageId(message.id);

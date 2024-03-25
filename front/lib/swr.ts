@@ -176,7 +176,7 @@ export function useDocuments(
   asDustSuperUser?: boolean
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/w/${owner.sId}/data_sources/${
       dataSource.name
     }/documents?limit=${limit}&offset=${offset}${
@@ -190,6 +190,7 @@ export function useDocuments(
     total: data ? data.total : 0,
     isDocumentsLoading: !error && !data,
     isDocumentsError: error,
+    mutateDocuments: mutate,
   };
 }
 

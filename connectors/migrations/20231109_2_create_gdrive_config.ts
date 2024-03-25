@@ -12,6 +12,7 @@ async function main() {
     const config = await GoogleDriveConfig.create({
       connectorId: connector.id,
       pdfEnabled: false,
+      largeFilesEnabled: false,
     });
     console.log(
       `Created config for connector ${config.connectorId} with id ${config.id} and pdfEnabled ${config.pdfEnabled}`

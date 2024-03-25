@@ -38,6 +38,7 @@ interface EditedByUser {
 
 export type DataSourceType = {
   id: ModelId;
+  createdAt: number;
   name: string;
   description: string | null;
   assistantDefaultSelected: boolean;
