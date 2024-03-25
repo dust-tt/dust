@@ -39,6 +39,10 @@ export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
 
+export function sanitizeString(rawString: string) {
+  return rawString.trim().toLowerCase();
+}
+
 export function slugify(text: string) {
   return text
     .replace(/([a-z])([A-Z0-9])/g, "$1_$2") // Get all lowercase letters that are near to uppercase ones and replace with _.

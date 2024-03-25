@@ -1,5 +1,6 @@
 import type { Session } from "@auth0/nextjs-auth0";
 import type { UserProviderType, UserType } from "@dust-tt/types";
+import { sanitizeString } from "@dust-tt/types";
 
 import { trackSignup } from "@app/lib/amplitude/back";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
@@ -132,7 +133,7 @@ export async function createOrUpdateUser(
       auth0Sub: externalUser.sub,
       provider: mapAuth0ProviderToLegacy(session)?.provider,
       username: externalUser.nickname,
-      email: externalUser.email,
+      email: sanitizeString(externalUser.emai),
       name: externalUser.name,
       firstName: externalUser.given_name ?? firstName,
       lastName: externalUser.family_name ?? lastName,
