@@ -554,7 +554,7 @@ function PreBlock({
                       onClick={() => setShowMermaid(!showMermaid)}
                       className="cursor-pointer"
                     >
-                      {showMermaid ? "See Code" : "See Graph"}
+                      {showMermaid ? "See Markdown" : "See Graph"}
                     </a>
                   </div>
                   <IconButton
