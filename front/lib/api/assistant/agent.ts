@@ -20,7 +20,7 @@ import {
   DustProdActionRegistry,
   Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   isDustAppRunConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
@@ -70,12 +70,12 @@ export async function generateActionInputs(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_MODEL_CONFIG.providerId,
-        modelId: GPT_4_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       };
 
   const contextSize = auth.isUpgraded()
-    ? GPT_4_MODEL_CONFIG.contextSize
+    ? GPT_4_TURBO_MODEL_CONFIG.contextSize
     : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
