@@ -434,7 +434,7 @@ async function handler(
       });
       const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {
-        trackDataSourceCreated(auth, { dataSource: dataSourceType });
+        await trackDataSourceCreated(auth, { dataSource: dataSourceType });
       }
 
       return res.status(201).json({

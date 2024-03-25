@@ -292,7 +292,9 @@ export async function createOrUpgradeAgentConfiguration(
   if (agentConfigurationRes.isOk()) {
     // We are not tracking draft agents
     if (agentConfigurationRes.value.status === "active") {
-      trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
+      await trackAssistantCreated(auth, {
+        assistant: agentConfigurationRes.value,
+      });
     }
   }
 
