@@ -1,16 +1,6 @@
-import Lottie from "lottie-react";
 import React from "react";
 
 import { classNames } from "@sparkle/lib/utils";
-import animColor from "@sparkle/lottie/spinnerColor";
-import animColorLG from "@sparkle/lottie/spinnerColorLG";
-import animColorXS from "@sparkle/lottie/spinnerColorXS";
-import animDark from "@sparkle/lottie/spinnerDark";
-import animDarkLG from "@sparkle/lottie/spinnerDarkLG";
-import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
-import animLightXS from "@sparkle/lottie/spinnerLight";
-import animLightLG from "@sparkle/lottie/spinnerLightLG";
-import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
@@ -86,63 +76,7 @@ const Spinner2: React.FC<Spinner2Props> = ({
 }) => {
   const fullSize = parseInt(pxSizeClasses[size], 10);
 
-  let anim;
-
-  switch (size) {
-    case "xs":
-      switch (variant) {
-        case "light":
-          anim = animSimpleLight;
-          break;
-
-        case "dark":
-          anim = animDarkXS;
-          break;
-
-        default:
-          anim = animColorXS;
-      }
-      break;
-
-    case "xl":
-    case "xxl":
-      switch (variant) {
-        case "light":
-          anim = animLightLG;
-          break;
-
-        case "dark":
-          anim = animDarkLG;
-          break;
-
-        default:
-          anim = animColorLG;
-      }
-      break;
-
-    default:
-      switch (variant) {
-        case "light":
-          anim = animLightXS;
-          break;
-
-        case "dark":
-          anim = animDark;
-          break;
-
-        default:
-          anim = animColor;
-      }
-  }
-
-  return (
-    <Lottie
-      animationData={anim}
-      style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-      loop
-      autoplay
-    />
-  );
+  return <></>;
 };
 export default Spinner;
 export { Spinner2 };

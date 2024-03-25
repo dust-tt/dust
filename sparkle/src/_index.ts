@@ -49,6 +49,9 @@ export { DropdownMenu };
 import { Page } from "./components/Page";
 export { Page };
 
+import { Conversation } from "./components/Conversation";
+export { Conversation };
+
 import { BuilderLayout } from "./components/BuilderLayout";
 export { BuilderLayout };
 
