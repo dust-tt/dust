@@ -78,6 +78,7 @@
   },
   "homepage": "https://github.com/dust/dust-tt#readme",
   "dependencies": {
+    "@dust-tt/sparkle": "^0.2.123-alpha",
     "@headlessui/react": "^1.7.17",
     "esbuild": "^0.20.0",
     "lottie-react": "^2.4.0",
