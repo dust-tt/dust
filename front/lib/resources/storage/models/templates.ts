@@ -8,9 +8,9 @@ import { DataTypes, Model } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
-export class Template extends Model<
-  InferAttributes<Template>,
-  InferCreationAttributes<Template>
+export class TemplateModel extends Model<
+  InferAttributes<TemplateModel>,
+  InferCreationAttributes<TemplateModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -44,7 +44,7 @@ export class Template extends Model<
   declare helpActions: string | null;
 }
 
-Template.init(
+TemplateModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -116,19 +116,19 @@ Template.init(
   }
 );
 
-export class TemplateTag extends Model<
-  InferAttributes<TemplateTag>,
-  InferCreationAttributes<TemplateTag>
+export class TemplateTagModel extends Model<
+  InferAttributes<TemplateTagModel>,
+  InferCreationAttributes<TemplateTagModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare templateId: ForeignKey<Template>;
+  declare templateId: ForeignKey<TemplateModel>;
   declare tag: string;
 }
 
-TemplateTag.init(
+TemplateTagModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -160,3 +160,12 @@ TemplateTag.init(
     indexes: [{ fields: ["tag", "templateId"], unique: true }],
   }
 );
+
+TemplateModel.hasMany(TemplateTagModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+TemplateTagModel.belongsTo(TemplateModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
