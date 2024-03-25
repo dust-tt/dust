@@ -23,7 +23,7 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
         type={logoType}
         href={
           message.contentType === "slack_thread_content"
-            ? message.sourceUrl || message.textUrl || undefined
+            ? message.sourceUrl || undefined
             : undefined
         }
         avatarUrl={message.context.profilePictureUrl ?? undefined}
