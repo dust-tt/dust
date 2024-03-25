@@ -1,42 +1,42 @@
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type {
-  ConversationType,
-  MessageReactionType,
-  UserMessageType,
-} from "@dust-tt/types";
+import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
 
-export function UserMessage({
-  message,
-  conversation,
-  owner,
-  user,
-  reactions,
-  hideReactions,
-  isLastMessage,
-}: {
-  message: UserMessageType;
-  conversation: ConversationType;
-  owner: WorkspaceType;
-  user: UserType;
-  reactions: MessageReactionType[];
+interface UserMessageProps {
+  conversationId: string;
   hideReactions?: boolean;
   isLastMessage: boolean;
-}) {
+  latestMentions: string[];
+  message: UserMessageType;
+  owner: WorkspaceType;
+  reactions: MessageReactionType[];
+  user: UserType;
+}
+
+export function UserMessage({
+  conversationId,
+  hideReactions,
+  isLastMessage,
+  latestMentions,
+  message,
+  owner,
+  reactions,
+  user,
+}: UserMessageProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: { conversationId: conversation.sId },
+    agentsGetView: { conversationId },
   });
 
   return (
     <ConversationMessage
       owner={owner}
       user={user}
-      conversationId={conversation.sId}
+      conversationId={conversationId}
       messageId={message.sId}
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
@@ -54,9 +54,10 @@ export function UserMessage({
         </div>
         {message.mentions.length === 0 && isLastMessage && (
           <AgentSuggestion
-            userMessage={message}
-            conversation={conversation}
+            conversationId={conversationId}
+            latestMentions={latestMentions}
             owner={owner}
+            userMessage={message}
           />
         )}
       </div>

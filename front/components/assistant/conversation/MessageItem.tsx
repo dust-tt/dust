@@ -1,6 +1,5 @@
 import type {
   ConversationMessageReactions,
-  ConversationType,
   MessageType,
   UserType,
   WorkspaceType,
@@ -12,10 +11,11 @@ import { ContentFragment } from "@app/components/assistant/conversation/ContentF
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 
 interface MessageItemProps {
-  conversation: ConversationType;
+  conversationId: string;
   hideReactions: boolean;
   isInModal: boolean;
   isLastMessage: boolean;
+  latestMentions: string[];
   message: MessageType;
   owner: WorkspaceType;
   reactions: ConversationMessageReactions;
@@ -25,10 +25,11 @@ interface MessageItemProps {
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      conversation,
+      conversationId,
       hideReactions,
       isInModal,
       isLastMessage,
+      latestMentions,
       message,
       owner,
       reactions,
@@ -55,13 +56,14 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           >
             <div className="mx-auto flex max-w-4xl flex-col gap-4">
               <UserMessage
-                message={message}
-                conversation={conversation}
-                owner={owner}
-                user={user}
-                reactions={messageReactions}
+                conversationId={conversationId}
                 hideReactions={hideReactions}
                 isLastMessage={isLastMessage}
+                latestMentions={latestMentions}
+                message={message}
+                owner={owner}
+                reactions={messageReactions}
+                user={user}
               />
             </div>
           </div>
@@ -74,7 +76,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 message={message}
                 owner={owner}
                 user={user}
-                conversationId={conversation.sId}
+                conversationId={conversationId}
                 reactions={messageReactions}
                 isInModal={isInModal}
                 hideReactions={hideReactions}
