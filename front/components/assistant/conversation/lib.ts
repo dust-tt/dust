@@ -312,7 +312,7 @@ function uploadRawContentFragment({
   // an error from this function does not prevent the conversation from continuing
   // API errors are handled server side
   fetch(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/upload_raw_content_fragment`,
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/raw_content_fragment`,
     {
       method: "POST",
       body: formData,
