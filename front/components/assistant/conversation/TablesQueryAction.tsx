@@ -4,7 +4,7 @@ import {
   ChevronRightIcon,
   Chip,
   Icon,
-  Spinner,
+  Spinner2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { CloudArrowDownIcon } from "@dust-tt/sparkle";
@@ -113,7 +113,7 @@ export default function TablesQueryAction({
           <div className="pb-2 text-xs font-bold text-element-600">
             Generating query...
           </div>
-          <Spinner size="sm" />
+          <Spinner2 size="sm" />
         </div>
       )}
 
@@ -182,7 +182,7 @@ export default function TablesQueryAction({
           <div className="pb-2 text-xs font-bold text-element-600">
             Running query...
           </div>
-          <Spinner size="sm" />
+          <Spinner2 size="sm" />
         </div>
       )}
     </>

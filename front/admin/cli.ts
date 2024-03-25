@@ -60,7 +60,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  wId: ${w.sId}`);
       console.log(`  name: ${w.name}`);
 
-      const subscription = await subscriptionForWorkspace(w);
+      const subscription = await subscriptionForWorkspace(w.sId);
       const plan = subscription.plan;
       console.log(`  plan:`);
       console.log(`    limits:`);

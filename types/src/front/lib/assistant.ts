@@ -4,24 +4,12 @@
 
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 
-export const GPT_4_MODEL_ID = "gpt-4" as const;
 export const GPT_4_TURBO_PREVIEW_MODEL_ID = "gpt-4-turbo-preview" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo-1106" as const;
 
 const GPT_4_DESCRIPTION =
   "OpenAI's most powerful and recent model (128k context).";
 const GPT_4_SHORT_DESCRIPTION = "OpenAI's smartest model.";
-
-export const GPT_4_MODEL_CONFIG = {
-  providerId: "openai" as const,
-  modelId: GPT_4_MODEL_ID,
-  displayName: "GPT 4",
-  contextSize: 8192,
-  recommendedTopK: 16,
-  largeModel: true,
-  description: GPT_4_DESCRIPTION,
-  shortDescription: GPT_4_SHORT_DESCRIPTION,
-};
 
 export const GPT_4_TURBO_MODEL_CONFIG = {
   providerId: "openai" as const,
@@ -164,7 +152,6 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
 
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,

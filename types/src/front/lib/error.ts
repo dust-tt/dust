@@ -62,6 +62,8 @@ export type APIErrorType =
   | "unexpected_action_response"
   | "feature_flag_not_found"
   | "feature_flag_already_exists"
+  // Pagination:
+  | "invalid_pagination_parameters"
   | "table_not_found";
 
 export type APIError = {

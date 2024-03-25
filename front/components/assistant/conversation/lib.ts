@@ -1,9 +1,11 @@
 import type {
+  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
+  UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -31,6 +33,41 @@ export type ConversationErrorType = {
   message: string;
 };
 
+export function createPlaceholderUserMessage({
+  input,
+  mentions,
+  user,
+  lastMessageRank,
+}: {
+  input: string;
+  mentions: MentionType[];
+  user: UserType;
+  lastMessageRank: number;
+}): UserMessageWithRankType {
+  const createdAt = new Date().getTime();
+  const { email, fullName, image, username } = user;
+
+  return {
+    id: -1,
+    content: input,
+    created: createdAt,
+    mentions,
+    user,
+    visibility: "visible",
+    type: "user_message",
+    sId: `placeholder-${createdAt.toString()}`,
+    version: 0,
+    rank: lastMessageRank + 1,
+    context: {
+      email,
+      fullName,
+      profilePictureUrl: image,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username,
+    },
+  };
+}
+
 export async function submitMessage({
   owner,
   user,
@@ -46,9 +83,12 @@ export async function submitMessage({
     contentFragment?: {
       title: string;
       content: string;
+      file: File;
     };
   };
-}): Promise<Result<void, ConversationErrorType>> {
+}): Promise<
+  Result<{ message: UserMessageWithRankType }, ConversationErrorType>
+> {
   const { input, mentions, contentFragment } = messageData;
   // Create a new content fragment.
   if (contentFragment) {
@@ -81,6 +121,14 @@ export async function submitMessage({
         message: data.error.message || "Please try again or contact us.",
       });
     }
+
+    const cfData = (await mcfRes.json()).contentFragment as ContentFragmentType;
+    uploadRawContentFragment({
+      workspaceId: owner.sId,
+      conversationId,
+      contentFragmentId: cfData.sId,
+      file: contentFragment.file,
+    });
   }
 
   // Create a new user message.
@@ -113,7 +161,8 @@ export async function submitMessage({
       message: data.error.message || "Please try again or contact us.",
     });
   }
-  return new Ok(undefined);
+
+  return new Ok(await mRes.json());
 }
 
 export async function deleteConversation({
@@ -158,12 +207,22 @@ export async function createConversationWithMessage({
     contentFragment?: {
       title: string;
       content: string;
+      file: File;
     };
   };
   visibility?: ConversationVisibility;
   title?: string;
 }): Promise<Result<ConversationType, ConversationErrorType>> {
-  const { input, mentions, contentFragment } = messageData;
+  const {
+    input,
+    mentions,
+    contentFragment: contentFragmentWithFile,
+  } = messageData;
+  const { file } = contentFragmentWithFile ?? {};
+  const contentFragment = contentFragmentWithFile
+    ? { ...contentFragmentWithFile, file: undefined }
+    : undefined;
+
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
     visibility,
@@ -177,9 +236,10 @@ export async function createConversationWithMessage({
     },
     contentFragment: contentFragment
       ? {
-          ...contentFragment,
+          content: contentFragment.content,
+          title: contentFragment.title,
+          url: null, // sourceUrl will be set on raw content upload success
           contentType: "file_attachment",
-          url: null,
           context: {
             profilePictureUrl: user.image,
           },
@@ -208,7 +268,44 @@ export async function createConversationWithMessage({
     });
   }
 
-  return new Ok(
-    ((await cRes.json()) as PostConversationsResponseBody).conversation
-  );
+  const conversationData = (await cRes.json()) as PostConversationsResponseBody;
+
+  if (file && conversationData.contentFragment) {
+    uploadRawContentFragment({
+      workspaceId: owner.sId,
+      conversationId: conversationData.conversation.sId,
+      contentFragmentId: conversationData.contentFragment?.sId,
+      file,
+    });
+  }
+
+  return new Ok(conversationData.conversation);
+}
+
+function uploadRawContentFragment({
+  workspaceId,
+  conversationId,
+  contentFragmentId,
+  file,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  contentFragmentId: string;
+  file: File;
+}) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  // do not await, to avoid slowing the UX
+  // an error from this function does not prevent the conversation from continuing
+  // API errors are handled server side
+  fetch(
+    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/raw_content_fragment`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  ).catch((e) => {
+    console.error(`Error uploading raw content for file`, e);
+  });
 }

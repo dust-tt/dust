@@ -9,7 +9,7 @@ import { ProPriceTable } from "@app/components/PlansTables";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { getBrowserClient } from "@app/lib/amplitude/browser";
+import { getBrowserClient, trackPageView } from "@app/lib/amplitude/browser";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr";
@@ -47,11 +47,12 @@ export default function Subscribe({
     if (user?.id) {
       const userId = `user-${user.id}`;
       amplitude.identify(userId);
-      amplitude.pageViewed({
+      trackPageView({
         pathname: router.pathname,
+        workspaceId: owner.sId,
       });
     }
-  }, [router.pathname, user?.id]);
+  }, [owner.sId, router.pathname, user?.id]);
 
   const { submit: handleSubscribePlan } = useSubmitFunction(async () => {
     const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {

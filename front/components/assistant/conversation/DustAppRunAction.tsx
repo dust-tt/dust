@@ -3,7 +3,7 @@ import {
   ChevronRightIcon,
   Chip,
   Icon,
-  Spinner,
+  Spinner2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
@@ -80,7 +80,7 @@ export default function DustAppRunAction({
                   Executing app {dustAppRunAction.appName}...
                 </div>
               )}
-              <Spinner size="sm" />
+              <Spinner2 size="sm" />
             </div>
           ) : (
             <div className="text-xs font-bold text-element-600">

@@ -1,5 +1,7 @@
 import { Identify } from "@amplitude/analytics-node";
 import type {
+  AgentConfigurationType,
+  DataSourceType,
   ModelId,
   UserMessageType,
   UserType,
@@ -7,15 +9,24 @@ import type {
 } from "@dust-tt/types";
 
 import type { Ampli } from "@app/lib/amplitude/back/generated";
-import { ampli, UserMessagePosted } from "@app/lib/amplitude/back/generated";
-import { AMPLITUDE_PUBLIC_API_KEY } from "@app/lib/amplitude/config";
+import {
+  ampli,
+  AssistantCreated,
+  DataSourceCreated,
+  UserMessagePosted,
+} from "@app/lib/amplitude/back/generated";
+import {
+  AMPLITUDE_PUBLIC_API_KEY,
+  GROUP_TYPE,
+} from "@app/lib/amplitude/config";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
+import type { Authenticator } from "@app/lib/auth";
+import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Membership } from "@app/lib/models";
-import { Plan, Subscription, User, Workspace } from "@app/lib/models";
+import { User, Workspace } from "@app/lib/models";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 
 let BACKEND_CLIENT: Ampli | null = null;
-
-const GROUP_TYPE = "workspace";
 
 const { AMPLITUDE_ENABLED } = process.env;
 
@@ -52,7 +63,7 @@ export async function trackUserMemberships(userId: ModelId) {
     if (user && workspace) {
       const groupId = workspace.sId;
 
-      await populateWorkspaceProperties(workspace.id);
+      await populateWorkspaceProperties(workspace);
       groups.push(groupId);
     }
   }
@@ -67,39 +78,21 @@ export async function trackUserMemberships(userId: ModelId) {
 // so this is a cheap hack to avoid populating the same workspace multiple times.
 // This will probably change over time when we have a more complicated
 // workspace tracking setup.
-const alreadyPopulatedWorkspaces: Set<ModelId> = new Set();
-async function populateWorkspaceProperties(workspaceId: ModelId) {
-  if (alreadyPopulatedWorkspaces.has(workspaceId)) {
+const alreadyPopulatedWorkspaces: Set<string> = new Set();
+export async function populateWorkspaceProperties(workspace: Workspace) {
+  if (alreadyPopulatedWorkspaces.has(workspace.sId)) {
     return;
   }
   const amplitude = getBackendClient();
-  const workspace = await Workspace.findByPk(workspaceId);
-  if (workspace) {
-    const planCode = await getPlanCodeForWorkspace(workspace.id);
-    const groupProperties = new Identify();
-    groupProperties.set("name", workspace.name);
-    groupProperties.set("plan", planCode);
-    amplitude.client.groupIdentify(GROUP_TYPE, workspace.sId, groupProperties);
-    alreadyPopulatedWorkspaces.add(workspaceId);
-  }
-}
 
-async function getPlanCodeForWorkspace(
-  workspaceId: ModelId
-): Promise<string | "no-plan"> {
-  const subscription = await Subscription.findOne({
-    where: {
-      workspaceId,
-      status: "active",
-    },
-  });
-  if (subscription) {
-    const plan = await Plan.findByPk(subscription.planId);
-    if (plan) {
-      return plan.code;
-    }
-  }
-  return "no-plan";
+  const subscription = await subscriptionForWorkspace(workspace.sId);
+  const memberCount = await countActiveSeatsInWorkspace(workspace.sId);
+  const groupProperties = new Identify();
+  groupProperties.set("name", workspace.name);
+  groupProperties.set("plan", subscription.plan.code);
+  groupProperties.set("memberCount", memberCount);
+  amplitude.client.groupIdentify(GROUP_TYPE, workspace.sId, groupProperties);
+  alreadyPopulatedWorkspaces.add(workspace.sId);
 }
 
 export function trackSignup(user: UserType) {
@@ -147,6 +140,69 @@ export function trackUserMessage({
     {
       time: userMessage.created,
       insert_id: `user_message_${userMessage.sId}-${userMessage.version}`,
+    }
+  );
+}
+
+export function trackDataSourceCreated(
+  auth: Authenticator,
+  {
+    dataSource,
+  }: {
+    dataSource: DataSourceType;
+  }
+) {
+  const userId = auth.user()?.id;
+  const workspace = auth.workspace();
+  if (!workspace || !userId) {
+    return;
+  }
+  const amplitude = getBackendClient();
+  const event = new DataSourceCreated({
+    dataSourceName: dataSource.name,
+    dataSourceProvider: dataSource.connectorProvider || "",
+    workspaceName: workspace.name,
+    workspaceId: workspace.sId,
+    assistantDefaultSelected: dataSource.assistantDefaultSelected,
+  });
+
+  amplitude.track(
+    `user-${userId}`,
+    { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
+    {
+      time: dataSource.createdAt,
+      insert_id: `data_source_created_${dataSource.id}`,
+    }
+  );
+}
+
+export function trackAssistantCreated(
+  auth: Authenticator,
+  { assistant }: { assistant: AgentConfigurationType }
+) {
+  const userId = auth.user()?.id;
+  const workspace = auth.workspace();
+  if (!workspace || !userId) {
+    return;
+  }
+  const amplitude = getBackendClient();
+  const event = new AssistantCreated({
+    assistantId: assistant.sId,
+    assistantName: assistant.name,
+    workspaceName: workspace.name,
+    workspaceId: workspace.sId,
+    assistantScope: assistant.scope,
+    assistantActionType: assistant.action?.type || "",
+    assistantVersion: assistant.version,
+  });
+  amplitude.track(
+    `user-${userId}`,
+    { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
+    {
+      time: assistant.versionCreatedAt
+        ? new Date(assistant.versionCreatedAt).getTime()
+        : Date.now(),
+      insert_id: `assistant_created_${assistant.sId}`,
     }
   );
 }

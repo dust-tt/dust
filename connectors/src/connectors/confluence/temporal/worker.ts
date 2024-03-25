@@ -18,6 +18,7 @@ export async function runConfluenceWorker() {
     taskQueue: QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 16,
     connection,
+    reuseV8Context: true,
     namespace,
     interceptors: {
       activityInbound: [

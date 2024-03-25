@@ -1,11 +1,9 @@
 import { Button, RobotIcon } from "@dust-tt/sparkle";
 import type {
-  ConversationType,
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
@@ -14,23 +12,29 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 
-export function AgentSuggestion({
-  owner,
-  userMessage,
-  conversation,
-}: {
+interface AgentSuggestion {
+  conversationId: string;
+  latestMentions: string[];
   owner: WorkspaceType;
   userMessage: UserMessageType;
-  conversation: ConversationType;
-}) {
+}
+
+export function AgentSuggestion({
+  conversationId,
+  latestMentions,
+  owner,
+  userMessage,
+}: AgentSuggestion) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: { conversationId: conversation.sId },
+    agentsGetView: { conversationId: conversationId },
   });
   const sendNotification = useContext(SendNotificationsContext);
 
-  const agents = agentConfigurations.filter((a) => a.status === "active");
-  agents.sort((a, b) => compareAgentSuggestions(a, b));
+  const compareFctn = createCompareAgentSuggestions(latestMentions);
+  const agents = agentConfigurations
+    .filter((a) => a.status === "active")
+    .sort(compareFctn);
 
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +44,7 @@ export function AgentSuggestion({
   } = useSubmitFunction(async (agent: LightAgentConfigurationType) => {
     const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
     const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
       {
         method: "POST",
         headers: {
@@ -111,45 +115,23 @@ export function AgentSuggestion({
       </div>
     </div>
   );
+}
 
-  /**
-   * Compare agents by whom was last mentioned in conversation from this user. If none has been
-   * mentioned, use the shared `compareAgentsForSort` function.
-   */
-  function compareAgentSuggestions(
-    a: LightAgentConfigurationType,
-    b: LightAgentConfigurationType
-  ) {
-    // index of last user message in conversation mentioning agent a
-    const aIndex = conversation.content.findLastIndex((ms) =>
-      ms.some(
-        (m) =>
-          isUserMessageType(m) &&
-          m.user?.id === userMessage.user?.id &&
-          m.mentions.some(
-            (mention) =>
-              isAgentMention(mention) && mention.configurationId === a.sId
-          )
-      )
+/**
+ * Compare agents by whom was last mentioned in conversation from this user. If none has been
+ * mentioned, use the shared `compareAgentsForSort` function.
+ */
+function createCompareAgentSuggestions(latestMentions: string[]) {
+  return (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
+    const aIndex = latestMentions.findIndex((id) => id === a.sId);
+    const bIndex = latestMentions.findIndex((id) => id === b.sId);
+
+    // If both a and b have been mentioned, sort by largest index first.
+    // If only one has been mentioned, sort it first.
+    // If neither has been mentioned, use the default comparison function.
+    return (
+      (aIndex !== -1 ? aIndex : Infinity) -
+        (bIndex !== -1 ? bIndex : Infinity) || compareAgentsForSort(a, b)
     );
-    // index of last user message in conversation mentioning agent b
-    const bIndex = conversation.content.findLastIndex((ms) =>
-      ms.some(
-        (m) =>
-          isUserMessageType(m) &&
-          m.user?.id === userMessage.user?.id &&
-          m.mentions.some(
-            (mention) =>
-              isAgentMention(mention) && mention.configurationId === b.sId
-          )
-      )
-    );
-
-    if (aIndex === -1 && bIndex === -1) {
-      return compareAgentsForSort(a, b);
-    }
-
-    // if a or b was mentioned, sort by largest index first
-    return bIndex - aIndex;
-  }
+  };
 }

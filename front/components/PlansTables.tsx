@@ -3,7 +3,10 @@ import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
-import { PRO_PLAN_29_COST_EUR } from "@app/lib/client/subscription";
+import {
+  getPriceWithCurrency,
+  PRO_PLAN_29_COST,
+} from "@app/lib/client/subscription";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
@@ -171,7 +174,7 @@ export function ProPriceTable({
   return (
     <PriceTable
       title="Pro"
-      price={`${PRO_PLAN_29_COST_EUR}€`}
+      price={getPriceWithCurrency(PRO_PLAN_29_COST)}
       color="sky"
       priceLabel="/ month / user"
       size={size}
@@ -186,18 +189,26 @@ export function ProPriceTable({
           />
         )
       )}
-      <PriceTable.ActionContainer>
-        {plan && plan.code !== PRO_PLAN_SEAT_29_CODE && (
+
+      {display === "landing" && (
+        <PriceTable.ActionContainer>
+          <div className="text-base font-bold text-action-400">
+            Try it for free for 2 weeks
+          </div>
+        </PriceTable.ActionContainer>
+      )}
+      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+        <PriceTable.ActionContainer>
           <Button
             variant="primary"
             size={biggerButtonSize}
             label="Start now"
             icon={RocketIcon}
-            disabled={isProcessing || plan.code === PRO_PLAN_SEAT_29_CODE}
+            disabled={isProcessing}
             onClick={onClick}
           />
-        )}
-      </PriceTable.ActionContainer>
+        </PriceTable.ActionContainer>
+      )}
     </PriceTable>
   );
 }

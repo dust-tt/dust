@@ -1059,15 +1059,24 @@ async function findResourcesNotSeenInGarbageCollectionRun(
   return allResourcesNotSeenInGarbageCollectionRun;
 }
 
-export async function updateParentsFields(
-  connectorId: ModelId,
-  runTimestamp: number,
-  activityExecutionTimestamp: number
-) {
+export async function updateParentsFields(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
+
+  const parentsLastUpdatedAt =
+    notionConnectorState.parentsLastUpdatedAt?.getTime() || 0;
+  const newParentsLastUpdatedAt = new Date();
+
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
@@ -1077,7 +1086,9 @@ export async function updateParentsFields(
     await NotionPage.findAll({
       where: {
         connectorId: connector.id,
-        lastCreatedOrMovedRunTs: runTimestamp,
+        lastCreatedOrMovedRunTs: {
+          [Op.gt]: new Date(parentsLastUpdatedAt),
+        },
       },
       attributes: ["notionPageId"],
     })
@@ -1087,7 +1098,9 @@ export async function updateParentsFields(
     await NotionDatabase.findAll({
       where: {
         connectorId: connector.id,
-        lastCreatedOrMovedRunTs: runTimestamp,
+        lastCreatedOrMovedRunTs: {
+          [Op.gt]: new Date(parentsLastUpdatedAt),
+        },
       },
       attributes: ["notionDatabaseId"],
     })
@@ -1105,9 +1118,12 @@ export async function updateParentsFields(
     connectorId,
     notionPageIds,
     notionDatabaseIds,
-    activityExecutionTimestamp.toString()
+    newParentsLastUpdatedAt.getTime().toString()
   );
 
+  await notionConnectorState.update({
+    parentsLastUpdatedAt: newParentsLastUpdatedAt,
+  });
   localLogger.info({ nbUpdated }, "Updated parents fields.");
 }
 
@@ -1741,11 +1757,12 @@ export async function renderAndUpsertPageFromCache({
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
   for (const p of parsedProperties.filter((p) => p.key !== "title")) {
-    if (!p.text) {
+    if (!p.value) {
       continue;
     }
-    const propertyContent = `$${p.key}: ${p.text}\n`;
-    maxPropertyLength = Math.max(maxPropertyLength, p.text.length);
+    const propertyValue = Array.isArray(p.value) ? p.value.join(", ") : p.value;
+    const propertyContent = `$${p.key}: ${propertyValue}\n`;
+    maxPropertyLength = Math.max(maxPropertyLength, propertyValue.length);
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -1833,7 +1850,10 @@ export async function renderAndUpsertPageFromCache({
     parsedProperties.find((p) => p.type === "title") ??
     parsedProperties.find((p) => p.key === "title");
 
-  const title = titleProperty?.text ?? undefined;
+  let title = titleProperty?.value ?? undefined;
+  if (Array.isArray(title)) {
+    title = title.join(" ");
+  }
 
   let upsertTs: number | undefined = undefined;
   let skipReason: string | null = null;

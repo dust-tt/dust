@@ -17,6 +17,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { trackDataSourceCreated } from "@app/lib/amplitude/back";
+import { getDataSource } from "@app/lib/api/data_sources";
 import {
   Authenticator,
   getOrCreateSystemApiKey,
@@ -419,17 +421,24 @@ async function handler(
           owner.name
         }\` sId: \`${owner.sId}\` connectorId: \`${
           connectorsRes.value.id
-        }\` provider: \`${provider}\``,
+        }\` provider: \`${provider}\` trialing: \`${
+          auth.subscription()?.trialing ? "true" : "false"
+        }}\``,
       });
 
       dataSource = await dataSource.update({
         connectorId: connectorsRes.value.id,
         connectorProvider: provider,
       });
+      const dataSourceType = await getDataSource(auth, dataSource.name);
+      if (dataSourceType) {
+        trackDataSourceCreated(auth, { dataSource: dataSourceType });
+      }
 
       return res.status(201).json({
         dataSource: {
           id: dataSource.id,
+          createdAt: dataSource.createdAt.getTime(),
           name: dataSource.name,
           description: dataSource.description,
           dustAPIProjectId: dataSource.dustAPIProjectId,

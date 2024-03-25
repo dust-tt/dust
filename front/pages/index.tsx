@@ -48,7 +48,7 @@ import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
-import { getBrowserClient } from "@app/lib/amplitude/browser";
+import { trackPageView } from "@app/lib/amplitude/browser";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -122,8 +122,7 @@ export default function Home({
   }, []);
 
   useEffect(() => {
-    const amplitude = getBrowserClient();
-    amplitude.pageViewed({
+    trackPageView({
       pathname: router.pathname,
     });
   }, [router.pathname]);
@@ -788,16 +787,33 @@ export default function Home({
                 size="xs"
                 className="lg:hidden"
                 isTabs
+                onClickProPlan={() =>
+                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                    router.query
+                  )}`)
+                }
+                onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
               />
               <PricePlans
                 display="landing"
                 size="xs"
                 className="hidden lg:flex xl:hidden"
+                onClickProPlan={() =>
+                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                    router.query
+                  )}`)
+                }
+                onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
               />
               <PricePlans
                 display="landing"
                 size="sm"
                 className="hidden xl:flex"
+                onClickProPlan={() =>
+                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                    router.query
+                  )}`)
+                }
                 onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
               />
             </div>

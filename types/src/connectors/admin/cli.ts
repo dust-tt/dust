@@ -37,6 +37,7 @@ export const NotionCommandSchema = t.type({
     t.literal("check-url"),
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
+    t.literal("update-parents-fields"),
   ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });

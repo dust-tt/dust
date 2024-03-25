@@ -81,6 +81,7 @@ export async function getDataSource(
 
   return {
     id: dataSource.id,
+    createdAt: dataSource.createdAt.getTime(),
     name: dataSource.name,
     description: dataSource.description,
     dustAPIProjectId: dataSource.dustAPIProjectId,
@@ -128,6 +129,7 @@ export async function getDataSources(
   return dataSources.map((dataSource): DataSourceType => {
     return {
       id: dataSource.id,
+      createdAt: dataSource.createdAt.getTime(),
       name: dataSource.name,
       description: dataSource.description,
       dustAPIProjectId: dataSource.dustAPIProjectId,

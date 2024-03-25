@@ -27,6 +27,9 @@ const config = {
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
     );
   },
+  getServiceAccount: (): string => {
+    return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  },
 };
 
 export default config;

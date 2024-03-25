@@ -61,7 +61,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragment?: { title: string; content: string }
+    contentFragment?: { title: string; content: string; file: File }
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -72,12 +72,10 @@ export function AssistantInputBar({
 }) {
   const { mutate } = useSWRConfig();
 
-  const [contentFragmentBody, setContentFragmentBody] = useState<
-    string | undefined
+  const [contentFragmentData, setContentFragmentData] = useState<
+    { title: string; content: string; file: File } | undefined
   >(undefined);
-  const [contentFragmentFilename, setContentFragmentFilename] = useState<
-    string | undefined
-  >(undefined);
+
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -150,22 +148,19 @@ export function AssistantInputBar({
       | {
           title: string;
           content: string;
-          url: string | null;
+          file: File;
           contentType: string;
         }
       | undefined = undefined;
-    if (contentFragmentFilename && contentFragmentBody) {
+    if (contentFragmentData) {
       contentFragment = {
-        title: contentFragmentFilename,
-        content: contentFragmentBody,
-        url: null,
+        ...contentFragmentData,
         contentType: "file_attachment",
       };
     }
     onSubmit(text, mentions, contentFragment);
     resetEditorText();
-    setContentFragmentFilename(undefined);
-    setContentFragmentBody(undefined);
+    setContentFragmentData(undefined);
   };
 
   const onInputFileChange: InputBarContainerProps["onInputFileChange"] =
@@ -202,9 +197,11 @@ export function AssistantInputBar({
           });
           return;
         }
-
-        setContentFragmentFilename(res.value.title);
-        setContentFragmentBody(res.value.content);
+        setContentFragmentData({
+          title: res.value.title,
+          content: res.value.content,
+          file,
+        });
       },
       [sendNotification]
     );
@@ -288,15 +285,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              {contentFragmentFilename && contentFragmentBody && (
+              {contentFragmentData && (
                 <div className="mr-4 border-b border-structure-300/50 pb-3 pt-4">
                   <Citation
-                    title={contentFragmentFilename}
+                    title={contentFragmentData.title}
                     size="xs"
-                    description={contentFragmentBody?.substring(0, 100)}
+                    description={contentFragmentData.content?.substring(0, 100)}
                     onClose={() => {
-                      setContentFragmentBody(undefined);
-                      setContentFragmentFilename(undefined);
+                      setContentFragmentData(undefined);
                     }}
                   />
                 </div>
@@ -312,7 +308,7 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
-                disableAttachment={!!contentFragmentFilename}
+                disableAttachment={!!contentFragmentData?.title}
               />
             </div>
           </div>
@@ -335,7 +331,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragment?: { title: string; content: string }
+    contentFragment?: { title: string; content: string; file: File }
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

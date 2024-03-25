@@ -35,6 +35,16 @@ export type MessageReactionType = {
   }[];
 };
 
+export type MessageType =
+  | AgentMessageType
+  | UserMessageType
+  | ContentFragmentType;
+
+export type WithRank<T> = T & {
+  rank: number;
+};
+export type MessageWithRankType = WithRank<MessageType>;
+
 /**
  * User messages
  */
@@ -59,10 +69,9 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
 };
+export type UserMessageWithRankType = WithRank<UserMessageType>;
 
-export function isUserMessageType(
-  arg: UserMessageType | AgentMessageType | ContentFragmentType
-): arg is UserMessageType {
+export function isUserMessageType(arg: MessageType): arg is UserMessageType {
   return arg.type === "user_message";
 }
 
@@ -96,7 +105,6 @@ export type AgentMessageType = {
   visibility: MessageVisibility;
   version: number;
   parentMessageId: string | null;
-
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
   action: AgentActionType | null;
@@ -107,9 +115,9 @@ export type AgentMessageType = {
   } | null;
 };
 
-export function isAgentMessageType(
-  arg: UserMessageType | AgentMessageType | ContentFragmentType
-): arg is AgentMessageType {
+export type AgentMessageWithRankType = WithRank<AgentMessageType>;
+
+export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
 }
 
@@ -134,7 +142,8 @@ export type ContentFragmentType = {
   type: "content_fragment";
   visibility: MessageVisibility;
   version: number;
-
+  sourceUrl: string | null;
+  textBytes: number | null;
   title: string;
   content: string;
   url: string | null;
@@ -143,7 +152,7 @@ export type ContentFragmentType = {
 };
 
 export function isContentFragmentType(
-  arg: UserMessageType | AgentMessageType | ContentFragmentType
+  arg: MessageType
 ): arg is ContentFragmentType {
   return arg.type === "content_fragment";
 }
@@ -200,3 +209,24 @@ export type ConversationWithoutContentType = {
 };
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
+
+/**
+ * Conversation participants.
+ */
+
+export interface AgentParticipantType {
+  configurationId: string;
+  name: string;
+  pictureUrl: string;
+}
+
+export interface UserParticipantType {
+  fullName: string | null;
+  pictureUrl: string | null;
+  username: string;
+}
+
+export interface ConversationParticipantsType {
+  agents: AgentParticipant[];
+  users: UserParticipant[];
+}

@@ -17,7 +17,7 @@ import type {
 import { topNavigation } from "@app/components/sparkle/navigation";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { getBrowserClient } from "@app/lib/amplitude/browser";
+import { getBrowserClient, trackPageView } from "@app/lib/amplitude/browser";
 import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -227,11 +227,12 @@ export default function AppLayout({
     if (user?.user?.id) {
       const userId = `user-${user?.user?.id}`;
       amplitude.identify(userId);
-      amplitude.pageViewed({
+      trackPageView({
         pathname: router.pathname,
+        workspaceId: owner.sId,
       });
     }
-  }, [router.pathname, user?.user?.id]);
+  }, [owner.sId, router.pathname, user?.user?.id]);
 
   return (
     <>

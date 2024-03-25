@@ -63,6 +63,7 @@ async function handler(
       res.status(200).json({
         dataSource: {
           id: dataSource.id,
+          createdAt: dataSource.createdAt,
           name: dataSource.name,
           description: dataSource.description,
           dustAPIProjectId: dataSource.dustAPIProjectId,
@@ -151,6 +152,7 @@ async function handler(
       return res.status(200).json({
         dataSource: {
           id: ds.id,
+          createdAt: ds.createdAt.getTime(),
           name: ds.name,
           description: ds.description,
           assistantDefaultSelected: ds.assistantDefaultSelected,

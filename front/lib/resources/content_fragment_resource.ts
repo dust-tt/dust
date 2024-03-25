@@ -1,5 +1,6 @@
-import type { ContentFragmentType, Result } from "@dust-tt/types";
+import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { Storage } from "@google-cloud/storage";
 import type {
   Attributes,
   CreationAttributes,
@@ -7,8 +8,10 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { Message } from "@app/lib/models";
+import appConfig from "@app/lib/api/config";
+import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { gcsConfig } from "@app/lib/resources/storage/config";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -58,6 +61,18 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
+  static async fromMessageId(id: ModelId) {
+    const message = await Message.findByPk(id, {
+      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
+    });
+    if (!message) {
+      throw new Error(
+        "No message found for the given id when trying to create a ContentFragmentResource"
+      );
+    }
+    return ContentFragmentResource.fromMessage(message);
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
@@ -84,6 +99,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       title: this.title,
       content: this.content,
       url: this.url,
+      sourceUrl: this.sourceUrl,
+      textBytes: this.textBytes,
       contentType: this.contentType,
       context: {
         profilePictureUrl: this.userContextProfilePictureUrl,
@@ -93,4 +110,88 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       },
     };
   }
+}
+
+// TODO(2024-03-22 pr): Move as method of message resource after migration of
+// message to resource pattern at which time the method should only apply to
+// messages that are content fragments with type file_attachment
+export function fileAttachmentLocation({
+  workspaceId,
+  conversationId,
+  messageId,
+  contentFormat,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  contentFormat: "raw" | "text";
+}) {
+  const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
+  return {
+    filePath,
+    internalUrl: `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`,
+    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment`,
+  };
+}
+
+export async function storeContentFragmentText({
+  workspaceId,
+  conversationId,
+  messageId,
+  content,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  content: string;
+}): Promise<string | null> {
+  if (content === "") {
+    return null;
+  }
+
+  const { filePath, internalUrl } = fileAttachmentLocation({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "text",
+  });
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(filePath);
+
+  await gcsFile.save(content, {
+    contentType: "text/plain",
+  });
+
+  return internalUrl;
+}
+
+export async function getContentFragmentText({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}): Promise<string> {
+  const storage = new Storage({
+    keyFilename: appConfig.getServiceAccount(),
+  });
+
+  const { filePath } = fileAttachmentLocation({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "text",
+  });
+
+  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
+  const gcsFile = bucket.file(filePath);
+
+  const [content] = await gcsFile.download();
+  return content.toString();
 }
