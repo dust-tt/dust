@@ -22,7 +22,7 @@ export class Template extends Model<
 
   declare visibility: "draft" | "published" | "disabled";
 
-  declare presetHandler: string | null;
+  declare presetHandle: string | null;
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
   declare presetTemperature:
@@ -75,7 +75,7 @@ Template.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    presetHandler: {
+    presetHandle: {
       type: DataTypes.STRING,
     },
     presetDescription: {
