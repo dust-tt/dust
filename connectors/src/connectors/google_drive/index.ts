@@ -403,7 +403,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
       let nodes = await concurrentExecutor(
         folderOrFiles,
         async (f): Promise<ContentNode> => {
-          const type = getPermissionViewType(f, viewType);
+          const type = getPermissionViewType(f);
 
           return {
             provider: c.type,
@@ -651,7 +651,7 @@ export async function retrieveGoogleDriveContentNodes(
   const folderOrFileNodes = await concurrentExecutor(
     folderOrFiles,
     async (f): Promise<ContentNode> => {
-      const type = getPermissionViewType(f, viewType);
+      const type = getPermissionViewType(f);
       let sourceUrl = null;
 
       if (isGoogleDriveSpreadSheetFile(f)) {
