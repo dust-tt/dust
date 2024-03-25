@@ -1,11 +1,18 @@
-import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  ConversationParticipantsType,
+  UserMessageType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
-import type { FetchConversationParticipantsResponse } from "@app/lib/api/assistant/participants";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+export type FetchConversationParticipantsResponse = {
+  participants: ConversationParticipantsType;
+};
 
 async function handler(
   req: NextApiRequest,
@@ -83,7 +90,7 @@ async function handler(
     case "GET":
       const participantsRes = await fetchConversationParticipants(
         auth,
-        conversationId
+        conversationWithoutContent
       );
       if (participantsRes.isErr()) {
         return apiError(req, res, {
@@ -95,7 +102,7 @@ async function handler(
         });
       }
 
-      res.status(200).json(participantsRes.value);
+      res.status(200).json({ participants: participantsRes.value });
       break;
 
     default:

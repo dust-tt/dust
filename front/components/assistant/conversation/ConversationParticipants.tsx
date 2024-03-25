@@ -19,7 +19,7 @@ export function ConversationParticipants({
   });
 
   if (!conversationParticipants) {
-    return <></>;
+    return null;
   }
 
   const { agents, users } = conversationParticipants;
@@ -39,10 +39,7 @@ export function ConversationParticipants({
           />
         ))}
       </Avatar.Stack>
-      <Avatar.Stack
-        size="sm"
-        nbMoreItems={users.length > 4 ? users.length - 4 : 0}
-      >
+      <Avatar.Stack size="sm" nbMoreItems={Math.max(users.length - 4, 0)}>
         {users.slice(0, 4).map((user, i) => (
           <Avatar
             name={user.fullName || user.username}

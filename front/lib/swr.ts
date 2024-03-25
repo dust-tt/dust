@@ -17,7 +17,6 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import type { FetchConversationParticipantsResponse } from "@app/lib/api/assistant/participants";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
@@ -29,6 +28,7 @@ import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";

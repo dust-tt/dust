@@ -1,43 +1,22 @@
 import type {
+  AgentParticipantType,
+  ConversationParticipantsType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   ModelId,
   Result,
+  UserParticipantType,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessage,
-  Conversation,
-  Message,
-  User,
-  UserMessage,
-} from "@app/lib/models";
-
-interface AgentParticipant {
-  configurationId: string;
-  name: string;
-  pictureUrl: string;
-}
-
-interface UserParticipant {
-  fullName: string | null;
-  pictureUrl: string | null;
-  username: string;
-}
-
-export interface FetchConversationParticipantsResponse {
-  participants: {
-    agents: AgentParticipant[];
-    users: UserParticipant[];
-  };
-}
+import { AgentMessage, Message, User, UserMessage } from "@app/lib/models";
 
 async function fetchAllUsersById(
   userIds: ModelId[]
-): Promise<UserParticipant[]> {
+): Promise<UserParticipantType[]> {
   const users = (
     await User.findAll({
       attributes: ["firstName", "lastName", "imageUrl", "username"],
@@ -59,7 +38,7 @@ async function fetchAllUsersById(
 async function fetchAllAgentsById(
   auth: Authenticator,
   agentConfigurationIds: string[]
-): Promise<AgentParticipant[]> {
+): Promise<AgentParticipantType[]> {
   // TODO(2024-3-25 flav) Support fetching many agents by id.
   const agents = (
     await Promise.all(
@@ -78,21 +57,11 @@ async function fetchAllAgentsById(
 
 export async function fetchConversationParticipants(
   auth: Authenticator,
-  conversationId: string
-): Promise<Result<FetchConversationParticipantsResponse, Error>> {
+  conversation: ConversationWithoutContentType
+): Promise<Result<ConversationParticipantsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     return new Err(new Error("Unexpected `auth` without `workspace`."));
-  }
-
-  const conversation = await Conversation.findOne({
-    where: {
-      sId: conversationId,
-      workspaceId: owner.id,
-    },
-  });
-  if (!conversation) {
-    return new Err(new Error("Conversation not found."));
   }
 
   const messages = await Message.findAll({
@@ -140,9 +109,7 @@ export async function fetchConversationParticipants(
   ]);
 
   return new Ok({
-    participants: {
-      agents,
-      users,
-    },
+    agents,
+    users,
   });
 }
