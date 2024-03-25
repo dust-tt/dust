@@ -1,5 +1,3 @@
-import type { ContentNodesViewType } from "@dust-tt/types";
-
 import {
   isGoogleDriveFolder,
   isGoogleDriveSpreadSheetFile,
@@ -7,14 +5,8 @@ import {
 import { getDocumentId } from "@connectors/connectors/google_drive/temporal/utils";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 
-export function getPermissionViewType(
-  file: GoogleDriveFiles,
-  viewType: ContentNodesViewType
-) {
+export function getPermissionViewType(file: GoogleDriveFiles) {
   if (isGoogleDriveFolder(file)) {
-    return "folder";
-  }
-  if (isGoogleDriveSpreadSheetFile(file) && viewType === "tables") {
     return "folder";
   }
 
