@@ -96,11 +96,9 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       type: "content_fragment",
       visibility: message.visibility,
       version: message.version,
-      title: this.title,
-      content: this.content,
-      url: this.url,
       sourceUrl: this.sourceUrl,
       textBytes: this.textBytes,
+      title: this.title,
       contentType: this.contentType,
       context: {
         profilePictureUrl: this.userContextProfilePictureUrl,
@@ -144,12 +142,12 @@ export async function storeContentFragmentText({
   conversationId: string;
   messageId: string;
   content: string;
-}): Promise<string | null> {
+}): Promise<number | null> {
   if (content === "") {
     return null;
   }
 
-  const { filePath, internalUrl } = fileAttachmentLocation({
+  const { filePath } = fileAttachmentLocation({
     workspaceId,
     conversationId,
     messageId,
@@ -166,7 +164,7 @@ export async function storeContentFragmentText({
     contentType: "text/plain",
   });
 
-  return internalUrl;
+  return Buffer.byteLength(content);
 }
 
 export async function getContentFragmentText({

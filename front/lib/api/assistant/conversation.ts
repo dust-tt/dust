@@ -1530,12 +1530,6 @@ export async function postNewContentFragment(
   }
 
   const messageId = generateModelSId();
-  const textUrl = await storeContentFragmentText({
-    workspaceId: owner.sId,
-    conversationId: conversation.sId,
-    messageId,
-    content,
-  });
 
   const sourceUrl =
     contentType === "file_attachment"
@@ -1547,7 +1541,12 @@ export async function postNewContentFragment(
         }).downloadUrl
       : url;
 
-  const textBytes = textUrl ? Buffer.byteLength(content, "utf8") : null;
+  const textBytes = await storeContentFragmentText({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+    messageId,
+    content,
+  });
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
@@ -1555,11 +1554,8 @@ export async function postNewContentFragment(
 
       const contentFragment = await ContentFragmentResource.makeNew(
         {
-          content,
           title,
-          url,
           sourceUrl,
-          textUrl,
           textBytes,
           contentType,
           userId: auth.user()?.id,
