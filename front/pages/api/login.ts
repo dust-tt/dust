@@ -39,7 +39,7 @@ async function handleMembershipInvite(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  if (membershipInvite.inviteEmail !== user.email.toLowerCase()) {
+  if (membershipInvite.inviteEmail !== user.email) {
     return new Err(
       new AuthFlowError(
         "The invitation token is not intended for use with this email address."
