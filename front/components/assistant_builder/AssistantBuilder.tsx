@@ -99,7 +99,10 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   instructions: null,
   avatarUrl: null,
   generationSettings: {
-    modelSettings: { modelId: "gpt-4", providerId: "openai" },
+    modelSettings: {
+      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+    },
     temperature: 0.7,
   },
 };
