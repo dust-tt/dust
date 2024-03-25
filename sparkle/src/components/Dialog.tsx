@@ -1,7 +1,7 @@
 import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
 import React, { Fragment, useRef } from "react";
 
-import { ConfettiBackground, Spinner } from "@sparkle/index";
+import { ConfettiBackground, Spinner2 } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
@@ -89,7 +89,7 @@ export function Dialog({
                         />
                       </>
                     )}
-                    {isSaving && <Spinner />}
+                    {isSaving && <Spinner2 variant="color" />}
                   </Button.List>
                 </div>
                 {backgroundType !== "none" && (

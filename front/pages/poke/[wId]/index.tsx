@@ -3,7 +3,7 @@ import {
   Collapsible,
   DropdownMenu,
   Modal,
-  Spinner,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
@@ -402,7 +402,7 @@ const WorkspacePage = ({
                           {isLoading ? (
                             <p className="text-warning mb-4 text-sm ">
                               Deleting workspace data...
-                              <Spinner />
+                              <Spinner2 />
                             </p>
                           ) : (
                             <Button

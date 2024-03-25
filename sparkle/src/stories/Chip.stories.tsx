@@ -60,5 +60,28 @@ export const ListChipsExample = () => (
         ))}
       </Chip.List>
     </div>
+    isBusy
+    <Chip.List>
+      {colors.map((color) => (
+        <Chip
+          key={`xs-${color}`}
+          size="xs"
+          label={color}
+          color={color}
+          isBusy
+        />
+      ))}
+    </Chip.List>
+    <Chip.List>
+      {colors.map((color) => (
+        <Chip
+          key={`sm-${color}`}
+          size="sm"
+          label={color}
+          color={color}
+          isBusy
+        />
+      ))}
+    </Chip.List>
   </div>
 );
