@@ -1,7 +1,6 @@
 import type { AgentStatus } from "@dust-tt/types";
 
 import {
-  populateWorkspaceProperties,
   trackAssistantCreated,
   trackDataSourceCreated,
 } from "@app/lib/amplitude/back";
@@ -10,13 +9,12 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,
-  Conversation,
   DataSource,
   Membership,
   Workspace,
 } from "@app/lib/models";
 
-const workspaceIDS = ["c2d481e559"];
+const workspaceIDS = ["991163d96e"];
 
 async function populateAssistantCreated(workspace: Workspace) {
   const assistants = await AgentConfiguration.findAll({
