@@ -1,10 +1,7 @@
 import { Op } from "sequelize";
 
-import { Conversation, Message, Workspace } from "@app/lib/models";
-import {
-  ContentFragmentResource,
-  storeContentFragmentText,
-} from "@app/lib/resources/content_fragment_resource";
+import { Message } from "@app/lib/models";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
 const { LIVE } = process.env;
