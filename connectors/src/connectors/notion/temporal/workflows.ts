@@ -205,11 +205,7 @@ export async function notionSyncWorkflow({
             forceResync,
           });
         }
-      } while (
-        discoveredResources &&
-        // For now, we only want to do one iteration, except for a specific connector
-        connectorId === 137
-      );
+      } while (discoveredResources);
     }
 
     // Compute parents after all documents are added/updated
