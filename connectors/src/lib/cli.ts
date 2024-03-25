@@ -51,10 +51,7 @@ import {
   checkNotionUrl,
   searchNotionPagesForQuery,
 } from "@connectors/connectors/notion/lib/cli";
-import {
-  getNotionAccessToken,
-  updateParentsFields,
-} from "@connectors/connectors/notion/temporal/activities";
+import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
@@ -705,29 +702,6 @@ export const notion = async ({
         await stopNotionGarbageCollectorWorkflow(connector.id);
       }
       return { success: true };
-    }
-
-    case "update-parents-fields": {
-      const { wId } = args;
-      const connectors = await ConnectorModel.findAll({
-        where: {
-          type: "notion",
-          ...(wId ? { workspaceId: wId } : {}),
-        },
-      });
-
-      for (const c of connectors) {
-        console.log(
-          "\n----------\n",
-          `Updating parents for connector ${c.id}`,
-          "\n----------\n"
-        );
-        await updateParentsFields(c.id, 0, new Date().getTime());
-      }
-
-      return {
-        success: true,
-      };
     }
 
     default:

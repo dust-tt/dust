@@ -22,6 +22,7 @@ export class NotionConnectorState extends Model<
   declare fullResyncStartTime?: CreationOptional<Date>;
 
   declare lastGarbageCollectionFinishTime?: Date;
+  declare parentsLastUpdatedAt?: Date;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -51,6 +52,10 @@ NotionConnectorState.init(
       allowNull: true,
     },
     lastGarbageCollectionFinishTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    parentsLastUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },

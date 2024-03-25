@@ -1059,15 +1059,24 @@ async function findResourcesNotSeenInGarbageCollectionRun(
   return allResourcesNotSeenInGarbageCollectionRun;
 }
 
-export async function updateParentsFields(
-  connectorId: ModelId,
-  lastSuccessfulSyncTs: number,
-  activityExecutionTimestamp: number
-) {
+export async function updateParentsFields(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
+
+  const parentsLastUpdatedAt =
+    notionConnectorState.parentsLastUpdatedAt?.getTime() || 0;
+  const newParentsLastUpdatedAt = new Date();
+
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
     dataSourceName: connector.dataSourceName,
@@ -1078,7 +1087,7 @@ export async function updateParentsFields(
       where: {
         connectorId: connector.id,
         lastCreatedOrMovedRunTs: {
-          [Op.gt]: lastSuccessfulSyncTs,
+          [Op.gt]: new Date(parentsLastUpdatedAt),
         },
       },
       attributes: ["notionPageId"],
@@ -1090,7 +1099,7 @@ export async function updateParentsFields(
       where: {
         connectorId: connector.id,
         lastCreatedOrMovedRunTs: {
-          [Op.gt]: lastSuccessfulSyncTs,
+          [Op.gt]: new Date(parentsLastUpdatedAt),
         },
       },
       attributes: ["notionDatabaseId"],
@@ -1109,9 +1118,12 @@ export async function updateParentsFields(
     connectorId,
     notionPageIds,
     notionDatabaseIds,
-    activityExecutionTimestamp.toString()
+    newParentsLastUpdatedAt.getTime().toString()
   );
 
+  await notionConnectorState.update({
+    parentsLastUpdatedAt: newParentsLastUpdatedAt,
+  });
   localLogger.info({ nbUpdated }, "Updated parents fields.");
 }
 
