@@ -136,31 +136,6 @@ export default function DataSource({
     setNewTagsNot("");
   };
 
-  const handleTimestampGtChange = (gt: string) => {
-    const b = shallowBlockClone(block);
-    if (!b.config.filter) {
-      b.config.filter = {};
-    }
-    b.config.filter.timestamp = {
-      gt: gt ? gt : null,
-      lt: b.config.filter.timestamp?.lt,
-    };
-    onBlockUpdate(b);
-  };
-
-  const handleTimestampLtChange = (lt: string) => {
-    const b = shallowBlockClone(block);
-    if (!b.config.filter) {
-      b.config.filter = {};
-    }
-    b.config.filter.timestamp = {
-      lt: lt ? lt : null,
-      gt: b.config.filter.timestamp?.gt,
-    };
-    console.log("LT", b);
-    onBlockUpdate(b);
-  };
-
   const handleDataSourcesChange = (
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => {
@@ -185,6 +160,12 @@ export default function DataSource({
   const handleQueryChange = (query: string) => {
     const b = shallowBlockClone(block);
     b.spec.query = query;
+    onBlockUpdate(b);
+  };
+
+  const handleFilterCodeChange = (filterCode: string) => {
+    const b = shallowBlockClone(block);
+    b.spec.filter_code = filterCode;
     onBlockUpdate(b);
   };
 
@@ -281,7 +262,36 @@ export default function DataSource({
             </div>
           )}
           {filtersExpanded ? (
-            <>
+            <div className="flex flex-col space-y-1">
+              <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex w-full font-normal">
+                  <div className="w-full leading-4">
+                    <div
+                      className={classNames(
+                        "border bg-slate-100",
+                        "border-slate-100"
+                      )}
+                    >
+                      <CodeEditor
+                        data-color-mode="light"
+                        readOnly={readOnly}
+                        value={block.spec.filter_code}
+                        language="js"
+                        placeholder=""
+                        onChange={(e) => handleFilterCodeChange(e.target.value)}
+                        padding={15}
+                        style={{
+                          fontSize: 12,
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                          backgroundColor: "rgb(241 245 249)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col xl:flex-row xl:space-x-2">
                 <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">tags.in:</div>
@@ -406,43 +416,8 @@ export default function DataSource({
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">timestamp.gt:</div>
-                  <div className="flex flex-initial font-normal">
-                    <input
-                      type="text"
-                      className={classNames(
-                        "block w-16 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
-                      readOnly={readOnly}
-                      value={block.config.filter.timestamp?.gt}
-                      onChange={(e) => handleTimestampGtChange(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">timestamp.lt:</div>
-                  <div className="flex flex-initial font-normal">
-                    <input
-                      type="text"
-                      className={classNames(
-                        "block w-16 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
-                      readOnly={readOnly}
-                      value={block.config.filter.timestamp?.lt}
-                      onChange={(e) => handleTimestampLtChange(e.target.value)}
-                    />
-                  </div>
-                </div>
               </div>
-            </>
+            </div>
           ) : null}
         </div>
 
