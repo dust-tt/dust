@@ -1,4 +1,5 @@
 import type { UserType, WorkspaceType } from "@dust-tt/types";
+import { sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 
@@ -15,7 +16,7 @@ export async function sendWorkspaceInvitationEmail(
   // Create MembershipInvitation.
   const invitation = await MembershipInvitation.create({
     workspaceId: owner.id,
-    inviteEmail,
+    inviteEmail: sanitizeString(inviteEmail),
     status: "pending",
   });
 
