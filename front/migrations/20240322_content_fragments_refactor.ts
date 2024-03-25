@@ -1,10 +1,11 @@
+import { Op } from "sequelize";
+
 import { Conversation, Message, Workspace } from "@app/lib/models";
 import {
   ContentFragmentResource,
   storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { Op } from "sequelize";
 
 const { LIVE } = process.env;
 
@@ -16,15 +17,19 @@ async function migrateContentFragment(
   const cf = ContentFragmentResource.fromMessage(cfMessage);
   // if textUrl is null, upload content to GCS and set textUrl to the uploaded file
   // value (also set textBytes to the number of bytes in the content)
+  // @ts-expect-error textUrl was removed from ContentFragmentResource
   if (!cf.textUrl) {
     const fileUrl = await storeContentFragmentText({
       workspaceId,
       conversationId,
       messageId: cfMessage.sId,
+      // @ts-expect-error content was removed from ContentFragmentResource
       content: cf.content,
     });
     await cf.update({
+      // @ts-expect-error textUrl was removed from ContentFragmentResource
       textUrl: fileUrl,
+      // @ts-expect-error content was removed from ContentFragmentResource
       textBytes: Buffer.byteLength(cf.content),
     });
   }
@@ -33,6 +38,7 @@ async function migrateContentFragment(
   // is null, set sourceUrl to textUrl
   if (!cf.sourceUrl) {
     await cf.update({
+      // @ts-expect-error url was removed from ContentFragmentResource
       sourceUrl: cf.url ?? cf.textUrl,
     });
   }
@@ -112,6 +118,13 @@ async function migrateContentFragmentsForWorkspace(workspace: Workspace) {
 }
 
 async function main() {
+  if (LIVE) {
+    throw new Error(
+      `This script was used to migrate columns that are now removed.
+      Manually disable this error and check the tslint ignores if you
+      really need to run it`
+    );
+  }
   // get all ids and sIds of workspaces
   const workspaces = await Workspace.findAll({
     attributes: ["id", "sId"],

@@ -19,15 +19,12 @@ export class ContentFragmentModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare title: string;
-  declare content: string;
-  declare url: string | null;
   declare contentType: ContentFragmentContentType;
   declare sourceUrl: string | null; // GCS (upload) or Slack or ...
 
-  // Fields below are set of all types that can be transduced to text or
-  // are textual in nature (PDF, text, CSV, future: .docx...)
-  declare textUrl: string | null; // url to GCS
-  declare textBytes: number | null; // number of textUrl bytes
+  // The field below should be set for all fragments that are converted to text
+  // before being put in model context (PDF, text, CSV, future: .docx...)
+  declare textBytes: number | null;
 
   // user-related context
   declare userContextUsername: string | null;
@@ -59,23 +56,11 @@ ContentFragmentModel.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    url: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
     contentType: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    textUrl: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
