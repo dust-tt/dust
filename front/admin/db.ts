@@ -47,6 +47,7 @@ import {
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { Template, TemplateTag } from "@app/lib/models/templates";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   TemplateModel,
