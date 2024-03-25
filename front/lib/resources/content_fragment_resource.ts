@@ -113,8 +113,9 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 }
 
 // TODO(2024-03-22 pr): Move as method of message resource after migration of
-// message to resource pattern
-export function contentFragmentUrl({
+// message to resource pattern at which time the method should only apply to
+// messages that are content fragments with type file_attachment
+export function fileAttachmentLocation({
   workspaceId,
   conversationId,
   messageId,
@@ -128,7 +129,8 @@ export function contentFragmentUrl({
   const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
   return {
     filePath,
-    fileUrl: `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`,
+    internalUrl: `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`,
+    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment`,
   };
 }
 
@@ -147,7 +149,7 @@ export async function storeContentFragmentText({
     return null;
   }
 
-  const { filePath, fileUrl } = contentFragmentUrl({
+  const { filePath, internalUrl } = fileAttachmentLocation({
     workspaceId,
     conversationId,
     messageId,
@@ -164,7 +166,7 @@ export async function storeContentFragmentText({
     contentType: "text/plain",
   });
 
-  return fileUrl;
+  return internalUrl;
 }
 
 export async function getContentFragmentText({
@@ -180,7 +182,7 @@ export async function getContentFragmentText({
     keyFilename: appConfig.getServiceAccount(),
   });
 
-  const { filePath } = contentFragmentUrl({
+  const { filePath } = fileAttachmentLocation({
     workspaceId,
     conversationId,
     messageId,

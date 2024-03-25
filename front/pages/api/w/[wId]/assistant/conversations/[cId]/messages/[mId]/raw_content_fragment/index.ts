@@ -11,7 +11,7 @@ import appConfig from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
   ContentFragmentResource,
-  contentFragmentUrl,
+  fileAttachmentLocation,
 } from "@app/lib/resources/content_fragment_resource";
 import { gcsConfig } from "@app/lib/resources/storage/config";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -108,7 +108,7 @@ async function handler(
     });
   }
 
-  const { filePath, fileUrl } = contentFragmentUrl({
+  const { filePath, downloadUrl } = fileAttachmentLocation({
     workspaceId: owner.sId,
     conversationId,
     messageId,
@@ -166,9 +166,9 @@ async function handler(
 
         // set content fragment's sourceUrl to the uploaded file
         const cf = await ContentFragmentResource.fromMessageId(message.id);
-        await cf.update({ sourceUrl: fileUrl });
+        await cf.update({ sourceUrl: downloadUrl });
 
-        res.status(200).json({ sourceUrl: fileUrl });
+        res.status(200).json({ sourceUrl: downloadUrl });
         return;
       } catch (error) {
         return apiError(
