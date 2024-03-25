@@ -177,38 +177,36 @@ export async function notionSyncWorkflow({
     // wait for all child workflows to finish
     await Promise.all(promises);
 
-    // These are resources (pages/DBs) that we didn't get from the search API but that are
-    // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
-    // well.
-    let discoveredResources: {
-      pageIds: string[];
-      databaseIds: string[];
-    } | null;
-    do {
-      discoveredResources = await getDiscoveredResourcesFromCache({
-        connectorId,
-        topLevelWorkflowId,
-      });
-      if (discoveredResources) {
-        await performUpserts({
+    if (isGarbageCollectionRun || isInitialSync) {
+      // These are resources (pages/DBs) that we didn't get from the search API but that are
+      // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+      // well.
+      let discoveredResources: {
+        pageIds: string[];
+        databaseIds: string[];
+      } | null;
+      do {
+        discoveredResources = await getDiscoveredResourcesFromCache({
           connectorId,
-          pageIds: discoveredResources.pageIds,
-          databaseIds: discoveredResources.databaseIds,
-          isGarbageCollectionRun: isGarbageCollectionRun,
-          runTimestamp,
-          pageIndex: null,
-          isBatchSync: isInitialSync,
-          queue: childWorkflowQueue,
-          childWorkflowsNameSuffix: "discovered",
           topLevelWorkflowId,
-          forceResync,
         });
-      }
-    } while (
-      discoveredResources &&
-      // For now, we only want to do one iteration, except for a specific connector
-      connectorId === 137
-    );
+        if (discoveredResources) {
+          await performUpserts({
+            connectorId,
+            pageIds: discoveredResources.pageIds,
+            databaseIds: discoveredResources.databaseIds,
+            isGarbageCollectionRun: isGarbageCollectionRun,
+            runTimestamp,
+            pageIndex: null,
+            isBatchSync: isInitialSync,
+            queue: childWorkflowQueue,
+            childWorkflowsNameSuffix: "discovered",
+            topLevelWorkflowId,
+            forceResync,
+          });
+        }
+      } while (discoveredResources);
+    }
 
     // Compute parents after all documents are added/updated
     await updateParentsFields(connectorId, runTimestamp, new Date().getTime());
