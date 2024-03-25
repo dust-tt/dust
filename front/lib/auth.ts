@@ -1,5 +1,6 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
+  ModelId,
   RoleType,
   UserType,
   WhitelistableFeature,
@@ -117,6 +118,64 @@ export class Authenticator {
             },
           });
         }
+      })(),
+    ]);
+
+    let role = "none" as RoleType;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (user && workspace) {
+      [role, subscription, flags] = await Promise.all([
+        (async (): Promise<RoleType> => {
+          const membership = await Membership.findOne({
+            where: {
+              userId: user.id,
+              workspaceId: workspace.id,
+            },
+          });
+          return membership &&
+            ["admin", "builder", "user"].includes(membership.role)
+            ? (membership.role as RoleType)
+            : "none";
+        })(),
+        subscriptionForWorkspace(workspace.sId),
+        (async () => {
+          return (
+            await FeatureFlag.findAll({
+              where: {
+                workspaceId: workspace.id,
+              },
+            })
+          ).map((flag) => flag.name);
+        })(),
+      ]);
+    }
+
+    return new Authenticator({
+      workspace,
+      user,
+      role,
+      subscription,
+      flags,
+    });
+  }
+
+  static async fromIds(userId: ModelId, wId: string): Promise<Authenticator> {
+    const [workspace, user] = await Promise.all([
+      (async () => {
+        return Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+      })(),
+      (async () => {
+        return User.findOne({
+          where: {
+            id: userId,
+          },
+        });
       })(),
     ]);
 
