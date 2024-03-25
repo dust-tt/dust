@@ -133,7 +133,7 @@ export async function createOrUpdateUser(
       auth0Sub: externalUser.sub,
       provider: mapAuth0ProviderToLegacy(session)?.provider,
       username: externalUser.nickname,
-      email: sanitizeString(externalUser.emai),
+      email: sanitizeString(externalUser.email),
       name: externalUser.name,
       firstName: externalUser.given_name ?? firstName,
       lastName: externalUser.family_name ?? lastName,
