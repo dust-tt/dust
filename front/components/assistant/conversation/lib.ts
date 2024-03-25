@@ -4,7 +4,9 @@ import type {
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
   MentionType,
+  MessageType,
   Result,
+  UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -33,6 +35,38 @@ export type ConversationErrorType = {
   message: string;
 };
 
+export function createPlaceholderUserMessage({
+  input,
+  mentions,
+  user,
+}: {
+  input: string;
+  mentions: MentionType[];
+  user: UserType;
+}): MessageType {
+  const createdAt = new Date().getTime();
+  const { email, fullName, image, username } = user;
+
+  return {
+    id: -1,
+    content: input,
+    created: createdAt,
+    mentions,
+    user,
+    visibility: "visible",
+    type: "user_message",
+    sId: `placeholder-${createdAt.toString()}`,
+    version: 0,
+    context: {
+      email,
+      fullName,
+      profilePictureUrl: image,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username,
+    },
+  };
+}
+
 export async function submitMessage({
   owner,
   user,
@@ -51,7 +85,7 @@ export async function submitMessage({
       file: File;
     };
   };
-}): Promise<Result<void, ConversationErrorType>> {
+}): Promise<Result<{ message: UserMessageType }, ConversationErrorType>> {
   const { input, mentions, contentFragment } = messageData;
   // Create a new content fragment.
   if (contentFragment) {
@@ -131,7 +165,7 @@ export async function submitMessage({
     });
   }
 
-  return new Ok(undefined);
+  return new Ok(await mRes.json());
 }
 
 export async function deleteConversation({

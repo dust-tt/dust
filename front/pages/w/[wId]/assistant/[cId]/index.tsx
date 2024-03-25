@@ -1,5 +1,6 @@
-import type { UserType } from "@dust-tt/types";
+import type { MessageType, UserType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
+import { cloneDeep } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -10,9 +11,14 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { submitMessage } from "@app/components/assistant/conversation/lib";
+import {
+  createPlaceholderUserMessage,
+  submitMessage,
+} from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useConversationMessages } from "@app/lib/swr";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -48,6 +54,32 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
+/**
+ * If no message pages exist, create a single page with the optimistic message.
+ * If message pages exist, add the optimistic message to the first page, since
+ * the message pages array is not yet reversed.
+ */
+function updateMessagePagesWithOptimisticData(
+  currentMessagePages: FetchConversationMessagesResponse[] | undefined,
+  messageOrPlaceholder: MessageType
+): FetchConversationMessagesResponse[] {
+  if (!currentMessagePages || currentMessagePages.length === 0) {
+    return [
+      {
+        messages: [messageOrPlaceholder],
+        hasMore: false,
+        lastValue: null,
+      },
+    ];
+  }
+
+  // We need to deep clone here, since SWR relies on the reference.
+  const updatedMessages = cloneDeep(currentMessagePages);
+  updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
+
+  return updatedMessages;
+}
+
 export default function AssistantConversation({
   conversationId,
   owner,
@@ -58,6 +90,12 @@ export default function AssistantConversation({
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
+
+  const { mutateMessages } = useConversationMessages({
+    conversationId,
+    workspaceId: owner.sId,
+    limit: 50,
+  });
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -84,21 +122,66 @@ export default function AssistantConversation({
     }
   ) => {
     const messageData = { input, mentions, contentFragment };
-    const result = await submitMessage({
-      owner,
-      user,
-      conversationId,
-      messageData,
-    });
-    if (result.isOk()) return;
-    if (result.error.type === "plan_limit_reached_error") {
-      setPlanLimitReached(true);
-    } else {
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
+
+    try {
+      // Update the local state immediately and fire the
+      // request. Since the API will return the updated
+      // data, there is no need to start a new revalidation
+      // and we can directly populate the cache.
+      await mutateMessages(
+        async (currentMessagePages) => {
+          const result = await submitMessage({
+            owner,
+            user,
+            conversationId,
+            messageData,
+          });
+
+          // Replace placeholder message with API response.
+          if (result.isOk()) {
+            const { message } = result.value;
+
+            return updateMessagePagesWithOptimisticData(
+              currentMessagePages,
+              message
+            );
+          }
+
+          if (result.error.type === "plan_limit_reached_error") {
+            setPlanLimitReached(true);
+          } else {
+            sendNotification({
+              title: result.error.title,
+              description: result.error.message,
+              type: "error",
+            });
+          }
+
+          throw result.error;
+        },
+        {
+          // Add optimistic data placeholder.
+          optimisticData: (currentMessagePages) => {
+            const placeholderMessage = createPlaceholderUserMessage({
+              input,
+              mentions,
+              user,
+            });
+            return updateMessagePagesWithOptimisticData(
+              currentMessagePages,
+              placeholderMessage
+            );
+          },
+          revalidate: false,
+          // Rollback optimistic update on errors.
+          rollbackOnError: true,
+          populateCache: true,
+        }
+      );
+    } catch (err) {
+      // If the API errors, the original data will be
+      // rolled back by SWR automatically.
+      console.error("Failed to post message:", err);
     }
   };
 

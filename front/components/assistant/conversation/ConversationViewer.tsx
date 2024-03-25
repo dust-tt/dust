@@ -233,6 +233,8 @@ export default function ConversationViewer({
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
+            // Ignore user_message_new event as the optimistic mechanism covers it
+            break;
           case "agent_message_new":
           case "agent_generation_cancelled":
             const isMessageAlreadyInConversation = messages?.some(
@@ -307,6 +309,7 @@ export default function ConversationViewer({
                   : undefined
               }
               user={user}
+              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
             />
           );
         });

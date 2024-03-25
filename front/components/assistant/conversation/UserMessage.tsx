@@ -17,6 +17,7 @@ export function UserMessage({
   user,
   reactions,
   hideReactions,
+  isLastMessage,
 }: {
   message: UserMessageType;
   conversation: ConversationType;
@@ -24,6 +25,7 @@ export function UserMessage({
   user: UserType;
   reactions: MessageReactionType[];
   hideReactions?: boolean;
+  isLastMessage: boolean;
 }) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -50,16 +52,13 @@ export function UserMessage({
             agentConfigurations={agentConfigurations}
           />
         </div>
-        {message.mentions.length === 0 &&
-          conversation.content[conversation.content.length - 1].some(
-            (m) => m.sId === message.sId
-          ) && (
-            <AgentSuggestion
-              userMessage={message}
-              conversation={conversation}
-              owner={owner}
-            />
-          )}
+        {message.mentions.length === 0 && isLastMessage && (
+          <AgentSuggestion
+            userMessage={message}
+            conversation={conversation}
+            owner={owner}
+          />
+        )}
       </div>
     </ConversationMessage>
   );

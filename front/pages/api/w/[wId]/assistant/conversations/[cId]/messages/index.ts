@@ -152,7 +152,7 @@ async function handler(
           username: user.username,
           fullName: user.fullName,
           email: user.email,
-          profilePictureUrl: context.profilePictureUrl,
+          profilePictureUrl: context.profilePictureUrl ?? user.image,
         },
       });
       if (messageRes.isErr()) {

@@ -433,8 +433,7 @@ export class Authenticator {
             (this._user.lastName ? ` ${this._user.lastName}` : ""),
           firstName: this._user.firstName,
           lastName: this._user.lastName || null,
-          // Not available from this method
-          image: null,
+          image: this._user.imageUrl,
         }
       : null;
   }
