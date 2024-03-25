@@ -787,16 +787,33 @@ export default function Home({
                 size="xs"
                 className="lg:hidden"
                 isTabs
+                onClickProPlan={() =>
+                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                    router.query
+                  )}`)
+                }
+                onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
               />
               <PricePlans
                 display="landing"
                 size="xs"
                 className="hidden lg:flex xl:hidden"
+                onClickProPlan={() =>
+                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                    router.query
+                  )}`)
+                }
+                onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
               />
               <PricePlans
                 display="landing"
                 size="sm"
                 className="hidden xl:flex"
+                onClickProPlan={() =>
+                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                    router.query
+                  )}`)
+                }
                 onClickEnterprisePlan={() => setShowContactUsDrawer(true)}
               />
             </div>

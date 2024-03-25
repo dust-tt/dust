@@ -189,18 +189,26 @@ export function ProPriceTable({
           />
         )
       )}
-      <PriceTable.ActionContainer>
-        {plan && plan.code !== PRO_PLAN_SEAT_29_CODE && (
+
+      {display === "landing" && (
+        <PriceTable.ActionContainer>
+          <div className="text-base font-bold text-action-400">
+            Try it for free for 2 weeks
+          </div>
+        </PriceTable.ActionContainer>
+      )}
+      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+        <PriceTable.ActionContainer>
           <Button
             variant="primary"
             size={biggerButtonSize}
             label="Start now"
             icon={RocketIcon}
-            disabled={isProcessing || plan.code === PRO_PLAN_SEAT_29_CODE}
+            disabled={isProcessing}
             onClick={onClick}
           />
-        )}
-      </PriceTable.ActionContainer>
+        </PriceTable.ActionContainer>
+      )}
     </PriceTable>
   );
 }

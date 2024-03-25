@@ -423,7 +423,7 @@ export default function Subscription({
                         onClickProPlan={onClickProPlan}
                         onClickEnterprisePlan={onClickEnterprisePlan}
                         isProcessing={isProcessing}
-                        display="landing"
+                        display="subscribe"
                       />
                       <PricePlans
                         size="xs"
@@ -433,7 +433,7 @@ export default function Subscription({
                         onClickProPlan={onClickProPlan}
                         onClickEnterprisePlan={onClickEnterprisePlan}
                         isProcessing={isProcessing}
-                        display="landing"
+                        display="subscribe"
                       />
                     </div>
                   </div>
