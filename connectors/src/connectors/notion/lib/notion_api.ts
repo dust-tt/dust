@@ -545,7 +545,7 @@ export function parsePageProperties(pageProperties: PageObjectProperties) {
     key,
     id: value.id,
     type: value.type,
-    text: parsePropertyText(value),
+    value: parsePropertyValue(value),
   }));
 
   return properties;
@@ -667,9 +667,9 @@ export async function validateAccessToken(notionAccessToken: string) {
   return true;
 }
 
-export function parsePropertyText(
+export function parsePropertyValue(
   property: PageObjectProperties[PropertyKeys]
-): string | null {
+): string | string[] | null {
   const parseDateProp = (d?: { start: string; end: string | null } | null) => {
     if (d?.start && d?.end) {
       return `${d.start} - ${d.end}`;
@@ -691,6 +691,21 @@ export function parsePropertyText(
     return prefix ? `${prefix}-${number}` : `${number}`;
   };
 
+  const parseMultiSelectProp = (
+    ms: Extract<
+      PageObjectProperties[keyof PageObjectProperties],
+      { type: "multi_select" }
+    >["multi_select"]
+  ): string | string[] | null => {
+    if (!ms?.length || !ms[0]) {
+      return null;
+    }
+    if (ms.length === 1) {
+      return ms[0].name;
+    }
+    return ms.map((select) => select.name);
+  };
+
   switch (property.type) {
     case "number":
       return property.number?.toString() || null;
@@ -699,9 +714,7 @@ export function parsePropertyText(
     case "select":
       return property.select?.name || null;
     case "multi_select":
-      return property.multi_select.length > 0
-        ? property.multi_select.map((select) => select.name).join(", ")
-        : null;
+      return parseMultiSelectProp(property.multi_select);
     case "status":
       return property.status?.name || null;
     case "date":
@@ -881,15 +894,18 @@ export async function renderDatabaseFromPages({
       if (!property) {
         return "";
       }
-      return parsePropertyText(property);
+      return parsePropertyValue(property);
     })
   );
 
   const content = rows.map((r) =>
-    header.reduce(
-      (acc, k, i) => ({ ...acc, [k]: r[i]?.trim?.() ?? "" }),
-      {} as Record<string, string>
-    )
+    header.reduce((acc, k, i) => {
+      let v = r[i];
+      if (Array.isArray(v)) {
+        v = v.join(", ");
+      }
+      return { ...acc, [k]: v?.trim?.() ?? "" };
+    }, {} as Record<string, string>)
   );
 
   const sanitizedHeaders = getSanitizedHeaders(header);

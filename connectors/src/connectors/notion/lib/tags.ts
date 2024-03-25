@@ -22,8 +22,14 @@ export function getTagsForPage({
 
   const customTags = [];
   for (const property of parsedProperties) {
-    if (property.key.startsWith("__dust") && property.text) {
-      customTags.push(`${property.key}:${property.text}`);
+    if (property.key.startsWith("__dust") && property.value?.length) {
+      if (!Array.isArray(property.value)) {
+        customTags.push(`${property.key}:${property.value}`);
+      } else {
+        for (const v of property.value) {
+          customTags.push(`${property.key}:${v}`);
+        }
+      }
     }
   }
 

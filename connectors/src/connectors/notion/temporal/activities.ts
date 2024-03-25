@@ -1741,11 +1741,12 @@ export async function renderAndUpsertPageFromCache({
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
   for (const p of parsedProperties.filter((p) => p.key !== "title")) {
-    if (!p.text) {
+    if (!p.value) {
       continue;
     }
-    const propertyContent = `$${p.key}: ${p.text}\n`;
-    maxPropertyLength = Math.max(maxPropertyLength, p.text.length);
+    const propertyValue = Array.isArray(p.value) ? p.value.join(", ") : p.value;
+    const propertyContent = `$${p.key}: ${propertyValue}\n`;
+    maxPropertyLength = Math.max(maxPropertyLength, propertyValue.length);
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -1833,7 +1834,10 @@ export async function renderAndUpsertPageFromCache({
     parsedProperties.find((p) => p.type === "title") ??
     parsedProperties.find((p) => p.key === "title");
 
-  const title = titleProperty?.text ?? undefined;
+  let title = titleProperty?.value ?? undefined;
+  if (Array.isArray(title)) {
+    title = title.join(" ");
+  }
 
   let upsertTs: number | undefined = undefined;
   let skipReason: string | null = null;
