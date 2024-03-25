@@ -181,12 +181,15 @@ export function ProPriceTable({
           />
         )
       )}
-      <PriceTable.ActionContainer>
-        {display === "landing" && onClick && (
-          <>
-            <div className="h-9 text-base font-bold text-action-400">
+
+      {display === "landing" && onClick && (
+        <>
+          <PriceTable.ActionContainer>
+            <div className="text-base font-bold text-action-400">
               Try it for free for 2 weeks
             </div>
+          </PriceTable.ActionContainer>
+          <PriceTable.ActionContainer>
             <Button
               variant="primary"
               size={biggerButtonSize}
@@ -194,9 +197,9 @@ export function ProPriceTable({
               icon={RocketIcon}
               onClick={onClick}
             />
-          </>
-        )}
-      </PriceTable.ActionContainer>
+          </PriceTable.ActionContainer>
+        </>
+      )}
     </PriceTable>
   );
 }
