@@ -17,6 +17,7 @@ async function migrateContentFragment(
   const cf = ContentFragmentResource.fromMessage(cfMessage);
   // if textUrl is null, upload content to GCS and set textUrl to the uploaded file
   // value (also set textBytes to the number of bytes in the content)
+  // @ts-expect-error textUrl was removed from ContentFragmentResource
   if (!cf.textUrl) {
     const fileUrl = await storeContentFragmentText({
       workspaceId,
@@ -26,6 +27,7 @@ async function migrateContentFragment(
       content: cf.content,
     });
     await cf.update({
+      // @ts-expect-error textUrl was removed from ContentFragmentResource
       textUrl: fileUrl,
       // @ts-expect-error content was removed from ContentFragmentResource
       textBytes: Buffer.byteLength(cf.content),
