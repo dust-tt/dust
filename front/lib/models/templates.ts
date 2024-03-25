@@ -31,6 +31,7 @@ export class Template extends Model<
     | "balanced"
     | "creative"
     | null;
+  declare presetProviderId: string | null;
   declare presetModelId: string | null;
   declare presetAction:
     | "reply"
@@ -85,6 +86,9 @@ Template.init(
       type: DataTypes.STRING,
     },
     presetTemperature: {
+      type: DataTypes.STRING,
+    },
+    presetProviderId: {
       type: DataTypes.STRING,
     },
     presetModelId: {
