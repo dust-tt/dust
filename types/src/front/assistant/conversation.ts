@@ -209,3 +209,24 @@ export type ConversationWithoutContentType = {
 };
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
+
+/**
+ * Conversation participants.
+ */
+
+export interface AgentParticipantType {
+  configurationId: string;
+  name: string;
+  pictureUrl: string;
+}
+
+export interface UserParticipantType {
+  fullName: string | null;
+  pictureUrl: string | null;
+  username: string;
+}
+
+export interface ConversationParticipantsType {
+  agents: AgentParticipant[];
+  users: UserParticipant[];
+}

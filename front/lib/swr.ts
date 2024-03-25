@@ -28,6 +28,7 @@ import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
@@ -627,6 +628,34 @@ export function useConversationMessages({
     mutateMessages: mutate,
     setSize,
     size,
+  };
+}
+
+export function useConversationParticipants({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+}) {
+  const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/participants`
+      : null,
+    conversationParticipantsFetcher
+  );
+
+  return {
+    conversationParticipants: useMemo(
+      () => (data ? data.participants : undefined),
+      [data]
+    ),
+    isConversationParticipantsLoading: !error && !data,
+    isConversationParticipantsError: error,
+    mutateConversationParticipants: mutate,
   };
 }
 
