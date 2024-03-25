@@ -1,4 +1,5 @@
 import { Button, PriceTable, RocketIcon } from "@dust-tt/sparkle";
+import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import React from "react";
 
@@ -6,14 +7,17 @@ import {
   getPriceWithCurrency,
   PRO_PLAN_29_COST,
 } from "@app/lib/client/subscription";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
 interface PricePlanProps {
   size: "sm" | "xs";
   className?: string;
   isTabs?: boolean;
+  plan?: PlanType;
   onClickProPlan?: () => void;
   onClickEnterprisePlan?: () => void;
+  isProcessing?: boolean;
   flexCSS?: string;
   display: PriceTableDisplay;
 }
@@ -155,11 +159,15 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
 
 export function ProPriceTable({
   size,
+  plan,
   onClick,
+  isProcessing,
   display,
 }: {
   size: "sm" | "xs";
+  plan?: PlanType;
   onClick?: () => void;
+  isProcessing?: boolean;
   display: PriceTableDisplay;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
@@ -182,23 +190,24 @@ export function ProPriceTable({
         )
       )}
 
-      {display === "landing" && onClick && (
-        <>
-          <PriceTable.ActionContainer>
-            <div className="text-base font-bold text-action-400">
-              Try it for free for 2 weeks
-            </div>
-          </PriceTable.ActionContainer>
-          <PriceTable.ActionContainer>
-            <Button
-              variant="primary"
-              size={biggerButtonSize}
-              label="Start now"
-              icon={RocketIcon}
-              onClick={onClick}
-            />
-          </PriceTable.ActionContainer>
-        </>
+      {display === "landing" && (
+        <PriceTable.ActionContainer>
+          <div className="text-base font-bold text-action-400">
+            Try it for free for 2 weeks
+          </div>
+        </PriceTable.ActionContainer>
+      )}
+      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+        <PriceTable.ActionContainer>
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Start now"
+            icon={RocketIcon}
+            disabled={isProcessing}
+            onClick={onClick}
+          />
+        </PriceTable.ActionContainer>
       )}
     </PriceTable>
   );
@@ -206,9 +215,11 @@ export function ProPriceTable({
 function EnterprisePriceTable({
   size,
   onClick,
+  isProcessing,
 }: {
   size: "sm" | "xs";
   onClick?: () => void;
+  isProcessing?: boolean;
 }) {
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
@@ -226,6 +237,7 @@ function EnterprisePriceTable({
             variant="primary"
             size={biggerButtonSize}
             label="Contact us"
+            disabled={isProcessing}
             onClick={onClick}
           />
         )}
@@ -239,8 +251,10 @@ export function PricePlans({
   isTabs = false,
   className = "",
   flexCSS = "mx-4 flex flex-row md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
+  plan,
   onClickProPlan,
   onClickEnterprisePlan,
+  isProcessing,
   display,
 }: PricePlanProps) {
   if (isTabs) {
@@ -296,12 +310,15 @@ export function PricePlans({
               <ProPriceTable
                 display={display}
                 size={size}
+                plan={plan}
+                isProcessing={isProcessing}
                 onClick={onClickProPlan}
               />
             </Tab.Panel>
             <Tab.Panel>
               <EnterprisePriceTable
                 size={size}
+                isProcessing={isProcessing}
                 onClick={onClickEnterprisePlan}
               />
             </Tab.Panel>
@@ -312,8 +329,18 @@ export function PricePlans({
   } else {
     return (
       <div className={classNames(flexCSS, className)}>
-        <ProPriceTable size={size} onClick={onClickProPlan} display={display} />
-        <EnterprisePriceTable size={size} onClick={onClickEnterprisePlan} />
+        <ProPriceTable
+          size={size}
+          plan={plan}
+          isProcessing={isProcessing}
+          onClick={onClickProPlan}
+          display={display}
+        />
+        <EnterprisePriceTable
+          size={size}
+          isProcessing={isProcessing}
+          onClick={onClickEnterprisePlan}
+        />
       </div>
     );
   }
