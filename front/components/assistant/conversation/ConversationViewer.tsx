@@ -18,6 +18,7 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import {
   useConversation,
   useConversationMessages,
+  useConversationParticipants,
   useConversationReactions,
   useConversations,
 } from "@app/lib/swr";
@@ -99,6 +100,11 @@ export default function ConversationViewer({
   const { reactions } = useConversationReactions({
     workspaceId: owner.sId,
     conversationId,
+  });
+
+  const { mutateConversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: owner.sId,
   });
 
   const { hasMore, latestPage, oldestPage } = useMemo(() => {
@@ -273,6 +279,7 @@ export default function ConversationViewer({
 
                 return currentMessagePages;
               });
+              void mutateConversationParticipants();
             }
             break;
 
@@ -293,7 +300,13 @@ export default function ConversationViewer({
         }
       }
     },
-    [mutateConversation, mutateConversations, messages, mutateMessages]
+    [
+      mutateConversation,
+      mutateConversations,
+      messages,
+      mutateMessages,
+      mutateConversationParticipants,
+    ]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, {

@@ -172,7 +172,10 @@ export function ConversationTitle({
         </div>
         <div className="flex items-center">
           <div className="hidden pr-6 lg:flex">
-            <ConversationParticipants conversation={conversation} />
+            <ConversationParticipants
+              conversationId={conversation.sId}
+              owner={owner}
+            />
           </div>
           <Button.List>
             <div className="hidden lg:flex">

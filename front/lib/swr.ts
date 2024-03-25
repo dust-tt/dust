@@ -17,6 +17,7 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import type { FetchConversationParticipantsResponse } from "@app/lib/api/assistant/participants";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
@@ -627,6 +628,34 @@ export function useConversationMessages({
     mutateMessages: mutate,
     setSize,
     size,
+  };
+}
+
+export function useConversationParticipants({
+  conversationId,
+  workspaceId,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+}) {
+  const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    conversationId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/participants`
+      : null,
+    conversationParticipantsFetcher
+  );
+
+  return {
+    conversationParticipants: useMemo(
+      () => (data ? data.participants : undefined),
+      [data]
+    ),
+    isConversationParticipantsLoading: !error && !data,
+    isConversationParticipantsError: error,
+    mutateConversationParticipants: mutate,
   };
 }
 
