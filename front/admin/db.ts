@@ -47,6 +47,7 @@ import {
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
+import { Template, TemplateTag } from "@app/lib/models/templates";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
 async function main() {
@@ -101,6 +102,9 @@ async function main() {
   await FeatureFlag.sync({ alter: true });
 
   await ConversationClassification.sync({ alter: true });
+
+  await Template.sync({ alter: true });
+  await TemplateTag.sync({ alter: true });
   process.exit(0);
 }
 
