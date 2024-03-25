@@ -251,8 +251,6 @@ export default function ConversationViewer({
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
-            // Ignore user_message_new event as the optimistic mechanism covers it
-            break;
           case "agent_message_new":
             if (shouldProcessStreamEvent(messages, event)) {
               // Temporarily add agent message using event payload until revalidation.
