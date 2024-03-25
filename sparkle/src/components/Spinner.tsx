@@ -3,14 +3,14 @@ import React from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 import animColor from "@sparkle/lottie/spinnerColor";
-import animColorLG from "@sparkle/lottie/spinnerColorLG.json";
+import animColorLG from "@sparkle/lottie/spinnerColorLG";
+import animColorXS from "@sparkle/lottie/spinnerColorXS";
 import animDark from "@sparkle/lottie/spinnerDark";
-import animDarkLG from "@sparkle/lottie/spinnerDarkLG.json";
-import animLight from "@sparkle/lottie/spinnerLight";
-import animLightLG from "@sparkle/lottie/spinnerLightLG.json";
-import animSimpleColor from "@sparkle/lottie/spinnerSimpleColor";
-import animSimpleDark from "@sparkle/lottie/spinnerSimpleDark";
-import animSimpleLight from "@sparkle/lottie/spinnerSimpleLight";
+import animDarkLG from "@sparkle/lottie/spinnerDarkLG";
+import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
+import animLightXS from "@sparkle/lottie/spinnerLight";
+import animLightLG from "@sparkle/lottie/spinnerLightLG";
+import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
@@ -96,11 +96,11 @@ const Spinner2: React.FC<Spinner2Props> = ({
           break;
 
         case "dark":
-          anim = animSimpleDark;
+          anim = animDarkXS;
           break;
 
         default:
-          anim = animSimpleColor;
+          anim = animColorXS;
       }
       break;
 
@@ -123,7 +123,7 @@ const Spinner2: React.FC<Spinner2Props> = ({
     default:
       switch (variant) {
         case "light":
-          anim = animLight;
+          anim = animLightXS;
           break;
 
         case "dark":

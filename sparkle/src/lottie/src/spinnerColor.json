@@ -1,4 +1,4 @@
-const animation = {
+{
   "v": "5.9.0",
   "fr": 60,
   "ip": 0,
@@ -426,6 +426,4 @@ const animation = {
     }
   ],
   "markers": []
-};
-
-export default animation;
+}
