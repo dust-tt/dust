@@ -153,9 +153,6 @@ TemplateTag.init(
   {
     sequelize: frontSequelize,
     modelName: "templateTag",
-    indexes: [
-      { fields: ["templateId", "tag"], unique: true },
-      { fields: ["tag"] },
-    ],
+    indexes: [{ fields: ["tag", "templateId"], unique: true }],
   }
 );
