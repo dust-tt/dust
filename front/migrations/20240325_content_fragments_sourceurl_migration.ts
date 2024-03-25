@@ -32,9 +32,9 @@ async function main() {
       ],
       limit: 128,
     });
-
     // reset sourceUrl to null for those content fragments in parallel
     if (LIVE) {
+      console.log(`Processing ${messages.length} messages`);
       await Promise.all(
         messages.map(async (message) => {
           const cf = ContentFragmentResource.fromMessage(message);
@@ -44,7 +44,7 @@ async function main() {
         })
       );
     }
-  } while (messages.length > 0);
+  } while (messages.length > 0 && LIVE);
 }
 
 main()
