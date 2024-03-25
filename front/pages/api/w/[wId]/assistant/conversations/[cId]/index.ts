@@ -1,5 +1,4 @@
 import type {
-  ConversationType,
   ConversationWithoutContentType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
@@ -10,7 +9,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteConversation,
-  getConversation,
   getConversationWithoutContent,
   updateConversation,
 } from "@app/lib/api/assistant/conversation";
