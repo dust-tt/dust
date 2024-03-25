@@ -1,5 +1,6 @@
 import { Sequelize } from "sequelize";
 
+import { isDevelopment } from "@app/lib/development";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import logger from "@app/logger/logger";
 
@@ -9,8 +10,8 @@ export const frontSequelize = new Sequelize(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
     pool: {
-      // default is 5
-      max: 50,
+      // Default is 5.
+      max: isDevelopment() ? 5 : 50,
     },
     logging: false,
     hooks: {
