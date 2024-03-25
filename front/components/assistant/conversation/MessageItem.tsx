@@ -1,6 +1,5 @@
 import type {
   ConversationMessageReactions,
-  ConversationType,
   MessageType,
   UserType,
   WorkspaceType,
