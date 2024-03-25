@@ -1077,7 +1077,9 @@ export async function updateParentsFields(
     await NotionPage.findAll({
       where: {
         connectorId: connector.id,
-        lastCreatedOrMovedRunTs: runTimestamp,
+        lastCreatedOrMovedRunTs: {
+          [Op.gte]: runTimestamp,
+        },
       },
       attributes: ["notionPageId"],
     })
@@ -1087,7 +1089,9 @@ export async function updateParentsFields(
     await NotionDatabase.findAll({
       where: {
         connectorId: connector.id,
-        lastCreatedOrMovedRunTs: runTimestamp,
+        lastCreatedOrMovedRunTs: {
+          [Op.gte]: runTimestamp,
+        },
       },
       attributes: ["notionDatabaseId"],
     })
