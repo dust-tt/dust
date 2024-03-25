@@ -13,11 +13,9 @@ import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { PlanInvitationType, SubscriptionType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect, useState } from "react";
 
-import { PricePlans } from "@app/components/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -28,11 +26,7 @@ import {
 } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {
-  FREE_TEST_PLAN_CODE,
-  FREE_UPGRADED_PLAN_CODE,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
@@ -137,43 +131,39 @@ export default function Subscription({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally passing an empty dependency array to execute only once
 
-  const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
-    useSubmitFunction(async () => {
-      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-        // Then we remove the query params to avoid going through this logic again.
-        void router.push(
-          { pathname: `/w/${owner.sId}/subscription` },
-          undefined,
-          {
-            shallow: true,
-          }
-        );
-      } else {
-        const content = await res.json();
-        if (content.checkoutUrl) {
-          await router.push(content.checkoutUrl);
-        } else if (content.success) {
-          router.reload(); // We cannot swr the plan so we just reload the page.
-        }
-      }
+  const { submit: handleSubscribePlan } = useSubmitFunction(async () => {
+    const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
-  const {
-    submit: handleGoToStripePortal,
-    isSubmitting: isGoingToStripePortal,
-  } = useSubmitFunction(async () => {
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Subscription failed",
+        description: "Failed to subscribe to a new plan.",
+      });
+      // Then we remove the query params to avoid going through this logic again.
+      void router.push(
+        { pathname: `/w/${owner.sId}/subscription` },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
+    } else {
+      const content = await res.json();
+      if (content.checkoutUrl) {
+        await router.push(content.checkoutUrl);
+      } else if (content.success) {
+        router.reload(); // We cannot swr the plan so we just reload the page.
+      }
+    }
+  });
+
+  const { submit: handleGoToStripePortal } = useSubmitFunction(async () => {
     const res = await fetch("/api/stripe/portal", {
       method: "POST",
       headers: {
@@ -260,15 +250,9 @@ export default function Subscription({
       }
     });
 
-  const isProcessing = isSubscribingPlan || isGoingToStripePortal;
-
   const plan = subscription.plan;
   const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
 
-  const onClickProPlan = async () => handleSubscribePlan();
-  const onClickEnterprisePlan = () => {
-    setShowContactUsDrawer(true);
-  };
   const onSubscribeEnterprisePlan = async () => {
     if (!planInvitation) {
       throw new Error("Unreachable: No plan invitation");
@@ -407,41 +391,6 @@ export default function Subscription({
                 </div>
               </Page.Vertical>
             )}
-            {!plan ||
-              ([FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE].includes(
-                plan.code
-              ) && (
-                <>
-                  <div className="pt-2">
-                    <Page.H variant="h5">Manage my plan</Page.H>
-                    <div className="s-h-full s-w-full pt-2">
-                      <PricePlans
-                        size="xs"
-                        className="lg:hidden"
-                        isTabs
-                        plan={plan}
-                        onClickProPlan={onClickProPlan}
-                        onClickEnterprisePlan={onClickEnterprisePlan}
-                        isProcessing={isProcessing}
-                        display="landing"
-                      />
-                      <PricePlans
-                        size="xs"
-                        flexCSS="gap-3"
-                        className="hidden lg:flex"
-                        plan={plan}
-                        onClickProPlan={onClickProPlan}
-                        onClickEnterprisePlan={onClickEnterprisePlan}
-                        isProcessing={isProcessing}
-                        display="landing"
-                      />
-                    </div>
-                  </div>
-                  <Link href="/terms" target="_blank" className="text-sm">
-                    Terms of use apply to all plans.
-                  </Link>
-                </>
-              ))}
           </Page.Vertical>
         ) : (
           <Page.Vertical>
