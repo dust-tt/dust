@@ -1,4 +1,7 @@
-import type { ConversationType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  ConversationWithoutContentType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -6,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteConversation,
-  getConversation,
+  getConversationWithoutContent,
   updateConversation,
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -23,7 +26,7 @@ export const PatchConversationsRequestBodySchema = t.type({
 });
 
 export type GetConversationsResponseBody = {
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
 };
 
 async function handler(
@@ -77,7 +80,7 @@ async function handler(
     });
   }
 
-  const conversation = await getConversation(auth, req.query.cId);
+  const conversation = await getConversationWithoutContent(auth, req.query.cId);
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
