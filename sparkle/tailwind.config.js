@@ -135,10 +135,21 @@ module.exports = {
             filter: "brightness(80%)",
           },
         },
+        "breathing-scale": {
+          "0%, 100%": {
+            filter: "brightness(105%)",
+            transform: "scale(1.0)",
+          },
+          "50%": {
+            filter: "brightness(97%)",
+            transform: "scale(0.95)",
+          },
+        },
       },
       animation: {
+        breathing: "breathing 3s infinite ease-in-out",
+        "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "move-square": "move-square 3s ease-out infinite",
-        breathing: "breathing 4s infinite ease-in-out",
       },
       colors: {
         brand: {

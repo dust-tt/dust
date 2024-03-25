@@ -1,3 +1,10 @@
+import {
+  Button,
+  Collapsible,
+  DropdownMenu,
+  Modal,
+  Spinner2,
+} from "@dust-tt/sparkle";
 import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
