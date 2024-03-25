@@ -2,7 +2,6 @@ import type {
   AgentActionType,
   DustAppParameters,
   DustAppRunActionType,
-  MessageType,
   MessageWithRankType,
   ModelId,
   Result,
@@ -401,7 +400,7 @@ async function batchRenderMessages(
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: MessageType[];
+  messages: MessageWithRankType[];
 }
 
 export async function fetchConversationMessages(
