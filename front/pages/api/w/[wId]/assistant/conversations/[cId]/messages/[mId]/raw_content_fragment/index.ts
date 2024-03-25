@@ -130,7 +130,7 @@ async function handler(
         // since we redirect, the use is immediate so expiry can be short
         expires: Date.now() + 10 * 1000,
         // remove special chars
-        promptSaveAs: message.title.replace(/[^\w\s]/gi, ""),
+        promptSaveAs: message.title.replace(/[^\w\s\.-]/gi, ""),
       });
       res.redirect(url);
       return;

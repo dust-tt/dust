@@ -123,19 +123,13 @@ export async function submitMessage({
       });
     }
 
-    if (
-      // textual files are already uploaded via textUrl
-      !isTextualFile(contentFragment.file)
-    ) {
-      const cfData = (await mcfRes.json())
-        .contentFragment as ContentFragmentType;
-      uploadRawContentFragment({
-        workspaceId: owner.sId,
-        conversationId,
-        contentFragmentId: cfData.sId,
-        file: contentFragment.file,
-      });
-    }
+    const cfData = (await mcfRes.json()).contentFragment as ContentFragmentType;
+    uploadRawContentFragment({
+      workspaceId: owner.sId,
+      conversationId,
+      contentFragmentId: cfData.sId,
+      file: contentFragment.file,
+    });
   }
 
   // Create a new user message.
@@ -277,12 +271,7 @@ export async function createConversationWithMessage({
 
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
-  if (
-    file &&
-    conversationData.contentFragment &&
-    // textual files are already uploaded via textUrl
-    !isTextualFile(file)
-  ) {
+  if (file && conversationData.contentFragment) {
     uploadRawContentFragment({
       workspaceId: owner.sId,
       conversationId: conversationData.conversation.sId,
