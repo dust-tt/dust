@@ -12,7 +12,9 @@ export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
 function keyObject<T extends readonly string[]>(
   arr: T
 ): { [K in T[number]]: null } {
-  return Object.fromEntries(arr.map((v) => [v, null])) as any;
+  return Object.fromEntries(arr.map((v) => [v, null])) as {
+    [K in T[number]]: null;
+  };
 }
 
 export const RoleSchema = t.keyof(keyObject(ROLES));

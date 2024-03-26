@@ -16,17 +16,17 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import {
-  ACTIVE_ROLES,
-  type ActiveRoleType,
-  type RoleType,
-  type UserType,
-  type UserTypeWithWorkspaces,
-  type WorkspaceDomain,
-  type WorkspaceType,
-} from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  ActiveRoleType,
+  RoleType,
+  UserType,
+  UserTypeWithWorkspaces,
+  WorkspaceDomain,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { ACTIVE_ROLES } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import assert from "assert";
 import type { InferGetServerSidePropsType } from "next";
@@ -322,71 +322,77 @@ export default function WorkspaceAdmin({
           </div>
           <div className="s-w-full">
             {displayedMembersAndInvitations.map(
-              (item: UserTypeWithWorkspaces | MembershipInvitationType) => (
-                <div
-                  key={
-                    isInvitation(item)
-                      ? `invitation-${item.id}`
-                      : `member-${item.id}`
-                  }
-                  className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-                  onClick={() => {
-                    if (user.id === item.id) return; // no action on self
-                    if (isInvitation(item)) setInvitationToRevoke(item);
-                    else setChangeRoleMember(item);
-                  }}
-                >
-                  <div className="hidden sm:block">
-                    {isInvitation(item) ? (
-                      <Avatar size="sm" />
-                    ) : (
-                      <Avatar
-                        visual={item.image}
-                        name={item.fullName}
-                        size="sm"
-                      />
-                    )}
-                  </div>
-                  <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                    {!isInvitation(item) && (
-                      <div className="font-medium text-element-900">
-                        {item.fullName}
-                        {user.id === item.id && " (you)"}
+              (item: UserTypeWithWorkspaces | MembershipInvitationType) => {
+                const role = isInvitation(item)
+                  ? item.initialRole
+                  : item.workspaces[0].role;
+                return (
+                  <div
+                    key={
+                      isInvitation(item)
+                        ? `invitation-${item.id}`
+                        : `member-${item.id}`
+                    }
+                    className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+                    onClick={() => {
+                      if (user.id === item.id) return; // no action on self
+                      if (isInvitation(item)) setInvitationToRevoke(item);
+                      else setChangeRoleMember(item);
+                    }}
+                  >
+                    <div className="hidden sm:block">
+                      {isInvitation(item) ? (
+                        <Avatar size="sm" />
+                      ) : (
+                        <Avatar
+                          visual={item.image}
+                          name={item.fullName}
+                          size="sm"
+                        />
+                      )}
+                    </div>
+                    <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                      {!isInvitation(item) && (
+                        <div className="font-medium text-element-900">
+                          {item.fullName}
+                          {user.id === item.id && " (you)"}
+                        </div>
+                      )}
+
+                      <div className="grow font-normal text-element-700">
+                        {isInvitation(item)
+                          ? item.inviteEmail
+                          : item.email || item.username}
+                      </div>
+                    </div>
+                    {isInvitation(item) && (
+                      <div>
+                        <Chip size="xs" color="slate">
+                          Invitation {item.status}
+                        </Chip>
                       </div>
                     )}
-
-                    <div className="grow font-normal text-element-700">
-                      {isInvitation(item)
-                        ? item.inviteEmail
-                        : item.email || item.username}
-                    </div>
-                  </div>
-                  <div>
-                    {isInvitation(item) ? (
-                      <Chip size="xs" color="slate">
-                        Invitation {item.status}
-                      </Chip>
-                    ) : (
+                    <div>
                       <Chip
                         size="xs"
-                        color={ROLES_DATA[item.workspaces[0].role]["color"]}
+                        color={ROLES_DATA[role]["color"]}
                         className="capitalize"
                       >
-                        {displayRole(item.workspaces[0].role)}
+                        {displayRole(role)}
                       </Chip>
-                    )}
+                    </div>
+                    <div className="hidden sm:block">
+                      <Icon
+                        visual={ChevronRightIcon}
+                        className={classNames(
+                          "text-element-600",
+                          user.id === item.id ? "invisible" : ""
+                        )}
+                      />
+                    </div>
                   </div>
-                  <div className="hidden sm:block">
-                    <Icon
-                      visual={ChevronRightIcon}
-                      className={classNames(
-                        "text-element-600",
-                        user.id === item.id ? "invisible" : ""
-                      )}
-                    />
-                  </div>
-                </div>
-              )
+                );
+              }
             )}
             {(isMembersLoading || isInvitationsLoading) && (
               <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
