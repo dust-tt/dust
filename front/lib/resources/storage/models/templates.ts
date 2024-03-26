@@ -1,6 +1,6 @@
+import type { AssistantTemplateTagNameType } from "@dust-tt/types";
 import type {
   CreationOptional,
-  ForeignKey,
   InferAttributes,
   InferCreationAttributes,
 } from "sequelize";
@@ -42,6 +42,8 @@ export class TemplateModel extends Model<
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
+
+  declare tags: AssistantTemplateTagNameType[];
 }
 
 TemplateModel.init(
@@ -103,6 +105,10 @@ TemplateModel.init(
     helpActions: {
       type: DataTypes.STRING,
     },
+    tags: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+    },
   },
   {
     sequelize: frontSequelize,
@@ -115,57 +121,3 @@ TemplateModel.init(
     ],
   }
 );
-
-export class TemplateTagModel extends Model<
-  InferAttributes<TemplateTagModel>,
-  InferCreationAttributes<TemplateTagModel>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare templateId: ForeignKey<TemplateModel>;
-  declare tag: string;
-}
-
-TemplateTagModel.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    templateId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    tag: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    sequelize: frontSequelize,
-    modelName: "templateTag",
-    indexes: [{ fields: ["tag", "templateId"], unique: true }],
-  }
-);
-
-TemplateModel.hasMany(TemplateTagModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-TemplateTagModel.belongsTo(TemplateModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});

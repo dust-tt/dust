@@ -20,6 +20,7 @@ export * from "./front/assistant/actions/retrieval";
 export * from "./front/assistant/actions/tables_query";
 export * from "./front/assistant/agent";
 export * from "./front/assistant/conversation";
+export * from "./front/assistant/template_tags";
 export * from "./front/data_source";
 export * from "./front/dataset";
 export * from "./front/document";
