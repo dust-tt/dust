@@ -102,16 +102,13 @@ impl Block for While {
             .replace("<DUST_TRIPLE_BACKTICKS>", "```");
 
         let (condition_value, condition_logs): (Value, Vec<Value>) =
-            match tokio::task::spawn_blocking(move || {
+            tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(condition_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));
                 script.call("_fun", &e)
             })
             .await?
-            {
-                Ok((v, l)) => (v, l),
-                Err(e) => Err(anyhow!("Error in `condition_code`: {}", e))?,
-            };
+            .map_err(|e| anyhow!("Error in `condition_code`: {}", e))?;
 
         match condition_value {
             Value::Bool(b) => Ok(BlockResult {

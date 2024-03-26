@@ -245,24 +245,17 @@ impl Block for DataSource {
                 let e = env.clone();
                 let filter_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
                 let (filter_value, filter_logs): (Value, Vec<Value>) =
-                    match tokio::task::spawn_blocking(move || {
+                    tokio::task::spawn_blocking(move || {
                         let mut script = Script::from_string(filter_code.as_str())?
                             .with_timeout(std::time::Duration::from_secs(10));
                         script.call("_fun", &e)
                     })
                     .await?
-                    {
-                        Ok((v, l)) => (v, l),
-                        Err(e) => Err(anyhow!("Error in filter code: {}", e))?,
-                    };
-
+                    .map_err(|e| anyhow!("Error in `filter_code`: {}", e))?;
                 (
                     match filter_value {
                         Value::Null => None,
-                        Value::Object(o) => {
-                            println!("FILTER CODE OUTPUT: {:?}", o);
-                            Some(SearchFilter::from_json(&Value::Object(o))?)
-                        }
+                        Value::Object(o) => Some(SearchFilter::from_json(&Value::Object(o))?),
                         _ => Err(anyhow!(
                             "Invalid filter code output, expecting a filter objects with
                              fields `tags`, `parents`, and `timestamp`."
