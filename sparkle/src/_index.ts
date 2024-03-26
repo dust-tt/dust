@@ -115,6 +115,9 @@ export { RadioButton };
 import { Popup } from "./components/Popup";
 export { Popup };
 
+import { TemplateItem } from "./components/TemplateItem";
+export { TemplateItem };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
