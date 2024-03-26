@@ -2,10 +2,13 @@ import {
   ClipboardCheckIcon,
   ClipboardIcon,
   IconButton,
+  SparklesIcon,
   Tooltip,
+  WrenchIcon,
 } from "@dust-tt/sparkle";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
+import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -25,6 +28,12 @@ import {
 import { visit } from "unist-util-visit";
 
 import { linkFromDocument } from "@app/components/assistant/conversation/RetrievalAction";
+import {
+  MermaidDisplayProvider,
+  MermaidGraph,
+  useMermaidDisplay,
+} from "@app/components/assistant/RenderMermaid";
+import { classNames } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -158,17 +167,17 @@ export const CitationsContext = React.createContext<CitationsContextType>({
 
 export function RenderMessageMarkdown({
   content,
-  blinkingCursor,
+  isStreaming,
   agentConfigurations,
   citationsContext,
 }: {
   content: string;
-  blinkingCursor: boolean;
+  isStreaming: boolean;
   agentConfigurations?: LightAgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
   return (
-    <div className={blinkingCursor ? "blinking-cursor" : ""}>
+    <div className={isStreaming ? "blinking-cursor" : ""}>
       <CitationsContext.Provider
         value={
           citationsContext || {
@@ -178,80 +187,84 @@ export function RenderMessageMarkdown({
           }
         }
       >
-        <ReactMarkdown
-          linkTarget="_blank"
-          components={{
-            pre: PreBlock,
-            code: CodeBlock,
-            a: LinkBlock,
-            ul: UlBlock,
-            ol: OlBlock,
-            li: LiBlock,
-            p: ParagraphBlock,
-            sup: CiteBlock,
-            table: TableBlock,
-            thead: TableHeadBlock,
-            tbody: TableBodyBlock,
-            th: TableHeaderBlock,
-            td: TableDataBlock,
-            h1: ({ children }) => (
-              <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
-                {children}
-              </h1>
-            ),
-            h2: ({ children }) => (
-              <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
-                {children}
-              </h2>
-            ),
-            h3: ({ children }) => (
-              <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
-                {children}
-              </h3>
-            ),
-            h4: ({ children }) => (
-              <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
-                {children}
-              </h4>
-            ),
-            h5: ({ children }) => (
-              <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
-                {children}
-              </h5>
-            ),
-            h6: ({ children }) => (
-              <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
-                {children}
-              </h6>
-            ),
-            strong: ({ children }) => (
-              <strong className="font-semibold text-element-900">
-                {children}
-              </strong>
-            ),
-            // @ts-expect-error - `mention` is a custom tag, currently refused by
-            // react-markdown types although the functionality is supported
-            mention: ({ agentName, agentSId }) => {
-              const agentConfiguration = agentConfigurations?.find(
-                (agentConfiguration) => agentConfiguration.sId === agentSId
-              );
-              return (
-                <MentionBlock
-                  agentConfiguration={agentConfiguration}
-                  agentName={agentName}
-                />
-              );
-            },
-          }}
-          remarkPlugins={[
-            remarkDirective,
-            mentionDirective,
-            citeDirective(),
-            remarkGfm,
-          ]}
-        >
-          {addClosingBackticks(content)}
-        </ReactMarkdown>
+        <MermaidDisplayProvider>
+          <ReactMarkdown
+            linkTarget="_blank"
+            components={{
+              pre: ({ children }) => (
+                <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
+              ),
+              code: CodeBlock,
+              a: LinkBlock,
+              ul: UlBlock,
+              ol: OlBlock,
+              li: LiBlock,
+              p: ParagraphBlock,
+              sup: CiteBlock,
+              table: TableBlock,
+              thead: TableHeadBlock,
+              tbody: TableBodyBlock,
+              th: TableHeaderBlock,
+              td: TableDataBlock,
+              h1: ({ children }) => (
+                <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
+                  {children}
+                </h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
+                  {children}
+                </h3>
+              ),
+              h4: ({ children }) => (
+                <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
+                  {children}
+                </h4>
+              ),
+              h5: ({ children }) => (
+                <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
+                  {children}
+                </h5>
+              ),
+              h6: ({ children }) => (
+                <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
+                  {children}
+                </h6>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-element-900">
+                  {children}
+                </strong>
+              ),
+              // @ts-expect-error - `mention` is a custom tag, currently refused by
+              // react-markdown types although the functionality is supported
+              mention: ({ agentName, agentSId }) => {
+                const agentConfiguration = agentConfigurations?.find(
+                  (agentConfiguration) => agentConfiguration.sId === agentSId
+                );
+                return (
+                  <MentionBlock
+                    agentConfiguration={agentConfiguration}
+                    agentName={agentName}
+                  />
+                );
+              },
+            }}
+            remarkPlugins={[
+              remarkDirective,
+              mentionDirective,
+              citeDirective(),
+              remarkGfm,
+            ]}
+          >
+            {addClosingBackticks(content)}
+          </ReactMarkdown>
+        </MermaidDisplayProvider>
       </CitationsContext.Provider>
     </div>
   );
@@ -459,7 +472,13 @@ function LinkBlock({
   );
 }
 
-function PreBlock({ children }: { children: React.ReactNode }) {
+function PreBlock({
+  children,
+  isStreaming,
+}: {
+  children: React.ReactNode;
+  isStreaming: boolean;
+}) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const validChildrenContent =
     Array.isArray(children) && children[0]
@@ -486,13 +505,72 @@ function PreBlock({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const { isValidMermaid, showMermaid, setIsValidMermaid, setShowMermaid } =
+    useMermaidDisplay();
+
+  useEffect(() => {
+    if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
+      return;
+    }
+    void mermaid
+      .parse(validChildrenContent)
+      .then(() => {
+        setIsValidMermaid(true);
+        setShowMermaid(true);
+      })
+      .catch(() => {
+        setIsValidMermaid(false);
+        setShowMermaid(false);
+      });
+  }, [
+    isStreaming,
+    isValidMermaid,
+    showMermaid,
+    setIsValidMermaid,
+    setShowMermaid,
+    validChildrenContent,
+  ]);
+
   return (
-    <pre className="my-2 w-full break-all rounded-md bg-slate-800">
+    <pre
+      className={classNames(
+        "my-2 w-full break-all rounded-md",
+        showMermaid ? "bg-slate-100" : "bg-slate-800"
+      )}
+    >
       <div className="relative">
         <div className="absolute right-2 top-2">
           {(validChildrenContent || fallbackData) && (
             <div className="flex gap-2 align-bottom">
-              <div className="text-xs text-slate-300">
+              {isValidMermaid && (
+                <>
+                  <div
+                    className={classNames(
+                      "text-xs",
+                      showMermaid ? "text-slate-400" : "text-slate-300"
+                    )}
+                  >
+                    <a
+                      onClick={() => setShowMermaid(!showMermaid)}
+                      className="cursor-pointer"
+                    >
+                      {showMermaid ? "See Markdown" : "See Graph"}
+                    </a>
+                  </div>
+                  <IconButton
+                    variant="tertiary"
+                    size="xs"
+                    icon={showMermaid ? WrenchIcon : SparklesIcon}
+                    onClick={() => setShowMermaid(!showMermaid)}
+                  />
+                </>
+              )}
+              <div
+                className={classNames(
+                  "text-xs",
+                  showMermaid ? "text-slate-400" : "text-slate-300"
+                )}
+              >
                 <a onClick={handleCopyPre} className="cursor-pointer">
                   {isCopied ? "Copied!" : "Copy"}
                 </a>
@@ -568,6 +646,13 @@ function CodeBlock({
   };
 
   const languageToUse = languageOverrides[language] || language;
+  const validChildrenContent = String(children).trim();
+
+  const { isValidMermaid, showMermaid } = useMermaidDisplay();
+
+  if (!inline && isValidMermaid && showMermaid) {
+    return <MermaidGraph chart={validChildrenContent} />;
+  }
 
   return !inline && language ? (
     <SyntaxHighlighter
