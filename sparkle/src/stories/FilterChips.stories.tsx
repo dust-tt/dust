@@ -10,11 +10,9 @@ const meta = {
 
 export default meta;
 
-const a = ["Featured", "Writing", "Productivity", "Research", "Knowledge"];
-
 export const TemplateItemExample = () => (
   <FilterChips
-    filters={a}
+    filters={["Featured", "Writing", "Productivity", "Research", "Knowledge"]}
     onFilterClick={(filterName) => {
       alert(`Filter ${filterName} clicked!`);
     }}
