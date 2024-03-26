@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Avatar } from "@sparkle/_index";
+import { Avatar, CardButton } from "@sparkle/_index";
 
 interface TemplateItemProps {
   description: string;
@@ -23,9 +23,10 @@ export function TemplateItem({
   const { backgroundColor, emoji } = visual;
 
   return (
-    <div
+    <CardButton
       className="s-flex s-max-h-32 s-max-w-lg s-flex-row s-gap-5 s-p-4"
       onClick={() => onClick(id)}
+      variant="tertiary"
     >
       <Avatar
         emoji={emoji}
@@ -41,6 +42,6 @@ export function TemplateItem({
           {description}
         </p>
       </div>
-    </div>
+    </CardButton>
   );
 }
