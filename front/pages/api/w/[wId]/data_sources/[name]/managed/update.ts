@@ -13,6 +13,7 @@ import {
   updateDataSourceEditedBy,
 } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -96,15 +97,13 @@ async function handler(
         connectorId: dataSource.connectorId.toString(),
         params: bodyValidation.right,
       });
-
-      void sendUserOperationMessage({
-        logger: logger,
-        message: `${
-          auth.user()?.email || "unknown user"
-        } updated the data source \`${dataSource.name}\`  for workspace \`${
-          owner.name
-        }\` sId: \`${owner.sId}\` connectorId: \`${dataSource.connectorId}\``,
-      });
+      const email = auth.user()?.email;
+      if (email && !isDisposableEmailDomain(email)) {
+        void sendUserOperationMessage({
+          logger: logger,
+          message: `${email} updated the data source \`${dataSource.name}\`  for workspace \`${owner.name}\` sId: \`${owner.sId}\` connectorId: \`${dataSource.connectorId}\``,
+        });
+      }
 
       if (updateRes.isErr()) {
         if (updateRes.error.type === "connector_oauth_target_mismatch") {
