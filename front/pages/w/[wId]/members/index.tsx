@@ -51,7 +51,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
-import type { PostInvitationBody } from "@app/pages/api/w/[wId]/invitations";
+import type { PostInvitationRequestBody } from "@app/pages/api/w/[wId]/invitations";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -458,10 +458,12 @@ function InviteEmailModal({
       return;
     }
 
-    const body: PostInvitationBody = {
-      email: inviteEmail,
-      role: invitationRole,
-    };
+    const body: PostInvitationRequestBody = [
+      {
+        email: inviteEmail,
+        role: invitationRole,
+      },
+    ];
 
     const res = await fetch(`/api/w/${owner.sId}/invitations`, {
       method: "POST",
