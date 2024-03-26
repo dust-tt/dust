@@ -486,6 +486,7 @@ function InviteEmailModal({
       <ReinviteUserModal
         onClose={() => setExistingRevokedUser(null)}
         user={existingRevokedUser}
+        role={invitationRole}
       />
       <Modal
         isOpen={showModal}
@@ -541,9 +542,11 @@ function InviteEmailModal({
 function ReinviteUserModal({
   onClose,
   user,
+  role,
 }: {
   onClose: (show: boolean) => void;
   user: UserTypeWithWorkspaces | null;
+  role: ActiveRoleType;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
@@ -577,7 +580,7 @@ function ReinviteUserModal({
               setIsSaving(true);
               await handleMemberRoleChange({
                 member: user,
-                role: "user",
+                role,
                 mutate,
                 sendNotification,
               });
