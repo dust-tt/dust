@@ -32,6 +32,7 @@
     "eventsource-parser": "^1.1.1",
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
+    "io-ts-types": "^0.5.19",
     "redis": "^4.6.8",
     "uuid": "^9.0.1"
   },

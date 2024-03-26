@@ -1,14 +1,13 @@
+import type { CreateTemplateFormType } from "@dust-tt/types";
 import {
-  ActionPresetSchema,
   assistantTemplateTagNames,
+  CreateTemplateFormSchema,
   GPT_4_TURBO_MODEL_CONFIG,
-  TemperaturePresetSchema,
+  removeNulls,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import * as t from "io-ts";
-import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
 import React from "react";
 import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
@@ -34,6 +33,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
@@ -50,29 +50,14 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-const formSchema = t.type({
-  name: NonEmptyString,
-  description: t.union([t.string, t.undefined]),
-  presetHandle: t.union([t.string, t.undefined]),
-  presetInstructions: t.union([t.string, t.undefined]),
-  presetModel: t.string,
-  presetTemperature: TemperaturePresetSchema,
-  presetAction: ActionPresetSchema,
-  helpInstructions: t.union([t.string, t.undefined]),
-  helpActions: t.union([t.string, t.undefined]),
-  tags: nonEmptyArray(t.string),
-});
-
-type FormSchema = t.TypeOf<typeof formSchema>;
-
 function InputField({
   control,
   name,
   title,
   placeholder,
 }: {
-  control: Control<FormSchema>;
-  name: keyof FormSchema;
+  control: Control<CreateTemplateFormType>;
+  name: keyof CreateTemplateFormType;
   title?: string;
   placeholder?: string;
 }) {
@@ -99,8 +84,8 @@ function TextareaField({
   title,
   placeholder,
 }: {
-  control: Control<FormSchema>;
-  name: keyof FormSchema;
+  control: Control<CreateTemplateFormType>;
+  name: keyof CreateTemplateFormType;
   title?: string;
   placeholder?: string;
 }) {
@@ -132,8 +117,8 @@ function SelectField({
   title,
   options,
 }: {
-  control: Control<FormSchema>;
-  name: keyof FormSchema;
+  control: Control<CreateTemplateFormType>;
+  name: keyof CreateTemplateFormType;
   title?: string;
   options: string[];
 }) {
@@ -177,12 +162,63 @@ function TemplatesPage(
 ) {
   void _props;
 
-  function onSubmit(values: FormSchema) {
-    console.log(values);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const router = useRouter();
+  const sendNotification = React.useContext(SendNotificationsContext);
+
+  function onSubmit(values: CreateTemplateFormType) {
+    const cleanedValues = Object.fromEntries(
+      removeNulls(
+        Object.entries(values).map(([key, value]) => {
+          if (typeof value !== "string") {
+            return [key, value];
+          }
+          const cleanedValue = value.trim();
+          if (!cleanedValue) {
+            return null;
+          }
+          return [key, cleanedValue];
+        })
+      )
+    );
+
+    void submit();
+
+    async function submit() {
+      setIsSubmitting(true);
+      try {
+        const r = await fetch("/api/poke/templates", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(cleanedValues),
+        });
+        if (!r.ok) {
+          throw new Error(
+            `Something went wrong: ${r.status} ${await r.text()}`
+          );
+        }
+        sendNotification({
+          title: "Template created",
+          type: "success",
+          description: "Template created successfully.",
+        });
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        router.reload();
+      } catch (e) {
+        setIsSubmitting(false);
+        sendNotification({
+          title: "Error creating template",
+          type: "error",
+          description: `${e}`,
+        });
+      }
+    }
   }
 
-  const form = useForm<FormSchema>({
-    resolver: ioTsResolver(formSchema),
+  const form = useForm<CreateTemplateFormType>({
+    resolver: ioTsResolver(CreateTemplateFormSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -196,6 +232,14 @@ function TemplatesPage(
       tags: [],
     },
   });
+
+  if (isSubmitting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-structure-50">
+        <div className="text-structure-900">Creating template...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-structure-50 pb-48">

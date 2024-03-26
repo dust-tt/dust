@@ -1,4 +1,6 @@
 import * as t from "io-ts";
+import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
+import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 // Keeps the order of tags for UI display purposes.
 export const assistantTemplateTagNames = [
@@ -10,6 +12,15 @@ export const assistantTemplateTagNames = [
 
 export type AssistantTemplateTagNameType =
   (typeof assistantTemplateTagNames)[number];
+
+export function isAssistantTemplateTagNameTypeArray(
+  value: unknown
+): value is AssistantTemplateTagNameType[] {
+  return (
+    Array.isArray(value) &&
+    value.every((v) => assistantTemplateTagNames.includes(v))
+  );
+}
 
 interface AssistantTemplateTag {
   name: AssistantTemplateTagNameType;
@@ -72,3 +83,18 @@ export const TemplateVisibilitySchema = t.union([
   t.literal("disabled"),
 ]);
 export type TemplateVisibility = t.TypeOf<typeof TemplateVisibilitySchema>;
+
+export const CreateTemplateFormSchema = t.type({
+  name: NonEmptyString,
+  description: t.union([t.string, t.undefined]),
+  presetHandle: t.union([t.string, t.undefined]),
+  presetInstructions: t.union([t.string, t.undefined]),
+  presetModel: t.string,
+  presetTemperature: TemperaturePresetSchema,
+  presetAction: ActionPresetSchema,
+  helpInstructions: t.union([t.string, t.undefined]),
+  helpActions: t.union([t.string, t.undefined]),
+  tags: nonEmptyArray(t.string),
+});
+
+export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
