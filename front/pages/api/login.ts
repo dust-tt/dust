@@ -1,4 +1,8 @@
-import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  ActiveRoleType,
+  Result,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -86,7 +90,7 @@ async function handleMembershipInvite(
     await createAndLogMembership({
       workspace: workspace,
       userId: user.id,
-      role: "user",
+      role: membershipInvite.initialRole,
     });
   }
 
@@ -400,7 +404,7 @@ export async function createAndLogMembership({
 }: {
   userId: number;
   workspace: Workspace;
-  role: "admin" | "user";
+  role: ActiveRoleType;
 }) {
   const m = await Membership.create({
     role: role,

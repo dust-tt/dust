@@ -25,6 +25,7 @@ import type {
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
+import assert from "assert";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
@@ -48,7 +49,6 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import type { PostInvitationBody } from "@app/pages/api/w/[wId]/invitations";
-import assert from "assert";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
