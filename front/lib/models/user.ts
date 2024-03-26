@@ -93,7 +93,11 @@ User.init(
   {
     modelName: "user",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["username"] }, { fields: ["provider", "providerId"] }],
+    indexes: [
+      { fields: ["username"] },
+      { fields: ["provider", "providerId"] },
+      { fields: ["auth0Sub"], unique: true, concurrently: true },
+    ],
   }
 );
 
