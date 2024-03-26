@@ -44,6 +44,16 @@ const defaultFlexClasses = "flex flex-col gap-4";
 import { Transition } from "@headlessui/react";
 
 import SimpleSlider from "@app/components/home/carousel";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuIndicator,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  NavigationMenuViewport,
+} from "@app/components/home/NavigationMenu";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
@@ -168,6 +178,17 @@ export default function Home({
               </A>
             </P>
           </div>
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Item One</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <NavigationMenuLink>Link</NavigationMenuLink>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+
           <div className="flex-grow" />
           <Button
             variant="tertiary"
