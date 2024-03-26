@@ -2,13 +2,18 @@ import type {
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
+import { ActiveRoleSchema } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { sendWorkspaceInvitationEmail } from "@app/lib/api/invitation";
 import {
-  checkWorkspaceSeatAvailabilityUsingAuth,
-  getPendingInvitations,
-} from "@app/lib/api/workspace";
+  createInvitation,
+  sendWorkspaceInvitationEmail,
+} from "@app/lib/api/invitation";
+import { getPendingInvitations } from "@app/lib/api/invitation";
+import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -16,6 +21,13 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
 };
+
+export const PostInvitationBodySchema = t.type({
+  email: t.string,
+  role: ActiveRoleSchema,
+});
+
+export type PostInvitationBody = t.TypeOf<typeof PostInvitationBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -69,16 +81,26 @@ async function handler(
       return;
 
     case "POST":
-      if (
-        !req.body ||
-        !typeof (req.body.inviteEmail === "string") ||
-        !isEmailValid(req.body.inviteEmail)
-      ) {
+      const bodyValidation = PostInvitationBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The request body is invalid, expects { email: string }.",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const body = bodyValidation.right;
+
+      if (!isEmailValid(body.email)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid email address: " + body.email,
           },
         });
       }
@@ -108,20 +130,12 @@ async function handler(
         });
       }
 
-      const invitation = await sendWorkspaceInvitationEmail(
-        owner,
-        user,
-        req.body.inviteEmail
-      );
+      const invitation = await createInvitation(owner, body.email, body.role);
+
+      await sendWorkspaceInvitationEmail(owner, user, invitation);
 
       res.status(200).json({
-        invitations: [
-          {
-            id: invitation.id,
-            status: invitation.status,
-            inviteEmail: invitation.inviteEmail,
-          },
-        ],
+        invitations: [invitation],
       });
       return;
 

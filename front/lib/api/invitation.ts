@@ -1,26 +1,50 @@
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ActiveRoleType,
+  MembershipInvitationType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
 
 sgMail.setApiKey(config.getSendgridApiKey());
 
+function typeFromModel(
+  invitation: MembershipInvitation
+): MembershipInvitationType {
+  return {
+    id: invitation.id,
+    inviteEmail: invitation.inviteEmail,
+    status: invitation.status,
+    initialRole: invitation.initialRole,
+  };
+}
+
+export async function createInvitation(
+  owner: WorkspaceType,
+  inviteEmail: string,
+  initialRole: ActiveRoleType
+): Promise<MembershipInvitationType> {
+  return typeFromModel(
+    await MembershipInvitation.create({
+      workspaceId: owner.id,
+      inviteEmail: sanitizeString(inviteEmail),
+      status: "pending",
+      initialRole,
+    })
+  );
+}
+
 export async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
-  inviteEmail: string
-): Promise<MembershipInvitation> {
-  // Create MembershipInvitation.
-  const invitation = await MembershipInvitation.create({
-    workspaceId: owner.id,
-    inviteEmail: sanitizeString(inviteEmail),
-    status: "pending",
-    initialRole: "user",
-  });
-
+  invitation: MembershipInvitationType
+) {
   const invitationToken = sign(
     { membershipInvitationId: invitation.id },
     config.getDustInviteTokenSecret()
@@ -45,6 +69,34 @@ export async function sendWorkspaceInvitationEmail(
     },
   };
   await sgMail.send(message);
+}
+/**
+ * Returns the pending inviations associated with the authenticator's owner workspace.
+ * @param auth Authenticator
+ * @returns MenbershipInvitation[] members of the workspace
+ */
 
-  return invitation;
+export async function getPendingInvitations(
+  auth: Authenticator
+): Promise<MembershipInvitationType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+
+  const invitations = await MembershipInvitation.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: "pending",
+    },
+  });
+
+  return invitations.map((i) => {
+    return {
+      id: i.id,
+      status: i.status,
+      inviteEmail: i.inviteEmail,
+      initialRole: i.initialRole,
+    };
+  });
 }
