@@ -231,7 +231,7 @@ export async function syncOneFile(
           await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
         }
 
-        const pdfTextData = await dpdf2text(pdf_path);
+        const { content: pdfTextData } = await dpdf2text(pdf_path);
 
         documentContent = pdfTextData;
         logger.info(
