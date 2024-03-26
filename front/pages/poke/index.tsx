@@ -1,4 +1,3 @@
-import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
@@ -21,10 +20,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-const Dashboard = (
-  _props: InferGetServerSidePropsType<typeof getServerSideProps>
-) => {
-  void _props;
+const Dashboard = () => {
   const {
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,

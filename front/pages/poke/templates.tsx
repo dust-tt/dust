@@ -6,7 +6,6 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React from "react";
 import type { Control } from "react-hook-form";
@@ -157,11 +156,7 @@ function SelectField({
   );
 }
 
-function TemplatesPage(
-  _props: InferGetServerSidePropsType<typeof getServerSideProps>
-) {
-  void _props;
-
+function TemplatesPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);

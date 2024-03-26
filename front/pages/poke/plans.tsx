@@ -8,7 +8,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
-import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -39,10 +38,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
-const PlansPage = (
-  _props: InferGetServerSidePropsType<typeof getServerSideProps>
-) => {
-  void _props;
+const PlansPage = () => {
   const { mutate } = useSWRConfig();
 
   const sendNotification = React.useContext(SendNotificationsContext);
