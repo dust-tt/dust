@@ -2,9 +2,10 @@ import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 
-export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
+export type PokeTextareaProps =
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
-const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+const PokeTextarea = React.forwardRef<HTMLTextAreaElement, PokeTextareaProps>(
   ({ className, ...props }, ref) => {
     return (
       <textarea
@@ -18,6 +19,6 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     );
   }
 );
-Textarea.displayName = "Textarea";
+PokeTextarea.displayName = "Textarea";
 
-export { Textarea };
+export { PokeTextarea };

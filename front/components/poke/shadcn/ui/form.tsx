@@ -5,7 +5,7 @@ import type { ControllerProps, FieldPath, FieldValues } from "react-hook-form";
 import { Controller, FormProvider, useFormContext } from "react-hook-form";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { Label } from "@app/components/poke/shadcn/ui/label";
+import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
 
 const Form = FormProvider;
 
@@ -85,7 +85,7 @@ const FormLabel = React.forwardRef<
   const { error, formItemId } = useFormField();
 
   return (
-    <Label
+    <PokeLabel
       ref={ref}
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
@@ -160,12 +160,12 @@ const FormMessage = React.forwardRef<
 FormMessage.displayName = "FormMessage";
 
 export {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  useFormField,
+  Form as PokeForm,
+  FormControl as PokeFormControl,
+  FormDescription as PokeFormDescription,
+  FormField as PokeFormField,
+  FormItem as PokeFormItem,
+  FormLabel as PokeFormLabel,
+  FormMessage as PokeFormMessage,
+  useFormField as usePokeFormField,
 };

@@ -6,7 +6,7 @@ import type {
 import { useRouter } from "next/router";
 
 import { makeColumnsForDataSources } from "@app/components/poke/data_sources/columns";
-import { DataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 
 interface DataSourceDataTableProps {
   owner: WorkspaceType;
@@ -34,7 +34,7 @@ export function DataSourceDataTable({
   return (
     <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
       <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
-      <DataTable
+      <PokeDataTable
         columns={makeColumnsForDataSources(
           owner,
           agentConfigurations,

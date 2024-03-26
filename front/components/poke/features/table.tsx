@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useContext } from "react";
 
 import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
-import { DataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface FeatureFlagsDataTableProps {
@@ -35,7 +35,7 @@ export function FeatureFlagsDataTable({
   return (
     <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
       <h2 className="text-md mb-4 font-bold">Feature flags:</h2>
-      <DataTable
+      <PokeDataTable
         columns={makeColumnsForFeatureFlags(
           owner,
           router.reload,

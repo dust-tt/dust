@@ -1,4 +1,3 @@
-import { Input } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -14,14 +13,15 @@ import {
 } from "@tanstack/react-table";
 import { useState } from "react";
 
-import { DataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
+import { PokeInput } from "@app/components/poke/shadcn/ui/input";
+import { PokeDataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableHead,
+  PokeTableHeader,
+  PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 
 interface DataTableProps<TData, TValue> {
@@ -30,7 +30,7 @@ interface DataTableProps<TData, TValue> {
   isLoading?: boolean;
 }
 
-export function DataTable<TData, TValue>({
+export function PokeDataTable<TData, TValue>({
   columns,
   data,
   isLoading,
@@ -60,7 +60,7 @@ export function DataTable<TData, TValue>({
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center">
-        <Input
+        <PokeInput
           name="filter"
           placeholder="Filter ..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -69,55 +69,55 @@ export function DataTable<TData, TValue>({
         />
       </div>
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+        <PokeTable>
+          <PokeTableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <PokeTableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <PokeTableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
                             header.getContext()
                           )}
-                    </TableHead>
+                    </PokeTableHead>
                   );
                 })}
-              </TableRow>
+              </PokeTableRow>
             ))}
-          </TableHeader>
-          <TableBody>
+          </PokeTableHeader>
+          <PokeTableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
+                <PokeTableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <PokeTableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
                       )}
-                    </TableCell>
+                    </PokeTableCell>
                   ))}
-                </TableRow>
+                </PokeTableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell
+              <PokeTableRow>
+                <PokeTableCell
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
                   No results.
-                </TableCell>
-              </TableRow>
+                </PokeTableCell>
+              </PokeTableRow>
             )}
-          </TableBody>
-        </Table>
-        <DataTablePagination table={table} />
+          </PokeTableBody>
+        </PokeTable>
+        <PokeDataTablePagination table={table} />
       </div>
     </div>
   );

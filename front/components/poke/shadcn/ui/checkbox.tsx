@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 
-const Checkbox = React.forwardRef<
+const PokeCheckbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
 >(({ className, ...props }, ref) => (
@@ -23,6 +23,6 @@ const Checkbox = React.forwardRef<
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ));
-Checkbox.displayName = CheckboxPrimitive.Root.displayName;
+PokeCheckbox.displayName = CheckboxPrimitive.Root.displayName;
 
-export { Checkbox };
+export { PokeCheckbox };

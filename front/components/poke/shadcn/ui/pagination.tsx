@@ -5,7 +5,7 @@ interface DataTablePaginationProps<TData> {
   table: Table<TData>;
 }
 
-export function DataTablePagination<TData>({
+export function PokeDataTablePagination<TData>({
   table,
 }: DataTablePaginationProps<TData>) {
   return (

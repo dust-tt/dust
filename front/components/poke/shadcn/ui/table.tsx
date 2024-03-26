@@ -109,12 +109,12 @@ const TableCaption = React.forwardRef<
 TableCaption.displayName = "TableCaption";
 
 export {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table as PokeTable,
+  TableBody as PokeTableBody,
+  TableCaption as PokeTableCaption,
+  TableCell as PokeTableCell,
+  TableFooter as PokeTableFooter,
+  TableHead as PokeTableHead,
+  TableHeader as PokeTableHeader,
+  TableRow as PokeTableRow,
 };
