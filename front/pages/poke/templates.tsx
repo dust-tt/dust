@@ -38,13 +38,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async (context, auth) => {
-    if (!auth.isDustSuperUser()) {
-      return {
-        notFound: true,
-      };
-    }
-
+  async () => {
     return {
       props: {},
     };

@@ -5,13 +5,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async (context, auth) => {
-    if (!auth.isDustSuperUser()) {
-      return {
-        notFound: true,
-      };
-    }
-
+  async (context) => {
     const connectorId = context.params?.connectorId;
 
     if (!connectorId || typeof connectorId !== "string") {
