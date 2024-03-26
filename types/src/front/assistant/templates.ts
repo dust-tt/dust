@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 
 // Keeps the order of tags for UI display purposes.
-const assistantTemplateTagNames = [
+export const assistantTemplateTagNames = [
   "Featured",
   "Productivity",
   "Design",

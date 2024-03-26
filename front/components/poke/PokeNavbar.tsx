@@ -20,6 +20,9 @@ export const PokeNavbar: React.FC = () => (
         <Link href="/poke/plans">
           <div className="text-stucture-300 text-sm italic">Plans</div>
         </Link>
+        <Link href="/poke/templates">
+          <div className="text-stucture-300 text-sm italic">Templates</div>
+        </Link>
       </div>
     </div>
   </nav>
