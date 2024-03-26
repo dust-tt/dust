@@ -8,7 +8,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
-import { DataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { usePokeAgentConfigurations } from "@app/lib/swr";
 
@@ -51,7 +51,7 @@ export function AssistantsDataTable({
           restore an assistant
         </a>
         <h2 className="text-md mb-4 font-bold">Assistants:</h2>
-        <DataTable
+        <PokeDataTable
           columns={makeColumnsForAssistants(
             owner,
             agentConfigurations,
@@ -89,7 +89,7 @@ function RestoreAssistantModal({
     >
       <div className="mx-auto mt-4 max-w-4xl">
         {!!archivedAssistants?.length && (
-          <DataTable
+          <PokeDataTable
             columns={makeColumnsForAssistants(
               owner,
               archivedAssistants,
