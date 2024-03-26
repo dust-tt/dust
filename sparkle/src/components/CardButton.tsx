@@ -1,5 +1,10 @@
 import React, { ReactNode } from "react";
 
+import {
+  noHrefLink,
+  SparkleContext,
+  SparkleContextLinkType,
+} from "@sparkle/context";
 import { classNames } from "@sparkle/lib/utils";
 
 interface CardButtonProps {
@@ -42,6 +47,10 @@ export function CardButton({
   target = "_blank",
   rel = "",
 }: CardButtonProps) {
+  const { components } = React.useContext(SparkleContext);
+
+  const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
+
   const commonClasses = classNames(
     "s-flex s-cursor-pointer s-transition s-duration-200",
     variantClasses[variant],
@@ -49,10 +58,18 @@ export function CardButton({
     className
   );
   if (href) {
+    if (target) {
+      return (
+        <a href={href} target={target} rel={rel} className={commonClasses}>
+          {children}
+        </a>
+      );
+    }
+
     return (
-      <a href={href} target={target} rel={rel} className={commonClasses}>
+      <Link href={href} className={commonClasses}>
         {children}
-      </a>
+      </Link>
     );
   } else {
     return (
