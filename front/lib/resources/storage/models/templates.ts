@@ -1,6 +1,6 @@
+import type { AssistantTemplateTagNameType } from "@dust-tt/types";
 import type {
   CreationOptional,
-  ForeignKey,
   InferAttributes,
   InferCreationAttributes,
 } from "sequelize";
@@ -42,6 +42,8 @@ export class TemplateModel extends Model<
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
+
+  declare tags: AssistantTemplateTagNameType[];
 }
 
 TemplateModel.init(
@@ -102,6 +104,10 @@ TemplateModel.init(
     },
     helpActions: {
       type: DataTypes.STRING,
+    },
+    tags: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
     },
   },
   {
