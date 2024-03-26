@@ -8,13 +8,11 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { MembershipInvitationType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
   Membership,
-  MembershipInvitation,
   User,
   Workspace,
   WorkspaceHasDomain,
@@ -229,33 +227,4 @@ export async function evaluateWorkspaceSeatAvailability(
   });
 
   return activeMembersCount < maxUsers;
-}
-
-/**
- * Returns the pending inviations associated with the authenticator's owner workspace.
- * @param auth Authenticator
- * @returns MenbershipInvitation[] members of the workspace
- */
-export async function getPendingInvitations(
-  auth: Authenticator
-): Promise<MembershipInvitationType[]> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return [];
-  }
-
-  const invitations = await MembershipInvitation.findAll({
-    where: {
-      workspaceId: owner.id,
-      status: "pending",
-    },
-  });
-
-  return invitations.map((i) => {
-    return {
-      id: i.id,
-      status: i.status,
-      inviteEmail: i.inviteEmail,
-    };
-  });
 }

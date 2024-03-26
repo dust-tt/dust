@@ -1,9 +1,27 @@
+import * as t from "io-ts";
+
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
 import { WhitelistableFeature } from "./feature_flags";
 
 export type WorkspaceSegmentationType = "interesting" | null;
-export type RoleType = "admin" | "builder" | "user" | "none";
+
+export const RoleSchema = t.union([
+  t.literal("admin"),
+  t.literal("builder"),
+  t.literal("user"),
+  t.literal("none"),
+]);
+
+export type RoleType = t.TypeOf<typeof RoleSchema>;
+
+export const ActiveRoleSchema = t.union([
+  t.literal("admin"),
+  t.literal("builder"),
+  t.literal("user"),
+]);
+
+export type ActiveRoleType = t.TypeOf<typeof ActiveRoleSchema>;
 
 export type LightWorkspaceType = {
   id: ModelId;

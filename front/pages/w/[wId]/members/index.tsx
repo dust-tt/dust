@@ -452,7 +452,8 @@ function InviteEmailModal({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        inviteEmail,
+        email: inviteEmail,
+        role: "user",
       }),
     });
     if (!res.ok) {
