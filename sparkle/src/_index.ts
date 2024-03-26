@@ -121,6 +121,9 @@ export { Popup };
 import { TemplateItem } from "./components/TemplateItem";
 export { TemplateItem };
 
+import { FilterChips } from "./components/FilterChips";
+export { FilterChips };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
