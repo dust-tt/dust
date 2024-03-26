@@ -1,12 +1,14 @@
 import {
   Avatar,
   Button,
+  ChevronDownIcon,
   ChevronRightIcon,
   Chip,
   Dialog,
   DropdownMenu,
   ElementModal,
   Icon,
+  IconButton,
   Input,
   Modal,
   Page,
@@ -14,13 +16,14 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import type {
-  ActiveRoleType,
-  RoleType,
-  UserType,
-  UserTypeWithWorkspaces,
-  WorkspaceDomain,
-  WorkspaceType,
+import {
+  ACTIVE_ROLES,
+  type ActiveRoleType,
+  type RoleType,
+  type UserType,
+  type UserTypeWithWorkspaces,
+  type WorkspaceDomain,
+  type WorkspaceType,
 } from "@dust-tt/types";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -204,11 +207,6 @@ export default function WorkspaceAdmin({
   );
 
   function MemberList() {
-    const COLOR_FOR_ROLE: { [key: string]: "red" | "amber" | "emerald" } = {
-      admin: "red",
-      builder: "amber",
-      user: "emerald",
-    };
     const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
       useState<WorkspaceLimit | null>(null);
 
@@ -371,7 +369,7 @@ export default function WorkspaceAdmin({
                     ) : (
                       <Chip
                         size="xs"
-                        color={COLOR_FOR_ROLE[item.workspaces[0].role]}
+                        color={ROLES_DATA[item.workspaces[0].role]["color"]}
                         className="capitalize"
                       >
                         {displayRole(item.workspaces[0].role)}
@@ -527,7 +525,7 @@ function InviteEmailModal({
             </div>
             <div className="flex items-center gap-2">
               <div className="font-semibold text-element-900">Role:</div>
-              <RoleMenu
+              <RoleDropDown
                 selectedRole={invitationRole}
                 onChange={setInvitationRole}
               />
@@ -810,13 +808,6 @@ function ChangeMemberModal({
 
   if (!member) return null;
 
-  const roleTexts: { [k: string]: string } = {
-    admin: "Admins can manage members, in addition to builders' rights.",
-    builder:
-      "Builders can create custom assistants and use advanced dev tools.",
-    user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
-  };
-
   return (
     <ElementModal
       openOnElement={member}
@@ -853,11 +844,14 @@ function ChangeMemberModal({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <div className="font-bold text-element-900">Role:</div>
-            <RoleMenu selectedRole={selectedRole} onChange={setSelectedRole} />
+            <RoleDropDown
+              selectedRole={selectedRole}
+              onChange={setSelectedRole}
+            />
           </div>
           <Page.P>
             The role defines the rights of a member of the workspace.{" "}
-            {roleTexts[member.workspaces[0].role]}
+            {ROLES_DATA[member.workspaces[0].role]["description"]}
           </Page.P>
         </div>
         <div className="flex flex-none flex-col gap-2">
@@ -924,7 +918,7 @@ function displayRole(role: RoleType): string {
   return role === "user" ? "member" : role;
 }
 
-function RoleMenu({
+function RoleDropDown({
   selectedRole,
   onChange,
 }: {
@@ -933,24 +927,30 @@ function RoleMenu({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenu.Button type="select">
-        <Button
-          variant="secondary"
-          label={displayRole(selectedRole)}
-          size="sm"
-          type="select"
-          className="capitalize"
-        />
+      <DropdownMenu.Button>
+        <div className="group flex cursor-pointer items-center gap-2">
+          <Chip
+            color={ROLES_DATA[selectedRole]["color"]}
+            className="capitalize"
+          >
+            {displayRole(selectedRole)}
+          </Chip>
+          <IconButton
+            icon={ChevronDownIcon}
+            size="sm"
+            variant="secondary"
+            className="group-hover:text-action-400"
+          />
+        </div>
       </DropdownMenu.Button>
       <DropdownMenu.Items origin="topLeft">
-        {["admin", "builder", "user"].map((role) => (
+        {ACTIVE_ROLES.map((role) => (
           <DropdownMenu.Item
-            key={role as string}
-            onClick={() => onChange(role as ActiveRoleType)}
+            key={role}
+            onClick={() => onChange(role)}
             label={
-              displayRole(role as RoleType)
-                .charAt(0)
-                .toUpperCase() + displayRole(role as RoleType).slice(1)
+              displayRole(role).charAt(0).toUpperCase() +
+              displayRole(role).slice(1)
             }
           />
         ))}
@@ -958,3 +958,27 @@ function RoleMenu({
     </DropdownMenu>
   );
 }
+
+const ROLES_DATA: Record<
+  RoleType,
+  { description: string; color: "red" | "amber" | "emerald" | "slate" }
+> = {
+  admin: {
+    description: "Admins can manage members, in addition to builders' rights.",
+    color: "red",
+  },
+  builder: {
+    description:
+      "Builders can create custom assistants and use advanced dev tools.",
+    color: "amber",
+  },
+  user: {
+    description:
+      "Members can use assistants provided by Dust as well as custom assistants created by their company.",
+    color: "emerald",
+  },
+  none: {
+    description: "Revoked members have no access to the workspace.",
+    color: "slate",
+  },
+};
