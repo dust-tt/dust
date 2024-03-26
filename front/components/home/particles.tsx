@@ -377,11 +377,11 @@ function calculateTargetPositions() {
 }
 
 type ParticulesComponentProps = {
-  scrollRef0: RefObject<HTMLDivElement>;
-  scrollRef1: RefObject<HTMLDivElement>;
-  scrollRef2: RefObject<HTMLDivElement>;
-  scrollRef3: RefObject<HTMLDivElement>;
-  scrollRef4: RefObject<HTMLDivElement>;
+  scrollRef0?: RefObject<HTMLDivElement>;
+  scrollRef1?: RefObject<HTMLDivElement>;
+  scrollRef2?: RefObject<HTMLDivElement>;
+  scrollRef3?: RefObject<HTMLDivElement>;
+  scrollRef4?: RefObject<HTMLDivElement>;
 };
 
 export default function Particules({
