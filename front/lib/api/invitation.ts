@@ -18,6 +18,7 @@ export async function sendWorkspaceInvitationEmail(
     workspaceId: owner.id,
     inviteEmail: sanitizeString(inviteEmail),
     status: "pending",
+    initialRole: "user",
   });
 
   const invitationToken = sign(
