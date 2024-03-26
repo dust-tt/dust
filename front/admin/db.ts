@@ -48,10 +48,7 @@ import { ConversationClassification } from "@app/lib/models/conversation_classif
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { PlanInvitation } from "@app/lib/models/plan";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import {
-  TemplateModel,
-  TemplateTagModel,
-} from "@app/lib/resources/storage/models/templates";
+import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
 async function main() {
   await User.sync({ alter: true });
@@ -107,7 +104,6 @@ async function main() {
   await ConversationClassification.sync({ alter: true });
 
   await TemplateModel.sync({ alter: true });
-  await TemplateTagModel.sync({ alter: true });
   process.exit(0);
 }
 
