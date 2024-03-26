@@ -304,16 +304,13 @@ impl Block for Chat {
         let e = env.clone();
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
         let (messages_value, messages_logs): (Value, Vec<Value>) =
-            match tokio::task::spawn_blocking(move || {
+            tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(messages_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));
                 script.call("_fun", &e)
             })
             .await?
-            {
-                Ok((v, l)) => (v, l),
-                Err(e) => Err(anyhow!("Error in messages code: {}", e))?,
-            };
+            .map_err(|e| anyhow!("Error in `messages_code`: {}", e))?;
 
         const MESSAGES_CODE_OUTPUT: &str = "Invalid messages code output, \
             expecting an array of objects with  fields `role`, possibly `name`, \
@@ -372,17 +369,13 @@ impl Block for Chat {
                 let e = env.clone();
                 let functions_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
                 let (functions_value, functions_logs): (Value, Vec<Value>) =
-                    match tokio::task::spawn_blocking(move || {
+                    tokio::task::spawn_blocking(move || {
                         let mut script = Script::from_string(functions_code.as_str())?
                             .with_timeout(std::time::Duration::from_secs(10));
                         script.call("_fun", &e)
                     })
                     .await?
-                    {
-                        Ok((v, l)) => (v, l),
-                        Err(e) => Err(anyhow!("Error in functions code: {}", e))?,
-                    };
-
+                    .map_err(|e| anyhow!("Error in `functions_code`: {}", e))?;
                 (
                     match functions_value {
                         Value::Null => vec![],

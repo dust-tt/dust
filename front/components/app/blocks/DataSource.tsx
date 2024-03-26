@@ -163,6 +163,12 @@ export default function DataSource({
     onBlockUpdate(b);
   };
 
+  const handleFilterCodeChange = (filterCode: string) => {
+    const b = shallowBlockClone(block);
+    b.spec.filter_code = filterCode;
+    onBlockUpdate(b);
+  };
+
   return (
     <Block
       owner={owner}
@@ -256,7 +262,36 @@ export default function DataSource({
             </div>
           )}
           {filtersExpanded ? (
-            <>
+            <div className="flex flex-col space-y-1">
+              <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+                <div className="flex w-full font-normal">
+                  <div className="w-full leading-4">
+                    <div
+                      className={classNames(
+                        "border bg-slate-100",
+                        "border-slate-100"
+                      )}
+                    >
+                      <CodeEditor
+                        data-color-mode="light"
+                        readOnly={readOnly}
+                        value={block.spec.filter_code}
+                        language="js"
+                        placeholder=""
+                        onChange={(e) => handleFilterCodeChange(e.target.value)}
+                        padding={15}
+                        style={{
+                          fontSize: 12,
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                          backgroundColor: "rgb(241 245 249)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col xl:flex-row xl:space-x-2">
                 <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                   <div className="flex flex-initial">tags.in:</div>
@@ -382,7 +417,7 @@ export default function DataSource({
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           ) : null}
         </div>
 

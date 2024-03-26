@@ -3,11 +3,12 @@ use crate::blocks::block::{
 };
 use crate::blocks::helpers::get_data_source_project;
 use crate::data_sources::data_source::{Document, SearchFilter};
+use crate::deno::script::Script;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -15,12 +16,14 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct DataSource {
     query: String,
     full_text: bool,
+    filter_code: Option<String>,
 }
 
 impl DataSource {
     pub fn parse(block_pair: Pair<Rule>) -> Result<Self> {
         let mut query: Option<String> = None;
         let mut full_text: bool = false;
+        let mut filter_code: Option<String> = None;
 
         for pair in block_pair.into_inner() {
             match pair.as_rule() {
@@ -35,6 +38,7 @@ impl DataSource {
                                 "Invalid value for `full_text`, must be `true` or `false`"
                             ))?,
                         },
+                        "filter_code" => filter_code = Some(value),
                         _ => Err(anyhow!("Unexpected `{}` in `data_source` block", key))?,
                     }
                 }
@@ -52,6 +56,7 @@ impl DataSource {
         Ok(DataSource {
             query: query.unwrap(),
             full_text,
+            filter_code,
         })
     }
 
@@ -233,12 +238,40 @@ impl Block for DataSource {
             None => None,
         };
 
-        let filter = match config {
+        // Process filter code.
+        let (mut filter, filter_logs) = match self.filter_code.as_ref() {
+            None => (None, vec![]),
+            Some(c) => {
+                let e = env.clone();
+                let filter_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
+                let (filter_value, filter_logs): (Value, Vec<Value>) =
+                    tokio::task::spawn_blocking(move || {
+                        let mut script = Script::from_string(filter_code.as_str())?
+                            .with_timeout(std::time::Duration::from_secs(10));
+                        script.call("_fun", &e)
+                    })
+                    .await?
+                    .map_err(|e| anyhow!("Error in `filter_code`: {}", e))?;
+                (
+                    match filter_value {
+                        Value::Null => None,
+                        Value::Object(o) => Some(SearchFilter::from_json(&Value::Object(o))?),
+                        _ => Err(anyhow!(
+                            "Invalid filter code output, expecting a filter objects with
+                             fields `tags`, `parents`, and `timestamp`."
+                        ))?,
+                    },
+                    filter_logs,
+                )
+            }
+        };
+
+        match config {
             Some(v) => match v.get("filter") {
                 Some(v) => {
-                    let mut filter = SearchFilter::from_json_str(v.to_string().as_str())?;
+                    let mut f = SearchFilter::from_json_str(v.to_string().as_str())?;
 
-                    match filter.tags.as_mut() {
+                    match f.tags.as_mut() {
                         Some(tags) => {
                             let replace_tags = |tags: &mut Vec<String>, field: &str| {
                                 *tags = tags
@@ -276,11 +309,16 @@ impl Block for DataSource {
                         None => (),
                     };
 
-                    Some(filter)
+                    // Update the filter retrieved from code with the filter extracted from the
+                    // configuration.
+                    match filter.as_mut() {
+                        Some(ff) => ff.apply(&f),
+                        None => filter = Some(f),
+                    }
                 }
-                _ => None,
+                _ => (),
             },
-            _ => None,
+            _ => (),
         };
 
         // For each data_sources, retrieve documents concurrently.
@@ -308,7 +346,9 @@ impl Block for DataSource {
 
         Ok(BlockResult {
             value: serde_json::to_value(Self::top_k_sorted_documents(top_k, &documents))?,
-            meta: None,
+            meta: Some(json!({
+                "logs": filter_logs,
+            })),
         })
     }
 
