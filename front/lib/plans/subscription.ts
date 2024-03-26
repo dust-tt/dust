@@ -11,12 +11,9 @@ import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import {
-  FREE_TEST_PLAN_CODE,
-  FREE_UPGRADED_PLAN_CODE,
-  PRO_PLAN_SEAT_29_CODE,
-} from "@app/lib/plans/plan_codes";
-import {
+  cancelSubscriptionImmediately,
   createCheckoutSession,
   getStripeSubscription,
   updateStripeSubscriptionQuantity,
@@ -113,40 +110,52 @@ export const internalSubscribeWorkspaceToFreeNoPlan = async ({
   }
   const now = new Date();
 
-  return frontSequelize.transaction(async (t) => {
-    // We end the active subscription if any
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-      transaction: t,
-    });
+  const activeSubscription = await Subscription.findOne({
+    where: { workspaceId: workspace.id, status: "active" },
+  });
 
-    if (activeSubscription) {
+  if (activeSubscription) {
+    await frontSequelize.transaction(async (t) => {
+      // End the subscription
+      const endedStatus = activeSubscription.stripeSubscriptionId
+        ? "ended_backend_only"
+        : "ended";
+
       await activeSubscription.update(
         {
-          status: "ended",
+          status: endedStatus,
           endDate: now,
         },
         { transaction: t }
       );
-    }
-
-    const plan: PlanAttributes = FREE_NO_PLAN_DATA;
-
-    return renderSubscriptionFromModels({
-      plan,
-      // No active subscription for FREE_NO_PLAN
-      activeSubscription: null,
     });
+
+    // Notify Stripe that we ended the subscription if the subscription was a paid one
+    if (activeSubscription?.stripeSubscriptionId) {
+      await cancelSubscriptionImmediately({
+        stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
+      });
+    }
+  }
+
+  const plan: PlanAttributes = FREE_NO_PLAN_DATA;
+  return renderSubscriptionFromModels({
+    plan,
+    // No active subscription for FREE_NO_PLAN
+    activeSubscription: null,
   });
 };
 
 /**
- * Internal function to subscribe to the FREE_TEST_PLAN.
+ * Internal function to subscribe to a new Plan.
+ * The new plan must be a free plan because the new subscription is created without Stripe data.
  */
-export const internalSubscribeWorkspaceToFreeTestPlan = async ({
+export const internalSubscribeWorkspaceToFreePlan = async ({
   workspaceId,
+  planCode,
 }: {
   workspaceId: string;
+  planCode: string;
 }): Promise<SubscriptionType> => {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -154,75 +163,10 @@ export const internalSubscribeWorkspaceToFreeTestPlan = async ({
   if (!workspace) {
     throw new Error(`Cannot find workspace ${workspaceId}`);
   }
-  const plan = await Plan.findOne({
-    where: { code: FREE_TEST_PLAN_CODE },
-  });
-  if (!plan) {
-    throw new Error(
-      `Cannot subscribe to plan ${FREE_TEST_PLAN_CODE}:  not found.`
-    );
-  }
-
-  const now = new Date();
-
-  return frontSequelize.transaction(async (t) => {
-    // We end the active subscription if any
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-      transaction: t,
-    });
-
-    if (activeSubscription) {
-      await activeSubscription.update(
-        {
-          status: "ended",
-          endDate: now,
-        },
-        { transaction: t }
-      );
-    }
-
-    // We create a new subscription
-    const newSubscription = await Subscription.create(
-      {
-        sId: generateModelSId(),
-        workspaceId: workspace.id,
-        planId: plan.id,
-        status: "active",
-        startDate: now,
-        stripeCustomerId: activeSubscription?.stripeCustomerId || null,
-      },
-      { transaction: t }
-    );
-
-    return renderSubscriptionFromModels({
-      plan,
-      activeSubscription: newSubscription,
-    });
-  });
-};
-
-/**
- * Internal function to subscribe to the FREE_UPGRADED_PLAN.
- * This plan is free with no limitations, and should be used for Dust workspaces only (once we have paiement plans)
- */
-export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
-  workspaceId,
-  planCode = FREE_UPGRADED_PLAN_CODE,
-}: {
-  workspaceId: string;
-  planCode?: string;
-}): Promise<SubscriptionType> => {
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Cannot find workspace ${workspaceId}`);
-  }
-  const plan = await Plan.findOne({
+  const newPlan = await Plan.findOne({
     where: { code: planCode },
   });
-  if (!plan) {
+  if (!newPlan) {
     throw new Error(`Cannot subscribe to plan ${planCode}:  not found.`);
   }
 
@@ -232,41 +176,70 @@ export const internalSubscribeWorkspaceToFreeUpgradedPlan = async ({
   const activeSubscription = await Subscription.findOne({
     where: { workspaceId: workspace.id, status: "active" },
   });
-  if (activeSubscription && activeSubscription.planId === plan.id) {
+
+  // Prevent subscribing to the same plan
+  if (activeSubscription && activeSubscription.planId === newPlan.id) {
     throw new Error(
       `Cannot subscribe to plan ${planCode}: already subscribed.`
     );
   }
 
-  return frontSequelize.transaction(async (t) => {
-    // We end the active subscription if any
+  // Prevent subscribing if the new plan is not a free plan
+  if (newPlan.billingType !== "free") {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}: billingType is not "free".`
+    );
+  }
+
+  // Prevent subscribing if the new plan has less users allowed then the current one on the workspace
+  if (newPlan.maxUsersInWorkspace !== -1) {
+    const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+    if (activeSeats > newPlan.maxUsersInWorkspace) {
+      throw new Error(
+        `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`
+      );
+    }
+  }
+
+  // Proceed to the termination of the active subscription (if any) and creation of the new one
+  const newSubscription = await frontSequelize.transaction(async (t) => {
     if (activeSubscription) {
+      const endedStatus = activeSubscription.stripeSubscriptionId
+        ? "ended_backend_only"
+        : "ended";
+
       await activeSubscription.update(
         {
-          status: "ended",
+          status: endedStatus,
           endDate: now,
         },
         { transaction: t }
       );
     }
 
-    // We create a new subscription
-    const newSubscription = await Subscription.create(
+    return Subscription.create(
       {
         sId: generateModelSId(),
         workspaceId: workspace.id,
-        planId: plan.id,
+        planId: newPlan.id,
         status: "active",
         startDate: now,
         stripeCustomerId: activeSubscription?.stripeCustomerId || null,
       },
       { transaction: t }
     );
+  });
 
-    return renderSubscriptionFromModels({
-      plan,
-      activeSubscription: newSubscription,
+  // Notify Stripe that we ended the subscription if the subscription was a paid one
+  if (activeSubscription?.stripeSubscriptionId) {
+    await cancelSubscriptionImmediately({
+      stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
     });
+  }
+
+  return renderSubscriptionFromModels({
+    plan: newPlan,
+    activeSubscription: newSubscription,
   });
 };
 
@@ -286,10 +259,10 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
     throw new Error("Cannot invite workspace to enterprise plan: not allowed.");
   }
 
-  const plan = await Plan.findOne({
+  const newPlan = await Plan.findOne({
     where: { code: planCode },
   });
-  if (!plan) {
+  if (!newPlan) {
     throw new Error(
       `Cannot invite workspace to plan ${planCode}: plan not found.`
     );
@@ -297,23 +270,23 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
 
   // We search for an active subscription for this workspace
   const activeSubscription = auth.subscription();
-  if (activeSubscription && activeSubscription.plan.code === plan.code) {
+  if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
     throw new Error(
       `Cannot subscribe to plan ${planCode}: already subscribed.`
     );
   }
 
   // If plan is a free plan, we subscribe immediately no need for an invitation
-  if (plan.billingType === "free" && plan.stripeProductId === null) {
-    await internalSubscribeWorkspaceToFreeUpgradedPlan({
+  if (newPlan.stripeProductId === null) {
+    await internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
-      planCode: plan.code,
+      planCode: newPlan.code,
     });
     return;
   }
 
   const invitation = await getPlanInvitation(auth);
-  if (invitation?.planCode === plan.code) {
+  if (invitation?.planCode === newPlan.code) {
     return invitation;
   }
 
@@ -329,7 +302,7 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
       {
         secret: uuidv4(),
         workspaceId: owner.id,
-        planId: plan.id,
+        planId: newPlan.id,
       },
       {
         transaction: t,
@@ -338,8 +311,8 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
   });
 
   return {
-    planCode: plan.code,
-    planName: plan.name,
+    planCode: newPlan.code,
+    planName: newPlan.name,
     secret: model.secret,
   };
 };

@@ -43,7 +43,11 @@ export const PAID_BILLING_TYPES = [
 export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
 export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
 
-export const SUBSCRIPTION_STATUSES = ["active", "ended"] as const;
+export const SUBSCRIPTION_STATUSES = [
+  "active",
+  "ended",
+  "ended_backend_only", // Ended on the backend but not yet propagated to Stripe
+] as const;
 export type SubscriptionStatusType = (typeof SUBSCRIPTION_STATUSES)[number];
 
 export type PlanType = {
@@ -58,7 +62,7 @@ export type PlanType = {
 export type SubscriptionType = {
   // null for FREE_NO_PLAN which is the default plan when there is no Subscription in DB.
   sId: string | null;
-  status: "active" | "ended";
+  status: SubscriptionStatusType;
   trialing: boolean;
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;

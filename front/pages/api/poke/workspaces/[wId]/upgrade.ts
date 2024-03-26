@@ -2,10 +2,7 @@ import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  internalSubscribeWorkspaceToFreeUpgradedPlan,
-  pokeUpgradeOrInviteWorkspaceToPlan,
-} from "@app/lib/plans/subscription";
+import { pokeUpgradeOrInviteWorkspaceToPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type UpgradeWorkspaceResponseBody = {
@@ -35,15 +32,18 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const { planCode } = req.query;
-
+      const planCode = req.query.planCode;
       if (!planCode || typeof planCode !== "string") {
-        await internalSubscribeWorkspaceToFreeUpgradedPlan({
-          workspaceId: owner.sId,
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The planCode parameter is missing.",
+          },
         });
-      } else {
-        await pokeUpgradeOrInviteWorkspaceToPlan(auth, planCode);
       }
+
+      await pokeUpgradeOrInviteWorkspaceToPlan(auth, planCode);
 
       return res.status(200).json({
         workspace: {

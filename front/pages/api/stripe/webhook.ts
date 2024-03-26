@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
+import { assertNever, CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
@@ -536,51 +536,84 @@ async function handler(
             }
           }
           break;
+
+        // Occurs when the subscription is canceled by the user or by us.
         case "customer.subscription.deleted":
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.subscription.deleted event."
           );
           stripeSubscription = event.data.object as Stripe.Subscription;
-          // Occurs when the subscription is canceled by the user or by us.
-          if (stripeSubscription.status === "canceled") {
-            // We can end the subscription in our database.
-            const activeSubscription = await Subscription.findOne({
-              where: { stripeSubscriptionId: stripeSubscription.id },
-              include: [Workspace],
+
+          if (stripeSubscription.status !== "canceled") {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `[Stripe Webhook] Received customer.subscription.deleted with unknown status = ${stripeSubscription.status}. Expected status = canceled.`,
+              },
             });
-            if (!activeSubscription) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message:
-                    "Stripe Webhook: Error handling customer.subscription.deleted. Subscription not found.",
-                },
-              });
-            }
-            logger.info(
-              { event },
-              "[Stripe Webhook] Received customer.subscription.deleted event."
-            );
-            await activeSubscription.update({
-              status: "ended",
-              endDate: new Date(),
-            });
-            const workspaceId = activeSubscription.workspace.sId;
-            const auth = await Authenticator.internalAdminForWorkspace(
-              workspaceId
-            );
-            await revokeUsersForDowngrade(auth);
-            await archiveConnectedAgents(auth);
-            await deleteConnectedDatasources(auth);
-            await checkStaticDatasourcesSize(auth);
-          } else {
-            logger.warn(
-              { event },
-              "[Stripe Webhook] Received customer.subscription.deleted event but the subscription is not canceled."
-            );
           }
+
+          const matchingSubscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: stripeSubscription.id },
+            include: [Workspace],
+          });
+
+          if (!matchingSubscription) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message:
+                  "Stripe Webhook: Error handling customer.subscription.deleted. Matching subscription not found on db.",
+              },
+            });
+          }
+
+          switch (matchingSubscription.status) {
+            case "ended":
+              // That means the webhook was already received and processed as only Stripe should set the status to ended on a subscription with a stripeSubscriptionId.
+              logger.info(
+                { event },
+                "[Stripe Webhook] Received customer.subscription.deleted event but the subscription was already with status = ended. Doing nothing."
+              );
+              break;
+            case "ended_backend_only":
+              // This status is set by the backend after a Poké workspace migration from one plan to another.
+              // We don't want to delete any data in this case as the workspace is still active.
+              // We just want to mark the subscription as ended (so that we know it's been processed by Stripe).
+              logger.info(
+                { event },
+                "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = ended_backend_only. Ending the subscription without deleting any data"
+              );
+              await matchingSubscription.update({
+                status: "ended",
+                endDate: new Date(),
+              });
+              break;
+            case "active":
+              logger.info(
+                { event },
+                "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
+              );
+              await matchingSubscription.update({
+                status: "ended",
+                endDate: new Date(),
+              });
+              const workspaceId = matchingSubscription.workspace.sId;
+              const auth = await Authenticator.internalAdminForWorkspace(
+                workspaceId
+              );
+              await revokeUsersForDowngrade(auth);
+              await archiveConnectedAgents(auth);
+              await deleteConnectedDatasources(auth);
+              await checkStaticDatasourcesSize(auth);
+              break;
+            default:
+              assertNever(matchingSubscription.status);
+          }
+
           break;
         default:
         // Unhandled event type

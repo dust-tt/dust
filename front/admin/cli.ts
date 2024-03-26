@@ -12,9 +12,10 @@ import {
   User,
   Workspace,
 } from "@app/lib/models";
+import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
-  internalSubscribeWorkspaceToFreeTestPlan,
-  internalSubscribeWorkspaceToFreeUpgradedPlan,
+  internalSubscribeWorkspaceToFreeNoPlan,
+  internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -133,10 +134,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         name: args.name,
       });
 
-      await internalSubscribeWorkspaceToFreeTestPlan({
-        workspaceId: w.sId,
-      });
-
       args.wId = w.sId;
       await workspace("show", args);
       return;
@@ -156,8 +153,9 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await internalSubscribeWorkspaceToFreeUpgradedPlan({
+      await internalSubscribeWorkspaceToFreePlan({
         workspaceId: w.sId,
+        planCode: FREE_UPGRADED_PLAN_CODE,
       });
       await workspace("show", args);
       return;
@@ -177,7 +175,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(`Workspace not found: wId='${args.wId}'`);
       }
 
-      await internalSubscribeWorkspaceToFreeTestPlan({
+      await internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: w.sId,
       });
       await workspace("show", args);
