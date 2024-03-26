@@ -6,20 +6,22 @@ import { WhitelistableFeature } from "./feature_flags";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-export const RoleSchema = t.union([
-  t.literal("admin"),
-  t.literal("builder"),
-  t.literal("user"),
-  t.literal("none"),
-]);
+export const ROLES = ["admin", "builder", "user", "none"] as const;
+export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
+
+function keyObject<T extends readonly string[]>(
+  arr: T
+): { [K in T[number]]: null } {
+  return Object.fromEntries(arr.map((v) => [v, null])) as {
+    [K in T[number]]: null;
+  };
+}
+
+export const RoleSchema = t.keyof(keyObject(ROLES));
 
 export type RoleType = t.TypeOf<typeof RoleSchema>;
 
-export const ActiveRoleSchema = t.union([
-  t.literal("admin"),
-  t.literal("builder"),
-  t.literal("user"),
-]);
+export const ActiveRoleSchema = t.keyof(keyObject(ACTIVE_ROLES));
 
 export type ActiveRoleType = t.TypeOf<typeof ActiveRoleSchema>;
 

@@ -1,12 +1,14 @@
 import {
   Avatar,
   Button,
+  ChevronDownIcon,
   ChevronRightIcon,
   Chip,
   Dialog,
   DropdownMenu,
   ElementModal,
   Icon,
+  IconButton,
   Input,
   Modal,
   Page,
@@ -14,16 +16,19 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
+import type { MembershipInvitationType } from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type {
+  ActiveRoleType,
   RoleType,
   UserType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { MembershipInvitationType } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import { ACTIVE_ROLES } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
+import assert from "assert";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
@@ -202,11 +207,6 @@ export default function WorkspaceAdmin({
   );
 
   function MemberList() {
-    const COLOR_FOR_ROLE: { [key: string]: "red" | "amber" | "emerald" } = {
-      admin: "red",
-      builder: "amber",
-      user: "emerald",
-    };
     const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
       useState<WorkspaceLimit | null>(null);
 
@@ -266,7 +266,6 @@ export default function WorkspaceAdmin({
         />
       );
     }, [inviteBlockedPopupReason, setInviteBlockedPopupReason]);
-
     return (
       <>
         <InviteEmailModal
@@ -322,71 +321,81 @@ export default function WorkspaceAdmin({
           </div>
           <div className="s-w-full">
             {displayedMembersAndInvitations.map(
-              (item: UserTypeWithWorkspaces | MembershipInvitationType) => (
-                <div
-                  key={
-                    isInvitation(item)
-                      ? `invitation-${item.id}`
-                      : `member-${item.id}`
-                  }
-                  className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-                  onClick={() => {
-                    if (user.id === item.id) return; // no action on self
-                    if (isInvitation(item)) setInvitationToRevoke(item);
-                    else setChangeRoleMember(item);
-                  }}
-                >
-                  <div className="hidden sm:block">
-                    {isInvitation(item) ? (
-                      <Avatar size="sm" />
-                    ) : (
-                      <Avatar
-                        visual={item.image}
-                        name={item.fullName}
-                        size="sm"
-                      />
-                    )}
-                  </div>
-                  <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                    {!isInvitation(item) && (
-                      <div className="font-medium text-element-900">
-                        {item.fullName}
-                        {user.id === item.id && " (you)"}
+              (item: UserTypeWithWorkspaces | MembershipInvitationType) => {
+                const role = isInvitation(item)
+                  ? item.initialRole
+                  : item.workspaces[0].role;
+                assert(
+                  role !== "none",
+                  "Unreachable (typescript pleasing): role cannot be none"
+                );
+                return (
+                  <div
+                    key={
+                      isInvitation(item)
+                        ? `invitation-${item.id}`
+                        : `member-${item.id}`
+                    }
+                    className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+                    onClick={() => {
+                      if (user.id === item.id) return; // no action on self
+                      if (isInvitation(item)) setInvitationToRevoke(item);
+                      else setChangeRoleMember(item);
+                    }}
+                  >
+                    <div className="hidden sm:block">
+                      {isInvitation(item) ? (
+                        <Avatar size="sm" />
+                      ) : (
+                        <Avatar
+                          visual={item.image}
+                          name={item.fullName}
+                          size="sm"
+                        />
+                      )}
+                    </div>
+                    <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                      {!isInvitation(item) && (
+                        <div className="font-medium text-element-900">
+                          {item.fullName}
+                          {user.id === item.id && " (you)"}
+                        </div>
+                      )}
+
+                      <div className="grow font-normal text-element-700">
+                        {isInvitation(item)
+                          ? item.inviteEmail
+                          : item.email || item.username}
+                      </div>
+                    </div>
+                    {isInvitation(item) && (
+                      <div>
+                        <Chip size="xs" color="slate">
+                          Invitation {item.status}
+                        </Chip>
                       </div>
                     )}
-
-                    <div className="grow font-normal text-element-700">
-                      {isInvitation(item)
-                        ? item.inviteEmail
-                        : item.email || item.username}
-                    </div>
-                  </div>
-                  <div>
-                    {isInvitation(item) ? (
-                      <Chip size="xs" color="slate">
-                        Invitation {item.status}
-                      </Chip>
-                    ) : (
+                    <div>
                       <Chip
                         size="xs"
-                        color={COLOR_FOR_ROLE[item.workspaces[0].role]}
+                        color={ROLES_DATA[role]["color"]}
                         className="capitalize"
                       >
-                        {displayRole(item.workspaces[0].role)}
+                        {displayRole(role)}
                       </Chip>
-                    )}
+                    </div>
+                    <div className="hidden sm:block">
+                      <Icon
+                        visual={ChevronRightIcon}
+                        className={classNames(
+                          "text-element-600",
+                          user.id === item.id ? "invisible" : ""
+                        )}
+                      />
+                    </div>
                   </div>
-                  <div className="hidden sm:block">
-                    <Icon
-                      visual={ChevronRightIcon}
-                      className={classNames(
-                        "text-element-600",
-                        user.id === item.id ? "invisible" : ""
-                      )}
-                    />
-                  </div>
-                </div>
-              )
+                );
+              }
             )}
             {(isMembersLoading || isInvitationsLoading) && (
               <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
@@ -432,6 +441,7 @@ function InviteEmailModal({
   const [existingRevokedUser, setExistingRevokedUser] =
     useState<UserTypeWithWorkspaces | null>(null);
   const { mutate } = useSWRConfig();
+  const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
     if (!isEmailValid(inviteEmail)) {
@@ -447,9 +457,10 @@ function InviteEmailModal({
       }
       return;
     }
+
     const body: PostInvitationBody = {
       email: inviteEmail,
-      role: "user",
+      role: invitationRole,
     };
 
     const res = await fetch(`/api/w/${owner.sId}/invitations`, {
@@ -482,6 +493,7 @@ function InviteEmailModal({
       <ReinviteUserModal
         onClose={() => setExistingRevokedUser(null)}
         user={existingRevokedUser}
+        role={invitationRole}
       />
       <Modal
         isOpen={showModal}
@@ -520,6 +532,18 @@ function InviteEmailModal({
                 />
               </div>
             </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-element-900">Role:</div>
+                <RoleDropDown
+                  selectedRole={invitationRole}
+                  onChange={setInvitationRole}
+                />
+              </div>
+            </div>
+            <div className="text-element-700">
+              {ROLES_DATA[invitationRole]["description"]}
+            </div>
           </div>
         </div>
       </Modal>
@@ -530,9 +554,11 @@ function InviteEmailModal({
 function ReinviteUserModal({
   onClose,
   user,
+  role,
 }: {
   onClose: (show: boolean) => void;
   user: UserTypeWithWorkspaces | null;
+  role: ActiveRoleType;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
@@ -566,7 +592,7 @@ function ReinviteUserModal({
               setIsSaving(true);
               await handleMemberRoleChange({
                 member: user,
-                role: "user",
+                role,
                 mutate,
                 sendNotification,
               });
@@ -782,19 +808,20 @@ function ChangeMemberModal({
   onClose: () => void;
   member: UserTypeWithWorkspaces | null;
 }) {
+  assert(
+    member?.workspaces[0].role !== "none",
+    "Unreachable (typescript pleasing): member role cannot be none"
+  );
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
+    member?.workspaces[0].role || "user"
+  );
   const [isSaving, setIsSaving] = useState(false);
-  if (!member) return null; // Unreachable
 
-  const roleTexts: { [k: string]: string } = {
-    admin: "Admins can manage members, in addition to builders' rights.",
-    builder:
-      "Builders can create custom assistants and use advanced dev tools.",
-    user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
-  };
+  if (!member) return null;
+
   return (
     <ElementModal
       openOnElement={member}
@@ -803,14 +830,11 @@ function ChangeMemberModal({
         setIsSaving(false); // reset isSaving when closing the modal
       }}
       isSaving={isSaving}
-      hasChanged={
-        selectedRole !== null && selectedRole !== member.workspaces[0].role
-      }
+      hasChanged={selectedRole !== member.workspaces[0].role}
       title={member.fullName || "Unreachable"}
       variant="side-sm"
       onSave={async (closeModalFn: () => void) => {
         setIsSaving(true);
-        if (!selectedRole) return; // unreachable due to hasChanged
         await handleMemberRoleChange({
           member,
           role: selectedRole,
@@ -834,38 +858,14 @@ function ChangeMemberModal({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <div className="font-bold text-element-900">Role:</div>
-            <DropdownMenu>
-              <DropdownMenu.Button type="select">
-                <Button
-                  variant="secondary"
-                  label={
-                    selectedRole
-                      ? displayRole(selectedRole)
-                      : displayRole(member.workspaces[0].role)
-                  }
-                  size="sm"
-                  type="select"
-                  className="capitalize"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft">
-                {["admin", "builder", "user"].map((role) => (
-                  <DropdownMenu.Item
-                    key={role as string}
-                    onClick={() => setSelectedRole(role as RoleType)}
-                    label={
-                      displayRole(role as RoleType)
-                        .charAt(0)
-                        .toUpperCase() + displayRole(role as RoleType).slice(1)
-                    }
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
+            <RoleDropDown
+              selectedRole={selectedRole}
+              onChange={setSelectedRole}
+            />
           </div>
           <Page.P>
             The role defines the rights of a member of the workspace.{" "}
-            {roleTexts[member.workspaces[0].role]}
+            {ROLES_DATA[member.workspaces[0].role]["description"]}
           </Page.P>
         </div>
         <div className="flex flex-none flex-col gap-2">
@@ -931,3 +931,64 @@ function ChangeMemberModal({
 function displayRole(role: RoleType): string {
   return role === "user" ? "member" : role;
 }
+
+function RoleDropDown({
+  selectedRole,
+  onChange,
+}: {
+  selectedRole: ActiveRoleType;
+  onChange: (role: ActiveRoleType) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <div className="group flex cursor-pointer items-center gap-2">
+          <Chip
+            color={ROLES_DATA[selectedRole]["color"]}
+            className="capitalize"
+          >
+            {displayRole(selectedRole)}
+          </Chip>
+          <IconButton
+            icon={ChevronDownIcon}
+            size="sm"
+            variant="secondary"
+            className="group-hover:text-action-400"
+          />
+        </div>
+      </DropdownMenu.Button>
+      <DropdownMenu.Items origin="topLeft">
+        {ACTIVE_ROLES.map((role) => (
+          <DropdownMenu.Item
+            key={role}
+            onClick={() => onChange(role)}
+            label={
+              displayRole(role).charAt(0).toUpperCase() +
+              displayRole(role).slice(1)
+            }
+          />
+        ))}
+      </DropdownMenu.Items>
+    </DropdownMenu>
+  );
+}
+
+const ROLES_DATA: Record<
+  ActiveRoleType,
+  { description: string; color: "red" | "amber" | "emerald" | "slate" }
+> = {
+  admin: {
+    description: "Admins can manage members, in addition to builders' rights.",
+    color: "red",
+  },
+  builder: {
+    description:
+      "Builders can create custom assistants and use advanced dev tools.",
+    color: "amber",
+  },
+  user: {
+    description:
+      "Members can use assistants provided by Dust as well as custom assistants created by their company.",
+    color: "emerald",
+  },
+};
