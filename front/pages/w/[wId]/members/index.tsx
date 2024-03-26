@@ -523,12 +523,17 @@ function InviteEmailModal({
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="font-semibold text-element-900">Role:</div>
-              <RoleDropDown
-                selectedRole={invitationRole}
-                onChange={setInvitationRole}
-              />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-element-900">Role:</div>
+                <RoleDropDown
+                  selectedRole={invitationRole}
+                  onChange={setInvitationRole}
+                />
+              </div>
+            </div>
+            <div className="text-element-700">
+              {ROLES_DATA[invitationRole]["description"]}
             </div>
           </div>
         </div>
