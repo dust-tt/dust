@@ -15,6 +15,7 @@ import {
   Searchbar,
 } from "@dust-tt/sparkle";
 import type {
+  ActiveRoleType,
   RoleType,
   UserType,
   UserTypeWithWorkspaces,
@@ -47,6 +48,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import type { PostInvitationBody } from "@app/pages/api/w/[wId]/invitations";
+import assert from "assert";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -432,6 +434,7 @@ function InviteEmailModal({
   const [existingRevokedUser, setExistingRevokedUser] =
     useState<UserTypeWithWorkspaces | null>(null);
   const { mutate } = useSWRConfig();
+  const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const sendNotification = useContext(SendNotificationsContext);
   async function handleSendInvitation(): Promise<void> {
     if (!isEmailValid(inviteEmail)) {
@@ -447,9 +450,10 @@ function InviteEmailModal({
       }
       return;
     }
+
     const body: PostInvitationBody = {
       email: inviteEmail,
-      role: "user",
+      role: invitationRole,
     };
 
     const res = await fetch(`/api/w/${owner.sId}/invitations`, {
@@ -520,8 +524,12 @@ function InviteEmailModal({
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <div className="font-semibold text-element-900">Role:</div>
+              <RoleMenu
+                selectedRole={invitationRole}
+                onChange={setInvitationRole}
+              />
             </div>
           </div>
         </div>
@@ -785,12 +793,19 @@ function ChangeMemberModal({
   onClose: () => void;
   member: UserTypeWithWorkspaces | null;
 }) {
+  assert(
+    member?.workspaces[0].role !== "none",
+    "Panic: member role cannot be none"
+  );
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
+    member?.workspaces[0].role || "user"
+  );
   const [isSaving, setIsSaving] = useState(false);
-  if (!member) return null; // Unreachable
+
+  if (!member) return null;
 
   const roleTexts: { [k: string]: string } = {
     admin: "Admins can manage members, in addition to builders' rights.",
@@ -798,6 +813,7 @@ function ChangeMemberModal({
       "Builders can create custom assistants and use advanced dev tools.",
     user: "Users can use assistants provided by Dust as well as custom assistants created by their company.",
   };
+
   return (
     <ElementModal
       openOnElement={member}
@@ -806,14 +822,11 @@ function ChangeMemberModal({
         setIsSaving(false); // reset isSaving when closing the modal
       }}
       isSaving={isSaving}
-      hasChanged={
-        selectedRole !== null && selectedRole !== member.workspaces[0].role
-      }
+      hasChanged={selectedRole !== member.workspaces[0].role}
       title={member.fullName || "Unreachable"}
       variant="side-sm"
       onSave={async (closeModalFn: () => void) => {
         setIsSaving(true);
-        if (!selectedRole) return; // unreachable due to hasChanged
         await handleMemberRoleChange({
           member,
           role: selectedRole,
@@ -837,10 +850,7 @@ function ChangeMemberModal({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <div className="font-bold text-element-900">Role:</div>
-            <RoleMenu
-              selectedRole={selectedRole || member.workspaces[0].role}
-              onChange={setSelectedRole}
-            />
+            <RoleMenu selectedRole={selectedRole} onChange={setSelectedRole} />
           </div>
           <Page.P>
             The role defines the rights of a member of the workspace.{" "}
@@ -915,8 +925,8 @@ function RoleMenu({
   selectedRole,
   onChange,
 }: {
-  selectedRole: RoleType;
-  onChange: (role: RoleType) => void;
+  selectedRole: ActiveRoleType;
+  onChange: (role: ActiveRoleType) => void;
 }) {
   return (
     <DropdownMenu>
@@ -933,7 +943,7 @@ function RoleMenu({
         {["admin", "builder", "user"].map((role) => (
           <DropdownMenu.Item
             key={role as string}
-            onClick={() => onChange(role as RoleType)}
+            onClick={() => onChange(role as ActiveRoleType)}
             label={
               displayRole(role as RoleType)
                 .charAt(0)
