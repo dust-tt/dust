@@ -1,4 +1,9 @@
-import type { AssistantTemplateTagNameType } from "@dust-tt/types";
+import type {
+  ActionPreset,
+  AssistantCreativityLevel,
+  AssistantTemplateTagNameType,
+  TemplateVisibility,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   InferAttributes,
@@ -20,25 +25,15 @@ export class TemplateModel extends Model<
   declare name: string;
   declare description: string | null;
 
-  declare visibility: "draft" | "published" | "disabled";
+  declare visibility: TemplateVisibility;
 
   declare presetHandle: string | null;
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
-  declare presetTemperature:
-    | "deterministic"
-    | "factual"
-    | "balanced"
-    | "creative"
-    | null;
+  declare presetTemperature: AssistantCreativityLevel | null;
   declare presetProviderId: string | null;
   declare presetModelId: string | null;
-  declare presetAction:
-    | "reply"
-    | "search_datasources"
-    | "process_datasources"
-    | "query_tables"
-    | null;
+  declare presetAction: ActionPreset | null;
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
