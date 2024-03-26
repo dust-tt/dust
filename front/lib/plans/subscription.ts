@@ -4,11 +4,10 @@ import type {
   PlanType,
   SubscriptionType,
 } from "@dust-tt/types";
-import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import type { Authenticator } from "@app/lib/auth";
-import { Membership, Plan, Subscription, Workspace } from "@app/lib/models";
+import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { PlanInvitation } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -117,35 +116,6 @@ export const internalSubscribeWorkspaceToFreeNoPlan = async ({
 
   if (activeSubscription) {
     await frontSequelize.transaction(async (t) => {
-      // Revoke all users
-      const oldestAdminMembership = await Membership.findOne({
-        where: { workspaceId: workspace.id, role: "admin" },
-        order: [["createdAt", "ASC"]],
-        transaction: t,
-      });
-      if (!oldestAdminMembership) {
-        throw new Error(
-          `Cannot find an admin membership for workspace ${workspaceId}`
-        );
-      }
-      const allMembershipsButOldestAdmin = await Membership.findAll({
-        where: {
-          workspaceId: workspace.id,
-          id: {
-            [Op.ne]: oldestAdminMembership.id,
-          },
-          role: {
-            [Op.not]: "revoked",
-          },
-        },
-        transaction: t,
-      });
-      await Promise.all(
-        allMembershipsButOldestAdmin.map((membership) => {
-          return membership.update({ role: "revoked" }, { transaction: t });
-        })
-      );
-
       // End the subscription
       const endedStatus = activeSubscription.stripeSubscriptionId
         ? "ended_backend_only"
