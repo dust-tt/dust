@@ -40,7 +40,6 @@ export async function dpdf2text(
           if (capturedStderrPerPage.includes("Wrong page range given")) {
             resolve(null);
           } else {
-            console.log(currentPage);
             currentPage = null;
             reject(new Error(capturedStderrPerPage));
           }
