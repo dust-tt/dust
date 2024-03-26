@@ -59,6 +59,17 @@ export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   google_vertex_ai: GoogleLogo,
 };
 
+export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
+  GPT_4_TURBO_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+] as const;
+
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
     Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
@@ -144,17 +155,6 @@ function AdvancedSettings({
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
 }) {
-  const usedModelConfigs: ModelConfig[] = [
-    GPT_4_TURBO_MODEL_CONFIG,
-    GPT_3_5_TURBO_MODEL_CONFIG,
-    CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-    CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
-    MISTRAL_LARGE_MODEL_CONFIG,
-    MISTRAL_MEDIUM_MODEL_CONFIG,
-    MISTRAL_SMALL_MODEL_CONFIG,
-    GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  ];
-
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
@@ -194,26 +194,26 @@ function AdvancedSettings({
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topRight" width={250}>
                 <div className="z-[120]">
-                  {usedModelConfigs
-                    .filter((m) => !(m.largeModel && !isUpgraded(plan)))
-                    .map((modelConfig) => (
-                      <DropdownMenu.Item
-                        key={modelConfig.modelId}
-                        icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                        description={modelConfig.shortDescription}
-                        label={modelConfig.displayName}
-                        onClick={() => {
-                          setGenerationSettings({
-                            ...generationSettings,
-                            modelSettings: {
-                              modelId: modelConfig.modelId,
-                              providerId: modelConfig.providerId,
-                              // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                            } as SupportedModel,
-                          });
-                        }}
-                      />
-                    ))}
+                  {USED_MODEL_CONFIGS.filter(
+                    (m) => !(m.largeModel && !isUpgraded(plan))
+                  ).map((modelConfig) => (
+                    <DropdownMenu.Item
+                      key={modelConfig.modelId}
+                      icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+                      description={modelConfig.shortDescription}
+                      label={modelConfig.displayName}
+                      onClick={() => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings: {
+                            modelId: modelConfig.modelId,
+                            providerId: modelConfig.providerId,
+                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                          } as SupportedModel,
+                        });
+                      }}
+                    />
+                  ))}
                 </div>
               </DropdownMenu.Items>
             </DropdownMenu>

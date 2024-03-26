@@ -1,3 +1,5 @@
+import * as t from "io-ts";
+
 // Keeps the order of tags for UI display purposes.
 const assistantTemplateTagNames = [
   "Featured",
@@ -47,3 +49,26 @@ export const assistantTemplateTags: Record<
     },
   },
 } as const;
+
+export const TemperaturePresetSchema = t.union([
+  t.literal("deterministic"),
+  t.literal("factual"),
+  t.literal("balanced"),
+  t.literal("creative"),
+]);
+export type TemperaturePreset = t.TypeOf<typeof TemperaturePresetSchema>;
+
+export const ActionPresetSchema = t.union([
+  t.literal("reply"),
+  t.literal("search_datasources"),
+  t.literal("process_datasources"),
+  t.literal("query_tables"),
+]);
+export type ActionPreset = t.TypeOf<typeof ActionPresetSchema>;
+
+export const TemplateVisibilitySchema = t.union([
+  t.literal("draft"),
+  t.literal("published"),
+  t.literal("disabled"),
+]);
+export type TemplateVisibility = t.TypeOf<typeof TemplateVisibilitySchema>;
