@@ -2,8 +2,9 @@ import type {
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { PostInvitationSchema } from "@dust-tt/types";
+import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -20,6 +21,13 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
 };
+
+export const PostInvitationBodySchema = t.type({
+  email: t.string,
+  role: ActiveRoleSchema,
+});
+
+export type PostInvitationBody = t.TypeOf<typeof PostInvitationBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -73,7 +81,7 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PostInvitationSchema.decode(req.body);
+      const bodyValidation = PostInvitationBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
