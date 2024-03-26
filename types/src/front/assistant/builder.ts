@@ -8,13 +8,6 @@ export const ASSISTANT_CREATIVITY_LEVELS = [
 ] as const;
 export type AssistantCreativityLevel =
   (typeof ASSISTANT_CREATIVITY_LEVELS)[number];
-export function isAssistantCreativityLevel(
-  value: unknown
-): value is AssistantCreativityLevel {
-  return ASSISTANT_CREATIVITY_LEVELS.includes(
-    value as AssistantCreativityLevel
-  );
-}
 export const AssistantCreativityLevelCodec = ioTsEnum<AssistantCreativityLevel>(
   ASSISTANT_CREATIVITY_LEVELS,
   "AssistantCreativityLevel"
