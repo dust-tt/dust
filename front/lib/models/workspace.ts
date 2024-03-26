@@ -1,4 +1,4 @@
-import type { WorkspaceSegmentationType } from "@dust-tt/types";
+import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -189,6 +189,7 @@ export class MembershipInvitation extends Model<
 
   declare inviteEmail: string;
   declare status: "pending" | "consumed" | "revoked";
+  declare initialRole: Exclude<RoleType, "none">;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare invitedUserId: ForeignKey<User["id"]> | null;
@@ -218,6 +219,11 @@ MembershipInvitation.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "pending",
+    },
+    initialRole: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "user",
     },
     invitedUserId: {
       type: DataTypes.INTEGER,
