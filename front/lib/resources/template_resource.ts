@@ -1,6 +1,11 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
@@ -21,7 +26,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     super(TemplateModel, blob);
   }
 
-  static async makeNew(blob: Attributes<TemplateModel>) {
+  static async makeNew(blob: CreationAttributes<TemplateModel>) {
     const template = await TemplateModel.create({
       ...blob,
     });

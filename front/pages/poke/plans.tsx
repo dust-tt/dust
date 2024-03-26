@@ -8,7 +8,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
-import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -26,23 +25,14 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async (context, auth) => {
-    if (!auth.isDustSuperUser()) {
-      return {
-        notFound: true,
-      };
-    }
-
+  async () => {
     return {
       props: {},
     };
   }
 );
 
-const PlansPage = (
-  _props: InferGetServerSidePropsType<typeof getServerSideProps>
-) => {
-  void _props;
+const PlansPage = () => {
   const { mutate } = useSWRConfig();
 
   const sendNotification = React.useContext(SendNotificationsContext);

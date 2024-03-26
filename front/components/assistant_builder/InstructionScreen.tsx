@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   APIError,
+  AssistantCreativityLevel,
   BuilderSuggestionsType,
   ModelConfig,
   PlanType,
@@ -22,6 +23,8 @@ import type {
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import {
+  ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
+  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   Err,
@@ -44,12 +47,13 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
-export const CREATIVITY_LEVELS = [
-  { label: "Deterministic", value: 0 },
-  { label: "Factual", value: 0.2 },
-  { label: "Balanced", value: 0.7 },
-  { label: "Creative", value: 1 },
-];
+export const CREATIVITY_LEVELS = Object.entries(
+  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
+).map(([k, v]) => ({
+  label:
+    ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
+  value: v,
+}));
 
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
 export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
@@ -58,6 +62,17 @@ export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   mistral: MistralLogo,
   google_vertex_ai: GoogleLogo,
 };
+
+export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
+  GPT_4_TURBO_MODEL_CONFIG,
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+] as const;
 
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
@@ -144,17 +159,6 @@ function AdvancedSettings({
     generationSettingsSettings: AssistantBuilderState["generationSettings"]
   ) => void;
 }) {
-  const usedModelConfigs: ModelConfig[] = [
-    GPT_4_TURBO_MODEL_CONFIG,
-    GPT_3_5_TURBO_MODEL_CONFIG,
-    CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-    CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
-    MISTRAL_LARGE_MODEL_CONFIG,
-    MISTRAL_MEDIUM_MODEL_CONFIG,
-    MISTRAL_SMALL_MODEL_CONFIG,
-    GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  ];
-
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
@@ -194,26 +198,26 @@ function AdvancedSettings({
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topRight" width={250}>
                 <div className="z-[120]">
-                  {usedModelConfigs
-                    .filter((m) => !(m.largeModel && !isUpgraded(plan)))
-                    .map((modelConfig) => (
-                      <DropdownMenu.Item
-                        key={modelConfig.modelId}
-                        icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                        description={modelConfig.shortDescription}
-                        label={modelConfig.displayName}
-                        onClick={() => {
-                          setGenerationSettings({
-                            ...generationSettings,
-                            modelSettings: {
-                              modelId: modelConfig.modelId,
-                              providerId: modelConfig.providerId,
-                              // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                            } as SupportedModel,
-                          });
-                        }}
-                      />
-                    ))}
+                  {USED_MODEL_CONFIGS.filter(
+                    (m) => !(m.largeModel && !isUpgraded(plan))
+                  ).map((modelConfig) => (
+                    <DropdownMenu.Item
+                      key={modelConfig.modelId}
+                      icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+                      description={modelConfig.shortDescription}
+                      label={modelConfig.displayName}
+                      onClick={() => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings: {
+                            modelId: modelConfig.modelId,
+                            providerId: modelConfig.providerId,
+                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
+                          } as SupportedModel,
+                        });
+                      }}
+                    />
+                  ))}
                 </div>
               </DropdownMenu.Items>
             </DropdownMenu>
