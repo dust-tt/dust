@@ -121,10 +121,11 @@ async function handler(
 
       const invitationRequests = bodyValidation.right;
 
+      const { maxUsers } = subscription.plan.limits.users;
       const availableSeats =
-        subscription.plan.limits.users.maxUsers -
+        maxUsers -
         (await getMembersCountForWorkspace(owner, { activeOnly: true }));
-      if (availableSeats < invitationRequests.length) {
+      if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
