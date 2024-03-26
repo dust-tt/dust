@@ -233,6 +233,14 @@ export function addBlock(
         spec: {
           query: "",
           full_text: false,
+          filter_code:
+            "_fun = (env) => {\n" +
+            "  // return {\n" +
+            "  //   tags: { in: env.state.INPUT.tags, not: null },\n" +
+            "  //   parents: { in: null, not: null },\n" +
+            "  //   timestamp: { gt: 1711377963110, lt: env.state.CODE.lt }\n" +
+            "  // };\n" +
+            "}",
         },
         config: {
           data_sources: null,
@@ -493,6 +501,11 @@ export function dumpSpecification(
           block.spec.query
         )}\n\`\`\`\n`;
         out += `  full_text: ${block.spec.full_text ? "true" : "false"}\n`;
+        if (block.spec.filter_code) {
+          out += `  filter_code: \n\`\`\`\n${escapeTripleBackticks(
+            block.spec.filter_code
+          )}\n\`\`\`\n`;
+        }
         out += `}\n`;
         out += "\n";
         break;

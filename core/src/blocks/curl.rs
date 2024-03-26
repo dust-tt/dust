@@ -115,30 +115,23 @@ impl Block for Curl {
         let e = env.clone();
         let headers_code = self.headers_code.clone();
         let (headers_value, headers_logs): (Value, Vec<Value>) =
-            match tokio::task::spawn_blocking(move || {
+            tokio::task::spawn_blocking(move || {
                 let mut script = Script::from_string(headers_code.as_str())?
                     .with_timeout(std::time::Duration::from_secs(10));
                 script.call("_fun", &e)
             })
             .await?
-            {
-                Ok((v, l)) => (v, l),
-                Err(e) => Err(anyhow!("Error in headers code: {}", e))?,
-            };
+            .map_err(|e| anyhow!("Error in `headers_code`: {}", e))?;
 
         let e = env.clone();
         let body_code = self.body_code.clone();
-        let (body_value, body_logs): (Value, Vec<Value>) =
-            match tokio::task::spawn_blocking(move || {
-                let mut script = Script::from_string(body_code.as_str())?
-                    .with_timeout(std::time::Duration::from_secs(10));
-                script.call("_fun", &e)
-            })
-            .await?
-            {
-                Ok((v, l)) => (v, l),
-                Err(e) => Err(anyhow!("Error in body code: {}", e))?,
-            };
+        let (body_value, body_logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
+            let mut script = Script::from_string(body_code.as_str())?
+                .with_timeout(std::time::Duration::from_secs(10));
+            script.call("_fun", &e)
+        })
+        .await?
+        .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
 
         let url = replace_variables_in_string(&self.url, "url", env)?;
 
