@@ -95,6 +95,7 @@ async function handler(
             id: invitation.id,
             status: invitation.status,
             inviteEmail: invitation.inviteEmail,
+            initialRole: invitation.initialRole,
           },
         ],
       });
