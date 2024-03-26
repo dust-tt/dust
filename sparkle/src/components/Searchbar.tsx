@@ -68,7 +68,7 @@ export function Searchbar({
       />
       <div
         className={classNames(
-          "s-absolute s-right-0 s-top-0 s-flex s-h-full s-items-center",
+          "s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-3",
           iconClasses[size]
         )}
       >
