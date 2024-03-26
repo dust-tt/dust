@@ -266,7 +266,6 @@ export default function WorkspaceAdmin({
         />
       );
     }, [inviteBlockedPopupReason, setInviteBlockedPopupReason]);
-
     return (
       <>
         <InviteEmailModal
@@ -326,6 +325,10 @@ export default function WorkspaceAdmin({
                 const role = isInvitation(item)
                   ? item.initialRole
                   : item.workspaces[0].role;
+                assert(
+                  role !== "none",
+                  "Unreachable (typescript pleasing): role cannot be none"
+                );
                 return (
                   <div
                     key={
@@ -971,7 +974,7 @@ function RoleDropDown({
 }
 
 const ROLES_DATA: Record<
-  RoleType,
+  ActiveRoleType,
   { description: string; color: "red" | "amber" | "emerald" | "slate" }
 > = {
   admin: {
@@ -987,9 +990,5 @@ const ROLES_DATA: Record<
     description:
       "Members can use assistants provided by Dust as well as custom assistants created by their company.",
     color: "emerald",
-  },
-  none: {
-    description: "Revoked members have no access to the workspace.",
-    color: "slate",
   },
 };
