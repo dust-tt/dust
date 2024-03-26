@@ -520,6 +520,9 @@ function InviteEmailModal({
                 />
               </div>
             </div>
+            <div className="flex gap-2">
+              <div className="font-semibold text-element-900">Role:</div>
+            </div>
           </div>
         </div>
       </Modal>
@@ -834,34 +837,10 @@ function ChangeMemberModal({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <div className="font-bold text-element-900">Role:</div>
-            <DropdownMenu>
-              <DropdownMenu.Button type="select">
-                <Button
-                  variant="secondary"
-                  label={
-                    selectedRole
-                      ? displayRole(selectedRole)
-                      : displayRole(member.workspaces[0].role)
-                  }
-                  size="sm"
-                  type="select"
-                  className="capitalize"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft">
-                {["admin", "builder", "user"].map((role) => (
-                  <DropdownMenu.Item
-                    key={role as string}
-                    onClick={() => setSelectedRole(role as RoleType)}
-                    label={
-                      displayRole(role as RoleType)
-                        .charAt(0)
-                        .toUpperCase() + displayRole(role as RoleType).slice(1)
-                    }
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
+            <RoleMenu
+              selectedRole={selectedRole || member.workspaces[0].role}
+              onChange={setSelectedRole}
+            />
           </div>
           <Page.P>
             The role defines the rights of a member of the workspace.{" "}
@@ -930,4 +909,39 @@ function ChangeMemberModal({
 
 function displayRole(role: RoleType): string {
   return role === "user" ? "member" : role;
+}
+
+function RoleMenu({
+  selectedRole,
+  onChange,
+}: {
+  selectedRole: RoleType;
+  onChange: (role: RoleType) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button type="select">
+        <Button
+          variant="secondary"
+          label={displayRole(selectedRole)}
+          size="sm"
+          type="select"
+          className="capitalize"
+        />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items origin="topLeft">
+        {["admin", "builder", "user"].map((role) => (
+          <DropdownMenu.Item
+            key={role as string}
+            onClick={() => onChange(role as RoleType)}
+            label={
+              displayRole(role as RoleType)
+                .charAt(0)
+                .toUpperCase() + displayRole(role as RoleType).slice(1)
+            }
+          />
+        ))}
+      </DropdownMenu.Items>
+    </DropdownMenu>
+  );
 }
