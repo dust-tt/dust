@@ -807,7 +807,7 @@ function ChangeMemberModal({
 }) {
   assert(
     member?.workspaces[0].role !== "none",
-    "Panic: member role cannot be none"
+    "Unreachable (typescript pleasing): member role cannot be none"
   );
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
