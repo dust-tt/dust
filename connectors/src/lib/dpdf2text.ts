@@ -1,33 +1,61 @@
 import { spawn } from "child_process";
 
-export async function dpdf2text(pdfPath: string): Promise<string> {
-  const args: string[] = ["-layout", "-enc", "UTF-8", pdfPath, "-"];
+export async function dpdf2text(
+  pdfPath: string
+): Promise<{ pages: { [pageNumber: string]: string }; content: string }> {
+  const pages: { [pageNumber: number]: string } = {};
+  let content = "";
 
-  return new Promise((resolve, reject) => {
-    const child = spawn("pdftotext", args);
+  let currentPage: number | null = 1;
+  while (currentPage !== null) {
+    const argsPerPage: string[] = [
+      "-layout",
+      "-enc",
+      "UTF-8",
+      "-f",
+      `${currentPage}`,
+      "-l",
+      `${currentPage}`,
+      pdfPath,
+      "-",
+    ];
 
-    const stdout = child.stdout;
-    const stderr = child.stderr;
-    let capturedStdout = "";
-    let capturedStderr = "";
+    const pageText = await new Promise<string | null>((resolve, reject) => {
+      const child = spawn("pdftotext", argsPerPage);
 
-    stdout.setEncoding("utf8");
-    stderr.setEncoding("utf8");
+      let capturedStdoutPerPage = "";
+      let capturedStderrPerPage = "";
 
-    stderr.on("data", function (data) {
-      capturedStderr += data;
+      child.stdout.on("data", (data) => {
+        capturedStdoutPerPage += data;
+      });
+      child.stderr.on("data", (data) => {
+        capturedStderrPerPage += data;
+      });
+
+      child.on("close", (code) => {
+        if (code === 0) {
+          resolve(capturedStdoutPerPage);
+        } else {
+          if (capturedStderrPerPage.includes("Wrong page range given")) {
+            resolve(null);
+          } else {
+            currentPage = null;
+            reject(new Error(capturedStderrPerPage));
+          }
+        }
+      });
     });
 
-    stdout.on("data", function (data) {
-      capturedStdout += data;
-    });
+    if (pageText === null) {
+      currentPage = null;
+    } else {
+      pages[currentPage] = pageText;
+      // Pages are generally separated by `\f` (form feed), so we can just concatenate here.
+      content += pageText;
+      currentPage++;
+    }
+  }
 
-    child.on("close", function (code: number) {
-      if (code === 0) {
-        return resolve(capturedStdout);
-      } else {
-        return reject(new Error(capturedStderr));
-      }
-    });
-  });
+  return { pages, content };
 }
