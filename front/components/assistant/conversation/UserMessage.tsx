@@ -48,7 +48,7 @@ export function UserMessage({
         <div>
           <RenderMessageMarkdown
             content={message.content}
-            blinkingCursor={false}
+            isStreaming={false}
             agentConfigurations={agentConfigurations}
           />
         </div>
