@@ -1,5 +1,7 @@
 import type { CreateTemplateFormType } from "@dust-tt/types";
 import {
+  ACTION_PRESETS,
+  ASSISTANT_CREATIVITY_LEVELS,
   assistantTemplateTagNames,
   CreateTemplateFormSchema,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -272,18 +274,13 @@ function TemplatesPage() {
               control={form.control}
               name="presetTemperature"
               title="Preset Temperature"
-              options={["deterministic", "factual", "balanced", "creative"]}
+              options={ASSISTANT_CREATIVITY_LEVELS as unknown as string[]}
             />
             <SelectField
               control={form.control}
               name="presetAction"
               title="Preset Action"
-              options={[
-                "reply",
-                "search_datasources",
-                "process_datasources",
-                "query_tables",
-              ]}
+              options={ACTION_PRESETS as unknown as string[]}
             />
             <TextareaField
               control={form.control}

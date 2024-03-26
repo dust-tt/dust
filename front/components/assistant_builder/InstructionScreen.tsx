@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   APIError,
+  AssistantCreativityLevel,
   BuilderSuggestionsType,
   ModelConfig,
   PlanType,
@@ -22,6 +23,8 @@ import type {
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import {
+  ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
+  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   Err,
@@ -44,12 +47,13 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
-export const CREATIVITY_LEVELS = [
-  { label: "Deterministic", value: 0 },
-  { label: "Factual", value: 0.2 },
-  { label: "Balanced", value: 0.7 },
-  { label: "Creative", value: 1 },
-];
+export const CREATIVITY_LEVELS = Object.entries(
+  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
+).map(([k, v]) => ({
+  label:
+    ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
+  value: v,
+}));
 
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
 export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {

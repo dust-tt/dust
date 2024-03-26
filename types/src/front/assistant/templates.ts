@@ -2,6 +2,9 @@ import * as t from "io-ts";
 import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
+import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { AssistantCreativityLevelCodec } from "./builder";
+
 // Keeps the order of tags for UI display purposes.
 export const assistantTemplateTagNames = [
   "Featured",
@@ -61,28 +64,28 @@ export const assistantTemplateTags: Record<
   },
 } as const;
 
-export const TemperaturePresetSchema = t.union([
-  t.literal("deterministic"),
-  t.literal("factual"),
-  t.literal("balanced"),
-  t.literal("creative"),
-]);
-export type TemperaturePreset = t.TypeOf<typeof TemperaturePresetSchema>;
+export const ACTION_PRESETS = [
+  "reply",
+  "search_datasources",
+  "process_datasources",
+  "query_tables",
+] as const;
+export type ActionPreset = (typeof ACTION_PRESETS)[number];
+export const ActionPresetCodec = ioTsEnum<ActionPreset>(
+  ACTION_PRESETS,
+  "ActionPreset"
+);
 
-export const ActionPresetSchema = t.union([
-  t.literal("reply"),
-  t.literal("search_datasources"),
-  t.literal("process_datasources"),
-  t.literal("query_tables"),
-]);
-export type ActionPreset = t.TypeOf<typeof ActionPresetSchema>;
-
-export const TemplateVisibilitySchema = t.union([
-  t.literal("draft"),
-  t.literal("published"),
-  t.literal("disabled"),
-]);
-export type TemplateVisibility = t.TypeOf<typeof TemplateVisibilitySchema>;
+export const TEMPLATE_VISIBILITIES = [
+  "draft",
+  "published",
+  "disabled",
+] as const;
+export type TemplateVisibility = (typeof TEMPLATE_VISIBILITIES)[number];
+export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
+  TEMPLATE_VISIBILITIES,
+  "TemplateVisibility"
+);
 
 export const CreateTemplateFormSchema = t.type({
   name: NonEmptyString,
@@ -90,8 +93,8 @@ export const CreateTemplateFormSchema = t.type({
   presetHandle: t.union([t.string, t.undefined]),
   presetInstructions: t.union([t.string, t.undefined]),
   presetModel: t.string,
-  presetTemperature: TemperaturePresetSchema,
-  presetAction: ActionPresetSchema,
+  presetTemperature: AssistantCreativityLevelCodec,
+  presetAction: ActionPresetCodec,
   helpInstructions: t.union([t.string, t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   tags: nonEmptyArray(t.string),

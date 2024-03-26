@@ -1,7 +1,7 @@
 import type {
   ActionPreset,
+  AssistantCreativityLevel,
   AssistantTemplateTagNameType,
-  TemperaturePreset,
   TemplateVisibility,
 } from "@dust-tt/types";
 import type {
@@ -30,7 +30,7 @@ export class TemplateModel extends Model<
   declare presetHandle: string | null;
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
-  declare presetTemperature: TemperaturePreset | null;
+  declare presetTemperature: AssistantCreativityLevel | null;
   declare presetProviderId: string | null;
   declare presetModelId: string | null;
   declare presetAction: ActionPreset | null;
