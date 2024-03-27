@@ -10,10 +10,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   createInvitation,
+  deleteInvitation,
   sendWorkspaceInvitationEmail,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
-import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
+import { getMembersCountForWorkspace } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -22,16 +23,30 @@ export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
 };
 
-export const PostInvitationBodySchema = t.type({
-  email: t.string,
-  role: ActiveRoleSchema,
-});
+export const PostInvitationRequestBodySchema = t.array(
+  t.type({
+    email: t.string,
+    role: ActiveRoleSchema,
+  })
+);
 
-export type PostInvitationBody = t.TypeOf<typeof PostInvitationBodySchema>;
+export type PostInvitationRequestBody = t.TypeOf<
+  typeof PostInvitationRequestBodySchema
+>;
+
+export type PostInvitationResponseBody = {
+  success: boolean;
+  email: string;
+  error_message?: string;
+}[];
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetWorkspaceInvitationsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<
+      GetWorkspaceInvitationsResponseBody | PostInvitationResponseBody
+    >
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -81,7 +96,7 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PostInvitationBodySchema.decode(req.body);
+      const bodyValidation = PostInvitationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -89,32 +104,6 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-
-      const body = bodyValidation.right;
-
-      if (!isEmailValid(body.email)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid email address: " + body.email,
-          },
-        });
-      }
-
-      const hasAvailableSeats = await checkWorkspaceSeatAvailabilityUsingAuth(
-        auth
-      );
-      if (!hasAvailableSeats) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "plan_limit_error",
-            message:
-              "Workspace has reached its member limit. Please upgrade or remove inactive members to add more.",
           },
         });
       }
@@ -130,13 +119,56 @@ async function handler(
         });
       }
 
-      const invitation = await createInvitation(owner, body.email, body.role);
+      const invitationRequests = bodyValidation.right;
 
-      await sendWorkspaceInvitationEmail(owner, user, invitation);
+      const { maxUsers } = subscription.plan.limits.users;
+      const availableSeats =
+        maxUsers -
+        (await getMembersCountForWorkspace(owner, { activeOnly: true }));
+      if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "plan_limit_error",
+            message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
+          },
+        });
+      }
 
-      res.status(200).json({
-        invitations: [invitation],
-      });
+      const invalidEmails = invitationRequests.filter(
+        (b) => !isEmailValid(b.email)
+      );
+      if (invalidEmails.length > 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid email address(es): " + invalidEmails.join(", "),
+          },
+        });
+      }
+
+      const invitationResults = await Promise.all(
+        invitationRequests.map(async ({ email, role }) => {
+          try {
+            const invitation = await createInvitation(owner, email, role);
+            await sendWorkspaceInvitationEmail(owner, user, invitation);
+          } catch (e) {
+            await deleteInvitation(owner, email);
+            return {
+              success: false,
+              email,
+              error_message: e instanceof Error ? e.message : "Unknown error",
+            };
+          }
+          return {
+            success: true,
+            email,
+          };
+        })
+      );
+
+      res.status(200).json(invitationResults);
       return;
 
     default:
