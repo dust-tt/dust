@@ -64,7 +64,9 @@ export type APIErrorType =
   | "feature_flag_already_exists"
   // Pagination:
   | "invalid_pagination_parameters"
-  | "table_not_found";
+  | "table_not_found"
+  // Templates:
+  | "template_not_found";
 
 export type APIError = {
   type: APIErrorType;

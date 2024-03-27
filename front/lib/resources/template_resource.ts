@@ -34,6 +34,38 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new this(TemplateModel, template.get());
   }
 
+  // TODO(2024-03-27 flav) Move this to the `BaseResource`.
+  static async fetchByExternalId(
+    sId: string,
+    transaction?: Transaction
+  ): Promise<TemplateResource | null> {
+    const blob = await this.model.findOne({
+      where: {
+        sId,
+      },
+      transaction,
+    });
+    if (!blob) {
+      return null;
+    }
+
+    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
+    return new TemplateResource(this.model, blob.get());
+  }
+
+  static async listAllPublished() {
+    const blobs = await TemplateResource.model.findAll({
+      where: {
+        visibility: "published",
+      },
+    });
+
+    return blobs.map(
+      // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
+      (b) => new TemplateResource(this.model, b.get())
+    );
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
@@ -47,5 +79,36 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  isPublished() {
+    return this.visibility === "published";
+  }
+
+  toListJSON() {
+    return {
+      description: this.description,
+      name: this.name,
+      sId: this.sId,
+      tags: this.tags,
+    };
+  }
+
+  toJSON() {
+    return {
+      description: this.description,
+      helpActions: this.helpActions,
+      helpInstructions: this.helpInstructions,
+      name: this.name,
+      presetAction: this.presetAction,
+      presetDescription: this.presetDescription,
+      presetHandle: this.presetHandle,
+      presetInstructions: this.presetInstructions,
+      presetModelId: this.presetModelId,
+      presetProviderId: this.presetProviderId,
+      presetTemperature: this.presetTemperature,
+      sId: this.sId,
+      tags: this.tags,
+    };
   }
 }
