@@ -67,7 +67,7 @@ TemplateModel.init(
       allowNull: false,
     },
     description: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
     },
     visibility: {
       type: DataTypes.STRING,
@@ -77,10 +77,10 @@ TemplateModel.init(
       type: DataTypes.STRING,
     },
     presetDescription: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
     },
     presetInstructions: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
     },
     presetTemperature: {
       type: DataTypes.STRING,
@@ -95,10 +95,10 @@ TemplateModel.init(
       type: DataTypes.STRING,
     },
     helpInstructions: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
     },
     helpActions: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
     },
     tags: {
       type: DataTypes.ARRAY(DataTypes.STRING),
