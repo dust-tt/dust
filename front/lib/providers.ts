@@ -70,6 +70,14 @@ export const modelProviders: ModelProvider[] = [
     chat: true,
     embed: false,
   },
+  {
+    providerId: "google_ai_studio",
+    name: "Google AI Studio",
+    built: true,
+    enabled: false,
+    chat: true,
+    embed: false,
+  },
 ];
 
 type ServiceProvider = {

@@ -336,6 +336,31 @@ async function handler(
           await r.json();
           return res.status(200).json({ ok: true });
 
+        case "google_ai_studio":
+          const { api_key } = config;
+          const testUrlGoogleAIStudio = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${api_key}`;
+          const testRequestBodyGoogleAIStudio = {
+            contents: {
+              role: "user",
+              parts: {
+                text: "Write a story about a magic backpack",
+              },
+            },
+          };
+          const rGoogleAIStudio = await fetch(testUrlGoogleAIStudio, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(testRequestBodyGoogleAIStudio),
+          });
+          if (!rGoogleAIStudio.ok) {
+            const err = await rGoogleAIStudio.json();
+            return res.status(400).json({ ok: false, error: err.error });
+          }
+          await rGoogleAIStudio.json();
+          return res.status(200).json({ ok: true });
+
         default:
           return apiError(req, res, {
             status_code: 404,

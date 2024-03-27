@@ -9,6 +9,7 @@ const {
   DUST_MANAGED_MISTRAL_API_KEY = "",
   DUST_MANAGED_GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON = "",
   DUST_MANAGED_GOOGLE_VERTEX_AI_ENDPOINT = "",
+  DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -59,6 +60,9 @@ export const credentialsFromProviders = (
           config.service_account;
         credentials["GOOGLE_VERTEX_AI_ENDPOINT"] = config.endpoint;
         break;
+      case "google_ai_studio":
+        credentials["GOOGLE_AI_STUDIO_API_KEY"] = config.api_key;
+        break;
     }
   });
   return credentials;
@@ -75,5 +79,6 @@ export const dustManagedCredentials = (): CredentialsType => {
     GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON:
       DUST_MANAGED_GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON,
     GOOGLE_VERTEX_AI_ENDPOINT: DUST_MANAGED_GOOGLE_VERTEX_AI_ENDPOINT,
+    GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
   };
 };

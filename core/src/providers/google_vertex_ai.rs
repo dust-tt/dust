@@ -74,9 +74,9 @@ pub struct VertexAiFunctionCall {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Part {
-    text: Option<String>,
-    function_call: Option<VertexAiFunctionCall>,
-    function_response: Option<VertexAiFunctionResponse>,
+    pub text: Option<String>,
+    pub function_call: Option<VertexAiFunctionCall>,
+    pub function_response: Option<VertexAiFunctionResponse>,
 }
 
 impl TryFrom<&ChatFunctionCall> for VertexAiFunctionCall {
@@ -92,8 +92,8 @@ impl TryFrom<&ChatFunctionCall> for VertexAiFunctionCall {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Content {
-    role: String,
-    parts: Option<Vec<Part>>,
+    pub role: String,
+    pub parts: Option<Vec<Part>>,
 }
 
 impl TryFrom<&ChatMessage> for Content {
@@ -162,15 +162,15 @@ impl TryFrom<&ChatMessage> for Content {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
-    content: Content,
-    finish_reason: Option<String>,
+    pub content: Content,
+    pub finish_reason: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Completion {
-    candidates: Option<Vec<Candidate>>,
-    usage_metadata: Option<UsageMetadata>,
+    pub candidates: Option<Vec<Candidate>>,
+    pub usage_metadata: Option<UsageMetadata>,
 }
 
 pub struct GoogleVertexAiProvider {}
@@ -365,6 +365,7 @@ impl LLM for GoogleVertexAiLLM {
             },
             None,
             event_sender,
+            true,
         )
         .await?;
 
@@ -467,6 +468,7 @@ impl LLM for GoogleVertexAiLLM {
             },
             None,
             event_sender,
+            true,
         )
         .await?;
 
@@ -511,9 +513,13 @@ pub async fn streamed_chat_completion(
     top_p: f32,
     top_k: Option<usize>,
     event_sender: Option<UnboundedSender<Value>>,
+    use_header_auth: bool,
 ) -> Result<Completion> {
     let https = HttpsConnector::new();
-    let url = uri.to_string();
+    let url = match use_header_auth {
+        true => uri.to_string(),
+        false => format!("{}&key={}", uri, api_key),
+    };
 
     // Ensure that all input message have one single part.
     messages
@@ -592,13 +598,15 @@ pub async fn streamed_chat_completion(
         }
     };
 
-    builder = match builder.method(String::from("POST")).header(
-        "Authorization",
-        format!("Bearer {}", api_key.clone()).as_str(),
-    ) {
-        Ok(b) => b,
-        Err(_) => return Err(anyhow!("Error creating streamed client to Vertex AI")),
-    };
+    if use_header_auth {
+        builder = match builder.method(String::from("POST")).header(
+            "Authorization",
+            format!("Bearer {}", api_key.clone()).as_str(),
+        ) {
+            Ok(b) => b,
+            Err(_) => return Err(anyhow!("Error creating streamed client to Vertex AI")),
+        };
+    }
 
     builder = match builder.header("Content-Type", "application/json") {
         Ok(b) => b,
@@ -621,6 +629,7 @@ pub async fn streamed_chat_completion(
 
     let client = builder
         .body(body.to_string())
+        .method("POST".to_string())
         .reconnect(
             es::ReconnectOptions::reconnect(true)
                 .retry_initial(false)

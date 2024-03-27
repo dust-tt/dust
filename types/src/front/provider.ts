@@ -17,4 +17,5 @@ export type CredentialsType = {
   BROWSERLESS_API_KEY?: string;
   GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON?: string;
   GOOGLE_VERTEX_AI_ENDPOINT?: string;
+  GOOGLE_AI_STUDIO_API_KEY?: string;
 };
