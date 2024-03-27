@@ -138,14 +138,17 @@ export const MISTRAL_SMALL_MODEL_CONFIG = {
   shortDescription: "Mistral's fast model.",
 } as const;
 
+const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
+
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
-  providerId: "google_vertex_ai" as const,
-  modelId: "gemini-pro",
-  displayName: "Gemini Pro",
-  contextSize: 8192,
-  recommendedTopK: 16,
+  providerId: "google_ai_studio" as const,
+  modelId: GEMINI_1_5_PRO_LATEST_MODEL_ID,
+  displayName: "Gemini Pro 1.5",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
   largeModel: true,
-  description: "Google's low-latency and high throughput model (8k context).",
+  description:
+    "Google's best model for scaling across a wide range of tasks (1M context).",
   shortDescription: "Google's smartest model.",
 } as const;
 
