@@ -9,6 +9,8 @@ import {
 
 const { LIVE, WORKSPACE } = process.env;
 
+// Do not use this migration. Instead, use script/update_assistants_models.ts.
+
 // GPT-4 and GPT-4-32k are being replaced by GPT-4-1106-preview
 const FROM_MODELS = ["gpt-4-1106-preview"] as string[];
 const TO_MODEL = GPT_4_TURBO_PREVIEW_MODEL_ID;
