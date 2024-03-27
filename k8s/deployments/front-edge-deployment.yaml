@@ -65,8 +65,8 @@ spec:
 
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 2000m
+              memory: 2.5Gi
 
       imagePullSecrets:
         - name: gcr-json-key
