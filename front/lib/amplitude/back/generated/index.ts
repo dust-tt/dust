@@ -76,8 +76,9 @@ export interface IdentifyProperties {
 }
 
 export interface AssistantCreatedProperties {
-  assistantActionType: string;
+  assistantActionType?: string;
   assistantId: string;
+  assistantModel?: string;
   assistantName: string;
   assistantScope: string;
   /**
@@ -116,6 +117,12 @@ export interface SubscriptionCreatedProperties {
 
 export interface UserMessagePostedProperties {
   conversationId: string;
+  /**
+   * | Rule | Value |
+   * |---|---|
+   * | Item Type | string |
+   */
+  generationModels?: string[];
   isGlobalAgent: boolean;
   mentions: any;
   /**
