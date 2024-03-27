@@ -162,7 +162,7 @@ impl LLM for GoogleAiStudioLLM {
             uri,
             api_key,
             &vec![Content {
-                role: String::from("USER"),
+                role: String::from("user"),
                 parts: Some(vec![Part {
                     text: Some(String::from(prompt)),
                     function_call: None,
@@ -180,6 +180,7 @@ impl LLM for GoogleAiStudioLLM {
             },
             None,
             event_sender,
+            false,
         )
         .await?;
 
@@ -294,6 +295,7 @@ impl LLM for GoogleAiStudioLLM {
             },
             None,
             event_sender,
+            false,
         )
         .await?;
 
