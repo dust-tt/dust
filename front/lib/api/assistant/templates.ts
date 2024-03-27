@@ -41,6 +41,7 @@ export async function mockAgentConfigurationFromTemplate(
     },
     name: template.handle,
     scope: flow === "personal_assistants" ? "private" : "workspace",
+    isTemplate: true,
   });
 }
 

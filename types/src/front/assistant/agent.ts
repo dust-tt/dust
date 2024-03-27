@@ -193,4 +193,5 @@ export interface TemplateAgentConfigurationType {
   scope: AgentConfigurationScope;
   description: string;
   action: AgentActionConfigurationType | null;
+  isTemplate: true;
 }

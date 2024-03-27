@@ -213,7 +213,9 @@ export default function CreateAssistant({
               dustAppConfiguration,
               tablesQueryConfiguration,
               scope: "private",
-              handle: `${agentConfiguration.name}_Copy`,
+              handle: `${agentConfiguration.name}${
+                "isTemplate" in agentConfiguration ? "" : "_Copy"
+              }`,
               description: agentConfiguration.description,
               instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet
               avatarUrl: null,
