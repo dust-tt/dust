@@ -9,15 +9,20 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  createInvitation,
+  createOrRecreateInvitation,
   deleteInvitation,
   sendWorkspaceInvitationEmail,
+  updateInvitation,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
-import { getMembersCountForWorkspace } from "@app/lib/api/workspace";
+import {
+  getMembers,
+  getMembersCountForWorkspace,
+} from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { update } from "lodash";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
@@ -147,14 +152,30 @@ async function handler(
           },
         });
       }
+      const existingMembers = await getMembers(auth);
 
       const invitationResults = await Promise.all(
         invitationRequests.map(async ({ email, role }) => {
+          if (existingMembers.find((m) => m.email === email)) {
+            return {
+              success: false,
+              email,
+              error_message:
+                "Cannot send invitation to existing member (active or revoked)",
+            };
+          }
+
+          const { invitation, priorInvitation } =
+            await createOrRecreateInvitation(owner, email, role);
           try {
-            const invitation = await createInvitation(owner, email, role);
             await sendWorkspaceInvitationEmail(owner, user, invitation);
           } catch (e) {
-            await deleteInvitation(owner, email);
+            if (invitation) {
+              await deleteInvitation(owner, invitation.id);
+            }
+            if (priorInvitation) {
+              await updateInvitation(owner, priorInvitation.id, "pending");
+            }
             return {
               success: false,
               email,
