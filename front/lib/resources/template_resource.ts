@@ -3,7 +3,6 @@ import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
-  Model,
   ModelStatic,
   Transaction,
 } from "sequelize";
@@ -54,7 +53,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new TemplateResource(this.model, blob.get());
   }
 
-  static async listAll() {
+  static async listAllPublished() {
     const blobs = await TemplateResource.model.findAll({
       where: {
         visibility: "published",
