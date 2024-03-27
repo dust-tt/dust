@@ -22,12 +22,14 @@ export class TemplateModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
-  declare name: string;
   declare description: string | null;
 
   declare visibility: TemplateVisibility;
 
-  declare presetHandle: string | null;
+  declare backgroundColor: string;
+  declare emoji: string;
+  declare handle: string;
+
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
   declare presetTemperature: AssistantCreativityLevel | null;
@@ -62,19 +64,24 @@ TemplateModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    name: {
+    description: {
+      type: DataTypes.TEXT,
+    },
+    backgroundColor: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    description: {
-      type: DataTypes.TEXT,
+    emoji: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     visibility: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    presetHandle: {
+    handle: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     presetDescription: {
       type: DataTypes.TEXT,

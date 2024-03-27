@@ -75,21 +75,22 @@ async function handler(
       }
 
       await TemplateResource.makeNew({
-        sId: generateModelSId(),
-        name: body.name,
+        backgroundColor: body.backgroundColor,
         description: body.description ?? null,
-        presetHandle: body.presetHandle ?? null,
-        presetInstructions: body.presetInstructions ?? null,
-        presetTemperature: body.presetTemperature ?? null,
-        presetAction: body.presetAction,
-        helpInstructions: body.helpInstructions ?? null,
+        emoji: body.emoji,
+        handle: body.handle,
         helpActions: body.helpActions ?? null,
-        tags: body.tags,
-        presetProviderId: model.providerId,
+        helpInstructions: body.helpInstructions ?? null,
+        presetAction: body.presetAction,
+        presetDescription: null,
+        presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
+        presetProviderId: model.providerId,
+        presetTemperature: body.presetTemperature ?? null,
+        sId: generateModelSId(),
+        tags: body.tags,
         // TODO
         visibility: "draft",
-        presetDescription: null,
       });
 
       res.status(200).json({
