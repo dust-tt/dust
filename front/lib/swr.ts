@@ -28,6 +28,8 @@ import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
@@ -656,6 +658,52 @@ export function useConversationParticipants({
     isConversationParticipantsLoading: !error && !data,
     isConversationParticipantsError: error,
     mutateConversationParticipants: mutate,
+  };
+}
+
+export function useAssistantTemplates({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/assistant/builder/templates`,
+    assistantTemplatesFetcher
+  );
+
+  return {
+    assistantTemplates: useMemo(() => (data ? data.templates : []), [data]),
+    isAssistantTemplatesLoading: !error && !data,
+    isAssistantTemplatesError: error,
+    mutateAssistantTemplates: mutate,
+  };
+}
+
+export function useAssistantTemplate({
+  templateId,
+  workspaceId,
+}: {
+  templateId: string | null;
+  workspaceId: string;
+}) {
+  const assistantTemplateFetcher: Fetcher<FetchAssistantTemplateResponse> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    templateId !== null
+      ? `/api/w/${workspaceId}/assistant/builder/templates/${templateId}`
+      : null,
+    assistantTemplateFetcher
+  );
+
+  return {
+    assistantTemplate: useMemo(() => (data ? data : null), [data]),
+    isAssistantTemplateLoading: !error && !data,
+    isAssistantTemplateError: error,
+    mutateAssistantTemplate: mutate,
   };
 }
 
