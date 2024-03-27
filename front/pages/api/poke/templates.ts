@@ -6,11 +6,11 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { v4 as uuidv4 } from "uuid";
 
 import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type CreateTemplateResponseBody = {
@@ -75,7 +75,7 @@ async function handler(
       }
 
       await TemplateResource.makeNew({
-        sId: uuidv4(),
+        sId: generateModelSId(),
         name: body.name,
         description: body.description ?? null,
         presetHandle: body.presetHandle ?? null,
