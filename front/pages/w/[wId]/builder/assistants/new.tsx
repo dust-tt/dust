@@ -4,6 +4,7 @@ import type {
   DataSourceType,
   PlanType,
   SubscriptionType,
+  TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -24,10 +25,10 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { mockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -42,9 +43,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
-  agentConfiguration: AgentConfigurationType | null;
+  agentConfiguration:
+    | AgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null;
   flow: BuilderFlow;
   baseUrl: string;
+  templateId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -63,30 +68,52 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {} as Record<string, DataSourceType>
   );
 
-  let config: AgentConfigurationType | null = null;
-  if (context.query.duplicate && typeof context.query.duplicate === "string") {
-    config = await getAgentConfiguration(auth, context.query.duplicate);
-
-    if (!config) {
-      return {
-        notFound: true,
-      };
-    }
-  }
-
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
   )
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  let agentConfig:
+    | AgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null = null;
+  const { duplicate, templateId } = context.query;
+  if (duplicate && typeof duplicate === "string") {
+    agentConfig = await getAgentConfiguration(auth, duplicate);
+
+    if (!agentConfig) {
+      return {
+        notFound: true,
+      };
+    }
+  } else if (templateId) {
+    if (typeof templateId !== "string") {
+      return {
+        notFound: true,
+      };
+    }
+
+    const agentConfigRes = await mockAgentConfigurationFromTemplate(
+      templateId,
+      flow
+    );
+    if (agentConfigRes.isErr()) {
+      return {
+        notFound: true,
+      };
+    }
+
+    agentConfig = agentConfigRes.value;
+  }
+
   const {
     dataSourceConfigurations,
     dustAppConfiguration,
     tablesQueryConfiguration,
-  } = config
+  } = agentConfig
     ? await buildInitialState({
-        config,
+        config: agentConfig,
         dataSourceByName,
         dustApps: allDustApps,
       })
@@ -101,15 +128,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       plan,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dataSources: allDataSources,
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
       tablesQueryConfiguration,
-      agentConfiguration: config,
+      agentConfiguration: agentConfig,
       flow,
-      baseUrl: URL,
+      baseUrl: config.getAppUrl(),
+      templateId,
     },
   };
 });
