@@ -40,6 +40,18 @@ export async function createInvitation(
   );
 }
 
+export async function deleteInvitation(
+  owner: WorkspaceType,
+  email: string
+): Promise<void> {
+  await MembershipInvitation.destroy({
+    where: {
+      workspaceId: owner.id,
+      inviteEmail: email,
+    },
+  });
+}
+
 export async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
