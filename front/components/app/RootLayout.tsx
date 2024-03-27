@@ -14,6 +14,10 @@ function NextLinkWrapper({
   ariaCurrent,
   ariaLabel,
   onClick,
+  replace = false,
+  shallow = false,
+  target = "_self",
+  rel,
 }: {
   href: string | UrlObject;
   className?: string;
@@ -41,6 +45,10 @@ function NextLinkWrapper({
       onClick={onClick}
       aria-current={ariaCurrent}
       aria-label={ariaLabel}
+      target={target}
+      rel={rel}
+      shallow={shallow}
+      replace={replace}
     >
       {children}
     </Link>
