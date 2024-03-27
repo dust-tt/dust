@@ -25,14 +25,11 @@ function typeFromModel(
   };
 }
 
-export async function createOrRecreateInvitation(
+export async function updateOrCreateInvitation(
   owner: WorkspaceType,
   inviteEmail: string,
   initialRole: ActiveRoleType
-): Promise<{
-  invitation: MembershipInvitationType;
-  priorInvitation: MembershipInvitationType | null;
-}> {
+): Promise<MembershipInvitationType> {
   // check for prior existing pending invitation
   const existingInvitation = await MembershipInvitation.findOne({
     where: {
@@ -42,25 +39,21 @@ export async function createOrRecreateInvitation(
     },
   });
 
-  // mark it as revoked
   if (existingInvitation) {
-    await existingInvitation.update({
-      status: "revoked",
+    existingInvitation.update({
+      initialRole,
     });
+    return typeFromModel(existingInvitation);
   }
-  return {
-    invitation: typeFromModel(
-      await MembershipInvitation.create({
-        workspaceId: owner.id,
-        inviteEmail: sanitizeString(inviteEmail),
-        status: "pending",
-        initialRole,
-      })
-    ),
-    priorInvitation: existingInvitation
-      ? typeFromModel(existingInvitation)
-      : null,
-  };
+
+  return typeFromModel(
+    await MembershipInvitation.create({
+      workspaceId: owner.id,
+      inviteEmail: sanitizeString(inviteEmail),
+      status: "pending",
+      initialRole,
+    })
+  );
 }
 
 export async function updateInvitation(

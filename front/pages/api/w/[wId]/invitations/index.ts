@@ -9,7 +9,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  createOrRecreateInvitation,
+  updateOrCreateInvitation,
   deleteInvitation,
   sendWorkspaceInvitationEmail,
   updateInvitation,
@@ -22,6 +22,7 @@ import {
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import logger from "@app/logger/logger";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
@@ -164,17 +165,22 @@ async function handler(
             };
           }
 
-          const { invitation, priorInvitation } =
-            await createOrRecreateInvitation(owner, email, role);
           try {
+            const invitation = await updateOrCreateInvitation(
+              owner,
+              email,
+              role
+            );
             await sendWorkspaceInvitationEmail(owner, user, invitation);
           } catch (e) {
-            if (invitation) {
-              await deleteInvitation(owner, invitation.id);
-            }
-            if (priorInvitation) {
-              await updateInvitation(owner, priorInvitation.id, "pending");
-            }
+            logger.error(
+              {
+                error: e,
+                message: "Failed to send invitation email",
+                email,
+              },
+              "Failed to send invitation email"
+            );
             return {
               success: false,
               email,
@@ -196,7 +202,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST are expected.",
         },
       });
   }
