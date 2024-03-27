@@ -27,6 +27,7 @@ export function TemplateItem({
       className="s-flex s-max-h-32 s-max-w-lg s-flex-row s-gap-5 s-p-4"
       href={href}
       variant="tertiary"
+      target="_self"
       replace
       shallow
     >
