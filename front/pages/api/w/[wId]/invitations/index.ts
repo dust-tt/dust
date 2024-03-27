@@ -9,10 +9,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  updateOrCreateInvitation,
-  deleteInvitation,
   sendWorkspaceInvitationEmail,
-  updateInvitation,
+  updateOrCreateInvitation,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import {
@@ -21,8 +19,8 @@ import {
 } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
-import { apiError, withLogging } from "@app/logger/withlogging";
 import logger from "@app/logger/logger";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];

@@ -40,7 +40,7 @@ export async function updateOrCreateInvitation(
   });
 
   if (existingInvitation) {
-    existingInvitation.update({
+    await existingInvitation.update({
       initialRole,
     });
     return typeFromModel(existingInvitation);
