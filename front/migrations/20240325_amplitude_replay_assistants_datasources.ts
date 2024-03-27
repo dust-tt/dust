@@ -1,4 +1,5 @@
 import type { AgentStatus } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import {
   trackAssistantCreated,
@@ -14,13 +15,17 @@ import {
   Workspace,
 } from "@app/lib/models";
 
-const workspaceIDS = ["991163d96e"];
+const workspaceIDS = ["3d77ca9ba9"];
+const maxDate = "2024-03-23";
 
 async function populateAssistantCreated(workspace: Workspace) {
   const assistants = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
       status: ["active", "archived"] satisfies AgentStatus[],
+      createdAt: {
+        [Op.lt]: new Date(maxDate),
+      },
     },
   });
   for (const assistant of assistants) {
@@ -44,6 +49,9 @@ export async function populateDataSourceCreated(workspace: Workspace) {
   const dataSources = await DataSource.findAll({
     where: {
       workspaceId: workspace.id,
+      createdAt: {
+        [Op.lt]: new Date(maxDate),
+      },
     },
   });
   const defaultAdmin = await Membership.findOne({
