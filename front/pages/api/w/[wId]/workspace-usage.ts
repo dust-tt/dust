@@ -1,5 +1,5 @@
 import { assertNever } from "@dust-tt/types";
-import { endOfMonth } from "date-fns";
+import { endOfMonth } from "date-fns/endOfMonth";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";

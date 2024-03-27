@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format } from "date-fns/format";
 import { QueryTypes } from "sequelize";
 
 import { frontSequelize } from "./resources/storage";
