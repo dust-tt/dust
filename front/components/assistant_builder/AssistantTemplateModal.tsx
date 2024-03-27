@@ -33,8 +33,14 @@ export function AssistantTemplateModal({
     return <Spinner2 variant="color" />;
   }
 
-  const { backgroundColor, description, emoji, name, presetInstructions, sId } =
-    assistantTemplate;
+  const {
+    backgroundColor,
+    description,
+    emoji,
+    handle,
+    presetInstructions,
+    sId,
+  } = assistantTemplate;
 
   return (
     <ElementModal
@@ -55,7 +61,7 @@ export function AssistantTemplateModal({
             />
             <div className="flex flex-col gap-1">
               <span className="text-bold text-lg font-medium text-element-900">
-                @{name}
+                @{handle}
               </span>
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${sId}`}

@@ -28,8 +28,8 @@ export class TemplateModel extends Model<
 
   declare backgroundColor: string;
   declare emoji: string;
+  declare handle: string;
 
-  declare presetHandle: string;
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
   declare presetTemperature: AssistantCreativityLevel | null;
@@ -79,7 +79,7 @@ TemplateModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    presetHandle: {
+    handle: {
       type: DataTypes.STRING,
       allowNull: false,
     },

@@ -49,15 +49,16 @@ export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
 );
 
 export const CreateTemplateFormSchema = t.type({
-  name: NonEmptyString,
+  backgroundColor: NonEmptyString,
   description: t.union([t.string, t.undefined]),
-  presetHandle: t.union([t.string, t.undefined]),
+  emoji: NonEmptyString,
+  handle: NonEmptyString,
+  helpActions: t.union([t.string, t.undefined]),
+  helpInstructions: t.union([t.string, t.undefined]),
+  presetAction: ActionPresetCodec,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModel: t.string,
   presetTemperature: AssistantCreativityLevelCodec,
-  presetAction: ActionPresetCodec,
-  helpInstructions: t.union([t.string, t.undefined]),
-  helpActions: t.union([t.string, t.undefined]),
   tags: nonEmptyArray(t.string),
 });
 
