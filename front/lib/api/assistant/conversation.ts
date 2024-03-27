@@ -250,6 +250,7 @@ export async function getUserConversations(
         sId: p.conversation.sId,
         owner,
         title: p.conversation.title,
+        visibility: p.conversation.visibility,
       };
 
       return [...acc, conversation];
@@ -378,6 +379,7 @@ export async function getConversationWithoutContent(
     sId: conversation.sId,
     owner,
     title: conversation.title,
+    visibility: conversation.visibility,
   };
 }
 
