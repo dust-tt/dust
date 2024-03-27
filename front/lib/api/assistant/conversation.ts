@@ -378,6 +378,7 @@ export async function getConversationWithoutContent(
     sId: conversation.sId,
     owner,
     title: conversation.title,
+    visibility: conversation.visibility,
   };
 }
 
