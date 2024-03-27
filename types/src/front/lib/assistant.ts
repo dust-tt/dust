@@ -149,18 +149,6 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
   shortDescription: "Google's smartest model.",
 } as const;
 
-export const GEMINI_1_5_PRO_MODEL_CONFIG = {
-  providerId: "google_ai_studio" as const,
-  modelId: "gemini-1.5-pro-latest",
-  displayName: "Gemini 1.5 Pro",
-  contextSize: 1_000_000,
-  recommendedTopK: 64,
-  largeModel: true,
-  description:
-    "Google's best model for scaling across a wide range of tasks (1M context).",
-  shortDescription: "Google's smartest model.",
-} as const;
-
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -173,7 +161,6 @@ export const SUPPORTED_MODEL_CONFIGS = [
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-  GEMINI_1_5_PRO_MODEL_CONFIG,
 ] as const;
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

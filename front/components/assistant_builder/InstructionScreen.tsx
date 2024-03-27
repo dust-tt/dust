@@ -61,7 +61,6 @@ export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
   anthropic: AnthropicLogo,
   mistral: MistralLogo,
   google_vertex_ai: GoogleLogo,
-  google_ai_studio: GoogleLogo,
 };
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
