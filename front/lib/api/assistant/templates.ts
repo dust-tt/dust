@@ -1,6 +1,5 @@
 import type {
   ActionPreset,
-  AgentAction,
   AgentActionConfigurationType,
   DustAppRunConfigurationType,
   Result,
@@ -18,7 +17,7 @@ import {
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 
-export async function mockAgentConfigurationFromTemplate(
+export async function generateMockAgentConfigurationFromTemplate(
   templateId: string,
   flow: BuilderFlow
 ): Promise<Result<TemplateAgentConfigurationType, Error>> {

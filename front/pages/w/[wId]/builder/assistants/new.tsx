@@ -26,7 +26,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { mockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
+import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -101,7 +101,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
   } else if (templateId) {
-    const agentConfigRes = await mockAgentConfigurationFromTemplate(
+    const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
       flow
     );
