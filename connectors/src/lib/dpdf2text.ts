@@ -2,8 +2,8 @@ import { spawn } from "child_process";
 
 export async function dpdf2text(
   pdfPath: string
-): Promise<{ pages: { [pageNumber: string]: string }; content: string }> {
-  const pages: { [pageNumber: number]: string } = {};
+): Promise<{ pages: string[]; content: string }> {
+  const pages: string[] = [];
   let content = "";
 
   let currentPage: number | null = 1;
@@ -50,7 +50,7 @@ export async function dpdf2text(
     if (pageText === null) {
       currentPage = null;
     } else {
-      pages[currentPage] = pageText;
+      pages.push(pageText);
       // Pages are generally separated by `\f` (form feed), so we can just concatenate here.
       content += pageText;
       currentPage++;

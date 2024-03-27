@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import fs from "fs/promises";
 import type { OAuth2Client } from "googleapis-common";
@@ -20,6 +20,7 @@ import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
+  sectionLength,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
@@ -52,7 +53,7 @@ export async function syncOneFile(
     pdfEnabled: config?.pdfEnabled || false,
   });
   const documentId = getDocumentId(file.id);
-  let documentContent: string | undefined = undefined;
+  let documentContent: CoreAPIDataSourceDocumentSection | null = null;
 
   const fileInDb = await GoogleDriveFiles.findOne({
     where: {
@@ -116,7 +117,14 @@ export async function syncOneFile(
         );
       }
       if (typeof res.data === "string") {
-        documentContent = res.data;
+        documentContent =
+          res.data && res.data.trim().length > 0
+            ? {
+                prefix: null,
+                content: res.data.trim(),
+                sections: [],
+              }
+            : null;
       } else if (
         typeof res.data === "object" ||
         typeof res.data === "number" ||
@@ -127,7 +135,14 @@ export async function syncOneFile(
         // we need to convert it
         //  e.g. a google presentation with just the number
         // 1 in it, the export will return the number 1 instead of a string
-        documentContent = res.data?.toString();
+        documentContent =
+          res.data && res.data.toString().trim().length > 0
+            ? {
+                prefix: null,
+                content: res.data.toString().trim(),
+                sections: [],
+              }
+            : null;
       } else {
         logger.error(
           {
@@ -209,7 +224,11 @@ export async function syncOneFile(
           );
           return false;
         }
-        documentContent = Buffer.from(res.data).toString("utf-8");
+        documentContent = {
+          prefix: null,
+          content: Buffer.from(res.data).toString("utf-8").trim(),
+          sections: [],
+        };
       } else {
         logger.error(
           {
@@ -231,13 +250,26 @@ export async function syncOneFile(
           await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
         }
 
-        const { content: pdfTextData } = await dpdf2text(pdf_path);
+        const { pages } = await dpdf2text(pdf_path);
 
-        documentContent = pdfTextData;
+        documentContent =
+          pages.length > 0
+            ? {
+                prefix: null,
+                content: null,
+                sections: pages.map((page, i) => ({
+                  prefix: `$pdfPage: ${i + 1}/${pages.length}\n`,
+                  content: page,
+                  sections: [],
+                })),
+              }
+            : null;
+
         logger.info(
           {
             file_id: file.id,
             mimeType: file.mimeType,
+            pagesCount: pages.length,
             title: file.name,
           },
           `Successfully converted PDF to text`
@@ -286,17 +318,13 @@ export async function syncOneFile(
   let upsertTimestampMs: number | undefined = undefined;
   // We only upsert the document if it's not a google drive spreadsheet.
   if (!isGoogleDriveSpreadSheetFile(file)) {
-    documentContent = documentContent?.trim();
-
     const content = await renderDocumentTitleAndContent({
       dataSourceConfig,
       title: file.name,
       updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
       createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
       lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
-      content: documentContent
-        ? { prefix: null, content: documentContent, sections: [] }
-        : null,
+      content: documentContent,
     });
 
     if (documentContent === undefined) {
@@ -324,10 +352,9 @@ export async function syncOneFile(
     }
     tags.push(`mimeType:${file.mimeType}`);
 
-    if (
-      documentContent.length > 0 &&
-      documentContent.length <= maxDocumentLen
-    ) {
+    const documentLen = documentContent ? sectionLength(documentContent) : 0;
+
+    if (documentLen > 0 && documentLen <= maxDocumentLen) {
       const parents = (
         await getFileParentsMemoized(
           connectorId,
@@ -359,7 +386,7 @@ export async function syncOneFile(
         {
           documentId,
           dataSourceConfig,
-          documentLen: documentContent.length,
+          documentLen: documentLen,
           title: file.name,
         },
         `Document is empty or too big to be upserted. Skipping`
