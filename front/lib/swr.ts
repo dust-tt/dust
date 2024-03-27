@@ -2,6 +2,7 @@ import type {
   AgentConfigurationType,
   AgentsGetViewType,
   AppType,
+  AssistantTemplateTagNameType,
   ConnectorPermission,
   ContentNodesViewType,
   ConversationMessageReactions,
