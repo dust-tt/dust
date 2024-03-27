@@ -3,7 +3,6 @@ import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
-  Model,
   ModelStatic,
   Transaction,
 } from "sequelize";
@@ -88,8 +87,10 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toListJSON() {
     return {
+      backgroundColor: "",
       description: this.description,
-      name: this.name,
+      emoji: "",
+      handle: this.presetHandle,
       sId: this.sId,
       tags: this.tags,
     };
@@ -97,13 +98,15 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toJSON() {
     return {
+      backgroundColor: "",
       description: this.description,
+      emoji: "",
+      handle: this.presetHandle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,
-      name: this.name,
+      name: this.presetHandle,
       presetAction: this.presetAction,
       presetDescription: this.presetDescription,
-      presetHandle: this.presetHandle,
       presetInstructions: this.presetInstructions,
       presetModelId: this.presetModelId,
       presetProviderId: this.presetProviderId,

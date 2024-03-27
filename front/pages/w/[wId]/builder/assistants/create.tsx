@@ -7,7 +7,6 @@ import {
   Page,
   Searchbar,
   TemplateIcon,
-  TemplateItem,
 } from "@dust-tt/sparkle";
 import type {
   AssistantTemplateTagNameType,
@@ -23,6 +22,7 @@ import { useEffect, useState } from "react";
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
+import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -99,7 +99,7 @@ export default function CreateAssistant({
 
     setFilteredItems(
       assistantTemplates.filter((template) =>
-        subFilter(searchTerm.toLowerCase(), template.name.toLowerCase())
+        subFilter(searchTerm.toLowerCase(), template.handle.toLowerCase())
       )
     );
   };
@@ -186,46 +186,12 @@ export default function CreateAssistant({
               item.tags.includes(tagName)
             );
 
-            const cards = templatesForTag.map((t) => {
-              const href = {
-                pathname: router.pathname,
-                query: {
-                  ...router.query,
-                  templateId: t.sId,
-                },
-              };
-
-              return (
-                <Link
-                  href={href}
-                  key={`${t.sId}-link`}
-                  shallow
-                  className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
-                  replace
-                >
-                  <TemplateItem
-                    key={t.sId}
-                    description={t.description ?? ""}
-                    id={t.sId}
-                    name={t.name}
-                    visual={{
-                      emoji: "🫶",
-                      backgroundColor: "bg-red-100",
-                    }}
-                    // TODO: Open modal.
-                    onClick={() => {}}
-                  />
-                </Link>
-              );
-            });
-
             return (
-              <div key={`${tagName}-root`} id={tagName}>
-                <Page.SectionHeader title={tagName} key={tagName} />
-                <div className="grid grid-cols-2 gap-2" key={`${tagName}-grid`}>
-                  {cards.length > 0 ? cards : <p>No matching templates...</p>}
-                </div>
-              </div>
+              <TemplateGrid
+                key={tagName}
+                templates={templatesForTag}
+                tagName={tagName}
+              />
             );
           })}
         </div>

@@ -1,9 +1,10 @@
-import { Avatar, Button, Modal, Page, Spinner2 } from "@dust-tt/sparkle";
+import { Avatar, Button, ElementModal, Page, Spinner2 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import { useAssistantTemplate } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 interface AssistantTemplateModalProps {
   flow: BuilderFlow;
@@ -32,50 +33,64 @@ export function AssistantTemplateModal({
     return <Spinner2 variant="color" />;
   }
 
+  const { backgroundColor, description, emoji, name, presetInstructions, sId } =
+    assistantTemplate;
+
   return (
-    <Modal
+    <ElementModal
       title=""
-      isOpen={templateId !== null}
+      openOnElement={templateId}
       onClose={onClose}
       hasChanged={false}
-      variant="side-sm"
+      variant="side-md"
     >
       <Page variant="modal">
-        <div className="flex flex-col gap-5 pb-6">
+        <div className="flex h-full flex-col gap-5 pb-6">
           <div className="flex max-h-32 max-w-lg flex-row gap-3">
             <Avatar
-              emoji={assistantTemplate.emoji ?? "🫶"}
+              emoji={emoji}
               size="lg"
               isRounded
-              backgroundColor={
-                assistantTemplate.backgroundColor ?? "bg-red-100"
-              }
+              backgroundColor={backgroundColor}
             />
             <div className="flex flex-col gap-1">
               <span className="text-bold text-lg font-medium text-element-900">
-                {assistantTemplate.name}
+                @{name}
               </span>
               <Link
-                href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
+                href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${sId}`}
               >
                 <Button label="Use this template" variant="primary" size="sm" />
               </Link>
             </div>
           </div>
-          <p className="text-sm font-normal text-element-900">
-            {assistantTemplate.description}
+          <p className="whitespace-pre-line text-sm font-normal text-element-900">
+            {description}
           </p>
-          <Page.SectionHeader title="Instructions" />
-          {/* // TODO: Should we truncate after X lines? */}
-          <p className="whitespace-pre-line text-sm font-normal text-element-700">
-            {assistantTemplate.presetInstructions}
-          </p>
-          <Page.SectionHeader title="Data Sources" />
-          <p className="whitespace-pre-line text-sm font-normal text-element-700">
-            {assistantTemplate.helpActions}
-          </p>
+          <InstructionsSection instructions={presetInstructions} />
         </div>
       </Page>
-    </Modal>
+    </ElementModal>
+  );
+}
+
+function InstructionsSection({
+  instructions,
+}: {
+  instructions: string | null;
+}) {
+  return (
+    <>
+      <Page.SectionHeader title="Instructions" />
+      <textarea
+        disabled
+        className={classNames(
+          "block h-full min-h-60 w-full min-w-0 rounded-xl text-sm",
+          "resize-none border-structure-200 bg-structure-50"
+        )}
+      >
+        {instructions}
+      </textarea>
+    </>
   );
 }

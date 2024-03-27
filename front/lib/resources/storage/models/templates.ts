@@ -22,12 +22,11 @@ export class TemplateModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
-  declare name: string;
   declare description: string | null;
 
   declare visibility: TemplateVisibility;
 
-  declare presetHandle: string | null;
+  declare presetHandle: string;
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
   declare presetTemperature: AssistantCreativityLevel | null;
@@ -62,10 +61,6 @@ TemplateModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     description: {
       type: DataTypes.TEXT,
     },
@@ -75,6 +70,7 @@ TemplateModel.init(
     },
     presetHandle: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     presetDescription: {
       type: DataTypes.TEXT,
