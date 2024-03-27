@@ -199,11 +199,12 @@ export type AgentParticipant = {
  * A lighter version of Conversation without the content (for menu display).
  */
 export type ConversationWithoutContentType = {
-  id: ModelId;
   created: number;
-  sId: string;
+  id: ModelId;
   owner: WorkspaceType;
+  sId: string;
   title: string | null;
+  visibility: ConversationVisibility;
 };
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
