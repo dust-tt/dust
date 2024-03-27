@@ -250,6 +250,7 @@ export async function getUserConversations(
         sId: p.conversation.sId,
         owner,
         title: p.conversation.title,
+        visibility: p.conversation.visibility,
       };
 
       return [...acc, conversation];
