@@ -1,5 +1,6 @@
 import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
+import dns from "dns";
 
 // Generate a stable id for a given url and ressource type
 // That way we don't have to send URL as documentId to the front API.
@@ -100,4 +101,20 @@ export function getDisplayNameForPage(url: string): string {
   }
 
   return result;
+}
+
+export async function getIpAddressForUrl(url: string) {
+  const host = new URL(url).hostname;
+  return dns.promises.lookup(host);
+}
+
+export function isPrivateIp(ip: string) {
+  const privatePrefixes = ["0", "127", "10", "192.168"];
+  for (const prefix of privatePrefixes) {
+    if (ip.startsWith(prefix)) {
+      return true;
+    }
+  }
+
+  return false;
 }
