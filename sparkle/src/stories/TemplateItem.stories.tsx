@@ -17,9 +17,7 @@ export const TemplateItemExample = () => (
       id="1"
       description="The specialist for coverage, insurance, process related questions"
       visual={{ backgroundColor: "s-bg-red-100", emoji: "🫶" }}
-      onClick={function (): void {
-        alert("Onclick fn");
-      }}
+      href={""}
     />
 
     <TemplateItem
@@ -27,9 +25,7 @@ export const TemplateItemExample = () => (
       id="2"
       description="The specialist for coverage, insurance, process related questions with a very long description that does not bring any value"
       visual={{ backgroundColor: "s-bg-blue-100", emoji: "🐴" }}
-      onClick={function (): void {
-        alert("Onclick fn");
-      }}
+      href={""}
     />
 
     <TemplateItem
@@ -37,9 +33,7 @@ export const TemplateItemExample = () => (
       id="1"
       description="The specialist for coverage, insurance, process related questions"
       visual={{ backgroundColor: "s-bg-red-100", emoji: "🫶" }}
-      onClick={function (): void {
-        alert("Onclick fn");
-      }}
+      href={""}
     />
   </div>
 );

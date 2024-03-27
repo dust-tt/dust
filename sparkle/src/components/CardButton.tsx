@@ -18,6 +18,8 @@ interface CardButtonProps {
   href?: string;
   target?: string;
   rel?: string;
+  replace?: boolean;
+  shallow?: boolean;
 }
 
 const variantClasses = {
@@ -46,6 +48,8 @@ export function CardButton({
   href,
   target = "_blank",
   rel = "",
+  replace,
+  shallow,
 }: CardButtonProps) {
   const { components } = React.useContext(SparkleContext);
 
@@ -67,7 +71,12 @@ export function CardButton({
     }
 
     return (
-      <Link href={href} className={commonClasses}>
+      <Link
+        href={href}
+        className={commonClasses}
+        replace={replace}
+        shallow={shallow}
+      >
         {children}
       </Link>
     );

@@ -15,6 +15,8 @@ export type SparkleContextLinkType = ComponentType<{
     | "location"
     | "date";
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  replace?: boolean;
+  shallow?: boolean;
 }>;
 
 export type SparkleContextType = {
