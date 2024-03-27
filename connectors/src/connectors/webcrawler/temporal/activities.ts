@@ -17,7 +17,9 @@ import turndown from "turndown";
 import {
   getAllFoldersForUrl,
   getFolderForUrl,
+  getIpAddressForUrl,
   getParentsForPage,
+  isPrivateIp,
   isTopFolder,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
@@ -56,6 +58,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (!webCrawlerConfig) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
+  const childLogger = logger.child({
+    connectorId: connector.id,
+  });
   webCrawlerConfig.lastCrawledAt = new Date();
   // Immeditaley marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
   // in case of the crawling taking too long or failing.
@@ -69,6 +74,31 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
+      preNavigationHooks: [
+        async (crawlingContext) => {
+          const { address, family } = await getIpAddressForUrl(
+            crawlingContext.request.url
+          );
+          if (family !== 4) {
+            crawlingContext.request.skipNavigation = true;
+            childLogger.error(
+              {
+                url: crawlingContext.request.url,
+              },
+              `IP address is not IPv4. Skipping.`
+            );
+          }
+          if (isPrivateIp(address)) {
+            crawlingContext.request.skipNavigation = true;
+            childLogger.error(
+              {
+                url: crawlingContext.request.url,
+              },
+              `Private IP address detected. Skipping.`
+            );
+          }
+        },
+      ],
       maxRequestsPerCrawl:
         webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES,
 
@@ -86,7 +116,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           await Context.current().sleep(1);
         } catch (e) {
           if (isCancellation(e)) {
-            logger.error("The activity was canceled. Aborting crawl.");
+            childLogger.error("The activity was canceled. Aborting crawl.");
             // abort crawling
             await crawler.autoscaledPool?.abort();
             await crawler.teardown();
@@ -117,7 +147,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               req.userData?.depth >= WEBCRAWLER_MAX_DEPTH ||
               req.userData?.depth >= webCrawlerConfig.depth
             ) {
-              logger.info(
+              childLogger.info(
                 {
                   depth: request.userData.depth,
                   url: request.url,
@@ -205,10 +235,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               async: true,
             });
           } else {
-            logger.info(
+            childLogger.info(
               {
                 documentId,
-                connectorId,
                 configId: webCrawlerConfig.id,
                 documentLen: extracted.length,
                 title: pageTitle,
@@ -220,10 +249,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           }
         } catch (e) {
           upsertingError++;
-          logger.error(
+          childLogger.error(
             {
               error: e,
-              connectorId: connector.id,
               configId: webCrawlerConfig.id,
               url,
             },
@@ -235,10 +263,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
       },
       failedRequestHandler: async (context, err) => {
-        logger.error(
-          { error: err, connectorId: connector.id },
-          "webcrawler failedRequestHandler"
-        );
+        childLogger.error({ error: err }, "webcrawler failedRequestHandler");
         crawlingError++;
       },
       errorHandler: () => {
