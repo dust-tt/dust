@@ -1,10 +1,11 @@
 import React from "react";
+import type { UrlObject } from "url";
 
 import { Avatar, CardButton } from "@sparkle/_index";
 
 interface TemplateItemProps {
   description: string;
-  href: string;
+  href: string | UrlObject;
   id: string;
   name: string;
   visual: {
