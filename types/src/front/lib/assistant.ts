@@ -145,8 +145,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
   contextSize: 8192,
   recommendedTopK: 16,
   largeModel: true,
-  description:
-    "Google's best model for scaling across a wide range of tasks (8k context).",
+  description: "Google's low-latency and high throughput model (8k context).",
   shortDescription: "Google's smartest model.",
 } as const;
 
