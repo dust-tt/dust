@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import type { UrlObject } from "url";
 
 import {
   noHrefLink,
@@ -15,9 +16,11 @@ interface CardButtonProps {
   onClick?: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-  href?: string;
+  href?: string | UrlObject;
   target?: string;
   rel?: string;
+  replace?: boolean;
+  shallow?: boolean;
 }
 
 const variantClasses = {
@@ -46,6 +49,8 @@ export function CardButton({
   href,
   target = "_blank",
   rel = "",
+  replace,
+  shallow,
 }: CardButtonProps) {
   const { components } = React.useContext(SparkleContext);
 
@@ -58,16 +63,15 @@ export function CardButton({
     className
   );
   if (href) {
-    if (target) {
-      return (
-        <a href={href} target={target} rel={rel} className={commonClasses}>
-          {children}
-        </a>
-      );
-    }
-
     return (
-      <Link href={href} className={commonClasses}>
+      <Link
+        href={href}
+        className={commonClasses}
+        replace={replace}
+        shallow={shallow}
+        target={target}
+        rel={rel}
+      >
         {children}
       </Link>
     );

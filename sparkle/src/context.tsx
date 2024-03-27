@@ -1,7 +1,9 @@
 import React, { ComponentType, MouseEvent, ReactNode } from "react";
+import type { UrlObject } from "url";
+import url from "url";
 
 export type SparkleContextLinkType = ComponentType<{
-  href: string;
+  href: string | UrlObject;
   className?: string;
   children: ReactNode;
   ariaLabel?: string;
@@ -15,6 +17,10 @@ export type SparkleContextLinkType = ComponentType<{
     | "location"
     | "date";
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  replace?: boolean;
+  shallow?: boolean;
+  target?: string;
+  rel?: string;
 }>;
 
 export type SparkleContextType = {
@@ -30,17 +36,25 @@ export const aLink: SparkleContextLinkType = ({
   ariaLabel,
   onClick,
   children,
-}) => (
-  <a
-    href={href}
-    className={className}
-    aria-current={ariaCurrent}
-    aria-label={ariaLabel}
-    onClick={onClick}
-  >
-    {children}
-  </a>
-);
+  target,
+  rel,
+}) => {
+  const hrefAsString = typeof href !== "string" ? url.format(href) : href;
+
+  return (
+    <a
+      href={hrefAsString}
+      className={className}
+      aria-current={ariaCurrent}
+      aria-label={ariaLabel}
+      onClick={onClick}
+      target={target}
+      rel={rel}
+    >
+      {children}
+    </a>
+  );
+};
 
 export const noHrefLink: SparkleContextLinkType = ({
   className,
