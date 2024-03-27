@@ -281,7 +281,7 @@ async function handler(
 
         case "google_vertex_ai":
           return res.status(200).json({
-            models: [{ id: "gemini-pro" }],
+            models: [{ id: "gemini-pro" }, { id: "gemini-1.5-pro-latest" }],
           });
 
         default:

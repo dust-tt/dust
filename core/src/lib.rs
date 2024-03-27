@@ -37,6 +37,7 @@ pub mod providers {
         pub mod tiktoken;
     }
     pub mod anthropic;
+    pub mod google_ai_studio;
     pub mod google_vertex_ai;
 }
 pub mod http {
