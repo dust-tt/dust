@@ -3,9 +3,11 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   BuilderLayout,
   Button,
+  ChatBubbleBottomCenterTextIcon,
   CircleIcon,
   SquareIcon,
   Tab,
+  TemplateIcon,
   TriangleIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -28,6 +30,7 @@ import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
+import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
@@ -166,6 +169,8 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
 }: AssistantBuilderProps) {
+  const hasTemplate = true;
+
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -226,7 +231,7 @@ export default function AssistantBuilder({
 
   const [previewDrawerOpenedAt, setPreviewDrawerOpenedAt] = useState<
     number | null
-  >(null);
+  >(hasTemplate ? Date.now() : null);
 
   const openPreviewDrawer = () => {
     setPreviewDrawerOpenedAt(Date.now());
@@ -419,6 +424,32 @@ export default function AssistantBuilder({
     isFading,
   } = usePreviewAssistant({ owner, builderState });
 
+  const [previewDrawerCurrentTab, setPreviewDrawerCurrentTab] = useState<
+    "Preview" | "Template"
+  >(hasTemplate ? "Template" : "Preview");
+
+  const previewDrawerTabs = useMemo(
+    () => [
+      {
+        label: "Preview",
+        current: previewDrawerCurrentTab === "Preview",
+        onClick: () => {
+          setPreviewDrawerCurrentTab("Preview");
+        },
+        icon: ChatBubbleBottomCenterTextIcon,
+      },
+      {
+        label: "Template",
+        current: previewDrawerCurrentTab === "Template",
+        onClick: () => {
+          setPreviewDrawerCurrentTab("Template");
+        },
+        icon: TemplateIcon,
+      },
+    ],
+    [previewDrawerCurrentTab]
+  );
+
   return (
     <>
       <AppLayout
@@ -523,23 +554,59 @@ export default function AssistantBuilder({
             </div>
           }
           rightPanel={
-            <div
-              className={classNames(
-                "flex h-full w-full overflow-hidden rounded-xl border border-structure-200 bg-structure-50 transition-all",
-                shouldAnimatePreviewDrawer &&
-                  previewDrawerOpenedAt != null &&
-                  // Only animate the reload if the drawer has been open for at least 1 second.
-                  // This is to prevent the animation from triggering right after the drawer is opened.
-                  Date.now() - previewDrawerOpenedAt > 1000
-                  ? "animate-reload"
-                  : ""
+            <div className="h-full pb-5">
+              {hasTemplate ? (
+                <Tab
+                  tabs={previewDrawerTabs}
+                  variant="default"
+                  className="hidden lg:flex"
+                />
+              ) : null}
+              {previewDrawerCurrentTab === "Preview" ? (
+                <div
+                  className={classNames(
+                    "flex h-full w-full overflow-hidden rounded-xl border border-structure-200 bg-structure-50 transition-all",
+                    shouldAnimatePreviewDrawer &&
+                      previewDrawerOpenedAt != null &&
+                      // Only animate the reload if the drawer has been open for at least 1 second.
+                      // This is to prevent the animation from triggering right after the drawer is opened.
+                      Date.now() - previewDrawerOpenedAt > 1000
+                      ? "animate-reload"
+                      : ""
+                  )}
+                >
+                  <TryAssistant
+                    owner={owner}
+                    assistant={draftAssistant}
+                    conversationFading={isFading}
+                  />
+                </div>
+              ) : (
+                <ReactMarkdown
+                  components={{
+                    h1: ({ children }) => (
+                      <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
+                        {children}
+                      </h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
+                        {children}
+                      </h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
+                        {children}
+                      </h3>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-element-900">
+                        {children}
+                      </strong>
+                    ),
+                  }}
+                >{`# Template\n## hello`}</ReactMarkdown>
               )}
-            >
-              <TryAssistant
-                owner={owner}
-                assistant={draftAssistant}
-                conversationFading={isFading}
-              />
             </div>
           }
           isRightPanelOpen={previewDrawerOpenedAt !== null}
