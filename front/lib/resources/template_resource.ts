@@ -87,9 +87,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toListJSON() {
     return {
-      backgroundColor: "",
+      backgroundColor: this.backgroundColor,
       description: this.description,
-      emoji: "",
+      emoji: this.emoji,
       handle: this.presetHandle,
       sId: this.sId,
       tags: this.tags,
@@ -98,9 +98,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toJSON() {
     return {
-      backgroundColor: "",
+      backgroundColor: this.backgroundColor,
       description: this.description,
-      emoji: "",
+      emoji: this.emoji,
       handle: this.presetHandle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,

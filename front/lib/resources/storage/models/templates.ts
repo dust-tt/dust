@@ -26,6 +26,9 @@ export class TemplateModel extends Model<
 
   declare visibility: TemplateVisibility;
 
+  declare backgroundColor: string;
+  declare emoji: string;
+
   declare presetHandle: string;
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
@@ -63,6 +66,14 @@ TemplateModel.init(
     },
     description: {
       type: DataTypes.TEXT,
+    },
+    backgroundColor: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    emoji: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     visibility: {
       type: DataTypes.STRING,
