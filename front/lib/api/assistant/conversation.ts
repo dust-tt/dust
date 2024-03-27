@@ -783,6 +783,7 @@ export async function* postUserMessage(
     workspace: conversation.owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
     conversationId: conversation.sId,
+    agentMessages: agentMessages,
   });
 
   yield {

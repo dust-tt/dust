@@ -1,12 +1,14 @@
 import { Identify } from "@amplitude/analytics-node";
 import type {
   AgentConfigurationType,
+  AgentMessageType,
   DataSourceType,
   ModelId,
   UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 
 import type { Ampli } from "@app/lib/amplitude/back/generated";
 import {
@@ -109,11 +111,13 @@ export function trackUserMessage({
   workspace,
   userId,
   conversationId,
+  agentMessages,
 }: {
   userMessage: UserMessageType;
   workspace: WorkspaceType;
   userId: string;
   conversationId: string;
+  agentMessages: AgentMessageType[];
 }) {
   const amplitude = getBackendClient();
   const event = new UserMessagePosted({
@@ -124,6 +128,11 @@ export function trackUserMessage({
     mentions: userMessage.mentions.map((mention) => mention.configurationId),
     mentionsCount: userMessage.mentions.length,
     conversationId,
+    generationModels: removeNulls(
+      agentMessages.map(
+        (am) => am.configuration.generation?.model.modelId || null
+      )
+    ),
     // We are mostly interested in tracking the usage of non global agents,
     // so if there is at least one non global agent in the list, that's enough to set
     // isGlobalAgent to false.
@@ -194,6 +203,7 @@ export function trackAssistantCreated(
     assistantScope: assistant.scope,
     assistantActionType: assistant.action?.type || "",
     assistantVersion: assistant.version,
+    assistantModel: assistant.generation?.model.modelId,
   });
   amplitude.track(
     `user-${userId}`,
