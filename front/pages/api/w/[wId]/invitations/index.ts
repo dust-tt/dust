@@ -9,14 +9,17 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  createInvitation,
-  deleteInvitation,
   sendWorkspaceInvitationEmail,
+  updateOrCreateInvitation,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
-import { getMembersCountForWorkspace } from "@app/lib/api/workspace";
+import {
+  getMembers,
+  getMembersCountForWorkspace,
+} from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEmailValid } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetWorkspaceInvitationsResponseBody = {
@@ -147,14 +150,35 @@ async function handler(
           },
         });
       }
+      const existingMembers = await getMembers(auth);
 
       const invitationResults = await Promise.all(
         invitationRequests.map(async ({ email, role }) => {
+          if (existingMembers.find((m) => m.email === email)) {
+            return {
+              success: false,
+              email,
+              error_message:
+                "Cannot send invitation to existing member (active or revoked)",
+            };
+          }
+
           try {
-            const invitation = await createInvitation(owner, email, role);
+            const invitation = await updateOrCreateInvitation(
+              owner,
+              email,
+              role
+            );
             await sendWorkspaceInvitationEmail(owner, user, invitation);
           } catch (e) {
-            await deleteInvitation(owner, email);
+            logger.error(
+              {
+                error: e,
+                message: "Failed to send invitation email",
+                email,
+              },
+              "Failed to send invitation email"
+            );
             return {
               success: false,
               email,
@@ -176,7 +200,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST are expected.",
         },
       });
   }

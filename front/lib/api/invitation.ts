@@ -25,11 +25,27 @@ function typeFromModel(
   };
 }
 
-export async function createInvitation(
+export async function updateOrCreateInvitation(
   owner: WorkspaceType,
   inviteEmail: string,
   initialRole: ActiveRoleType
 ): Promise<MembershipInvitationType> {
+  // check for prior existing pending invitation
+  const existingInvitation = await MembershipInvitation.findOne({
+    where: {
+      workspaceId: owner.id,
+      inviteEmail: sanitizeString(inviteEmail),
+      status: "pending",
+    },
+  });
+
+  if (existingInvitation) {
+    await existingInvitation.update({
+      initialRole,
+    });
+    return typeFromModel(existingInvitation);
+  }
+
   return typeFromModel(
     await MembershipInvitation.create({
       workspaceId: owner.id,
@@ -40,14 +56,37 @@ export async function createInvitation(
   );
 }
 
+export async function updateInvitation(
+  owner: WorkspaceType,
+  id: number,
+  status: "pending" | "consumed" | "revoked"
+): Promise<MembershipInvitationType> {
+  const invitation = await MembershipInvitation.findOne({
+    where: {
+      id,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!invitation) {
+    throw new Error("Invitation not found");
+  }
+
+  await invitation.update({
+    status,
+  });
+
+  return typeFromModel(invitation);
+}
+
 export async function deleteInvitation(
   owner: WorkspaceType,
-  email: string
+  id: number
 ): Promise<void> {
   await MembershipInvitation.destroy({
     where: {
+      id,
       workspaceId: owner.id,
-      inviteEmail: email,
     },
   });
 }
