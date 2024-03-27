@@ -13,6 +13,7 @@ import {
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { ParsedUrlQuery } from "querystring";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
@@ -29,6 +30,16 @@ import { mockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templ
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+
+function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
+  const { duplicate, templateId } = query;
+
+  return {
+    duplicate: duplicate && typeof duplicate === "string" ? duplicate : null,
+    templateId:
+      templateId && typeof templateId === "string" ? templateId : null,
+  };
+}
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -78,8 +89,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     | AgentConfigurationType
     | TemplateAgentConfigurationType
     | null = null;
-  const { duplicate, templateId } = context.query;
-  if (duplicate && typeof duplicate === "string") {
+  const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
+    context.query
+  );
+  if (duplicate) {
     agentConfig = await getAgentConfiguration(auth, duplicate);
 
     if (!agentConfig) {
@@ -88,12 +101,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
   } else if (templateId) {
-    if (typeof templateId !== "string") {
-      return {
-        notFound: true,
-      };
-    }
-
     const agentConfigRes = await mockAgentConfigurationFromTemplate(
       templateId,
       flow
