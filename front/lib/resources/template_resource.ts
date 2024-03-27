@@ -3,6 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
+  Model,
   ModelStatic,
   Transaction,
 } from "sequelize";
