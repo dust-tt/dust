@@ -783,10 +783,7 @@ pub async fn streamed_chat_completion(
                     match &candidates[0].finish_reason {
                         None => (),
                         Some(r) => {
-                            match finish_reason.len() {
-                                0 => finish_reason = r.clone(),
-                                _ => Err(anyhow!("Unexpected finish reason"))?,
-                            };
+                            finish_reason = r.clone();
                         }
                     }
 
