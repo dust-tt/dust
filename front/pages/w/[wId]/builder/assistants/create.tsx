@@ -11,7 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AssistantTemplateTagNameType,
-  PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
