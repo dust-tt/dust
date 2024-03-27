@@ -5,10 +5,12 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type AssistantTemplate = ReturnType<TemplateResource["toListJSON"]>;
+export type AssistantTemplateListType = ReturnType<
+  TemplateResource["toListJSON"]
+>;
 
 export interface FetchAssistantTemplatesResponse {
-  templates: AssistantTemplate[];
+  templates: AssistantTemplateListType[];
 }
 
 async function handler(

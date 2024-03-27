@@ -211,9 +211,8 @@ function TemplatesPage() {
   const form = useForm<CreateTemplateFormType>({
     resolver: ioTsResolver(CreateTemplateFormSchema),
     defaultValues: {
-      name: "",
       description: "",
-      presetHandle: "",
+      handle: "",
       presetInstructions: "",
       presetModel: GPT_4_TURBO_MODEL_CONFIG.modelId,
       presetTemperature: "balanced",
@@ -240,18 +239,13 @@ function TemplatesPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <InputField
               control={form.control}
-              name="name"
-              placeholder="My Template"
+              name="handle"
+              placeholder="myAssistant"
             />
-            <InputField
+            <TextareaField
               control={form.control}
               name="description"
               placeholder="A short description"
-            />
-            <InputField
-              control={form.control}
-              name="presetHandle"
-              placeholder="my-assistant"
             />
             <TextareaField
               control={form.control}
@@ -311,6 +305,12 @@ function TemplatesPage() {
                   <PokeFormMessage />
                 </PokeFormItem>
               )}
+            />
+            <InputField control={form.control} name="emoji" placeholder="🤓" />
+            <InputField
+              control={form.control}
+              name="backgroundColor"
+              placeholder="tailwind color code"
             />
             <PokeButton type="submit" className="border border-structure-300">
               Submit
