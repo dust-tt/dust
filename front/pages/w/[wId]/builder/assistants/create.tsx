@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/AssistantBuilder";
+import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -73,6 +74,9 @@ export default function CreateAssistant({
   const [templateSearchTerm, setTemplateSearchTerm] = useState<string | null>(
     null
   );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null
+  );
 
   const { assistantTemplates } = useAssistantTemplates({
     workspaceId: owner.sId,
@@ -99,6 +103,38 @@ export default function CreateAssistant({
       )
     );
   };
+
+  const handleCloseModal = () => {
+    const currentPathname = router.pathname;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { templateId, ...restQuery } = router.query;
+    void router.push(
+      { pathname: currentPathname, query: restQuery },
+      undefined,
+      {
+        shallow: true,
+      }
+    );
+  };
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const templateId = router.query.templateId ?? [];
+      if (templateId && typeof templateId === "string") {
+        setSelectedTemplateId(templateId);
+      } else {
+        setSelectedTemplateId(null);
+      }
+    };
+
+    // Initial check in case the component mounts with the query already set.
+    handleRouteChange();
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.query, router.events]);
 
   const defaultTag =
     router.asPath.split("#")[1] ?? assistantTemplateTagNames[0];
@@ -150,20 +186,37 @@ export default function CreateAssistant({
               item.tags.includes(tagName)
             );
 
-            const cards = templatesForTag.map((t) => (
-              <TemplateItem
-                key={t.sId}
-                description={t.description ?? ""}
-                id={t.sId}
-                name={t.name}
-                visual={{
-                  emoji: "🫶",
-                  backgroundColor: "bg-red-100",
-                }}
-                // TODO: Open modal.
-                onClick={() => console.log("click")}
-              />
-            ));
+            const cards = templatesForTag.map((t) => {
+              const href = {
+                pathname: router.pathname,
+                query: {
+                  ...router.query,
+                  templateId: t.sId,
+                },
+              };
+
+              return (
+                <Link
+                  href={href}
+                  key={`${t.sId}-link`}
+                  shallow
+                  className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+                >
+                  <TemplateItem
+                    key={t.sId}
+                    description={t.description ?? ""}
+                    id={t.sId}
+                    name={t.name}
+                    visual={{
+                      emoji: "🫶",
+                      backgroundColor: "bg-red-100",
+                    }}
+                    // TODO: Open modal.
+                    onClick={() => {}}
+                  />
+                </Link>
+              );
+            });
 
             return (
               <div key={`${tagName}-root`} id={tagName}>
@@ -176,6 +229,11 @@ export default function CreateAssistant({
           })}
         </div>
       </Page>
+      <AssistantTemplateModal
+        owner={owner}
+        templateId={selectedTemplateId}
+        onClose={handleCloseModal}
+      />
     </AppLayout>
   );
 }
