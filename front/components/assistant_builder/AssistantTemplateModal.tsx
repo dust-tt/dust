@@ -1,15 +1,19 @@
 import { Avatar, Button, Modal, Page, Spinner2 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
+import Link from "next/link";
 
+import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import { useAssistantTemplate } from "@app/lib/swr";
 
 interface AssistantTemplateModalProps {
+  flow: BuilderFlow;
   onClose: () => void;
   owner: WorkspaceType;
   templateId: string | null;
 }
 
 export function AssistantTemplateModal({
+  flow,
   onClose,
   owner,
   templateId,
@@ -24,7 +28,7 @@ export function AssistantTemplateModal({
     return null;
   }
 
-  if (isAssistantTemplateLoading) {
+  if (isAssistantTemplateLoading || !assistantTemplate) {
     return <Spinner2 variant="color" />;
   }
 
@@ -37,7 +41,7 @@ export function AssistantTemplateModal({
       variant="side-sm"
     >
       <Page variant="modal">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 pb-6">
           <div className="flex max-h-32 max-w-lg flex-row gap-3">
             <Avatar
               emoji={assistantTemplate.emoji ?? "🫶"}
@@ -51,15 +55,25 @@ export function AssistantTemplateModal({
               <span className="text-bold text-lg font-medium text-element-900">
                 {assistantTemplate.name}
               </span>
-              <Button label="Use this Template" variant="primary" size="sm" />
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
+              >
+                <Button label="Use this template" variant="primary" size="sm" />
+              </Link>
             </div>
           </div>
-          <p>{assistantTemplate.description}</p>
+          <p className="text-sm font-normal text-element-900">
+            {assistantTemplate.description}
+          </p>
           <Page.SectionHeader title="Instructions" />
-          {/* // TODO: set Limit */}
-          <p>{assistantTemplate.presetInstructions}</p>
+          {/* // TODO: Should we truncate after X lines? */}
+          <p className="whitespace-pre-line text-sm font-normal text-element-700">
+            {assistantTemplate.presetInstructions}
+          </p>
           <Page.SectionHeader title="Data Sources" />
-          <p>{assistantTemplate.helpActions}</p>
+          <p className="whitespace-pre-line text-sm font-normal text-element-700">
+            {assistantTemplate.helpActions}
+          </p>
         </div>
       </Page>
     </Modal>

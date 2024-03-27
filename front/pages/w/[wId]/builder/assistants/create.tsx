@@ -108,7 +108,7 @@ export default function CreateAssistant({
     const currentPathname = router.pathname;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { templateId, ...restQuery } = router.query;
-    void router.push(
+    void router.replace(
       { pathname: currentPathname, query: restQuery },
       undefined,
       {
@@ -201,6 +201,7 @@ export default function CreateAssistant({
                   key={`${t.sId}-link`}
                   shallow
                   className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+                  replace
                 >
                   <TemplateItem
                     key={t.sId}
@@ -230,6 +231,7 @@ export default function CreateAssistant({
         </div>
       </Page>
       <AssistantTemplateModal
+        flow={flow}
         owner={owner}
         templateId={selectedTemplateId}
         onClose={handleCloseModal}
