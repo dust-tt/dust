@@ -30,7 +30,7 @@ import logger from "@app/logger/logger";
 async function alreadyPlayed(key: string) {
   return (
     (await safeRedisClient((client) => {
-      return client.incr(`already_played${key}`);
+      return client.incr(`already_played_v7_${key}`);
     })) > 1
   );
 }
@@ -106,20 +106,26 @@ async function populateAssistantCreated(workspace: Workspace, logger: Logger) {
     );
     return;
   }
-  const assistants = await AgentConfiguration.findAll({
+  let assistants = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
       status: ["active", "archived"] satisfies AgentStatus[],
-      createdAt: {
-        [Op.lt]: new Date(maxDate),
-      },
     },
+    order: [["createdAt", "ASC"]],
+  });
+  const alreadySeen = new Set<string>();
+  assistants = assistants.filter((assistant) => {
+    if (alreadySeen.has(assistant.sId)) {
+      return false;
+    }
+    alreadySeen.add(assistant.sId);
+    return true;
   });
   const promises = [];
   for (const assistant of assistants) {
     const auth = await AuthenticatorfromIds(assistant.authorId, workspace.sId);
     if (!auth.isUser()) {
-      throw new Error("Only users can create agents.");
+      continue;
     }
     if (!auth.workspace()) {
       throw new Error("Workspace not found.");
@@ -152,9 +158,6 @@ export async function populateDataSourceCreated(
   const dataSources = await DataSource.findAll({
     where: {
       workspaceId: workspace.id,
-      createdAt: {
-        [Op.lt]: new Date(maxDate),
-      },
     },
   });
   const defaultAdmin = await Membership.findOne({
@@ -173,7 +176,8 @@ export async function populateDataSourceCreated(
     }
     const auth = await AuthenticatorfromIds(adminId, workspace.sId);
     if (!auth.isUser()) {
-      throw new Error("Only users can create agents.");
+      // throw new Error("Only users can create agents.");
+      continue;
     }
     if (!auth.workspace()) {
       throw new Error("Workspace not found.");
@@ -239,10 +243,10 @@ async function main() {
     if (
       conversations.filter((c) => c.workspaceId === workspaceID).length < 10
     ) {
-      childLogger.info(
-        { workspaceId: workspace.sId },
-        `Workspace has less than 5 conversations`
-      );
+      // childLogger.info(
+      //   { workspaceId: workspace.sId },
+      //   `Workspace has less than 5 conversations`
+      // );
       continue;
     }
     childLogger.info(
