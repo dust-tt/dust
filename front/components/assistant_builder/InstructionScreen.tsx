@@ -45,7 +45,6 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
 export const CREATIVITY_LEVELS = Object.entries(

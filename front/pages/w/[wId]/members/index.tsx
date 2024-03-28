@@ -673,7 +673,7 @@ function ReinviteUsersModal({
                 sendNotification,
               });
               onClose(false);
-              mutate(`/api/w/${owner.sId}/invitations`);
+              await mutate(`/api/w/${owner.sId}/invitations`);
               /* Delay to let react close the modal before cleaning isSaving, to
                * avoid the user seeing the button change label again during the closing animation */
               setTimeout(() => {
