@@ -20,13 +20,20 @@ import {
   DataSource,
   FeatureFlag,
   Membership,
-  Message,
   User,
-  UserMessage,
   Workspace,
 } from "@app/lib/models";
+import { safeRedisClient } from "@app/lib/redis";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+
+async function alreadyPlayed(key: string) {
+  return (
+    (await safeRedisClient((client) => {
+      return client.incr(`already_played${key}`);
+    })) > 1
+  );
+}
 
 async function AuthenticatorfromIds(
   userId: ModelId,
@@ -92,6 +99,13 @@ async function AuthenticatorfromIds(
 const maxDate = "2024-03-23";
 
 async function populateAssistantCreated(workspace: Workspace, logger: Logger) {
+  if (await alreadyPlayed(`populateAssistantCreated${workspace.sId}`)) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "Already played populateAssistantCreated"
+    );
+    return;
+  }
   const assistants = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
@@ -128,6 +142,13 @@ export async function populateDataSourceCreated(
   workspace: Workspace,
   logger: Logger
 ) {
+  if (await alreadyPlayed(`populateDataSourceCreated${workspace.sId}`)) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "Already played populateDataSourceCreated"
+    );
+    return;
+  }
   const dataSources = await DataSource.findAll({
     where: {
       workspaceId: workspace.id,
