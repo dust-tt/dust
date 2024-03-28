@@ -17,7 +17,6 @@ import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
 import CohereSetup from "@app/components/providers/CohereSetup";
 import GoogleAiStudioSetup from "@app/components/providers/GoogleAiStudioSetup";
-import GoogleVertexAISetup from "@app/components/providers/GoogleVertexAISetup";
 import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
@@ -210,7 +209,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [azureOpenAIOpen, setAzureOpenAIOpen] = useState(false);
   const [anthropicOpen, setAnthropicOpen] = useState(false);
   const [mistalAIOpen, setMistralAiOpen] = useState(false);
-  const [googleVertexAIOpen, setGoogleVertexAIOpen] = useState(false);
   const [googleAiStudioOpen, setGoogleAiStudioOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
@@ -277,13 +275,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setMistralAiOpen}
         enabled={configs["mistral"] ? true : false}
         config={configs["mistral"] ? configs["mistral"] : null}
-      />
-      <GoogleVertexAISetup
-        owner={owner}
-        open={googleVertexAIOpen}
-        setOpen={setGoogleVertexAIOpen}
-        enabled={!!configs["google_vertex_ai"]}
-        config={configs["google_vertex_ai"] ?? null}
       />
       <GoogleAiStudioSetup
         owner={owner}
@@ -388,9 +379,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "anthropic":
                           setAnthropicOpen(true);
-                          break;
-                        case "google_vertex_ai":
-                          setGoogleVertexAIOpen(true);
                           break;
                         case "google_ai_studio":
                           setGoogleAiStudioOpen(true);

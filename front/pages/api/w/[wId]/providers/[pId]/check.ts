@@ -1,5 +1,4 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { GoogleAuth } from "google-auth-library";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -263,78 +262,6 @@ async function handler(
             res.status(200).json({ ok: true });
           }
           return;
-
-        case "google_vertex_ai":
-          const { service_account: serviceAccountJson, endpoint } = config;
-          if (!serviceAccountJson) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "The service account is missing.",
-              },
-            });
-          }
-          if (!endpoint) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "The endpoint is missing.",
-              },
-            });
-          }
-
-          const serviceAccount = JSON.parse(serviceAccountJson);
-
-          const auth = new GoogleAuth({
-            scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-            credentials: {
-              client_email: serviceAccount.client_email,
-              private_key: serviceAccount.private_key,
-            },
-          });
-          const client = await auth.getClient();
-          const accessToken = await client.getAccessToken();
-
-          const parsed = new URL(endpoint);
-          if (!parsed.hostname.endsWith(".googleapis.com")) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "The endpoint is invalid (expecting `googleapis.com`).",
-              },
-            });
-          }
-          const testUrl = `${endpoint}/publishers/google/models/gemini-pro:streamGenerateContent`;
-          const testRequestBody = {
-            contents: {
-              role: "user",
-              parts: {
-                text: "Another one bites the ...",
-              },
-            },
-            generation_config: {
-              temperature: 0.5,
-              maxOutputTokens: 1,
-            },
-          };
-          const r = await fetch(testUrl, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken.token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(testRequestBody),
-          });
-          if (!r.ok) {
-            const err = await r.json();
-            return res.status(400).json({ ok: false, error: err.error });
-          }
-          await r.json();
-          return res.status(200).json({ ok: true });
 
         case "google_ai_studio":
           const { api_key } = config;
