@@ -237,7 +237,7 @@ function TemplatesPage({
         }
       }
     },
-    [assistantTemplate]
+    [assistantTemplate, sendNotification, setIsSubmitting, router]
   );
 
   const form = useForm<CreateTemplateFormType>({
