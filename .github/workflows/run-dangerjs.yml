@@ -22,7 +22,7 @@ jobs:
 
           echo "Checking for changed files..."
 
-          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} -- 'front/lib/models/' 'connectors/src/lib/models/')
+          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} -- 'front/lib/models/' 'front/lib/resources/storage/models/' 'connectors/src/lib/models/' 'connectors/src/resources/storage/models/')
           if [ -n "$CHANGED_FILES" ]; then
             echo "Changed files found:"
             echo "$CHANGED_FILES"
@@ -37,7 +37,7 @@ jobs:
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install dependencies
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}

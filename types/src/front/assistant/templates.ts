@@ -3,6 +3,7 @@ import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { AgentAction } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
 
 // Keeps the order of tags for UI display purposes.
@@ -25,15 +26,15 @@ export function isAssistantTemplateTagNameTypeArray(
   );
 }
 
-export const ACTION_PRESETS = [
-  "reply",
-  "search_datasources",
-  "process_datasources",
-  "query_tables",
-] as const;
-export type ActionPreset = (typeof ACTION_PRESETS)[number];
+export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
+  reply: "Reply only",
+  dust_app_run_configuration: "Run Dust app",
+  retrieval_configuration: "Search data sources",
+  tables_query_configuration: "Query tables",
+} as const;
+export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(
-  ACTION_PRESETS,
+  Object.keys(ACTION_PRESETS),
   "ActionPreset"
 );
 

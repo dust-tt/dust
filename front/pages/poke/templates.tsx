@@ -106,6 +106,11 @@ const tagOptions = assistantTemplateTagNames.map((t) => ({
   value: t,
 }));
 
+interface SelectFieldOption {
+  value: string;
+  display?: string;
+}
+
 function SelectField({
   control,
   name,
@@ -115,7 +120,7 @@ function SelectField({
   control: Control<CreateTemplateFormType>;
   name: keyof CreateTemplateFormType;
   title?: string;
-  options: string[];
+  options: SelectFieldOption[];
 }) {
   return (
     <PokeFormField
@@ -137,8 +142,8 @@ function SelectField({
               <PokeSelectContent>
                 <div className="bg-slate-100">
                   {options.map((option) => (
-                    <PokeSelectItem key={option} value={option}>
-                      {option}
+                    <PokeSelectItem key={option.value} value={option.value}>
+                      {option.display ? option.display : option.value}
                     </PokeSelectItem>
                   ))}
                 </div>
@@ -256,19 +261,26 @@ function TemplatesPage() {
               control={form.control}
               name="presetModel"
               title="Preset Model"
-              options={USED_MODEL_CONFIGS.map((config) => config.modelId)}
+              options={USED_MODEL_CONFIGS.map((config) => ({
+                value: config.modelId,
+              }))}
             />
             <SelectField
               control={form.control}
               name="presetTemperature"
               title="Preset Temperature"
-              options={ASSISTANT_CREATIVITY_LEVELS as unknown as string[]}
+              options={ASSISTANT_CREATIVITY_LEVELS.map((acl) => ({
+                value: acl,
+              }))}
             />
             <SelectField
               control={form.control}
               name="presetAction"
               title="Preset Action"
-              options={ACTION_PRESETS as unknown as string[]}
+              options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
+                value: k,
+                display: v,
+              }))}
             />
             <TextareaField
               control={form.control}
