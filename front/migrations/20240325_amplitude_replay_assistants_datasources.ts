@@ -208,6 +208,7 @@ async function main() {
   });
 
   const conversations = await Conversation.findAll({
+    attributes: ["workspaceId"],
     where: {
       createdAt: {
         [Op.lt]: new Date(maxDate),
