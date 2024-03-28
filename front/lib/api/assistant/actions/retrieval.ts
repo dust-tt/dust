@@ -447,7 +447,7 @@ export function retrievalMetaPrompt() {
   return (
     "Focus on retrieved data and be factual." +
     " To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +
-    " (eg :cite[XX] or :cite[XX,XX] but not :site[XX][XX])." +
+    " (eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX])." +
     " Use citations as close as possible to the information you are citing."
   );
 }
