@@ -863,85 +863,70 @@ function ChangeMemberModal({
       }}
       saveLabel="Update role"
     >
-      <div className="mt-6 flex flex-col gap-9 text-sm text-element-700">
-        <div className="flex items-center gap-4">
-          <Avatar size="lg" visual={member.image} name={member.fullName} />
-          <div className="flex grow flex-col">
-            <div className="font-semibold text-element-900">
-              {member.fullName}
+      <Page variant="modal">
+        <div className="mt-6 flex flex-col gap-9 text-sm text-element-700">
+          <div className="flex items-center gap-4">
+            <Avatar size="lg" visual={member.image} name={member.fullName} />
+            <div className="flex grow flex-col">
+              <div className="font-semibold text-element-900">
+                {member.fullName}
+              </div>
+              <div className="font-normal">{member.email}</div>
             </div>
-            <div className="font-normal">{member.email}</div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="font-bold text-element-900">Role:</div>
+              <RoleDropDown
+                selectedRole={selectedRole || member.workspaces[0].role}
+                onChange={setSelectedRole}
+              />
+            </div>
+            <Page.P>
+              The role defines the rights of a member of the workspace.{" "}
+              {ROLES_DATA[member.workspaces[0].role]["description"]}
+            </Page.P>
+          </div>
+          <div className="flex flex-none flex-col gap-2">
+            <div className="flex-none">
+              <Button
+                variant="primaryWarning"
+                label="Revoke member access"
+                size="sm"
+                onClick={() => setRevokeMemberModalOpen(true)}
+              />
+            </div>
+            <Page.P>
+              Deleting a member will remove them from the workspace. They will
+              be able to rejoin if they have an invitation link.
+            </Page.P>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <div className="font-bold text-element-900">Role:</div>
-            <RoleDropDown
-              selectedRole={selectedRole || member.workspaces[0].role}
-              onChange={setSelectedRole}
-            />
-          </div>
-          <Page.P>
-            The role defines the rights of a member of the workspace.{" "}
-            {ROLES_DATA[member.workspaces[0].role]["description"]}
-          </Page.P>
-        </div>
-        <div className="flex flex-none flex-col gap-2">
-          <div className="flex-none">
-            <Button
-              variant="primaryWarning"
-              label="Revoke member access"
-              size="sm"
-              onClick={() => setRevokeMemberModalOpen(true)}
-            />
-          </div>
-          <Page.P>
-            Deleting a member will remove them from the workspace. They will be
-            able to rejoin if they have an invitation link.
-          </Page.P>
-        </div>
-      </div>
-      <Modal
-        onClose={() => setRevokeMemberModalOpen(false)}
+      </Page>
+      <Dialog
         isOpen={revokeMemberModalOpen}
         title="Revoke member access"
-        hasChanged={false}
-        variant="dialogue"
+        onValidate={async () => {
+          await handleMemberRoleChange({
+            member,
+            role: "none",
+            mutate,
+            sendNotification,
+          });
+          setRevokeMemberModalOpen(false);
+          onClose();
+        }}
+        validateLabel="Yes, revoke"
+        validateVariant="primaryWarning"
+        onCancel={() => {
+          setRevokeMemberModalOpen(false);
+        }}
       >
-        <div className="mt-6 flex flex-col gap-6 px-2">
-          <div>
-            Revoke access for user{" "}
-            <span className="font-bold">{member.fullName}</span>?
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="tertiary"
-              label="Cancel"
-              onClick={() => setRevokeMemberModalOpen(false)}
-            />
-            <Button
-              variant="primaryWarning"
-              label={isSaving ? "Revoking..." : "Yes, revoke"}
-              onClick={async () => {
-                setIsSaving(true);
-                await handleMemberRoleChange({
-                  member,
-                  role: "none",
-                  mutate,
-                  sendNotification,
-                });
-                setRevokeMemberModalOpen(false);
-                onClose();
-                /* Delay to let react close the modal before cleaning isSaving, to
-                 * avoid the user seeing the button change label again during the closing animation */
-                setTimeout(() => {
-                  setIsSaving(false);
-                }, CLOSING_ANIMATION_DURATION);
-              }}
-            />
-          </div>
+        <div>
+          Revoke access for user{" "}
+          <span className="font-bold">{member.fullName}</span>?
         </div>
-      </Modal>
+      </Dialog>
     </ElementModal>
   );
 }
