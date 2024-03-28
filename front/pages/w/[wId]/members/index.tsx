@@ -849,7 +849,9 @@ function ChangeMemberModal({
       title={member.fullName || "Unreachable"}
       variant="side-sm"
       onSave={async (closeModalFn: () => void) => {
-        if (!selectedRole) return;
+        if (!selectedRole) {
+          return;
+        }
         setIsSaving(true);
         await handleMemberRoleChange({
           member,
