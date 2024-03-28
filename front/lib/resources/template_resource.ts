@@ -1,10 +1,11 @@
-import type { Result } from "@dust-tt/types";
+import type { Result, TemplateVisibility } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -53,11 +54,16 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return new TemplateResource(this.model, blob.get());
   }
 
-  static async listAllPublished() {
+  static async listAll({
+    visibility,
+  }: { visibility?: TemplateVisibility } = {}) {
+    const where: WhereOptions<TemplateModel> = {};
+    if (visibility) {
+      where.visibility = visibility;
+    }
+
     const blobs = await TemplateResource.model.findAll({
-      where: {
-        visibility: "published",
-      },
+      where,
     });
 
     return blobs.map(
@@ -93,6 +99,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       handle: this.handle,
       sId: this.sId,
       tags: this.tags,
+      visibility: this.visibility,
     };
   }
 
