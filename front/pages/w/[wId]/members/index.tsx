@@ -14,6 +14,7 @@ import {
   PlusIcon,
   Popup,
   Searchbar,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -535,18 +536,15 @@ function InviteEmailModal({
             </div>
             <div className="flex items-start gap-2">
               <div className="flex-grow">
-                <textarea
-                  placeholder={"Email addresses, comma-separated"}
-                  value={inviteEmails || ""}
-                  name={""}
-                  onChange={(e) => {
-                    setInviteEmails(e.target.value);
+                <TextArea
+                  placeholder="Email addresses, comma-separated"
+                  value={inviteEmails}
+                  onChange={(value) => {
+                    setInviteEmails(value);
                     setEmailError("");
                   }}
+                  error={emailError}
                 />
-                {emailError && (
-                  <div className="text-error-500">{emailError}</div>
-                )}
               </div>
             </div>
             <div className="flex flex-col gap-2">
