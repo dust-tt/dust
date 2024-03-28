@@ -452,7 +452,7 @@ function InviteEmailModal({
     notInWorkspace: [],
   });
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
-  async function handleSendInvitation(): Promise<void> {
+  async function handleSendInvitations(): Promise<void> {
     const inviteEmailsList = inviteEmails.split(/[\n,]+/).map((e) => e.trim());
     if (inviteEmailsList.map(isEmailValid).includes(false)) {
       setEmailError(
@@ -498,7 +498,8 @@ function InviteEmailModal({
 
   return (
     <>
-      <ReinviteUserModal
+      <ReinviteUsersModal
+        owner={owner}
         onClose={() =>
           setInvitationsSegmentation({
             activeSameRole: [],
@@ -520,7 +521,7 @@ function InviteEmailModal({
         isSaving={isSending}
         onSave={async () => {
           setIsSending(true);
-          await handleSendInvitation();
+          await handleSendInvitations();
           setIsSending(false);
           setInviteEmails("");
         }}
@@ -566,11 +567,13 @@ function InviteEmailModal({
   );
 }
 
-function ReinviteUserModal({
+function ReinviteUsersModal({
+  owner,
   onClose,
   invitationsSegmentation,
   role,
 }: {
+  owner: WorkspaceType;
   onClose: (show: boolean) => void;
   invitationsSegmentation: {
     activeSameRole: UserTypeWithWorkspaces[];
@@ -584,7 +587,8 @@ function ReinviteUserModal({
   const sendNotification = useContext(SendNotificationsContext);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { activeDifferentRole, revoked } = invitationsSegmentation;
+  const { notInWorkspace, activeDifferentRole, revoked } =
+    invitationsSegmentation;
 
   return (
     <Modal
@@ -649,6 +653,11 @@ function ReinviteUserModal({
                 role,
                 mutate,
                 sendNotification,
+              });
+              await sendInvitations({
+                owner,
+                emails: notInWorkspace,
+                invitationRole: role,
               });
               onClose(false);
               /* Delay to let react close the modal before cleaning isSaving, to
