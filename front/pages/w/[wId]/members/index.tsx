@@ -451,6 +451,8 @@ function InviteEmailModal({
     revoked: [],
     notInWorkspace: [],
   });
+  const { mutate } = useSWRConfig();
+  const sendNotification = useContext(SendNotificationsContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const [showReinviteUsersModal, setShowReinviteUsersModal] = useState(false);
 
@@ -503,6 +505,8 @@ function InviteEmailModal({
         owner,
         emails: invitesByCase.notInWorkspace,
         invitationRole,
+        mutate,
+        sendNotification,
       });
       onClose();
     } else {
@@ -665,8 +669,11 @@ function ReinviteUsersModal({
                 owner,
                 emails: notInWorkspace,
                 invitationRole: role,
+                mutate,
+                sendNotification,
               });
               onClose(false);
+              mutate(`/api/w/${owner.sId}/invitations`);
               /* Delay to let react close the modal before cleaning isSaving, to
                * avoid the user seeing the button change label again during the closing animation */
               setTimeout(() => {
@@ -1037,13 +1044,15 @@ async function sendInvitations({
   owner,
   emails,
   invitationRole,
+  mutate,
+  sendNotification,
 }: {
   owner: WorkspaceType;
   emails: string[];
   invitationRole: ActiveRoleType;
+  mutate?: any;
+  sendNotification: any;
 }) {
-  const { mutate } = useSWRConfig();
-  const sendNotification = useContext(SendNotificationsContext);
   const body: PostInvitationRequestBody = emails.map((email) => ({
     email,
     role: invitationRole,
