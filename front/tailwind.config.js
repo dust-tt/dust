@@ -1,24 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
 
-const safeColorsArray = [
-  ...Object.values(colors),
-];
-
-const safeColorlist = safeColorsArray.flatMap((color) => [
-  `bg-${color}-50`,
-  `bg-${color}-100`,
-  `bg-${color}-200`,
-  `bg-${color}-300`,
-  `bg-${color}-400`,
-  `bg-${color}-500`,
-  `bg-${color}-600`,
-  `bg-${color}-700`,
-  `bg-${color}-800`,
-  `bg-${color}-900`,
-  `bg-${color}-950`,
-]);
-
 module.exports = {
   theme: {
     fontFamily: {
@@ -225,5 +207,9 @@ module.exports = {
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
-  safelist: safeColorlist,
+  safelist: [
+    {
+      pattern: /^bg-/,
+    },
+  ],
 };
