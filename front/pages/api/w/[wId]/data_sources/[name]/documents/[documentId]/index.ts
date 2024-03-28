@@ -132,8 +132,8 @@ async function handler(
 
       // Add selection of tags as prefix to the section if they are present.
       let tagsPrefix = "";
-      tags.forEach((tag) => {
-        ["title", "author"].forEach((t) => {
+      ["title", "author"].forEach((t) => {
+        tags.forEach((tag) => {
           if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
             tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
           }
