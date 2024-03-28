@@ -831,9 +831,7 @@ function ChangeMemberModal({
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
-    member?.workspaces[0].role || "user"
-  );
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   if (!member) return null;
@@ -843,13 +841,17 @@ function ChangeMemberModal({
       openOnElement={member}
       onClose={() => {
         onClose();
-        setIsSaving(false); // reset isSaving when closing the modal
+        setSelectedRole(null);
+        setIsSaving(false);
       }}
       isSaving={isSaving}
       hasChanged={selectedRole !== member.workspaces[0].role}
       title={member.fullName || "Unreachable"}
       variant="side-sm"
       onSave={async (closeModalFn: () => void) => {
+        if (!selectedRole) {
+          return;
+        }
         setIsSaving(true);
         await handleMemberRoleChange({
           member,
@@ -875,7 +877,7 @@ function ChangeMemberModal({
           <div className="flex items-center gap-2">
             <div className="font-bold text-element-900">Role:</div>
             <RoleDropDown
-              selectedRole={selectedRole}
+              selectedRole={selectedRole || member.workspaces[0].role}
               onChange={setSelectedRole}
             />
           </div>
