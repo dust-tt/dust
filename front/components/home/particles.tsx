@@ -134,9 +134,6 @@ function animate() {
 
   requestAnimationFrame(animate);
   if (rotationActive) {
-    // particleSystem.rotation.x += 0.0002;
-    // particleSystem.rotation.y += 0.00005;
-    // particleSystem.rotation.z += 0.0002;
     particleSystem.rotation.x += 0.0;
     particleSystem.rotation.y += 0.0;
     particleSystem.rotation.z += 0.0002;
