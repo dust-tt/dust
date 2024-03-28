@@ -30,6 +30,7 @@ import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assista
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useAssistantTemplate } from "@app/lib/swr";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -162,7 +163,12 @@ export default function CreateAssistant({
   agentConfiguration,
   flow,
   baseUrl,
+  templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { assistantTemplate } = useAssistantTemplate({
+    templateId,
+    workspaceId: owner.sId,
+  });
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
@@ -201,7 +207,9 @@ export default function CreateAssistant({
       throw new Error("Cannot edit global assistant");
     }
   }
-
+  if (templateId && !assistantTemplate) {
+    return null;
+  }
   return (
     <AssistantBuilder
       owner={owner}
@@ -238,6 +246,7 @@ export default function CreateAssistant({
       agentConfigurationId={null}
       defaultIsEdited={true}
       baseUrl={baseUrl}
+      template={assistantTemplate}
     />
   );
 }
