@@ -35,6 +35,7 @@ export async function callDocTrackerRetrievalAction(
   return res.value;
 }
 
+// Must map CoreAPIDocument
 const DocTrackerRetrievalActionValueSchema = t.array(
   t.type({
     data_source_id: t.string,
@@ -42,7 +43,8 @@ const DocTrackerRetrievalActionValueSchema = t.array(
     document_id: t.string,
     timestamp: t.Integer,
     tags: t.array(t.string),
-    source_url: t.string,
+    parents: t.array(t.string),
+    source_url: t.union([t.string, t.null]),
     hash: t.string,
     text_size: t.Integer,
     text: t.union([t.string, t.null, t.undefined]),
