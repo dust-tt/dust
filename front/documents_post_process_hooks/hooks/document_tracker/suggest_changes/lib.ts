@@ -434,7 +434,7 @@ async function sendSuggestionEmail({
 }: {
   recipientEmail: string;
   matchedDocumentTitle: string | null;
-  matchedDocumentUrl: string;
+  matchedDocumentUrl: string | null;
   incomingDocumentTitle: string | null;
   incomingDocumentUrl: string;
   suggestedChanges: string;
@@ -457,7 +457,9 @@ async function sendSuggestionEmail({
   const matchedDocumentName = matchedDocumentTitle || matchedDocumentUrl;
   const incomingDocumentName = incomingDocumentTitle || incomingDocumentUrl;
 
-  const matchedDocumentLink = `<a href="${matchedDocumentUrl}">${matchedDocumentName}</a>`;
+  const matchedDocumentLink = matchedDocumentUrl
+    ? `<a href="${matchedDocumentUrl}">${matchedDocumentName}</a>`
+    : "<No link>";
   const incomingDocumentLink = `<a href="${incomingDocumentUrl}">${incomingDocumentName}</a>`;
 
   const htmlSuggestion = new showdown.Converter().makeHtml(suggestedChanges);

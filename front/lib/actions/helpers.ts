@@ -3,8 +3,9 @@ import type { DustAppConfigType } from "@dust-tt/types";
 import { cloneBaseConfig } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { isRight } from "fp-ts/lib/Either";
+import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 import {
   ActionResponseBaseSchema,
@@ -81,6 +82,15 @@ export async function callAction<V extends t.Mixed>({
     // the response is a valid success response for the action
     // return the "value" field of the first result
     return new Ok(r.value.results[0][0].value);
+  }
+
+  const decodedReponse = responseSchema.decode(r.value);
+  if (isLeft(decodedReponse)) {
+    const pathError = reporter.formatValidationErrors(decodedReponse.left);
+    return new Err({
+      type: "action_failed",
+      message: `Action failed response: ${pathError}`,
+    });
   }
 
   if (isActionResponseBase(r.value)) {
