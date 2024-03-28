@@ -46,6 +46,12 @@ module.exports = {
         xl: "0 20px 25px rgba(15, 23, 42, 0.12)",
         "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
       },
+      zIndex: {
+        60: "60",
+      },
+      minHeight: (theme) => ({
+        ...theme("spacing"),
+      }),
       keyframes: {
         "move-square": {
           "0%": {
