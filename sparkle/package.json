@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.129",
+  "version": "0.2.130",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -59,7 +59,7 @@
     "rollup-plugin-postcss": "^4.0.2",
     "sass-loader": "^13.3.2",
     "storybook": "^7.4.6",
-    "tailwindcss": "^3.2.4",
+    "tailwindcss": "^3.4.1",
     "typescript": "^5.0.3",
     "uuid": "^9.0.1"
   },
