@@ -36,7 +36,6 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { syncFailed } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
-import mainLogger from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
@@ -248,7 +247,7 @@ export async function incrementalSync(
   startSyncTs: number,
   nextPageToken?: string
 ): Promise<string | undefined> {
-  const logger = mainLogger.child({
+  const localLogger = logger.child({
     provider: "google_drive",
     connectorId: connectorId,
     driveId: driveId,
@@ -303,7 +302,7 @@ export async function incrementalSync(
       throw new Error(`changes list is undefined`);
     }
 
-    logger.info(
+    localLogger.info(
       {
         nbChanges: changesRes.data.changes.length,
       },
@@ -354,7 +353,7 @@ export async function incrementalSync(
           `Invalid file. File is: ${JSON.stringify(change.file)}`
         );
       }
-      logger.info({ file_id: change.file.id }, "will sync file");
+      localLogger.info({ file_id: change.file.id }, "will sync file");
 
       const driveFile: GoogleDriveObjectType = await driveObjectToDustType(
         change.file,
@@ -370,7 +369,7 @@ export async function incrementalSync(
           parentId: file.parent,
           lastSeenTs: new Date(),
         });
-        logger.info({ file_id: change.file.id }, "done syncing file");
+        localLogger.info({ file_id: change.file.id }, "done syncing file");
 
         continue;
       }
@@ -382,7 +381,7 @@ export async function incrementalSync(
         driveFile,
         startSyncTs
       );
-      logger.info({ file_id: change.file.id }, "done syncing file");
+      localLogger.info({ file_id: change.file.id }, "done syncing file");
     }
 
     nextPageToken = changesRes.data.nextPageToken
@@ -399,7 +398,7 @@ export async function incrementalSync(
     return nextPageToken;
   } catch (e) {
     if (e instanceof GaxiosError && e.response?.status === 403) {
-      logger.error(
+      localLogger.error(
         {
           error: e.message,
         },
