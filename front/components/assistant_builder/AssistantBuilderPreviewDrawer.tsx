@@ -1,11 +1,11 @@
 import {
   ChatBubbleBottomCenterTextIcon,
+  Markdown,
   Tab,
   TemplateIcon,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
 
 import {
   TryAssistant,
@@ -87,48 +87,10 @@ export default function AssistantBuilderPreviewDrawer({
           />
         </div>
       ) : (
-        <ReactMarkdown
-          components={{
-            h1: ({ children }) => (
-              <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
-                {children}
-              </h1>
-            ),
-            h2: ({ children }) => (
-              <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
-                {children}
-              </h2>
-            ),
-            h3: ({ children }) => (
-              <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
-                {children}
-              </h3>
-            ),
-            strong: ({ children }) => (
-              <strong className="font-semibold text-element-900">
-                {children}
-              </strong>
-            ),
-            ul: ({ children }) => (
-              <ul className="list-disc py-2 pl-8 text-element-800 first:pt-0 last:pb-0">
-                {children}
-              </ul>
-            ),
-            ol: ({ children }) => (
-              <ol className="list-decimal py-3 pl-8 text-element-800 first:pt-0 last:pb-0">
-                {children}
-              </ol>
-            ),
-            li: ({ children }) => (
-              <li className="py-2 text-element-800 first:pt-0 last:pb-0">
-                {children}
-              </li>
-            ),
-          }}
+        <Markdown
+          content={template?.helpInstructions ?? ""}
           className="pr-8 pt-4"
-        >
-          {template?.helpInstructions ?? ""}
-        </ReactMarkdown>
+        />
       )}
     </div>
   );
