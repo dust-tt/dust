@@ -55,7 +55,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.workspace();
 
-  if (!owner || !auth.isDustSuperUser()) {
+  if (!owner) {
     return {
       notFound: true,
     };

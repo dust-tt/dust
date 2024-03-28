@@ -12,12 +12,6 @@ import logger from "@app/logger/logger";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
 }>(async (context, auth) => {
-  if (!auth.isDustSuperUser()) {
-    return {
-      notFound: true,
-    };
-  }
-
   const dataSourceName = context.params?.name;
   if (!dataSourceName || typeof dataSourceName !== "string") {
     return {
