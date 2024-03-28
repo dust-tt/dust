@@ -157,3 +157,25 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
   };
   return sendEmail(email, message);
 }
+
+export async function sendAdminDataDeletionEmail({
+  email,
+  remainingDays,
+}: {
+  email: string;
+  remainingDays: number;
+}): Promise<void> {
+  const msg = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Your data wil be deleted in ${remainingDays} days`,
+    html: `<p>You have cancel your Dust subscription.</p>
+    <p>Therefore, your data will be deleted in ${remainingDays}, unless you reactivate your subscription.</p>
+    <p>If you have any questions, we'll gladly answer at team@dust.tt.</p>
+    <p>Best,</p>
+    <p>The Dust team</p>`,
+  };
+  return sendEmail(email, msg);
+}
