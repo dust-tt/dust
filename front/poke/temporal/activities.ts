@@ -40,7 +40,6 @@ import {
   Mention,
   MessageReaction,
 } from "@app/lib/models/assistant/conversation";
-import { PlanInvitation } from "@app/lib/models/plan";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
@@ -491,12 +490,6 @@ export async function deleteWorkspaceActivity({
 
   await frontSequelize.transaction(async (t) => {
     await Subscription.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
-    await PlanInvitation.destroy({
       where: {
         workspaceId: workspace.id,
       },

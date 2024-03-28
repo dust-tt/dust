@@ -28,7 +28,6 @@ import {
   Subscription,
   Workspace,
 } from "@app/lib/models";
-import { PlanInvitation } from "@app/lib/models/plan";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -160,7 +159,7 @@ async function handler(
             });
             if (!plan) {
               throw new Error(
-                `Cannot subscribe to plan ${planCode}:  not found.`
+                `Cannot subscribe to plan ${planCode}: not found.`
               );
             }
 
@@ -216,55 +215,6 @@ async function handler(
                     "Conflict: Active subscription with payment already exists for this workspace.",
                 });
               }
-
-              // mark existing plan invite as consumed
-              const planInvitations = await PlanInvitation.findAll({
-                where: {
-                  workspaceId: workspace.id,
-                  consumedAt: null,
-                },
-                transaction: t,
-              });
-
-              if (planInvitations.length > 1) {
-                logger.error(
-                  {
-                    workspaceId,
-                    stripeCustomerId,
-                    stripeSubscriptionId,
-                    planCode,
-                  },
-                  `[Stripe Webhook] Received checkout.session.completed when we have more than one plan invitation for this workspace.`
-                );
-              }
-
-              if (
-                planInvitations.length === 1 &&
-                planInvitations[0].planId !== plan.id
-              ) {
-                logger.error(
-                  {
-                    workspaceId,
-                    stripeCustomerId,
-                    stripeSubscriptionId,
-                    planCode,
-                  },
-                  `[Stripe Webhook] Received checkout.session.completed when we have a plan invitation for this workspace but not for this plan.`
-                );
-              }
-
-              await PlanInvitation.update(
-                {
-                  consumedAt: now,
-                },
-                {
-                  where: {
-                    workspaceId: workspace.id,
-                    consumedAt: null,
-                  },
-                  transaction: t,
-                }
-              );
 
               if (activeSubscription) {
                 await activeSubscription.update(
