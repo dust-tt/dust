@@ -235,6 +235,15 @@ async function main() {
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceID}`);
     }
+    if (
+      conversations.filter((c) => c.workspaceId === workspaceID).length < 10
+    ) {
+      childLogger.info(
+        { workspaceId: workspace.sId },
+        `Workspace has less than 5 conversations`
+      );
+      continue;
+    }
     childLogger.info(
       { workspaceId: workspace.sId },
       "[AmplitudeMigration2] Processing workspace"
