@@ -621,7 +621,7 @@ export default function AssistantBuilder({
                       </li>
                     ),
                   }}
-                  className="pt-4"
+                  className="pr-8 pt-4"
                 >
                   {template?.helpInstructions ?? ""}
                 </ReactMarkdown>
