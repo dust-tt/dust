@@ -841,7 +841,8 @@ function ChangeMemberModal({
       openOnElement={member}
       onClose={() => {
         onClose();
-        setIsSaving(false); // reset isSaving when closing the modal
+        setSelectedRole(null);
+        setIsSaving(false);
       }}
       isSaving={isSaving}
       hasChanged={selectedRole !== member.workspaces[0].role}
