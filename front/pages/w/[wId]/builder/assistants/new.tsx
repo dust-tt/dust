@@ -219,7 +219,10 @@ export default function CreateAssistant({
               dataSourceConfigurations,
               dustAppConfiguration,
               tablesQueryConfiguration,
-              scope: agentConfiguration.scope ?? "private",
+              scope:
+                agentConfiguration.scope !== "global"
+                  ? agentConfiguration.scope
+                  : "private",
               handle: `${agentConfiguration.name}${
                 "isTemplate" in agentConfiguration ? "" : "_Copy"
               }`,
