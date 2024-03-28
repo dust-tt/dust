@@ -1,6 +1,12 @@
 import React from "react";
 
-import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/index";
+import {
+  ChatBubbleBottomCenterTextIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Icon,
+  TemplateIcon,
+} from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
@@ -10,6 +16,7 @@ interface BuilderLayoutProps {
   rightPanel: React.ReactNode;
   isRightPanelOpen: boolean;
   toggleRightPanel: () => void;
+  templateMode?: boolean;
 }
 
 export function BuilderLayout({
@@ -17,6 +24,7 @@ export function BuilderLayout({
   rightPanel,
   isRightPanelOpen,
   toggleRightPanel,
+  templateMode,
 }: BuilderLayoutProps) {
   return (
     <>
@@ -31,14 +39,25 @@ export function BuilderLayout({
                 {leftPanel}
               </div>
             </div>
+
             <Button
               label="Preview"
-              labelVisible={isRightPanelOpen ? false : true}
+              labelVisible={isRightPanelOpen || templateMode ? false : true}
               size="md"
-              variant={isRightPanelOpen ? "tertiary" : "primary"}
+              variant={
+                isRightPanelOpen || templateMode ? "tertiary" : "primary"
+              }
               icon={isRightPanelOpen ? ChevronRightIcon : ChevronLeftIcon}
               onClick={toggleRightPanel}
+              className="border-0"
             />
+            {templateMode && !isRightPanelOpen && (
+              <div className="flex flex-col text-element-600">
+                <Icon visual={TemplateIcon} size="lg" />
+                <Icon visual={ChatBubbleBottomCenterTextIcon} size="lg" />
+              </div>
+            )}
+
             <div
               className={classNames(
                 "s-duration-400 s-h-full s-transition-opacity s-ease-out",
