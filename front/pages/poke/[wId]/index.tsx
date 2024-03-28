@@ -54,7 +54,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !subscription || !auth.isDustSuperUser()) {
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
