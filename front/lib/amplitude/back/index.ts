@@ -153,7 +153,7 @@ export function trackUserMessage({
   );
 }
 
-export function trackDataSourceCreated(
+export async function trackDataSourceCreated(
   auth: Authenticator,
   {
     dataSource,
@@ -175,17 +175,18 @@ export function trackDataSourceCreated(
     assistantDefaultSelected: dataSource.assistantDefaultSelected,
   });
 
-  amplitude.track(
+  await amplitude.track(
     `user-${userId}`,
     { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
     {
       time: dataSource.createdAt,
       insert_id: `data_source_created_${dataSource.id}`,
     }
-  );
+  ).promise;
+  console.log("tracking data source created", dataSource.name, workspace.sId);
 }
 
-export function trackAssistantCreated(
+export async function trackAssistantCreated(
   auth: Authenticator,
   { assistant }: { assistant: AgentConfigurationType }
 ) {
@@ -205,7 +206,7 @@ export function trackAssistantCreated(
     assistantVersion: assistant.version,
     assistantModel: assistant.generation?.model.modelId,
   });
-  amplitude.track(
+  await amplitude.track(
     `user-${userId}`,
     { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
     {
@@ -214,5 +215,5 @@ export function trackAssistantCreated(
         : Date.now(),
       insert_id: `assistant_created_${assistant.sId}`,
     }
-  );
+  ).promise;
 }
