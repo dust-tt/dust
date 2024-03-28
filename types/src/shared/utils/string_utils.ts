@@ -56,3 +56,16 @@ export function slugify(text: string) {
 export function isSlugified(text: string) {
   return /^[a-z0-9_]+$/.test(text);
 }
+
+export function redactString(str: string, n: number) {
+  if (typeof str !== "string") {
+    return str;
+  }
+
+  if (str.length <= n) {
+    return str;
+  }
+
+  const redacted = "*".repeat(str.length - n) + str.slice(-n);
+  return redacted;
+}

@@ -1,4 +1,5 @@
 import type { ProviderType, WithAPIErrorReponse } from "@dust-tt/types";
+import { redactString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -8,6 +9,15 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type GetProvidersResponseBody = {
   providers: ProviderType[];
 };
+
+function redactConfig(config: string) {
+  const parsedConfig = JSON.parse(config);
+
+  return JSON.stringify({
+    ...parsedConfig,
+    api_key: redactString(parsedConfig.api_key, 6),
+  });
+}
 
 async function handler(
   req: NextApiRequest,
@@ -53,7 +63,7 @@ async function handler(
         providers: providers.map((p) => {
           return {
             providerId: p.providerId,
-            config: p.config,
+            config: redactConfig(p.config),
           };
         }),
       });
