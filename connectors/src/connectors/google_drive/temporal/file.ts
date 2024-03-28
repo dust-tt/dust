@@ -62,6 +62,17 @@ export async function syncOneFile(
     },
   });
 
+  const localLogger = logger.child({
+    provider: "google_drive",
+    workspaceId: dataSourceConfig.workspaceId,
+    dataSourceName: dataSourceConfig.dataSourceName,
+    connectorId,
+    documentId,
+    fileId: file.id,
+    title: file.name,
+    mimeType: file.mimeType,
+  });
+
   // Early return if lastSeenTs is greater than workflow start.
   // This allows avoiding resyncing already-synced documents in case of activity failure
   if (fileInDb?.lastSeenTs && fileInDb.lastSeenTs > new Date(startSyncTs)) {
@@ -69,25 +80,15 @@ export async function syncOneFile(
   }
 
   if (fileInDb?.skipReason) {
-    logger.info(
-      {
-        documentId,
-        dataSourceConfig,
-        fileId: file.id,
-        title: file.name,
-      },
+    localLogger.info(
+      {},
       `Google Drive document skipped with skip reason ${fileInDb.skipReason}`
     );
     return false;
   }
   if (!file.capabilities.canDownload) {
-    logger.info(
-      {
-        documentId,
-        connectorId,
-        fileId: file.id,
-        title: file.name,
-      },
+    localLogger.info(
+      {},
       `Google Drive document skipped because it cannot be downloaded`
     );
     return false;
@@ -103,15 +104,7 @@ export async function syncOneFile(
         mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
       });
       if (res.status !== 200) {
-        logger.error(
-          {
-            documentId,
-            dataSourceConfig,
-            fileId: file.id,
-            title: file.name,
-          },
-          "Error exporting Google document"
-        );
+        localLogger.error({}, "Error exporting Google document");
         throw new Error(
           `Error exporting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
         );
@@ -144,13 +137,8 @@ export async function syncOneFile(
               }
             : null;
       } else {
-        logger.error(
+        localLogger.error(
           {
-            connectorId: connectorId,
-            documentId,
-            fileMimeType: file.mimeType,
-            fileId: file.id,
-            title: file.name,
             resDataTypeOf: typeof res.data,
             type: "export",
           },
@@ -158,15 +146,7 @@ export async function syncOneFile(
         );
       }
     } catch (e) {
-      logger.error(
-        {
-          documentId,
-          dataSourceConfig,
-          fileId: file.id,
-          title: file.name,
-        },
-        "Error exporting Google document"
-      );
+      localLogger.error({}, "Error exporting Google document");
       throw e;
     }
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
@@ -188,14 +168,7 @@ export async function syncOneFile(
       if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
         // This error happens when the file is too big to be downloaded.
         // We skip this file.
-        logger.info(
-          {
-            file_id: file.id,
-            mimeType: file.mimeType,
-            title: file.name,
-          },
-          `File too big to be downloaded. Skipping`
-        );
+        localLogger.info({}, `File too big to be downloaded. Skipping`);
         return false;
       }
       throw e;
@@ -214,14 +187,7 @@ export async function syncOneFile(
         // avoids operations on very long text files, that can cause
         // Buffer.toString to crash if the file is > 500MB
         if (res.data.byteLength > 4 * maxDocumentLen) {
-          logger.info(
-            {
-              file_id: file.id,
-              mimeType: file.mimeType,
-              title: file.name,
-            },
-            `File too big to be chunked. Skipping`
-          );
+          localLogger.info({}, `File too big to be chunked. Skipping`);
           return false;
         }
         documentContent = {
@@ -230,13 +196,8 @@ export async function syncOneFile(
           sections: [],
         };
       } else {
-        logger.error(
+        localLogger.error(
           {
-            connectorId: connectorId,
-            documentId,
-            fileMimeType: file.mimeType,
-            fileId: file.id,
-            title: file.name,
             resDataTypeOf: typeof res.data,
             type: "download",
           },
@@ -258,29 +219,24 @@ export async function syncOneFile(
                 prefix: null,
                 content: null,
                 sections: pages.map((page, i) => ({
-                  prefix: `$pdfPage: ${i + 1}/${pages.length}\n`,
+                  // We prefix with `\n` because page splitting  in `dpdf2text` removes the `\f`.
+                  prefix: `\n$pdfPage: ${i + 1}/${pages.length}\n`,
                   content: page,
                   sections: [],
                 })),
               }
             : null;
 
-        logger.info(
+        localLogger.info(
           {
-            file_id: file.id,
-            mimeType: file.mimeType,
             pagesCount: pages.length,
-            title: file.name,
           },
           `Successfully converted PDF to text`
         );
       } catch (err) {
-        logger.warn(
+        localLogger.warn(
           {
             error: err,
-            file_id: file.id,
-            mimeType: file.mimeType,
-            filename: file.name,
           },
           `Error while converting PDF to text`
         );
@@ -298,13 +254,8 @@ export async function syncOneFile(
       return false;
     } else {
       if (res.skipReason) {
-        logger.info(
-          {
-            documentId,
-            dataSourceConfig,
-            fileId: file.id,
-            title: file.name,
-          },
+        localLogger.info(
+          {},
           `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
         );
         skipReason = res.skipReason;
@@ -328,16 +279,7 @@ export async function syncOneFile(
     });
 
     if (documentContent === undefined) {
-      logger.error(
-        {
-          connectorId: connectorId,
-          documentId,
-          fileMimeType: file.mimeType,
-          fileId: file.id,
-          title: file.name,
-        },
-        "documentContent is undefined"
-      );
+      localLogger.error({}, "documentContent is undefined");
       throw new Error("documentContent is undefined");
     }
     const tags = [`title:${file.name}`];
@@ -382,12 +324,9 @@ export async function syncOneFile(
 
       upsertTimestampMs = file.updatedAtMs;
     } else {
-      logger.info(
+      localLogger.info(
         {
-          documentId,
-          dataSourceConfig,
           documentLen: documentLen,
-          title: file.name,
         },
         `Document is empty or too big to be upserted. Skipping`
       );
