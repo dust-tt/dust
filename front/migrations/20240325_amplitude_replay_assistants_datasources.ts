@@ -101,6 +101,7 @@ async function populateAssistantCreated(workspace: Workspace, logger: Logger) {
       },
     },
   });
+  const promises = [];
   for (const assistant of assistants) {
     const auth = await AuthenticatorfromIds(assistant.authorId, workspace.sId);
     if (!auth.isUser()) {
@@ -113,12 +114,14 @@ async function populateAssistantCreated(workspace: Workspace, logger: Logger) {
     if (!agentConfigType) {
       throw new Error("Agent configuration not found." + assistant.sId);
     }
-    await trackAssistantCreated(auth, { assistant: agentConfigType });
+    promises.push(trackAssistantCreated(auth, { assistant: agentConfigType }));
     logger.info(
       { assistantName: assistant.name, assitantSid: assistant.sId },
       "tracked assistant created"
     );
   }
+
+  await Promise.all(promises);
 }
 
 export async function populateDataSourceCreated(
@@ -141,6 +144,7 @@ export async function populateDataSourceCreated(
     order: [["createdAt", "ASC"]],
     limit: 1,
   });
+  const promises = [];
   for (const dataSource of dataSources) {
     const adminId = dataSource.editedByUserId || defaultAdmin?.userId;
     if (!adminId) {
@@ -159,9 +163,11 @@ export async function populateDataSourceCreated(
         `Data source not found: ${dataSource.name} in workspace ${workspace.sId}`
       );
     }
-    await trackDataSourceCreated(auth, {
-      dataSource: ds,
-    });
+    promises.push(
+      trackDataSourceCreated(auth, {
+        dataSource: ds,
+      })
+    );
     logger.info(
       {
         dataSourceName: dataSource.name,
@@ -170,6 +176,7 @@ export async function populateDataSourceCreated(
       "tracked data source created"
     );
   }
+  await Promise.all(promises);
 }
 
 const AMMPLITUDE_ENABLED = process.env.AMPLITUDE_ENABLED;
@@ -212,7 +219,7 @@ async function main() {
       "[AmplitudeMigration2] Processing workspace"
     );
     await populateAssistantCreated(workspace, childLogger);
-    await populateDataSourceCreated(workspace);
+    await populateDataSourceCreated(workspace, childLogger);
   }
 }
 
