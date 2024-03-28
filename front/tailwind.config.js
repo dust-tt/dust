@@ -29,9 +29,6 @@ module.exports = {
       zIndex: {
         60: "60",
       },
-      minHeight: (theme) => ({
-        ...theme("spacing"),
-      }),
       keyframes: {
         "move-square": {
           "0%": {
