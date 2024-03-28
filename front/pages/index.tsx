@@ -1,9 +1,7 @@
 import {
   Button,
-  ChevronRightIcon,
   Div3D,
   Hover3D,
-  Icon,
   LoginIcon,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
@@ -15,18 +13,10 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
 import type { ParsedUrlQuery } from "querystring";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
-import { A, H4, Strong } from "@app/components/home/contentComponents";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@app/components/home/NavigationMenu";
+import { A } from "@app/components/home/contentComponents";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
@@ -35,6 +25,8 @@ import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
+import { CustomerSupportPage } from "@app/pages/website/CustomerSupportPage";
+import { Navigation } from "@app/pages/website/Navigation";
 import { PricingPage } from "@app/pages/website/PricingPage";
 import { ProductPage } from "@app/pages/website/ProductPage";
 
@@ -69,206 +61,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const solutions: { title: string; href: string }[] = [
-  {
-    title: "Knowledge Management",
-    href: "",
-  },
-  {
-    title: "Customer Support",
-    href: "",
-  },
-  {
-    title: "Sales teams",
-    href: "",
-  },
-  {
-    title: "Engineering",
-    href: "",
-  },
-  {
-    title: "Data & Analaytics",
-    href: "",
-  },
-  {
-    title: "People Operations",
-    href: "",
-  },
-  {
-    title: "HR & Recruiting",
-    href: "",
-  },
-  {
-    title: "Product",
-    href: "",
-  },
-  {
-    title: "Finance",
-    href: "",
-  },
-  {
-    title: "IT & Security",
-    href: "",
-  },
-];
-
-const devs: { title: string; href: string }[] = [
-  {
-    title: "Dust for engineers",
-    href: "",
-  },
-  {
-    title: "Building Dust apps",
-    href: "",
-  },
-  {
-    href: "https://docs.dust.tt",
-    title: "Platform Doc",
-  },
-  {
-    title: "Github Repo",
-    href: "",
-  },
-];
-
-export function NavigationMenuDemo({
-  currentPage,
-  onPageChange,
-}: {
-  currentPage: string;
-  onPageChange: (page: string) => void;
-}) {
-  return (
-    <NavigationMenu>
-      <NavigationMenuList>
-        <NavigationMenuItem>
-          <NavigationMenuLink onClick={() => onPageChange("product")}>
-            <A
-              variant={currentPage === "product" ? "primary" : "tertiary"}
-              className="pr-2"
-            >
-              Product
-            </A>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
-              <H4 className="col-span-2 text-emerald-400">Dust for…</H4>
-              {solutions.map((solutions) => (
-                <ListItem
-                  key={solutions.title}
-                  title={solutions.title}
-                  href={solutions.href}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>Developpers</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
-              <H4 className="col-span-2 text-amber-400">Build with Dust</H4>
-              {devs.map((devs) => (
-                <ListItem
-                  key={devs.title}
-                  title={devs.title}
-                  href={devs.href}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuLink onClick={() => onPageChange("pricing")}>
-            <A
-              variant={currentPage === "pricing" ? "primary" : "tertiary"}
-              className="pr-2"
-            >
-              Pricing
-            </A>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>More</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <div className="grid gap-4 p-6 pb-8 lg:w-[580px] lg:grid-cols-3">
-              <H4 className="col-span-3 text-pink-400">All about Dust</H4>
-
-              <ul className="flex flex-col gap-4">
-                <Strong>Careers</Strong>
-                <ListItem
-                  href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/"
-                  title="Jobs"
-                />
-                <ListItem
-                  href="https://www.linkedin.com/company/dust-tt/"
-                  title="LinkedIn"
-                />
-              </ul>
-              <ul className="flex flex-col gap-4">
-                <Strong>About</Strong>
-                <ListItem href="https://blog.dust.tt/" title="Blog" />
-                <ListItem href="https://x.com/dust4ai" title="@dust4ai" />
-                <ListItem href="https://github.com/dust-tt" title="GitHub" />
-              </ul>
-              <ul className="flex flex-col gap-4">
-                <Strong>Legal</Strong>
-                <ListItem
-                  href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084"
-                  title="Privacy Policy"
-                />
-                <ListItem href="/terms" title="Terms of Use" />
-                <ListItem
-                  href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1"
-                  title="Legal Notice"
-                />
-                <ListItem
-                  href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec"
-                  title="Cookie Notice"
-                />
-              </ul>
-            </div>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-      </NavigationMenuList>
-    </NavigationMenu>
-  );
-}
-
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, ...props }, ref) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={classNames(className ? className : "")}
-          {...props}
-        >
-          <div className="flex items-center gap-1.5 text-slate-50">
-            <Icon visual={ChevronRightIcon} size="md" />
-            <A variant="tertiary">{title}</A>
-          </div>
-        </a>
-      </NavigationMenuLink>
-    </li>
-  );
-});
-ListItem.displayName = "ListItem";
-
 export default function Home({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState("product");
 
-  const handlePageChange = (page: string) => {
-    setCurrentPage(page);
+  const handlePageChange = async (page: string) => {
+    console.log("Page change to", page);
+    await router.push(`/?${page}`, undefined, { shallow: true });
   };
 
   // const scrollRef0 = useRef<HTMLDivElement | null>(null);
@@ -299,6 +100,12 @@ export default function Home({
     });
   }, [router.pathname]);
 
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const page = queryParams.keys().next().value;
+    setCurrentPage(page || "product");
+  }, [router.asPath]);
+
   function getReturnToUrl(routerQuery: ParsedUrlQuery): string {
     let callbackUrl = "/api/login";
     if (routerQuery.inviteToken) {
@@ -328,8 +135,10 @@ export default function Home({
               </Div3D>
             </Hover3D>
           </div>
-          <NavigationMenuDemo
-            onPageChange={handlePageChange}
+          <Navigation
+            onPageChange={async (page) => {
+              await handlePageChange(page);
+            }}
             currentPage={currentPage}
           />
           <div className="flex-grow" />
@@ -361,38 +170,74 @@ export default function Home({
       </div>
 
       <main className="z-10 flex flex-col items-center">
-        {currentPage === "product" && <ProductPage />}
-        {currentPage === "pricing" && <PricingPage />}
-        <CookieBanner
-          className="fixed bottom-4 right-4"
-          show={showCookieBanner}
-          onClickAccept={() => {
-            setAcceptedCookie("dust-cookies-accepted", "true");
-            setHasAcceptedCookies(true);
-            setShowCookieBanner(false);
-          }}
-          onClickRefuse={() => {
-            removeAcceptedCookie("dust-cookies-accepted");
-            setShowCookieBanner(false);
-          }}
-        />
-        {hasAcceptedCookies && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
+        <div
+          className={classNames(
+            "container flex flex-col",
+            "gap-16 py-24",
+            "md:gap-28 md:py-36",
+            "xl:gap-36 xl:pb-96",
+            "2xl:gap-48"
+          )}
+        >
+          {(() => {
+            switch (currentPage) {
+              case "product":
+                return <ProductPage />;
+              case "pricing":
+                return <PricingPage />;
+              case "for_customer":
+                return <CustomerSupportPage />;
+              // case "for_sales":
+              //   return <SalesTeamsPage />;
+              // case "for_engineering":
+              //   return <EngineeringPage />;
+              // case "for_data":
+              //   return <DataAnalyticsPage />;
+              // case "for_people":
+              //   return <PeopleOperationsPage />;
+              // case "for_hr":
+              //   return <HRRecruitingPage />;
+              // case "for_product":
+              //   return <ProductTeamsPage />;
+              // case "for_finance":
+              //   return <FinancePage />;
+              // case "for_it":
+              //   return <ITSecurityPage />;
+              default:
+                return <ProductPage />;
+            }
+          })()}
+          <CookieBanner
+            className="fixed bottom-4 right-4"
+            show={showCookieBanner}
+            onClickAccept={() => {
+              setAcceptedCookie("dust-cookies-accepted", "true");
+              setHasAcceptedCookies(true);
+              setShowCookieBanner(false);
+            }}
+            onClickRefuse={() => {
+              removeAcceptedCookie("dust-cookies-accepted");
+              setShowCookieBanner(false);
+            }}
+          />
+          {hasAcceptedCookies && (
+            <>
+              <Script
+                src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
+                strategy="afterInteractive"
+              />
+              <Script id="google-analytics" strategy="afterInteractive">
+                {`
              window.dataLayer = window.dataLayer || [];
              function gtag(){window.dataLayer.push(arguments);}
              gtag('js', new Date());
 
              gtag('config', '${gaTrackingId}');
             `}
-            </Script>
-          </>
-        )}
+              </Script>
+            </>
+          )}
+        </div>
       </main>
     </>
   );
