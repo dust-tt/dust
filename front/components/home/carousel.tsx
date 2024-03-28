@@ -33,7 +33,11 @@ interface SliderExtended extends Slider {
   slickGoTo: (slide: number) => void;
 }
 
-export default class SimpleSlider extends Component {
+interface SimpleSliderProps {
+  slides: React.ReactNode[];
+}
+
+export default class SimpleSlider extends Component<SimpleSliderProps> {
   // Create a ref for the Slider component
   slider: RefObject<SliderExtended> = createRef();
   sliderContainerRef = createRef<HTMLDivElement>();
@@ -42,7 +46,7 @@ export default class SimpleSlider extends Component {
     currentSlide: 0,
     slidesToShow: 1, // Default value
     sliderHeight: 0,
-    totalSlides: slides.length,
+    totalSlides: this.props.slides.length, // Use this.props.slides instead of slides
   };
 
   updateSliderHeight = () => {
@@ -185,7 +189,7 @@ export default class SimpleSlider extends Component {
         <div className="absolute left-0 right-0 w-[100vw]">
           <div ref={this.sliderContainerRef}>
             <Slider ref={this.slider} {...settings}>
-              {slides}
+              {this.props.slides}
             </Slider>
             <div className="flex w-full flex-row justify-center gap-4">
               <Button
@@ -214,7 +218,7 @@ export default class SimpleSlider extends Component {
   }
 }
 
-const SystemItem = ({
+export const SystemItem = ({
   children,
   name,
   background = "linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)",
@@ -267,18 +271,18 @@ const SystemItem = ({
     </div>
   );
 };
-
-const DroidItem = ({
+export const DroidItem = ({
   name,
   question,
-  visual,
-  background = "linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)",
+  avatar,
   className = "",
 }: {
   name: string;
   question: string;
-  visual: string;
-  background?: string;
+  avatar: {
+    visual: string;
+    background: string;
+  };
   className?: string;
 }) => {
   return (
@@ -292,7 +296,7 @@ const DroidItem = ({
         <Div3D depth={-10}>
           <div
             className="h-20 w-20 rounded-3xl shadow-xl"
-            style={{ background: background }}
+            style={{ background: avatar.background }}
           />
         </Div3D>
         <Div3D depth={30} className="absolute top-0 h-20 w-20">
@@ -302,7 +306,7 @@ const DroidItem = ({
           />
         </Div3D>
         <Div3D depth={50} className="absolute top-0 h-20 w-20">
-          <img src={visual} className="h-20 w-20" />
+          <img src={avatar.visual} className="h-20 w-20" />
         </Div3D>
       </Hover3D>
       <H5 className="col-span-4 truncate text-slate-100">{name}</H5>
@@ -313,21 +317,54 @@ const DroidItem = ({
   );
 };
 
-const slides = [
-  <DroidItem
-    key="2"
-    background="linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)"
-    visual="./static/landing/droids/Droid_Cream_7.png"
-    name="@hiringExpert"
-    question="Draft me a job description following company script for this job."
-  />,
-  <DroidItem
-    key="3"
-    background="linear-gradient(180deg, rgba(180,157,87,1) 0%, rgba(159,134,61,1) 72%, rgba(105,85,38,1) 73%, rgba(196,173,98,1) 74%, rgba(158,136,71,1) 100%)"
-    visual="./static/landing/droids/Droid_Green_4.png"
-    name="@onboardingBuddy"
-    question="Could you walk me through the typical workflow for a project in my department?"
-  />,
+export const avatars = {
+  "1": {
+    background:
+      "linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)",
+    visual: "./static/landing/droids/Droid_Cream_7.png",
+  },
+  "2": {
+    background:
+      "linear-gradient(180deg, rgba(180,157,87,1) 0%, rgba(159,134,61,1) 72%, rgba(105,85,38,1) 73%, rgba(196,173,98,1) 74%, rgba(158,136,71,1) 100%)",
+    visual: "./static/landing/droids/Droid_Green_4.png",
+  },
+  "3": {
+    background:
+      "linear-gradient(180deg, rgba(196,208,217,1) 0%, rgba(174,186,194,1) 72%, rgba(89,92,98,1) 73%, rgba(210,202,196,1) 74%, rgba(199,188,180,1) 100%)",
+    visual: "./static/landing/droids/Droid_Sky_8.png",
+  },
+  "4": {
+    background:
+      "linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)",
+    visual: "./static/landing/droids/Droid_Orange_6.png",
+  },
+  "5": {
+    background:
+      "linear-gradient(180deg, rgba(193,184,173,1) 0%, rgba(193,183,172,1) 72%, rgba(124,95,72,1) 73%, rgba(207,197,187,1) 74%, rgba(215,210,205,1) 100%)",
+    visual: "./static/landing/droids/Droid_Yellow_4.png",
+  },
+  "6": {
+    background:
+      "linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)",
+    visual: "./static/landing/droids/Droid_Pink_6.png",
+  },
+  "7": {
+    background:
+      "linear-gradient(180deg, rgba(125,154,148,1) 0%, rgba(78,111,107,1) 72%, rgba(52,74,71,1) 73%, rgba(136,169,164,1) 74%, rgba(152,178,172,1) 100%)",
+    visual: "./static/landing/droids/Droid_Teal_5.png",
+  },
+  "8": {
+    background:
+      "linear-gradient(180deg, rgba(164,159,142,1) 0%, rgba(185,179,163,1) 72%, rgba(113,105,94,1) 73%, rgba(221,215,199,1) 74%, rgba(217,213,200,1) 100%)",
+    visual: "./static/landing/droids/Droid_Sky_4.png",
+  },
+  "9": {
+    background:
+      "linear-gradient(180deg, rgba(215,189,176,1) 0%, rgba(173,136,115,1) 72%, rgba(127,62,45,1) 73%, rgba(225,204,190,1) 74%, rgba(222,200,184,1) 100%)",
+    visual: "./static/landing/droids/Droid_Red_5.png",
+  },
+};
+export const productSlides = [
   <SystemItem
     key="1"
     name="@notion"
@@ -337,32 +374,22 @@ const slides = [
     <NotionLogo />
   </SystemItem>,
   <DroidItem
+    key="2"
+    avatar={avatars["1"]}
+    name="@hiringExpert"
+    question="Draft me a job description following company script for this job."
+  />,
+  <DroidItem
+    key="3"
+    avatar={avatars["2"]}
+    name="@onboardingBuddy"
+    question="Could you walk me through the typical workflow for a project in my department?"
+  />,
+  <DroidItem
     key="4"
-    visual="./static/landing/droids/Droid_Sky_8.png"
-    background="linear-gradient(180deg, rgba(196,208,217,1) 0%, rgba(174,186,194,1) 72%, rgba(89,92,98,1) 73%, rgba(210,202,196,1) 74%, rgba(199,188,180,1) 100%)"
+    avatar={avatars["3"]}
     name="@salesExpert"
     question="Which potential customers wanted to wait until we had the Android version live?"
-  />,
-  <DroidItem
-    key="6"
-    visual="./static/landing/droids/Droid_Orange_6.png"
-    background="linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)"
-    name="@salesWriter"
-    question="Draft an email to the following prospects updating them about our new Android capabilities."
-  />,
-  <DroidItem
-    key="6"
-    visual="./static/landing/droids/Droid_Red_8.png"
-    background="linear-gradient(180deg, rgba(224,224,218,1) 0%, rgba(166,167,159,1) 72%, rgba(113,90,81,1) 73%, rgba(211,208,201,1) 74%, rgba(206,203,199,1) 100%)"
-    name="@dataExpert"
-    question="How do I write an SQL query to find the top-performing products by region?"
-  />,
-  <DroidItem
-    key="7"
-    visual="./static/landing/droids/Droid_Yellow_4.png"
-    background="linear-gradient(180deg, rgba(193,184,173,1) 0%, rgba(193,183,172,1) 72%, rgba(124,95,72,1) 73%, rgba(207,197,187,1) 74%, rgba(215,210,205,1) 100%)"
-    name="@uxWriterAssistant"
-    question="Can you draft 3 proposals for a 140 character version for this text?"
   />,
   <SystemItem
     key="5"
@@ -373,25 +400,28 @@ const slides = [
     <DriveLogo />
   </SystemItem>,
   <DroidItem
+    key="6"
+    avatar={avatars["4"]}
+    name="@salesWriter"
+    question="Draft an email to the following prospects updating them about our new Android capabilities."
+  />,
+  <DroidItem
+    key="7"
+    avatar={avatars["5"]}
+    name="@uxWriterAssistant"
+    question="Can you draft 3 proposals for a 140 character version for this text?"
+  />,
+  <DroidItem
     key="8"
-    visual="./static/landing/droids/Droid_Pink_6.png"
-    background="linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)"
+    avatar={avatars["6"]}
     name="@weeklyReport"
     question="Write me the report for last week's feature releases."
   />,
   <DroidItem
     key="9"
-    visual="./static/landing/droids/Droid_Teal_5.png"
-    background="linear-gradient(180deg, rgba(125,154,148,1) 0%, rgba(78,111,107,1) 72%, rgba(52,74,71,1) 73%, rgba(136,169,164,1) 74%, rgba(152,178,172,1) 100%)"
+    avatar={avatars["7"]}
     name="@companyGenius"
     question="What was the outcome of the last board meeting regarding our expansion plans?"
-  />,
-  <DroidItem
-    key="11"
-    visual="./static/landing/droids/Droid_Sky_4.png"
-    background="linear-gradient(180deg, rgba(164,159,142,1) 0%, rgba(185,179,163,1) 72%, rgba(113,105,94,1) 73%, rgba(221,215,199,1) 74%, rgba(217,213,200,1) 100%)"
-    name="@officeManager"
-    question="Where can I find white paper and office supplies?"
   />,
   <SystemItem
     key="10"
@@ -402,9 +432,14 @@ const slides = [
     <SlackLogo />
   </SystemItem>,
   <DroidItem
+    key="11"
+    avatar={avatars["8"]}
+    name="@officeManager"
+    question="Where can I find white paper and office supplies?"
+  />,
+  <DroidItem
     key="12"
-    visual="./static/landing/droids/Droid_Red_5.png"
-    background="linear-gradient(180deg, rgba(215,189,176,1) 0%, rgba(173,136,115,1) 72%, rgba(127,62,45,1) 73%, rgba(225,204,190,1) 74%, rgba(222,200,184,1) 100%)"
+    avatar={avatars["9"]}
     name="@spreadsheetExpert"
     question="Can you help me write a VLOOKUP formula to match employee names with their IDs?"
   />,
