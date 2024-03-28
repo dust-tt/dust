@@ -128,6 +128,21 @@ async function handler(
             }
           : bodyValidation.right.section || null;
 
+      const tags = bodyValidation.right.tags || [];
+
+      // Add selection of tags as prefix to the section if they are present.
+      let tagsPrefix = "";
+      ["title", "author"].forEach((t) => {
+        tags.forEach((tag) => {
+          if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
+            tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
+          }
+        });
+      });
+      if (tagsPrefix && section) {
+        section.prefix = tagsPrefix;
+      }
+
       if (!section) {
         return apiError(req, res, {
           status_code: 400,
@@ -205,7 +220,7 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,
-        tags: bodyValidation.right.tags || [],
+        tags,
         parents: bodyValidation.right.parents || [],
         sourceUrl,
         timestamp: bodyValidation.right.timestamp || null,
