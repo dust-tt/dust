@@ -3,6 +3,7 @@ import type {
   AppType,
   CoreAPITable,
   DataSourceType,
+  TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   ConnectorsAPI,
@@ -25,7 +26,7 @@ export async function buildInitialState({
   dustApps,
 }: {
   dataSourceByName: Record<string, DataSourceType>;
-  config: AgentConfigurationType;
+  config: AgentConfigurationType | TemplateAgentConfigurationType;
   dustApps: AppType[];
 }) {
   const coreAPI = new CoreAPI(logger);

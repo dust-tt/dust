@@ -50,9 +50,9 @@ function checkModifiedModelFiles() {
   const modifiedModelFiles = danger.git.modified_files.filter((path) => {
     return (
       path.startsWith("front/lib/models/") ||
-      path.startsWith("front/lib/resources/storage/models") ||
+      path.startsWith("front/lib/resources/storage/models/") ||
       path.startsWith("connectors/src/lib/models/") ||
-      path.startsWith("connectors/src/resources/storage/models")
+      path.startsWith("connectors/src/resources/storage/models/")
     );
   });
 

@@ -4,6 +4,7 @@ import type {
   DataSourceType,
   PlanType,
   SubscriptionType,
+  TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -12,6 +13,7 @@ import {
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { ParsedUrlQuery } from "querystring";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import AssistantBuilder, {
@@ -24,10 +26,20 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
-const { GA_TRACKING_ID = "", URL = "" } = process.env;
+function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
+  const { duplicate, templateId } = query;
+
+  return {
+    duplicate: duplicate && typeof duplicate === "string" ? duplicate : null,
+    templateId:
+      templateId && typeof templateId === "string" ? templateId : null,
+  };
+}
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -42,9 +54,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dustApps: AppType[];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
-  agentConfiguration: AgentConfigurationType | null;
+  agentConfiguration:
+    | AgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null;
   flow: BuilderFlow;
   baseUrl: string;
+  templateId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -63,30 +79,48 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {} as Record<string, DataSourceType>
   );
 
-  let config: AgentConfigurationType | null = null;
-  if (context.query.duplicate && typeof context.query.duplicate === "string") {
-    config = await getAgentConfiguration(auth, context.query.duplicate);
-
-    if (!config) {
-      return {
-        notFound: true,
-      };
-    }
-  }
-
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
   )
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  let agentConfig:
+    | AgentConfigurationType
+    | TemplateAgentConfigurationType
+    | null = null;
+  const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
+    context.query
+  );
+  if (duplicate) {
+    agentConfig = await getAgentConfiguration(auth, duplicate);
+
+    if (!agentConfig) {
+      return {
+        notFound: true,
+      };
+    }
+  } else if (templateId) {
+    const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
+      templateId,
+      flow
+    );
+    if (agentConfigRes.isErr()) {
+      return {
+        notFound: true,
+      };
+    }
+
+    agentConfig = agentConfigRes.value;
+  }
+
   const {
     dataSourceConfigurations,
     dustAppConfiguration,
     tablesQueryConfiguration,
-  } = config
+  } = agentConfig
     ? await buildInitialState({
-        config,
+        config: agentConfig,
         dataSourceByName,
         dustApps: allDustApps,
       })
@@ -101,15 +135,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       plan,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dataSources: allDataSources,
       dataSourceConfigurations,
       dustApps: allDustApps,
       dustAppConfiguration,
       tablesQueryConfiguration,
-      agentConfiguration: config,
+      agentConfiguration: agentConfig,
       flow,
-      baseUrl: URL,
+      baseUrl: config.getAppUrl(),
+      templateId,
     },
   };
 });
@@ -185,7 +220,9 @@ export default function CreateAssistant({
               dustAppConfiguration,
               tablesQueryConfiguration,
               scope: "private",
-              handle: `${agentConfiguration.name}_Copy`,
+              handle: `${agentConfiguration.name}${
+                "isTemplate" in agentConfiguration ? "" : "_Copy"
+              }`,
               description: agentConfiguration.description,
               instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet
               avatarUrl: null,

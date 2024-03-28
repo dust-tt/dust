@@ -32,10 +32,10 @@ export class TemplateModel extends Model<
 
   declare presetDescription: string | null;
   declare presetInstructions: string | null;
-  declare presetTemperature: AssistantCreativityLevel | null;
-  declare presetProviderId: string | null;
-  declare presetModelId: string | null;
-  declare presetAction: ActionPreset | null;
+  declare presetTemperature: AssistantCreativityLevel;
+  declare presetProviderId: string;
+  declare presetModelId: string;
+  declare presetAction: ActionPreset;
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
@@ -91,15 +91,19 @@ TemplateModel.init(
     },
     presetTemperature: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     presetProviderId: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     presetModelId: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     presetAction: {
       type: DataTypes.STRING,
+      allowNull: false,
     },
     helpInstructions: {
       type: DataTypes.TEXT,
