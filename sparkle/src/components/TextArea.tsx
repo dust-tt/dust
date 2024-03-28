@@ -8,7 +8,6 @@ type TextAreaProps = {
   onChange: (value: string) => void;
   error?: string | null;
   showErrorLabel?: boolean;
-  className?: string;
 };
 
 export function TextArea({
@@ -17,7 +16,6 @@ export function TextArea({
   onChange,
   error,
   showErrorLabel = false,
-  className,
 }: TextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -32,14 +30,14 @@ export function TextArea({
     <div className="s-flex s-flex-col s-gap-1 s-p-px">
       <textarea
         ref={textareaRef}
+        name="name"
         className={classNames(
-          "s-min-h-60 overflow-y-auto s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-transition-all s-duration-200 s-scrollbar-hide",
+          "s-min-h-60 s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-transition-all s-duration-200",
           !error
             ? "s-border-structure-100 focus:s-border-action-300 focus:s-ring-action-300"
             : "s-border-red-500 focus:s-border-red-500 focus:s-ring-red-500",
           "s-border-structure-200 s-bg-structure-50",
-          "s-resize-y",
-          className ?? ""
+          "s-resize-y"
         )}
         placeholder={placeholder}
         value={value ?? ""}
