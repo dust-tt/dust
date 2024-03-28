@@ -452,6 +452,7 @@ function InviteEmailModal({
     notInWorkspace: [],
   });
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
+  const [showReinviteUsersModal, setShowReinviteUsersModal] = useState(false);
 
   function getEmailsList(): string[] | null {
     const inviteEmailsList = inviteEmails
@@ -504,6 +505,8 @@ function InviteEmailModal({
         invitationRole,
       });
       onClose();
+    } else {
+      setShowReinviteUsersModal(true);
     }
   }
 
@@ -511,14 +514,8 @@ function InviteEmailModal({
     <>
       <ReinviteUsersModal
         owner={owner}
-        onClose={() =>
-          setInvitationsSegmentation({
-            activeSameRole: [],
-            activeDifferentRole: [],
-            revoked: [],
-            notInWorkspace: [],
-          })
-        }
+        show={showReinviteUsersModal}
+        onClose={() => setShowReinviteUsersModal(false)}
         invitationsSegmentation={invitationsSegmentation}
         role={invitationRole}
       />
@@ -579,11 +576,13 @@ function InviteEmailModal({
 
 function ReinviteUsersModal({
   owner,
+  show,
   onClose,
   invitationsSegmentation,
   role,
 }: {
   owner: WorkspaceType;
+  show: boolean;
   onClose: (show: boolean) => void;
   invitationsSegmentation: {
     activeSameRole: UserTypeWithWorkspaces[];
@@ -602,7 +601,7 @@ function ReinviteUsersModal({
 
   return (
     <Modal
-      isOpen={shouldWarnAboutExistingMembers(invitationsSegmentation)}
+      isOpen={show}
       onClose={() => onClose(false)}
       hasChanged={false}
       title="Some users are already in the workspace"
