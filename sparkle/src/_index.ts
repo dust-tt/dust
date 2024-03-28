@@ -124,6 +124,9 @@ export { FilterChips };
 import { TextArea } from "./components/TextArea";
 export { TextArea };
 
+import { Markdown } from "./components/Markdown";
+export { Markdown };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
