@@ -219,6 +219,7 @@ export async function syncOneFile(
                 prefix: null,
                 content: null,
                 sections: pages.map((page, i) => ({
+                  // We prefix with `\n` because page splitting  in `dpdf2text` removes the `\f`.
                   prefix: `\n$pdfPage: ${i + 1}/${pages.length}\n`,
                   content: page,
                   sections: [],
