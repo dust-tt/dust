@@ -197,6 +197,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
           },
         };
       }
+
       if (requireUserPrivilege !== "none") {
         if (!session || !isValidSession(session)) {
           return {
@@ -205,6 +206,13 @@ export function makeGetServerSidePropsRequirementsWrapper<
               // TODO(2024-03-04 flav) Add support for `returnTo=`.
               destination: "/api/auth/login",
             },
+          };
+        }
+
+        const isDustSuperUser = auth?.isDustSuperUser() ?? false;
+        if (requireUserPrivilege === "superuser" && !isDustSuperUser) {
+          return {
+            notFound: true,
           };
         }
 
