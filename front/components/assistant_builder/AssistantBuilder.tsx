@@ -383,7 +383,12 @@ export default function AssistantBuilder({
       );
 
       setIsSavingOrDeleting(false);
-      await appLayoutBack(owner, router);
+      // Redirect to the assistant list once saved.
+      if (flow === "personal_assistants") {
+        await router.push(`/w/${owner.sId}/assistant/assistants`);
+      } else {
+        await router.push(`/w/${owner.sId}/builder/assistants`);
+      }
     } catch (e) {
       setIsSavingOrDeleting(false);
       sendNotification({
