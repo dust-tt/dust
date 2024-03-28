@@ -14,12 +14,16 @@ import { classNames } from "@app/lib/utils";
 
 const solutions: { title: string; target: string }[] = [
   {
-    title: "Knowledge Management",
-    target: "for_knowledge",
-  },
-  {
     title: "Customer Support",
     target: "for_customer",
+  },
+  {
+    title: "Marketing teams",
+    target: "for_marketing",
+  },
+  {
+    title: "HR & Recruiting",
+    target: "for_people",
   },
   {
     title: "Sales teams",
@@ -30,16 +34,16 @@ const solutions: { title: string; target: string }[] = [
     target: "for_engineering",
   },
   {
+    title: "Knowledge Management",
+    target: "for_knowledge",
+  },
+  {
     title: "Data & Analaytics",
     target: "for_data",
   },
   {
     title: "People Operations",
     target: "for_people",
-  },
-  {
-    title: "HR & Recruiting",
-    target: "for_hr",
   },
   {
     title: "Product",

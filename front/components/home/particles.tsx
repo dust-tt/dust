@@ -1,22 +1,18 @@
-import type { RefObject } from "react";
 import { useEffect } from "react";
 import * as THREE from "three";
-
-const hasScrollBehavior = true;
 
 let speed = 0.08;
 const postExplodeSpeed = 0.03;
 const particleSize = 0.016; // Size of the particles
 let targetSize = particleSize; // initial target size
-const shapes = [
-  { name: "grid", opacity: 1, speed: 0.03, size: particleSize },
+
+export const particuleShapes = [
   { name: "grid", opacity: 1, speed: 0.03, size: particleSize },
   { name: "wave", opacity: 1, speed: 0.02, size: particleSize / 2 },
   { name: "bigSphere", opacity: 1, speed: 0.03, size: particleSize / 2 },
   { name: "sphere", opacity: 1, speed: 0.02, size: particleSize / 2 },
   { name: "bigCube", opacity: 1, speed: 0.03, size: particleSize },
 ];
-const totalShapes = Object.keys(shapes).length;
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -37,7 +33,6 @@ const rotationActive = true; // Activate the rotation of the scene
 const sceneFocusX = 0;
 const sceneFocusY = 0;
 const sceneFocusZ = 0;
-let currentShape = 0; // 0 = cube, 1 = sphere, etc...;
 let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
 
 function handleContextLost(event: Event) {
@@ -99,9 +94,6 @@ function init() {
   });
 
   particleSystem = new THREE.Points(geometry, material);
-  // particleSystem.rotation.x = 0.7;
-  // particleSystem.rotation.y = -0.3;
-  // particleSystem.rotation.z = 0;
   particleSystem.rotation.x = -1.2;
   particleSystem.rotation.y = 0;
   particleSystem.rotation.z = 0;
@@ -122,23 +114,6 @@ function onWindowResize() {
 
   // Update renderer size
   renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function onKeydown(event: KeyboardEvent) {
-  const previousShape = currentShape;
-
-  switch (event.keyCode) {
-    case 37: // left arrow key
-      currentShape = (currentShape - 1 + totalShapes) % totalShapes;
-      break;
-    case 39: // right arrow key
-      currentShape = (currentShape + 1) % totalShapes;
-      break;
-  }
-
-  if (currentShape != previousShape) {
-    calculateTargetPositions(); // Only calculate target positions when the shape changes
-  }
 }
 
 function animate() {
@@ -247,12 +222,10 @@ function animateExplode() {
   }
 }
 
-function calculateTargetPositions() {
+function calculateTargetPositions(currentShape = 0) {
   targetPositions = []; // Reset the target positions
-
-  //const opacity = shapes[currentShape].opacity;
-  targetSize = shapes[currentShape].size;
-  //(particleSystem.material as THREE.PointsMaterial).opacity = opacity;
+  targetSize = particuleShapes[currentShape].size;
+  speed = particuleShapes[currentShape].speed;
 
   for (let i = 0; i < numParticles; i++) {
     let targetPositionX = 0,
@@ -272,7 +245,7 @@ function calculateTargetPositions() {
       gridSize = 16;
 
     const gridNum = 48;
-    switch (shapes[currentShape].name) {
+    switch (particuleShapes[currentShape].name) {
       case "grid":
         gridSpacing = gridSize / gridNum; // spacing between particles in the grid
 
@@ -364,33 +337,13 @@ function calculateTargetPositions() {
       z: targetPositionZ + sceneFocusZ,
     });
   }
-  // let aDuration, RotateX, RotateY;
-  // if (!explode) {
-  //   aDuration = 4.5;
-  //   RotateX = 4;
-  //   RotateY = 2;
-  // } else {
-  //   aDuration = 1.5;
-  //   RotateX = 2;
-  //   RotateY = 0;
-  // }
 }
 
-type ParticulesComponentProps = {
-  scrollRef0?: RefObject<HTMLDivElement>;
-  scrollRef1?: RefObject<HTMLDivElement>;
-  scrollRef2?: RefObject<HTMLDivElement>;
-  scrollRef3?: RefObject<HTMLDivElement>;
-  scrollRef4?: RefObject<HTMLDivElement>;
-};
+interface ParticulesProps {
+  currentShape: number;
+}
 
-export default function Particules({
-  scrollRef0,
-  scrollRef1,
-  scrollRef2,
-  scrollRef3,
-  scrollRef4,
-}: ParticulesComponentProps) {
+export default function Particules({ currentShape }: ParticulesProps) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       init();
@@ -398,54 +351,21 @@ export default function Particules({
       animate();
     }
 
-    const onScroll = () => {
-      const offset = window.innerHeight / 2;
-      const yPositions = [
-        0,
-        scrollRef0.current?.offsetTop || 0,
-        scrollRef1.current?.offsetTop || 0,
-        scrollRef2.current?.offsetTop || 0,
-        scrollRef3.current?.offsetTop || 0,
-        scrollRef4.current?.offsetTop || 0,
-      ];
-
-      const scrollPosition =
-        window.scrollY || document.documentElement.scrollTop;
-
-      for (let i = 0; i < totalShapes; i++) {
-        if (
-          scrollPosition + offset >= yPositions[i] &&
-          (i === totalShapes - 1 || scrollPosition + offset < yPositions[i + 1])
-        ) {
-          if (currentShape !== i) {
-            currentShape = i;
-            speed = shapes[currentShape].speed;
-            calculateTargetPositions();
-          }
-          break;
-        }
-      }
-    };
-
-    //window.addEventListener("keydown", onKeydown, false);
     window.addEventListener("resize", onWindowResize, false);
-    if (hasScrollBehavior) {
-      window.addEventListener("scroll", onScroll, false);
-    }
 
     return () => {
-      window.removeEventListener("keydown", onKeydown, false);
       window.removeEventListener("resize", onWindowResize, false);
-      if (hasScrollBehavior) {
-        window.removeEventListener("scroll", onScroll, false);
-      }
       renderer.domElement.removeEventListener(
         "webglcontextlost",
         handleContextLost
       );
       renderer.dispose();
     };
-  }, [scrollRef0, scrollRef1, scrollRef2, scrollRef3, scrollRef4]);
+  }, []);
+
+  useEffect(() => {
+    calculateTargetPositions(currentShape);
+  }, [currentShape]);
 
   return (
     <div id="canvas-container">

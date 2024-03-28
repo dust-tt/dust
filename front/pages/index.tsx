@@ -25,7 +25,9 @@ import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
-import { CustomerSupportPage } from "@app/pages/website/CustomerSupportPage";
+import { ForCustomerSupport } from "@app/pages/website/ForCustomerSupport";
+import { ForMarketing } from "@app/pages/website/ForMarketing";
+import { ForPeople } from "@app/pages/website/ForPeople";
 import { Navigation } from "@app/pages/website/Navigation";
 import { PricingPage } from "@app/pages/website/PricingPage";
 import { ProductPage } from "@app/pages/website/ProductPage";
@@ -66,17 +68,15 @@ export default function Home({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState("product");
+  const [currentShape, setCurrentShape] = useState(0);
 
-  const handlePageChange = async (page: string) => {
-    console.log("Page change to", page);
-    await router.push(`/?${page}`, undefined, { shallow: true });
+  const changeShape = (newShape: number) => {
+    setCurrentShape(newShape);
   };
 
-  // const scrollRef0 = useRef<HTMLDivElement | null>(null);
-  // const scrollRef1 = useRef<HTMLDivElement | null>(null);
-  // const scrollRef2 = useRef<HTMLDivElement | null>(null);
-  // const scrollRef3 = useRef<HTMLDivElement | null>(null);
-  // const scrollRef4 = useRef<HTMLDivElement | null>(null);
+  const handlePageChange = async (page: string) => {
+    await router.push(`/?${page}`, undefined, { shallow: true });
+  };
 
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
@@ -86,6 +86,28 @@ export default function Home({
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
+
+  useEffect(() => {
+    switch (currentPage) {
+      case "product":
+        changeShape(0);
+        break;
+      case "pricing":
+        changeShape(1);
+        break;
+      case "for_customer":
+        changeShape(2);
+        break;
+      case "for_marketing":
+        changeShape(3);
+        break;
+      case "for_people":
+        changeShape(4);
+        break;
+      default:
+        changeShape(0);
+    }
+  }, [currentPage]);
 
   useEffect(() => {
     if (acceptedCookie["dust-cookies-accepted"]) {
@@ -158,15 +180,8 @@ export default function Home({
 
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
-      {/* Particle system */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]">
-        {/* <Particles
-        // scrollRef0={scrollRef0}
-        // scrollRef1={scrollRef1}
-        // scrollRef2={scrollRef2}
-        // scrollRef3={scrollRef3}
-        // scrollRef4={scrollRef4}
-        /> */}
+        <Particles currentShape={currentShape} />
       </div>
 
       <main className="z-10 flex flex-col items-center">
@@ -186,15 +201,17 @@ export default function Home({
               case "pricing":
                 return <PricingPage />;
               case "for_customer":
-                return <CustomerSupportPage />;
+                return <ForCustomerSupport />;
+              case "for_marketing":
+                return <ForMarketing />;
+              case "for_people":
+                return <ForPeople />;
               // case "for_sales":
               //   return <SalesTeamsPage />;
               // case "for_engineering":
               //   return <EngineeringPage />;
               // case "for_data":
               //   return <DataAnalyticsPage />;
-              // case "for_people":
-              //   return <PeopleOperationsPage />;
               // case "for_hr":
               //   return <HRRecruitingPage />;
               // case "for_product":

@@ -151,28 +151,28 @@ export default class SimpleSlider extends Component<SimpleSliderProps> {
           breakpoint: breakpoints.xxl,
           settings: {
             slidesToShow: 3,
-            slidesToScroll: 3,
+            slidesToScroll: 1,
           },
         },
         {
           breakpoint: breakpoints.xl,
           settings: {
             slidesToShow: 2,
-            slidesToScroll: 2,
+            slidesToScroll: 1,
           },
         },
         {
           breakpoint: breakpoints.lg,
           settings: {
             slidesToShow: 2,
-            slidesToScroll: 2,
+            slidesToScroll: 1,
           },
         },
         {
           breakpoint: breakpoints.md,
           settings: {
             slidesToShow: 2,
-            slidesToScroll: 2,
+            slidesToScroll: 1,
           },
         },
         {
