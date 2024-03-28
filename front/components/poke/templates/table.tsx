@@ -1,5 +1,7 @@
 import { Spinner2 } from "@dust-tt/sparkle";
+import Link from "next/link";
 
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { TemplatesDisplayType } from "@app/components/poke/templates/columns";
 import { makeColumnsForTemplates } from "@app/components/poke/templates/columns";
@@ -20,7 +22,17 @@ export function TemplatesDataTable() {
 
   return (
     <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
-      <h2 className="text-md mb-4 font-bold">Templates:</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
+        <PokeButton
+          aria-label="Create template"
+          variant="outline"
+          size="sm"
+          asChild
+        >
+          <Link href="/poke/templates/new">Create template</Link>
+        </PokeButton>
+      </div>
       {isAssistantTemplatesLoading ? (
         <Spinner2 variant="color" />
       ) : (
