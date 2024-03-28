@@ -616,12 +616,11 @@ function ReinviteUsersModal({
               Reinstating them will also immediately reinstate their
               conversation history on Dust.
             </div>
-            <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded border">
+            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
               {revoked.map((user) => (
                 <div
                   key={user.email}
-                  className="font-semibold text-element-900"
-                >{`${user.fullName} (${user.email})`}</div>
+                >{`- ${user.fullName} (${user.email})`}</div>
               ))}
             </div>
           </div>
@@ -631,14 +630,13 @@ function ReinviteUsersModal({
             <div>
               The user(s) below are already in your workspace with a different
               role. Moving forward will change their role to{" "}
-              <span className="bold">${displayRole(role)}</span>.
+              <span className="font-bold">{displayRole(role)}</span>.
             </div>
-            <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded border">
+            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
               {activeDifferentRole.map((user) => (
-                <div
-                  key={user.email}
-                  className="font-semibold text-element-900"
-                >{`${user.fullName} (${user.email}, current role: ${displayRole(
+                <div key={user.email}>{`- ${
+                  user.fullName
+                } (current role: ${displayRole(
                   user.workspaces[0].role
                 )})`}</div>
               ))}
