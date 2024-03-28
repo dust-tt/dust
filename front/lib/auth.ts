@@ -439,7 +439,14 @@ export class Authenticator {
   }
 
   isDustSuperUser(): boolean {
-    return this._user ? this._user.isDustSuperUser : false;
+    if (!this._user) {
+      return false;
+    }
+
+    const { email, isDustSuperUser = false } = this._user;
+    const isDustInternal = email.endsWith("@dust.tt");
+
+    return isDustInternal && isDustSuperUser;
   }
 }
 
