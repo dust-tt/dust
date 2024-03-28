@@ -106,7 +106,7 @@ async function handler(
         sId: generateModelSId(),
         tags: body.tags,
         // TODO
-        visibility: "draft",
+        visibility: "published",
       });
 
       res.status(200).json({

@@ -121,6 +121,9 @@ export { TemplateItem };
 import { FilterChips } from "./components/FilterChips";
 export { FilterChips };
 
+import { TextArea } from "./components/TextArea";
+export { TextArea };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
