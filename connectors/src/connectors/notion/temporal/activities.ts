@@ -2406,7 +2406,9 @@ export async function upsertDatabaseStructuredDataFromCache({
           content: csvRows,
           sections: [],
         },
-        documentUrl: dbModel.notionUrl ?? undefined,
+        documentUrl:
+          dbModel.notionUrl ??
+          `https://www.notion.so/${databaseId.replace(/-/g, "")}`,
         // TODO: see if we actually want to use the Notion last edited time of the database
         // we currently don't have it because we don't fetch the DB object from notion.
         timestampMs: upsertAt.getTime(),
