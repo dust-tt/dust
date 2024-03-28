@@ -452,16 +452,22 @@ function InviteEmailModal({
     notInWorkspace: [],
   });
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
-  async function handleSendInvitations(): Promise<void> {
+
+  function getEmailsList(): string[] | null {
     const inviteEmailsList = inviteEmails.split(/[\n,]+/).map((e) => e.trim());
     if (inviteEmailsList.map(isEmailValid).includes(false)) {
       setEmailError(
         "Invalid email addresses: " +
           inviteEmailsList.filter((e) => !isEmailValid(e)).join(", ")
       );
-      return;
+      return null;
     }
+    return inviteEmailsList;
+  }
 
+  async function handleSendInvitations(
+    inviteEmailsList: string[]
+  ): Promise<void> {
     const invitesByCase = {
       activeSameRole: members.filter((m) =>
         inviteEmailsList.find(
@@ -520,18 +526,16 @@ function InviteEmailModal({
         saveLabel="Invite"
         isSaving={isSending}
         onSave={async () => {
+          const inviteEmailsList = getEmailsList();
+          if (!inviteEmailsList) return;
           setIsSending(true);
-          await handleSendInvitations();
+          await handleSendInvitations(inviteEmailsList);
           setIsSending(false);
           setInviteEmails("");
         }}
       >
         <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
-          <Page.P>
-            Invite a new user to your workspace. They will receive an email with
-            a link to join your workspace.
-          </Page.P>
-          <div className="flex flex-grow flex-col gap-1.5">
+          <div className="flex flex-grow flex-col gap-5">
             <div className="font-semibold">
               Email addresses (comma or newline separated):
             </div>
@@ -545,6 +549,7 @@ function InviteEmailModal({
                     setEmailError("");
                   }}
                   error={emailError}
+                  showErrorLabel={true}
                 />
               </div>
             </div>
