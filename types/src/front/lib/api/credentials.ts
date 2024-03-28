@@ -7,8 +7,6 @@ const {
   DUST_MANAGED_OPENAI_API_KEY = "",
   DUST_MANAGED_TEXTSYNTH_API_KEY = "",
   DUST_MANAGED_MISTRAL_API_KEY = "",
-  DUST_MANAGED_GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON = "",
-  DUST_MANAGED_GOOGLE_VERTEX_AI_ENDPOINT = "",
   DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY = "",
 } = process.env;
 
@@ -55,11 +53,6 @@ export const credentialsFromProviders = (
       case "browserlessapi":
         credentials["BROWSERLESS_API_KEY"] = config.api_key;
         break;
-      case "google_vertex_ai":
-        credentials["GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON"] =
-          config.service_account;
-        credentials["GOOGLE_VERTEX_AI_ENDPOINT"] = config.endpoint;
-        break;
       case "google_ai_studio":
         credentials["GOOGLE_AI_STUDIO_API_KEY"] = config.api_key;
         break;
@@ -76,9 +69,6 @@ export const dustManagedCredentials = (): CredentialsType => {
     MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
-    GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON:
-      DUST_MANAGED_GOOGLE_VERTEX_AI_SERVICE_ACCOUNT_JSON,
-    GOOGLE_VERTEX_AI_ENDPOINT: DUST_MANAGED_GOOGLE_VERTEX_AI_ENDPOINT,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
   };
 };
