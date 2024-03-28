@@ -223,7 +223,14 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
 
   if (!isProvidersLoading && !isProvidersError) {
     for (let i = 0; i < providers.length; i++) {
-      configs[providers[i].providerId] = JSON.parse(providers[i].config);
+      // Extract API key and hide it from the config object to be displayed.
+      // Store the original API key in a separate property for display use.
+      const { api_key, ...rest } = JSON.parse(providers[i].config);
+      configs[providers[i].providerId] = {
+        ...rest,
+        api_key: "",
+        redacted_api_key: api_key,
+      };
     }
   }
 
@@ -316,29 +323,45 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
           {modelProviders.map((provider) => (
             <li key={provider.providerId} className="px-2 py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <p
-                    className={classNames(
-                      "truncate text-base font-bold",
-                      configs[provider.providerId]
-                        ? "text-slate-700"
-                        : "text-slate-400"
-                    )}
-                  >
-                    {provider.name}
-                  </p>
-                  <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center">
                     <p
                       className={classNames(
-                        "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                        "truncate text-base font-bold",
                         configs[provider.providerId]
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
+                          ? "text-slate-700"
+                          : "text-slate-400"
                       )}
                     >
-                      {configs[provider.providerId] ? "enabled" : "disabled"}
+                      {provider.name}
                     </p>
+                    <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                      <p
+                        className={classNames(
+                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                          configs[provider.providerId]
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        )}
+                      >
+                        {configs[provider.providerId] ? "enabled" : "disabled"}
+                      </p>
+                    </div>
                   </div>
+                  {configs[provider.providerId] && (
+                    <p className="font-mono text-xs text-element-700">
+                      API Key:{" "}
+                      <span className="rounded bg-gray-300 px-1">
+                        ...
+                        {configs[
+                          provider.providerId
+                        ].redacted_api_key.substring(
+                          configs[provider.providerId].redacted_api_key.length -
+                            6
+                        )}
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Button
