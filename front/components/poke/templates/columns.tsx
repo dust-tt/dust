@@ -7,8 +7,6 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
-import type { NotificationType } from "@app/components/sparkle/Notification";
-
 export interface TemplatesDisplayType {
   id: string;
   name: string;
