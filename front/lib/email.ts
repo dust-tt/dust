@@ -160,9 +160,13 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
 
 export async function sendAdminDataDeletionEmail({
   email,
+  firstName,
+  workspaceName,
   remainingDays,
 }: {
   email: string;
+  firstName: string;
+  workspaceName: string;
   remainingDays: number;
 }): Promise<void> {
   const msg = {
@@ -170,10 +174,11 @@ export async function sendAdminDataDeletionEmail({
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Your data wil be deleted in ${remainingDays} days`,
-    html: `<p>You have cancel your Dust subscription.</p>
-    <p>Therefore, your data will be deleted in ${remainingDays}, unless you reactivate your subscription.</p>
-    <p>If you have any questions, we'll gladly answer at team@dust.tt.</p>
+    subject: `Your Dust data will be deleted in ${remainingDays} days`,
+    html: `<p>Hello ${firstName},</p>
+    <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.</p>
+    <p>As a result, your data will be deleted in ${remainingDays} days. Once your data is deleted, it cannot be recovered.</p>
+    <p>If you have any question about Dust, or would like to recover your account, simply reply to this email.</p>
     <p>Best,</p>
     <p>The Dust team</p>`,
   };

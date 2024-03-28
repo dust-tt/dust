@@ -14,7 +14,7 @@ const { sendDataDeletionEmail } = proxyActivities<typeof activities>({
 });
 
 const { scrubWorkspaceData } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "20 minutes",
+  startToCloseTimeout: "60 minutes",
 });
 
 export async function scheduleWorkspaceScrubWorkflow({
