@@ -280,78 +280,6 @@ Subscription.addHook(
   }
 );
 
-export class PlanInvitation extends Model<
-  InferAttributes<PlanInvitation>,
-  InferCreationAttributes<PlanInvitation>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare secret: string;
-
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare workspace: NonAttribute<Workspace>;
-
-  declare planId: ForeignKey<Plan["id"]>;
-  declare plan: NonAttribute<Plan>;
-
-  declare consumedAt: Date | null;
-}
-
-PlanInvitation.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    secret: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    consumedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "plan_invitation",
-    sequelize: frontSequelize,
-  }
-);
-
-PlanInvitation.addHook(
-  "beforeCreate",
-  "enforce_single_unconsumed_invitation",
-  async (invitation: PlanInvitation, options: { transaction: Transaction }) => {
-    // Check if there's already an unconsumed invitation for the same workspace
-    const existingUnconsumedInvitation = await PlanInvitation.findOne({
-      where: {
-        workspaceId: invitation.workspaceId,
-        consumedAt: null,
-      },
-      transaction: options.transaction, // Include the transaction in your query
-    });
-
-    if (existingUnconsumedInvitation) {
-      throw new Error(
-        "An unconsumed invitation already exists for this workspace."
-      );
-    }
-  }
-);
-
 // Plan <> Subscription relationship: attribute "planId" in Subscription
 Plan.hasMany(Subscription, {
   foreignKey: { name: "planId", allowNull: false },
@@ -367,23 +295,5 @@ Workspace.hasMany(Subscription, {
   onDelete: "CASCADE",
 });
 Subscription.belongsTo(Workspace, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-});
-
-// Plan <> PlanInvitation relationship: attribute "planId" in PlanInvitation
-Plan.hasMany(PlanInvitation, {
-  foreignKey: { name: "planId", allowNull: false },
-  onDelete: "CASCADE",
-});
-PlanInvitation.belongsTo(Plan, {
-  foreignKey: { name: "planId", allowNull: false },
-});
-
-// PlanInvitation <> Workspace relationship: attribute "workspaceId" in PlanInvitation
-Workspace.hasMany(PlanInvitation, {
-  foreignKey: { name: "workspaceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-PlanInvitation.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });

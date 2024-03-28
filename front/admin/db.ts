@@ -46,7 +46,6 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { PlanInvitation } from "@app/lib/models/plan";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
@@ -71,7 +70,6 @@ async function main() {
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
-  await PlanInvitation.sync({ alter: true });
 
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
