@@ -453,7 +453,7 @@ function InviteEmailModal({
   });
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   async function handleSendInvitation(): Promise<void> {
-    const inviteEmailsList = inviteEmails.split(",").map((e) => e.trim());
+    const inviteEmailsList = inviteEmails.split(/[\n,]+/).map((e) => e.trim());
     if (inviteEmailsList.map(isEmailValid).includes(false)) {
       setEmailError(
         "Invalid email addresses: " +
@@ -532,12 +532,12 @@ function InviteEmailModal({
           </Page.P>
           <div className="flex flex-grow flex-col gap-1.5">
             <div className="font-semibold">
-              Email addresses (comma-separated):
+              Email addresses (comma or newline separated):
             </div>
             <div className="flex items-start gap-2">
               <div className="flex-grow">
                 <TextArea
-                  placeholder="Email addresses, comma-separated"
+                  placeholder="Email addresses, comma or newline separated"
                   value={inviteEmails}
                   onChange={(value) => {
                     setInviteEmails(value);
