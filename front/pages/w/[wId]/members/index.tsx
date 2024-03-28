@@ -500,7 +500,7 @@ function InviteEmailModal({
     if (!shouldWarnAboutExistingMembers(invitesByCase)) {
       await sendInvitations({
         owner,
-        emails: invitationsSegmentation.notInWorkspace,
+        emails: invitesByCase.notInWorkspace,
         invitationRole,
       });
       onClose();
