@@ -8,8 +8,9 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
@@ -36,14 +37,24 @@ import {
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { usePokeAssistantTemplate } from "@app/poke/swr";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
+export const getServerSideProps = withSuperUserAuthRequirements<{
+  templateId: string;
+}>(async (context) => {
+  const { tId: templateId } = context.query;
+  if (!templateId || typeof templateId !== "string") {
     return {
-      props: {},
+      notFound: true,
     };
   }
-);
+
+  return {
+    props: {
+      templateId,
+    },
+  };
+});
 
 function InputField({
   control,
@@ -157,61 +168,77 @@ function SelectField({
   );
 }
 
-function TemplatesPage() {
+function TemplatesPage({
+  templateId,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
 
-  function onSubmit(values: CreateTemplateFormType) {
-    const cleanedValues = Object.fromEntries(
-      removeNulls(
-        Object.entries(values).map(([key, value]) => {
-          if (typeof value !== "string") {
-            return [key, value];
-          }
-          const cleanedValue = value.trim();
-          if (!cleanedValue) {
-            return null;
-          }
-          return [key, cleanedValue];
-        })
-      )
-    );
+  const { assistantTemplate } = usePokeAssistantTemplate({
+    templateId: templateId === "new" ? null : templateId,
+  });
 
-    void submit();
+  const onSubmit = useCallback(
+    (values: CreateTemplateFormType) => {
+      const cleanedValues = Object.fromEntries(
+        removeNulls(
+          Object.entries(values).map(([key, value]) => {
+            if (typeof value !== "string") {
+              return [key, value];
+            }
+            const cleanedValue = value.trim();
+            if (!cleanedValue) {
+              return null;
+            }
+            return [key, cleanedValue];
+          })
+        )
+      );
 
-    async function submit() {
-      setIsSubmitting(true);
-      try {
-        const r = await fetch("/api/poke/templates", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(cleanedValues),
-        });
-        if (!r.ok) {
-          throw new Error(
-            `Something went wrong: ${r.status} ${await r.text()}`
-          );
+      void submit();
+
+      async function submit() {
+        setIsSubmitting(true);
+        try {
+          const method = assistantTemplate ? "PATCH" : "POST";
+          const url = assistantTemplate
+            ? `/api/poke/templates/${assistantTemplate.sId}`
+            : "/api/poke/templates";
+          const r = await fetch(url, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cleanedValues),
+          });
+
+          if (!r.ok) {
+            throw new Error(
+              `Something went wrong: ${r.status} ${await r.text()}`
+            );
+          }
+          sendNotification({
+            title: `Template ${assistantTemplate ? "updated" : "created"}`,
+            type: "success",
+            description: `Template ${
+              assistantTemplate ? "updated" : "created"
+            } successfully.`,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          router.back();
+        } catch (e) {
+          setIsSubmitting(false);
+          sendNotification({
+            title: "Error creating template",
+            type: "error",
+            description: `${e}`,
+          });
         }
-        sendNotification({
-          title: "Template created",
-          type: "success",
-          description: "Template created successfully.",
-        });
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        router.reload();
-      } catch (e) {
-        setIsSubmitting(false);
-        sendNotification({
-          title: "Error creating template",
-          type: "error",
-          description: `${e}`,
-        });
       }
-    }
-  }
+    },
+    [assistantTemplate, sendNotification, setIsSubmitting, router]
+  );
 
   const form = useForm<CreateTemplateFormType>({
     resolver: ioTsResolver(CreateTemplateFormSchema),
@@ -227,6 +254,15 @@ function TemplatesPage() {
       tags: [],
     },
   });
+
+  useEffect(() => {
+    if (assistantTemplate) {
+      // Override default values of the form with existing template.
+      Object.entries(assistantTemplate).forEach(([key, value]) => {
+        form.setValue(key as unknown as any, value ?? "");
+      });
+    }
+  }, [assistantTemplate, form]);
 
   if (isSubmitting) {
     return (

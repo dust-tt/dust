@@ -36,7 +36,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const templates = await TemplateResource.listAllPublished();
+      const templates = await TemplateResource.listAll({
+        visibility: "published",
+      });
 
       return res
         .status(200)

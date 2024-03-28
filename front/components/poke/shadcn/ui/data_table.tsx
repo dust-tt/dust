@@ -64,7 +64,9 @@ export function PokeDataTable<TData, TValue>({
           name="filter"
           placeholder="Filter ..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(value) => table.getColumn("name")?.setFilterValue(value)}
+          onChange={(e) =>
+            table.getColumn("name")?.setFilterValue(e.target.value)
+          }
           className="max-w-sm"
         />
       </div>

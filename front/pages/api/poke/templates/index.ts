@@ -12,14 +12,23 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
-export type CreateTemplateResponseBody = {
+export interface CreateTemplateResponseBody {
   success: boolean;
-};
+}
+
+interface PokeFetchAssistantTemplatesResponse {
+  templates: AssistantTemplateListType[];
+}
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<CreateTemplateResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<
+      CreateTemplateResponseBody | PokeFetchAssistantTemplatesResponse
+    >
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
@@ -35,6 +44,13 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      const templates = await TemplateResource.listAll();
+
+      return res
+        .status(200)
+        .json({ templates: templates.map((t) => t.toListJSON()) });
+
     case "POST":
       const bodyValidation = CreateTemplateFormSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
