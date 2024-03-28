@@ -454,7 +454,12 @@ function InviteEmailModal({
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
 
   function getEmailsList(): string[] | null {
-    const inviteEmailsList = inviteEmails.split(/[\n,]+/).map((e) => e.trim());
+    const inviteEmailsList = inviteEmails
+      .split(/[\n,]+/)
+      .map((e) => e.trim())
+      .filter((e) => e !== "")
+      // remove duplicates
+      .filter((e, i, self) => self.indexOf(e) === i);
     if (inviteEmailsList.map(isEmailValid).includes(false)) {
       setEmailError(
         "Invalid email addresses: " +
