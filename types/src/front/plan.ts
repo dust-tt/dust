@@ -71,9 +71,3 @@ export type SubscriptionType = {
   paymentFailingSince: number | null;
   plan: PlanType;
 };
-
-export type PlanInvitationType = {
-  planCode: string;
-  planName: string;
-  secret: string;
-};

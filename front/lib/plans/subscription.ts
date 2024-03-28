@@ -1,14 +1,8 @@
 import type { WorkspaceType } from "@dust-tt/types";
-import type {
-  PlanInvitationType,
-  PlanType,
-  SubscriptionType,
-} from "@dust-tt/types";
-import { v4 as uuidv4 } from "uuid";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
-import { PlanInvitation } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
@@ -246,17 +240,17 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
 /**
  * Internal function to create a PlanInvitation for the workspace.
  */
-export const pokeUpgradeOrInviteWorkspaceToPlan = async (
+export const pokeUpgradeWorkspaceToPlan = async (
   auth: Authenticator,
   planCode: string
-): Promise<PlanInvitationType | void> => {
+): Promise<void> => {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find workspace}");
   }
 
   if (!auth.isDustSuperUser()) {
-    throw new Error("Cannot invite workspace to enterprise plan: not allowed.");
+    throw new Error("Cannot upgrade workspace to plan: not allowed.");
   }
 
   const newPlan = await Plan.findOne({
@@ -264,7 +258,7 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
   });
   if (!newPlan) {
     throw new Error(
-      `Cannot invite workspace to plan ${planCode}: plan not found.`
+      `Cannot upgrade workspace to plan ${planCode}: plan not found.`
     );
   }
 
@@ -276,50 +270,20 @@ export const pokeUpgradeOrInviteWorkspaceToPlan = async (
     );
   }
 
-  // If plan is a free plan, we subscribe immediately no need for an invitation
-  if (newPlan.stripeProductId === null) {
-    await internalSubscribeWorkspaceToFreePlan({
-      workspaceId: owner.sId,
-      planCode: newPlan.code,
-    });
-    return;
-  }
-
-  const invitation = await getPlanInvitation(auth);
-  if (invitation?.planCode === newPlan.code) {
-    return invitation;
-  }
-
-  const model = await frontSequelize.transaction(async (t) => {
-    if (invitation) {
-      await PlanInvitation.destroy({
-        where: { workspaceId: owner.id, consumedAt: null },
-        transaction: t,
-      });
-    }
-
-    return PlanInvitation.create(
-      {
-        secret: uuidv4(),
-        workspaceId: owner.id,
-        planId: newPlan.id,
-      },
-      {
-        transaction: t,
-      }
+  if (newPlan.stripeProductId !== null) {
+    throw new Error(
+      `Cannot subscribe to plan ${planCode}: stripeProductId is not null.`
     );
-  });
+  }
 
-  return {
+  await internalSubscribeWorkspaceToFreePlan({
+    workspaceId: owner.sId,
     planCode: newPlan.code,
-    planName: newPlan.name,
-    secret: model.secret,
-  };
+  });
+  return;
 };
 
-// Returns the Stripe checkout URL for the plan the workspace can upgrade to.
-// The plan can either be the "PRO_PLAN_SEAT_29_CODE" (aka the pro plan), or
-// the enterprise plan the workspace has been invited to.
+// Returns the Stripe checkout URL for the pro plan.
 export const getCheckoutUrlForUpgrade = async (
   auth: Authenticator
 ): Promise<{ checkoutUrl: string; plan: PlanType }> => {
@@ -331,14 +295,11 @@ export const getCheckoutUrlForUpgrade = async (
     );
   }
 
-  const planInvitation = await getPlanInvitation(auth);
-
-  const planCode = planInvitation?.planCode ?? PRO_PLAN_SEAT_29_CODE;
+  const planCode = PRO_PLAN_SEAT_29_CODE;
 
   const plan = await Plan.findOne({
     where: { code: planCode },
   });
-
   if (!plan) {
     throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
   }
@@ -502,39 +463,3 @@ export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
     }
   }
 };
-
-export async function getPlanInvitation(
-  auth: Authenticator
-): Promise<PlanInvitationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Cannot find workspace");
-  }
-
-  const planInvitations = await PlanInvitation.findAll({
-    where: { workspaceId: owner.id, consumedAt: null },
-    include: [
-      {
-        model: Plan,
-        as: "plan",
-        required: true,
-      },
-    ],
-  });
-
-  if (planInvitations.length > 1) {
-    logger.warn(
-      "unreachable: there should be at most one pending invitation per workspace"
-    );
-  }
-
-  if (!planInvitations.length) {
-    return null;
-  }
-
-  return {
-    planCode: planInvitations[0].plan.code,
-    planName: planInvitations[0].plan.name,
-    secret: planInvitations[0].secret,
-  };
-}

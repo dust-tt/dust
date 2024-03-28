@@ -12,11 +12,7 @@ import type {
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import type {
-  PlanInvitationType,
-  PlanType,
-  SubscriptionType,
-} from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
@@ -39,13 +35,11 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { getPlanInvitation } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  planInvitation: PlanInvitationType | null;
   dataSources: DataSourceType[];
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
@@ -61,7 +55,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   }
 
   // TODO(2024-02-28 flav) Stop fetching agent configurations on the server side.
-  const [dataSources, agentConfigurations, planInvitation] = await Promise.all([
+  const [dataSources, agentConfigurations] = await Promise.all([
     getDataSources(auth, { includeEditedBy: true }),
     (async () => {
       return (
@@ -75,14 +69,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
           !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
       );
     })(),
-    getPlanInvitation(auth),
   ]);
 
   return {
     props: {
       owner,
       subscription,
-      planInvitation: planInvitation ?? null,
       dataSources: orderDatasourceByImportance(dataSources),
       agentConfigurations: agentConfigurations,
       whitelistableFeatures:
@@ -95,7 +87,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 const WorkspacePage = ({
   owner,
   subscription,
-  planInvitation,
   dataSources,
   agentConfigurations,
   whitelistableFeatures,
@@ -191,17 +182,16 @@ const WorkspacePage = ({
     setIsLoading(false);
   });
 
-  const { submit: onUpgradeOrInviteToPlan } = useSubmitFunction(
+  const { submit: onUpgradeToPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
         !window.confirm(
-          `Are you sure you want to invite ${owner.name} (${owner.sId}) to plan ${plan.name} (${plan.code}) ?.`
+          `Are you sure you want to upgrade ${owner.name} (${owner.sId}) to plan ${plan.name} (${plan.code}) ?.`
         )
       ) {
         return;
       }
       try {
-        console.log({ plan });
         const r = await fetch(
           `/api/poke/workspaces/${owner.sId}/upgrade?planCode=${plan.code}`,
           {
@@ -212,17 +202,17 @@ const WorkspacePage = ({
           }
         );
         if (!r.ok) {
-          throw new Error("Failed to invite workspace to enterprise plan.");
+          throw new Error("Failed to upgrade workspace to plan.");
         }
         router.reload();
       } catch (e) {
         console.error(e);
-        window.alert("An error occurred while inviting to enterprise plan.");
+        window.alert(
+          "An error occurred while upgrading the workspace to plan."
+        );
       }
     }
   );
-
-  const [hasCopiedInviteLink, setHasCopiedInviteLink] = React.useState(false);
 
   const workspaceHasManagedDataSources = dataSources.some(
     (ds) => !!ds.connectorProvider
@@ -313,32 +303,6 @@ const WorkspacePage = ({
 
               <h2 className="text-md mb-4 mt-8 font-bold">Plan:</h2>
               <JsonViewer value={subscription} rootName={false} />
-              {planInvitation && (
-                <div className="mb-4 flex flex-col gap-2 pt-4 text-sm font-bold">
-                  <div>
-                    The workspace is currently invited to enterprise plan{" "}
-                    {planInvitation.planName} ({planInvitation.planCode})
-                  </div>
-                  <div>
-                    <Button
-                      label={
-                        hasCopiedInviteLink ? "Copied !" : "Copy invite link"
-                      }
-                      variant="secondary"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(
-                          `${window.location.origin}/w/${owner.sId}/subscription/upgrade-enterprise/${planInvitation.secret}`
-                        );
-                        setHasCopiedInviteLink(true);
-                        setTimeout(() => {
-                          setHasCopiedInviteLink(false);
-                        }, 2000);
-                      }}
-                      disabled={hasCopiedInviteLink}
-                    />
-                  </div>
-                </div>
-              )}
               <div className="flex flex-col gap-8">
                 {plans && (
                   <div className="pt-8">
@@ -346,25 +310,20 @@ const WorkspacePage = ({
                       <Collapsible.Button label="Manage plan" />
                       <Collapsible.Panel>
                         <div className="flex flex-col gap-2 pt-4">
-                          {plans.map((p) => {
-                            return (
-                              <div key={p.code}>
-                                <Button
-                                  variant="secondary"
-                                  label={
-                                    p.billingType === "free"
-                                      ? `Upgrade to free plan: ${p.code}`
-                                      : `Invite to paid plan: ${p.code}`
-                                  }
-                                  onClick={() => onUpgradeOrInviteToPlan(p)}
-                                  disabled={[
-                                    subscription.plan.code,
-                                    planInvitation?.planCode ?? "",
-                                  ].includes(p.code)}
-                                />
-                              </div>
-                            );
-                          })}
+                          {plans
+                            .filter((p) => p.billingType === "free")
+                            .map((p) => {
+                              return (
+                                <div key={p.code}>
+                                  <Button
+                                    variant="secondary"
+                                    label={`Upgrade to free plan: ${p.code}`}
+                                    onClick={() => onUpgradeToPlan(p)}
+                                    disabled={subscription.plan.code === p.code}
+                                  />
+                                </div>
+                              );
+                            })}
                           <div>
                             <Button
                               label="Downgrade to NO PLAN"

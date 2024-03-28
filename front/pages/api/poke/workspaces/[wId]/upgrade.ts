@@ -2,7 +2,7 @@ import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { pokeUpgradeOrInviteWorkspaceToPlan } from "@app/lib/plans/subscription";
+import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type UpgradeWorkspaceResponseBody = {
@@ -43,7 +43,7 @@ async function handler(
         });
       }
 
-      await pokeUpgradeOrInviteWorkspaceToPlan(auth, planCode);
+      await pokeUpgradeWorkspaceToPlan(auth, planCode);
 
       return res.status(200).json({
         workspace: {
