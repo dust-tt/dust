@@ -62,6 +62,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -85,6 +86,7 @@ type AssistantBuilderProps = {
   flow: BuilderFlow;
   defaultIsEdited?: boolean;
   baseUrl: string;
+  template: FetchAssistantTemplateResponse | null;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -168,9 +170,8 @@ export default function AssistantBuilder({
   flow,
   defaultIsEdited,
   baseUrl,
+  template,
 }: AssistantBuilderProps) {
-  const hasTemplate = true;
-
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -231,7 +232,7 @@ export default function AssistantBuilder({
 
   const [previewDrawerOpenedAt, setPreviewDrawerOpenedAt] = useState<
     number | null
-  >(hasTemplate ? Date.now() : null);
+  >(template ? Date.now() : null);
 
   const openPreviewDrawer = () => {
     setPreviewDrawerOpenedAt(Date.now());
@@ -426,7 +427,7 @@ export default function AssistantBuilder({
 
   const [previewDrawerCurrentTab, setPreviewDrawerCurrentTab] = useState<
     "Preview" | "Template"
-  >(hasTemplate ? "Template" : "Preview");
+  >(template ? "Template" : "Preview");
 
   const previewDrawerTabs = useMemo(
     () => [
@@ -555,7 +556,7 @@ export default function AssistantBuilder({
           }
           rightPanel={
             <div className="h-full pb-5">
-              {hasTemplate ? (
+              {template ? (
                 <Tab
                   tabs={previewDrawerTabs}
                   variant="default"
@@ -604,8 +605,26 @@ export default function AssistantBuilder({
                         {children}
                       </strong>
                     ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc py-2 pl-8 text-element-800 first:pt-0 last:pb-0">
+                        {children}
+                      </ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal py-3 pl-8 text-element-800 first:pt-0 last:pb-0">
+                        {children}
+                      </ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="py-2 text-element-800 first:pt-0 last:pb-0">
+                        {children}
+                      </li>
+                    ),
                   }}
-                >{`# Template\n## hello`}</ReactMarkdown>
+                  className="pt-4"
+                >
+                  {template?.helpInstructions ?? ""}
+                </ReactMarkdown>
               )}
             </div>
           }
