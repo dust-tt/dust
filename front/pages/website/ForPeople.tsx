@@ -4,39 +4,34 @@ import SimpleSlider, {
   avatars,
   DroidItem,
 } from "@app/components/home/carousel";
-import { Grid, H2, H3, H4, P } from "@app/components/home/contentComponents";
+import { HeaderContentBlock } from "@app/components/home/contentBlocks";
+import { Grid, H2, H4, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
 
-export function CustomerSupportPage() {
+export function ForPeople() {
   return (
     <>
-      <Grid>
-        <div
-          className={classNames(
-            "flex min-h-[50vh] flex-col justify-end gap-8",
-            "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-9 xl:col-start-2",
-            "2xl:col-start-3"
-          )}
-        >
-          <P size="lg">Dust for Customer Support</P>
-          <div className="h-4" />
-          <H2 className="text-sky-400">
-            Happy Support&nbsp;team,
-            <br />
-            <span className="text-white">happy customers, at&nbsp;scale.</span>
-          </H2>
-          <H3 className="text-white">
-            Reply faster and increase answer quality
-            <br />
-            with augmenting your&nbsp;Customer&nbsp;Support.
-          </H3>
-        </div>
-      </Grid>
-      <SimpleSlider slides={customerSupportSlides} />
+      <HeaderContentBlock
+        uptitle="Dust for Recruiting and People teams"
+        title={
+          <>
+            <span className="text-emerald-100">
+              Augment your workflows with AI&nbsp;assistance{" "}
+            </span>
+            <span className="text-emerald-400">accross the&nbsp;board</span>
+          </>
+        }
+        subtitle={
+          <>
+            Onboarding&nbsp;better, Manage&nbsp;feedback, Support
+            managers&nbsp;effectively, Scale performance analysis
+            and&nbsp;Recruiting.
+          </>
+        }
+      />
+      <SimpleSlider slides={peopleSlides} />
       <Grid>
         <div
           className={classNames(
@@ -92,29 +87,35 @@ export function CustomerSupportPage() {
   );
 }
 
-export const customerSupportSlides = [
+export const peopleSlides = [
   <DroidItem
     key="1"
-    avatar={avatars[1]}
-    name="@supportExpert"
-    question="Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team."
+    avatar={avatars[3]}
+    name="@hiringOps"
+    question="Draft job descriptions, emails, social media coms based on company standards."
   />,
   <DroidItem
     key="2"
-    avatar={avatars[2]}
-    name="@customerWrite"
-    question="Draft answers using company tone and voice, support guidelines, and customer messages."
+    avatar={avatars[5]}
+    name="@interviewReading"
+    question="Help read and analyse candidate expert according to company principles."
   />,
   <DroidItem
     key="3"
-    avatar={avatars[3]}
-    name="@productInfo"
-    question="Answer questions on product evolutions, engineering activity, alerts, and downtime."
+    avatar={avatars[7]}
+    name="@people"
+    question="Answer on slack all questions about processes, methodes, people and roles based on company documentation."
   />,
   <DroidItem
     key="5"
-    avatar={avatars[5]}
-    name="@followUpScenario"
-    question="Help anticipate further requests from users and ensure those are covered before answering to a customer."
+    avatar={avatars[6]}
+    name="@hiringQuestions"
+    question="Draft questions depending on the role, type of interview and stage in the process."
+  />,
+  <DroidItem
+    key="5"
+    avatar={avatars[9]}
+    name="@candidate"
+    question="Summarize available information about a candidate based on Company DB."
   />,
 ];
