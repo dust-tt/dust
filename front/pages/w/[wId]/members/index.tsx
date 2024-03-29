@@ -604,7 +604,7 @@ function ProPlanBillingNotice() {
       </p>
       <br />
       <p>
-        Current month's fee will be adjusted proportionally according to their
+        Next month's bill will be adjusted proportionally based on the members'
         sign-up date.
       </p>
     </ContentMessage>
