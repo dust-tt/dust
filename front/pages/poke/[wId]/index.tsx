@@ -121,7 +121,6 @@ const WorkspacePage = ({
   whitelistableFeatures,
   registry,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
-  console.log({ subscriptions });
   const router = useRouter();
 
   const sendNotification = useContext(SendNotificationsContext);
