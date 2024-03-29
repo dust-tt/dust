@@ -1,39 +1,26 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { assertNever, CoreAPI, isRetrievalConfiguration } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
 import { getBackendClient } from "@app/lib/amplitude/back";
-import {
-  archiveAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration";
-import { getDataSources } from "@app/lib/api/data_sources";
-import { deleteDataSource } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
-  sendAdminDowngradeTooMuchDataEmail,
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
-  sendOpsDowngradeTooMuchDataEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
-import {
-  Membership,
-  MembershipInvitation,
-  Plan,
-  Subscription,
-  Workspace,
-} from "@app/lib/models";
+import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchScheduleWorkspaceScrubWorkflow } from "@app/scrub_workspace/temporal/client";
 
 const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
 
@@ -551,14 +538,24 @@ async function handler(
                 status: "ended",
                 endDate: new Date(),
               });
-              const workspaceId = matchingSubscription.workspace.sId;
-              const auth = await Authenticator.internalAdminForWorkspace(
-                workspaceId
-              );
-              await revokeUsersForDowngrade(auth);
-              await archiveConnectedAgents(auth);
-              await deleteConnectedDatasources(auth);
-              await checkStaticDatasourcesSize(auth);
+
+              const scheduleScrubRes =
+                await launchScheduleWorkspaceScrubWorkflow({
+                  workspaceId: matchingSubscription.workspace.sId,
+                });
+              if (scheduleScrubRes.isErr()) {
+                logger.error(
+                  { panic: true, error: scheduleScrubRes.error },
+                  "Error launching scrub workspace workflow"
+                );
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: `Error launching scrub workspace workflow: ${scheduleScrubRes.error.message}`,
+                  },
+                });
+              }
               break;
             default:
               assertNever(matchingSubscription.status);
@@ -596,129 +593,6 @@ function _returnStripeApiError(
       message: `[Stripe Webhook][${event}] ${message}`,
     },
   });
-}
-
-/**
- * Remove everybody except the most tenured admin
- * @param workspaceId
- */
-async function revokeUsersForDowngrade(auth: Authenticator) {
-  const memberships = await Membership.findAll({
-    where: { workspaceId: auth.workspace()?.id },
-    order: [["createdAt", "ASC"]],
-  });
-  const adminMemberships = memberships.filter((m) => m.role === "admin");
-  // the first membership with role admin will not be revoked
-  adminMemberships.shift();
-  const nonAdminMemberships = memberships.filter((m) => m.role !== "admin");
-  for (const membership of [...adminMemberships, ...nonAdminMemberships]) {
-    await membership.update({ role: "revoked" });
-  }
-
-  // revoke invitations
-  const workspaceId = auth.workspace()?.id;
-  if (!workspaceId) {
-    throw new Error("Cannot get workspace.");
-  }
-  await MembershipInvitation.update(
-    { status: "revoked" },
-    { where: { workspaceId } }
-  );
-}
-
-async function archiveConnectedAgents(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurations({
-    auth,
-    agentsGetView: "admin_internal",
-    variant: "full",
-  });
-
-  // agentconfigurations with a retrieval action with at least a managed
-  // data source
-  const agentConfigurationsToArchive = agentConfigurations.filter(
-    (ac) =>
-      ac.action &&
-      isRetrievalConfiguration(ac.action) &&
-      ac.action.dataSources.length > 0 &&
-      ac.action.dataSources.some((ds) => ds.dataSourceId.startsWith("managed-"))
-  );
-  for (const agentConfiguration of agentConfigurationsToArchive) {
-    await archiveAgentConfiguration(auth, agentConfiguration.sId);
-  }
-}
-
-async function deleteConnectedDatasources(auth: Authenticator) {
-  const dataSources = await getDataSources(auth);
-  const managedDataSources = dataSources.filter((ds) => !!ds.connectorProvider);
-  for (const dataSource of managedDataSources) {
-    // call the poke delete datasource endpoint
-    const r = await deleteDataSource(auth, dataSource.name);
-    if (r.isErr()) {
-      throw new Error(`Failed to delete data source: ${r.error.message}`);
-    }
-  }
-}
-
-/**
- * Check the size of the static datasources and send an email to the user and us if it is too big.
- */
-async function checkStaticDatasourcesSize(auth: Authenticator) {
-  const dataSources = await getDataSources(auth);
-  const staticDataSources = dataSources.filter((ds) => !ds.connectorProvider);
-  const coreAPI = new CoreAPI(logger);
-  const datasourcesTooBig = [];
-  logger.info(
-    `Checking static datasources sizes for downgrade of ${
-      auth.workspace()?.sId
-    }`
-  );
-  for (const ds of staticDataSources) {
-    // count total size of all documents of the datasource
-    let totalSize = 0;
-    for (let i = 0; ; i++) {
-      const res = await coreAPI.getDataSourceDocuments({
-        projectId: ds.dustAPIProjectId,
-        dataSourceName: ds.name,
-        limit: 1000,
-        offset: 1000 * i,
-      });
-      if (res.isErr()) {
-        throw new Error("Error getting data source documents.");
-      }
-      totalSize += res.value.documents.reduce(
-        (acc, doc) => acc + doc.text_size,
-        0
-      );
-      if (res.value.documents.length < 1000) {
-        break;
-      }
-      i++;
-    }
-
-    if (totalSize > 50 * 1024 * 1024) {
-      datasourcesTooBig.push(ds.name);
-    }
-  }
-
-  // send email
-  if (datasourcesTooBig.length > 0) {
-    logger.info(
-      `Downgrade of ${
-        auth.workspace()?.sId
-      }: datasources too big: ${datasourcesTooBig.join(", ")}.`
-    );
-    const workspace = auth.workspace();
-    if (!workspace) {
-      throw new Error("Cannot get workspace.");
-    }
-    await sendOpsDowngradeTooMuchDataEmail(workspace.sId, datasourcesTooBig);
-    // for all admins
-    const adminEmails = (await getMembers(auth, { roles: ["admin"] })).map(
-      (u) => u.email
-    );
-    for (const adminEmail of adminEmails)
-      await sendAdminDowngradeTooMuchDataEmail(adminEmail, datasourcesTooBig);
-  }
 }
 
 export default withLogging(handler);
