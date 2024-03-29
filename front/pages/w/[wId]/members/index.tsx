@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   Chip,
+  ContentMessage,
   Dialog,
   DropdownMenu,
   ElementModal,
@@ -47,8 +48,12 @@ import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
+import {
+  getPriceWithCurrency,
+  PRO_PLAN_29_COST,
+} from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isUpgraded, PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import type {
@@ -278,6 +283,7 @@ export default function WorkspaceAdmin({
           }}
           owner={owner}
           members={members}
+          plan={plan}
         />
         <RevokeInvitationModal
           invitation={invitationToRevoke}
@@ -430,11 +436,13 @@ function InviteEmailModal({
   showModal,
   onClose,
   owner,
+  plan,
   members,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
+  plan: PlanType;
   members: UserTypeWithWorkspaces[];
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
@@ -539,8 +547,9 @@ function InviteEmailModal({
           setIsSending(false);
           setInviteEmails("");
         }}
+        className="flex"
       >
-        <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
+        <div className="mt-6 flex grow flex-col gap-6 px-2 text-sm">
           <div className="flex flex-grow flex-col gap-5">
             <div className="font-semibold">
               Email addresses (comma or newline separated):
@@ -572,9 +581,33 @@ function InviteEmailModal({
               {ROLES_DATA[invitationRole]["description"]}
             </div>
           </div>
+          {plan.code === PRO_PLAN_SEAT_29_CODE && (
+            <div className="justify-self-end">
+              <ProPlanBillingNotice />
+            </div>
+          )}
         </div>
       </Modal>
     </>
+  );
+}
+
+function ProPlanBillingNotice() {
+  return (
+    <ContentMessage size="md" variant="amber" title="Note">
+      <p>
+        New users will be charged a{" "}
+        <span className="font-semibold">
+          monthly fee of {getPriceWithCurrency(PRO_PLAN_29_COST)}
+        </span>
+        .{" "}
+      </p>
+      <br />
+      <p>
+        Current month's fee will be adjusted proportionally according to their
+        sign-up date.
+      </p>
+    </ContentMessage>
   );
 }
 
