@@ -21,9 +21,11 @@ import logger from "@app/logger/logger";
 export async function sendDataDeletionEmail({
   remainingDays,
   workspaceId,
+  isLast,
 }: {
   remainingDays: number;
   workspaceId: string;
+  isLast: boolean;
 }) {
   try {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -38,6 +40,7 @@ export async function sendDataDeletionEmail({
         firstName: a.firstName,
         workspaceName: ws.name,
         remainingDays,
+        isLast,
       });
   } catch (e) {
     logger.error(

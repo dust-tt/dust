@@ -22,12 +22,16 @@ export async function scheduleWorkspaceScrubWorkflow({
 }: {
   workspaceId: string;
 }): Promise<boolean> {
-  await sendDataDeletionEmail({ remainingDays: 15, workspaceId });
+  await sendDataDeletionEmail({
+    remainingDays: 15,
+    workspaceId,
+    isLast: false,
+  });
   await sleep("12 days");
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
   }
-  await sendDataDeletionEmail({ remainingDays: 3, workspaceId });
+  await sendDataDeletionEmail({ remainingDays: 3, workspaceId, isLast: true });
   await sleep("3 days");
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
