@@ -291,18 +291,19 @@ SlackChatBotMessage.init(
 );
 ConnectorModel.hasOne(SlackChatBotMessage);
 
-export class SlackBotWhitelist extends Model<
-  InferAttributes<SlackBotWhitelist>,
-  InferCreationAttributes<SlackBotWhitelist>
+export class SlackBotWhitelistModel extends Model<
+  InferAttributes<SlackBotWhitelistModel>,
+  InferCreationAttributes<SlackBotWhitelistModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
+  declare slackConfiguration: ForeignKey<SlackConfigurationModel["id"]>;
 }
 
-SlackBotWhitelist.init(
+SlackBotWhitelistModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -332,4 +333,5 @@ SlackBotWhitelist.init(
   }
 );
 
-ConnectorModel.hasMany(SlackBotWhitelist);
+ConnectorModel.hasMany(SlackBotWhitelistModel);
+SlackConfigurationModel.hasMany(SlackBotWhitelistModel);

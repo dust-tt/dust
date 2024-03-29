@@ -6,7 +6,7 @@ import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { SlackBotWhitelist } from "@connectors/lib/models/slack";
+import { SlackBotWhitelistModel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -214,7 +214,7 @@ async function isBotAllowed(
   // that talks to our bot (@dust) will be able to use the Dust bot.
   // Make sure to be explicit about this with users as you whitelist a new bot.
   // Example: non-verfied-user -> @AnyWhitelistedBot -> @dust -> Dust answers with potentially private information.
-  const whitelist = await SlackBotWhitelist.findOne({
+  const whitelist = await SlackBotWhitelistModel.findOne({
     where: {
       connectorId: connector.id,
       botName: names,

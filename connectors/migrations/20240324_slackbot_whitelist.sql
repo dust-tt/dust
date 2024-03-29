@@ -1,24 +1,24 @@
 INSERT INTO
-  slack_bots_whitelist("connectorId", "botName")
+  slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
 VALUES
-  (5, 'Beaver');
+  (5, 3, 'Beaver');
 
 INSERT INTO
-  slack_bots_whitelist("connectorId", "botName")
+  slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
 VALUES
-  (14, 'feedback-hackaton');
+  (14, 5, 'feedback-hackaton');
 
 INSERT INTO
-  slack_bots_whitelist("connectorId", "botName")
+  slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
 VALUES
-  (722, 'Retool');
+  (722, 158, 'Retool');
 
 INSERT INTO
-  slack_bots_whitelist("connectorId", "botName")
+  slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
 VALUES
-  (211, 'DustWorkflowTest');
+  (211, 50, 'DustWorkflowTest');
 
 INSERT INTO
-  slack_bots_whitelist("connectorId", "botName")
+  slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
 VALUES
-  (211, 'dust-email-lists-highlights');
+  (211, 50, 'dust-email-lists-highlights');
