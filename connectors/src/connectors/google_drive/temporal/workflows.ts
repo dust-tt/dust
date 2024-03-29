@@ -23,6 +23,7 @@ const {
   populateSyncTokens,
   garbageCollectorFinished,
   markFolderAsVisited,
+  shouldGarbageCollect,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
@@ -165,7 +166,17 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
-
+    const shouldGc = await shouldGarbageCollect(connectorId);
+    if (shouldGc) {
+      await executeChild(googleDriveGarbageCollectorWorkflow, {
+        workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        args: [connectorId, startSyncTs],
+        memo: workflowInfo().memo,
+      });
+    }
     await syncSucceeded(connectorId);
     console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 

@@ -466,6 +466,34 @@ export async function getFoldersToSync(connectorId: ModelId) {
   return foldersIds;
 }
 
+// Check if we still have access to all the selected folder we are
+// supposed to sync.
+// If we don't have access to one of them, we should garbage collect.
+export async function shouldGarbageCollect(connectorId: ModelId) {
+  const selectedFolder = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const authCredentials = await getAuthObject(connector.connectionId);
+  for (const folder of selectedFolder) {
+    const remoteFolder = await getGoogleDriveObject(
+      authCredentials,
+      folder.folderId
+    );
+    if (!remoteFolder) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * @param lastSeenTs Garbage collect all files that have not been seen since this timestamp.
  */
