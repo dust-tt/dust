@@ -72,6 +72,7 @@ export type ModalProps = {
   savingLabel?: string;
   title?: string;
   variant?: "full-screen" | "side-sm" | "side-md" | "dialogue";
+  className?: string;
 };
 
 const getModalClasses = (type: ModalType) => modalStyles[type] || {};
@@ -88,6 +89,7 @@ export function Modal({
   savingLabel,
   title,
   variant = "side-sm",
+  className,
 }: ModalProps) {
   const type = variantToType[variant];
 
@@ -165,7 +167,11 @@ export function Modal({
                 rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
               />
               <div
-                className={classNames("s-pb-6 s-pt-16", innerContainerClasses)}
+                className={classNames(
+                  "s-pb-6 s-pt-16",
+                  innerContainerClasses,
+                  className ?? ""
+                )}
               >
                 {children}
               </div>
