@@ -111,7 +111,7 @@ async function archiveAssistants(auth: Authenticator) {
   const agentConfigurations = await getAgentConfigurations({
     auth,
     agentsGetView: "admin_internal",
-    variant: "full",
+    variant: "light",
   });
 
   const agentConfigurationsToArchive = agentConfigurations.filter(
