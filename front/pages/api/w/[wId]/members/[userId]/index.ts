@@ -95,6 +95,7 @@ async function handler(
 
       await membership.update({
         role: req.body.role,
+        endAt: req.body.role === "revoked" ? new Date() : null,
       });
       if (req.body.role === "revoked") {
         await updateWorkspacePerSeatSubscriptionUsage({

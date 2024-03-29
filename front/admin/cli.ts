@@ -217,6 +217,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         role,
         workspaceId: w.id,
         userId: u.id,
+        startAt: new Date(),
       });
       return;
     }

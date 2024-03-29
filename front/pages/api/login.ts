@@ -410,6 +410,7 @@ export async function createAndLogMembership({
     role: role,
     userId: userId,
     workspaceId: workspace.id,
+    startAt: new Date(),
   });
   trackUserMemberships(m.userId).catch(logger.error);
 
