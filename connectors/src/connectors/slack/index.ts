@@ -25,7 +25,7 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import { ExternalOauthTokenError, NangoError } from "@connectors/lib/error";
-import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
+import { SlackChannel } from "@connectors/lib/models/slack";
 import {
   nango_client,
   nangoDeleteConnection,
@@ -33,6 +33,7 @@ import {
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
@@ -113,11 +114,8 @@ export async function updateSlackConnector(
     });
   }
 
-  const currentSlackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const currentSlackConfig =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
   if (!currentSlackConfig) {
     logger.error({ connectorId }, "Slack configuration not found");
     return new Err({
@@ -141,11 +139,9 @@ export async function updateSlackConnector(
 
     const newTeamId = teamInfoRes.team.id;
     if (newTeamId !== currentSlackConfig.slackTeamId) {
-      const configurations = await SlackConfiguration.findAll({
-        where: {
-          slackTeamId: newTeamId,
-        },
-      });
+      const configurations = await SlackConfigurationResource.listForTeamId(
+        newTeamId
+      );
 
       // Revoke the token if no other slack connector is active on the same slackTeamId.
       if (configurations.length == 0) {
@@ -267,22 +263,18 @@ export async function cleanupSlackConnector(
     );
   }
 
-  const configuration = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const configuration = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
   if (!configuration) {
     return new Err(
       new Error(`Could not find configuration for connector id ${connectorId}`)
     );
   }
 
-  const configurations = await SlackConfiguration.findAll({
-    where: {
-      slackTeamId: configuration.slackTeamId,
-    },
-  });
+  const configurations = await SlackConfigurationResource.listForTeamId(
+    configuration.slackTeamId
+  );
 
   // We deactivate our connections only if we are the only live slack connection for this team.
   if (configurations.length == 1) {
@@ -350,11 +342,9 @@ export async function retrieveSlackConnectorPermissions({
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
   }
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
   if (!slackConfig) {
     logger.error({ connectorId }, "Slack configuration not found");
     return new Err(new Error("Slack configuration not found"));
@@ -444,11 +434,9 @@ export async function setSlackConnectorPermissions(
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
 
-  const configuration = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const configuration = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
   if (!configuration) {
     return new Err(
       new Error(`Could not find configuration for connector id ${connectorId}`)
@@ -566,11 +554,9 @@ export async function retrieveSlackContentNodes(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<ContentNode[], Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
   if (!slackConfig) {
     logger.error({ connectorId }, "Slack configuration not found");
     return new Err(new Error("Slack configuration not found"));

@@ -41,7 +41,7 @@ import {
   SlackBotWhitelist,
   SlackChannel,
   SlackChatBotMessage,
-  SlackConfiguration,
+  SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
 import {
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   await ConfluenceConfiguration.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
-  await SlackConfiguration.sync({ alter: true });
+  await SlackConfigurationModel.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
   await SlackChatBotMessage.sync({ alter: true });

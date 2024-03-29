@@ -10,9 +10,9 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export class SlackConfiguration extends Model<
-  InferAttributes<SlackConfiguration>,
-  InferCreationAttributes<SlackConfiguration>
+export class SlackConfigurationModel extends Model<
+  InferAttributes<SlackConfigurationModel>,
+  InferCreationAttributes<SlackConfigurationModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -22,7 +22,7 @@ export class SlackConfiguration extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare whitelistedDomains?: readonly string[];
 }
-SlackConfiguration.init(
+SlackConfigurationModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -67,7 +67,7 @@ SlackConfiguration.init(
     modelName: "slack_configurations",
   }
 );
-ConnectorModel.hasOne(SlackConfiguration);
+ConnectorModel.hasOne(SlackConfigurationModel);
 
 export class SlackMessages extends Model<
   InferAttributes<SlackMessages>,

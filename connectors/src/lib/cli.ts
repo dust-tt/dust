@@ -84,7 +84,6 @@ import {
   IntercomTeam,
 } from "@connectors/lib/models/intercom";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
   getTemporalClient,
@@ -92,6 +91,7 @@ import {
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { NANGO_SLACK_CONNECTOR_ID, INTERACTIVE_CLI } = process.env;
@@ -983,7 +983,7 @@ export const slack = async ({
         throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
       }
 
-      const slackConfigurations = await SlackConfiguration.findAll();
+      const slackConfigurations = await SlackConfigurationResource.listAll();
       const connections = await nango_client().listConnections();
 
       const oneHourAgo = new Date();
@@ -1070,16 +1070,15 @@ export const slack = async ({
           "\n-"
         )}`
       );
-      await SlackConfiguration.update(
-        {
-          whitelistedDomains: whitelistedDomainsArray,
-        },
-        {
-          where: {
-            connectorId: connector.id,
-          },
-        }
+
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connector.id
       );
+      if (slackConfig) {
+        await slackConfig.update({
+          whitelistedDomains: whitelistedDomainsArray,
+        });
+      }
 
       return { success: true };
     }

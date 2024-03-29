@@ -33,10 +33,10 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import {
   SlackChannel,
   SlackChatBotMessage,
-  SlackConfiguration,
 } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 import {
   formatMessagesForUpsert,
@@ -65,12 +65,9 @@ export async function botAnswerMessageWithErrorHandling(
   slackMessageTs: string,
   slackThreadTs: string | null
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      slackTeamId: slackTeamId,
-      botEnabled: true,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
+    slackTeamId
+  );
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -162,7 +159,7 @@ async function botAnswerMessage(
   slackMessageTs: string,
   slackThreadTs: string | null,
   connector: ConnectorResource,
-  slackConfig: SlackConfiguration
+  slackConfig: SlackConfigurationResource
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -615,11 +612,9 @@ function _removeCiteMention(message: string): string {
 export async function getBotEnabled(
   connectorId: ModelId
 ): Promise<Result<boolean, Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -635,11 +630,9 @@ export async function toggleSlackbot(
   connectorId: ModelId,
   botEnabled: boolean
 ): Promise<Result<void, Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
 
   if (!slackConfig) {
     return new Err(
@@ -650,12 +643,10 @@ export async function toggleSlackbot(
   }
 
   if (botEnabled) {
-    const otherSlackConfigWithBotEnabled = await SlackConfiguration.findOne({
-      where: {
-        slackTeamId: slackConfig.slackTeamId,
-        botEnabled: true,
-      },
-    });
+    const otherSlackConfigWithBotEnabled =
+      await SlackConfigurationResource.fetchByActiveBot(
+        slackConfig.slackTeamId
+      );
 
     if (otherSlackConfigWithBotEnabled) {
       return new Err(
@@ -666,8 +657,7 @@ export async function toggleSlackbot(
     }
   }
 
-  slackConfig.botEnabled = botEnabled;
-  await slackConfig.save();
+  await slackConfig.update({ botEnabled: botEnabled });
 
   return new Ok(void 0);
 }

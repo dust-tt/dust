@@ -2,7 +2,7 @@ import type { Transaction } from "sequelize";
 
 import {
   SlackChannel,
-  SlackConfiguration,
+  SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
 import type {
@@ -10,32 +10,19 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 export class SlackConnectorStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: WithCreationAttributes<SlackConfiguration>,
+    blob: WithCreationAttributes<SlackConfigurationModel>,
     transaction: Transaction
   ): Promise<void> {
-    const { slackTeamId } = blob;
-
-    const otherSlackConfigurationWithBotEnabled =
-      await SlackConfiguration.findOne({
-        where: {
-          slackTeamId,
-          botEnabled: true,
-        },
-        transaction,
-      });
-
-    await SlackConfiguration.create(
-      {
-        ...blob,
-        botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
-        connectorId: connector.id,
-      },
-      { transaction }
-    );
+    await SlackConfigurationResource.makeNew({
+      slackTeamId: blob.slackTeamId,
+      connectorId: connector.id,
+      transaction,
+    });
   }
 
   async delete(
@@ -54,7 +41,7 @@ export class SlackConnectorStrategy implements ConnectorProviderStrategy {
       },
       transaction,
     });
-    await SlackConfiguration.destroy({
+    await SlackConfigurationModel.destroy({
       where: {
         connectorId: connector.id,
       },
