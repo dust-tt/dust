@@ -140,7 +140,7 @@ export class Membership extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare role: MembershipRoleType;
-  declare startAt: Date | null;
+  declare startAt: Date;
   declare endAt: Date | null;
 
   declare userId: ForeignKey<User["id"]>;
