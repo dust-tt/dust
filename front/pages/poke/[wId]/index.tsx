@@ -15,6 +15,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
+import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -24,6 +25,7 @@ import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SubscriptionsDataTable } from "@app/components/poke/subscriptions/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -34,47 +36,73 @@ import {
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { Plan, Subscription } from "@app/lib/models";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { usePokePlans } from "@app/lib/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
-  subscription: SubscriptionType;
+  activeSubscription: SubscriptionType;
+  subscriptions: SubscriptionType[];
   dataSources: DataSourceType[];
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
 }>(async (context, auth) => {
   const owner = auth.workspace();
-  const subscription = auth.subscription();
+  const activeSubscription = auth.subscription();
 
-  if (!owner || !subscription) {
+  if (!owner || !activeSubscription) {
     return {
       notFound: true,
     };
   }
 
   // TODO(2024-02-28 flav) Stop fetching agent configurations on the server side.
-  const [dataSources, agentConfigurations] = await Promise.all([
-    getDataSources(auth, { includeEditedBy: true }),
-    (async () => {
-      return (
-        await getAgentConfigurations({
-          auth,
-          agentsGetView: "admin_internal",
-          variant: "full",
-        })
-      ).filter(
-        (a) =>
-          !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
-      );
-    })(),
-  ]);
+  const [dataSources, agentConfigurations, subscriptionModels] =
+    await Promise.all([
+      getDataSources(auth, { includeEditedBy: true }),
+      (async () => {
+        return (
+          await getAgentConfigurations({
+            auth,
+            agentsGetView: "admin_internal",
+            variant: "full",
+          })
+        ).filter(
+          (a) =>
+            !Object.values(GLOBAL_AGENTS_SID).includes(
+              a.sId as GLOBAL_AGENTS_SID
+            )
+        );
+      })(),
+      Subscription.findAll({
+        where: { workspaceId: owner.id },
+      }),
+    ]);
+
+  const plans = keyBy(
+    await Plan.findAll({
+      where: {
+        id: subscriptionModels.map((s) => s.planId),
+      },
+    }),
+    "id"
+  );
+
+  const subscriptions = subscriptionModels.map((s) =>
+    renderSubscriptionFromModels({
+      plan: plans[s.planId],
+      activeSubscription: s,
+    })
+  );
 
   return {
     props: {
       owner,
-      subscription,
+      activeSubscription,
+      subscriptions,
       dataSources: orderDatasourceByImportance(dataSources),
       agentConfigurations: agentConfigurations,
       whitelistableFeatures:
@@ -86,7 +114,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
 const WorkspacePage = ({
   owner,
-  subscription,
+  activeSubscription,
+  subscriptions,
   dataSources,
   agentConfigurations,
   whitelistableFeatures,
@@ -253,13 +282,13 @@ const WorkspacePage = ({
                 View dust app logs
               </a>
             </div>
-            {subscription.stripeSubscriptionId && (
+            {activeSubscription.stripeSubscriptionId && (
               <div>
                 <Link
                   href={
                     isDevelopment()
-                      ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
-                      : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
+                      ? `https://dashboard.stripe.com/test/subscriptions/${activeSubscription.stripeSubscriptionId}`
+                      : `https://dashboard.stripe.com/subscriptions/${activeSubscription.stripeSubscriptionId}`
                   }
                   target="_blank"
                   className="text-xs text-action-400"
@@ -302,7 +331,7 @@ const WorkspacePage = ({
               </div>
 
               <h2 className="text-md mb-4 mt-8 font-bold">Plan:</h2>
-              <JsonViewer value={subscription} rootName={false} />
+              <JsonViewer value={activeSubscription} rootName={false} />
               <div className="flex flex-col gap-8">
                 {plans && (
                   <div className="pt-8">
@@ -319,7 +348,9 @@ const WorkspacePage = ({
                                     variant="secondary"
                                     label={`Upgrade to free plan: ${p.code}`}
                                     onClick={() => onUpgradeToPlan(p)}
-                                    disabled={subscription.plan.code === p.code}
+                                    disabled={
+                                      activeSubscription.plan.code === p.code
+                                    }
                                   />
                                 </div>
                               );
@@ -330,8 +361,10 @@ const WorkspacePage = ({
                               variant="secondaryWarning"
                               onClick={onDowngrade}
                               disabled={
-                                subscription.plan.code === FREE_NO_PLAN_CODE ||
-                                subscription.stripeSubscriptionId !== null ||
+                                activeSubscription.plan.code ===
+                                  FREE_NO_PLAN_CODE ||
+                                activeSubscription.stripeSubscriptionId !==
+                                  null ||
                                 workspaceHasManagedDataSources
                               }
                             />
@@ -352,7 +385,8 @@ const WorkspacePage = ({
                               Delete data sources before deleting the workspace.
                             </p>
                           )}
-                          {subscription.plan.code !== FREE_NO_PLAN_CODE && (
+                          {activeSubscription.plan.code !==
+                            FREE_NO_PLAN_CODE && (
                             <p className="text-warning mb-4 text-sm ">
                               Downgrade to free test plan before deleting the
                               workspace.
@@ -369,7 +403,8 @@ const WorkspacePage = ({
                               variant="secondaryWarning"
                               onClick={onDeleteWorkspace}
                               disabled={
-                                subscription.plan.code !== FREE_NO_PLAN_CODE ||
+                                activeSubscription.plan.code !==
+                                  FREE_NO_PLAN_CODE ||
                                 workspaceHasManagedDataSources
                               }
                             />
@@ -380,7 +415,7 @@ const WorkspacePage = ({
                   </Collapsible>
                 </div>
               </div>
-              {subscription.plan.code !== FREE_NO_PLAN_CODE &&
+              {activeSubscription.plan.code !== FREE_NO_PLAN_CODE &&
                 workspaceHasManagedDataSources && (
                   <div className="pl-2 pt-4">
                     <p className="text-warning mb-4 text-sm">
@@ -391,6 +426,10 @@ const WorkspacePage = ({
             </div>
 
             <div className="flex flex-col space-y-8 pt-4">
+              <SubscriptionsDataTable
+                owner={owner}
+                subscriptions={subscriptions}
+              />
               <FeatureFlagsDataTable
                 owner={owner}
                 whitelistableFeatures={whitelistableFeatures}
