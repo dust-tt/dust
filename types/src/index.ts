@@ -46,6 +46,7 @@ export * from "./front/lib/dust_api";
 export * from "./front/lib/error";
 export * from "./front/lib/extract_event_app";
 export * from "./front/membership_invitation";
+export * from "./front/memberships";
 export * from "./front/plan";
 export * from "./front/project";
 export * from "./front/provider";

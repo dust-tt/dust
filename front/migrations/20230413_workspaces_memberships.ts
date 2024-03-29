@@ -35,6 +35,7 @@ async function main() {
               role: "admin",
               userId: u.id,
               workspaceId: w.id,
+              startAt: new Date(),
             });
             console.log(`+ ${u.id}`);
           } else {
