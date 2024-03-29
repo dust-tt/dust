@@ -971,8 +971,8 @@ function ChangeMemberModal({
         isOpen={revokeMemberModalOpen}
         title="Revoke member access"
         onValidate={async () => {
-          await handleMemberRoleChange({
-            member,
+          await handleMembersRoleChange({
+            members: [member],
             role: "none",
             mutate,
             sendNotification,
@@ -985,39 +985,11 @@ function ChangeMemberModal({
         onCancel={() => {
           setRevokeMemberModalOpen(false);
         }}
+        isSaving={isSaving}
       >
-        <div className="mt-6 flex flex-col gap-6 px-2">
-          <div>
-            Revoke access for user{" "}
-            <span className="font-bold">{member.fullName}</span>?
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="tertiary"
-              label="Cancel"
-              onClick={() => setRevokeMemberModalOpen(false)}
-            />
-            <Button
-              variant="primaryWarning"
-              label={isSaving ? "Revoking..." : "Yes, revoke"}
-              onClick={async () => {
-                setIsSaving(true);
-                await handleMembersRoleChange({
-                  members: [member],
-                  role: "none",
-                  mutate,
-                  sendNotification,
-                });
-                setRevokeMemberModalOpen(false);
-                onClose();
-                /* Delay to let react close the modal before cleaning isSaving, to
-                 * avoid the user seeing the button change label again during the closing animation */
-                setTimeout(() => {
-                  setIsSaving(false);
-                }, CLOSING_ANIMATION_DURATION);
-              }}
-            />
-          </div>
+        <div>
+          Revoke access for user{" "}
+          <span className="font-bold">{member.fullName}</span>?
         </div>
       </Dialog>
     </ElementModal>
