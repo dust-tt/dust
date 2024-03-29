@@ -10,6 +10,7 @@ import {
   OpenaiLogo,
   Page,
   Spinner,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -44,7 +45,6 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
 export const CREATIVITY_LEVELS = Object.entries(
@@ -125,7 +125,7 @@ export function InstructionScreen({
           />
         </div>
       </div>
-      <AssistantBuilderTextArea
+      <TextArea
         placeholder="I want you to act as…"
         value={builderState.instructions}
         onChange={(value) => {
@@ -135,8 +135,6 @@ export function InstructionScreen({
             instructions: value,
           }));
         }}
-        error={null}
-        name="assistantInstructions"
       />
       {isDevelopmentOrDustWorkspace(owner) && (
         <Suggestions
@@ -260,50 +258,6 @@ function AdvancedSettings({
         </div>
       </DropdownMenu.Items>
     </DropdownMenu>
-  );
-}
-
-function AssistantBuilderTextArea({
-  placeholder,
-  value,
-  onChange,
-  error,
-  name,
-}: {
-  placeholder: string;
-  value: string | null;
-  onChange: (value: string) => void;
-  error?: string | null;
-  name: string;
-}) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto"; // Reset height to recalculate
-      textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
-    }
-  }, [value]); // Re-run when value changes
-  return (
-    <textarea
-      ref={textareaRef}
-      name="name"
-      id={name}
-      className={classNames(
-        "block min-h-60 w-full min-w-0 rounded-xl text-sm transition-all duration-200",
-        !error
-          ? "border-structure-100 focus:border-action-300 focus:ring-action-300"
-          : "border-red-500 focus:border-red-500 focus:ring-red-500",
-        "border-structure-200 bg-structure-50",
-        "resize-y"
-      )}
-      placeholder={placeholder}
-      value={value ?? ""}
-      onChange={(e) => {
-        onChange(e.target.value);
-      }}
-    />
   );
 }
 
