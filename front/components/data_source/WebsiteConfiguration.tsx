@@ -260,6 +260,7 @@ export default function WebsiteConfiguration({
               name="dataSourceName"
               showErrorLabel={true}
               className="text-sm"
+              disabled={webCrawlerConfiguration !== null}
             />
           </Page.Layout>
           <Page.Layout direction="vertical" gap="md">
