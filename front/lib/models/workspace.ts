@@ -169,7 +169,7 @@ Membership.init(
     },
     startAt: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: false,
     },
     endAt: {
       type: DataTypes.DATE,
