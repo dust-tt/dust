@@ -25,19 +25,27 @@ export async function sendDataDeletionEmail({
   remainingDays: number;
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const ws = auth.workspace();
-  if (!ws) {
-    throw new Error("No workspace found");
+  try {
+    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    const ws = auth.workspace();
+    if (!ws) {
+      throw new Error("No workspace found");
+    }
+    const admins = await getMembers(auth, { roles: ["admin"] });
+    for (const a of admins)
+      await sendAdminDataDeletionEmail({
+        email: a.email,
+        firstName: a.firstName,
+        workspaceName: ws.name,
+        remainingDays,
+      });
+  } catch (e) {
+    logger.error(
+      { panic: true, error: e },
+      "Failed to send data deletion email"
+    );
+    throw e;
   }
-  const admins = await getMembers(auth, { roles: ["admin"] });
-  for (const a of admins)
-    await sendAdminDataDeletionEmail({
-      email: a.email,
-      firstName: a.firstName,
-      workspaceName: ws.name,
-      remainingDays,
-    });
 }
 
 export async function shouldStillScrubData({

@@ -544,6 +544,10 @@ async function handler(
                   workspaceId: matchingSubscription.workspace.sId,
                 });
               if (scheduleScrubRes.isErr()) {
+                logger.error(
+                  { panic: true, error: scheduleScrubRes.error },
+                  "Error launching scrub workspace workflow"
+                );
                 return apiError(req, res, {
                   status_code: 500,
                   api_error: {
