@@ -31,6 +31,7 @@ import { useSWRConfig } from "swr";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
+import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
 
 export default function WebsiteConfiguration({
@@ -90,23 +91,21 @@ export default function WebsiteConfiguration({
     5: "5 levels",
   };
 
-  const formValidation = useCallback(() => {
-    let urlIsValid = true;
-    try {
-      if (dataSourceUrl.trim().length > 0) {
-        new URL(dataSourceUrl);
-      }
-      setDataSourceUrlError("");
-    } catch (e) {
-      urlIsValid = false;
-    }
+  useEffect(() => {
+    setDataSourceName(urlToDataSourceName(dataSourceUrl));
+  }, [dataSourceUrl]);
 
+  const formValidation = useCallback(() => {
     let valid = true;
 
-    if (!urlIsValid) {
-      setDataSourceUrlError(
-        "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
-      );
+    if (isUrlValid(dataSourceUrl)) {
+      setDataSourceUrlError("");
+    } else {
+      if (dataSourceUrl.length > 0) {
+        setDataSourceUrlError(
+          "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
+        );
+      }
       valid = false;
     }
 
@@ -249,20 +248,6 @@ export default function WebsiteConfiguration({
     >
       <div className="py-8">
         <Page.Layout direction="vertical" gap="xl">
-          <Page.Layout direction="vertical" gap="md">
-            <Page.H variant="h3">Data Source Name</Page.H>
-            <Page.P>Give a name to this Data Source</Page.P>
-            <Input
-              placeholder=""
-              value={dataSourceName}
-              onChange={(value) => setDataSourceName(value)}
-              error={dataSourceNameError}
-              name="dataSourceName"
-              showErrorLabel={true}
-              className="text-sm"
-              disabled={webCrawlerConfiguration !== null}
-            />
-          </Page.Layout>
           <Page.Layout direction="vertical" gap="md">
             <Page.H variant="h3">Website Entry Point</Page.H>
             <Page.P>
@@ -408,6 +393,20 @@ export default function WebsiteConfiguration({
               />
             </Page.Layout>
           </div>
+          <Page.Layout direction="vertical" gap="md">
+            <Page.H variant="h3">Name</Page.H>
+            <Page.P>Give a name to this Data Source.</Page.P>
+            <Input
+              placeholder=""
+              value={dataSourceName}
+              onChange={(value) => setDataSourceName(value)}
+              error={dataSourceNameError}
+              name="dataSourceName"
+              showErrorLabel={true}
+              className="text-sm"
+              disabled={webCrawlerConfiguration !== null}
+            />
+          </Page.Layout>
           {webCrawlerConfiguration && (
             <div className="flex">
               <DropdownMenu>
