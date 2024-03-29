@@ -1,7 +1,8 @@
 import { Page } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import { isDataSourceNameValid } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -67,23 +68,12 @@ export default function DataSourceNew({
         exists = true;
       }
     });
+    const nameValidRes = isDataSourceNameValid(dataSourceName);
     if (exists) {
       setDataSourceNameError("A Folder with the same name already exists");
       valid = false;
-    } else if (dataSourceName.length == 0) {
-      valid = false;
-      setDataSourceNameError("");
-    } else if (dataSourceName.startsWith("managed-")) {
-      setDataSourceNameError(
-        "DataSource name cannot start with the prefix `managed-`"
-      );
-      valid = false;
-      // eslint-disable-next-line no-useless-escape
-    } else if (!dataSourceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
-      setDataSourceNameError(
-        "DataSource name must only contain letters, numbers, and the characters `._-`"
-      );
-      valid = false;
+    } else if (nameValidRes.isErr()) {
+      setDataSourceNameError(nameValidRes.error);
     } else {
       edited = true;
       setDataSourceNameError("");

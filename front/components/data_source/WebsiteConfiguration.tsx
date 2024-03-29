@@ -20,6 +20,7 @@ import type { APIError } from "@dust-tt/types";
 import {
   CrawlingFrequencies,
   DepthOptions,
+  isDataSourceNameValid,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -30,7 +31,6 @@ import { useSWRConfig } from "swr";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
-import { urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
 
 export default function WebsiteConfiguration({
@@ -52,10 +52,13 @@ export default function WebsiteConfiguration({
   const [isEdited, setIsEdited] = useState(false);
   const [isValid, setIsValid] = useState(true);
 
-  const [dataSourceNameError, setDataSourceNameError] = useState("");
   const [dataSourceUrl, setDataSourceUrl] = useState(
     webCrawlerConfiguration?.url || ""
   );
+  const [dataSourceUrlError, setDataSourceUrlError] = useState("");
+
+  const [dataSourceName, setDataSourceName] = useState(dataSource?.name || "");
+  const [dataSourceNameError, setDataSourceNameError] = useState("");
   const [maxPages, setMaxPages] = useState<number | null>(
     webCrawlerConfiguration?.maxPageToCrawl || 50
   );
@@ -90,45 +93,46 @@ export default function WebsiteConfiguration({
   const formValidation = useCallback(() => {
     let urlIsValid = true;
     try {
-      new URL(dataSourceUrl);
+      if (dataSourceUrl.trim().length > 0) {
+        new URL(dataSourceUrl);
+      }
+      setDataSourceUrlError("");
     } catch (e) {
       urlIsValid = false;
     }
 
-    let edited = false;
     let valid = true;
 
-    let exists = false;
-    const dsName = urlToDataSourceName(dataSourceUrl);
-    dataSources.forEach((d) => {
-      if (d.name == dsName && d.id != dataSource?.id) {
-        exists = true;
-      }
-    });
-    if (exists) {
-      setDataSourceNameError("A Folder with the same name already exists");
-      valid = false;
-    } else if (dataSourceUrl.length == 0) {
-      valid = false;
-      setDataSourceNameError("");
-    } else if (dataSourceUrl.startsWith("managed-")) {
-      setDataSourceNameError(
-        "DataSource name cannot start with the prefix `managed-`"
-      );
-      valid = false;
-    } else if (!urlIsValid) {
-      setDataSourceNameError(
+    if (!urlIsValid) {
+      setDataSourceUrlError(
         "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
       );
       valid = false;
-    } else {
-      edited = true;
-      setDataSourceNameError("");
     }
 
-    setIsEdited(edited);
+    let exists = false;
+    dataSources.forEach((d) => {
+      if (d.name == dataSourceName && d.id != dataSource?.id) {
+        exists = true;
+      }
+    });
+
+    if (exists) {
+      setDataSourceNameError("A Folder with the same name already exists");
+      valid = false;
+    }
+    const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
+    if (dataSourceNameRes.isErr()) {
+      setDataSourceNameError(dataSourceNameRes.error);
+      valid = false;
+    } else {
+      setDataSourceNameError("");
+      valid = true;
+    }
+
+    setIsEdited(true);
     setIsValid(valid);
-  }, [dataSourceUrl, dataSources, dataSource?.id]);
+  }, [dataSourceName, dataSources, dataSourceUrl, dataSource?.id]);
 
   useEffect(() => {
     formValidation();
@@ -155,6 +159,7 @@ export default function WebsiteConfiguration({
           type: "url",
           provider: "webcrawler",
           connectionId: undefined,
+          name: dataSourceName,
         } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
       });
       if (res.ok) {
@@ -201,7 +206,7 @@ export default function WebsiteConfiguration({
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/data_sources/${encodeURIComponent(dataSource.name)}`,
       {
         method: "DELETE",
       }
@@ -245,6 +250,19 @@ export default function WebsiteConfiguration({
       <div className="py-8">
         <Page.Layout direction="vertical" gap="xl">
           <Page.Layout direction="vertical" gap="md">
+            <Page.H variant="h3">Data Source Name</Page.H>
+            <Page.P>Give a name to this Data Source</Page.P>
+            <Input
+              placeholder=""
+              value={dataSourceName}
+              onChange={(value) => setDataSourceName(value)}
+              error={dataSourceNameError}
+              name="dataSourceName"
+              showErrorLabel={true}
+              className="text-sm"
+            />
+          </Page.Layout>
+          <Page.Layout direction="vertical" gap="md">
             <Page.H variant="h3">Website Entry Point</Page.H>
             <Page.P>
               Enter the address of the website you'd like to index.
@@ -253,7 +271,7 @@ export default function WebsiteConfiguration({
               placeholder="https://example.com/articles"
               value={dataSourceUrl}
               onChange={(value) => setDataSourceUrl(value)}
-              error={dataSourceNameError}
+              error={dataSourceUrlError}
               name="dataSourceUrl"
               showErrorLabel
               className="text-sm"
