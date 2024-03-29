@@ -177,15 +177,9 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "34a8c4a2aa",
       appHash:
-        "eb6549b22d91f1b69fe06f69f05af2fa2e4586c918a3c8930ac301e178f958cc",
+        "65020161030b555f4d2efc9d1ce3a6d0020dcf76e663f746bd98213c90a0675f",
     },
     config: {
-      IS_FINISHED: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
-        function_call: "send_creation_finished",
-        use_cache: true,
-      },
       CREATE_SUGGESTIONS: {
         provider_id: "openai",
         model_id: "gpt-3.5-turbo",
