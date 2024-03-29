@@ -1,4 +1,8 @@
-import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
+import type {
+  MembershipRoleType,
+  RoleType,
+  WorkspaceSegmentationType,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -135,7 +139,9 @@ export class Membership extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare role: "admin" | "builder" | "user" | "revoked";
+  declare role: MembershipRoleType;
+  declare startAt: Date | null;
+  declare endAt: Date | null;
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -160,6 +166,14 @@ Membership.init(
     role: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    startAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    endAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
