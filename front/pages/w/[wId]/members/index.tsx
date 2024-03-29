@@ -971,8 +971,8 @@ function ChangeMemberModal({
         isOpen={revokeMemberModalOpen}
         title="Revoke member access"
         onValidate={async () => {
-          await handleMemberRoleChange({
-            member,
+          await handleMembersRoleChange({
+            members: [member],
             role: "none",
             mutate,
             sendNotification,
@@ -985,6 +985,7 @@ function ChangeMemberModal({
         onCancel={() => {
           setRevokeMemberModalOpen(false);
         }}
+        isSaving={isSaving}
       >
         <div>
           Revoke access for user{" "}
