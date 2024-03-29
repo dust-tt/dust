@@ -77,11 +77,14 @@ async function deleteAllConversations(auth: Authenticator) {
   const conversations = await Conversation.findAll({
     where: { workspaceId: workspace.id },
   });
+  logger.info(
+    { workspaceId: workspace.sId, conversationsCount: conversations.length },
+    "Deleting all conversations for workspace."
+  );
   const chunks = chunk(conversations, 4);
   for (const chunk of chunks) {
     await Promise.all(
       chunk.map(async (c) => {
-        logger.info({ conversationId: c.id }, "Deleting conversation");
         const messages = await Message.findAll({
           attributes: ["id", "userMessageId", "agentMessageId"],
           where: { conversationId: c.id },
