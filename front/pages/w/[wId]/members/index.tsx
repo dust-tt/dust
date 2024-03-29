@@ -9,12 +9,12 @@ import {
   ElementModal,
   Icon,
   IconButton,
-  Input,
   Modal,
   Page,
   PlusIcon,
   Popup,
   Searchbar,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -437,114 +437,125 @@ function InviteEmailModal({
   owner: WorkspaceType;
   members: UserTypeWithWorkspaces[];
 }) {
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
-  // when set, the modal to reinvite a user that was revoked will be shown
-  const [existingRevokedUser, setExistingRevokedUser] =
-    useState<UserTypeWithWorkspaces | null>(null);
+  const [invitationsSegmentation, setInvitationsSegmentation] = useState<{
+    activeSameRole: UserTypeWithWorkspaces[];
+    activeDifferentRole: UserTypeWithWorkspaces[];
+    revoked: UserTypeWithWorkspaces[];
+    notInWorkspace: string[];
+  }>({
+    activeSameRole: [],
+    activeDifferentRole: [],
+    revoked: [],
+    notInWorkspace: [],
+  });
   const { mutate } = useSWRConfig();
-  const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const sendNotification = useContext(SendNotificationsContext);
-  async function handleSendInvitation(): Promise<void> {
-    if (!isEmailValid(inviteEmail)) {
-      setEmailError("Invalid email address.");
-      return;
+  const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
+  const [showReinviteUsersModal, setShowReinviteUsersModal] = useState(false);
+
+  function getEmailsList(): string[] | null {
+    const inviteEmailsList = inviteEmails
+      .split(/[\n,]+/)
+      .map((e) => e.trim())
+      .filter((e) => e !== "")
+      // remove duplicates
+      .filter((e, i, self) => self.indexOf(e) === i);
+    if (inviteEmailsList.map(isEmailValid).includes(false)) {
+      setEmailError(
+        "Invalid email addresses: " +
+          inviteEmailsList.filter((e) => !isEmailValid(e)).join(", ")
+      );
+      return null;
     }
-    const existing = members.find((m) => m.email === inviteEmail);
-    if (existing) {
-      if (existing.workspaces[0].role !== "none") {
-        setEmailError("User is already a member of this workspace.");
-      } else {
-        setExistingRevokedUser(existing);
-      }
-      return;
-    }
+    return inviteEmailsList;
+  }
 
-    const body: PostInvitationRequestBody = [
-      {
-        email: inviteEmail,
-        role: invitationRole,
-      },
-    ];
-
-    const res = await fetch(`/api/w/${owner.sId}/invitations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Invite failed",
-        description:
-          "Failed to invite new member to workspace: " + res.statusText,
+  async function handleSendInvitations(
+    inviteEmailsList: string[]
+  ): Promise<void> {
+    const invitesByCase = {
+      activeSameRole: members.filter((m) =>
+        inviteEmailsList.find(
+          (e) => m.email === e && m.workspaces[0].role === invitationRole
+        )
+      ),
+      activeDifferentRole: members.filter((m) =>
+        inviteEmailsList.find(
+          (e) =>
+            m.email === e &&
+            m.workspaces[0].role !== invitationRole &&
+            m.workspaces[0].role !== "none"
+        )
+      ),
+      revoked: members.filter((m) =>
+        inviteEmailsList.find(
+          (e) => m.email === e && m.workspaces[0].role === "none"
+        )
+      ),
+      notInWorkspace: inviteEmailsList.filter(
+        (e) => !members.find((m) => m.email === e)
+      ),
+    };
+    setInvitationsSegmentation(invitesByCase);
+    if (!shouldWarnAboutExistingMembers(invitesByCase)) {
+      await sendInvitations({
+        owner,
+        emails: invitesByCase.notInWorkspace,
+        invitationRole,
+        mutate,
+        sendNotification,
       });
+      onClose();
     } else {
-      const result: PostInvitationResponseBody = await res.json();
-      if (result[0].success === false) {
-        sendNotification({
-          type: "error",
-          title: "Invite failed",
-          description:
-            result[0].error_message ||
-            "Failed to invite new member to workspace.",
-        });
-      } else {
-        sendNotification({
-          type: "success",
-          title: "Invite sent",
-          description: `Invite sent to ${inviteEmail}. You can repeat the operation to invite other users.`,
-        });
-        await mutate(`/api/w/${owner.sId}/invitations`);
-      }
+      setShowReinviteUsersModal(true);
     }
   }
 
   return (
     <>
-      <ReinviteUserModal
-        onClose={() => setExistingRevokedUser(null)}
-        user={existingRevokedUser}
+      <ReinviteUsersModal
+        owner={owner}
+        show={showReinviteUsersModal}
+        onClose={() => setShowReinviteUsersModal(false)}
+        invitationsSegmentation={invitationsSegmentation}
         role={invitationRole}
       />
       <Modal
         isOpen={showModal}
         onClose={onClose}
-        hasChanged={emailError === "" && inviteEmail !== "" && !isSending}
+        hasChanged={emailError === "" && inviteEmails !== "" && !isSending}
         title="Invite new users"
         variant="side-sm"
         saveLabel="Invite"
         isSaving={isSending}
         onSave={async () => {
+          const inviteEmailsList = getEmailsList();
+          if (!inviteEmailsList) return;
           setIsSending(true);
-          await handleSendInvitation();
+          await handleSendInvitations(inviteEmailsList);
           setIsSending(false);
-          setInviteEmail("");
+          setInviteEmails("");
         }}
       >
         <div className="mt-6 flex flex-col gap-6 px-2 text-sm">
-          <Page.P>
-            Invite a new user to your workspace. They will receive an email with
-            a link to join your workspace.
-          </Page.P>
-          <div className="flex flex-grow flex-col gap-1.5">
-            <div className="font-semibold">Email to send invite to:</div>
+          <div className="flex flex-grow flex-col gap-5">
+            <div className="font-semibold">
+              Email addresses (comma or newline separated):
+            </div>
             <div className="flex items-start gap-2">
               <div className="flex-grow">
-                <Input
-                  placeholder={"Email address"}
-                  value={inviteEmail || ""}
-                  name={""}
-                  error={emailError}
-                  showErrorLabel={true}
-                  onChange={(e) => {
-                    setInviteEmail(e.trim());
+                <TextArea
+                  placeholder="Email addresses, comma or newline separated"
+                  value={inviteEmails}
+                  onChange={(value) => {
+                    setInviteEmails(value);
                     setEmailError("");
                   }}
+                  error={emailError}
+                  showErrorLabel={true}
                 />
               </div>
             </div>
@@ -567,34 +578,76 @@ function InviteEmailModal({
   );
 }
 
-function ReinviteUserModal({
+function ReinviteUsersModal({
+  owner,
+  show,
   onClose,
-  user,
+  invitationsSegmentation,
   role,
 }: {
+  owner: WorkspaceType;
+  show: boolean;
   onClose: (show: boolean) => void;
-  user: UserTypeWithWorkspaces | null;
+  invitationsSegmentation: {
+    activeSameRole: UserTypeWithWorkspaces[];
+    activeDifferentRole: UserTypeWithWorkspaces[];
+    revoked: UserTypeWithWorkspaces[];
+    notInWorkspace: string[];
+  };
   role: ActiveRoleType;
 }) {
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   const [isSaving, setIsSaving] = useState(false);
-  if (!user) return null;
+
+  const { notInWorkspace, activeDifferentRole, revoked } =
+    invitationsSegmentation;
+
   return (
     <Modal
-      isOpen={!!user}
+      isOpen={show}
       onClose={() => onClose(false)}
       hasChanged={false}
-      title="Reinstate user?"
+      title="Some users are already in the workspace"
       variant="dialogue"
     >
       <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          {" "}
-          <span className="font-semibold">{user.email + " "}</span> was revoked
-          from the workspace. Reinstating them as member will also immediately
-          reinstate their conversation history on Dust.
-        </div>
+        {revoked.length > 0 && (
+          <div>
+            <div>
+              The user(s) below were previously revoked from your workspace.
+              Reinstating them will also immediately reinstate their
+              conversation history on Dust.
+            </div>
+            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
+              {revoked.map((user) => (
+                <div
+                  key={user.email}
+                >{`- ${user.fullName} (${user.email})`}</div>
+              ))}
+            </div>
+          </div>
+        )}
+        {activeDifferentRole.length > 0 && (
+          <div>
+            <div>
+              The user(s) below are already in your workspace with a different
+              role. Moving forward will change their role to{" "}
+              <span className="font-bold">{displayRole(role)}</span>.
+            </div>
+            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
+              {activeDifferentRole.map((user) => (
+                <div key={user.email}>{`- ${
+                  user.fullName
+                } (current role: ${displayRole(
+                  user.workspaces[0].role
+                )})`}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>Do you want to proceed?</div>
         <div className="flex gap-2">
           <Button
             variant="tertiary"
@@ -603,16 +656,24 @@ function ReinviteUserModal({
           />
           <Button
             variant="primaryWarning"
-            label={isSaving ? "Reinstating..." : "Yes, reinstate"}
+            label={isSaving ? "Applying changes..." : "Yes, proceed"}
             onClick={async () => {
               setIsSaving(true);
-              await handleMemberRoleChange({
-                member: user,
+              await handleMembersRoleChange({
+                members: [...activeDifferentRole, ...revoked],
                 role,
                 mutate,
                 sendNotification,
               });
+              await sendInvitations({
+                owner,
+                emails: notInWorkspace,
+                invitationRole: role,
+                mutate,
+                sendNotification,
+              });
               onClose(false);
+              await mutate(`/api/w/${owner.sId}/invitations`);
               /* Delay to let react close the modal before cleaning isSaving, to
                * avoid the user seeing the button change label again during the closing animation */
               setTimeout(() => {
@@ -778,20 +839,19 @@ function RevokeInvitationModal({
   );
 }
 
-async function handleMemberRoleChange({
-  member,
+async function handleMembersRoleChange({
+  members,
   role,
   mutate,
   sendNotification,
 }: {
-  member: UserTypeWithWorkspaces;
+  members: UserTypeWithWorkspaces[];
   role: RoleType;
   mutate: any;
   sendNotification: any;
 }): Promise<void> {
-  const res = await fetch(
-    `/api/w/${member.workspaces[0].sId}/members/${member.id}`,
-    {
+  const promises = members.map((member) =>
+    fetch(`/api/w/${member.workspaces[0].sId}/members/${member.id}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -799,22 +859,26 @@ async function handleMemberRoleChange({
       body: JSON.stringify({
         role: role === "none" ? "revoked" : role,
       }),
-    }
+    })
   );
-  if (!res.ok) {
+  const results = await Promise.all(promises);
+  const errors = results.filter((res) => !res.ok);
+  if (errors.length > 0) {
     sendNotification({
       type: "error",
       title: "Update failed",
-      description: "Failed to update member's role.",
+      description: `Failed to update members role for ${
+        errors.length
+      } member(s) (${members.length - errors.length} succeeded).`,
     });
   } else {
     sendNotification({
       type: "success",
       title: "Role updated",
-      description: `Role updated to ${role} for ${member.fullName}.`,
+      description: `Role updated to ${role} for ${members.length} member(s).`,
     });
-    await mutate(`/api/w/${member.workspaces[0].sId}/members`);
   }
+  await mutate(`/api/w/${members[0].workspaces[0].sId}/members`);
 }
 
 function ChangeMemberModal({
@@ -853,8 +917,8 @@ function ChangeMemberModal({
           return;
         }
         setIsSaving(true);
-        await handleMemberRoleChange({
-          member,
+        await handleMembersRoleChange({
+          members: [member],
           role: selectedRole,
           mutate,
           sendNotification,
@@ -907,8 +971,8 @@ function ChangeMemberModal({
         isOpen={revokeMemberModalOpen}
         title="Revoke member access"
         onValidate={async () => {
-          await handleMemberRoleChange({
-            member,
+          await handleMembersRoleChange({
+            members: [member],
             role: "none",
             mutate,
             sendNotification,
@@ -921,6 +985,7 @@ function ChangeMemberModal({
         onCancel={() => {
           setRevokeMemberModalOpen(false);
         }}
+        isSaving={isSaving}
       >
         <div>
           Revoke access for user{" "}
@@ -976,6 +1041,61 @@ function RoleDropDown({
   );
 }
 
+async function sendInvitations({
+  owner,
+  emails,
+  invitationRole,
+  mutate,
+  sendNotification,
+}: {
+  owner: WorkspaceType;
+  emails: string[];
+  invitationRole: ActiveRoleType;
+  mutate?: any;
+  sendNotification: any;
+}) {
+  const body: PostInvitationRequestBody = emails.map((email) => ({
+    email,
+    role: invitationRole,
+  }));
+
+  const res = await fetch(`/api/w/${owner.sId}/invitations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    sendNotification({
+      type: "error",
+      title: "Invite failed",
+      description:
+        "Failed to invite new members to workspace: " + res.statusText,
+    });
+  } else {
+    const result: PostInvitationResponseBody = await res.json();
+    const failures = result.filter((r) => !r.success);
+
+    if (failures.length > 0) {
+      sendNotification({
+        type: "error",
+        title: "Some invites failed",
+        description:
+          result[0].error_message ||
+          `Failed to invite ${failures} new member(s) to workspace.`,
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Invites sent",
+        description: `${emails.length} new invites sent.`,
+      });
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
+  }
+}
 const ROLES_DATA: Record<
   ActiveRoleType,
   { description: string; color: "red" | "amber" | "emerald" | "slate" }
@@ -995,3 +1115,15 @@ const ROLES_DATA: Record<
     color: "emerald",
   },
 };
+
+function shouldWarnAboutExistingMembers(invitesByCase: {
+  activeSameRole: UserTypeWithWorkspaces[];
+  activeDifferentRole: UserTypeWithWorkspaces[];
+  revoked: UserTypeWithWorkspaces[];
+  notInWorkspace: string[];
+}) {
+  return (
+    invitesByCase.activeDifferentRole.length > 0 ||
+    invitesByCase.revoked.length > 0
+  );
+}
