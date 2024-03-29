@@ -137,6 +137,8 @@ export async function botAnswerMessageWithErrorHandling(
     logger.error(
       {
         error: e,
+        connectorId: connector.id,
+        slackTeamId,
       },
       `Unexpected exception answering to Slack Chat Bot message`
     );
