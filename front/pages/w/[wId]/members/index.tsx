@@ -48,18 +48,18 @@ import {
   checkWorkspaceSeatAvailabilityUsingAuth,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
+import {
+  getPriceWithCurrency,
+  PRO_PLAN_29_COST,
+} from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { PRO_PLAN_SEAT_29_CODE, isUpgraded } from "@app/lib/plans/plan_codes";
+import { isUpgraded, PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
-import {
-  PRO_PLAN_29_COST,
-  getPriceWithCurrency,
-} from "@app/lib/client/subscription";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
