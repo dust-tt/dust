@@ -1,4 +1,5 @@
 import { ModelId } from "../shared/model_id";
+import { Err, Ok, Result } from "../shared/result";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -47,3 +48,21 @@ export type DataSourceType = {
   connectorProvider: ConnectorProvider | null;
   editedByUser?: EditedByUser | null;
 };
+
+export function isDataSourceNameValid(name: string): Result<void, string> {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    return new Err("");
+  }
+  if (name.startsWith("managed-")) {
+    return new Err("DataSource name cannot start with the prefix `managed-`");
+  }
+  // eslint-disable-next-line no-useless-escape
+  if (!name.match(/^[a-zA-Z0-9\._\-]+$/)) {
+    return new Err(
+      "DataSource name must only contain letters, numbers, and the characters `._-`"
+    );
+  }
+
+  return new Ok(undefined);
+}
