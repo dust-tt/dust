@@ -175,7 +175,9 @@ export default function DataSourcesView({
           {dataSources.map((ds) => (
             <ContextItem
               key={ds.name}
-              title={ds.name}
+              title={
+                ds.name.length > 60 ? ds.name.substring(0, 60) + "..." : ds.name
+              }
               visual={
                 <ContextItem.Visual
                   visual={({ className }) =>
