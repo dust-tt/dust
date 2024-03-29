@@ -26,7 +26,6 @@ import {
 } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
-import { urlToDataSourceName } from "@app/lib/webcrawler";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -36,6 +35,7 @@ export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
   connectionId: t.union([t.string, t.undefined]),
   type: t.union([t.literal("oauth"), t.literal("url")]),
+  name: t.string,
   urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
 });
 
@@ -92,7 +92,8 @@ async function handler(
         });
       }
 
-      const { type, connectionId, urlConfig, provider } = bodyValidation.right;
+      const { type, connectionId, urlConfig, provider, name } =
+        bodyValidation.right;
 
       if (!isConnectorProvider(provider)) {
         return apiError(req, res, {
@@ -186,7 +187,7 @@ async function handler(
             });
           }
 
-          dataSourceName = urlToDataSourceName(urlConfig.url);
+          dataSourceName = name;
           if (!dataSourceName.length) {
             return apiError(req, res, {
               status_code: 400,
