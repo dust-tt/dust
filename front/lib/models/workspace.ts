@@ -179,7 +179,11 @@ Membership.init(
   {
     modelName: "membership",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userId", "role"] }],
+    indexes: [
+      { fields: ["userId", "role"] },
+      { fields: ["startAt"] },
+      { fields: ["endAt"] },
+    ],
   }
 );
 User.hasMany(Membership, {
