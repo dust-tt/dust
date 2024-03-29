@@ -11,6 +11,19 @@ export const assistantTemplateTagNames = [
   "Featured",
   "Productivity",
   "Design",
+  "Sales",
+  "Product Management",
+  "Operations",
+  "Engineering",
+  "Data",
+  "Marketing",
+  "Content",
+  "Writing",
+  "Hiring",
+  "UX Design",
+  "UX Research",
+  "Finance",
+  "Product",
   // TODO: Add tag names for templates, here.
 ] as const;
 
