@@ -98,6 +98,13 @@ export interface DataSourceCreatedProperties {
   workspaceId: string;
   workspaceName: string;
 }
+export interface DataSourceUpdatedProperties {
+  assistantDefaultSelected: boolean;
+  dataSourceName: string;
+  dataSourceProvider: string;
+  workspaceId: string;
+  workspaceName: string;
+}
 
 export interface PageViewedProperties {
   pathname: string;
@@ -164,6 +171,14 @@ export class DataSourceCreated implements BaseEvent {
   event_type = "DataSourceCreated";
 
   constructor(public event_properties: DataSourceCreatedProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class DataSourceUpdated implements BaseEvent {
+  event_type = "DataSourceUpdated";
+
+  constructor(public event_properties: DataSourceUpdatedProperties) {
     this.event_properties = event_properties;
   }
 }
