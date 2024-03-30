@@ -132,13 +132,19 @@ export default function AssistantBuilderDataSourceModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={selectedDataSource !== null ? onReset : onClose}
+      onClose={() => {
+        if (shouldDisplayFoldersScreen) {
+          setShouldDisplayFoldersScreen(false);
+        } else if (shouldDisplayWebsitesScreen) {
+          setShouldDisplayWebsitesScreen(false);
+        } else if (selectedDataSource !== null) {
+          onReset();
+        } else {
+          onClose();
+        }
+      }}
       onSave={() => onSaveLocal({ isSelectAll })}
-      hasChanged={
-        selectedDataSource !== null ||
-        shouldDisplayFoldersScreen ||
-        shouldDisplayWebsitesScreen
-      }
+      hasChanged={selectedDataSource !== null}
       variant="full-screen"
       title="Manage data sources selection"
     >
@@ -241,22 +247,16 @@ function PickDataSource({
   onPickFolders: () => void;
   onPickWebsites: () => void;
 }) {
-  const [query, setQuery] = useState<string>("");
-
-  const filteredDataSources = dataSources.filter((ds) => {
-    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
-  });
-
-  const filteredManagedDataSourxes = filteredDataSources.filter(
+  const managedDataSources = dataSources.filter(
     (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
   );
 
   // We want to display the folders & websites as a single parent entry
   // so we take them out of the list of data sources
-  const shouldDisplayFolderEntry = filteredDataSources.some(
+  const shouldDisplayFolderEntry = dataSources.some(
     (ds) => !ds.connectorProvider
   );
-  const shouldDisplayWebsiteEntry = filteredDataSources.some(
+  const shouldDisplayWebsiteEntry = dataSources.some(
     (ds) => ds.connectorProvider === "webcrawler"
   );
 
@@ -267,13 +267,7 @@ function PickDataSource({
           title="Select Data Sources in"
           icon={CloudArrowLeftRightIcon}
         />
-        <Searchbar
-          name="search"
-          onChange={setQuery}
-          value={query}
-          placeholder="Search..."
-        />
-        {orderDatasourceByImportance(filteredManagedDataSourxes).map((ds) => (
+        {orderDatasourceByImportance(managedDataSources).map((ds) => (
           <Item.Navigation
             label={getDisplayNameForDataSource(ds)}
             icon={
@@ -464,6 +458,12 @@ function FolderOrWebsiteResourceSelector({
   onSave: (params: AssistantBuilderDataSourceConfiguration) => void;
   onDelete: (name: string) => void;
 }) {
+  const [query, setQuery] = useState<string>("");
+
+  const filteredDataSources = dataSources.filter((ds) => {
+    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
+  });
+
   return (
     <Transition show={!!owner} className="mx-auto max-w-6xl pb-8">
       <Page>
@@ -474,6 +474,12 @@ function FolderOrWebsiteResourceSelector({
             type === "folder" ? "folders" : "websites"
           } that will be used by the assistant as a source for its answers.`}
         />
+        <Searchbar
+          name="search"
+          onChange={setQuery}
+          value={query}
+          placeholder="Search..."
+        />
         <div className="flex flex-row gap-32">
           <div className="flex-1">
             <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
@@ -482,7 +488,7 @@ function FolderOrWebsiteResourceSelector({
           </div>
         </div>
         <div>
-          {dataSources.map((ds) => {
+          {filteredDataSources.map((ds) => {
             const isSelected = selectedDataSources.some(
               (selectedDs) => selectedDs.name === ds.name
             );
