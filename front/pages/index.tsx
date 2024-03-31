@@ -17,7 +17,7 @@ import React, { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/contentComponents";
-import Particles from "@app/components/home/particles";
+import Particles, { particuleShapes } from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { trackPageView } from "@app/lib/amplitude/browser";
@@ -86,7 +86,25 @@ export default function Home({
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") {
+        setCurrentShape(
+          (prevShape) => (prevShape - 1) % particuleShapes.length
+        );
+      } else if (event.key === "ArrowRight") {
+        setCurrentShape(
+          (prevShape) => (prevShape + 1) % particuleShapes.length
+        );
+      }
+    };
 
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
   useEffect(() => {
     switch (currentPage) {
       case "product":
@@ -96,13 +114,13 @@ export default function Home({
         changeShape(1);
         break;
       case "for_customer":
-        changeShape(2);
+        changeShape(6);
         break;
       case "for_marketing":
-        changeShape(3);
+        changeShape(2);
         break;
       case "for_people":
-        changeShape(4);
+        changeShape(5);
         break;
       default:
         changeShape(0);

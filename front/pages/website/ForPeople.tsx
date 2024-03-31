@@ -4,7 +4,7 @@ import SimpleSlider, {
   avatars,
   DroidItem,
 } from "@app/components/home/carousel";
-import { HeaderContentBlock } from "@app/components/home/contentBlocks";
+import { Block, HeaderContentBlock } from "@app/components/home/contentBlocks";
 import { Grid, H2, H4, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
@@ -32,8 +32,59 @@ export function ForPeople() {
         }
       />
       <SimpleSlider slides={peopleSlides} />
+      {/* SHARE KNOWLEDGE */}
       <Grid>
         <div
+          // ref={scrollRef1}
+          className={classNames(
+            defaultFlexClasses,
+            "col-span-12",
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-8 xl:col-start-2",
+            "2xl:col-start-3"
+          )}
+        >
+          <H2 className="text-pink-500">
+            Share knowledge better,
+            <br />
+            <span className="text-pink-200">free time for you.</span>
+          </H2>
+          <P size="lg">
+            Guide your team with a knowledge base and stop being a perpetual
+            help desk. Focus on maintaining internal resources updated once and
+            for all.
+          </P>
+        </div>
+        <div
+          className={classNames(
+            defaultFlexClasses,
+            "col-span-12",
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-6 xl:col-start-2"
+          )}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <Block
+              title="Onboard new people with accessible information at their pace"
+              color="pink"
+            >
+              Transform your onboarding process using AI assistants design to
+              guide knewcomers through your methodes, processes, people and
+              culture.
+            </Block>
+            <Block title="Put your internal documentation to work" color="pink">
+              Create an assistant capable to answer any questions and point to
+              the right internal ressources and spread your company culture and
+              methods.
+            </Block>
+          </div>
+        </div>
+      </Grid>
+
+      {/* PEOPLE GROW */}
+      <Grid>
+        <div
+          // ref={scrollRef1}
           className={classNames(
             defaultFlexClasses,
             "col-span-12",
@@ -43,43 +94,67 @@ export function ForPeople() {
           )}
         >
           <H2 className="text-amber-500">
-            Help your agents
-            <br />
-            <span className="text-amber-200">help your customers</span>
+            Help your people grow <span className="text-amber-200">grow.</span>
           </H2>
-          <P size="md">
-            Reply faster and increase answer quality by{" "}
-            <strong>augmenting your&nbsp;Customer&nbsp;Support.</strong>
-          </P>
-          <H4 className="text-white">
-            {" "}
-            Package expert knowledge in easy to use assistants in seconds
-          </H4>
-          <P size="md">
-            Build AI assistants based on company knowledge and past support
-            conversations.
-          </P>
-          <H4 className="text-white">
-            {" "}
-            Understand problems faster, jump to solutions
-          </H4>
-          <P size="md">
-            Understand customer messages faster, in any language. Find
-            informations to resolve issues quickly with semantic search and
-            access to cross company data.
-          </P>
-          <H4 className="text-white">
-            {" "}
-            Stay connected to the rest of the company
-          </H4>
-          <P size="md">
-            release schedule, technical outage, program maitenance, all
-            accessible in one place.
-          </P>
-          <H4 className="text-white"> Write better answers, faster</H4>
-          <P size="md">
-            Draft and correct answers following company guidelines and tone of
-            voice in seconds.
+          <P size="lg">Performance take less time and yield better results.</P>
+        </div>
+        <div
+          className={classNames(
+            defaultFlexClasses,
+            "col-span-12",
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-6 xl:col-start-2"
+          )}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <Block title="Better data" color="amber">
+              Good performance review is first good data. Collect informations
+              from various channels to provide, get an holistic view of an
+              employee's work, make more accurate evaluations.
+            </Block>
+            <Block title="Better Writing" color="amber">
+              Help your team write more thoughtfully. Challenges and enriches
+              their writing with feedback on tone, refrences to the company’s
+              operating principles, priorities and business objectives.
+            </Block>
+            <Block title="Better analysis" color="amber">
+              AI augmented with company knowledge will help you go through the
+              volume, summarize, read between the lines, compare effectively.
+            </Block>
+            <Block title="Better decisions" color="amber">
+              Screen for diversity and inclusion and reduce the bias in
+              performance reviews by providing a more comprehensive and
+              objective analysis of employee performances.
+            </Block>
+            <Block title="Better restitution" color="amber">
+              Write more personalized and reach feedback for your team,
+              development plans and career pathing for employees, aligning with
+              their strengths and improvement areas.
+            </Block>
+          </div>
+        </div>
+      </Grid>
+
+      {/* HIRING */}
+      <Grid>
+        <div
+          // ref={scrollRef1}
+          className={classNames(
+            defaultFlexClasses,
+            "col-span-12",
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-8 xl:col-start-2",
+            "2xl:col-start-3"
+          )}
+        >
+          <H2 className="text-sky-500">
+            Boost your team{" "}
+            <span className="text-sky-200">hiring efforts.</span>
+          </H2>
+          <P size="lg">
+            Reduce time to hire by providing fast guidance to hiring managers,
+            assistance with writing job descriptions and communicate with
+            candidates, analyse candidates answer better and faster.
           </P>
         </div>
       </Grid>

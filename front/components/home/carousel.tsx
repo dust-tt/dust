@@ -275,6 +275,7 @@ export const DroidItem = ({
   name,
   question,
   avatar,
+  category,
   className = "",
 }: {
   name: string;
@@ -283,6 +284,7 @@ export const DroidItem = ({
     visual: string;
     background: string;
   };
+  category?: string;
   className?: string;
 }) => {
   return (
@@ -310,6 +312,11 @@ export const DroidItem = ({
         </Div3D>
       </Hover3D>
       <H5 className="col-span-4 truncate text-slate-100">{name}</H5>
+      {category && (
+        <P className="col-span-4 uppercase" size="xxs">
+          {category}
+        </P>
+      )}
       <P className="col-span-4" size="sm">
         {question}
       </P>

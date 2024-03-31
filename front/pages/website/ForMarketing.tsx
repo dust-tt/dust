@@ -4,7 +4,7 @@ import SimpleSlider, {
   avatars,
   DroidItem,
 } from "@app/components/home/carousel";
-import { HeaderContentBlock } from "@app/components/home/contentBlocks";
+import { Block, HeaderContentBlock } from "@app/components/home/contentBlocks";
 import { Grid, H2, H4, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
@@ -32,56 +32,63 @@ export function ForMarketing() {
           </>
         }
       />
-      <SimpleSlider slides={marketingSlides} />
+      {/* <SimpleSlider slides={marketingSlides} /> */}
       <Grid>
         <div
           className={classNames(
             defaultFlexClasses,
             "col-span-12",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-8 xl:col-start-2",
-            "2xl:col-start-3"
+            "xl:col-span-10 xl:col-start-2"
           )}
         >
-          <H2 className="text-amber-500">
-            Help your agents
-            <br />
-            <span className="text-amber-200">help your customers</span>
-          </H2>
-          <P size="md">
-            Reply faster and increase answer quality by{" "}
-            <strong>augmenting your&nbsp;Customer&nbsp;Support.</strong>
-          </P>
-          <H4 className="text-white">
-            {" "}
-            Package expert knowledge in easy to use assistants in seconds
-          </H4>
-          <P size="md">
-            Build AI assistants based on company knowledge and past support
-            conversations.
-          </P>
-          <H4 className="text-white">
-            {" "}
-            Understand problems faster, jump to solutions
-          </H4>
-          <P size="md">
-            Understand customer messages faster, in any language. Find
-            informations to resolve issues quickly with semantic search and
-            access to cross company data.
-          </P>
-          <H4 className="text-white">
-            {" "}
-            Stay connected to the rest of the company
-          </H4>
-          <P size="md">
-            release schedule, technical outage, program maitenance, all
-            accessible in one place.
-          </P>
-          <H4 className="text-white"> Write better answers, faster</H4>
-          <P size="md">
-            Draft and correct answers following company guidelines and tone of
-            voice in seconds.
-          </P>
+          <div className="grid grid-cols-3 gap-4">
+            <Block title="Faster content creation" color="pink">
+              Accelerate your content generation across blogs, websites, and
+              social media with Dust assistants. Your AI assistants seamlessly
+              integrate with your brand's voice and past content, making
+              creation quick and intuitive.
+            </Block>
+            {marketingSlides[0]}
+            <Block title="More consistency" color="pink">
+              Create assistants to help everyone maintain a unified brand voice
+              and content consistency across all mediums and teams autonomously.
+              Dust helps your marketing ensure your Product, Brand, Sales, and
+              Success create consistent content whatever the touchpoint.
+            </Block>
+            {marketingSlides[1]}
+            <Block title="Repurpose and repackage past content" color="pink">
+              Maximize the value of your existing content. With Dust,
+              effortlessly transform past materials into fresh content for your
+              blogs, social media and product documentation, ensuring you make
+              the most of your past investments and learnings.
+            </Block>
+            <Block title="Better competitive intelligence" color="sky">
+              Gain an edge by creating competitive analysis assistants and
+              improve your market intelligence velocity and impact. Dive deep
+              into competitors' strategies, extract actionable insights based on
+              defined frameworks, and generate automated reports to inform your
+              strategy and decisions.
+            </Block>
+            {marketingSlides[3]}
+            {marketingSlides[4]}
+            <Block title="Faster on-boarding" color="emerald">
+              Streamline the integration of new marketing team members with
+              Dust. Create AI assistants to provide instant access to your
+              marketing workflows, speeding up the learning curve and enhancing
+              productivity.
+            </Block>
+            {marketingSlides[5]}
+            <Block
+              title="Better collaboration with Sales, Product and Support teams"
+              color="amber"
+            >
+              Enhance cross-team collaboration effortlessly. Dust help you
+              create AI assistants to bridge the gap between Marketing, Sales,
+              Product, and Support, translating marketing decisions, objectives
+              and strategies into the language of the recipient team.
+            </Block>
+          </div>
         </div>
       </Grid>
     </>
@@ -91,13 +98,13 @@ export function ForMarketing() {
 export const marketingSlides = [
   <DroidItem
     key="1"
-    avatar={avatars[1]}
+    avatar={avatars[3]}
     name="@contentWriter"
     question="Create content based on examples of previous similar best-in-class content."
   />,
   <DroidItem
     key="2"
-    avatar={avatars[2]}
+    avatar={avatars[6]}
     name="@copyMaster"
     question="Improve marketing copy and suggest new concepts to appeal to your audience."
   />,
@@ -115,7 +122,7 @@ export const marketingSlides = [
   />,
   <DroidItem
     key="5"
-    avatar={avatars[5]}
+    avatar={avatars[8]}
     name="@competitiveIntelligence"
     question="Synchronize your competitor websites, blogs, and job boards and get insights, ideas, and feedback to create and improve your market positioning. "
   />,

@@ -22,7 +22,7 @@ const solutions: { title: string; target: string }[] = [
     target: "for_marketing",
   },
   {
-    title: "HR & Recruiting",
+    title: "Recruiting & People",
     target: "for_people",
   },
   {
@@ -41,28 +41,12 @@ const solutions: { title: string; target: string }[] = [
     title: "Data & Analaytics",
     target: "for_data",
   },
-  {
-    title: "People Operations",
-    target: "for_people",
-  },
-  {
-    title: "Product",
-    target: "for_product",
-  },
-  {
-    title: "Finance",
-    target: "for_finance",
-  },
-  {
-    title: "IT & Security",
-    target: "for_it",
-  },
 ];
 
 const devs: { title: string; target: string }[] = [
   {
     title: "Dust for engineers",
-    target: "for_engineers",
+    target: "for_engineering",
   },
   {
     title: "Building Dust apps",
