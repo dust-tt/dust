@@ -1,6 +1,8 @@
 import {
+  Checkbox,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
+  FolderIcon,
   Item,
   Modal,
   Page,
@@ -66,6 +68,28 @@ export default function AssistantBuilderDataSourceModal({
   const [selectedResources, setSelectedResources] = useState<ContentNode[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
 
+  // Hack to filter out Folders from the list of data sources
+  const [shouldDisplayFoldersScreen, setShouldDisplayFoldersScreen] =
+    useState(false);
+  const allFolders = dataSources.filter((ds) => !ds.connectorProvider);
+  const selectedFolders = Object.values(dataSourceConfigurations)
+    .map((config) => {
+      return config.dataSource;
+    })
+    .filter((ds) => !ds.connectorProvider);
+
+  // Hack to filter out Websites from the list of data sources
+  const [shouldDisplayWebsitesScreen, setShouldDisplayWebsitesScreen] =
+    useState(false);
+  const allWebsites = dataSources.filter(
+    (ds) => ds.connectorProvider === "webcrawler"
+  );
+  const selectedWebsites = Object.values(dataSourceConfigurations)
+    .map((config) => {
+      return config.dataSource;
+    })
+    .filter((ds) => ds.connectorProvider === "webcrawler");
+
   const onReset = () => {
     setSelectedDataSource(null);
     setSelectedResources([]);
@@ -75,14 +99,23 @@ export default function AssistantBuilderDataSourceModal({
   const onClose = () => {
     setOpen(false);
     setTimeout(() => {
+      setShouldDisplayFoldersScreen(false);
+      setShouldDisplayWebsitesScreen(false);
       onReset();
     }, 200);
   };
 
   const onSaveLocal = ({ isSelectAll }: { isSelectAll: boolean }) => {
+    if (shouldDisplayFoldersScreen || shouldDisplayWebsitesScreen) {
+      // We can just close the modal since the folders & websites are instantly saved
+      onClose();
+      return;
+    }
+
     if (!selectedDataSource) {
       throw new Error("Cannot save an incomplete configuration");
     }
+
     if (selectedResources.length || isSelectAll) {
       onSave({
         dataSource: selectedDataSource,
@@ -99,36 +132,70 @@ export default function AssistantBuilderDataSourceModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={selectedDataSource !== null ? onReset : onClose}
+      onClose={() => {
+        if (shouldDisplayFoldersScreen) {
+          setShouldDisplayFoldersScreen(false);
+        } else if (shouldDisplayWebsitesScreen) {
+          setShouldDisplayWebsitesScreen(false);
+        } else if (selectedDataSource !== null) {
+          onReset();
+        } else {
+          onClose();
+        }
+      }}
       onSave={() => onSaveLocal({ isSelectAll })}
       hasChanged={selectedDataSource !== null}
       variant="full-screen"
       title="Manage data sources selection"
     >
       <div className="w-full pt-12">
-        {!selectedDataSource || !selectedDataSource.connectorProvider ? (
-          <PickDataSource
-            dataSources={dataSources}
-            show={!selectedDataSource}
-            onPick={(ds) => {
-              setSelectedDataSource(ds);
-              setSelectedResources(
-                dataSourceConfigurations[ds.name]?.selectedResources || []
-              );
-              setIsSelectAll(
-                dataSourceConfigurations[ds.name]?.isSelectAll || false
-              );
-              if (!ds.connectorProvider) {
-                onSave({
-                  dataSource: ds,
-                  selectedResources: [],
-                  isSelectAll: true,
-                });
-                onClose();
-              }
-            }}
+        {!selectedDataSource &&
+          !shouldDisplayFoldersScreen &&
+          !shouldDisplayWebsitesScreen && (
+            <PickDataSource
+              dataSources={dataSources}
+              show={!selectedDataSource}
+              onPick={(ds) => {
+                setSelectedDataSource(ds);
+                setSelectedResources(
+                  dataSourceConfigurations[ds.name]?.selectedResources || []
+                );
+                setIsSelectAll(
+                  dataSourceConfigurations[ds.name]?.isSelectAll || false
+                );
+              }}
+              onPickFolders={() => {
+                setShouldDisplayFoldersScreen(true);
+              }}
+              onPickWebsites={() => {
+                setShouldDisplayWebsitesScreen(true);
+              }}
+            />
+          )}
+
+        {!selectedDataSource && shouldDisplayFoldersScreen && (
+          <FolderOrWebsiteResourceSelector
+            owner={owner}
+            type="folder"
+            dataSources={allFolders}
+            selectedDataSources={selectedFolders}
+            onSave={onSave}
+            onDelete={onDelete}
           />
-        ) : (
+        )}
+
+        {!selectedDataSource && shouldDisplayWebsitesScreen && (
+          <FolderOrWebsiteResourceSelector
+            type="website"
+            owner={owner}
+            dataSources={allWebsites}
+            selectedDataSources={selectedWebsites}
+            onSave={onSave}
+            onDelete={onDelete}
+          />
+        )}
+
+        {selectedDataSource && (
           <DataSourceResourceSelector
             dataSource={selectedDataSource}
             owner={owner}
@@ -171,16 +238,27 @@ function PickDataSource({
   dataSources,
   show,
   onPick,
+  onPickFolders,
+  onPickWebsites,
 }: {
   dataSources: DataSourceType[];
   show: boolean;
   onPick: (dataSource: DataSourceType) => void;
+  onPickFolders: () => void;
+  onPickWebsites: () => void;
 }) {
-  const [query, setQuery] = useState<string>("");
+  const managedDataSources = dataSources.filter(
+    (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
+  );
 
-  const filtered = dataSources.filter((ds) => {
-    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
-  });
+  // We want to display the folders & websites as a single parent entry
+  // so we take them out of the list of data sources
+  const shouldDisplayFolderEntry = dataSources.some(
+    (ds) => !ds.connectorProvider
+  );
+  const shouldDisplayWebsiteEntry = dataSources.some(
+    (ds) => ds.connectorProvider === "webcrawler"
+  );
 
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
@@ -189,13 +267,7 @@ function PickDataSource({
           title="Select Data Sources in"
           icon={CloudArrowLeftRightIcon}
         />
-        <Searchbar
-          name="search"
-          onChange={setQuery}
-          value={query}
-          placeholder="Search..."
-        />
-        {orderDatasourceByImportance(filtered).map((ds) => (
+        {orderDatasourceByImportance(managedDataSources).map((ds) => (
           <Item.Navigation
             label={getDisplayNameForDataSource(ds)}
             icon={
@@ -209,6 +281,20 @@ function PickDataSource({
             }}
           />
         ))}
+        {shouldDisplayFolderEntry && (
+          <Item.Navigation
+            label="Folders"
+            icon={FolderIcon}
+            onClick={onPickFolders}
+          />
+        )}
+        {shouldDisplayWebsiteEntry && (
+          <Item.Navigation
+            label="Websites"
+            icon={CloudArrowDownIcon}
+            onClick={onPickWebsites}
+          />
+        )}
       </Page>
     </Transition>
   );
@@ -352,6 +438,100 @@ function DataSourceResourceSelector({
             </div>
           </div>
         )}
+      </Page>
+    </Transition>
+  );
+}
+
+function FolderOrWebsiteResourceSelector({
+  owner,
+  type,
+  dataSources,
+  selectedDataSources,
+  onSave,
+  onDelete,
+}: {
+  owner: WorkspaceType;
+  type: "folder" | "website";
+  dataSources: DataSourceType[];
+  selectedDataSources: DataSourceType[];
+  onSave: (params: AssistantBuilderDataSourceConfiguration) => void;
+  onDelete: (name: string) => void;
+}) {
+  const [query, setQuery] = useState<string>("");
+
+  const filteredDataSources = dataSources.filter((ds) => {
+    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
+  });
+
+  return (
+    <Transition show={!!owner} className="mx-auto max-w-6xl pb-8">
+      <Page>
+        <Page.Header
+          title={type === "folder" ? "Select Folders" : "Select Websites"}
+          icon={type === "folder" ? FolderIcon : CloudArrowDownIcon}
+          description={`Select the ${
+            type === "folder" ? "folders" : "websites"
+          } that will be used by the assistant as a source for its answers.`}
+        />
+        <Searchbar
+          name="search"
+          onChange={setQuery}
+          value={query}
+          placeholder="Search..."
+        />
+        <div className="flex flex-row gap-32">
+          <div className="flex-1">
+            <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
+              <div>Select from available folders:</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          {filteredDataSources.map((ds) => {
+            const isSelected = selectedDataSources.some(
+              (selectedDs) => selectedDs.name === ds.name
+            );
+            return (
+              <div key={ds.name}>
+                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
+                  <div>
+                    {type === "folder" ? (
+                      <FolderIcon className="h-5 w-5 text-slate-300" />
+                    ) : (
+                      <CloudArrowDownIcon className="h-5 w-5 text-slate-300" />
+                    )}
+                  </div>
+                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">
+                    {ds.name}
+                  </span>
+                  <div className="ml-32 flex-grow">
+                    <Checkbox
+                      variant="checkable"
+                      className="ml-auto"
+                      checked={isSelected}
+                      partialChecked={false}
+                      onChange={(checked) => {
+                        const isSelected = selectedDataSources.some(
+                          (selectedDs) => selectedDs.name === ds.name
+                        );
+                        if (checked && !isSelected) {
+                          onSave({
+                            dataSource: ds,
+                            selectedResources: [],
+                            isSelectAll: true,
+                          });
+                        } else if (!checked && isSelected) {
+                          onDelete(ds.name);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </Page>
     </Transition>
   );
