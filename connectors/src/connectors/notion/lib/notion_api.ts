@@ -92,6 +92,9 @@ export async function getPagesAndDatabasesEditedSince(
   const notionClient = new Client({
     auth: notionAccessToken,
     logger: notionClientLogger,
+    // Default is 60_000: https://github.com/makenotion/notion-sdk-js/blob/main/src/Client.ts#L135
+    // Bumped as we observed some timeouts with the default value.
+    timeoutMs: 120_000,
   });
   const editedPages: Record<string, number> = {};
   const editedDbs: Record<string, number> = {};
