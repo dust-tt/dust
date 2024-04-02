@@ -1,4 +1,5 @@
 import type {
+  AgentMessageType,
   ContentFragmentType,
   ConversationType,
   UserMessageType,
@@ -21,6 +22,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;
+  agentMessages?: AgentMessageType[];
   contentFragment?: ContentFragmentType;
 };
 
@@ -103,6 +105,7 @@ async function handler(
 
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
+      let agentMessages: AgentMessageType[] | undefined;
 
       if (contentFragment) {
         const cf = await postNewContentFragment(auth, {
@@ -135,24 +138,29 @@ async function handler(
         // before returning the conversation along with the message.
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
-        const messageRes = await postUserMessageWithPubSub(auth, {
-          conversation,
-          content: message.content,
-          mentions: message.mentions,
-          context: {
-            timezone: message.context.timezone,
-            username: message.context.username,
-            fullName: message.context.fullName,
-            email: message.context.email,
-            profilePictureUrl: message.context.profilePictureUrl,
+        const messageRes = await postUserMessageWithPubSub(
+          auth,
+          {
+            conversation,
+            content: message.content,
+            mentions: message.mentions,
+            context: {
+              timezone: message.context.timezone,
+              username: message.context.username,
+              fullName: message.context.fullName,
+              email: message.context.email,
+              profilePictureUrl: message.context.profilePictureUrl,
+            },
           },
-        });
+          { resolveAfterFullGeneration: true }
+        );
 
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);
         }
 
-        newMessage = messageRes.value;
+        newMessage = messageRes.value.userMessage;
+        agentMessages = messageRes.value.agentMessages;
       }
 
       if (newContentFragment || newMessage) {
@@ -173,6 +181,7 @@ async function handler(
       res.status(200).json({
         conversation,
         message: newMessage ?? undefined,
+        agentMessages: agentMessages ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });
       return;

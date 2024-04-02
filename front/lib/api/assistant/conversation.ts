@@ -1,6 +1,7 @@
 import type {
   AgentMessageNewEvent,
   AgentMessageWithRankType,
+  ConversationMessageSuccessEvent,
   ConversationTitleEvent,
   GenerationTokensEvent,
   UserMessageErrorEvent,
@@ -562,7 +563,8 @@ export async function* postUserMessage(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | ConversationTitleEvent,
+  | ConversationTitleEvent
+  | ConversationMessageSuccessEvent,
   void
 > {
   const user = auth.user();
@@ -889,6 +891,11 @@ export async function* postUserMessage(
       subscription,
     });
   }
+
+  yield {
+    type: "conversation_message_success",
+    messageId: userMessage.sId,
+  };
 
   // Temporary: we want to monitor if we need to prevent it or not
   async function logIfUserUnknown() {
