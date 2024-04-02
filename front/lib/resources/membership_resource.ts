@@ -7,7 +7,6 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
-  CreationAttributes,
   InferAttributes,
   ModelStatic,
   Transaction,
@@ -41,14 +40,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     blob: Attributes<MembershipModel>
   ) {
     super(MembershipModel, blob);
-  }
-
-  static async makeNew(blob: CreationAttributes<MembershipModel>) {
-    const membership = await MembershipModel.create({
-      ...blob,
-    });
-
-    return new this(MembershipModel, membership.get());
   }
 
   static async getActiveMemberships({
@@ -213,14 +204,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (startAt > new Date()) {
       throw new Error("Cannot create a membership in the future");
     }
-    const existingMembership = await this.getLatestMembershipOfUserInWorkspace({
-      userId,
-      workspace,
-    });
-
     if (
-      existingMembership &&
-      (!existingMembership.endAt || existingMembership.endAt > startAt)
+      await MembershipModel.count({
+        where: {
+          userId,
+          workspaceId: workspace.id,
+          endAt: {
+            [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: startAt }],
+          },
+        },
+      })
     ) {
       throw new Error(
         `User ${userId} already has an active membership in workspace ${workspace.id}`
@@ -258,6 +251,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
     if (!membership) {
       return new Err({ type: "not_found" });
+    }
+    if (endAt < membership.startAt) {
+      throw new Error("endAt must be after startAt");
     }
     if (membership.endAt) {
       return new Err({ type: "already_revoked" });
