@@ -47,9 +47,9 @@ async function handler(
           },
         });
       }
-
+      
       const solution = await SolutionsDataSourceConfiguration.create({
-        userId: owner.userId,
+        userId: owner.id,
         solutionId,
         connectionId,
         provider,

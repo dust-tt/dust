@@ -77,12 +77,6 @@ export default function SolutionsTranscriptsIndex({
       const {
         connectionId: nangoConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(nangoDriveConnectorId, newConnectionId);
-      
-      const connectionId: string = nangoConnectionId;
-      console.log('GOT CONNECTION ID');
-      console.log(connectionId);
-
-      // GOTTA DO A POST REQUEST TO /api/w/[wId]/solutions/transcripts/connect
 
       await fetch(`/api/w/${owner.sId}/solutions/transcripts/connect`, {
         method: "POST",
@@ -90,25 +84,21 @@ export default function SolutionsTranscriptsIndex({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          connectionId,
+          connectionId: nangoConnectionId,
           provider,
         }),
-      });
-
-      // await SolutionsDataSourceConfiguration.create({
-      //   userId: owner.userId,
-      //   solutionId,
-      //   connectionId,
-      //   provider,
-      // });
-
-      sendNotification({
-        type: "success",
-        title: "Connected Google Drive",
-        description: "Google Drive has been connected successfully."
-      });
-      
-      setIsLoading(false);
+      }).then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to connect Google Drive");
+        }
+        sendNotification({
+          type: "success",
+          title: "Connected Google Drive",
+          description: "Google Drive has been connected successfully."
+        });
+        
+        return response;
+      })
     } catch (error) {
       console.log(error)
       sendNotification({
