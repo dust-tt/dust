@@ -18,7 +18,6 @@ import {
   Dataset,
   DataSource,
   Key,
-  Membership,
   MembershipInvitation,
   Message,
   Provider,
@@ -42,6 +41,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -436,7 +436,8 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    const memberships = await Membership.findAll({
+    // TODO: membership resource
+    const memberships = await MembershipModel.findAll({
       where: {
         workspaceId: workspace.id,
       },
@@ -445,7 +446,7 @@ export async function deleteMembersActivity({
     if (memberships.length === 1) {
       // We also delete the user if it has no other workspace.
       const membership = memberships[0];
-      const membershipsOfUser = await Membership.findAll({
+      const membershipsOfUser = await MembershipModel.findAll({
         where: {
           userId: membership.userId,
         },

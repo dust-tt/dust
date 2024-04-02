@@ -14,7 +14,6 @@ import {
   getPendingMembershipInvitationForToken,
   markInvitationAsConsumed,
 } from "@app/lib/iam/invitations";
-import { getActiveMembershipsForUser } from "@app/lib/iam/memberships";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser } from "@app/lib/iam/users";
@@ -23,8 +22,9 @@ import {
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation, User } from "@app/lib/models";
-import { Membership, Workspace } from "@app/lib/models";
+import { Workspace } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -71,17 +71,15 @@ async function handleMembershipInvite(
     );
   }
 
-  const m = await Membership.findOne({
-    where: {
-      userId: user.id,
-      workspaceId: membershipInvite.workspaceId,
-    },
+  const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
+    userId: user.id,
+    workspace,
   });
 
-  if (m?.role === "revoked") {
+  if (m?.endAt && m.endAt < new Date()) {
     return new Err(
       new AuthFlowError(
-        "Your access to the workspace has been revoked, please contact the workspace admin to update your role."
+        "Your access to the workspace has expired, please contact the workspace admin to update your role."
       )
     );
   }
@@ -102,7 +100,7 @@ async function handleMembershipInvite(
 function canJoinTargetWorkspace(
   targetWorkspaceId: string | undefined,
   workspace: Workspace | undefined,
-  activeMemberships: Membership[]
+  activeMemberships: MembershipResource[]
 ) {
   // If there is no target workspace id, return true.
   if (!targetWorkspaceId) {
@@ -133,7 +131,9 @@ async function handleEnterpriseSignUpFlow(
 }> {
   // Combine queries to optimize database calls.
   const [activeMemberships, workspace] = await Promise.all([
-    getActiveMembershipsForUser(user.id),
+    MembershipResource.getActiveMemberships({
+      userIds: [user.id],
+    }),
     Workspace.findOne({
       where: {
         sId: enterpriseConnectionWorkspaceId,
@@ -151,12 +151,11 @@ async function handleEnterpriseSignUpFlow(
     return { flow: "unauthorized", workspace: null };
   }
 
-  const membership = await Membership.findOne({
-    where: {
+  const membership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
       userId: user.id,
-      workspaceId: workspace.id,
-    },
-  });
+      workspace,
+    });
 
   // Create membership if it does not exist.
   if (!membership) {
@@ -165,7 +164,7 @@ async function handleEnterpriseSignUpFlow(
       userId: user.id,
       role: "user",
     });
-  } else if (membership.role === "revoked") {
+  } else if (membership.endAt && membership.endAt < new Date()) {
     return { flow: "unauthorized", workspace: null };
   }
 
@@ -188,7 +187,10 @@ async function handleRegularSignupFlow(
     SSOEnforcedError
   >
 > {
-  const activeMemberships = await getActiveMembershipsForUser(user.id);
+  const activeMemberships = await MembershipResource.getActiveMemberships({
+    userIds: [user.id],
+  });
+
   // Return early if the user is already a member of a workspace and is not attempting to join another one.
   if (activeMemberships.length !== 0 && !targetWorkspaceId) {
     return new Ok({
@@ -237,14 +239,12 @@ async function handleRegularSignupFlow(
       return new Ok({ flow: "no-auto-join", workspace: null });
     }
 
-    const m = await Membership.findOne({
-      where: {
-        userId: user.id,
-        workspaceId: existingWorkspace.id,
-      },
+    const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      userId: user.id,
+      workspace: existingWorkspace,
     });
 
-    if (m?.role === "revoked") {
+    if (m?.endAt && m.endAt < new Date()) {
       return new Ok({ flow: "revoked", workspace: null });
     }
 
@@ -406,11 +406,10 @@ export async function createAndLogMembership({
   workspace: Workspace;
   role: ActiveRoleType;
 }) {
-  const m = await Membership.create({
+  const m = await MembershipResource.createMembership({
     role: role,
     userId: userId,
-    workspaceId: workspace.id,
-    startAt: new Date(),
+    workspace,
   });
   trackUserMemberships(m.userId).catch(logger.error);
 

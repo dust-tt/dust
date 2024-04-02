@@ -1,5 +1,6 @@
 import type {
   LightWorkspaceType,
+  MembershipRoleType,
   ModelId,
   RoleType,
   SubscriptionType,
@@ -8,15 +9,10 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import {
-  Membership,
-  User,
-  Workspace,
-  WorkspaceHasDomain,
-} from "@app/lib/models";
+import { User, Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -107,9 +103,11 @@ export async function getMembers(
   auth: Authenticator,
   {
     roles,
+    activeOnly,
     userIds,
   }: {
-    roles?: RoleType[];
+    roles?: MembershipRoleType[];
+    activeOnly?: boolean;
     userIds?: ModelId[];
   } = {}
 ): Promise<UserTypeWithWorkspaces[]> {
@@ -118,20 +116,17 @@ export async function getMembers(
     return [];
   }
 
-  const whereClause: {
-    workspaceId: ModelId;
-    userId?: ModelId[];
-    role?: RoleType[];
-  } = userIds
-    ? { workspaceId: owner.id, userId: userIds }
-    : { workspaceId: owner.id };
-  if (roles) {
-    whereClause.role = roles;
-  }
-
-  const memberships = await Membership.findAll({
-    where: whereClause,
-  });
+  const memberships = activeOnly
+    ? await MembershipResource.getActiveMemberships({
+        workspace: owner,
+        roles,
+        userIds,
+      })
+    : await MembershipResource.getLatestMemberships({
+        workspace: owner,
+        roles,
+        userIds,
+      });
 
   const users = await User.findAll({
     where: {
@@ -171,33 +166,16 @@ export async function getMembers(
 
 export async function getMembersCount(
   auth: Authenticator,
-  { activeOnly }: { activeOnly?: boolean } = {}
+  { activeOnly = false }: { activeOnly?: boolean } = {}
 ): Promise<number> {
   const owner = auth.workspace();
   if (!owner) {
     return 0;
   }
 
-  return getMembersCountForWorkspace(owner, { activeOnly });
-}
-
-export async function getMembersCountForWorkspace(
-  workspace: WorkspaceType | Workspace,
-  { activeOnly }: { activeOnly?: boolean } = {}
-): Promise<number> {
-  const whereClause = activeOnly
-    ? {
-        role: {
-          [Op.ne]: "revoked",
-        },
-      }
-    : {};
-
-  return Membership.count({
-    where: {
-      workspaceId: workspace.id,
-      ...whereClause,
-    },
+  return MembershipResource.getMembersCountForWorkspace({
+    workspace: owner,
+    activeOnly,
   });
 }
 
@@ -222,9 +200,11 @@ export async function evaluateWorkspaceSeatAvailability(
     return true;
   }
 
-  const activeMembersCount = await getMembersCountForWorkspace(workspace, {
-    activeOnly: true,
-  });
+  const activeMembersCount =
+    await MembershipResource.getMembersCountForWorkspace({
+      workspace,
+      activeOnly: true,
+    });
 
   return activeMembersCount < maxUsers;
 }

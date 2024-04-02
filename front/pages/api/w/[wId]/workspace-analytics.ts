@@ -100,7 +100,7 @@ async function getAnalytics(
       FROM "memberships"
       JOIN "workspaces" ON "memberships"."workspaceId" = "workspaces"."id"
       WHERE "workspaces"."sId" = :wId
-      AND "memberships"."role" <> 'revoked';
+      AND "memberships"."startAt" <= NOW() AND ("memberships"."endAt" IS NULL OR "memberships"."endAt" >= NOW());
     `,
         {
           replacements: {

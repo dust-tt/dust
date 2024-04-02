@@ -6,7 +6,6 @@ import type {
   PreviewData,
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
-import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -15,7 +14,8 @@ import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
-import { Membership, Workspace } from "@app/lib/models";
+import { Workspace } from "@app/lib/models";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
@@ -36,11 +36,8 @@ export async function getUserFromSession(
     return null;
   }
 
-  const memberships = await Membership.findAll({
-    where: {
-      userId: user.id,
-      role: { [Op.in]: ["admin", "builder", "user"] },
-    },
+  const memberships = await MembershipResource.getActiveMemberships({
+    userIds: [user.id],
   });
   const workspaces = await Workspace.findAll({
     where: {

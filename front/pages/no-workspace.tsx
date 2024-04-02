@@ -13,7 +13,8 @@ import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
-import { Membership, Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
@@ -41,8 +42,10 @@ async function fetchWorkspaceDetails(
 async function fetchRevokedWorkspace(
   user: UserTypeWithWorkspaces
 ): Promise<Workspace | null> {
-  const memberships = await Membership.findAll({
-    where: { userId: user.id },
+  // TODO(@fontanierh): this doesn't look very solid as it will start to behave
+  // weirdly if a user has multiple revoked memberships.
+  const memberships = await MembershipResource.getLatestMemberships({
+    userIds: [user.id],
   });
 
   if (!memberships.length) {
