@@ -37,6 +37,7 @@ import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 
 const {
   GA_TRACKING_ID = "",
@@ -442,7 +443,9 @@ export default function DataSourcesView({
             provider,
             connectionId,
             type: "oauth",
-          }),
+            urlConfig: undefined,
+            name: undefined,
+          } satisfies PostManagedDataSourceRequestBody),
         }
       );
 
