@@ -52,8 +52,6 @@ const {
   ACTIVATE_ALL_FEATURES_DEV = false,
 } = process.env;
 
-const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
-
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
  * It acts as a central place to enforce permissioning across all of Dust.
@@ -441,14 +439,7 @@ export class Authenticator {
   }
 
   isDustSuperUser(): boolean {
-    if (!this._user) {
-      return false;
-    }
-
-    const { email, isDustSuperUser = false } = this._user;
-    const isDustInternal = DUST_INTERNAL_EMAIL_REGEXP.test(email);
-
-    return isDustInternal && isDustSuperUser;
+    return this._user ? this._user.isDustSuperUser : false;
   }
 }
 
