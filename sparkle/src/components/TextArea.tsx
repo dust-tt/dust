@@ -43,6 +43,15 @@ export function TextArea({
         placeholder={placeholder}
         value={value ?? ""}
         onChange={(e) => {
+          const newValue = e.target.value;
+          const textAreaComponent = textareaRef.current;
+          if (
+            textAreaComponent &&
+            value?.length &&
+            newValue.length < value.length
+          ) {
+            textAreaComponent.style.height = "auto"; // Reset height to recalculate
+          }
           onChange(e.target.value);
         }}
       />
