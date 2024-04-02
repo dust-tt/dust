@@ -187,8 +187,17 @@ async function handler(
             });
           }
 
-          dataSourceName = name;
-          if (!dataSourceName.length) {
+          if (!name) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "name is required for URL connectors.",
+              },
+            });
+          }
+
+          if (!urlConfig.url.length) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -197,6 +206,7 @@ async function handler(
               },
             });
           }
+          dataSourceName = name;
           dataSourceDescription = urlConfig.url;
           break;
         }
