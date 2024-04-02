@@ -5,7 +5,7 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
-import { getBackendClient } from "@app/lib/amplitude/back";
+import { getBackendClient } from "@app/lib/amplitude/node";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
