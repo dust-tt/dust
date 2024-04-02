@@ -35,7 +35,7 @@ export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
   connectionId: t.union([t.string, t.undefined]),
   type: t.union([t.literal("oauth"), t.literal("url")]),
-  name: t.string,
+  name: t.union([t.string, t.undefined]),
   urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
 });
 
