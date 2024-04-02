@@ -1,32 +1,25 @@
 import {
-  Button,
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
-  DropdownMenu,
-  Input,
-  Modal,
   Page,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import Nango from '@nangohq/frontend';
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SolutionsDataSourceConfiguration } from "@app/lib/models/solutions";
 
 const {
   GA_TRACKING_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
 } = process.env;
-const solutionId = "transcripts";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -63,7 +56,6 @@ export default function SolutionsTranscriptsIndex({
   nangoDriveConnectorId,
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
