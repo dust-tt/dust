@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.132",
+  "version": "0.2.133",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -83,6 +83,7 @@
     "lottie-react": "^2.4.0",
     "react-confetti": "^6.1.0",
     "react-markdown": "^9.0.1",
+    "react-textarea-autosize": "^8.5.3",
     "tailwind-scrollbar-hide": "^1.1.7"
   }
 }

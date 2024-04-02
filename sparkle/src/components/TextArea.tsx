@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
+import TextareaAutosize from "react-textarea-autosize";
 
 import { classNames } from "@sparkle/lib/utils";
 
@@ -19,18 +20,9 @@ export function TextArea({
   showErrorLabel = false,
   className,
 }: TextAreaProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
-    }
-  }, [value]); // Re-run when value changes
   return (
     <div className="s-flex s-flex-col s-gap-1 s-p-px">
-      <textarea
-        ref={textareaRef}
+      <TextareaAutosize
         className={classNames(
           "overflow-y-auto s-block s-min-h-60 s-w-full s-min-w-0 s-rounded-xl s-text-sm s-transition-all s-duration-200 s-scrollbar-hide",
           !error
@@ -43,15 +35,6 @@ export function TextArea({
         placeholder={placeholder}
         value={value ?? ""}
         onChange={(e) => {
-          const newValue = e.target.value;
-          const textAreaComponent = textareaRef.current;
-          if (
-            textAreaComponent &&
-            value?.length &&
-            newValue.length < value.length
-          ) {
-            textAreaComponent.style.height = "auto"; // Reset height to recalculate
-          }
           onChange(e.target.value);
         }}
       />
