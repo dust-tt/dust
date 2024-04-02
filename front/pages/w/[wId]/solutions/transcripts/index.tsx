@@ -62,7 +62,6 @@ export default function SolutionsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const [showConfirmConnection, setShowConfirmConnection] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -71,7 +70,7 @@ export default function SolutionsTranscriptsIndex({
       // console log all variables in process.env
       const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(`solutions-transcripts-${owner.sId}`, provider);
+      const newConnectionId = buildConnectionId(`personal-${owner.sId}`, provider);
       const {
         connectionId: nangoConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(nangoDriveConnectorId, newConnectionId);
@@ -79,7 +78,6 @@ export default function SolutionsTranscriptsIndex({
       const connectionId: string = nangoConnectionId;
       console.log('GOT CONNECTION ID');
       console.log(connectionId);
-      setShowConfirmConnection(null);
       setIsLoading(true);
     } catch (error) {
       console.log(error)

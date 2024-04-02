@@ -10,7 +10,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
   getConfluenceCloudInformation,
-  getConfluenceUserAccountId,
+  ,
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
