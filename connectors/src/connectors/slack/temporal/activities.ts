@@ -445,6 +445,17 @@ export async function syncNonThreaded(
     });
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
+    } else {
+      logger.error(
+        {
+          connectorId,
+          channelId,
+          channelName,
+          messageTs: firstMessage.ts,
+          linkRes,
+        },
+        "No documentUrl for Slack non threaded: Failed to get permalink"
+      );
     }
   }
   const lastMessage = messages.at(-1);
@@ -593,6 +604,18 @@ export async function syncThread(
     });
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
+    } else {
+      logger.error(
+        {
+          connectorId,
+          channelId,
+          channelName,
+          threadTs,
+          messageTs: firstMessage.ts,
+          linkRes,
+        },
+        "No documentUrl for Slack thread: Failed to get permalink"
+      );
     }
   }
   const lastMessage = allMessages.at(-1);
