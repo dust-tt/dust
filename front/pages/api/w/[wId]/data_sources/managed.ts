@@ -39,6 +39,10 @@ export const PostManagedDataSourceRequestBodySchema = t.type({
   urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
 });
 
+export type PostManagedDataSourceRequestBody = t.TypeOf<
+  typeof PostManagedDataSourceRequestBodySchema
+>;
+
 export type PostManagedDataSourceResponseBody = {
   dataSource: DataSourceType;
   connector: ConnectorType;
