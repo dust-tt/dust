@@ -1,4 +1,4 @@
-import type { SolutionProviderType } from "@dust-tt/types";
+import type { SolutionIdType, SolutionProviderType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -7,23 +7,24 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-export class User extends Model<
-  InferAttributes<User>,
-  InferCreationAttributes<User>
+export class SolutionDataSourceConfiguration extends Model<
+  InferAttributes<SolutionDataSourceConfiguration>,
+  InferCreationAttributes<SolutionDataSourceConfiguration>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<User["id"]>;
+  declare solutionId: SolutionIdType;
   declare connectionId: string | null;
-  declare workspaceId: string | null;
-  declare provider: string;
+  declare provider: SolutionProviderType;
 }
 
-User.init(
+SolutionDataSourceConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -39,105 +40,33 @@ User.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "users",
+        key: "id",
+      },
+    },
+    solutionId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    connectionId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     provider: {
       type: DataTypes.STRING,
-      allowNull: true,
-    },
-    providerId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    auth0Sub: {
-      type: DataTypes.STRING,
-      // TODO(2024-03-01 flav) Set to false once new login flow is released.
-      allowNull: true,
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    firstName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    lastName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    imageUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    isDustSuperUser: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
       allowNull: false,
     },
   },
   {
-    modelName: "user",
+    modelName: "solution_data_source_configuration",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["username"] },
-      { fields: ["provider", "providerId"] },
-      { fields: ["auth0Sub"], unique: true, concurrently: true },
+      { fields: ["user_id"] },
+      { fields: ["provider", "connectionId"], unique: true },
     ],
   }
 );
-
-export class UserMetadata extends Model<
-  InferAttributes<UserMetadata>,
-  InferCreationAttributes<UserMetadata>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare key: string;
-  declare value: string;
-  declare userId: ForeignKey<User["id"]>;
-}
-UserMetadata.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    key: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    value: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "user_metadata",
-    sequelize: frontSequelize,
-    indexes: [{ fields: ["userId", "key"], unique: true }],
-  }
-);
-User.hasMany(UserMetadata, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});

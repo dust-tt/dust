@@ -66,11 +66,12 @@ export default function SolutionsTranscriptsIndex({
   const sendNotification = useContext(SendNotificationsContext);
 
   const handleConnectTranscriptsSource = async () => {
+    setIsLoading(true);
     try {
       // console log all variables in process.env
       const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(`personal-${owner.sId}`, provider);
+      const newConnectionId = buildConnectionId(`solutions-${owner.sId}`, provider);
       const {
         connectionId: nangoConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(nangoDriveConnectorId, newConnectionId);
@@ -78,7 +79,14 @@ export default function SolutionsTranscriptsIndex({
       const connectionId: string = nangoConnectionId;
       console.log('GOT CONNECTION ID');
       console.log(connectionId);
-      setIsLoading(true);
+
+      sendNotification({
+        type: "success",
+        title: "Connected Google Drive",
+        description: "Google Drive has been connected successfully."
+      });
+      
+      setIsLoading(false);
     } catch (error) {
       console.log(error)
       sendNotification({
@@ -114,6 +122,7 @@ export default function SolutionsTranscriptsIndex({
               label: "Connect",
               size: "sm",
               icon: CloudArrowLeftRightIcon,
+              disabled: isLoading,
               onClick: async () => {
                 await handleConnectTranscriptsSource();
               },
