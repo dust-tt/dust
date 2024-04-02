@@ -19,12 +19,14 @@ import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SolutionsDataSourceConfiguration } from "@app/lib/models/solutions";
 
 const {
   GA_TRACKING_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
 } = process.env;
+const solutionId = "transcripts";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -79,6 +81,26 @@ export default function SolutionsTranscriptsIndex({
       const connectionId: string = nangoConnectionId;
       console.log('GOT CONNECTION ID');
       console.log(connectionId);
+
+      // GOTTA DO A POST REQUEST TO /api/w/[wId]/solutions/transcripts/connect
+
+      await fetch(`/api/w/${owner.sId}/solutions/transcripts/connect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId,
+          provider,
+        }),
+      });
+
+      // await SolutionsDataSourceConfiguration.create({
+      //   userId: owner.userId,
+      //   solutionId,
+      //   connectionId,
+      //   provider,
+      // });
 
       sendNotification({
         type: "success",
