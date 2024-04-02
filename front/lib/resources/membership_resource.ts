@@ -10,11 +10,10 @@ import type {
   CreationAttributes,
   InferAttributes,
   ModelStatic,
-  Order,
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Workspace } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -113,46 +112,33 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (workspace) {
       where.workspaceId = workspace.id;
     }
-    const order: Order = [["startAt", "DESC"]];
-
-    if (workspace && userIds?.length) {
-      // Look for the latest membership for the given users in the workspace.
-      return orderedResourcesFromModels(
-        await MembershipModel.findAll({
-          where,
-          order,
-          limit: 1,
-        })
-      );
-    }
 
     if (!workspace && !userIds?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
+    if (userIds && !userIds.length) return [];
 
-    // Get the ID of the latest membership of each user in each in each workspace.
-    // If workspace ID is not provided, get the latest membership of each user at each of their workspace.
-    // If userIds is not provided, get the latest membership of each user in the provided workspace.
-    // At least one of the two is guaranteed to be provided.
-    const entries = (await MembershipModel.findAll({
-      attributes: [
-        [Sequelize.fn("MAX", Sequelize.col("startAt")), "startAt"],
-        "id",
-      ],
-      group: ["userId", "workspaceId"],
-      raw: true,
-      where,
-    })) as unknown as Array<{
-      startAt: Date;
-      id: number;
-    }>;
+    // Get all the memberships matching the criteria.
     const memberships = await MembershipModel.findAll({
-      where: {
-        id: entries.map((entry) => entry.id),
-      },
+      where,
+      order: [["startAt", "DESC"]],
     });
+    // Then, we only keep the latest membership for each (user, workspace).
+    const latestMembershipByUserAndWorkspace = new Map<
+      string,
+      MembershipModel
+    >();
+    for (const m of memberships) {
+      const key = `${m.userId}__${m.workspaceId}`;
+      const latest = latestMembershipByUserAndWorkspace.get(key);
+      if (!latest || latest.startAt < m.startAt) {
+        latestMembershipByUserAndWorkspace.set(key, m);
+      }
+    }
 
-    return orderedResourcesFromModels(memberships);
+    return orderedResourcesFromModels(
+      Array.from(latestMembershipByUserAndWorkspace.values())
+    );
   }
 
   static async getLatestMembershipOfUserInWorkspace({
