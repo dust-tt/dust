@@ -6,7 +6,7 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackUserMemberships } from "@app/lib/amplitude/back";
+import { trackUserMemberships } from "@app/lib/amplitude/node";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";

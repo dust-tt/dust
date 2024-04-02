@@ -17,7 +17,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackDataSourceCreated } from "@app/lib/amplitude/back";
+import { trackDataSourceCreated } from "@app/lib/amplitude/node";
 import { getDataSource } from "@app/lib/api/data_sources";
 import {
   Authenticator,

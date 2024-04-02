@@ -15,7 +15,7 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackAssistantCreated } from "@app/lib/amplitude/back";
+import { trackAssistantCreated } from "@app/lib/amplitude/node";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,

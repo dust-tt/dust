@@ -10,17 +10,17 @@ import type {
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 
-import type { Ampli } from "@app/lib/amplitude/back/generated";
+import {
+  AMPLITUDE_PUBLIC_API_KEY,
+  GROUP_TYPE,
+} from "@app/lib/amplitude/config";
+import type { Ampli } from "@app/lib/amplitude/node/generated";
 import {
   ampli,
   AssistantCreated,
   DataSourceCreated,
   UserMessagePosted,
-} from "@app/lib/amplitude/back/generated";
-import {
-  AMPLITUDE_PUBLIC_API_KEY,
-  GROUP_TYPE,
-} from "@app/lib/amplitude/config";
+} from "@app/lib/amplitude/node/generated";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";

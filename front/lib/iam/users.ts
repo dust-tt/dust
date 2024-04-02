@@ -2,7 +2,7 @@ import type { Session } from "@auth0/nextjs-auth0";
 import type { UserProviderType, UserType } from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 
-import { trackSignup } from "@app/lib/amplitude/back";
+import { trackSignup } from "@app/lib/amplitude/node";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
