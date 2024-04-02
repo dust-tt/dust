@@ -8,7 +8,7 @@ import {
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackDataSourceCreated } from "@app/lib/amplitude/back";
+import { trackDataSourceCreated } from "@app/lib/amplitude/node";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models";

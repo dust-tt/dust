@@ -48,7 +48,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { trackUserMessage } from "@app/lib/amplitude/back";
+import { trackUserMessage } from "@app/lib/amplitude/node";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
