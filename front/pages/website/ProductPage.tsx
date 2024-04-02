@@ -21,7 +21,7 @@ import {
   Grid,
   H1,
   H2,
-  H3,
+  H4,
   P,
   ReactiveIcon,
   Strong,
@@ -38,27 +38,25 @@ export function ProductPage() {
       <Grid>
         <div
           className={classNames(
-            "flex min-h-[60vh] flex-col justify-end gap-16 sm:gap-24",
+            "flex min-h-[40vh] flex-col justify-end gap-16 sm:gap-24 justify-center",
             "col-span-12",
-            "xl:col-span-10 xl:col-start-2",
-            "2xl:col-span-8 2xl:col-start-3"
+            "xl:col-span-6",
+            "2xl:col-span-6"
           )}
         >
           <div className="flex flex-col gap-12">
             <H1 className="text-slate-100">
-              <span className="text-red-400">
-                Amplify your team's potential
-              </span>{" "}
+              Cracking
               <br />
-              with customizable and secure AI&nbsp;assistants.
+              <span className="text-red-400">team AI&nbsp;productivity</span>
             </H1>
-            <H3 className="text-slate-100">
+            <H4 className="text-slate-300">
               AI is changing the way we work.
               <br />
-              Effectively channeling its potential{" "}
-              {/* <br className="lg:hidden" /> */}
-              is a&nbsp;competitive&nbsp;edge.
-            </H3>
+              Break down knowledge silos, augment your workflows with
+              data&nbsp;augmented, customizable and
+              secure&nbsp;AI&nbsp;assistants.
+            </H4>
             <div className="sm: flex w-full flex-wrap gap-4 sm:justify-start sm:gap-4 md:gap-6">
               <Button
                 variant="primary"
@@ -74,6 +72,37 @@ export function ProductPage() {
             </div>
           </div>
         </div>
+        <div
+          className={classNames(
+            "flex min-h-[40vh] flex-col justify-end gap-16 sm:gap-24 pt-20",
+            "col-span-12",
+            "xl:col-span-6
+          )}
+        >
+          <Hover3D depth={-20} perspective={1000} className="relative">
+            <Div3D depth={-20}>
+              <img src="/static/landing/mainVisual/MainVisual1.png" />
+            </Div3D>
+            <Div3D depth={-10} className="absolute top-0">
+              <img src="/static/landing/mainVisual/MainVisual2.png" />
+            </Div3D>
+            <Div3D depth={0} className="absolute top-0">
+              <img src="/static/landing/mainVisual/MainVisual3.png" />
+            </Div3D>
+            <Div3D depth={5} className="absolute top-0">
+              <img src="/static/landing/mainVisual/MainVisual4.png" />
+            </Div3D>
+            <Div3D depth={50} className="absolute top-0">
+              <img src="/static/landing/mainVisual/MainVisual5.png" />
+            </Div3D>
+          </Hover3D>
+        </div>
+      </Grid>
+      <Grid className="text-white text-xl">
+          <div className="col-span-2 col-start-3"><img src="/static/landing/logos/alan.png" /></div>
+          <div className="col-span-2"><img src="/static/landing/logos/qonto.png" /></div>
+          <div className="col-span-2"><img src="/static/landing/logos/pennylane.png" /></div>
+          <div className="col-span-2"><img src="/static/landing/logos/payfit.png" /></div>
       </Grid>
       <Grid className="items-center">
         <Hover3D
@@ -160,8 +189,8 @@ export function ProductPage() {
           <Strong>safe and privacy-obsessed</Strong> application.
         </P>
       </Grid>
-
-      <SimpleSlider slides={productSlides} />
+      {/* 
+      <SimpleSlider slides={productSlides} /> */}
       {/* Get state of the art*/}
       <Grid>
         <div

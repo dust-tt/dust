@@ -31,7 +31,7 @@ export function ForPeople() {
           </>
         }
       />
-      <SimpleSlider slides={peopleSlides} />
+      {/* <SimpleSlider slides={peopleSlides} /> */}
       {/* SHARE KNOWLEDGE */}
       <Grid>
         <div
@@ -60,10 +60,10 @@ export function ForPeople() {
             defaultFlexClasses,
             "col-span-12",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-6 xl:col-start-2"
+            "xl:col-span-9 xl:col-start-2"
           )}
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Block
               title="Onboard new people with accessible information at their pace"
               color="pink"
@@ -77,6 +77,7 @@ export function ForPeople() {
               the right internal ressources and spread your company culture and
               methods.
             </Block>
+            {peopleSlides[2]}
           </div>
         </div>
       </Grid>
@@ -103,10 +104,10 @@ export function ForPeople() {
             defaultFlexClasses,
             "col-span-12",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-6 xl:col-start-2"
+            "xl:col-span-9 xl:col-start-2"
           )}
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Block title="Better data" color="amber">
               Good performance review is first good data. Collect informations
               from various channels to provide, get an holistic view of an
@@ -156,6 +157,34 @@ export function ForPeople() {
             assistance with writing job descriptions and communicate with
             candidates, analyse candidates answer better and faster.
           </P>
+        </div>
+        <div
+          className={classNames(
+            defaultFlexClasses,
+            "col-span-12",
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-9 xl:col-start-2"
+          )}
+        >
+          <div className="grid grid-cols-3 gap-4">
+            <Block title="Level your team up on hiring" color="sky">
+              Make your company hiring practices, guidelines and knowledge easy
+              to find and leverage for everyone. Make your team better at
+              writing exercises, questions, revieweing exercises response, read
+              through candidates subtext. Score a candidate’s take-home answers
+              with your rubric in mind.
+            </Block>
+            <Block title="Make AI work for you" color="sky">
+              Analyse candidate’s CV in a second Extract information from texts,
+              normalise lists of emails and names, batch write content. Draft
+              job description, social media posts, outbound emails, interview
+              questions in minutes, with company tones and structure.
+            </Block>
+            {peopleSlides[0]}
+            {peopleSlides[1]}
+            {peopleSlides[3]}
+            {peopleSlides[4]}
+          </div>
         </div>
       </Grid>
     </>
