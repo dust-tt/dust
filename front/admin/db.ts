@@ -45,7 +45,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { SolutionDataSourceConfiguration } from "@app/lib/models/solutions";
+import { SolutionsDataSourceConfiguration } from "@app/lib/models/solutions";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
@@ -104,7 +104,7 @@ async function main() {
 
   await TemplateModel.sync({ alter: true });
 
-  await SolutionDataSourceConfiguration.sync({ alter: true });
+  await SolutionsDataSourceConfiguration.sync({ alter: true });
 
   process.exit(0);
 }
