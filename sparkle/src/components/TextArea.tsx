@@ -24,7 +24,6 @@ export function TextArea({
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = "auto"; // Reset height to recalculate
       textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
     }
   }, [value]); // Re-run when value changes
@@ -33,7 +32,7 @@ export function TextArea({
       <textarea
         ref={textareaRef}
         className={classNames(
-          "s-min-h-60 overflow-y-auto s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-transition-all s-duration-200 s-scrollbar-hide",
+          "overflow-y-auto s-block s-min-h-60 s-w-full s-min-w-0 s-rounded-xl s-text-sm s-transition-all s-duration-200 s-scrollbar-hide",
           !error
             ? "s-border-structure-100 focus:s-border-action-300 focus:s-ring-action-300"
             : "s-border-red-500 focus:s-border-red-500 focus:s-ring-red-500",
@@ -44,6 +43,15 @@ export function TextArea({
         placeholder={placeholder}
         value={value ?? ""}
         onChange={(e) => {
+          const newValue = e.target.value;
+          const textAreaComponent = textareaRef.current;
+          if (
+            textAreaComponent &&
+            value?.length &&
+            newValue.length < value.length
+          ) {
+            textAreaComponent.style.height = "auto"; // Reset height to recalculate
+          }
           onChange(e.target.value);
         }}
       />
