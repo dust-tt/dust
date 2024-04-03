@@ -137,7 +137,7 @@ export async function getMembers(
   return users.map((u) => {
     const m = memberships.find((m) => m.userId === u.id);
     let role = "none" as RoleType;
-    if (m) {
+    if (m && (m.endAt === null || m.endAt.getTime() > Date.now())) {
       switch (m.role) {
         case "admin":
         case "builder":

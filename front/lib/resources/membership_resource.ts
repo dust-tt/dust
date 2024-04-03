@@ -266,32 +266,53 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     userId,
     workspace,
     newRole,
+    allowTerminated = false,
   }: {
     userId: number;
     workspace: WorkspaceType | Workspace;
     newRole: Exclude<MembershipRoleType, "revoked">;
+    // If true, allow updating the role of a terminated membership (which will also un-terminate it).
+    allowTerminated?: boolean;
   }): Promise<
-    Result<MembershipResource, { type: "not_found" | "already_on_role" }>
+    Result<
+      void,
+      {
+        type: "not_found" | "already_on_role" | "membership_already_terminated";
+      }
+    >
   > {
     const membership = await this.getLatestMembershipOfUserInWorkspace({
       userId,
       workspace,
     });
+    if (membership?.endAt && !allowTerminated) {
+      return new Err({ type: "membership_already_terminated" });
+    }
     if (!membership) {
       return new Err({ type: "not_found" });
     }
-    if (membership.role === newRole) {
-      return new Err({ type: "already_on_role" });
+
+    // If the membership is not terminated, we update the role in place.
+    // TODO(@fontanierh): check if we want to terminate + create a new membership with new role instead ?
+    if (!membership.endAt) {
+      if (membership.role === newRole) {
+        return new Err({ type: "already_on_role" });
+      }
+      await MembershipModel.update(
+        { role: newRole },
+        { where: { id: membership.id } }
+      );
+    } else {
+      // If the last membership was terminated, we create a new membership with the new role.
+      await this.createMembership({
+        userId,
+        workspace,
+        role: newRole,
+        startAt: new Date(),
+      });
     }
-    const switchAt = new Date();
-    await this.revokeMembership({ userId, workspace, endAt: switchAt });
-    const newMembership = await this.createMembership({
-      userId,
-      workspace,
-      role: newRole,
-      startAt: switchAt,
-    });
-    return new Ok(newMembership);
+
+    return new Ok(undefined);
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {

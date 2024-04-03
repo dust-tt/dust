@@ -107,7 +107,7 @@ async function handler(
           workspaceId: owner.sId,
         });
       } else {
-        const role = membership.role;
+        const role = req.body.role;
         if (!isMembershipRoleType(role)) {
           return apiError(req, res, {
             status_code: 400,
@@ -122,6 +122,8 @@ async function handler(
           userId,
           workspace: owner,
           newRole: role,
+          // We allow to re-activate a terminated membership when updating the role here.
+          allowTerminated: true,
         });
         if (updateRoleResult.isErr()) {
           switch (updateRoleResult.error.type) {
@@ -133,6 +135,10 @@ async function handler(
                   message: "Could not find the membership.",
                 },
               });
+            case "membership_already_terminated":
+              // This cannot happen because we allow updating terminated memberships
+              // by setting `allowTerminated` to true.
+              throw new Error("Unreachable.");
             case "already_on_role":
               // Should not happen, but we ignore.
               break;
