@@ -24,6 +24,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   workspace: LightWorkspaceType;
 }> & {
   roles?: MembershipRoleType[];
+  transaction?: Transaction;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -45,6 +46,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     userIds,
     workspace,
     roles,
+    transaction,
   }: GetMembershipsOptions): Promise<MembershipResource[]> {
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
       startAt: {
@@ -69,6 +71,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     const memberships = await MembershipModel.findAll({
       where: whereClause,
+      transaction,
     });
 
     return memberships.map(
@@ -80,6 +83,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     userIds,
     workspace,
     roles,
+    transaction,
   }: GetMembershipsOptions): Promise<MembershipResource[]> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
@@ -112,6 +116,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const memberships = await MembershipModel.findAll({
       where,
       order: [["startAt", "DESC"]],
+      transaction,
     });
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
@@ -134,13 +139,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async getLatestMembershipOfUserInWorkspace({
     userId,
     workspace,
+    transaction,
   }: {
     userId: number;
     workspace: LightWorkspaceType;
+    transaction?: Transaction;
   }): Promise<MembershipResource | null> {
     const memberships = await this.getLatestMemberships({
       userIds: [userId],
       workspace,
+      transaction,
     });
     if (memberships.length === 0) {
       return null;
@@ -165,9 +173,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async getMembersCountForWorkspace({
     workspace,
     activeOnly,
+    transaction,
   }: {
     workspace: LightWorkspaceType;
     activeOnly: boolean;
+    transaction?: Transaction;
   }): Promise<number> {
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
       ? {
@@ -186,6 +196,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where,
       distinct: true,
       col: "userId",
+      transaction,
     });
   }
 
@@ -194,11 +205,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     role,
     startAt = new Date(),
+    transaction,
   }: {
     userId: number;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt?: Date;
+    transaction?: Transaction;
   }): Promise<MembershipResource> {
     if (startAt > new Date()) {
       throw new Error("Cannot create a membership in the future");
@@ -212,18 +225,22 @@ export class MembershipResource extends BaseResource<MembershipModel> {
             [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: startAt }],
           },
         },
+        transaction,
       })
     ) {
       throw new Error(
         `User ${userId} already has an active membership in workspace ${workspace.id}`
       );
     }
-    const newMembership = await MembershipModel.create({
-      startAt,
-      userId,
-      workspaceId: workspace.id,
-      role,
-    });
+    const newMembership = await MembershipModel.create(
+      {
+        startAt,
+        userId,
+        workspaceId: workspace.id,
+        role,
+      },
+      { transaction }
+    );
 
     return new MembershipResource(MembershipModel, newMembership.get());
   }
@@ -232,10 +249,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     userId,
     workspace,
     endAt = new Date(),
+    transaction,
   }: {
     userId: number;
     workspace: LightWorkspaceType;
     endAt?: Date;
+    transaction?: Transaction;
   }): Promise<
     Result<
       undefined,
@@ -247,6 +266,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const membership = await this.getLatestMembershipOfUserInWorkspace({
       userId,
       workspace,
+      transaction,
     });
     if (!membership) {
       return new Err({ type: "not_found" });
@@ -257,7 +277,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (membership.endAt) {
       return new Err({ type: "already_revoked" });
     }
-    await MembershipModel.update({ endAt }, { where: { id: membership.id } });
+    await MembershipModel.update(
+      { endAt },
+      { where: { id: membership.id }, transaction }
+    );
     return new Ok(undefined);
   }
 
@@ -266,12 +289,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newRole,
     allowTerminated = false,
+    transaction,
   }: {
     userId: number;
     workspace: LightWorkspaceType;
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
     allowTerminated?: boolean;
+    transaction?: Transaction;
   }): Promise<
     Result<
       void,
@@ -283,6 +308,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const membership = await this.getLatestMembershipOfUserInWorkspace({
       userId,
       workspace,
+      transaction,
     });
     if (membership?.endAt && !allowTerminated) {
       return new Err({ type: "membership_already_terminated" });
@@ -299,7 +325,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
       await MembershipModel.update(
         { role: newRole },
-        { where: { id: membership.id } }
+        { where: { id: membership.id }, transaction }
       );
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
@@ -308,6 +334,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         workspace,
         role: newRole,
         startAt: new Date(),
+        transaction,
       });
     }
 
