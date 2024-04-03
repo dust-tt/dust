@@ -104,16 +104,14 @@ impl Block for Map {
                                 MAP_MAX_ITERATIONS
                             ))?;
                         }
-                        match arr.len() {
-                            0 => Ok(BlockResult {
-                                 value: serde_json::Value::Array(Vec::new()),
-                                 meta: None,
-                             }),
-                            _ => Ok(BlockResult {
-                                value: v.clone(),
-                                meta: None, // do I need to take the meta here
-                            }),
-                        }
+                        Ok(BlockResult {
+                            value: if arr.is_empty() {
+                                serde_json::Value::Array(Vec::new())
+                            } else {
+                                v.clone()
+                            },
+                            meta: None,
+                        })
                     }
                 },
                 Some(repeat) => match repeat {
