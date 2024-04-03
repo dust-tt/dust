@@ -490,14 +490,18 @@ impl MistralAILLM {
                                                     true => Err(ModelError {
                                                         message: error.message(),
                                                         retryable: Some(ModelErrorRetryOptions {
-                                                            sleep: Duration::from_millis(100),
+                                                            sleep: Duration::from_millis(500),
                                                             factor: 2,
                                                             retries: 3,
                                                         }),
                                                     })?,
                                                     false => Err(ModelError {
                                                         message: error.message(),
-                                                        retryable: None,
+                                                        retryable: Some(ModelErrorRetryOptions {
+                                                            sleep: Duration::from_millis(500),
+                                                            factor: 1,
+                                                            retries: 1,
+                                                        }),
                                                     })?,
                                                 }
                                                 break 'stream;
@@ -710,14 +714,18 @@ impl MistralAILLM {
                     true => Err(ModelError {
                         message: error.message(),
                         retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(2000),
+                            sleep: Duration::from_millis(500),
                             factor: 2,
-                            retries: 8,
+                            retries: 3,
                         }),
                     }),
                     false => Err(ModelError {
                         message: error.message(),
-                        retryable: None,
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
                     }),
                 }
             }
