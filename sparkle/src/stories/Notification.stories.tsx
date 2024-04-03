@@ -29,7 +29,7 @@ export const DropdownExample = () => {
         </div>
         <Notification
           title="Failure with a very long title clamped on one line."
-          description="This is a very long failure notification with some messy content. Hopefully it should be truncated in the UI after 3 very long lines!"
+          description='Got: {"error":{"type":"invalid_request_error","message":"Invalid request body: Expecting string at name but instead got: undefined"}}'
           variant="error"
         />
       </div>
