@@ -40,8 +40,8 @@ import {
   MessageReaction,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -436,19 +436,17 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    const memberships = await MembershipModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
+    const memberships = await MembershipResource.getLatestMemberships({
+      workspace: workspace,
+      transaction: t,
     });
 
     if (memberships.length === 1) {
       // We also delete the user if it has no other workspace.
       const membership = memberships[0];
-      const membershipsOfUser = await MembershipModel.findAll({
-        where: {
-          userId: membership.userId,
-        },
+      const membershipsOfUser = await MembershipResource.getLatestMemberships({
+        userIds: [membership.userId],
+        transaction: t,
       });
       if (membershipsOfUser.length === 1) {
         const user = await User.findOne({
@@ -463,15 +461,15 @@ export async function deleteMembersActivity({
             },
             transaction: t,
           });
-          await membership.destroy({ transaction: t });
+          await membership.delete(t);
           await user.destroy({ transaction: t });
         }
       }
-    }
-
-    for (const membership of memberships) {
-      logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
-      await membership.destroy({ transaction: t });
+    } else {
+      for (const membership of memberships) {
+        logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
+        await membership.delete(t);
+      }
     }
   });
 }
