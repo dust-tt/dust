@@ -142,6 +142,18 @@ export async function stopGithubConnector(
   }
 }
 
+export async function pauseGithubWebhooks(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+  await connector.update({ pausedAt: new Date() });
+  return new Ok(undefined);
+}
+
 export async function resumeGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {

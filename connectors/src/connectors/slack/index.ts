@@ -642,3 +642,14 @@ export async function setSlackConfig(
     }
   }
 }
+
+export async function pauseSlackWebhooks(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  await connector.update({
+    pausedAt: new Date(),
+  });
+  return new Ok(undefined);
+}

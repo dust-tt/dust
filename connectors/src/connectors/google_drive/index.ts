@@ -825,3 +825,12 @@ export async function googleDriveGarbageCollect(connectorId: ModelId) {
 
   return launchGoogleGarbageCollector(connectorId);
 }
+
+export async function pauseGoogleDriveWebhooks(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  await connector.update({ pausedAt: new Date() });
+  return new Ok(undefined);
+}

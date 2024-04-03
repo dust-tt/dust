@@ -114,6 +114,18 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return new this(this.model, blob.get());
   }
 
+  static async fetchByIds(ids: number[]) {
+    const blobs = await ConnectorResource.model.findAll({
+      where: {
+        id: ids,
+      },
+    });
+
+    return blobs.map(
+      (b: ConnectorModel) => new ConnectorResource(ConnectorModel, b.get())
+    );
+  }
+
   async delete(): Promise<Result<undefined, Error>> {
     return sequelizeConnection.transaction(async (transaction) => {
       try {

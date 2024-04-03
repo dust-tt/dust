@@ -18,6 +18,7 @@ import {
   createGithubConnector,
   fullResyncGithubConnector,
   getGithubConfig,
+  pauseGithubWebhooks,
   resumeGithubConnector,
   retrieveGithubConnectorPermissions,
   retrieveGithubContentNodeParents,
@@ -31,6 +32,7 @@ import {
   createGoogleDriveConnector,
   getGoogleDriveConfig,
   googleDriveGarbageCollect,
+  pauseGoogleDriveWebhooks,
   retrieveGoogleDriveConnectorPermissions,
   retrieveGoogleDriveContentNodeParents,
   retrieveGoogleDriveContentNodes,
@@ -43,6 +45,7 @@ import {
   cleanupIntercomConnector,
   createIntercomConnector,
   fullResyncIntercomSyncWorkflow,
+  pauseIntercomConnector,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
   retrieveIntercomContentNodeParents,
@@ -59,6 +62,7 @@ import type {
   ConnectorCreatorOAuth,
   ConnectorCreatorUrl,
   ConnectorGarbageCollector,
+  ConnectorPauser,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
   ConnectorResumer,
@@ -72,6 +76,7 @@ import {
   cleanupNotionConnector,
   createNotionConnector,
   fullResyncNotionConnector,
+  pauseNotionConnector,
   resumeNotionConnector,
   retrieveNotionConnectorPermissions,
   retrieveNotionContentNodeParents,
@@ -83,6 +88,7 @@ import {
   cleanupSlackConnector,
   createSlackConnector,
   getSlackConfig,
+  pauseSlackWebhooks,
   retrieveSlackConnectorPermissions,
   retrieveSlackContentNodes,
   setSlackConfig,
@@ -95,6 +101,7 @@ import logger from "@connectors/logger/logger";
 import {
   cleanupWebcrawlerConnector,
   createWebcrawlerConnector,
+  pauseWebcrawlerConnector,
   retrieveWebcrawlerConnectorPermissions,
   retrieveWebCrawlerContentNodeParents,
   retrieveWebCrawlerContentNodes,
@@ -321,4 +328,20 @@ export const GARBAGE_COLLECT_BY_TYPE: Record<
   webcrawler: () => {
     throw new Error("Not implemented");
   },
+};
+
+// If the connector has webhooks: stop processing them.
+// If the connector has long-running workflows: stop them.
+// Exclude the connector from the prod checks.
+export const PAUSE_CONNECTOR_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorPauser
+> = {
+  confluence: stopConfluenceConnector,
+  slack: pauseSlackWebhooks,
+  notion: pauseNotionConnector,
+  github: pauseGithubWebhooks,
+  google_drive: pauseGoogleDriveWebhooks,
+  intercom: pauseIntercomConnector,
+  webcrawler: pauseWebcrawlerConnector,
 };
