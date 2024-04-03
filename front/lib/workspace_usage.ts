@@ -2,12 +2,7 @@ import { format } from "date-fns/format";
 import { Op, QueryTypes } from "sequelize";
 
 import type { Workspace } from "@app/lib/models";
-import {
-  AgentConfiguration,
-  AgentMessage,
-  Conversation,
-  DataSource,
-} from "@app/lib/models";
+import { AgentConfiguration, Conversation, DataSource } from "@app/lib/models";
 
 import { frontSequelize } from "./resources/storage";
 
