@@ -99,6 +99,69 @@ export const TemporalCommandSchema = t.type({
 
 export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
 
+/**
+ * <Intercom>
+ */
+export const IntercomCommandSchema = t.type({
+  majorCommand: t.literal("intercom"),
+  command: t.union([
+    t.literal("check-conversation"),
+    t.literal("fetch-conversation"),
+    t.literal("check-missing-conversations"),
+    t.literal("check-teams"),
+  ]),
+  args: t.type({
+    connectorId: t.number,
+    conversationId: t.union([t.string, t.undefined]),
+    day: t.union([t.string, t.undefined]),
+  }),
+});
+
+export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
+export const IntercomCheckConversationResponseSchema = t.type({
+  isConversationOnIntercom: t.boolean,
+  isConversationOnDB: t.boolean,
+  conversationTeamIdOnIntercom: t.union([t.string, t.undefined]),
+  conversationTeamIdOnDB: t.union([t.string, t.undefined]),
+});
+export type IntercomCheckConversationResponseType = t.TypeOf<
+  typeof IntercomCheckConversationResponseSchema
+>;
+export const IntercomFetchConversationResponseSchema = t.type({
+  conversation: t.union([t.UnknownRecord, t.null]), // intercom type, can't be iots'd
+});
+export type IntercomFetchConversationResponseType = t.TypeOf<
+  typeof IntercomFetchConversationResponseSchema
+>;
+export const IntercomCheckTeamsResponseSchema = t.type({
+  teams: t.array(
+    t.type({
+      teamId: t.string,
+      name: t.string,
+      isTeamOnDB: t.boolean,
+    })
+  ),
+});
+export type IntercomCheckTeamsResponseType = t.TypeOf<
+  typeof IntercomCheckTeamsResponseSchema
+>;
+export const IntercomCheckMissingConversationsResponseSchema = t.type({
+  missingConversations: t.array(
+    t.type({
+      conversationId: t.string,
+      teamId: t.union([t.number, t.null]),
+      open: t.boolean,
+      createdAt: t.number,
+    })
+  ),
+});
+export type IntercomCheckMissingConversationsResponseType = t.TypeOf<
+  typeof IntercomCheckMissingConversationsResponseSchema
+>;
+/**
+ * </ Intercom>
+ */
+
 export const AdminCommandSchema = t.union([
   ConnectorsCommandSchema,
   GithubCommandSchema,
@@ -108,6 +171,7 @@ export const AdminCommandSchema = t.union([
   BatchCommandSchema,
   WebcrawlerCommandSchema,
   TemporalCommandSchema,
+  IntercomCommandSchema,
 ]);
 
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
@@ -227,6 +291,10 @@ export const AdminResponseSchema = t.union([
   GoogleDriveCheckFileResponseSchema,
   TemporalCheckQueueResponseSchema,
   TemporalUnprocessedWorkflowsResponseSchema,
+  IntercomCheckConversationResponseSchema,
+  IntercomFetchConversationResponseSchema,
+  IntercomCheckTeamsResponseSchema,
+  IntercomCheckMissingConversationsResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
