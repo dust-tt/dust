@@ -105,10 +105,10 @@ impl Block for Map {
                             ))?;
                         }
                         match arr.len() {
-                            0 => Err(anyhow::anyhow!(
-                                "Map `from` block `{}` output must be a non-empty array",
-                                self.from
-                            )),
+                            0 => Ok(BlockResult {
+                                 value: serde_json::Value::Array(Vec::new()),
+                                 meta: None,
+                             }),
                             _ => Ok(BlockResult {
                                 value: v.clone(),
                                 meta: None, // do I need to take the meta here

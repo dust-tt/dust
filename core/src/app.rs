@@ -426,41 +426,43 @@ impl App {
             // Value::None?
             if block.block_type() == BlockType::Reduce {
                 assert!(current_map.is_some());
-                envs =
-                    envs.iter()
-                        .map(|map_envs| {
-                            assert!(map_envs.len() > 0);
-                            let mut env = map_envs[0].clone();
-                            current_map_blocks
-                                .iter()
-                                .map(|n| {
-                                    env.state.insert(
-                                        n.clone(),
-                                        Value::Array(
-                                            map_envs
-                                                .iter()
-                                                .map(|e| match e.state.get(n) {
-                                                    None => Err(anyhow!(
-                                                    "Missing block `{}` output, at iteration {}",
-                                                    n, e.map.as_ref().unwrap().iteration
-                                                ))?,
-                                                    Some(v) => Ok(v.clone()),
-                                                })
-                                                .collect::<Result<Vec<_>>>()?,
-                                        ),
-                                    );
-                                    Ok(())
-                                })
-                                .collect::<Result<Vec<_>>>()?;
-                            env.map = None;
-                            Ok(vec![env])
-                        })
-                        .collect::<Result<Vec<_>>>()?;
+                if envs.iter().any(|map_envs| map_envs.is_empty()) {
+                    envs = vec![];
+                } else {
+                    envs =
+                        envs.iter()
+                            .map(|map_envs| {
+                                let mut env = map_envs[0].clone();
+                                current_map_blocks
+                                    .iter()
+                                    .map(|n| {
+                                        env.state.insert(
+                                            n.clone(),
+                                            Value::Array(
+                                                map_envs
+                                                    .iter()
+                                                    .map(|e| match e.state.get(n) {
+                                                        None => Err(anyhow!(
+                                                        "Missing block `{}` output, at iteration {}",
+                                                        n, e.map.as_ref().unwrap().iteration
+                                                    ))?,
+                                                        Some(v) => Ok(v.clone()),
+                                                    })
+                                                    .collect::<Result<Vec<_>>>()?,
+                                            ),
+                                        );
+                                        Ok(())
+                                    })
+                                    .collect::<Result<Vec<_>>>()?;
+                                env.map = None;
+                                Ok(vec![env])
+                            })
+                            .collect::<Result<Vec<_>>>()?;
 
-                current_map = None;
-                current_map_blocks = vec![];
+                    current_map = None;
+                    current_map_blocks = vec![];
+                }
             }
-
             // Create a protected clone of the status during execution of the block to update the
             // block status as execution takes place and push it to DB.
             let run_status = Arc::new(Mutex::new(self.run.as_ref().unwrap().status().clone()));
