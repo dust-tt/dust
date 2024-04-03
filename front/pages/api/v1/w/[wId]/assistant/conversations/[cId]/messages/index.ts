@@ -15,7 +15,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages: AgentMessageType[];
+  agentMessages?: AgentMessageType[];
 };
 
 async function handler(
@@ -69,7 +69,7 @@ async function handler(
         });
       }
 
-      const { content, context, mentions } = bodyValidation.right;
+      const { content, context, mentions, isSync } = bodyValidation.right;
 
       const messageRes = await postUserMessageWithPubSub(
         auth,
@@ -79,7 +79,7 @@ async function handler(
           mentions,
           context,
         },
-        { resolveAfterFullGeneration: true }
+        { resolveAfterFullGeneration: isSync === true }
       );
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
@@ -87,7 +87,7 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
-        agentMessages: messageRes.value.agentMessages || [],
+        agentMessages: messageRes.value.agentMessages ?? undefined,
       });
       return;
 

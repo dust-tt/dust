@@ -10,6 +10,7 @@ export const PublicPostMessagesRequestBodySchema = t.type({
     email: t.union([t.string, t.null]),
     profilePictureUrl: t.union([t.string, t.null]),
   }),
+  isSync: t.union([t.boolean, t.undefined]),
 });
 
 export const PublicPostContentFragmentRequestBodySchema = t.type({
@@ -44,4 +45,5 @@ export const PublicPostConversationsRequestBodySchema = t.type({
     PublicPostContentFragmentRequestBodySchema,
     t.undefined,
   ]),
+  isSync: t.union([t.boolean, t.undefined]),
 });

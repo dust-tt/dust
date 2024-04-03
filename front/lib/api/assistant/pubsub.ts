@@ -1,6 +1,5 @@
 import type {
   AgentMessageType,
-  ConversationMessageSuccessEvent,
   ConversationType,
   GenerationTokensEvent,
   MentionType,
@@ -152,8 +151,7 @@ async function handleUserMessageEvents(
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
-    | ConversationTitleEvent
-    | ConversationMessageSuccessEvent,
+    | ConversationTitleEvent,
     void
   >,
   resolveAfterFullGeneration = false
@@ -230,18 +228,6 @@ async function handleUserMessageEvents(
               }
               break;
             }
-            case "conversation_message_success": {
-              if (resolveAfterFullGeneration && userMessage && !didResolve) {
-                didResolve = true;
-                resolve(
-                  new Ok({
-                    userMessage,
-                    agentMessages,
-                  })
-                );
-              }
-              break;
-            }
             case "user_message_error": {
               //  We resolve the promise with an error as we were not able to
               //  create the user message. This is possible for a variety of
@@ -279,6 +265,15 @@ async function handleUserMessageEvents(
               })(event);
               return null;
           }
+        }
+        if (resolveAfterFullGeneration && userMessage && !didResolve) {
+          didResolve = true;
+          resolve(
+            new Ok({
+              userMessage,
+              agentMessages,
+            })
+          );
         }
       } catch (e) {
         logger.error({ error: e }, "Error Posting message");

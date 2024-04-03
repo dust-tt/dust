@@ -36,9 +36,3 @@ export type ConversationTitleEvent = {
   created: number;
   title: string;
 };
-
-// Event sent when the conversation message has been posted and all events have been sent.
-export type ConversationMessageSuccessEvent = {
-  type: "conversation_message_success";
-  messageId: string;
-};

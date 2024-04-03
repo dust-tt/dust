@@ -1,5 +1,4 @@
 import type {
-  AgentMessageType,
   ContentFragmentType,
   ConversationType,
   UserMessageType,
@@ -22,7 +21,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;
-  agentMessages?: AgentMessageType[];
   contentFragment?: ContentFragmentType;
 };
 
@@ -79,7 +77,7 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragment } =
+      const { title, visibility, message, contentFragment, isSync } =
         bodyValidation.right;
 
       if (contentFragment) {
@@ -105,7 +103,6 @@ async function handler(
 
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
-      let agentMessages: AgentMessageType[] | undefined;
 
       if (contentFragment) {
         const cf = await postNewContentFragment(auth, {
@@ -152,7 +149,7 @@ async function handler(
               profilePictureUrl: message.context.profilePictureUrl,
             },
           },
-          { resolveAfterFullGeneration: true }
+          { resolveAfterFullGeneration: isSync === true }
         );
 
         if (messageRes.isErr()) {
@@ -160,7 +157,6 @@ async function handler(
         }
 
         newMessage = messageRes.value.userMessage;
-        agentMessages = messageRes.value.agentMessages;
       }
 
       if (newContentFragment || newMessage) {
@@ -181,7 +177,6 @@ async function handler(
       res.status(200).json({
         conversation,
         message: newMessage ?? undefined,
-        agentMessages: agentMessages ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });
       return;
