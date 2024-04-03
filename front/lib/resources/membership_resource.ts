@@ -48,6 +48,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     roles,
     transaction,
   }: GetMembershipsOptions): Promise<MembershipResource[]> {
+    if (!workspace && !userIds?.length) {
+      throw new Error("At least one of workspace or userIds must be provided.");
+    }
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
       startAt: {
         [Op.lte]: new Date(),
