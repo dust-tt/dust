@@ -213,7 +213,7 @@ export function trackDataSourceUpdated(
     { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
     {
       time: Date.now(),
-      insert_id: `data_source_updated_${dataSource.id}`,
+      insert_id: `data_source_updated_${dataSource.id}_${Date.now()}`,
     }
   );
 }
