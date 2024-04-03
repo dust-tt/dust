@@ -87,7 +87,7 @@ async function handleMembershipInvite(
 
   if (!m) {
     await createAndLogMembership({
-      workspace: workspace,
+      workspace,
       userId: user.id,
       role: membershipInvite.initialRole,
     });

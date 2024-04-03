@@ -437,7 +437,7 @@ export async function deleteMembersActivity({
     });
 
     const memberships = await MembershipResource.getLatestMemberships({
-      workspace: workspace,
+      workspace,
       transaction: t,
     });
 
