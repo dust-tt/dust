@@ -1,11 +1,8 @@
 import type {
-  ConnectorsAPIError,
   ContentNode,
-  CreateConnectorUrlRequestBody,
   ModelId,
   Result,
   WebCrawlerConfigurationType,
-  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   DepthOptions,
@@ -14,7 +11,6 @@ import {
   Ok,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
-import type { Request, Response } from "express";
 
 import {
   getDisplayNameForPage,
@@ -27,7 +23,6 @@ import {
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
-import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
@@ -39,31 +34,35 @@ import {
 
 export async function createWebcrawlerConnector(
   dataSourceConfig: DataSourceConfig,
-  urlConfig: CreateConnectorUrlRequestBody
+  connectionId: string,
+  configuration: WebCrawlerConfigurationType
 ): Promise<Result<string, Error>> {
-  const depth = urlConfig.depth;
+  if (!configuration) {
+    throw new Error("Configuration is required");
+  }
+  const depth = configuration.depth;
   if (!isDepthOption(depth)) {
     return new Err(new Error("Invalid depth option"));
   }
-  if (urlConfig.maxPages > WEBCRAWLER_MAX_PAGES) {
+  if (configuration.maxPageToCrawl > WEBCRAWLER_MAX_PAGES) {
     return new Err(
       new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
     );
   }
 
   const webCrawlerConfigurationBlob = {
-    url: urlConfig.url,
-    maxPageToCrawl: urlConfig.maxPages,
-    crawlMode: urlConfig.crawlMode,
+    url: configuration.url,
+    maxPageToCrawl: configuration.maxPageToCrawl,
+    crawlMode: configuration.crawlMode,
     depth: depth,
-    crawlFrequency: urlConfig.crawlFrequency,
+    crawlFrequency: configuration.crawlFrequency,
     lastCrawledAt: null,
   };
 
   const connector = await ConnectorResource.makeNew(
     "webcrawler",
     {
-      connectionId: urlConfig.url,
+      connectionId: configuration.url,
       workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
       workspaceId: dataSourceConfig.workspaceId,
       dataSourceName: dataSourceConfig.dataSourceName,
@@ -79,66 +78,6 @@ export async function createWebcrawlerConnector(
     { connectorId: connector.id },
     `Launched crawl website workflow for connector`
   );
-
-  return new Ok(connector.id.toString());
-}
-
-export async function updateWebcrawlerConnector(
-  connectorId: ModelId,
-  urlConfig: CreateConnectorUrlRequestBody
-): Promise<Result<string, ConnectorsAPIError>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err({
-      message: "Connector not found",
-      type: "connector_not_found",
-    });
-  }
-  const depth = urlConfig.depth;
-  if (!isDepthOption(depth)) {
-    return new Err({
-      message: `Invalid depth option. Expected one of: (${DepthOptions.join(
-        ","
-      )})`,
-      type: "invalid_request_error",
-    });
-  }
-
-  if (urlConfig.maxPages > WEBCRAWLER_MAX_PAGES) {
-    return new Err({
-      message: `Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`,
-      type: "invalid_request_error",
-    });
-  }
-
-  await WebCrawlerConfiguration.update(
-    {
-      url: urlConfig.url,
-      maxPageToCrawl: urlConfig.maxPages,
-      crawlMode: urlConfig.crawlMode,
-      depth: depth,
-      crawlFrequency: urlConfig.crawlFrequency,
-    },
-    {
-      where: {
-        connectorId: connector.id,
-      },
-    }
-  );
-  const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
-  if (stopRes.isErr()) {
-    return new Err({
-      message: stopRes.error.message,
-      type: "internal_server_error",
-    });
-  }
-  const startRes = await launchCrawlWebsiteWorkflow(connector.id);
-  if (startRes.isErr()) {
-    return new Err({
-      message: startRes.error.message,
-      type: "internal_server_error",
-    });
-  }
 
   return new Ok(connector.id.toString());
 }
@@ -427,44 +366,51 @@ export async function retrieveWebCrawlerContentNodeParents(
   return new Ok(parents);
 }
 
-type GetWebCrawlerConfigurationResBody =
-  WithConnectorsAPIErrorReponse<WebCrawlerConfigurationType>;
-
-async function _getWebcrawlerConfiguration(
-  req: Request<{ connector_id: string }, GetWebCrawlerConfigurationResBody>,
-  res: Response<GetWebCrawlerConfigurationResBody>
-) {
-  const connector = await ConnectorResource.fetchById(req.params.connector_id);
+export async function setWebcrawlerConfiguration(
+  connectorId: ModelId,
+  configuration: WebCrawlerConfigurationType
+): Promise<Result<void, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return apiError(req, res, {
-      api_error: {
-        type: "connector_not_found",
-        message: "Connector not found",
-      },
-      status_code: 404,
-    });
+    return new Err(new Error("Connector not found"));
   }
-  const config = await WebCrawlerConfiguration.findOne({
-    where: { connectorId: connector.id },
-  });
-  if (!config) {
-    return apiError(req, res, {
-      api_error: {
-        type: "internal_server_error",
-        message: "Connector config not found",
-      },
-      status_code: 404,
-    });
+  const depth = configuration.depth;
+  if (!isDepthOption(depth)) {
+    return new Err(
+      new Error(
+        `Invalid depth option. Expected one of: (${DepthOptions.join(",")})`
+      )
+    );
   }
-  return res.status(200).json({
-    url: config.url,
-    maxPageToCrawl: config.maxPageToCrawl,
-    crawlMode: config.crawlMode,
-    depth: config.depth,
-    crawlFrequency: config.crawlFrequency,
-  });
-}
 
-export const getWebcrawlerConfiguration = withLogging(
-  _getWebcrawlerConfiguration
-);
+  if (configuration.maxPageToCrawl > WEBCRAWLER_MAX_PAGES) {
+    return new Err(
+      new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
+    );
+  }
+
+  await WebCrawlerConfiguration.update(
+    {
+      url: configuration.url,
+      maxPageToCrawl: configuration.maxPageToCrawl,
+      crawlMode: configuration.crawlMode,
+      depth: depth,
+      crawlFrequency: configuration.crawlFrequency,
+    },
+    {
+      where: {
+        connectorId: connector.id,
+      },
+    }
+  );
+  const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
+  if (stopRes.isErr()) {
+    return new Err(stopRes.error);
+  }
+  const startRes = await launchCrawlWebsiteWorkflow(connector.id);
+  if (startRes.isErr()) {
+    return new Err(startRes.error);
+  }
+
+  return new Ok(undefined);
+}

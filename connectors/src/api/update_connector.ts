@@ -1,21 +1,10 @@
-import type {
-  CreateConnectorOAuthRequestBody,
-  CreateConnectorUrlRequestBody,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import {
-  provider2createConnectorType,
-  UpdateConnectorRequestBodySchema,
-} from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { UpdateConnectorRequestBodySchema } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { UPDATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import type {
-  ConnectorUpdaterOAuth,
-  ConnectorUpdaterUrl,
-} from "@connectors/connectors/interface";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -26,7 +15,7 @@ type ConnectorUpdateResBody = WithConnectorsAPIErrorReponse<{
   connectorId: string;
 }>;
 
-const _getConnectorUpdateAPIHandler = async (
+const _postConnectorUpdateAPIHandler = async (
   req: Request<{ connector_id: string }, ConnectorUpdateReqBody>,
   res: Response<ConnectorUpdateResBody>
 ) => {
@@ -53,7 +42,7 @@ const _getConnectorUpdateAPIHandler = async (
     });
   }
 
-  const { connectorParams } = bodyValidation.right;
+  const { connectionId } = bodyValidation.right;
 
   const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
@@ -66,27 +55,10 @@ const _getConnectorUpdateAPIHandler = async (
     });
   }
 
-  const updateRes = await (async () => {
-    switch (provider2createConnectorType[connector.type]) {
-      case "oauth": {
-        const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[
-          connector.type
-        ] as ConnectorUpdaterOAuth;
-        const params = connectorParams as CreateConnectorOAuthRequestBody;
-
-        return connectorUpdater(connector.id, {
-          connectionId: params.connectionId,
-        });
-      }
-      case "url": {
-        const params = connectorParams as CreateConnectorUrlRequestBody;
-        const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[
-          connector.type
-        ] as ConnectorUpdaterUrl;
-        return connectorUpdater(connector.id, params);
-      }
-    }
-  })();
+  const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[connector.type];
+  const updateRes = await connectorUpdater(connector.id, {
+    connectionId: connectionId,
+  });
 
   if (updateRes.isErr()) {
     if (updateRes.error.type === "connector_oauth_target_mismatch") {
@@ -110,6 +82,6 @@ const _getConnectorUpdateAPIHandler = async (
   });
 };
 
-export const getConnectorUpdateAPIHandler = withLogging(
-  _getConnectorUpdateAPIHandler
+export const postConnectorUpdateAPIHandler = withLogging(
+  _postConnectorUpdateAPIHandler
 );

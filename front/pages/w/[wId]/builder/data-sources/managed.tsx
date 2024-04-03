@@ -442,9 +442,8 @@ export default function DataSourcesView({
           body: JSON.stringify({
             provider,
             connectionId,
-            type: "oauth",
-            urlConfig: undefined,
             name: undefined,
+            configuration: null,
           } satisfies PostManagedDataSourceRequestBody),
         }
       );
