@@ -8,6 +8,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { trackDataSourceUpdated } from "@app/lib/amplitude/node";
 import {
   getDataSource,
   updateDataSourceEditedBy,
@@ -130,6 +131,7 @@ async function handler(
       }
 
       await updateDataSourceEditedBy(auth, dataSource);
+      trackDataSourceUpdated(auth, { dataSource });
 
       res.status(200).json(updateRes.value);
       return;
