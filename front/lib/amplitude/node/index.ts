@@ -19,6 +19,7 @@ import {
   ampli,
   AssistantCreated,
   DataSourceCreated,
+  DataSourceUpdated,
   UserMessagePosted,
 } from "@app/lib/amplitude/node/generated";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
@@ -181,6 +182,37 @@ export function trackDataSourceCreated(
     {
       time: dataSource.createdAt,
       insert_id: `data_source_created_${dataSource.id}`,
+    }
+  );
+}
+
+export function trackDataSourceUpdated(
+  auth: Authenticator,
+  {
+    dataSource,
+  }: {
+    dataSource: DataSourceType;
+  }
+) {
+  const userId = auth.user()?.id;
+  const workspace = auth.workspace();
+  if (!workspace || !userId) {
+    return;
+  }
+  const amplitude = getBackendClient();
+  const event = new DataSourceUpdated({
+    dataSourceName: dataSource.name,
+    dataSourceProvider: dataSource.connectorProvider || "",
+    workspaceName: workspace.name,
+    workspaceId: workspace.sId,
+    assistantDefaultSelected: dataSource.assistantDefaultSelected,
+  });
+
+  amplitude.track(
+    `user-${userId}`,
+    { ...event, groups: { [GROUP_TYPE]: workspace.sId } },
+    {
+      time: Date.now(),
     }
   );
 }
