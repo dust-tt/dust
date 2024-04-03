@@ -25,9 +25,9 @@ import {
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";
-import { Membership } from "@app/lib/models";
 import { User, Workspace } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 
 let BACKEND_CLIENT: Ampli | null = null;
 
@@ -55,10 +55,8 @@ export function getBackendClient() {
 export async function trackUserMemberships(userId: ModelId) {
   const amplitude = getBackendClient();
   const user = await User.findByPk(userId);
-  const memberships = await Membership.findAll({
-    where: {
-      userId: userId,
-    },
+  const memberships = await MembershipResource.getActiveMemberships({
+    userIds: [userId],
   });
   const groups: string[] = [];
   for (const membership of memberships) {

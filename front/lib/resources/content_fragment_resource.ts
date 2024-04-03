@@ -108,6 +108,22 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       },
     };
   }
+
+  async update(
+    blob: Partial<Attributes<ContentFragmentModel>>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const [affectedCount, affectedRows] = await this.model.update(blob, {
+      where: {
+        id: this.id,
+      },
+      transaction,
+      returning: true,
+    });
+    // Update the current instance with the new values to avoid stale data
+    Object.assign(this, affectedRows[0].get());
+    return [affectedCount];
+  }
 }
 
 // TODO(2024-03-22 pr): Move as method of message resource after migration of

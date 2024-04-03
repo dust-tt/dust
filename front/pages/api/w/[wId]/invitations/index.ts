@@ -13,11 +13,9 @@ import {
   updateOrCreateInvitation,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
-import {
-  getMembers,
-  getMembersCountForWorkspace,
-} from "@app/lib/api/workspace";
+import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -127,7 +125,10 @@ async function handler(
       const { maxUsers } = subscription.plan.limits.users;
       const availableSeats =
         maxUsers -
-        (await getMembersCountForWorkspace(owner, { activeOnly: true }));
+        (await MembershipResource.getMembersCountForWorkspace({
+          workspace: owner,
+          activeOnly: true,
+        }));
       if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
         return apiError(req, res, {
           status_code: 400,

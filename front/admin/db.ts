@@ -17,7 +17,6 @@ import {
   EventSchema,
   ExtractedEvent,
   Key,
-  Membership,
   MembershipInvitation,
   Mention,
   Message,
@@ -47,6 +46,7 @@ import {
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
 async function main() {
@@ -54,7 +54,7 @@ async function main() {
   await UserMetadata.sync({ alter: true });
   await Workspace.sync({ alter: true });
   await WorkspaceHasDomain.sync({ alter: true });
-  await Membership.sync({ alter: true });
+  await MembershipModel.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
   await App.sync({ alter: true });
   await Dataset.sync({ alter: true });

@@ -39,7 +39,6 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import {
   Key,
-  Membership,
   MembershipInvitation,
   Workspace,
   WorkspaceHasDomain,
@@ -68,7 +67,6 @@ export {
   FeatureFlag,
   GlobalAgentSettings,
   Key,
-  Membership,
   MembershipInvitation,
   Mention,
   Message,

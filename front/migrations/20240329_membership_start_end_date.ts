@@ -1,11 +1,4 @@
-import { Op } from "sequelize";
-
-import { Message } from "@app/lib/models";
-import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-
-const { LIVE } = process.env;
 
 async function main() {
   // For every membership object, we set a startAt equal to the `createdAt` field of the membership object.
