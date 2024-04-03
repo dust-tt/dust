@@ -108,7 +108,7 @@ export async function checkWorkspaceActivity(workspace: Workspace) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const hasConnectedDataSource = await DataSource.findOne({
+  const hasDataSource = await DataSource.findOne({
     where: { workspaceId: workspace.id },
   });
 
@@ -120,5 +120,5 @@ export async function checkWorkspaceActivity(workspace: Workspace) {
     where: { workspaceId: workspace.id, updatedAt: { [Op.gte]: sevenDaysAgo } },
   });
 
-  return hasConnectedDataSource || hasCreatedAssistant || hasRecentConversation;
+  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }
