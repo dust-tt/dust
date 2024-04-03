@@ -28,7 +28,7 @@ export function Notification({
   return (
     <div
       className={classNames(
-        "s-pointer-events-auto s-flex s-max-w-[260px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl",
+        "s-pointer-events-auto s-flex s-max-w-[320px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl",
         className
       )}
     >
