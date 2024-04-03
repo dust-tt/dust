@@ -86,7 +86,7 @@ async function handler(
           case "all":
             return {
               startDate: new Date("2020-01-01"),
-              endDate: new Date(),
+              endDate: endOfMonth(new Date()),
             };
           case "month":
             const date = new Date(`${query.start}-01`);

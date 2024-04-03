@@ -4,14 +4,9 @@ import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  Membership,
-  Plan,
-  Subscription,
-  User,
-  Workspace,
-} from "@app/lib/models";
+import { Plan, Subscription, User, Workspace } from "@app/lib/models";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -135,13 +130,8 @@ async function handler(
             },
           });
           if (users.length) {
-            const memberships = await Membership.findAll({
-              where: {
-                userId: {
-                  [Op.in]: users.map((u) => u.id),
-                },
-              },
-              attributes: ["workspaceId"],
+            const memberships = await MembershipResource.getLatestMemberships({
+              userIds: users.map((u) => u.id),
             });
             if (memberships.length) {
               conditions.push({

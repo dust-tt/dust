@@ -1,8 +1,10 @@
 import type { WorkspaceType } from "@dust-tt/types";
-import { Op, QueryTypes } from "sequelize";
+import { QueryTypes } from "sequelize";
 
-import { Membership, Workspace } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function countActiveSeatsInWorkspace(
   workspaceId: string
@@ -15,13 +17,9 @@ export async function countActiveSeatsInWorkspace(
   if (!workspace) {
     throw new Error(`Workspace not found for sId: ${workspaceId}`);
   }
-  return Membership.count({
-    where: {
-      workspaceId: workspace.id,
-      role: {
-        [Op.notIn]: ["none", "revoked"],
-      },
-    },
+  return MembershipResource.getMembersCountForWorkspace({
+    workspace: renderLightWorkspaceType({ workspace }),
+    activeOnly: true,
   });
 }
 

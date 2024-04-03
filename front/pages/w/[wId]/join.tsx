@@ -101,7 +101,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       onboardingType: onboardingType,
-      workspace: workspace,
+      workspace,
       signUpCallbackUrl: signUpCallbackUrl,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,

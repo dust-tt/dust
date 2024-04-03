@@ -1,4 +1,5 @@
-import { Membership, User, UserMessage, Workspace } from "@app/lib/models";
+import { User, UserMessage, Workspace } from "@app/lib/models";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 
 async function main() {
   console.log("Starting imageUrl backfill");
@@ -36,7 +37,7 @@ async function backfillImageUrl(workspaceId: number) {
     },
     include: [
       {
-        model: Membership,
+        model: MembershipModel,
         where: {
           workspaceId,
         },

@@ -1,7 +1,9 @@
 import { CoreAPI } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 
-import { DataSource, Membership, TrackedDocument, User } from "@app/lib/models";
+import { Authenticator } from "@app/lib/auth";
+import { DataSource, TrackedDocument, User, Workspace } from "@app/lib/models";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 
 export async function updateTrackedDocuments(
@@ -16,6 +18,21 @@ export async function updateTrackedDocuments(
   if (!dataSource.workspaceId) {
     throw new Error(
       `Data source with id ${dataSourceId} has no workspace id set`
+    );
+  }
+  const workspaceModel = await Workspace.findByPk(dataSource.workspaceId);
+  if (!workspaceModel) {
+    throw new Error(
+      `Could not find workspace with id ${dataSource.workspaceId}`
+    );
+  }
+  const auth = await Authenticator.internalBuilderForWorkspace(
+    workspaceModel.sId
+  );
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error(
+      `Could not find workspace with id ${dataSource.workspaceId}`
     );
   }
 
@@ -75,13 +92,8 @@ export async function updateTrackedDocuments(
     : [];
 
   // restrict to users in the workspace
-  const memberships = await Membership.findAll({
-    where: {
-      userId: {
-        [Op.in]: users.map((user) => user.id),
-      },
-      workspaceId: dataSource.workspaceId,
-    },
+  const memberships = await MembershipResource.getActiveMemberships({
+    workspace: owner,
   });
   const userIdsInWorkspace = new Set(
     memberships.map((membership) => membership.userId)

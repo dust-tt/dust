@@ -113,7 +113,7 @@ JOIN "memberships" "m" ON "u"."id" = "m"."userId"
 JOIN "workspaces" "w" ON "m"."workspaceId" = "w"."id"
 JOIN "subscriptions" "s" ON "w"."id" = "s"."workspaceId"
 WHERE "s"."status" = 'active'
-AND "m"."role" != 'revoked';
+AND ("m"."startAt" <= NOW()) AND ("m"."endAt" IS NULL OR "m"."endAt" >= NOW());
     `
   );
 

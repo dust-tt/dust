@@ -29,7 +29,6 @@ import { isValidSession } from "@app/lib/iam/provider";
 import {
   FeatureFlag,
   Key,
-  Membership,
   Plan,
   Subscription,
   User,
@@ -39,7 +38,9 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { new_id } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { renderSubscriptionFromModels } from "./plans/subscription";
@@ -129,13 +130,13 @@ export class Authenticator {
     if (user && workspace) {
       [role, subscription, flags] = await Promise.all([
         (async (): Promise<RoleType> => {
-          const membership = await Membership.findOne({
-            where: {
+          const membership =
+            await MembershipResource.getActiveMembershipOfUserInWorkspace({
               userId: user.id,
-              workspaceId: workspace.id,
-            },
-          });
+              workspace: renderLightWorkspaceType({ workspace }),
+            });
           return membership &&
+            // TODO(@fontanierh): get rid of the check ?
             ["admin", "builder", "user"].includes(membership.role)
             ? (membership.role as RoleType)
             : "none";

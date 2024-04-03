@@ -1,4 +1,5 @@
-import { Membership, User, Workspace } from "@app/lib/models";
+import { User, Workspace } from "@app/lib/models";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { new_id } from "@app/lib/utils";
 
 async function main() {
@@ -15,7 +16,7 @@ async function main() {
     await Promise.all(
       chunk.map((u) => {
         return (async () => {
-          const m = await Membership.findOne({
+          const m = await MembershipModel.findOne({
             where: {
               userId: u.id,
             },
@@ -31,7 +32,7 @@ async function main() {
               type: "personal",
             });
 
-            await Membership.create({
+            await MembershipModel.create({
               role: "admin",
               userId: u.id,
               workspaceId: w.id,

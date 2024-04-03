@@ -1,9 +1,10 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Membership } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type RevokeUserResponseBody = {
@@ -43,27 +44,27 @@ async function handler(
           },
         });
       }
-
-      const m = await Membership.findOne({
-        where: {
-          userId,
-          workspaceId: owner.id,
-        },
+      const revokeResult = await MembershipResource.revokeMembership({
+        userId,
+        workspace: owner,
       });
-
-      if (!m) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_user_not_found",
-            message: "Could not find the membership.",
-          },
-        });
+      if (revokeResult.isErr()) {
+        switch (revokeResult.error.type) {
+          case "not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "workspace_user_not_found",
+                message: "Could not find the membership.",
+              },
+            });
+          case "already_revoked":
+            // Should not happen, but we ignore.
+            break;
+          default:
+            assertNever(revokeResult.error.type);
+        }
       }
-
-      await m.update({
-        role: "revoked",
-      });
       await updateWorkspacePerSeatSubscriptionUsage({
         workspaceId: owner.sId,
       });

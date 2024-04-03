@@ -1,8 +1,4 @@
-import type {
-  MembershipRoleType,
-  RoleType,
-  WorkspaceSegmentationType,
-} from "@dust-tt/types";
+import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -130,72 +126,6 @@ Workspace.hasMany(WorkspaceHasDomain, {
   onDelete: "CASCADE",
 });
 WorkspaceHasDomain.belongsTo(Workspace);
-
-export class Membership extends Model<
-  InferAttributes<Membership>,
-  InferCreationAttributes<Membership>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare role: MembershipRoleType;
-  declare startAt: Date | null;
-  declare endAt: Date | null;
-
-  declare userId: ForeignKey<User["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-}
-Membership.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    role: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    startAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    endAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "membership",
-    sequelize: frontSequelize,
-    indexes: [
-      { fields: ["userId", "role"] },
-      { fields: ["startAt"] },
-      { fields: ["endAt"] },
-    ],
-  }
-);
-User.hasMany(Membership, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-Workspace.hasMany(Membership, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-Membership.belongsTo(Workspace);
-Membership.belongsTo(User);
 
 export class MembershipInvitation extends Model<
   InferAttributes<MembershipInvitation>,

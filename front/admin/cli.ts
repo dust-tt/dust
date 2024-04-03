@@ -4,19 +4,13 @@ import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
-import { subscriptionForWorkspace } from "@app/lib/auth";
-import {
-  DataSource,
-  EventSchema,
-  Membership,
-  User,
-  Workspace,
-} from "@app/lib/models";
+import { DataSource, EventSchema, User, Workspace } from "@app/lib/models";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -25,105 +19,6 @@ const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
-    case "find": {
-      if (!args.name) {
-        throw new Error("Missing --name argument");
-      }
-
-      const workspaces = await Workspace.findAll({
-        where: {
-          name: args.name,
-        },
-      });
-
-      workspaces.forEach((w) => {
-        console.log(`> wId='${w.sId}' name='${w.name}'`);
-      });
-      return;
-    }
-
-    case "show": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-
-      const w = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
-      });
-
-      if (!w) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
-
-      console.log(`workspace:`);
-      console.log(`  wId: ${w.sId}`);
-      console.log(`  name: ${w.name}`);
-
-      const subscription = await subscriptionForWorkspace(w.sId);
-      const plan = subscription.plan;
-      console.log(`  plan:`);
-      console.log(`    limits:`);
-      console.log(`      dataSources:`);
-      console.log(`        count:    ${plan.limits.dataSources.count}`);
-      console.log(`        documents:`);
-      console.log(
-        `          count:  ${plan.limits.dataSources.documents.count}`
-      );
-      console.log(
-        `          sizeMb: ${plan.limits.dataSources.documents.sizeMb}`
-      );
-      console.log(
-        `        managed Slack:    ${plan.limits.connections.isSlackAllowed}`
-      );
-      console.log(
-        `        managed Notion:    ${plan.limits.connections.isNotionAllowed}`
-      );
-      console.log(
-        `        managed Github:    ${plan.limits.connections.isGithubAllowed}`
-      );
-      console.log(
-        `        managed Intercom:    ${plan.limits.connections.isIntercomAllowed}`
-      );
-      console.log(
-        `        managed Google Drive:    ${plan.limits.connections.isGoogleDriveAllowed}`
-      );
-
-      const dataSources = await DataSource.findAll({
-        where: {
-          workspaceId: w.id,
-        },
-      });
-
-      console.log("Data sources:");
-      dataSources.forEach((ds) => {
-        console.log(`  - name: ${ds.name} provider: ${ds.connectorProvider}`);
-      });
-
-      const memberships = await Membership.findAll({
-        where: {
-          workspaceId: w.id,
-        },
-      });
-      const users = await User.findAll({
-        where: {
-          id: memberships.map((m) => m.userId),
-        },
-      });
-
-      console.log("Users:");
-      users.forEach((u) => {
-        console.log(
-          `  - userId: ${u.id} email: ${u.email} role: ${
-            memberships.find((m) => m.userId === u.id)?.role
-          }`
-        );
-      });
-
-      return;
-    }
-
     case "create": {
       if (!args.name) {
         throw new Error("Missing --name argument");
@@ -182,98 +77,10 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
-    case "add-user": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.userId) {
-        throw new Error("Missing --userId argument");
-      }
-      if (!args.role) {
-        throw new Error("Missing --role argument");
-      }
-      if (!["admin", "builder", "user"].includes(args.role)) {
-        throw new Error(`Invalid --role: ${args.role}`);
-      }
-      const role = args.role as "admin" | "builder" | "user";
-
-      const w = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
-      });
-      if (!w) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
-      const u = await User.findOne({
-        where: {
-          id: args.userId,
-        },
-      });
-      if (!u) {
-        throw new Error(`User not found: userId='${args.userId}'`);
-      }
-      await Membership.create({
-        role,
-        workspaceId: w.id,
-        userId: u.id,
-        startAt: new Date(),
-      });
-      return;
-    }
-
-    case "change-role": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.userId) {
-        throw new Error("Missing --userId argument");
-      }
-      if (!args.role) {
-        throw new Error("Missing --role argument");
-      }
-      if (!["admin", "builder", "user", "revoked"].includes(args.role)) {
-        throw new Error(`Invalid --role: ${args.role}`);
-      }
-      const role = args.role as "admin" | "builder" | "user" | "revoked";
-
-      const w = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
-      });
-      if (!w) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
-      const u = await User.findOne({
-        where: {
-          id: args.userId,
-        },
-      });
-      if (!u) {
-        throw new Error(`User not found: userId='${args.userId}'`);
-      }
-      const m = await Membership.findOne({
-        where: {
-          workspaceId: w.id,
-          userId: u.id,
-        },
-      });
-      if (!m) {
-        throw new Error(
-          `User is not a member of workspace: userId='${args.userId}' wId='${args.wId}'`
-        );
-      }
-
-      m.role = role;
-      await m.save();
-      return;
-    }
-
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `show`, `create`, `set-limits`, `add-user`, `change-role`, `upgrade`, `downgrade`"
+        "Possible values: `find`, `show`, `create`, `set-limits`, `upgrade`, `downgrade`"
       );
   }
 };
@@ -319,10 +126,8 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  name: ${u.name}`);
       console.log(`  email: ${u.email}`);
 
-      const memberships = await Membership.findAll({
-        where: {
-          userId: u.id,
-        },
+      const memberships = await MembershipResource.getLatestMemberships({
+        userIds: [u.id],
       });
 
       const workspaces = await Workspace.findAll({
@@ -338,7 +143,9 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         console.log(`    - wId: ${w.sId}`);
         console.log(`      name: ${w.name}`);
         if (m) {
-          console.log(`      role: ${m.role}`);
+          console.log(`      role: ${m.isRevoked() ? "revoked" : m.role}`);
+          console.log(`      startAt: ${m.startAt}`);
+          console.log(`      endAt: ${m.endAt}`);
         }
       });
 

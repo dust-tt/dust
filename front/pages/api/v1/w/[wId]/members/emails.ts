@@ -1,4 +1,4 @@
-import type { RoleType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembers } from "@app/lib/api/workspace";
@@ -38,11 +38,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const roles: RoleType[] | undefined = activeOnly
-        ? ["admin", "builder", "user"]
-        : undefined;
-
-      const allMembers = await getMembers(auth, { roles });
+      const allMembers = await getMembers(auth, {
+        activeOnly: !!activeOnly,
+      });
 
       return res.status(200).json({ emails: allMembers.map((m) => m.email) });
 

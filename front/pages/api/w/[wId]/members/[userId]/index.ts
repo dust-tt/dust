@@ -1,9 +1,11 @@
 import type { UserType, WithAPIErrorReponse } from "@dust-tt/types";
+import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Membership, User } from "@app/lib/models";
+import { User } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostMemberResponseBody = {
@@ -59,11 +61,9 @@ async function handler(
         id: userId,
       },
     }),
-    Membership.findOne({
-      where: {
-        userId: userId,
-        workspaceId: owner.id,
-      },
+    MembershipResource.getLatestMembershipOfUserInWorkspace({
+      userId,
+      workspace: owner,
     }),
   ]);
 
@@ -79,28 +79,73 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (
-        !req.body ||
-        !req.body.role ||
-        !["admin", "builder", "user", "revoked"].includes(req.body.role)
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The request body is invalid, expects { role: string }.",
-          },
-        });
-      }
-
-      await membership.update({
-        role: req.body.role,
-        endAt: req.body.role === "revoked" ? new Date() : null,
-      });
+      // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
+        const revokeResult = await MembershipResource.revokeMembership({
+          userId,
+          workspace: owner,
+        });
+        if (revokeResult.isErr()) {
+          switch (revokeResult.error.type) {
+            case "not_found":
+              return apiError(req, res, {
+                status_code: 404,
+                api_error: {
+                  type: "workspace_user_not_found",
+                  message: "Could not find the membership.",
+                },
+              });
+            case "already_revoked":
+              // Should not happen, but we ignore.
+              break;
+            default:
+              assertNever(revokeResult.error.type);
+          }
+        }
+
         await updateWorkspacePerSeatSubscriptionUsage({
           workspaceId: owner.sId,
         });
+      } else {
+        const role = req.body.role;
+        if (!isMembershipRoleType(role)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The request body is invalid, expects { role: 'admin' | 'builder' | 'user' }.",
+            },
+          });
+        }
+        const updateRoleResult = await MembershipResource.updateMembershipRole({
+          userId,
+          workspace: owner,
+          newRole: role,
+          // We allow to re-activate a terminated membership when updating the role here.
+          allowTerminated: true,
+        });
+        if (updateRoleResult.isErr()) {
+          switch (updateRoleResult.error.type) {
+            case "not_found":
+              return apiError(req, res, {
+                status_code: 404,
+                api_error: {
+                  type: "workspace_user_not_found",
+                  message: "Could not find the membership.",
+                },
+              });
+            case "membership_already_terminated":
+              // This cannot happen because we allow updating terminated memberships
+              // by setting `allowTerminated` to true.
+              throw new Error("Unreachable.");
+            case "already_on_role":
+              // Should not happen, but we ignore.
+              break;
+            default:
+              assertNever(updateRoleResult.error.type);
+          }
+        }
       }
 
       const w = { ...owner };
