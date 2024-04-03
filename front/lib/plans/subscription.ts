@@ -1,5 +1,6 @@
 import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
@@ -20,6 +21,7 @@ import {
 import { redisClient } from "@app/lib/redis";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
+import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 
 // Helper function to render PlanType from PlanAttributes
@@ -463,3 +465,32 @@ export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
     }
   }
 };
+
+/**
+ * Proactively cancel inactive trials.
+ */
+export async function maybeCancelInactiveTrials(
+  stripeSubscription: Stripe.Subscription
+) {
+  const { id: stripeSubscriptionId } = stripeSubscription;
+
+  const subscription = await Subscription.findOne({
+    where: { stripeSubscriptionId },
+    include: [Workspace],
+  });
+
+  if (!subscription || !subscription.trialing) {
+    return;
+  }
+
+  const { workspace } = subscription;
+  const isWorkspaceActive = await checkWorkspaceActivity(workspace);
+
+  if (!isWorkspaceActive) {
+    logger.info({ workspaceId: workspace.sId }, "Canceling inactive trial.");
+
+    await cancelSubscriptionImmediately({
+      stripeSubscriptionId,
+    });
+  }
+}
