@@ -436,7 +436,6 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    // TODO: membership resource
     const memberships = await MembershipModel.findAll({
       where: {
         workspaceId: workspace.id,
