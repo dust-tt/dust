@@ -1,8 +1,8 @@
 import type {
+  LightWorkspaceType,
   MembershipRoleType,
   RequireAtLeastOne,
   Result,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -14,7 +14,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { Workspace } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -22,7 +21,7 @@ import logger from "@app/logger/logger";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   userIds: number[];
-  workspace: WorkspaceType | Workspace;
+  workspace: LightWorkspaceType;
 }> & {
   roles?: MembershipRoleType[];
 };
@@ -137,7 +136,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
   }: {
     userId: number;
-    workspace: WorkspaceType | Workspace;
+    workspace: LightWorkspaceType;
   }): Promise<MembershipResource | null> {
     const memberships = await this.getLatestMemberships({
       userIds: [userId],
@@ -167,7 +166,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     activeOnly,
   }: {
-    workspace: WorkspaceType | Workspace;
+    workspace: LightWorkspaceType;
     activeOnly: boolean;
   }): Promise<number> {
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
@@ -197,7 +196,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     startAt = new Date(),
   }: {
     userId: number;
-    workspace: WorkspaceType | Workspace;
+    workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt?: Date;
   }): Promise<MembershipResource> {
@@ -235,7 +234,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     endAt = new Date(),
   }: {
     userId: number;
-    workspace: WorkspaceType | Workspace;
+    workspace: LightWorkspaceType;
     endAt?: Date;
   }): Promise<
     Result<
@@ -269,7 +268,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated = false,
   }: {
     userId: number;
-    workspace: WorkspaceType | Workspace;
+    workspace: LightWorkspaceType;
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
     allowTerminated?: boolean;

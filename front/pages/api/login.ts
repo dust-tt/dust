@@ -25,6 +25,7 @@ import type { MembershipInvitation, User } from "@app/lib/models";
 import { Workspace } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -73,7 +74,7 @@ async function handleMembershipInvite(
 
   const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
     userId: user.id,
-    workspace,
+    workspace: renderLightWorkspaceType({ workspace }),
   });
 
   if (m?.endAt && m.endAt < new Date()) {
@@ -154,7 +155,7 @@ async function handleEnterpriseSignUpFlow(
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
       userId: user.id,
-      workspace,
+      workspace: renderLightWorkspaceType({ workspace }),
     });
 
   // Create membership if it does not exist.
@@ -241,7 +242,7 @@ async function handleRegularSignupFlow(
 
     const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
       userId: user.id,
-      workspace: existingWorkspace,
+      workspace: renderLightWorkspaceType({ workspace: existingWorkspace }),
     });
 
     if (m?.endAt && m.endAt < new Date()) {
@@ -409,7 +410,7 @@ export async function createAndLogMembership({
   const m = await MembershipResource.createMembership({
     role: role,
     userId: userId,
-    workspace,
+    workspace: renderLightWorkspaceType({ workspace }),
   });
   trackUserMemberships(m.userId).catch(logger.error);
 

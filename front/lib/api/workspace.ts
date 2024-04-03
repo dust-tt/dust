@@ -13,6 +13,7 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { User, Workspace, WorkspaceHasDomain } from "@app/lib/models";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -202,7 +203,7 @@ export async function evaluateWorkspaceSeatAvailability(
 
   const activeMembersCount =
     await MembershipResource.getMembersCountForWorkspace({
-      workspace,
+      workspace: renderLightWorkspaceType({ workspace }),
       activeOnly: true,
     });
 

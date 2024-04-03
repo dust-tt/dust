@@ -40,6 +40,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { new_id } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { renderSubscriptionFromModels } from "./plans/subscription";
@@ -131,7 +132,7 @@ export class Authenticator {
         (async (): Promise<RoleType> => {
           const memberships = await MembershipResource.getActiveMemberships({
             userIds: [user.id],
-            workspace,
+            workspace: renderLightWorkspaceType({ workspace }),
           });
           const membership = memberships[0];
           return membership &&

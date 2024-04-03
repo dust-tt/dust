@@ -4,6 +4,7 @@ import { QueryTypes } from "sequelize";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function countActiveSeatsInWorkspace(
   workspaceId: string
@@ -17,7 +18,7 @@ export async function countActiveSeatsInWorkspace(
     throw new Error(`Workspace not found for sId: ${workspaceId}`);
   }
   return MembershipResource.getMembersCountForWorkspace({
-    workspace,
+    workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
   });
 }
