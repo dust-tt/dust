@@ -5,11 +5,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { SolutionsMeetingTranscriptsConfiguration } from "@app/lib/models/solutions";
+import { SolutionsMeetingsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsResponseBody = {
-  solution: SolutionsMeetingTranscriptsConfiguration;
+  solution: SolutionsMeetingsTranscriptsConfiguration;
 };
 
 const solutionId = "transcripts";
@@ -48,7 +48,7 @@ async function handler(
         });
       }
 
-      const solution = await SolutionsMeetingTranscriptsConfiguration.create({
+      const solution = await SolutionsMeetingsTranscriptsConfiguration.create({
         userId: owner.id,
         solutionId,
         connectionId,
