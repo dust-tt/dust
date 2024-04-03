@@ -170,6 +170,40 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  static async getActiveMembershipOfUserInWorkspace({
+    userId,
+    workspace,
+    transaction,
+  }: {
+    userId: number;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<MembershipResource | null> {
+    const memberships = await this.getActiveMemberships({
+      userIds: [userId],
+      workspace,
+      transaction,
+    });
+    if (memberships.length === 0) {
+      return null;
+    }
+    if (memberships.length > 1) {
+      logger.error(
+        {
+          panic: true,
+          userId,
+          workspaceId: workspace.id,
+          memberships,
+        },
+        "Unreachable: Found multiple active memberships for user in workspace."
+      );
+      throw new Error(
+        `Unreachable: Found multiple active memberships for user ${userId} in workspace ${workspace.id}`
+      );
+    }
+    return memberships[0];
+  }
+
   static async getMembersCountForWorkspace({
     workspace,
     activeOnly,

@@ -130,11 +130,11 @@ export class Authenticator {
     if (user && workspace) {
       [role, subscription, flags] = await Promise.all([
         (async (): Promise<RoleType> => {
-          const memberships = await MembershipResource.getActiveMemberships({
-            userIds: [user.id],
-            workspace: renderLightWorkspaceType({ workspace }),
-          });
-          const membership = memberships[0];
+          const membership =
+            await MembershipResource.getActiveMembershipOfUserInWorkspace({
+              userId: user.id,
+              workspace: renderLightWorkspaceType({ workspace }),
+            });
           return membership &&
             // TODO(@fontanierh): get rid of the check ?
             ["admin", "builder", "user"].includes(membership.role)
