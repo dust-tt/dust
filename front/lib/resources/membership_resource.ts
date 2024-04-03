@@ -95,20 +95,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           (resource) => new MembershipResource(MembershipModel, resource.get())
         );
 
-    const where: WhereOptions<InferAttributes<MembershipModel>> = {};
-    if (roles) {
-      where.role = {
-        [Op.in]: roles,
-      };
-    }
-    if (userIds) {
-      where.userId = {
-        [Op.in]: userIds,
-      };
-    }
-    if (workspace) {
-      where.workspaceId = workspace.id;
-    }
+    const where: WhereOptions<InferAttributes<MembershipModel>> = {
+      role: roles,
+      userId: userIds ? { [Op.in]: userIds } : undefined,
+      workspaceId: workspace ? workspace.id : undefined,
+    };
 
     if (!workspace && !userIds?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
