@@ -77,7 +77,7 @@ async function handleMembershipInvite(
     workspace: renderLightWorkspaceType({ workspace }),
   });
 
-  if (m?.endAt && m.endAt < new Date()) {
+  if (m?.isRevoked()) {
     return new Err(
       new AuthFlowError(
         "Your access to the workspace has expired, please contact the workspace admin to update your role."
@@ -165,7 +165,7 @@ async function handleEnterpriseSignUpFlow(
       userId: user.id,
       role: "user",
     });
-  } else if (membership.endAt && membership.endAt < new Date()) {
+  } else if (membership.isRevoked()) {
     return { flow: "unauthorized", workspace: null };
   }
 
@@ -245,7 +245,7 @@ async function handleRegularSignupFlow(
       workspace: renderLightWorkspaceType({ workspace: existingWorkspace }),
     });
 
-    if (m?.endAt && m.endAt < new Date()) {
+    if (m?.isRevoked()) {
       return new Ok({ flow: "revoked", workspace: null });
     }
 

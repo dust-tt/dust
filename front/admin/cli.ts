@@ -143,11 +143,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         console.log(`    - wId: ${w.sId}`);
         console.log(`      name: ${w.name}`);
         if (m) {
-          console.log(
-            `      role: ${
-              m.endAt && m.endAt <= new Date() ? "revoked" : m.role
-            }`
-          );
+          console.log(`      role: ${m.isRevoked() ? "revoked" : m.role}`);
           console.log(`      startAt: ${m.startAt}`);
           console.log(`      endAt: ${m.endAt}`);
         }
