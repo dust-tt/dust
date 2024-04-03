@@ -10,9 +10,9 @@ import { DataTypes, Model } from "sequelize";
 import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-export class SolutionsDataSourceConfiguration extends Model<
-  InferAttributes<SolutionsDataSourceConfiguration>,
-  InferCreationAttributes<SolutionsDataSourceConfiguration>
+export class SolutionsMeetingTranscriptsConfiguration extends Model<
+  InferAttributes<SolutionsMeetingTranscriptsConfiguration>,
+  InferCreationAttributes<SolutionsMeetingTranscriptsConfiguration>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -24,7 +24,7 @@ export class SolutionsDataSourceConfiguration extends Model<
   declare provider: SolutionProviderType;
 }
 
-SolutionsDataSourceConfiguration.init(
+SolutionsMeetingTranscriptsConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -62,7 +62,7 @@ SolutionsDataSourceConfiguration.init(
     },
   },
   {
-    modelName: "solutions_data_source_configuration",
+    modelName: "solutions_meeting_transcripts_configuration",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["userId"] },

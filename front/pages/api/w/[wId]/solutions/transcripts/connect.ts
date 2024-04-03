@@ -5,11 +5,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { SolutionsDataSourceConfiguration } from "@app/lib/models/solutions";
+import { SolutionsMeetingTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsResponseBody = {
-  solution: SolutionsDataSourceConfiguration;
+  solution: SolutionsMeetingTranscriptsConfiguration;
 };
 
 const solutionId = "transcripts";
@@ -47,8 +47,8 @@ async function handler(
           },
         });
       }
-      
-      const solution = await SolutionsDataSourceConfiguration.create({
+
+      const solution = await SolutionsMeetingTranscriptsConfiguration.create({
         userId: owner.id,
         solutionId,
         connectionId,

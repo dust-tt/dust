@@ -7,7 +7,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import Nango from '@nangohq/frontend';
 import type { InferGetServerSidePropsType } from "next";
-import { useContext, useState } from "react";
+import { useContext, useEffect,useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -57,7 +57,17 @@ export default function SolutionsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoading, setIsLoading] = useState(false);
+  const [connectGDriveAction, setConnectGDriveAction] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
+
+  useEffect(() => {
+    if (copyCount > 0) {
+      const timeout = setTimeout(() => setCopyCount(0), 1000);
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [auth]);
 
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
