@@ -396,16 +396,4 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   isRevoked(referenceDate: Date = new Date()): boolean {
     return !!this.endAt && this.endAt < referenceDate;
   }
-
-  toListJSON() {
-    return this.toJSON();
-  }
-
-  toJSON() {
-    return {
-      role: this.role,
-      startAt: this.startAt,
-      endAt: this.endAt,
-    };
-  }
 }
