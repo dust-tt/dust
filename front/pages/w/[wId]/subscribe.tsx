@@ -1,4 +1,4 @@
-import { BarHeader, Button, Page } from "@dust-tt/sparkle";
+import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
@@ -18,6 +18,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
+  isAdmin: boolean;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -30,6 +31,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   return {
     props: {
       owner,
+      isAdmin: auth.isAdmin(),
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -37,6 +39,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
 export default function Subscribe({
   owner,
+  isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -118,35 +121,55 @@ export default function Subscribe({
         />
       </div>
       <Page>
-        <Page.Horizontal>
-          <Page.Vertical sizing="grow" gap="lg">
-            <Page.Header
-              icon={CreditCardIcon}
-              title="Setting up your subscription"
-            />
-            <Page.P>
-              <span className="font-bold">
-                You can try the Pro plan for free for two weeks.
-              </span>
-            </Page.P>
-            <Page.P>
-              After your trial ends, you will be charged monthly. You can cancel
-              at any time.
-            </Page.P>
-            <Button
-              variant="primary"
-              label="Start your trial"
-              icon={CreditCardIcon}
-              size="md"
-              onClick={() => {
-                void handleSubscribePlan();
-              }}
-            ></Button>
-          </Page.Vertical>
-          <Page.Vertical sizing="grow">
-            <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
-          </Page.Vertical>
-        </Page.Horizontal>
+        {isAdmin ? (
+          <Page.Horizontal>
+            <Page.Vertical sizing="grow" gap="lg">
+              <Page.Header
+                icon={CreditCardIcon}
+                title="Setting up your subscription"
+              />
+              <Page.P>
+                <span className="font-bold">
+                  You can try the Pro plan for free for two weeks.
+                </span>
+              </Page.P>
+              <Page.P>
+                After your trial ends, you will be charged monthly. You can
+                cancel at any time.
+              </Page.P>
+              <Button
+                variant="primary"
+                label="Start your trial"
+                icon={CreditCardIcon}
+                size="md"
+                onClick={() => {
+                  void handleSubscribePlan();
+                }}
+              ></Button>
+            </Page.Vertical>
+            <Page.Vertical sizing="grow">
+              <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
+            </Page.Vertical>
+          </Page.Horizontal>
+        ) : (
+          <Page.Horizontal>
+            <Page.Vertical sizing="grow" gap="lg">
+              <Page.Header icon={LockIcon} title="Workspace locked" />
+              <Page.P>
+                <span className="font-bold">
+                  The subscription for this workspace is not active.
+                </span>
+              </Page.P>
+              <Page.P>
+                To unlock premium features, your workspace needs to be upgraded
+                by an admin.
+              </Page.P>
+            </Page.Vertical>
+            <Page.Vertical sizing="grow">
+              <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
+            </Page.Vertical>
+          </Page.Horizontal>
+        )}
       </Page>
     </>
   );
