@@ -1,5 +1,8 @@
 import { format } from "date-fns/format";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
+
+import type { Workspace } from "@app/lib/models";
+import { AgentConfiguration, Conversation, DataSource } from "@app/lib/models";
 
 import { frontSequelize } from "./resources/storage";
 
@@ -93,4 +96,29 @@ export async function unsafeGetUsageData(
     .join("\n");
 
   return csvHeader + csvContent;
+}
+
+/**
+ * Check if a workspace is active during a trial based on the following conditions:
+ *   - Existence of a connected data source
+ *   - Existence of a custom assistant
+ *   - A conversation occurred within the past 7 days
+ */
+export async function checkWorkspaceActivity(workspace: Workspace) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const hasDataSource = await DataSource.findOne({
+    where: { workspaceId: workspace.id },
+  });
+
+  const hasCreatedAssistant = await AgentConfiguration.findOne({
+    where: { workspaceId: workspace.id },
+  });
+
+  const hasRecentConversation = await Conversation.findOne({
+    where: { workspaceId: workspace.id, updatedAt: { [Op.gte]: sevenDaysAgo } },
+  });
+
+  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }

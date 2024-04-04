@@ -15,6 +15,7 @@ import {
 } from "@app/lib/email";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
+import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
@@ -562,6 +563,14 @@ async function handler(
           }
 
           break;
+
+        case "customer.subscription.trial_will_end":
+          stripeSubscription = event.data.object as Stripe.Subscription;
+
+          await maybeCancelInactiveTrials(stripeSubscription);
+
+          break;
+
         default:
         // Unhandled event type
       }

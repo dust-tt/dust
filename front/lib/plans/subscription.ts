@@ -1,7 +1,10 @@
-import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { sendUserOperationMessage } from "@dust-tt/types";
+import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
+import { sendProactiveTrialCancelledEmail } from "@app/lib/email";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -20,6 +23,8 @@ import {
 import { redisClient } from "@app/lib/redis";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
+import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
+import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 
 // Helper function to render PlanType from PlanAttributes
@@ -463,3 +468,52 @@ export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
     }
   }
 };
+
+/**
+ * Proactively cancel inactive trials.
+ */
+export async function maybeCancelInactiveTrials(
+  stripeSubscription: Stripe.Subscription
+) {
+  const { id: stripeSubscriptionId } = stripeSubscription;
+
+  const subscription = await Subscription.findOne({
+    where: { stripeSubscriptionId },
+    include: [Workspace],
+  });
+
+  if (!subscription || !subscription.trialing) {
+    return;
+  }
+
+  const { workspace } = subscription;
+  const isWorkspaceActive = await checkWorkspaceActivity(workspace);
+
+  if (!isWorkspaceActive) {
+    logger.info(
+      { action: "cancelling-trial", workspaceId: workspace.sId },
+      "Cancelling inactive trial."
+    );
+
+    await cancelSubscriptionImmediately({
+      stripeSubscriptionId,
+    });
+
+    const firstAdmin = await getWorkspaceFirstAdmin(workspace);
+    if (!firstAdmin) {
+      logger.info(
+        { action: "cancelling-trial", workspaceId: workspace.sId },
+        "No first adming found -- skipping email."
+      );
+
+      return;
+    } else {
+      await sendProactiveTrialCancelledEmail(firstAdmin.email);
+    }
+
+    await sendUserOperationMessage({
+      logger,
+      message: `Trial for workspace ${workspace.sId} cancelled proactively!`,
+    });
+  }
+}
