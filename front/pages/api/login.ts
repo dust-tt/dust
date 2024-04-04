@@ -1,12 +1,14 @@
 import type {
   ActiveRoleType,
   Result,
+  UserType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { trackUserMemberships } from "@app/lib/amplitude/node";
+import { deleteUser } from "@app/lib/api/user";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -21,7 +23,7 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import type { MembershipInvitation, User } from "@app/lib/models";
+import type { MembershipInvitation } from "@app/lib/models";
 import { Workspace } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -33,7 +35,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
 // it does not already exist and mark the invitation as consumed.
 async function handleMembershipInvite(
-  user: User,
+  user: UserType,
   membershipInvite: MembershipInvitation
 ): Promise<
   Result<
@@ -73,7 +75,7 @@ async function handleMembershipInvite(
   }
 
   const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
-    userId: user.id,
+    user,
     workspace: renderLightWorkspaceType({ workspace }),
   });
 
@@ -88,7 +90,7 @@ async function handleMembershipInvite(
   if (!m) {
     await createAndLogMembership({
       workspace,
-      userId: user.id,
+      user,
       role: membershipInvite.initialRole,
     });
   }
@@ -124,7 +126,7 @@ function canJoinTargetWorkspace(
 }
 
 async function handleEnterpriseSignUpFlow(
-  user: User,
+  user: UserType,
   enterpriseConnectionWorkspaceId: string
 ): Promise<{
   flow: "unauthorized" | null;
@@ -133,7 +135,7 @@ async function handleEnterpriseSignUpFlow(
   // Combine queries to optimize database calls.
   const [activeMemberships, workspace] = await Promise.all([
     MembershipResource.getActiveMemberships({
-      userIds: [user.id],
+      users: [user],
     }),
     Workspace.findOne({
       where: {
@@ -154,7 +156,7 @@ async function handleEnterpriseSignUpFlow(
 
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
-      userId: user.id,
+      user,
       workspace: renderLightWorkspaceType({ workspace }),
     });
 
@@ -162,7 +164,7 @@ async function handleEnterpriseSignUpFlow(
   if (!membership) {
     await createAndLogMembership({
       workspace,
-      userId: user.id,
+      user,
       role: "user",
     });
   } else if (membership.isRevoked()) {
@@ -177,7 +179,7 @@ async function handleEnterpriseSignUpFlow(
 // The user will join this workspace if it exists; otherwise, a new workspace is created.
 async function handleRegularSignupFlow(
   session: SessionWithUser,
-  user: User,
+  user: UserType,
   targetWorkspaceId?: string
 ): Promise<
   Result<
@@ -189,7 +191,7 @@ async function handleRegularSignupFlow(
   >
 > {
   const activeMemberships = await MembershipResource.getActiveMemberships({
-    userIds: [user.id],
+    users: [user],
   });
 
   // Return early if the user is already a member of a workspace and is not attempting to join another one.
@@ -241,7 +243,7 @@ async function handleRegularSignupFlow(
     }
 
     const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
-      userId: user.id,
+      user,
       workspace: renderLightWorkspaceType({ workspace: existingWorkspace }),
     });
 
@@ -252,7 +254,7 @@ async function handleRegularSignupFlow(
     if (!m) {
       await createAndLogMembership({
         workspace: existingWorkspace,
-        userId: user.id,
+        user,
         role: "user",
       });
     }
@@ -262,7 +264,7 @@ async function handleRegularSignupFlow(
     const workspace = await createWorkspace(session);
     await createAndLogMembership({
       workspace,
-      userId: user.id,
+      user,
       role: "admin",
     });
 
@@ -359,7 +361,7 @@ async function handler(
 
       // Delete newly created user if SSO is mandatory.
       if (userCreated) {
-        await user.destroy();
+        await deleteUser(user);
       }
 
       res.redirect(
@@ -399,20 +401,20 @@ async function handler(
 }
 
 export async function createAndLogMembership({
-  userId,
+  user,
   workspace,
   role,
 }: {
-  userId: number;
+  user: UserType;
   workspace: Workspace;
   role: ActiveRoleType;
 }) {
   const m = await MembershipResource.createMembership({
-    role: role,
-    userId: userId,
+    role,
+    user,
     workspace: renderLightWorkspaceType({ workspace }),
   });
-  trackUserMemberships(m.userId).catch(logger.error);
+  trackUserMemberships(user).catch(logger.error);
 
   // If the user is joining a workspace with a subscription based on per_seat,
   // we need to update the Stripe subscription quantity.

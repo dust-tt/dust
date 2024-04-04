@@ -7,6 +7,7 @@ import type {
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
+import { renderUserType } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
@@ -37,7 +38,7 @@ export async function getUserFromSession(
   }
 
   const memberships = await MembershipResource.getActiveMemberships({
-    userIds: [user.id],
+    users: [renderUserType(user)],
   });
   const workspaces = await Workspace.findAll({
     where: {

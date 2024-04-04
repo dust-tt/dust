@@ -23,6 +23,7 @@ import type {
   NextApiResponse,
 } from "next";
 
+import { renderUserType } from "@app/lib/api/user";
 import { isDevelopment } from "@app/lib/development";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
@@ -37,13 +38,12 @@ import {
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { new_id } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-
-import { renderSubscriptionFromModels } from "./plans/subscription";
 
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
@@ -132,7 +132,7 @@ export class Authenticator {
         (async (): Promise<RoleType> => {
           const membership =
             await MembershipResource.getActiveMembershipOfUserInWorkspace({
-              userId: user.id,
+              user: renderUserType(user),
               workspace: renderLightWorkspaceType({ workspace }),
             });
           return membership &&
@@ -424,22 +424,7 @@ export class Authenticator {
    * @returns
    */
   user(): UserType | null {
-    return this._user
-      ? {
-          sId: this._user.sId,
-          id: this._user.id,
-          createdAt: this._user.createdAt.getTime(),
-          provider: this._user.provider,
-          username: this._user.username,
-          email: this._user.email,
-          fullName:
-            this._user.firstName +
-            (this._user.lastName ? ` ${this._user.lastName}` : ""),
-          firstName: this._user.firstName,
-          lastName: this._user.lastName || null,
-          image: this._user.imageUrl,
-        }
-      : null;
+    return this._user ? renderUserType(this._user) : null;
   }
 
   isDustSuperUser(): boolean {

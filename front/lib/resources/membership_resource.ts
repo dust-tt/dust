@@ -3,6 +3,7 @@ import type {
   MembershipRoleType,
   RequireAtLeastOne,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -20,7 +21,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
-  userIds: number[];
+  users: UserType[];
   workspace: LightWorkspaceType;
 }> & {
   roles?: MembershipRoleType[];
@@ -43,12 +44,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   static async getActiveMemberships({
-    userIds,
+    users,
     workspace,
     roles,
     transaction,
   }: GetMembershipsOptions): Promise<MembershipResource[]> {
-    if (!workspace && !userIds?.length) {
+    if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
@@ -60,8 +61,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
     };
 
-    if (userIds) {
-      whereClause.userId = userIds;
+    if (users) {
+      whereClause.userId = users.map((u) => u.id);
     }
     if (workspace) {
       whereClause.workspaceId = workspace.id;
@@ -83,7 +84,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   static async getLatestMemberships({
-    userIds,
+    users,
     workspace,
     roles,
     transaction,
@@ -99,17 +100,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (roles) {
       where.role = roles;
     }
-    if (userIds) {
-      where.userId = userIds;
+    if (users) {
+      where.userId = users.map((u) => u.id);
     }
     if (workspace) {
       where.workspaceId = workspace.id;
     }
 
-    if (!workspace && !userIds?.length) {
+    if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
-    if (userIds && !userIds.length) return [];
+    if (users && !users.length) return [];
 
     // Get all the memberships matching the criteria.
     const memberships = await MembershipModel.findAll({
@@ -136,16 +137,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   static async getLatestMembershipOfUserInWorkspace({
-    userId,
+    user,
     workspace,
     transaction,
   }: {
-    userId: number;
+    user: UserType;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
     const memberships = await this.getLatestMemberships({
-      userIds: [userId],
+      users: [user],
       workspace,
       transaction,
     });
@@ -156,30 +157,30 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       logger.error(
         {
           panic: true,
-          userId,
+          userId: user.id,
           workspaceId: workspace.id,
           memberships,
         },
         "Unreachable: Found multiple latest memberships for user in workspace."
       );
       throw new Error(
-        `Unreachable: Found multiple latest memberships for user ${userId} in workspace ${workspace.id}`
+        `Unreachable: Found multiple latest memberships for user ${user.id} in workspace ${workspace.id}`
       );
     }
     return memberships[0];
   }
 
   static async getActiveMembershipOfUserInWorkspace({
-    userId,
+    user,
     workspace,
     transaction,
   }: {
-    userId: number;
+    user: UserType;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
     const memberships = await this.getActiveMemberships({
-      userIds: [userId],
+      users: [user],
       workspace,
       transaction,
     });
@@ -190,14 +191,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       logger.error(
         {
           panic: true,
-          userId,
+          userId: user.id,
           workspaceId: workspace.id,
           memberships,
         },
         "Unreachable: Found multiple active memberships for user in workspace."
       );
       throw new Error(
-        `Unreachable: Found multiple active memberships for user ${userId} in workspace ${workspace.id}`
+        `Unreachable: Found multiple active memberships for user ${user.id} in workspace ${workspace.id}`
       );
     }
     return memberships[0];
@@ -234,13 +235,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   static async createMembership({
-    userId,
+    user,
     workspace,
     role,
     startAt = new Date(),
     transaction,
   }: {
-    userId: number;
+    user: UserType;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt?: Date;
@@ -252,7 +253,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (
       await MembershipModel.count({
         where: {
-          userId,
+          userId: user.id,
           workspaceId: workspace.id,
           endAt: {
             [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: startAt }],
@@ -262,13 +263,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       })
     ) {
       throw new Error(
-        `User ${userId} already has an active membership in workspace ${workspace.id}`
+        `User ${user.id} already has an active membership in workspace ${workspace.id}`
       );
     }
     const newMembership = await MembershipModel.create(
       {
         startAt,
-        userId,
+        userId: user.id,
         workspaceId: workspace.id,
         role,
       },
@@ -279,12 +280,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   static async revokeMembership({
-    userId,
+    user,
     workspace,
     endAt = new Date(),
     transaction,
   }: {
-    userId: number;
+    user: UserType;
     workspace: LightWorkspaceType;
     endAt?: Date;
     transaction?: Transaction;
@@ -297,7 +298,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     >
   > {
     const membership = await this.getLatestMembershipOfUserInWorkspace({
-      userId,
+      user,
       workspace,
       transaction,
     });
@@ -318,13 +319,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   static async updateMembershipRole({
-    userId,
+    user,
     workspace,
     newRole,
     allowTerminated = false,
     transaction,
   }: {
-    userId: number;
+    user: UserType;
     workspace: LightWorkspaceType;
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
@@ -339,7 +340,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     >
   > {
     const membership = await this.getLatestMembershipOfUserInWorkspace({
-      userId,
+      user,
       workspace,
       transaction,
     });
@@ -363,7 +364,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
       await this.createMembership({
-        userId,
+        user,
         workspace,
         role: newRole,
         startAt: new Date(),
