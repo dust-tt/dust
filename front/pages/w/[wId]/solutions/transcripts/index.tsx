@@ -87,7 +87,7 @@ export default function SolutionsTranscriptsIndex({
       // console log all variables in process.env
       const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(`solutions-${owner.sId}`, provider);
+      const newConnectionId = buildConnectionId(`solutions-transcripts-${owner.sId}`, provider);
       const {
         connectionId: nangoConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(nangoDriveConnectorId, newConnectionId);

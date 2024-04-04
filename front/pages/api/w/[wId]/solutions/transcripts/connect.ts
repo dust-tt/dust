@@ -5,12 +5,12 @@ import { Nango } from "@nangohq/node";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { SolutionsMeetingsTranscriptsConfiguration } from "@app/lib/models/solutions";
+import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { getAuthObject } from "@app/lib/solutions/utils/helpers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
-  configuration: SolutionsMeetingsTranscriptsConfiguration | null;
+  configuration: SolutionsTranscriptsConfiguration | null;
 };
 
 async function handler(
@@ -37,7 +37,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfiguration = await SolutionsMeetingsTranscriptsConfiguration.findOne({
+      const transcriptsConfiguration = await SolutionsTranscriptsConfiguration.findOne({
         attributes: ["id", "connectionId", "provider"],
         where: {
           userId: owner.id, 
@@ -79,7 +79,7 @@ async function handler(
         });
       }
 
-      const transcriptsConfigurationPost = await SolutionsMeetingsTranscriptsConfiguration.create({
+      const transcriptsConfigurationPost = await SolutionsTranscriptsConfiguration.create({
         userId: owner.id,
         connectionId,
         provider,
