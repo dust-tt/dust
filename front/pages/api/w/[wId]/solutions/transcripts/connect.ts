@@ -1,6 +1,7 @@
 import type {
   WithAPIErrorReponse,
 } from "@dust-tt/types";
+import { Nango } from "@nangohq/node";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -15,7 +16,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<GetSolutionsConfigurationResponseBody>>
 ): Promise<void> {
-  let transcriptsConfiguration: SolutionsMeetingsTranscriptsConfiguration | null;
+  const { NANGO_SECRET_KEY, NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
@@ -35,17 +36,35 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      transcriptsConfiguration = await SolutionsMeetingsTranscriptsConfiguration.findOne({
-        attributes: ["id", "provider"],
+      const transcriptsConfiguration = await SolutionsMeetingsTranscriptsConfiguration.findOne({
+        attributes: ["id", "connectionId", "provider"],
         where: {
           userId: owner.id, 
           provider: req.query.provider as string,
         },
       })
 
-      res.status(200).json({ configuration: transcriptsConfiguration });
+      if (!transcriptsConfiguration) {
+        return res.status(200).json({ configuration: null });
+      }
 
-      return;
+      console.log('GOOGLE DRIVE CONNECTOR ID IS: ', NANGO_GOOGLE_DRIVE_CONNECTOR_ID);
+      const nango = new Nango({ secretKey: NANGO_SECRET_KEY as string });
+      const connectionDetail = await nango.getConnection(
+        NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string,
+        transcriptsConfiguration.connectionId
+      );
+      const accessToken = connectionDetail.credentials.raw.access_token;
+      console.log('access token is: ', accessToken);
+      // const gDriveToken = await nango.getToken(transcriptsConfiguration.connectionId, "google_drive");
+      // console.log('GDRIVE TOKEN IS: ', gDriveToken);
+
+      // PULL FILES FROM GOOGLE DRIVE ROOT WITH CURRENT ACCESS TOKEN THAT START WITH "transcripts-" AND END WITH ".json"
+      
+
+
+
+      return res.status(200).json({ configuration: transcriptsConfiguration });
 
     case "POST":
       const { connectionId, provider } = req.body;
@@ -59,13 +78,13 @@ async function handler(
         });
       }
 
-      transcriptsConfiguration = await SolutionsMeetingsTranscriptsConfiguration.create({
+      const transcriptsConfigurationPost = await SolutionsMeetingsTranscriptsConfiguration.create({
         userId: owner.id,
         connectionId,
         provider,
       });
 
-      res.status(200).json({ configuration: transcriptsConfiguration});
+      res.status(200).json({ configuration: transcriptsConfigurationPost});
 
       return;
 

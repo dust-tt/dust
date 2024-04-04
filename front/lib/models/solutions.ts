@@ -1,4 +1,3 @@
-import type { SolutionProviderType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -10,6 +9,8 @@ import { DataTypes, Model } from "sequelize";
 import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
+import type { SolutionProviderType } from "../solutions/utils/types";
+
 export class SolutionsMeetingsTranscriptsConfiguration extends Model<
   InferAttributes<SolutionsMeetingsTranscriptsConfiguration>,
   InferCreationAttributes<SolutionsMeetingsTranscriptsConfiguration>
@@ -19,7 +20,7 @@ export class SolutionsMeetingsTranscriptsConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<User["id"]>;
-  declare connectionId: string | null;
+  declare connectionId: string;
   declare provider: SolutionProviderType;
 }
 

@@ -369,6 +369,10 @@ async function handler(
     }
 
     const { flow, workspace } = result.value;
+
+    console.log("flow", flow);
+    console.log("workspace", workspace);
+
     if (flow) {
       res.redirect(`/no-workspace?flow=${flow}`);
       return;
@@ -377,7 +381,11 @@ async function handler(
     targetWorkspace = workspace;
   }
 
+  console.log("SESSION", session);
+
   const u = await getUserFromSession(session);
+
+  console.log("USER", u);
   if (!u || u.workspaces.length === 0) {
     res.redirect("/no-workspace?flow=revoked");
     return;
