@@ -1,10 +1,21 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import React from "react";
 
 import { Grid, H2 } from "@app/components/home/contentComponents";
 import { PricePlans } from "@app/components/PlansTables";
 
-export function PricingPage() {
+interface PricingPageProps {
+  getReturnToUrl: (routerQuery: ParsedUrlQuery) => string;
+  setShowContactUsDrawer: (show: boolean) => void;
+}
+
+export function PricingPage({
+  getReturnToUrl,
+  setShowContactUsDrawer,
+}: PricingPageProps) {
+  const router = useRouter();
   return (
     <>
       <Grid>

@@ -221,7 +221,12 @@ export default function Home({
               case "product":
                 return <ProductPage getReturnToUrl={getReturnToUrl} />;
               case "pricing":
-                return <PricingPage />;
+                return (
+                  <PricingPage
+                    getReturnToUrl={getReturnToUrl}
+                    setShowContactUsDrawer={setShowContactUsDrawer}
+                  />
+                );
               case "security":
                 return <SecurityPage />;
               case "for_customer":
