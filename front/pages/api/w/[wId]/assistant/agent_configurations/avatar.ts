@@ -1,7 +1,7 @@
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getPublicUploadBucket } from "@app/lib/dfs";
+import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { withLogging } from "@app/logger/withlogging";
 
 export const config = {

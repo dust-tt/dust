@@ -4,9 +4,9 @@ import type formidable from "formidable";
 import fs from "fs";
 import { pipeline } from "stream/promises";
 
-import config from "@app/lib/dfs/config";
+import config from "@app/lib/file_storage/config";
 
-class DFS {
+class FileStorage {
   private readonly bucket: Bucket;
   private readonly storage: Storage;
 
@@ -82,7 +82,7 @@ class DFS {
 }
 
 export const getPrivateUploadBucket = () =>
-  new DFS(config.getGcsPrivateUploadsBucket());
+  new FileStorage(config.getGcsPrivateUploadsBucket());
 
 export const getPublicUploadBucket = () =>
-  new DFS(config.getGcsPublicUploadBucket());
+  new FileStorage(config.getGcsPublicUploadBucket());
