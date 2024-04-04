@@ -1,4 +1,4 @@
-import type { ConnectorProvider, Result } from "@dust-tt/types";
+import type { ConnectorProvider, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -114,7 +114,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return new this(this.model, blob.get());
   }
 
-  static async fetchByIds(ids: number[]) {
+  static async fetchByIds(ids: ModelId[]) {
     const blobs = await ConnectorResource.model.findAll({
       where: {
         id: ids,

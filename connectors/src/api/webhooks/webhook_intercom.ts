@@ -102,7 +102,7 @@ const _webhookIntercomAPIHandler = async (
     return res.status(200).end();
   }
 
-  if (connector?.isPaused()) {
+  if (connector.isPaused()) {
     logger.info(
       {
         connectorId: connector.id,

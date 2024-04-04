@@ -115,11 +115,6 @@ ConnectorModel.init(
   {
     sequelize: sequelizeConnection,
     modelName: "connectors",
-    indexes: [
-      { fields: ["workspaceId", "dataSourceName"], unique: true },
-      {
-        fields: ["pausedAt"],
-      },
-    ],
+    indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
   }
 );
