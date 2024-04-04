@@ -153,7 +153,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return this.update({ pausedAt: new Date() });
   }
 
-  hasExternalAuthError() {
+  get isAuthTokenRevoked() {
     return this.errorType === "oauth_token_revoked";
   }
 }
