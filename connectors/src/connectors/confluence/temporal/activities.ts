@@ -614,6 +614,9 @@ export async function confluenceGetReportPersonalActionActivity(
   const { connectorId, userAccountId } = params;
 
   const connector = await fetchConfluenceConnector(connectorId);
+  if (connector.errorType === "oauth_token_revoked") {
+    return false;
+  }
 
   // We look for the oldest updated data.
   const oldestPageSync = await ConfluencePage.findOne({
