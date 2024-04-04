@@ -77,7 +77,7 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragment } =
+      const { title, visibility, message, contentFragment, isSync } =
         bodyValidation.right;
 
       if (contentFragment) {
@@ -135,24 +135,28 @@ async function handler(
         // before returning the conversation along with the message.
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
-        const messageRes = await postUserMessageWithPubSub(auth, {
-          conversation,
-          content: message.content,
-          mentions: message.mentions,
-          context: {
-            timezone: message.context.timezone,
-            username: message.context.username,
-            fullName: message.context.fullName,
-            email: message.context.email,
-            profilePictureUrl: message.context.profilePictureUrl,
+        const messageRes = await postUserMessageWithPubSub(
+          auth,
+          {
+            conversation,
+            content: message.content,
+            mentions: message.mentions,
+            context: {
+              timezone: message.context.timezone,
+              username: message.context.username,
+              fullName: message.context.fullName,
+              email: message.context.email,
+              profilePictureUrl: message.context.profilePictureUrl,
+            },
           },
-        });
+          { resolveAfterFullGeneration: isSync === true }
+        );
 
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);
         }
 
-        newMessage = messageRes.value;
+        newMessage = messageRes.value.userMessage;
       }
 
       if (newContentFragment || newMessage) {

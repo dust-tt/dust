@@ -131,7 +131,7 @@ async function handler(
         return apiError(req, res, editedMessageRes.error);
       }
 
-      res.status(200).json({ message: editedMessageRes.value });
+      res.status(200).json({ message: editedMessageRes.value.userMessage });
       return;
 
     default:

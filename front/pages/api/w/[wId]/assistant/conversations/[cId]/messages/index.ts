@@ -143,23 +143,27 @@ async function handler(
 
       /* postUserMessageWithPubSub returns swiftly since it only waits for the
         initial message creation event (or error) */
-      const messageRes = await postUserMessageWithPubSub(auth, {
-        conversation,
-        content,
-        mentions,
-        context: {
-          timezone: context.timezone,
-          username: user.username,
-          fullName: user.fullName,
-          email: user.email,
-          profilePictureUrl: context.profilePictureUrl ?? user.image,
+      const messageRes = await postUserMessageWithPubSub(
+        auth,
+        {
+          conversation,
+          content,
+          mentions,
+          context: {
+            timezone: context.timezone,
+            username: user.username,
+            fullName: user.fullName,
+            email: user.email,
+            profilePictureUrl: context.profilePictureUrl ?? user.image,
+          },
         },
-      });
+        { resolveAfterFullGeneration: false }
+      );
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
       }
 
-      res.status(200).json({ message: messageRes.value });
+      res.status(200).json({ message: messageRes.value.userMessage });
       return;
 
     default:

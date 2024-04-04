@@ -150,23 +150,27 @@ async function handler(
         before returning the conversation along with the message.
         PostUserMessageWithPubSub returns swiftly since it only waits for the
         initial message creation event (or error) */
-        const messageRes = await postUserMessageWithPubSub(auth, {
-          conversation,
-          content: message.content,
-          mentions: message.mentions,
-          context: {
-            timezone: message.context.timezone,
-            username: user.username,
-            fullName: user.fullName,
-            email: user.email,
-            profilePictureUrl: message.context.profilePictureUrl,
+        const messageRes = await postUserMessageWithPubSub(
+          auth,
+          {
+            conversation,
+            content: message.content,
+            mentions: message.mentions,
+            context: {
+              timezone: message.context.timezone,
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: message.context.profilePictureUrl,
+            },
           },
-        });
+          { resolveAfterFullGeneration: false }
+        );
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);
         }
 
-        newMessage = messageRes.value;
+        newMessage = messageRes.value.userMessage;
       }
 
       if (newContentFragment || newMessage) {
