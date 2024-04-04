@@ -152,4 +152,8 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   async markAsPaused() {
     return this.update({ pausedAt: new Date() });
   }
+
+  get isAuthTokenRevoked() {
+    return this.errorType === "oauth_token_revoked";
+  }
 }
