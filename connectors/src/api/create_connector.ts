@@ -1,27 +1,22 @@
 import type {
   ConnectorType,
-  CreateConnectorOAuthRequestBodySchema,
-  CreateConnectorUrlRequestBodySchema,
   Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorCreateRequestBodySchema,
+  ioTsParsePayload,
   isConnectorProvider,
-  provider2createConnectorType,
+  WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
-import type {
-  ConnectorCreatorOAuth,
-  ConnectorCreatorUrl,
-} from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
+import { renderConnectorType } from "@connectors/lib/renderers/connector";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -56,53 +51,66 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    const { workspaceAPIKey, dataSourceName, workspaceId, connectorParams } =
-      bodyValidation.right;
+    const {
+      workspaceAPIKey,
+      dataSourceName,
+      workspaceId,
+      connectionId,
+      configuration,
+    } = bodyValidation.right;
 
-    let connectorRes: Result<string, Error>;
-    const createConnectorType =
-      provider2createConnectorType[req.params.connector_provider];
-    switch (createConnectorType) {
-      case "oauth": {
-        const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
-          req.params.connector_provider
-        ] as ConnectorCreatorOAuth;
-
-        const params = connectorParams as t.TypeOf<
-          typeof CreateConnectorOAuthRequestBodySchema
-        >;
+    let connectorRes: Result<string, Error> | null = null;
+    null;
+    switch (req.params.connector_provider) {
+      case "webcrawler": {
+        const connectorCreator =
+          CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
+        const configurationRes = ioTsParsePayload(
+          configuration,
+          WebCrawlerConfigurationTypeSchema
+        );
+        if (configurationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${configurationRes.error}`,
+            },
+          });
+        }
         connectorRes = await connectorCreator(
           {
             workspaceAPIKey: workspaceAPIKey,
             dataSourceName: dataSourceName,
             workspaceId: workspaceId,
           },
-          params.connectionId
+          connectionId,
+          configurationRes.value
         );
         break;
       }
-      case "url": {
-        const connectorCreator = CREATE_CONNECTOR_BY_TYPE[
-          req.params.connector_provider
-        ] as ConnectorCreatorUrl;
 
-        const params = connectorParams as t.TypeOf<
-          typeof CreateConnectorUrlRequestBodySchema
-        >;
+      case "github":
+      case "notion":
+      case "confluence":
+      case "google_drive":
+      case "intercom":
+      case "slack": {
+        const connectorCreator =
+          CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
         connectorRes = await connectorCreator(
           {
             workspaceAPIKey: workspaceAPIKey,
             dataSourceName: dataSourceName,
             workspaceId: workspaceId,
           },
-          params
+          connectionId,
+          null
         );
         break;
       }
-
-      default: {
-        assertNever(createConnectorType);
-      }
+      default:
+        assertNever(req.params.connector_provider);
     }
 
     if (connectorRes.isErr()) {
@@ -116,6 +124,7 @@ const _createConnectorAPIHandler = async (
     }
 
     const connector = await ConnectorResource.fetchById(connectorRes.value);
+
     if (!connector) {
       return apiError(req, res, {
         status_code: 500,
@@ -126,17 +135,7 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    return res.status(200).json({
-      id: connector.id.toString(),
-      type: connector.type,
-      workspaceId: connector.workspaceId,
-      dataSourceName: connector.dataSourceName,
-      lastSyncStatus: connector.lastSyncStatus,
-      lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
-      lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
-      firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
-      firstSyncProgress: connector.firstSyncProgress,
-    });
+    return res.status(200).json(await renderConnectorType(connector));
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     return apiError(req, res, {

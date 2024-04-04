@@ -96,7 +96,7 @@ async function handler(
       const connectorsAPI = new ConnectorsAPI(logger);
       const updateRes = await connectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
-        params: bodyValidation.right,
+        connectionId: bodyValidation.right.connectionId,
       });
       const email = auth.user()?.email;
       if (email && !isDisposableEmailDomain(email)) {

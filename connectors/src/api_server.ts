@@ -5,6 +5,7 @@ import express from "express";
 import morgan from "morgan";
 
 import { adminAPIHandler } from "@connectors/api/admin";
+import { patchConnectorConfigurationAPIHandler } from "@connectors/api/configuration";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import { getConnectorAPIHandler } from "@connectors/api/get_connector";
@@ -20,7 +21,7 @@ import {
 } from "@connectors/api/slack_channels_linked_with_agent";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
-import { getConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
+import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
 import {
@@ -28,7 +29,6 @@ import {
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
-import { getWebcrawlerConfiguration } from "@connectors/connectors/webcrawler";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
@@ -88,7 +88,7 @@ export function startServer(port: number) {
   app.use(authMiddleware);
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
-  app.post("/connectors/update/:connector_id/", getConnectorUpdateAPIHandler);
+  app.post("/connectors/update/:connector_id/", postConnectorUpdateAPIHandler);
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/pause/:connector_id", pauseConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
@@ -144,6 +144,13 @@ export function startServer(port: number) {
     webhookIntercomUninstallAPIHandler
   );
 
+  // /configuration/ is the new configration method, replacing the old /config/ method
+  app.patch(
+    "/connectors/:connector_id/configuration",
+    patchConnectorConfigurationAPIHandler
+  );
+
+  // /config/ is the old configuration method, will disappear in the future
   app.post(
     "/connectors/:connector_id/config/:config_key",
     setConnectorConfigAPIHandler
@@ -152,11 +159,6 @@ export function startServer(port: number) {
   app.get(
     "/connectors/:connector_id/config/:config_key",
     getConnectorConfigAPIHandler
-  );
-
-  app.get(
-    "/connectors/webcrawler/:connector_id/configuration",
-    getWebcrawlerConfiguration
   );
 
   app.post("/connectors/admin", adminAPIHandler);

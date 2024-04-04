@@ -4,12 +4,12 @@ import {
 } from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import {
-  CreateConnectorOAuthRequestBody,
-  CreateConnectorUrlRequestBody,
-} from "../../connectors/api_handlers/create_connector";
+  ConnectorConfiguration,
+  UpdateConnectorConfigurationType,
+} from "../../connectors/api_handlers/connector_configuration";
+import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
-import { WebCrawlerConfigurationType } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
@@ -62,6 +62,7 @@ export type ConnectorType = {
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
   errorType?: ConnectorErrorType;
+  configuration?: ConnectorConfiguration;
 };
 
 /**
@@ -129,9 +130,8 @@ export class ConnectorsAPI {
     workspaceId: string,
     workspaceAPIKey: string,
     dataSourceName: string,
-    connectorParams:
-      | CreateConnectorOAuthRequestBody
-      | CreateConnectorUrlRequestBody
+    connectionId: string,
+    configuration: ConnectorConfiguration
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/create/${encodeURIComponent(provider)}`,
@@ -142,8 +142,32 @@ export class ConnectorsAPI {
           workspaceId,
           workspaceAPIKey,
           dataSourceName,
-          connectorParams,
-        }),
+          connectionId,
+          configuration,
+        } satisfies ConnectorCreateRequestBody),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async updateConfiguration({
+    connectorId,
+    configuration,
+  }: {
+    connectorId: string;
+    configuration: UpdateConnectorConfigurationType;
+  }): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+        connectorId
+      )}/configuration`,
+      {
+        method: "PATCH",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify(
+          configuration satisfies UpdateConnectorConfigurationType
+        ),
       }
     );
 
@@ -152,17 +176,19 @@ export class ConnectorsAPI {
 
   async updateConnector({
     connectorId,
-    params,
+    connectionId,
   }: {
     connectorId: string;
-    params: UpdateConnectorRequestBody;
+    connectionId: string;
   }): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
     const res = await fetch(
       `${CONNECTORS_API}/connectors/update/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+          connectionId,
+        } satisfies UpdateConnectorRequestBody),
       }
     );
 
@@ -460,24 +486,6 @@ export class ConnectorsAPI {
       `${CONNECTORS_API}/slack/channels/linked_with_agent?connector_id=${encodeURIComponent(
         connectorId
       )}`,
-      {
-        method: "GET",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async getWebCrawlerConfiguration({
-    connectorId,
-  }: {
-    connectorId: string;
-  }): Promise<ConnectorsAPIResponse<WebCrawlerConfigurationType>> {
-    const res = await fetch(
-      `${CONNECTORS_API}/connectors/webcrawler/${encodeURIComponent(
-        connectorId
-      )}/configuration`,
       {
         method: "GET",
         headers: this.getDefaultHeaders(),

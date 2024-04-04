@@ -1,35 +1,32 @@
 import type {
+  ConnectorConfigurations,
   ConnectorPermission,
+  ConnectorProvider,
   ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
-  CreateConnectorUrlRequestBody,
   ModelId,
   Result,
 } from "@dust-tt/types";
+import type { ConnectorConfiguration } from "@dust-tt/types";
 
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export type ConnectorCreatorOAuth = (
-  dataSourceConfig: DataSourceConfig,
-  connectionId: string
+export type ConnectorCreate<T extends ConnectorConfiguration> = (
+  DataSourceConfig: DataSourceConfig,
+  connectionid: string,
+  configuration: T
 ) => Promise<Result<string, Error>>;
 
-export type ConnectorCreatorUrl = (
-  dataSourceConfig: DataSourceConfig,
-  urlConfig: CreateConnectorUrlRequestBody
-) => Promise<Result<string, Error>>;
+export type ConnectorProviderCreateConnectorMapping = {
+  [K in ConnectorProvider]: ConnectorCreate<ConnectorConfigurations[K]>;
+};
 
-export type ConnectorUpdaterOAuth = (
+export type ConnectorUpdater = (
   connectorId: ModelId,
   params: {
     connectionId?: string | null;
   }
-) => Promise<Result<string, ConnectorsAPIError>>;
-
-export type ConnectorUpdaterUrl = (
-  connectorId: ModelId,
-  urlConfig: CreateConnectorUrlRequestBody
 ) => Promise<Result<string, ConnectorsAPIError>>;
 
 export type ConnectorStopper = (
@@ -94,3 +91,13 @@ export type ConnectorGarbageCollector = (
 export type ConnectorPauser = (
   connectorId: ModelId
 ) => Promise<Result<undefined, Error>>;
+export type ConnectorConfigurationSetter<T extends ConnectorConfiguration> = (
+  connectorId: ModelId,
+  configuration: T
+) => Promise<Result<void, Error>>;
+
+export type ConnectorProviderUpdateConfigurationMapping = {
+  [K in keyof ConnectorConfigurations]: ConnectorConfigurationSetter<
+    ConnectorConfigurations[K]
+  >;
+};

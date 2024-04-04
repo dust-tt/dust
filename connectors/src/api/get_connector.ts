@@ -6,6 +6,7 @@ import type { Request, Response } from "express";
 
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
+import { renderConnectorType } from "@connectors/lib/renderers/connector";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -68,19 +69,7 @@ const _getConnector = async (
     }
   }
 
-  return res.status(200).json({
-    id: connector.id.toString(),
-    type: connector.type,
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-    lastSyncStatus: connector.lastSyncStatus,
-    lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
-    lastSyncFinishTime: connector.lastSyncFinishTime?.getTime(),
-    lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
-    firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
-    firstSyncProgress,
-    errorType: connector.errorType || undefined,
-  });
+  return res.status(200).json(await renderConnectorType(connector));
 };
 
 export const getConnectorAPIHandler = withLogging(_getConnector);

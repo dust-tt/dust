@@ -2,12 +2,14 @@ import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
-  CreateConnectorUrlRequestBodySchema,
+  ConnectorConfigurationTypeSchema,
   DEFAULT_FREE_QDRANT_CLUSTER,
   DEFAULT_PAID_QDRANT_CLUSTER,
   EMBEDDING_CONFIG,
+  ioTsParsePayload,
   isConnectorProvider,
   sendUserOperationMessage,
+  WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
@@ -33,10 +35,9 @@ const { NODE_ENV } = process.env;
 
 export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
-  connectionId: t.union([t.string, t.undefined]),
-  type: t.union([t.literal("oauth"), t.literal("url")]),
+  connectionId: t.string,
   name: t.union([t.string, t.undefined]),
-  urlConfig: t.union([CreateConnectorUrlRequestBodySchema, t.undefined]),
+  configuration: ConnectorConfigurationTypeSchema,
 });
 
 export type PostManagedDataSourceRequestBody = t.TypeOf<
@@ -96,7 +97,7 @@ async function handler(
         });
       }
 
-      const { type, connectionId, urlConfig, provider, name } =
+      const { connectionId, provider, name, configuration } =
         bodyValidation.right;
 
       if (!isConnectorProvider(provider)) {
@@ -138,6 +139,15 @@ async function handler(
               },
             });
           }
+          if (!connectionId) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "connectionId is required.",
+              },
+            });
+          }
           break;
         }
         default:
@@ -157,66 +167,38 @@ async function handler(
           },
         });
       }
-      let dataSourceName: string;
-      let dataSourceDescription: string;
 
-      switch (type) {
-        case "oauth": {
-          dataSourceName = suffix
-            ? `managed-${provider}-${suffix}`
-            : `managed-${provider}`;
+      let dataSourceName: string | null = null;
+      let dataSourceDescription: string | null = null;
+      if (name) {
+        dataSourceName = name;
+      } else {
+        dataSourceName = suffix
+          ? `managed-${provider}-${suffix}`
+          : `managed-${provider}`;
+      }
+      switch (provider) {
+        case "webcrawler":
+          const configurationRes = ioTsParsePayload(
+            configuration,
+            WebCrawlerConfigurationTypeSchema
+          );
+          if (configurationRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Invalid configuration: " + configurationRes.error.join(", "),
+              },
+            });
+          }
+          dataSourceDescription = configurationRes.value.url;
+          break;
+        default:
           dataSourceDescription = suffix
             ? `Managed Data Source for ${provider} (${suffix})`
             : `Managed Data Source for ${provider}`;
-
-          break;
-        }
-        case "url": {
-          if (!urlConfig) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "urlConfig is required for URL connectors.",
-              },
-            });
-          }
-          if (!/^https?:\/\/[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(urlConfig.url)) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "Invalid URL.",
-              },
-            });
-          }
-
-          if (!name) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "name is required for URL connectors.",
-              },
-            });
-          }
-
-          if (!urlConfig.url.length) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "Invalid URL.",
-              },
-            });
-          }
-          dataSourceName = name;
-          dataSourceDescription = urlConfig.url;
-          break;
-        }
-
-        default:
-          assertNever(type);
       }
 
       let isDataSourceAllowedInPlan: boolean;
@@ -346,59 +328,15 @@ async function handler(
       });
 
       const connectorsAPI = new ConnectorsAPI(logger);
-      let connectorsRes: Awaited<ReturnType<ConnectorsAPI["createConnector"]>>;
-      switch (type) {
-        case "oauth": {
-          if (!connectionId) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "connectionId is required for OAuth connectors.",
-              },
-            });
-          }
-          connectorsRes = await connectorsAPI.createConnector(
-            provider,
-            owner.sId,
-            systemAPIKeyRes.value.secret,
-            dataSourceName,
-            {
-              connectionId: connectionId,
-            }
-          );
-          break;
-        }
-        case "url": {
-          if (!urlConfig?.url) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "url is required for URL connectors.",
-              },
-            });
-          }
-          let cleanUrl = urlConfig.url.trim();
-          if (
-            !cleanUrl.startsWith("http://") &&
-            !cleanUrl.startsWith("https://")
-          ) {
-            cleanUrl = `http://${cleanUrl}`;
-          }
-          connectorsRes = await connectorsAPI.createConnector(
-            provider,
-            owner.sId,
-            systemAPIKeyRes.value.secret,
-            dataSourceName,
-            urlConfig
-          );
-          break;
-        }
 
-        default:
-          assertNever(type);
-      }
+      const connectorsRes = await connectorsAPI.createConnector(
+        provider,
+        owner.sId,
+        systemAPIKeyRes.value.secret,
+        dataSourceName,
+        connectionId || "none",
+        configuration
+      );
 
       if (connectorsRes.isErr()) {
         logger.error(

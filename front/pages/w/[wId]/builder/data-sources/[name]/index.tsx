@@ -21,6 +21,7 @@ import type {
   ConnectorProvider,
   DataSourceType,
   PostDataSourceDocumentRequestBody,
+  UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -1055,8 +1056,8 @@ function ManagedDataSourceView({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          connectorParams: { connectionId: newConnectionId },
-        }),
+          connectionId: newConnectionId,
+        } satisfies UpdateConnectorRequestBody),
       }
     );
 
