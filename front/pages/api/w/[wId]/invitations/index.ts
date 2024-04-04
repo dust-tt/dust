@@ -7,6 +7,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Op } from "sequelize";
 
 import {
   sendWorkspaceInvitationEmail,
@@ -15,6 +16,11 @@ import {
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
+import {
+  MAX_UNCONSUMED_INVITATIONS,
+  UNCONSUMED_INVITATION_COOLDOWN_PER_EMAIL_MS,
+} from "@app/lib/invitations";
+import { MembershipInvitation } from "@app/lib/models";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -152,7 +158,48 @@ async function handler(
         });
       }
       const existingMembers = await getMembers(auth);
-
+      const unconsumedInvitations = await MembershipInvitation.findAll({
+        where: {
+          workspaceId: owner.id,
+          status: ["pending", "revoked"],
+          createdAt: {
+            [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+      });
+      if (unconsumedInvitations.length > MAX_UNCONSUMED_INVITATIONS) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Too many unconsumed invitations. Please ask your members to consume their invitations before sending more.`,
+          },
+        });
+      }
+      const emailsWithRecentUnconsumedInvitations = new Set(
+        unconsumedInvitations
+          .filter(
+            (i) =>
+              i.createdAt.getTime() >
+              new Date().getTime() - UNCONSUMED_INVITATION_COOLDOWN_PER_EMAIL_MS
+          )
+          .map((i) => i.inviteEmail.toLowerCase().trim())
+      );
+      if (
+        invitationRequests.some((r) =>
+          emailsWithRecentUnconsumedInvitations.has(
+            r.email.toLowerCase().trim()
+          )
+        )
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Some of the emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
+          },
+        });
+      }
       const invitationResults = await Promise.all(
         invitationRequests.map(async ({ email, role }) => {
           if (existingMembers.find((m) => m.email === email)) {
