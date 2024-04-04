@@ -143,7 +143,7 @@ export async function stopGithubConnector(
   }
 }
 
-export async function pauseGithubWebhooks(
+export async function pauseGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
