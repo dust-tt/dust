@@ -13,6 +13,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { ellipsis } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -129,7 +130,7 @@ export function AssistantPicker({
               >
                 <Item.Avatar
                   key={`assistant-picker-${c.sId}`}
-                  label={"@" + c.name}
+                  label={ellipsis("@" + c.name, 20)}
                   visual={c.pictureUrl}
                   hasAction={false}
                   onClick={() => {
