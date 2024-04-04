@@ -280,11 +280,7 @@ pub async fn streamed_completion(
                                             })?,
                                             false => Err(ModelError {
                                                 message: error.message(),
-                                                retryable: Some(ModelErrorRetryOptions {
-                                                    sleep: Duration::from_millis(500),
-                                                    factor: 1,
-                                                    retries: 1,
-                                                }),
+                                                retryable: None,
                                             })?,
                                         }
                                         break 'stream;
@@ -666,11 +662,7 @@ pub async fn streamed_chat_completion(
                                             })?,
                                             false => Err(ModelError {
                                                 message: error.message(),
-                                                retryable: Some(ModelErrorRetryOptions {
-                                                    sleep: Duration::from_millis(500),
-                                                    factor: 1,
-                                                    retries: 1,
-                                                }),
+                                                retryable: None,
                                             })?,
                                         }
                                         break 'stream;

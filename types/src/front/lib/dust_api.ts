@@ -291,6 +291,8 @@ export async function processStreamedRunResponse(
       logger.error(
         {
           error: e,
+          errorStr: JSON.stringify(e),
+          errorSource: "processStreamedRunResponse",
         },
         "Error streaming chunks."
       );
@@ -670,6 +672,8 @@ export class DustAPI {
         logger.error(
           {
             error: e,
+            errorStr: JSON.stringify(e),
+            errorSource: "postUserMessage",
           },
           "Error streaming chunks."
         );

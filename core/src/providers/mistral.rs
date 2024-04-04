@@ -331,7 +331,7 @@ impl MistralAPIError {
     }
 
     pub fn retryable_streamed(&self) -> bool {
-        self.retryable()
+        false
     }
 }
 
@@ -497,11 +497,7 @@ impl MistralAILLM {
                                                     })?,
                                                     false => Err(ModelError {
                                                         message: error.message(),
-                                                        retryable: Some(ModelErrorRetryOptions {
-                                                            sleep: Duration::from_millis(500),
-                                                            factor: 1,
-                                                            retries: 1,
-                                                        }),
+                                                        retryable: None,
                                                     })?,
                                                 }
                                                 break 'stream;
