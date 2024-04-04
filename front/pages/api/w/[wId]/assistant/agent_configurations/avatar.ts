@@ -1,42 +1,16 @@
-import { Storage } from "@google-cloud/storage";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { uploadToBucket } from "@app/lib/dfs";
 import { withLogging } from "@app/logger/withlogging";
 
-const { DUST_UPLOAD_BUCKET = "", SERVICE_ACCOUNT } = process.env;
+const { DUST_UPLOAD_BUCKET = "" } = process.env;
 
 export const config = {
   api: {
     bodyParser: false, // Disabling Next.js's body parser as formidable has its own
   },
 };
-
-export async function assertIsSelfHostedPictureUrl(pictureUrl: string) {
-  const isSelfHosted = pictureUrl.startsWith(
-    `https://storage.googleapis.com/${DUST_UPLOAD_BUCKET}/`
-  );
-
-  const storage = new Storage({
-    keyFilename: SERVICE_ACCOUNT,
-  });
-
-  const filename = pictureUrl.split("/").at(-1);
-  if (!filename) {
-    return false;
-  }
-
-  const bucket = storage.bucket(DUST_UPLOAD_BUCKET);
-  const gcsFile = await bucket.file(filename);
-
-  const [metadata] = await gcsFile.getMetadata();
-
-  const isImageContentType =
-    metadata.contentType && metadata.contentType.includes("image");
-
-  return isSelfHosted && isImageContentType;
-}
 
 async function handler(
   req: NextApiRequest,
