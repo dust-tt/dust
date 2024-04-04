@@ -1,6 +1,5 @@
 import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import type {
   Attributes,
   CreationAttributes,
@@ -9,11 +8,13 @@ import type {
 } from "sequelize";
 
 import appConfig from "@app/lib/api/config";
+import { getPrivateUploadBucket } from "@app/lib/dfs";
 import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { gcsConfig } from "@app/lib/resources/storage/config";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+
+const privateUploadGcs = getPrivateUploadBucket();
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -143,7 +144,7 @@ export function fileAttachmentLocation({
   const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
   return {
     filePath,
-    internalUrl: `https://storage.googleapis.com/${gcsConfig.getGcsPrivateUploadsBucket()}/${filePath}`,
+    internalUrl: `https://storage.googleapis.com/${privateUploadGcs.name}/${filePath}`,
     downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment`,
   };
 }
@@ -169,15 +170,11 @@ export async function storeContentFragmentText({
     messageId,
     contentFormat: "text",
   });
-  const storage = new Storage({
-    keyFilename: appConfig.getServiceAccount(),
-  });
 
-  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-  const gcsFile = bucket.file(filePath);
-
-  await gcsFile.save(content, {
+  await privateUploadGcs.uploadRawContentToBucket({
+    content,
     contentType: "text/plain",
+    filePath,
   });
 
   return Buffer.byteLength(content);
@@ -192,10 +189,6 @@ export async function getContentFragmentText({
   conversationId: string;
   messageId: string;
 }): Promise<string> {
-  const storage = new Storage({
-    keyFilename: appConfig.getServiceAccount(),
-  });
-
   const { filePath } = fileAttachmentLocation({
     workspaceId,
     conversationId,
@@ -203,9 +196,5 @@ export async function getContentFragmentText({
     contentFormat: "text",
   });
 
-  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-  const gcsFile = bucket.file(filePath);
-
-  const [content] = await gcsFile.download();
-  return content.toString();
+  return privateUploadGcs.fetchFileContent(filePath);
 }
