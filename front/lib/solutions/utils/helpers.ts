@@ -6,13 +6,13 @@ import type { OAuth2Client } from "googleapis-common";
 
 const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY as string });
 
-// NANGO 
-export async function getAuthObject(
-  integrationId: string,
+// Google Auth 
+export async function getGoogleAuthObject(
+  nangoIntegrationId: string,
   nangoConnectionId: string
 ): Promise<OAuth2Client> {
   const res: Connection = await nango.getConnection(
-    integrationId,
+    nangoIntegrationId,
     nangoConnectionId
   );
 

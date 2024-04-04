@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
-import { getAuthObject } from "@app/lib/solutions/utils/helpers";
+import { getGoogleAuthObject } from "@app/lib/solutions/utils/helpers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
@@ -49,21 +49,8 @@ async function handler(
         return res.status(200).json({ configuration: null });
       }
 
-      console.log('GOOGLE DRIVE CONNECTOR ID IS: ', NANGO_GOOGLE_DRIVE_CONNECTOR_ID);
-      const nango = new Nango({ secretKey: NANGO_SECRET_KEY as string });
-      const connectionDetail = await nango.getConnection(
-        NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string,
-        transcriptsConfiguration.connectionId
-      );
-      const accessToken = connectionDetail.credentials.raw.access_token;
-      console.log('access token is: ', accessToken);
-
-      const auth = getAuthObject(transcriptsConfiguration.connectionId, NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string);
-
-      console.log('auth is: ', auth);
-      
-
-
+      const auth = await getGoogleAuthObject(NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string, transcriptsConfiguration.connectionId)
+      console.log('ACCESS TOKEN', auth.credentials.access_token)
 
       return res.status(200).json({ configuration: transcriptsConfiguration });
 
