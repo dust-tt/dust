@@ -62,7 +62,7 @@ async function handler(
   }
 
   const invitationId = req.query.iId;
-  let invitation = await getInvitation({ auth, invitationId });
+  let invitation = await getInvitation(auth, { invitationId });
   if (!invitation) {
     return apiError(req, res, {
       status_code: 404,
@@ -88,8 +88,7 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      invitation = await updateInvitationStatus({
-        auth,
+      invitation = await updateInvitationStatus(auth, {
         invitation,
         status: body.status,
       });

@@ -27,13 +27,14 @@ function typeFromModel(
   };
 }
 
-export async function getInvitation({
-  auth,
-  invitationId,
-}: {
-  auth: Authenticator;
-  invitationId: string;
-}): Promise<MembershipInvitationType | null> {
+export async function getInvitation(
+  auth: Authenticator,
+  {
+    invitationId,
+  }: {
+    invitationId: string;
+  }
+): Promise<MembershipInvitationType | null> {
   const owner = auth.workspace();
   if (!owner || !auth.isAdmin()) {
     return null;
@@ -53,15 +54,16 @@ export async function getInvitation({
   return typeFromModel(invitation);
 }
 
-export async function updateInvitationStatus({
-  auth,
-  invitation,
-  status,
-}: {
-  auth: Authenticator;
-  invitation: MembershipInvitationType;
-  status: "pending" | "consumed" | "revoked";
-}): Promise<MembershipInvitationType> {
+export async function updateInvitationStatus(
+  auth: Authenticator,
+  {
+    invitation,
+    status,
+  }: {
+    invitation: MembershipInvitationType;
+    status: "pending" | "consumed" | "revoked";
+  }
+): Promise<MembershipInvitationType> {
   const owner = auth.workspace();
   if (!owner || !auth.isAdmin()) {
     throw new Error("Unauthorized attempt to update invitation status.");
