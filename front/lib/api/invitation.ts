@@ -11,6 +11,7 @@ import { sign } from "jsonwebtoken";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
+import { generateModelSId } from "@app/lib/utils";
 
 sgMail.setApiKey(config.getSendgridApiKey());
 
@@ -48,6 +49,7 @@ export async function updateOrCreateInvitation(
 
   return typeFromModel(
     await MembershipInvitation.create({
+      sId: generateModelSId(),
       workspaceId: owner.id,
       inviteEmail: sanitizeString(inviteEmail),
       status: "pending",

@@ -135,6 +135,7 @@ export class MembershipInvitation extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare sId: string;
   declare inviteEmail: string;
   declare status: "pending" | "consumed" | "revoked";
   declare initialRole: Exclude<RoleType, "none">;
@@ -158,6 +159,10 @@ MembershipInvitation.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     inviteEmail: {
       type: DataTypes.STRING,
@@ -184,7 +189,10 @@ MembershipInvitation.init(
   {
     modelName: "membership_invitation",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "status"] }],
+    indexes: [
+      { fields: ["workspaceId", "status"] },
+      { unique: true, fields: ["sId"] },
+    ],
   }
 );
 Workspace.hasMany(MembershipInvitation, {
