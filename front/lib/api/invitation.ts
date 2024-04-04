@@ -7,6 +7,7 @@ import type {
 import { Err, sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
+import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -165,6 +166,43 @@ export async function getPendingInvitations(
     where: {
       workspaceId: owner.id,
       status: "pending",
+    },
+  });
+
+  return invitations.map((i) => {
+    return {
+      sId: i.sId,
+      id: i.id,
+      status: i.status,
+      inviteEmail: i.inviteEmail,
+      initialRole: i.initialRole,
+    };
+  });
+}
+
+/**
+ * Returns the pending or revoked inviations that were created today
+ *  associated with the authenticator's owner workspace.
+ * @param auth Authenticator
+ * @returns MenbershipInvitation[] members of the workspace
+ */
+
+export async function getRecentPendingOrRevokedInvitations(
+  auth: Authenticator
+): Promise<MembershipInvitationType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return [];
+  }
+  const oneDayAgo = new Date();
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  const invitations = await MembershipInvitation.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: ["pending", "revoked"],
+      createdAt: {
+        [Op.gt]: oneDayAgo,
+      },
     },
   });
 

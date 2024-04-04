@@ -7,20 +7,16 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import {
+  getRecentPendingOrRevokedInvitations,
   sendWorkspaceInvitationEmail,
   updateOrCreateInvitation,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  MAX_UNCONSUMED_INVITATIONS,
-  UNCONSUMED_INVITATION_COOLDOWN_PER_EMAIL_MS,
-} from "@app/lib/invitations";
-import { MembershipInvitation } from "@app/lib/models";
+import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -158,18 +154,13 @@ async function handler(
         });
       }
       const existingMembers = await getMembers(auth);
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const unconsumedInvitations = await MembershipInvitation.findAll({
-        where: {
-          workspaceId: owner.id,
-          status: ["pending", "revoked"],
-          createdAt: {
-            [Op.gte]: startOfDay,
-          },
-        },
-      });
-      if (unconsumedInvitations.length > MAX_UNCONSUMED_INVITATIONS) {
+      const unconsumedInvitations = await getRecentPendingOrRevokedInvitations(
+        auth
+      );
+      if (
+        unconsumedInvitations.length >
+        MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -179,13 +170,7 @@ async function handler(
         });
       }
       const emailsWithRecentUnconsumedInvitations = new Set(
-        unconsumedInvitations
-          .filter(
-            (i) =>
-              i.createdAt.getTime() >
-              new Date().getTime() - UNCONSUMED_INVITATION_COOLDOWN_PER_EMAIL_MS
-          )
-          .map((i) => i.inviteEmail.toLowerCase().trim())
+        unconsumedInvitations.map((i) => i.inviteEmail.toLowerCase().trim())
       );
       if (
         invitationRequests.some((r) =>
