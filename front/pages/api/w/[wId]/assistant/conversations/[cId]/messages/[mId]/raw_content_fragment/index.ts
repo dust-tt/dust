@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/dfs";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

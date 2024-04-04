@@ -34,7 +34,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getPublicUploadBucket } from "@app/lib/dfs";
+import { getPublicUploadBucket } from "@app/lib/file_storage";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
