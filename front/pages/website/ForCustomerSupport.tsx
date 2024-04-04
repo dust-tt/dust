@@ -11,7 +11,7 @@ import {
   HeaderContentBlock,
   Message,
 } from "@app/components/home/contentBlocks";
-import { Grid, H2, P } from "@app/components/home/contentComponents";
+import { Grid, H1, H2, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
@@ -37,6 +37,19 @@ export function ForCustomerSupport() {
           </>
         }
       />
+
+      <Grid>
+        <H1 className="col-span-12 text-center text-white">
+          Links to Blog articles around Marketing use cases
+        </H1>
+      </Grid>
+      <Grid>
+        <H1 className="col-span-12 text-center text-white">
+          Structured referal specific to Marketing
+          <br />
+          (post from our users, quotes)
+        </H1>
+      </Grid>
       {/* <SimpleSlider slides={customerSupportSlides} /> */}
       <Grid>
         <div
@@ -44,7 +57,7 @@ export function ForCustomerSupport() {
             defaultFlexClasses,
             "col-span-12",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-6 xl:col-start-2"
+            "xl:col-span-6"
           )}
         >
           <div className="grid grid-cols-2 gap-4">
@@ -89,14 +102,14 @@ export function ForCustomerSupport() {
             defaultFlexClasses,
             "col-span-12",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-4 xl:col-start-8"
+            "xl:col-span-5"
           )}
         >
           <Conversation>
             <Message
               type="user"
-              name="Edouard Wautier"
-              visual="https://edouardwautier.com/img/me.jpg"
+              name="Jessica Parker"
+              visual="static/humanavatar/human14.jpg"
             >
               <P size="sm">
                 <Handle>@supportExpert</Handle> how do we manage downgrade a
@@ -118,8 +131,8 @@ export function ForCustomerSupport() {
             </Message>
             <Message
               type="user"
-              name="Edouard Wautier"
-              visual="https://edouardwautier.com/img/me.jpg"
+              name="Jessica Parker"
+              visual="static/humanavatar/human14.pg"
             >
               <P size="sm">
                 <Handle>@customerWrite</Handle>, the customer is called Cedric.

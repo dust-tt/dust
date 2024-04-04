@@ -5,7 +5,7 @@ import SimpleSlider, {
   DroidItem,
 } from "@app/components/home/carousel";
 import { Block, HeaderContentBlock } from "@app/components/home/contentBlocks";
-import { Grid, H2, H4, P } from "@app/components/home/contentComponents";
+import { Grid, H1, H2, H4, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
@@ -31,6 +31,18 @@ export function ForPeople() {
           </>
         }
       />
+      <Grid>
+        <H1 className="col-span-12 text-center text-white">
+          Links to Blog articles around Marketing use cases
+        </H1>
+      </Grid>
+      <Grid>
+        <H1 className="col-span-12 text-center text-white">
+          Structured referal specific to Marketing
+          <br />
+          (post from our users, quotes)
+        </H1>
+      </Grid>
       {/* <SimpleSlider slides={peopleSlides} /> */}
       {/* SHARE KNOWLEDGE */}
       <Grid>

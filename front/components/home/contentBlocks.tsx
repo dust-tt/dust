@@ -5,6 +5,26 @@ import React from "react";
 import { Grid, H2, H3, H4, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
+interface ImgBlockProps {
+  children?: React.ReactNode;
+  title: React.ReactNode;
+  content: React.ReactNode;
+}
+
+export const ImgBlock: React.FC<ImgBlockProps> = ({
+  children,
+  title,
+  content,
+}) => {
+  return (
+    <div className="col-span-4 flex flex-col gap-4 p-4">
+      {children ? children : null}
+      <H4 className="text-white">{title}</H4>
+      <P size="md">{content}</P>
+    </div>
+  );
+};
+
 interface HeaderContentBlockProps {
   title: ReactNode;
   subtitle: ReactNode;

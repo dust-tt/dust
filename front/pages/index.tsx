@@ -31,6 +31,7 @@ import { ForPeople } from "@app/pages/website/ForPeople";
 import { Navigation } from "@app/pages/website/Navigation";
 import { PricingPage } from "@app/pages/website/PricingPage";
 import { ProductPage } from "@app/pages/website/ProductPage";
+import { SecurityPage } from "@app/pages/website/SecurityPage";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -111,6 +112,9 @@ export default function Home({
         changeShape(0);
         break;
       case "pricing":
+        changeShape(1);
+        break;
+      case "security":
         changeShape(1);
         break;
       case "for_customer":
@@ -218,6 +222,8 @@ export default function Home({
                 return <ProductPage />;
               case "pricing":
                 return <PricingPage />;
+              case "security":
+                return <SecurityPage />;
               case "for_customer":
                 return <ForCustomerSupport />;
               case "for_marketing":

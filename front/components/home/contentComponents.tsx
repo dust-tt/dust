@@ -171,7 +171,7 @@ export const A = ({
 };
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
-  <strong className={classNames(className, "font-medium text-slate-200")}>
+  <strong className={classNames(className, "font-semibold text-slate-100")}>
     {children}
   </strong>
 );

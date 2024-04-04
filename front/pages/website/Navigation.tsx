@@ -167,6 +167,16 @@ export function Navigation({
           </NavigationMenuLink>
         </NavigationMenuItem>
         <NavigationMenuItem>
+          <NavigationMenuLink onClick={() => onPageChange("security")}>
+            <A
+              variant={currentPage === "pricing" ? "primary" : "tertiary"}
+              className="pr-2"
+            >
+              Security
+            </A>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
           <NavigationMenuTrigger>More</NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="grid gap-4 p-6 pb-8 lg:w-[580px] lg:grid-cols-3">
