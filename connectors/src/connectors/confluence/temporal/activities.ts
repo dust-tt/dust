@@ -614,7 +614,7 @@ export async function confluenceGetReportPersonalActionActivity(
   const { connectorId, userAccountId } = params;
 
   const connector = await fetchConfluenceConnector(connectorId);
-  if (connector.errorType === "oauth_token_revoked") {
+  if (connector.hasExternalAuthError()) {
     return false;
   }
 
