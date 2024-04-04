@@ -112,7 +112,7 @@ export const IntercomCommandSchema = t.type({
   ]),
   args: t.type({
     connectorId: t.number,
-    conversationId: t.union([t.string, t.undefined]),
+    conversationId: t.union([t.number, t.undefined]),
     day: t.union([t.string, t.undefined]),
   }),
 });
