@@ -1,4 +1,8 @@
-import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  AgentMessageType,
+  UserMessageType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { PublicPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -11,11 +15,12 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
+  agentMessages?: AgentMessageType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ message: UserMessageType }>>
+  res: NextApiResponse<WithAPIErrorReponse<PostMessagesResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -64,19 +69,26 @@ async function handler(
         });
       }
 
-      const { content, context, mentions } = bodyValidation.right;
+      const { content, context, mentions, isSync } = bodyValidation.right;
 
-      const messageRes = await postUserMessageWithPubSub(auth, {
-        conversation,
-        content,
-        mentions,
-        context,
-      });
+      const messageRes = await postUserMessageWithPubSub(
+        auth,
+        {
+          conversation,
+          content,
+          mentions,
+          context,
+        },
+        { resolveAfterFullGeneration: isSync === true }
+      );
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
       }
 
-      res.status(200).json({ message: messageRes.value });
+      res.status(200).json({
+        message: messageRes.value.userMessage,
+        agentMessages: messageRes.value.agentMessages ?? undefined,
+      });
       return;
 
     default:
