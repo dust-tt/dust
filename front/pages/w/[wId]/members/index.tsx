@@ -884,7 +884,7 @@ async function handleMembersRoleChange({
   sendNotification: any;
 }): Promise<void> {
   const promises = members.map((member) =>
-    fetch(`/api/w/${member.workspaces[0].sId}/members/${member.id}`, {
+    fetch(`/api/w/${member.workspaces[0].sId}/members/${member.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

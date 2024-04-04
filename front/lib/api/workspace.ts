@@ -151,6 +151,7 @@ export async function getMembers(
     }
 
     return {
+      sId: u.sId,
       id: u.id,
       createdAt: u.createdAt.getTime(),
       provider: u.provider,
