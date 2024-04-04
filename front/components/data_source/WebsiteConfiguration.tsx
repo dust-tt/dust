@@ -12,7 +12,7 @@ import type {
   DataSourceType,
   DepthOption,
   SubscriptionType,
-  UpdateConnectorRequestBodySchema,
+  UpdateConnectorConfigurationType,
   WebCrawlerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -148,17 +148,16 @@ export default function WebsiteConfiguration({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          urlConfig: {
+          provider: "webcrawler",
+          connectionId: "none",
+          name: dataSourceName,
+          configuration: {
             url: dataSourceUrl,
-            maxPages: maxPages || WEBCRAWLER_MAX_PAGES,
+            maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
             depth: maxDepth,
             crawlMode: crawlMode,
             crawlFrequency: selectedCrawlFrequency,
-          },
-          type: "url",
-          provider: "webcrawler",
-          connectionId: undefined,
-          name: dataSourceName,
+          } satisfies WebCrawlerConfigurationType,
         } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
       });
       if (res.ok) {
@@ -172,21 +171,21 @@ export default function WebsiteConfiguration({
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
           dataSource.name
-        )}/managed/update`,
+        )}/configuration`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            connectorParams: {
+            configuration: {
               url: dataSourceUrl,
-              maxPages: maxPages || WEBCRAWLER_MAX_PAGES,
+              maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
               depth: maxDepth,
               crawlMode: crawlMode,
               crawlFrequency: selectedCrawlFrequency,
-            },
-          } satisfies t.TypeOf<typeof UpdateConnectorRequestBodySchema>),
+            } satisfies WebCrawlerConfigurationType,
+          } satisfies UpdateConnectorConfigurationType),
         }
       );
       if (res.ok) {

@@ -50,13 +50,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const webCrawlerConfiguration = await new ConnectorsAPI(
-    logger
-  ).getWebCrawlerConfiguration({
-    connectorId: dataSource.connectorId,
-  });
-  if (webCrawlerConfiguration.isErr()) {
-    throw new Error(webCrawlerConfiguration.error.message);
+  const connectorRes = await new ConnectorsAPI(logger).getConnector(
+    dataSource.connectorId
+  );
+  if (connectorRes.isErr()) {
+    throw new Error(connectorRes.error.message);
   }
 
   return {
@@ -65,7 +63,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       dataSources,
       dataSource,
-      webCrawlerConfiguration: webCrawlerConfiguration.value,
+      webCrawlerConfiguration: connectorRes.value
+        .configuration as WebCrawlerConfigurationType,
       gaTrackingId: GA_TRACKING_ID,
     },
   };

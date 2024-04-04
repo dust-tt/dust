@@ -1,5 +1,9 @@
+import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import { v4 as uuidv4 } from "uuid";
+
+import { Err, Ok, Result } from "../../shared/result";
 
 export function ioTsEnum<EnumType>(
   enumValues: readonly string[],
@@ -39,3 +43,16 @@ export const SlugifiedString = t.brand(
   (s): s is t.Branded<string, SlugifiedStringBrand> => /^[a-z0-9_]+$/.test(s),
   "SlugifiedString"
 );
+
+export function ioTsParsePayload<T>(
+  payload: unknown,
+  codec: t.Type<T>
+): Result<T, string[]> {
+  const bodyValidation = codec.decode(payload);
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    return new Err(pathError);
+  }
+
+  return new Ok(bodyValidation.right);
+}

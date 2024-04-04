@@ -1,4 +1,8 @@
-import type { ConnectorProvider, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  ModelId,
+  WebCrawlerConfigurationType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import {
@@ -59,16 +63,15 @@ import type {
   ConnectorCleaner,
   ConnectorConfigGetter,
   ConnectorConfigSetter,
-  ConnectorCreatorOAuth,
-  ConnectorCreatorUrl,
   ConnectorGarbageCollector,
   ConnectorPauser,
   ConnectorPermissionRetriever,
   ConnectorPermissionSetter,
+  ConnectorProviderCreateConnectorMapping,
+  ConnectorProviderUpdateConfigurationMapping,
   ConnectorResumer,
   ConnectorStopper,
-  ConnectorUpdaterOAuth,
-  ConnectorUpdaterUrl,
+  ConnectorUpdater,
   ContentNodeParentsRetriever,
   SyncConnector,
 } from "@connectors/connectors/interface";
@@ -105,27 +108,25 @@ import {
   retrieveWebcrawlerConnectorPermissions,
   retrieveWebCrawlerContentNodeParents,
   retrieveWebCrawlerContentNodes,
+  setWebcrawlerConfiguration,
   stopWebcrawlerConnector,
-  updateWebcrawlerConnector,
 } from "./webcrawler";
 import { launchCrawlWebsiteWorkflow } from "./webcrawler/temporal/client";
 
-export const CREATE_CONNECTOR_BY_TYPE: Record<
-  ConnectorProvider,
-  ConnectorCreatorOAuth | ConnectorCreatorUrl
-> = {
-  confluence: createConfluenceConnector,
-  github: createGithubConnector,
-  google_drive: createGoogleDriveConnector,
-  intercom: createIntercomConnector,
-  notion: createNotionConnector,
-  slack: createSlackConnector,
-  webcrawler: createWebcrawlerConnector,
-};
+export const CREATE_CONNECTOR_BY_TYPE: ConnectorProviderCreateConnectorMapping =
+  {
+    confluence: createConfluenceConnector,
+    github: createGithubConnector,
+    google_drive: createGoogleDriveConnector,
+    intercom: createIntercomConnector,
+    notion: createNotionConnector,
+    slack: createSlackConnector,
+    webcrawler: createWebcrawlerConnector,
+  };
 
 export const UPDATE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
-  ConnectorUpdaterOAuth | ConnectorUpdaterUrl
+  ConnectorUpdater
 > = {
   confluence: updateConfluenceConnector,
   slack: updateSlackConnector,
@@ -133,7 +134,9 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   github: updateGithubConnector,
   google_drive: updateGoogleDriveConnector,
   intercom: updateIntercomConnector,
-  webcrawler: updateWebcrawlerConnector,
+  webcrawler: () => {
+    throw new Error(`Not implemented`);
+  },
 };
 
 export const STOP_CONNECTOR_BY_TYPE: Record<
@@ -263,6 +266,7 @@ export const RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE: Record<
   webcrawler: retrieveWebCrawlerContentNodeParents,
 };
 
+// Old configuration interface that allows to set one config key at a time.
 export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorConfigSetter
@@ -284,6 +288,7 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   },
 };
 
+// Old configuration interface that allows to get one config key at a time.
 export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorConfigGetter
@@ -304,6 +309,32 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
 };
+
+export const SET_CONNECTOR_CONFIGURATION_BY_TYPE: ConnectorProviderUpdateConfigurationMapping =
+  {
+    webcrawler: (
+      connectorId: ModelId,
+      configuration: WebCrawlerConfigurationType
+    ) => setWebcrawlerConfiguration(connectorId, configuration),
+    intercom: () => {
+      throw new Error("Not implemented");
+    },
+    slack: () => {
+      throw new Error("Not implemented");
+    },
+    notion: () => {
+      throw new Error("Not implemented");
+    },
+    github: () => {
+      throw new Error("Not implemented");
+    },
+    google_drive: () => {
+      throw new Error("Not implemented");
+    },
+    confluence: () => {
+      throw new Error("Not implemented");
+    },
+  };
 
 export const GARBAGE_COLLECT_BY_TYPE: Record<
   ConnectorProvider,
