@@ -87,6 +87,7 @@ export async function batchRenderUserMessages(
       created: message.createdAt.getTime(),
       user: user
         ? {
+            sId: user.sId,
             id: user.id,
             createdAt: user.createdAt.getTime(),
             username: user.username,
