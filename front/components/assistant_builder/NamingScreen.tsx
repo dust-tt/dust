@@ -6,6 +6,7 @@ import {
   Page,
   PencilSquareIcon,
   SparklesIcon,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -14,7 +15,13 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
 import {
@@ -22,6 +29,7 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { debounce } from "@app/lib/utils/debounce";
 
@@ -134,6 +142,7 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
 }) {
+  const sendNotification = useContext(SendNotificationsContext);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   // Name suggestions handling
@@ -168,35 +177,74 @@ export default function NamingScreen({
   ]);
 
   // Description suggestions handling
-  const [descriptionSuggestions, setDescriptionSuggestions] =
-    useState<BuilderSuggestionsType>({
-      status: "unavailable",
-      reason: "irrelevant",
-    });
 
-  const [descriptionSuggestionsIndex, setDescriptionSuggestionIndex] =
-    useState(0);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
+  const [descriptionIsGenerated, setDescriptionIsGenerated] = useState(false);
 
-  const updateDescriptionSuggestions = useCallback(async () => {
-    const descriptionSuggestions = await getDescriptionSuggestions({
+  const suggestDescription = useCallback(
+    async (fromUserClick?: boolean) => {
+      setGeneratingDescription(true);
+      const notifyError = fromUserClick ? sendNotification : console.log;
+      const descriptionSuggestions = await getDescriptionSuggestions({
+        owner,
+        instructions: builderState.instructions || "",
+        name: builderState.handle || "",
+      });
+      if (descriptionSuggestions.isOk()) {
+        const suggestion =
+          descriptionSuggestions.value.status === "ok" &&
+          descriptionSuggestions.value.suggestions.length > 0
+            ? descriptionSuggestions.value.suggestions[0]
+            : null;
+        if (suggestion) {
+          setBuilderState((state) => ({
+            ...state,
+            description: suggestion,
+          }));
+          setDescriptionIsGenerated(true);
+        } else {
+          const errorMessage =
+            descriptionSuggestions.value.status === "unavailable"
+              ? descriptionSuggestions.value.reason ||
+                "No suggestions available"
+              : "No suggestions available";
+          notifyError({
+            type: "error",
+            title: "Error generating description suggestion.",
+            description: errorMessage,
+          });
+        }
+      } else {
+        notifyError({
+          type: "error",
+          title: "Error generating description suggestion.",
+          description: descriptionSuggestions.error.message,
+        });
+      }
+      setGeneratingDescription(false);
+    },
+    [
       owner,
-      instructions: builderState.instructions || "",
-      name: builderState.handle || "",
-    });
-    if (descriptionSuggestions.isOk()) {
-      setDescriptionSuggestions(descriptionSuggestions.value);
-    }
-  }, [owner, builderState.instructions, builderState.handle]);
+      builderState.instructions,
+      builderState.handle,
+      setBuilderState,
+      sendNotification,
+    ]
+  );
 
   useEffect(() => {
     if (isDevelopmentOrDustWorkspace(owner)) {
-      void updateDescriptionSuggestions();
+      if (
+        !builderState.description?.trim() &&
+        builderState.instructions?.trim() &&
+        !generatingDescription
+      ) {
+        void suggestDescription();
+      }
     }
-  }, [owner, updateDescriptionSuggestions]);
-
-  const suggestionsAvailable =
-    descriptionSuggestions.status === "ok" &&
-    descriptionSuggestions.suggestions.length > 0;
+    // Here we only want to run this effect once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -299,9 +347,12 @@ export default function NamingScreen({
         </div>
         <div className="flex flex-col gap-4">
           <div>
-            <Page.SectionHeader title="Description" />
+            <div className="flex gap-1">
+              <Page.SectionHeader title="Description" />
+              {generatingDescription && <Spinner2 size="sm" />}
+            </div>
             <div className="text-sm font-normal text-element-700">
-              Describe for others the assistant’s purpose.
+              Describe for others the assistant’s purpose.{" "}
             </div>
           </div>
 
@@ -309,52 +360,41 @@ export default function NamingScreen({
             <div className="flex-grow">
               <Input
                 placeholder={
-                  suggestionsAvailable
-                    ? "Click on sparkles to generate a description"
-                    : "Answer questions about sales, translate from English to French…"
+                  generatingDescription
+                    ? "Generating description..."
+                    : "Click on sparkles to generate a description"
                 }
-                value={builderState.description}
+                value={generatingDescription ? "" : builderState.description}
                 onChange={(value) => {
                   setEdited(true);
+                  setDescriptionIsGenerated(false);
                   setBuilderState((state) => ({
                     ...state,
                     description: value,
                   }));
                 }}
-                error={null} // TODO ?
                 name="assistantDescription"
                 className="text-sm"
+                disabled={generatingDescription}
               />
             </div>
             {isDevelopmentOrDustWorkspace(owner) && (
               <IconButton
                 icon={SparklesIcon}
                 size="md"
+                disabled={generatingDescription}
                 onClick={async () => {
-                  if (!suggestionsAvailable) return;
-                  setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    description:
-                      descriptionSuggestions.suggestions[
-                        descriptionSuggestionsIndex
-                      ],
-                  }));
-                  if (descriptionSuggestionsIndex === 1) {
-                    await updateDescriptionSuggestions();
-                    setDescriptionSuggestionIndex(0);
-                  } else {
-                    setDescriptionSuggestionIndex(
-                      descriptionSuggestionsIndex + 1
-                    );
+                  if (
+                    !builderState.description?.trim() ||
+                    descriptionIsGenerated ||
+                    confirm(
+                      "Heads up! This will overwrite your current description. Are you sure you want to proceed?"
+                    )
+                  ) {
+                    await suggestDescription();
                   }
                 }}
-                disabled={!suggestionsAvailable}
-                tooltip={
-                  suggestionsAvailable
-                    ? "Click to generate a description"
-                    : "Description generation not yet available"
-                }
+                tooltip="Click to generate a description"
               />
             )}
           </div>
@@ -373,7 +413,7 @@ async function getNamingSuggestions({
   instructions: string;
   description: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -383,13 +423,6 @@ async function getNamingSuggestions({
       inputs: { instructions, description },
     }),
   });
-  if (!res.ok) {
-    return new Err({
-      type: "internal_server_error",
-      message: "Failed to get suggestions",
-    });
-  }
-  return new Ok(await res.json());
 }
 
 async function getDescriptionSuggestions({
@@ -401,7 +434,7 @@ async function getDescriptionSuggestions({
   instructions: string;
   name: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -411,11 +444,28 @@ async function getDescriptionSuggestions({
       inputs: { instructions, name },
     }),
   });
-  if (!res.ok) {
+}
+
+async function fetchWithErr<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Result<T, APIError>> {
+  try {
+    const res = await fetch(input, init);
+    if (!res.ok) {
+      return new Err({
+        type: "internal_server_error",
+        message: `Failed to fetch: ${
+          res.statusText
+        }\nResponse: ${await res.text()}`,
+      });
+    }
+
+    return new Ok((await res.json()) as T);
+  } catch (e) {
     return new Err({
       type: "internal_server_error",
-      message: "Failed to get suggestions",
+      message: `Failed to fetch.\nError: ${e}`,
     });
   }
-  return new Ok(await res.json());
 }
