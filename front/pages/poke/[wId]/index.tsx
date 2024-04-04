@@ -1,14 +1,8 @@
 import {
   Button,
   Collapsible,
-  ConfluenceLogo,
   DropdownMenu,
-  GithubLogo,
-  GoogleLogo,
-  IntercomLogo,
   Modal,
-  NotionLogo,
-  SlackLogo,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -20,7 +14,6 @@ import type {
 import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
-import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -32,12 +25,10 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import {
-  PokeTable,
-  PokeTableBody,
-  PokeTableCell,
-  PokeTableRow,
-} from "@app/components/poke/shadcn/ui/table";
-import { SubscriptionsDataTable } from "@app/components/poke/subscriptions/table";
+  ActiveSubscriptionPlanLimitationsTable,
+  ActiveSubscriptionTable,
+  SubscriptionsDataTable,
+} from "@app/components/poke/subscriptions/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -46,7 +37,6 @@ import {
   orderDatasourceByImportance,
 } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isDevelopment } from "@app/lib/development";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -259,8 +249,6 @@ const WorkspacePage = ({
     (ds) => !!ds.connectorProvider
   );
 
-  const activePlan = activeSubscription.plan;
-
   return (
     <>
       <DustAppLogsModal
@@ -300,246 +288,35 @@ const WorkspacePage = ({
 
           <div className="flex-col justify-center">
             <div className="mx-2">
-              <h2 className="text-md mb-4 font-bold">Segmentation:</h2>
-              <div>
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label={owner.segmentation ?? "none"}
-                      variant="secondary"
-                      hasMagnifying={false}
-                      size="sm"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="auto" width={240}>
-                    {[null, "interesting"].map((segment) => (
-                      <DropdownMenu.Item
-                        label={segment ?? "none"}
-                        key={segment ?? "all"}
-                        onClick={() => {
-                          void onWorkspaceUpdate(
-                            segment as WorkspaceSegmentationType
-                          );
-                        }}
-                      ></DropdownMenu.Item>
-                    ))}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-              </div>
-              <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
-                <div className="flex justify-between gap-3">
-                  <div className="flex-grow">
-                    <div>
-                      <h2 className="text-md pb-4 font-bold">
-                        Active Subscription:
-                      </h2>
-                      <PokeTable>
-                        <PokeTableBody>
-                          <PokeTableRow>
-                            <PokeTableCell>Plan Name</PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.plan.name}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>Plan Code</PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.plan.code}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>Is in Trial?</PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.trialing ? "✅" : "❌"}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>
-                              Stripe Subscription Id
-                            </PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.stripeSubscriptionId ? (
-                                <Link
-                                  href={
-                                    isDevelopment()
-                                      ? `https://dashboard.stripe.com/test/subscriptions/${activeSubscription.stripeSubscriptionId}`
-                                      : `https://dashboard.stripe.com/subscriptions/${activeSubscription.stripeSubscriptionId}`
-                                  }
-                                  target="_blank"
-                                  className="text-xs text-action-400"
-                                >
-                                  {activeSubscription.stripeSubscriptionId}
-                                </Link>
-                              ) : (
-                                "No subscription id"
-                              )}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>Stripe Customer Id</PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.stripeCustomerId ? (
-                                <Link
-                                  href={
-                                    isDevelopment()
-                                      ? `https://dashboard.stripe.com/test/customers/${activeSubscription.stripeCustomerId}`
-                                      : `https://dashboard.stripe.com/customers/${activeSubscription.stripeCustomerId}`
-                                  }
-                                  target="_blank"
-                                  className="text-xs text-action-400"
-                                >
-                                  {activeSubscription.stripeCustomerId}
-                                </Link>
-                              ) : (
-                                "No customer id"
-                              )}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>Start Date</PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.startDate
-                                ? format(
-                                    activeSubscription.startDate,
-                                    "yyyy-MM-dd"
-                                  )
-                                : "/"}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>End Date</PokeTableCell>
-                            <PokeTableCell>
-                              {activeSubscription.endDate
-                                ? format(
-                                    activeSubscription.endDate,
-                                    "yyyy-MM-dd"
-                                  )
-                                : "/"}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                        </PokeTableBody>
-                      </PokeTable>
-                    </div>
-                  </div>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={`Segmentation: ${owner.segmentation ?? "none"}`}
+                    variant="secondary"
+                    hasMagnifying={false}
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="auto" width={240}>
+                  {[null, "interesting"].map((segment) => (
+                    <DropdownMenu.Item
+                      label={segment ?? "none"}
+                      key={segment ?? "all"}
+                      onClick={() => {
+                        void onWorkspaceUpdate(
+                          segment as WorkspaceSegmentationType
+                        );
+                      }}
+                    ></DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
 
-                  <div className="flex-grow">
-                    <div>
-                      <h2 className="text-md pb-4 font-bold">
-                        Plan limitations:
-                      </h2>
-                      <PokeTable>
-                        <PokeTableBody>
-                          <PokeTableRow>
-                            <PokeTableCell>SlackBot allowed</PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.assistant.isSlackBotAllowed
-                                ? "✅"
-                                : "❌"}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>Websites allowed</PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.connections.isWebCrawlerAllowed
-                                ? "✅"
-                                : "❌"}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                          <PokeTableRow>
-                            <PokeTableCell>Connections allowed</PokeTableCell>
-                            <PokeTableCell>
-                              <div className="flex gap-2">
-                                {activePlan.limits.connections
-                                  .isSlackAllowed ? (
-                                  <SlackLogo />
-                                ) : null}
-                                {activePlan.limits.connections
-                                  .isGoogleDriveAllowed ? (
-                                  <GoogleLogo />
-                                ) : null}
-                                {activePlan.limits.connections
-                                  .isGithubAllowed ? (
-                                  <GithubLogo />
-                                ) : null}
-                                {activePlan.limits.connections
-                                  .isNotionAllowed ? (
-                                  <NotionLogo />
-                                ) : null}
-                                {activePlan.limits.connections
-                                  .isIntercomAllowed ? (
-                                  <IntercomLogo />
-                                ) : null}
-                                {activePlan.limits.connections
-                                  .isConfluenceAllowed ? (
-                                  <ConfluenceLogo />
-                                ) : null}
-                              </div>
-                            </PokeTableCell>
-                          </PokeTableRow>
-
-                          <PokeTableRow>
-                            <PokeTableCell>Max number of users</PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.users.maxUsers === -1
-                                ? "unlimited"
-                                : activePlan.limits.users.maxUsers}
-                            </PokeTableCell>
-                          </PokeTableRow>
-
-                          <PokeTableRow>
-                            <PokeTableCell>
-                              Max number of messages
-                            </PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.assistant.maxMessages === -1
-                                ? "unlimited"
-                                : `${activePlan.limits.assistant.maxMessages} / ${activePlan.limits.assistant.maxMessagesTimeframe}`}
-                            </PokeTableCell>
-                          </PokeTableRow>
-
-                          <PokeTableRow>
-                            <PokeTableCell>
-                              Max number of data sources
-                            </PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.dataSources.count === -1
-                                ? "unlimited"
-                                : activePlan.limits.dataSources.count}
-                            </PokeTableCell>
-                          </PokeTableRow>
-
-                          <PokeTableRow>
-                            <PokeTableCell>
-                              Max number of documents in data sources
-                            </PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.dataSources.documents.count ===
-                              -1
-                                ? "unlimited"
-                                : activePlan.limits.dataSources.documents.count}
-                            </PokeTableCell>
-                          </PokeTableRow>
-
-                          <PokeTableRow>
-                            <PokeTableCell>Max documents size</PokeTableCell>
-                            <PokeTableCell>
-                              {activePlan.limits.dataSources.documents
-                                .sizeMb === -1
-                                ? "unlimited"
-                                : `${activePlan.limits.dataSources.documents.sizeMb}Mb`}
-                            </PokeTableCell>
-                          </PokeTableRow>
-                        </PokeTableBody>
-                      </PokeTable>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-4">
                 {plans && (
-                  <div className="pt-8">
+                  <div className="pt-4">
                     <Collapsible>
                       <Collapsible.Button label="Manage plan" />
                       <Collapsible.Panel>
@@ -573,6 +350,16 @@ const WorkspacePage = ({
                                 workspaceHasManagedDataSources
                               }
                             />
+                            {activeSubscription.plan.code !==
+                              FREE_NO_PLAN_CODE &&
+                              workspaceHasManagedDataSources && (
+                                <div className="pl-2 pt-4">
+                                  <p className="text-warning mb-4 text-sm">
+                                    Delete managed data sources before
+                                    downgrading.
+                                  </p>
+                                </div>
+                              )}
                           </div>
                         </div>
                       </Collapsible.Panel>
@@ -620,25 +407,11 @@ const WorkspacePage = ({
                   </Collapsible>
                 </div>
               </div>
-              {activeSubscription.plan.code !== FREE_NO_PLAN_CODE &&
-                workspaceHasManagedDataSources && (
-                  <div className="pl-2 pt-4">
-                    <p className="text-warning mb-4 text-sm">
-                      Delete managed data sources before downgrading.
-                    </p>
-                  </div>
-                )}
             </div>
 
             <div className="flex flex-col space-y-8 pt-4">
-              <SubscriptionsDataTable
-                owner={owner}
-                subscriptions={subscriptions}
-              />
-              <FeatureFlagsDataTable
-                owner={owner}
-                whitelistableFeatures={whitelistableFeatures}
-              />
+              <ActiveSubscriptionTable subscription={activeSubscription} />
+
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
@@ -647,6 +420,14 @@ const WorkspacePage = ({
               <AssistantsDataTable
                 owner={owner}
                 agentConfigurations={agentConfigurations}
+              />
+              <FeatureFlagsDataTable
+                owner={owner}
+                whitelistableFeatures={whitelistableFeatures}
+              />
+              <SubscriptionsDataTable
+                owner={owner}
+                subscriptions={subscriptions}
               />
             </div>
           </div>
