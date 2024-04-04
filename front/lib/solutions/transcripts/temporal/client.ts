@@ -1,11 +1,10 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
+import { QUEUE_NAME } from "@app/lib/solutions/transcripts/temporal/config";
+import { retrieveNewTranscriptsWorkflow } from "@app/lib/solutions/transcripts/temporal/workflows";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-
-import { QUEUE_NAME } from "./config";
-import { retrieveNewTranscriptsWorkflow } from "./workflows";
 
 export async function launchRetrieveNewTranscriptsWorkflow({
   userId,
@@ -16,7 +15,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `solutions-transcript-summarizer-${userId}-${providerId}`;
+  const workflowId = `solutions-transcripts-${providerId}-u${userId}`;
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {

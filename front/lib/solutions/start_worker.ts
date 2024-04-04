@@ -5,8 +5,6 @@ import logger from "@app/logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-
-// 
 runRetrieveNewTranscriptsWorker().catch((err) =>
   logger.error({ error: err }, "Error running retrieve new transcripts worker")
 );

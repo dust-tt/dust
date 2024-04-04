@@ -1,8 +1,8 @@
-import { retrieveNewTranscriptsActivity } from './activities';
+import { launchRetrieveNewTranscriptsWorkflow } from './client';
 
 const userId = 1;
-const provider = 'google_drive';
+const providerId = 'google_drive';
 
-retrieveNewTranscriptsActivity(userId, provider)
-  .then(result => console.log(result))
-  .catch(error => console.error(error));
+void launchRetrieveNewTranscriptsWorkflow({userId, providerId}).then((result) => {
+  console.log(result);
+});
