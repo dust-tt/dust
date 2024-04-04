@@ -15,10 +15,6 @@ const bucketKeysToBucket: Record<SupportedBucketKeyType, Bucket> = {
   PUBLIC_UPLOAD: storage.bucket(config.getPublicUploadBucket()),
 };
 
-export function getPublicUploadBucket() {
-  return storage.bucket(config.getPublicUploadBucket());
-}
-
 export async function uploadToBucket(
   bucketKey: SupportedBucketKeyType,
   file: formidable.File
